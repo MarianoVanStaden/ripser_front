@@ -1,45 +1,108 @@
+/* Estilo para el contenedor del sidebar */
 .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 250px;
-    height: 100vh;
-    background-color: #0d1117;
-    color: white;
-    padding: 20px;
-    box-sizing: border-box;
-    font-family: sans-serif;
-  }
-  
-  
-  .title {
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 30px;
-  }
-  
-  .section-title {
-    font-size: 12px;
-    color: #9ca3af;
-    text-transform: uppercase;
-    margin-top: 20px;
-    margin-bottom: 10px;
-  }
-  
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .item {
-    padding-left: 5px;
-    color: #d1d5db;
-    cursor: pointer;
-    transition: color 0.2s;
-  }
-  
-  .item:hover {
-    color: white;
-  }
-  
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  background-color: #1e262f;
+  color: white;
+  padding: 20px;
+  overflow-y: auto;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.3);
+  border-radius: 10px 0 0 10px;
+}
+/* Ajustar el margen inferior de los items cuando los sub-items no son visibles */
+.item:not(:has(+ .sub-items.visible)) {
+  margin-bottom: 0;
+}
+.sidebar:hover {
+  width: 300px;
+  background-color: #262f3b;
+}
+
+.title {
+  font-size: 22px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: bold;
+  color: #cfd4db;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.item {
+  cursor: pointer;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #2f3a47;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  transition: background-color 0.3s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.item:hover {
+  background-color: #3c4b59;
+  transform: scale(1.05);
+}
+
+.item:active {
+  background-color: #3c4b59;
+  transform: scale(1);
+}
+
+.section {
+  margin-bottom: 20px;
+}
+.sub-items {
+  display: flex;
+  flex-direction: column;
+  padding-left: 20px;
+  margin-top: 0; /* Eliminar el espacio extra */
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out, margin-top 0.3s ease;
+}
+
+.sub-items.visible {
+  opacity: 1;
+  margin-top: 8px; /* Añadir solo si es necesario un pequeño margen */
+}
+
+.sub-item {
+  font-size: 16px;
+  color: #a1a1aa;
+  text-decoration: none;
+  padding: 10px 20px;
+  margin-left: 0;
+  border-radius: 8px;
+  transition: background-color 0.3s, color 0.2s, transform 0.2s;
+  margin-bottom: 6px; /* Ajustar para evitar el espacio excesivo */
+}
+
+.sub-item:last-child {
+  margin-bottom: 0; /* Eliminar el margen inferior del último sub-item */
+}
+
+.sub-item:hover {
+  color: white;
+  background-color: #4f5b66;
+  transform: translateX(10px);
+}
+
+.sub-item:active {
+  color: #e3e9f0;
+  background-color: #3c4b59;
+}
+.arrow {
+  margin-left: 10px;
+  transition: transform 0.3s ease;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+}
+
