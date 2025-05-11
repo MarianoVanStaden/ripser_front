@@ -1,4 +1,4 @@
-/* Estilo para el contenedor del sidebar */
+/* Contenedor del sidebar */
 .sidebar {
   position: fixed;
   top: 0;
@@ -12,16 +12,21 @@
   transition: width 0.3s ease, background-color 0.3s ease;
   box-shadow: 4px 0 10px rgba(0, 0, 0, 0.3);
   border-radius: 10px 0 0 10px;
+  
 }
-/* Ajustar el margen inferior de los items cuando los sub-items no son visibles */
-.item:not(:has(+ .sub-items.visible)) {
-  margin-bottom: 0;
-}
+
 .sidebar:hover {
   width: 300px;
   background-color: #262f3b;
 }
+/* Estilo para el link de "Inicio" */
+.sidebar .item[href="/"] {
+  color: white;
+  text-decoration: none;
+}
 
+
+/* Título del panel */
 .title {
   font-size: 22px;
   margin-bottom: 20px;
@@ -31,47 +36,66 @@
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+/* Cada sección contenedora de un ítem */
+.section {
+  transition: all 0.3s ease;
+}
+
+/* Estilo del ítem principal */
 .item {
   cursor: pointer;
   padding: 12px 20px;
   font-size: 16px;
   font-weight: bold;
   background-color: #2f3a47;
-  margin-bottom: 8px;
   border-radius: 8px;
   transition: background-color 0.3s, transform 0.2s;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 10px;
 }
 
+/* Efectos de hover y active */
 .item:hover {
   background-color: #3c4b59;
   transform: scale(1.05);
 }
-
 .item:active {
   background-color: #3c4b59;
   transform: scale(1);
 }
 
-.section {
-  margin-bottom: 20px;
+/* Flechita */
+.arrow {
+  margin-left: 10px;
+  transition: transform 0.3s ease;
 }
+.arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Sub-items ocultos por defecto */
 .sub-items {
   display: flex;
   flex-direction: column;
   padding-left: 20px;
-  margin-top: 0; /* Eliminar el espacio extra */
+  margin-top: 0;
+  max-height: 0;
+  overflow: hidden;
   opacity: 0;
-  transition: opacity 0.3s ease-in-out, margin-top 0.3s ease;
+  transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
 }
 
+/* Sub-items visibles cuando el menú está abierto */
 .sub-items.visible {
   opacity: 1;
-  margin-top: 8px; /* Añadir solo si es necesario un pequeño margen */
+  max-height: 500px; /* suficientemente grande para mostrar varios items */
+  margin-top: 8px;
+  margin-bottom: 12px; /* separa del siguiente grupo */
 }
 
+/* Estilo de cada sub-item */
 .sub-item {
   font-size: 16px;
   color: #a1a1aa;
@@ -80,29 +104,17 @@
   margin-left: 0;
   border-radius: 8px;
   transition: background-color 0.3s, color 0.2s, transform 0.2s;
-  margin-bottom: 6px; /* Ajustar para evitar el espacio excesivo */
+  margin-bottom: 6px;
 }
-
 .sub-item:last-child {
-  margin-bottom: 0; /* Eliminar el margen inferior del último sub-item */
+  margin-bottom: 0;
 }
-
 .sub-item:hover {
   color: white;
   background-color: #4f5b66;
   transform: translateX(10px);
 }
-
 .sub-item:active {
   color: #e3e9f0;
   background-color: #3c4b59;
 }
-.arrow {
-  margin-left: 10px;
-  transition: transform 0.3s ease;
-}
-
-.arrow.open {
-  transform: rotate(180deg);
-}
-
