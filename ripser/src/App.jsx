@@ -11,6 +11,14 @@ import Cheques from './views/Tesoreria/Cheques';
 import Efectivo from './views/Tesoreria/Efectivo';
 import MercadoPago from './views/Tesoreria/MercadoPago';
 
+import ArmadoViajes from './views/Logistica/ArmadoViajes';
+import EstadisticasyEstacionamientos from './views/Logistica/EstadisticasyEstacionamientos';
+import RendicionViajes from './views/Logistica/RendicionViajes';
+import SolucionViajes from './views/Logistica/SolucionViajes';
+import VehiculosyViajeros from './views/Logistica/VehiculosyViajeros';
+import Viajes from './views/Logistica/Viajes';
+
+
 
 
 function App() {
@@ -29,6 +37,16 @@ function App() {
           <Route path="/cheques" element={<Cheques />} />
           <Route path="/efectivo" element={<Efectivo />} />
           <Route path="/mercado-pago" element={<MercadoPago />} />
+
+          <Route path="/viajes" element={<Viajes />} />
+          <Route path="/armado-viajes" element={<ArmadoViajes/>} />
+          <Route path="/estacionamientos" element={<EstadisticasyEstacionamientos />} />
+          <Route path="/rendicion" element={<RendicionViajes />} />
+          <Route path="/vehiculos" element={<VehiculosyViajeros />} />
+          <Route path="/solucion-viaje" element={<SolucionViajes />} />
+
+
+
         </Routes>
       </div>
     </div>
