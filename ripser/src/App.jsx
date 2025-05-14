@@ -18,8 +18,11 @@ import SolucionViajes from './views/Logistica/SolucionViajes';
 import VehiculosyViajeros from './views/Logistica/VehiculosyViajeros';
 import Viajes from './views/Logistica/Viajes';
 
+import Solucion from './views/Garantia/Solucion';
 
-
+import CreditosPersonales from './views/Clientes/CreditosPersonales';
+import CuentaCorriente from './views/Clientes/CuentaCorriente';
+import CarpetaCliente from './views/Clientes/CarpetaCliente';
 
 function App() {
   return (
@@ -45,6 +48,11 @@ function App() {
           <Route path="/vehiculos" element={<VehiculosyViajeros />} />
           <Route path="/solucion-viaje" element={<SolucionViajes />} />
 
+          <Route path="/solucion-distancia" element={<Solucion />} />
+
+          <Route path="/creditos-personales" element={<CreditosPersonales />} />
+          <Route path="/cuenta-corriente" element={<CuentaCorriente />} />
+          <Route path="/carpeta-cliente" element={<CarpetaCliente />} />
 
 
         </Routes>
