@@ -46,19 +46,3 @@ body {
 .read-the-docs {
   color: #888;
 }
-.app-container {
-  display: flex;
-  height: 100vh; /* para que tome toda la pantalla si quieres */
-}
-
-.content {
-  flex: 1;
-  padding: 20px;
-  margin-left: 260px; /* ancho sidebar abierto */
-  transition: margin-left 0.3s ease;
-  overflow-y: auto;
-}
-
-.content.collapsed {
-  margin-left: 80px; /* ancho sidebar colapsado */
-}

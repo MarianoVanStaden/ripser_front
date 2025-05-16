@@ -23,16 +23,12 @@ import Solucion from './views/Garantia/Solucion';
 import CreditosPersonales from './views/Clientes/CreditosPersonales';
 import CuentaCorriente from './views/Clientes/CuentaCorriente';
 import CarpetaCliente from './views/Clientes/CarpetaCliente';
-import { SidebarProvider } from './componentes/SidebarContext';
-
-
 
 function App() {
   return (
-    <SidebarProvider> 
-      <div className="app-container">
+    <div style={{ display: 'flex' }}>
       <Sidebar />
-      <div className="content">
+      <div style={{ flex: 1, padding: '20px' }}>
         <Routes>
           <Route path="/" element={<Inicio />} />
           <Route path="/gastos" element={<Gastos />} />
@@ -62,7 +58,6 @@ function App() {
         </Routes>
       </div>
     </div>
-    </SidebarProvider>
   );
 }
 

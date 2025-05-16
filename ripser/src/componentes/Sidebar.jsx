@@ -1,61 +1,37 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Home,
-  Users,
-  Settings,
-  Banknote,
-  Truck,
-  ShieldCheck,
-  User,
-  Wrench,
-  ShoppingBag,
-  Boxes
-} from 'lucide-react';
 import './Sidebar.css';
-import { useSidebar } from './SidebarContext'; // ajusta ruta
-
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [openSection, setOpenSection] = useState(null);
-  
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed);
-    setOpenSection(null);
+    setOpenSection(null); // 
   };
 
   const toggleSection = (index) => {
+    console.log('Toggling section:', index);
     setOpenSection(openSection === index ? null : index);
   };
 
   return (
-    <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-      <div className="logo-container">
-        <span className="logo-circle">RP</span>
-        {!collapsed && <span className="logo-text">Ripser</span>}
-      </div>
+    <>
+      <button className="toggle-btn" onClick={toggleSidebar}>
+        ☰
+      </button>
 
-      <div className="nav-items">
-        <Link to="/" className="nav-item home-item">
-          <div className="icon-container">
-            <Home size={20} strokeWidth={1.5} />
-          </div>
-          {!collapsed && <span className="item-text">Inicio</span>}
-        </Link>
+      <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+        <div className="title">{!collapsed && 'Panel'}</div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(0)}>
-            <div className="icon-container">
-              <Settings size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Administración</span>
-                <span className="arrow-icon">{openSection === 0 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <Link to="/" className="item">🏠 {!collapsed && 'Inicio'}</Link>
+        </div>
+
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(0)}>
+            ⚙️ {!collapsed && 'Administración'}
           </div>
           <div className={`sub-items ${openSection === 0 ? 'visible' : ''}`}>
             <Link to="/gastos" className="sub-item">Gastos</Link>
@@ -65,17 +41,9 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(1)}>
-            <div className="icon-container">
-              <Banknote size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Tesorería</span>
-                <span className="arrow-icon">{openSection === 1 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(1)}>
+            💰 {!collapsed && 'Tesorería'}
           </div>
           <div className={`sub-items ${openSection === 1 ? 'visible' : ''}`}>
             <Link to="/mercado-pago" className="sub-item">Mercado Pago</Link>
@@ -86,17 +54,9 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(2)}>
-            <div className="icon-container">
-              <Truck size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Logística</span>
-                <span className="arrow-icon">{openSection === 2 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(2)}>
+            🚚 {!collapsed && 'Logística'}
           </div>
           <div className={`sub-items ${openSection === 2 ? 'visible' : ''}`}>
             <Link to="/viajes" className="sub-item">Viajes</Link>
@@ -108,34 +68,18 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(3)}>
-            <div className="icon-container">
-              <ShieldCheck size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Garantías</span>
-                <span className="arrow-icon">{openSection === 3 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(3)}>
+            🛡️ {!collapsed && 'Garantías'}
           </div>
           <div className={`sub-items ${openSection === 3 ? 'visible' : ''}`}>
             <Link to="/solucion-distancia" className="sub-item">Solución a Distancia</Link>
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(4)}>
-            <div className="icon-container">
-              <User size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Clientes</span>
-                <span className="arrow-icon">{openSection === 4 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(4)}>
+            👥 {!collapsed && 'Clientes'}
           </div>
           <div className={`sub-items ${openSection === 4 ? 'visible' : ''}`}>
             <Link to="/creditos-personales" className="sub-item">Créditos Personales</Link>
@@ -144,17 +88,9 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(5)}>
-            <div className="icon-container">
-              <Users size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">RRHH</span>
-                <span className="arrow-icon">{openSection === 5 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(5)}>
+            🧑{!collapsed && 'RRHH'}
           </div>
           <div className={`sub-items ${openSection === 5 ? 'visible' : ''}`}>
             <Link to="/capacitacion" className="sub-item">Capacitación</Link>
@@ -165,17 +101,9 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(6)}>
-            <div className="icon-container">
-              <Wrench size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Taller</span>
-                <span className="arrow-icon">{openSection === 6 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(6)}>
+            🛠️ {!collapsed && 'Taller'}
           </div>
           <div className={`sub-items ${openSection === 6 ? 'visible' : ''}`}>
             <Link to="/pedido-materiales" className="sub-item">Pedido de Materiales</Link>
@@ -185,44 +113,24 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(7)}>
-            <div className="icon-container">
-              <ShoppingBag size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Compras</span>
-                <span className="arrow-icon">{openSection === 7 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(7)}>
+            🛒 {!collapsed && 'Compras'}
           </div>
           <div className={`sub-items ${openSection === 7 ? 'visible' : ''}`}>
             <Link to="/nota-pedido" className="sub-item">Nota de Pedido</Link>
           </div>
         </div>
 
-        <div className="nav-section">
-          <div className="nav-item" onClick={() => toggleSection(8)}>
-            <div className="icon-container">
-              <Boxes size={20} strokeWidth={1.5} />
-            </div>
-            {!collapsed && (
-              <>
-                <span className="item-text">Proveedores</span>
-                <span className="arrow-icon">{openSection === 8 ? '▼' : '▶'}</span>
-              </>
-            )}
+        <div className="section">
+          <div className="item" onClick={() => toggleSection(8)}>
+            📦 {!collapsed && 'Proveedores'}
           </div>
           <div className={`sub-items ${openSection === 8 ? 'visible' : ''}`}>
             <Link to="/proveedores" className="sub-item">Gestión de Proveedores</Link>
           </div>
         </div>
       </div>
-
-      <button className="toggle-btn" onClick={toggleSidebar}>
-        {collapsed ? '→' : '←'}
-      </button>
-    </div>
+    </>
   );
 }
