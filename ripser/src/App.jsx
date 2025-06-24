@@ -23,6 +23,8 @@ import Solucion from './views/Garantia/Solucion';
 import CreditosPersonales from './views/Clientes/CreditosPersonales';
 import CuentaCorriente from './views/Clientes/CuentaCorriente';
 import CarpetaCliente from './views/Clientes/CarpetaCliente';
+import GestionClientes from './views/Clientes/GestionClientes';
+import Clientes from './views/Clientes/Clientes';
 
 function App() {
   return (
@@ -50,11 +52,7 @@ function App() {
 
           <Route path="/solucion-distancia" element={<Solucion />} />
 
-          <Route path="/creditos-personales" element={<CreditosPersonales />} />
-          <Route path="/cuenta-corriente" element={<CuentaCorriente />} />
-          <Route path="/carpeta-cliente" element={<CarpetaCliente />} />
-
-
+          <Route path="/clientes" element={<Clientes />} />
         </Routes>
       </div>
     </div>

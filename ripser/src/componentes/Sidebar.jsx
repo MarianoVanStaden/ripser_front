@@ -135,9 +135,7 @@ export default function Sidebar() {
             )}
           </div>
           <div className={`sub-items${openSection === 4 ? ' visible' : ''}`}>
-            <Link to="/creditos-personales" className="sub-item">Créditos Personales</Link>
-            <Link to="/cuenta-corriente" className="sub-item">Cuenta Corriente</Link>
-            <Link to="/carpeta-cliente" className="sub-item">Carpeta del Cliente</Link>
+            <Link to="/clientes" className="sub-item">Clientes</Link>
           </div>
         </div>
 
