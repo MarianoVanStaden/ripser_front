@@ -1,0 +1,187 @@
+.sidebar{
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 260px;
+  background-color: #FFFFFF;
+  color: #B08968;
+  transition: width 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-shadow: inset -1px 0 0 #EFE8DF, 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 0 20px 20px 0;
+  z-index: 1000;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.sidebar.collapsed {
+  width: 80px;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  padding: 30px 20px;
+  gap: 12px;
+  border-bottom: 1px solid #F3EEE8;
+}
+
+.logo-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #FAF7F2;
+  color: #B08968;
+  font-size: 22px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #EADFD0;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 500;
+  color: #8C6D4F;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  margin: 4px 0;
+  border-radius: 10px;
+  color: #8C6D4F;
+  font-size: 15.5px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  background-color: #F6F2ED;
+  color: #B08968;
+}
+
+.nav-item.active {
+  background-color: #F3EEE8;
+  font-weight: 600;
+}
+
+.icon-container {
+  width: 24px;
+  display: flex;
+  justify-content: center;
+  margin-right: 14px;
+  opacity: 0.8;
+}
+
+.sub-items {
+  max-height: 0;
+  overflow: hidden;
+  padding-left: 58px;
+  transition: max-height 0.3s ease;
+}
+
+.sub-items.visible {
+  max-height: 500px;
+}
+
+.sub-item {
+  display: block;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #A88D72;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.sub-item:hover {
+  color: #805C3A;
+}
+
+.arrow-icon {
+  font-size: 10px;
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+/* Toggle button */
+.toggle-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 230px;
+  width: 28px;
+  height: 28px;
+  background-color: #FAF7F2;
+  border: 1px solid #EADFD0;
+  color: #B08968;
+  border-radius: 50%;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1001;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  transition: left 0.3s ease;
+}
+
+.sidebar.collapsed .toggle-btn {
+  left: 50px;
+}
+
+/* Collapsed adjustments */
+.sidebar.collapsed .nav-item {
+  padding: 12px 0;
+  justify-content: center;
+}
+
+.sidebar.collapsed .icon-container {
+  margin-right: 0;
+}
+
+.sidebar.collapsed .sub-items {
+  display: none;
+}
+/* Scrollbar personalizado para Webkit (Chrome, Edge, Safari) */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: #D8C9B5;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background-color: #F9F5F0;
+  border-radius: 10px;
+}
+
+/* Para Firefox */
+.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #D8C9B5 #F9F5F0;
+}
+.nav-item.active {
+  background-color: #F3EEE8;
+  font-weight: 600;
+  position: relative;
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  background-color: #B08968;
+  border-radius: 4px;
+}
+  
