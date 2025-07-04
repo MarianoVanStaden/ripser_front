@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with default configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/RipserApp',
+  baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:8080/RipserApp/api'),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

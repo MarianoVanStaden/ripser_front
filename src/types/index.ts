@@ -1,6 +1,102 @@
 // Core Business Entities
 
-// Client entity interface (extended)
+// Client entity interface (extended to match backend)
+export interface Cliente {
+  id: number;
+  nombre: string;
+  apellido?: string;
+  razonSocial?: string;
+  cuit?: string;
+  email?: string;
+  telefono?: string;
+  direccion?: string;
+  ciudad?: string;
+  provincia?: string;
+  codigoPostal?: string;
+  tipo: TipoCliente;
+  estado: EstadoCliente;
+  limiteCredito: number;
+  saldoActual: number;
+  fechaAlta: string;
+  fechaActualizacion: string;
+  contactos?: ContactoCliente[];
+  cuentaCorriente?: CuentaCorriente[];
+  ventas?: any[]; // Reference to sales
+}
+
+// Client Contact entity
+export interface ContactoCliente {
+  id: number;
+  clienteId: number;
+  cliente?: Cliente;
+  fechaContacto: string;
+  tipoContacto: TipoContacto;
+  descripcion: string;
+  resultado?: string;
+  proximoContacto?: string;
+  usuarioId?: number;
+  usuario?: User;
+}
+
+// Current Account entity
+export interface CuentaCorriente {
+  id: number;
+  clienteId: number;
+  cliente?: Cliente;
+  fecha: string;
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+  saldo: number;
+  ventaId?: number;
+  venta?: any; // Reference to sale
+}
+
+// Client related enums
+export type TipoCliente = 'PERSONA_FISICA' | 'PERSONA_JURIDICA';
+export type EstadoCliente = 'ACTIVO' | 'INACTIVO' | 'SUSPENDIDO' | 'MOROSO';
+export type TipoContacto = 'VISITA' | 'LLAMADA' | 'EMAIL';
+export type TipoMovimiento = 'DEBITO' | 'CREDITO';
+
+// Create Client Request
+export interface CreateClienteRequest {
+  nombre: string;
+  apellido?: string;
+  razonSocial?: string;
+  cuit?: string;
+  email?: string;
+  telefono?: string;
+  direccion?: string;
+  ciudad?: string;
+  provincia?: string;
+  codigoPostal?: string;
+  tipo: TipoCliente;
+  estado: EstadoCliente;
+  limiteCredito: number;
+}
+
+// Create Contact Request
+export interface CreateContactoClienteRequest {
+  clienteId: number;
+  fechaContacto: string;
+  tipoContacto: TipoContacto;
+  descripcion: string;
+  resultado?: string;
+  proximoContacto?: string;
+}
+
+// Create Current Account Movement Request
+export interface CreateCuentaCorrienteRequest {
+  clienteId: number;
+  fecha: string;
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+}
+
+// Legacy Client interface (keeping for compatibility)
 export interface Client {
   id: number;
   name: string;

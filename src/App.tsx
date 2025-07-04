@@ -4,9 +4,20 @@ import { CssBaseline } from '@mui/material';
 import theme from './theme';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
-import ClientsPage from './components/Clients/ClientsPage';
+import { 
+  ClientesPage, 
+  ClienteFormPage, 
+  ClienteDetailPage,
+  AgendaVisitasPage,
+  CreditoPersonalPage,
+  CarpetaClientePage,
+  CarpetaClienteSelector,
+  CuentaCorrientePage
+} from './components/Clientes';
 import PresupuestosPage from './components/Ventas/PresupuestosPage';
 import RegistroVentasPage from './components/Ventas/RegistroVentasPage';
+import FacturacionPage from './components/Ventas/FacturacionPage';
+import InformesVentasPage from './components/Ventas/InformesVentasPage';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
@@ -41,15 +52,19 @@ function App() {
             {/* VENTAS Module */}
             <Route path="ventas/presupuestos" element={<PresupuestosPage />} />
             <Route path="ventas/registro" element={<RegistroVentasPage />} />
-            <Route path="ventas/facturacion" element={<PlaceholderPage title="Facturación" />} />
-            <Route path="ventas/informes" element={<PlaceholderPage title="Informes de Ventas" />} />
+            <Route path="ventas/facturacion" element={<FacturacionPage />} />
+            <Route path="ventas/informes" element={<InformesVentasPage />} />
             
             {/* CLIENTES Module */}
-            <Route path="clientes/gestion" element={<ClientsPage />} />
-            <Route path="clientes/carpeta" element={<PlaceholderPage title="Carpeta de Cliente" />} />
-            <Route path="clientes/agenda" element={<PlaceholderPage title="Agenda de Visitas" />} />
-            <Route path="clientes/cuenta-corriente" element={<PlaceholderPage title="Cuenta Corriente" />} />
-            <Route path="clientes/credito" element={<PlaceholderPage title="Crédito Personal" />} />
+            <Route path="clientes/gestion" element={<ClientesPage />} />
+            <Route path="clientes/nuevo" element={<ClienteFormPage />} />
+            <Route path="clientes/editar/:id" element={<ClienteFormPage />} />
+            <Route path="clientes/detalle/:id" element={<ClienteDetailPage />} />
+            <Route path="clientes/carpeta" element={<CarpetaClienteSelector />} />
+            <Route path="clientes/carpeta/:id" element={<CarpetaClientePage />} />
+            <Route path="clientes/agenda" element={<AgendaVisitasPage />} />
+            <Route path="clientes/cuenta-corriente" element={<CuentaCorrientePage />} />
+            <Route path="clientes/credito" element={<CreditoPersonalPage />} />
             
             {/* PROVEEDORES Module */}
             <Route path="proveedores/gestion" element={<SuppliersPage />} />
