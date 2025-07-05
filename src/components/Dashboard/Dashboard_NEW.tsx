@@ -190,7 +190,7 @@ const Dashboard: React.FC = () => {
             <strong>Backend Connection Failed:</strong> {connectionStatus.message}
           </Typography>
           <Typography variant="body2">
-            Please ensure your Spring Boot backend is running on <code>http://localhost:8080</code>
+            Please ensure your Spring Boot backend is running on <code>http://localhost:8080/RipserApp</code>
           </Typography>
         </Alert>
       )}

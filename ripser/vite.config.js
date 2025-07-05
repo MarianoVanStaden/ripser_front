@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/RipserApp': 'http://localhost:8080'
+      '/RipserApp': 'http://localhost:8080/RipserApp'
     }
   }
 })

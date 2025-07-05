@@ -139,7 +139,7 @@ const Dashboard: React.FC = () => {
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');
+      setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080/RipserApp');
     } finally {
       setLoading(false);
     }
@@ -201,7 +201,7 @@ const Dashboard: React.FC = () => {
             <strong>Backend Connection Failed:</strong> {connectionStatus.message}
           </Typography>
           <Typography variant="body2" gutterBottom>
-            Please ensure your Spring Boot backend is running on <code>http://localhost:8080</code>
+            Please ensure your Spring Boot backend is running on <code>http://localhost:8080/RipserApp</code>
           </Typography>
           <Box sx={{ mt: 1 }}>
             <Button 
