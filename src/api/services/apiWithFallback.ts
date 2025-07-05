@@ -2,7 +2,7 @@ import * as realClienteApi from './clienteApi';
 import * as realContactoClienteApi from './contactoClienteApi';
 import * as realCuentaCorrienteApi from './cuentaCorrienteApi';
 import * as realSupplierApi from './supplierApi';
-import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi } from './mockData';
+import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi, mockGarantias, mockReclamosGarantia } from './mockData';
 
 let backendAvailable: boolean | null = null;
 
@@ -154,6 +154,35 @@ export const supplierApiWithFallback = {
       ? realSupplierApi.supplierApi.delete(id) 
       : mockSupplierApi.delete(id);
   }
+};
+
+// Wrapper for garantia API
+export const garantiaApiWithFallback = {
+  getAll: async () => {
+    // TODO: Replace with real API check when backend is ready
+    return mockGarantias;
+  },
+  getById: async (id: number) => {
+    return mockGarantias.find(g => g.id === id) || null;
+  },
+  create: async (garantia: any) => {
+    // Simulate creation
+    const newGarantia = { ...garantia, id: Date.now() };
+    mockGarantias.push(newGarantia);
+    return newGarantia;
+  },
+  update: async (id: number, garantia: any) => {
+    const idx = mockGarantias.findIndex(g => g.id === id);
+    if (idx !== -1) {
+      mockGarantias[idx] = { ...mockGarantias[idx], ...garantia };
+      return mockGarantias[idx];
+    }
+    return null;
+  },
+  delete: async (id: number) => {
+    const idx = mockGarantias.findIndex(g => g.id === id);
+    if (idx !== -1) mockGarantias.splice(idx, 1);
+  },
 };
 
 // Reset backend availability check (useful for testing)

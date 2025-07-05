@@ -28,10 +28,18 @@ import {
   HistorialComprasPage, 
   EvaluacionDesempenoPage 
 } from './components/Proveedores';
+import GarantiasPage from './components/Garantia/GarantiasPage';
+import ReclamosGarantiaPage from './components/Garantia/ReclamosGarantiaPage';
 import StockPage from './components/Logistica/StockPage';
 import InventoryPage from './components/Logistica/InventoryPage';
 import TripsPage from './components/Logistica/TripsPage';
 import DeliveriesPage from './components/Logistica/DeliveriesPage';
+import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
+import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
+import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
+import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
+// RRHH pages
+import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
 
 // Placeholder component for unimplemented pages
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -80,16 +88,18 @@ function App() {
             <Route path="proveedores/evaluacion" element={<EvaluacionDesempenoPage />} />
             
             {/* GARANTÍAS Module */}
-            <Route path="garantias/registro" element={<PlaceholderPage title="Registro de Garantías" />} />
-            <Route path="garantias/reclamos" element={<PlaceholderPage title="Seguimiento de Reclamos" />} />
-            <Route path="garantias/estado" element={<PlaceholderPage title="Estado de Garantías" />} />
+            <Route path="garantias/registro" element={<GarantiasPage />} />
+            <Route path="garantias/reclamos" element={<ReclamosGarantiaPage />} />
+            <Route path="garantias/estado" element={<GarantiasPage />} />
             
             {/* RRHH Module */}
-            <Route path="rrhh/empleados" element={<PlaceholderPage title="Registro de Empleados" />} />
-            <Route path="rrhh/legajos" element={<PlaceholderPage title="Gestión de Legajos" />} />
-            <Route path="rrhh/sueldos" element={<PlaceholderPage title="Carga de Sueldos" />} />
-            <Route path="rrhh/asistencia" element={<PlaceholderPage title="Asistencia y Licencias" />} />
-            <Route path="rrhh/capacitaciones" element={<PlaceholderPage title="Capacitaciones" />} />
+            <Route path="rrhh/empleados" element={<EmpleadosPage />} />
+            <Route path="rrhh/puestos" element={<PuestosPage />} />
+            <Route path="rrhh/asistencia" element={<AsistenciasPage />} />
+            <Route path="rrhh/licencias" element={<LicenciasPage />} />
+            <Route path="rrhh/capacitaciones" element={<CapacitacionesPage />} />
+            <Route path="rrhh/sueldos" element={<SueldosPage />} />
+            <Route path="rrhh/legajos" element={<LegajosPage />} />
             
             {/* LOGÍSTICA Module */}
             <Route path="logistica/stock" element={<StockPage />} />
@@ -98,10 +108,10 @@ function App() {
             <Route path="logistica/entregas" element={<DeliveriesPage />} />
             
             {/* TALLER Module */}
-            <Route path="taller/trabajos" element={<PlaceholderPage title="Trabajos Realizados" />} />
-            <Route path="taller/ordenes" element={<PlaceholderPage title="Órdenes de Servicio" />} />
-            <Route path="taller/materiales" element={<PlaceholderPage title="Control de Materiales" />} />
-            <Route path="taller/tareas" element={<PlaceholderPage title="Asignación de Tareas" />} />
+            <Route path="taller/trabajos" element={<TrabajosRealizadosPage />} />
+            <Route path="taller/ordenes" element={<OrdenesServicioPage />} />
+            <Route path="taller/materiales" element={<ControlMaterialesPage />} />
+            <Route path="taller/tareas" element={<AsignacionTareasPage />} />
           </Route>
         </Routes>
       </Router>

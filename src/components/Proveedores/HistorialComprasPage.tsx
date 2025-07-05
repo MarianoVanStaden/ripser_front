@@ -450,7 +450,7 @@ const HistorialComprasPage: React.FC = () => {
               <Card>
                 <CardContent>
                   <Box display="flex" alignItems="center" mb={1}>
-                    <TrendingDown color="error" sx={{ mr: 1 }} />
+                    <TrendingDownIcon color="error" sx={{ mr: 1 }} />
                     <Typography variant="h6">Pendientes</Typography>
                   </Box>
                   <Typography variant="h4" color="warning.main">

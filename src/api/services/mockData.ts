@@ -1,3 +1,44 @@
+// --- Mock Data for Garantía (Warranty) Module ---
+import type { Garantia, ReclamoGarantia } from '../../types';
+
+
+export const mockGarantias: Garantia[] = [
+  {
+    id: 1,
+    clienteNombre: 'Juan Carlos Pérez',
+    productoNombre: 'Notebook Lenovo ThinkPad',
+    fechaVenta: '2024-01-15',
+    estado: 'Vigente',
+    observaciones: 'Sin observaciones',
+  },
+  {
+    id: 2,
+    clienteNombre: 'Distribuidora San Martín S.R.L.',
+    productoNombre: 'Impresora HP LaserJet',
+    fechaVenta: '2023-08-20',
+    estado: 'Vencida',
+    observaciones: 'Vencida por fecha',
+  },
+];
+
+export const mockReclamosGarantia: ReclamoGarantia[] = [
+  {
+    id: 1,
+    garantiaId: 1,
+    fecha: '2024-06-01',
+    motivo: 'Falla en el producto',
+    estado: 'Abierto',
+    observaciones: 'Cliente reporta mal funcionamiento.'
+  },
+  {
+    id: 2,
+    garantiaId: 2,
+    fecha: '2024-06-10',
+    motivo: 'No enciende',
+    estado: 'Cerrado',
+    observaciones: 'Producto reemplazado.'
+  },
+];
 import type { Cliente, ContactoCliente, CuentaCorriente, CreateClienteRequest, CreateContactoClienteRequest, CreateCuentaCorrienteRequest, Supplier, CreateSupplierRequest } from '../../types';
 
 // Mock data for testing
@@ -499,3 +540,222 @@ export const mockSupplierApi = {
     return { ...mockSuppliers[index] };
   }
 };
+
+// Minimal mock products for Garantía display
+export const mockProductos = [
+  { id: 1, name: 'Notebook Lenovo ThinkPad' },
+  { id: 2, name: 'Impresora HP LaserJet' },
+];
+
+// Minimal mock warranties for backend DTO compatibility
+export const mockGarantiasBackend = [
+  {
+    id: 1,
+    productId: 1,
+    clientId: 1,
+    warrantyNumber: 'GAR-0001',
+    startDate: '2024-01-15',
+    endDate: '2025-01-15',
+    status: 'ACTIVE',
+    type: 'MANUFACTURER',
+    description: 'Garantía estándar',
+    claims: [],
+    createdAt: '2024-01-15',
+    updatedAt: '2024-01-15',
+  },
+  {
+    id: 2,
+    productId: 2,
+    clientId: 2,
+    warrantyNumber: 'GAR-0002',
+    startDate: '2023-08-20',
+    endDate: '2025-08-20',
+    status: 'EXPIRED',
+    type: 'MANUFACTURER',
+    description: 'Garantía extendida',
+    claims: [],
+    createdAt: '2023-08-20',
+    updatedAt: '2023-08-20',
+  },
+];
+
+// Taller mock data
+export const mockCategoriasProducto = [
+  { id: 1, nombre: 'Electrónica' },
+  { id: 2, nombre: 'Mecánica' },
+];
+
+export const mockProductosTerminados = [
+  { id: 1, nombre: 'Motor Eléctrico', descripcion: 'Motor 1HP', precio: 12000, stockActual: 5, stockMinimo: 2, codigo: 'MTR-001', categoriaProducto: { id: 1, nombre: 'Electrónica' }, activo: true, fechaCreacion: '2024-01-01' },
+  { id: 2, nombre: 'Bomba de Agua', descripcion: 'Bomba sumergible', precio: 8000, stockActual: 10, stockMinimo: 3, codigo: 'BMP-002', categoriaProducto: { id: 2, nombre: 'Mecánica' }, activo: true, fechaCreacion: '2024-02-01' },
+];
+
+export const mockMaterialesUtilizados = [
+  { id: 1, ordenServicioId: 1, productoTerminadoId: 1, cantidad: 2, precioUnitario: 12000, subtotal: 24000 },
+  { id: 2, ordenServicioId: 1, productoTerminadoId: 2, cantidad: 1, precioUnitario: 8000, subtotal: 8000 },
+];
+
+export const mockTareasServicio = [
+  { id: 1, ordenServicioId: 1, descripcion: 'Reemplazo de motor', horasEstimadas: 3, horasReales: 2, estado: 'COMPLETADA', empleadoId: 1, fechaInicio: '2024-06-01', fechaFin: '2024-06-02', observaciones: 'Trabajo realizado sin inconvenientes.' },
+  { id: 2, ordenServicioId: 1, descripcion: 'Prueba de funcionamiento', horasEstimadas: 1, horasReales: 1, estado: 'COMPLETADA', empleadoId: 2, fechaInicio: '2024-06-02', fechaFin: '2024-06-02', observaciones: 'Equipo funcionando correctamente.' },
+];
+
+export const mockOrdenesServicio = [
+  { id: 1, numero: 'OS-0001', clienteId: 1, fechaCreacion: '2024-06-01', estado: 'CERRADA', descripcion: 'Reparación de bomba de agua', materiales: mockMaterialesUtilizados, tareas: mockTareasServicio, observaciones: 'Cliente satisfecho.' },
+];
+
+export const mockEmployees = [
+  {
+    id: 1,
+    firstName: 'Carlos',
+    lastName: 'Gómez',
+    email: 'carlos.gomez@empresa.com',
+    phone: '+54 11 2222-3333',
+    position: 'Técnico',
+    department: 'Taller',
+    salary: 120000,
+    hireDate: '2022-01-10',
+    isActive: true,
+    createdAt: '2022-01-10',
+    updatedAt: '2024-06-01',
+  },
+  {
+    id: 2,
+    firstName: 'Lucía',
+    lastName: 'Fernández',
+    email: 'lucia.fernandez@empresa.com',
+    phone: '+54 11 4444-5555',
+    position: 'Técnica',
+    department: 'Taller',
+    salary: 125000,
+    hireDate: '2023-03-15',
+    isActive: true,
+    createdAt: '2023-03-15',
+    updatedAt: '2024-06-01',
+  },
+  {
+    id: 3,
+    firstName: 'Miguel',
+    lastName: 'Pérez',
+    email: 'miguel.perez@empresa.com',
+    phone: '+54 11 6666-7777',
+    position: 'Supervisor',
+    department: 'Taller',
+    salary: 150000,
+    hireDate: '2021-07-20',
+    isActive: true,
+    createdAt: '2021-07-20',
+    updatedAt: '2024-06-01',
+  },
+];
+
+export const mockPuestos = [
+  { id: 1, nombre: 'Técnico', descripcion: 'Tareas técnicas', departamento: 'Taller', salarioBase: 120000 },
+  { id: 2, nombre: 'Supervisor', descripcion: 'Supervisión de equipo', departamento: 'Taller', salarioBase: 150000 },
+];
+
+export const mockEmpleados = [
+  {
+    id: 1,
+    nombre: 'Carlos',
+    apellido: 'Gómez',
+    dni: '20123456',
+    email: 'carlos.gomez@empresa.com',
+    telefono: '+54 11 2222-3333',
+    direccion: 'Calle 123',
+    fechaNacimiento: '1985-05-10',
+    fechaIngreso: '2022-01-10',
+    estado: 'ACTIVO',
+    puesto: { id: 1, nombre: 'Técnico', salarioBase: 120000 },
+    salario: 120000,
+    asistencias: [],
+    licencias: [],
+    capacitaciones: [],
+  },
+  {
+    id: 2,
+    nombre: 'Lucía',
+    apellido: 'Fernández',
+    dni: '20987654',
+    email: 'lucia.fernandez@empresa.com',
+    telefono: '+54 11 4444-5555',
+    direccion: 'Calle 456',
+    fechaNacimiento: '1990-08-22',
+    fechaIngreso: '2023-03-15',
+    estado: 'LICENCIA',
+    puesto: { id: 1, nombre: 'Técnico', salarioBase: 120000 },
+    salario: 125000,
+    asistencias: [],
+    licencias: [],
+    capacitaciones: [],
+  },
+  {
+    id: 3,
+    nombre: 'Miguel',
+    apellido: 'Pérez',
+    dni: '20333444',
+    email: 'miguel.perez@empresa.com',
+    telefono: '+54 11 6666-7777',
+    direccion: 'Calle 789',
+    fechaNacimiento: '1980-12-01',
+    fechaIngreso: '2021-07-20',
+    estado: 'INACTIVO',
+    puesto: { id: 2, nombre: 'Supervisor', salarioBase: 150000 },
+    salario: 150000,
+    asistencias: [],
+    licencias: [],
+    capacitaciones: [],
+  },
+];
+
+export const mockRegistroAsistencia = [
+  {
+    id: 1,
+    empleado: { ...mockEmpleados[0] },
+    fecha: '2025-07-01',
+    horaEntrada: '08:00',
+    horaSalida: '17:00',
+    horasTrabajadas: 8,
+    horasExtras: 1,
+    observaciones: 'Llegó puntual',
+  },
+  {
+    id: 2,
+    empleado: { ...mockEmpleados[1] },
+    fecha: '2025-07-01',
+    horaEntrada: '09:00',
+    horaSalida: '18:00',
+    horasTrabajadas: 7,
+    horasExtras: 0,
+    observaciones: 'Llegó tarde',
+  },
+];
+
+export const mockLicencias = [
+  {
+    id: 1,
+    empleado: { ...mockEmpleados[1] },
+    tipo: 'VACACIONES',
+    fechaInicio: '2025-07-10',
+    fechaFin: '2025-07-20',
+    dias: 10,
+    motivo: 'Vacaciones anuales',
+    goceHaber: true,
+    estado: 'APROBADA',
+  },
+];
+
+export const mockCapacitaciones = [
+  {
+    id: 1,
+    empleado: { ...mockEmpleados[0] },
+    nombre: 'Curso de Electricidad',
+    descripcion: 'Capacitación en instalaciones eléctricas',
+    institucion: 'Instituto Técnico',
+    fechaInicio: '2025-06-01',
+    fechaFin: '2025-06-10',
+    horas: 20,
+    certificado: true,
+    costo: 50000,
+  },
+];

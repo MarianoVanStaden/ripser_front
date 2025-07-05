@@ -20,6 +20,7 @@
     "dayjs": "^1.11.13",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-mui-sidebar": "^1.6.3",
     "react-router-dom": "^7.6.3"
   },
   "devDependencies": {

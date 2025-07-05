@@ -1,3 +1,6 @@
+// --- Garantía (Warranty) Aliases for Frontend Consistency ---
+export type Garantia = Warranty;
+export type ReclamoGarantia = WarrantyClaim;
 // Core Business Entities
 
 // Client entity interface (extended to match backend)
@@ -635,6 +638,62 @@ export interface InventoryAdjustment {
   updatedAt: string;
 }
 
+// --- Taller (Workshop) Entities ---
+export interface ProductoTerminado {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo: string;
+  categoriaProducto?: CategoriaProducto;
+  activo: boolean;
+  fechaCreacion: string;
+}
+
+export interface MaterialUtilizado {
+  id: number;
+  ordenServicioId: number;
+  productoTerminadoId: number;
+  productoTerminado?: ProductoTerminado;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
+export interface TareaServicio {
+  id: number;
+  ordenServicioId: number;
+  descripcion: string;
+  horasEstimadas: number;
+  horasReales: number;
+  estado: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA';
+  empleadoId?: number;
+  empleado?: Employee;
+  fechaInicio?: string;
+  fechaFin?: string;
+  observaciones?: string;
+}
+
+export interface OrdenServicio {
+  id: number;
+  numero: string;
+  clienteId: number;
+  cliente?: Cliente;
+  fechaCreacion: string;
+  estado: 'ABIERTA' | 'EN_PROCESO' | 'CERRADA';
+  descripcion: string;
+  materiales: MaterialUtilizado[];
+  tareas: TareaServicio[];
+  observaciones?: string;
+}
+
+export interface CategoriaProducto {
+  id: number;
+  nombre: string;
+}
+
 // Enum types using const assertions
 export const OrderStatus = {
   PENDING: 'PENDING',
@@ -989,4 +1048,72 @@ export interface CreatePresupuestoItemRequest {
   unitPrice: number;
   discount: number;
   total: number;
+}
+
+// --- RRHH (Human Resources) Entities ---
+export type EstadoEmpleado = 'ACTIVO' | 'INACTIVO' | 'LICENCIA';
+export type TipoLicencia = 'VACACIONES' | 'ENFERMEDAD' | 'PERSONAL' | 'MATERNIDAD';
+export type EstadoLicencia = 'SOLICITADA' | 'APROBADA' | 'RECHAZADA';
+
+export interface Puesto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  departamento?: string;
+  salarioBase: number;
+}
+
+export interface Empleado {
+  id: number;
+  nombre: string;
+  apellido: string;
+  dni: string;
+  email?: string;
+  telefono?: string;
+  direccion?: string;
+  fechaNacimiento?: string;
+  fechaIngreso?: string;
+  fechaEgreso?: string;
+  estado: EstadoEmpleado;
+  puesto?: Puesto;
+  salario: number;
+  asistencias?: RegistroAsistencia[];
+  licencias?: Licencia[];
+  capacitaciones?: Capacitacion[];
+}
+
+export interface RegistroAsistencia {
+  id: number;
+  empleado: Empleado;
+  fecha: string;
+  horaEntrada: string;
+  horaSalida: string;
+  horasTrabajadas: number;
+  horasExtras: number;
+  observaciones?: string;
+}
+
+export interface Licencia {
+  id: number;
+  empleado: Empleado;
+  tipo: TipoLicencia;
+  fechaInicio: string;
+  fechaFin: string;
+  dias: number;
+  motivo?: string;
+  goceHaber: boolean;
+  estado: EstadoLicencia;
+}
+
+export interface Capacitacion {
+  id: number;
+  empleado: Empleado;
+  nombre: string;
+  descripcion?: string;
+  institucion?: string;
+  fechaInicio: string;
+  fechaFin: string;
+  horas: number;
+  certificado: boolean;
+  costo: number;
 }
