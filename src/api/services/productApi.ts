@@ -37,9 +37,9 @@ export const productApi = {
     return response.data;
   },
 
-  // Get products with low stock
-  getLowStock: async (threshold: number): Promise<Product[]> => {
-    const response = await api.get(`/api/productos/stock-bajo?threshold=${threshold}`);
+  // Get products with low stock (backend: /api/productos/bajo-stock)
+  getLowStock: async (): Promise<Product[]> => {
+    const response = await api.get('/api/productos/bajo-stock');
     return response.data;
   }
 };

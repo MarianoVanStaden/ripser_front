@@ -21,6 +21,8 @@ import {
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { clientApi, productApi, saleApi } from '../../api/services';
+import RecentActivity from './RecentActivity';
+import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
 import BackendSetupDialog from '../BackendSetupDialog/BackendSetupDialog';
 
@@ -117,7 +119,7 @@ const Dashboard: React.FC = () => {
         clientApi.getAll(),
         productApi.getAll(),
         saleApi.getAll(),
-        productApi.getLowStock(10), // Products with stock <= 10
+        productApi.getLowStock(), // Products with low stock
       ]);
 
       // Orders are not supported by backend, set to empty array
@@ -257,21 +259,17 @@ const Dashboard: React.FC = () => {
           </Box>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 3 }}>
-            <Paper sx={{ p: 3, height: 300 }}>
+            <Paper sx={{ p: 3, height: 300, overflow: 'auto' }}>
               <Typography variant="h6" gutterBottom>
                 Recent Activity
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Activity chart will be implemented here
-              </Typography>
+              <RecentActivity />
             </Paper>
-            <Paper sx={{ p: 3, height: 300 }}>
+            <Paper sx={{ p: 3, height: 300, display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'flex-start' }}>
               <Typography variant="h6" gutterBottom>
                 Quick Actions
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Quick action buttons will be implemented here
-              </Typography>
+              <QuickActions />
             </Paper>
           </Box>
         </>

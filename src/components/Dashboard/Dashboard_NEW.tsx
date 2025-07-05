@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
         clientApi.getAll(),
         productApi.getAll(),
         saleApi.getAll(),
-        productApi.getLowStock(10), // Products with stock <= 10
+        productApi.getLowStock(), // Products with low stock
       ]);
       const orders: any[] = [];
 
