@@ -1,0 +1,25 @@
+.MuiDrawer-paper {
+  /* Prevent subheader overlap on scroll */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.MuiListSubheader-root {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #212A3E;
+  /* Add a subtle shadow for separation */
+  box-shadow: 0 2px 4px -2px rgba(0,0,0,0.08);
+}
+
+/* Optional: add spacing between sections */
+.MuiDivider-root {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+/* Optional: make sure ListItems have enough vertical space */
+.MuiListItem-root {
+  min-height: 40px;
+}

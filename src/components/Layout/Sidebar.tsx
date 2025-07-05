@@ -1,5 +1,6 @@
 import React from 'react';
 import { Drawer, List, ListItem, ListItemIcon, ListItemText, Toolbar, Divider, Box, Typography, ListSubheader } from '@mui/material';
+import './Sidebar.css';
 import ListItemButton from '@mui/material/ListItemButton';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
