@@ -1,4 +1,4 @@
-import type { Cliente, ContactoCliente, CuentaCorriente, CreateClienteRequest, CreateContactoClienteRequest, CreateCuentaCorrienteRequest } from '../../types';
+import type { Cliente, ContactoCliente, CuentaCorriente, CreateClienteRequest, CreateContactoClienteRequest, CreateCuentaCorrienteRequest, Supplier, CreateSupplierRequest } from '../../types';
 
 // Mock data for testing
 export const mockClientes: Cliente[] = [
@@ -334,5 +334,168 @@ export const mockCuentaCorrienteApi = {
     }
     
     return { ...newMovimiento };
+  }
+};
+
+// Mock data for Suppliers
+export const mockSuppliers: Supplier[] = [
+  {
+    id: 1,
+    name: 'TecnoProveedores S.A.',
+    contactPerson: 'Carlos Rodríguez',
+    email: 'carlos@tecnoproveedores.com',
+    phone: '+54 11 4567-8901',
+    address: 'Av. Tecnología 123, CABA',
+    paymentTerms: '30 días',
+    rating: 4.5,
+    isActive: true,
+    observations: 'Excelente proveedor de equipos tecnológicos. Muy confiable en entregas.',
+    createdAt: '2023-06-15T09:00:00',
+    updatedAt: '2024-11-20T14:30:00'
+  },
+  {
+    id: 2,
+    name: 'Materiales del Sur',
+    contactPerson: 'Ana Martinez',
+    email: 'ana@materialesdelsur.com',
+    phone: '+54 11 9876-5432',
+    address: 'Ruta 3 Km 45, La Plata',
+    paymentTerms: '60 días',
+    rating: 4.2,
+    isActive: true,
+    observations: 'Proveedor confiable de materiales de construcción.',
+    createdAt: '2023-03-10T10:15:00',
+    updatedAt: '2024-10-05T16:20:00'
+  },
+  {
+    id: 3,
+    name: 'Insumos Industriales',
+    contactPerson: 'Roberto Silva',
+    email: 'ventas@insumosindustriales.com',
+    phone: '+54 341 123-4567',
+    address: 'Zona Industrial Norte, Rosario',
+    paymentTerms: '45 días',
+    rating: 3.8,
+    isActive: true,
+    observations: 'Buenos precios pero a veces demoras en entregas.',
+    createdAt: '2023-01-20T08:30:00',
+    updatedAt: '2024-09-15T11:45:00'
+  },
+  {
+    id: 4,
+    name: 'GlobalTech Ltda.',
+    contactPerson: 'Patricia López',
+    email: 'patricia@globaltech.com',
+    phone: '+54 261 789-0123',
+    address: 'Parque Tecnológico Mendoza',
+    paymentTerms: '15 días',
+    rating: 4.8,
+    isActive: true,
+    observations: 'Proveedor premium de tecnología. Excelente servicio postventa.',
+    createdAt: '2023-09-05T14:00:00',
+    updatedAt: '2024-12-01T09:10:00'
+  },
+  {
+    id: 5,
+    name: 'Proveedora Central',
+    contactPerson: 'Miguel Torres',
+    email: 'miguel@proveedoracentral.com',
+    phone: '+54 351 456-7890',
+    address: 'Av. Colón 456, Córdoba',
+    paymentTerms: '30 días',
+    rating: 3.5,
+    isActive: false,
+    observations: 'Suspendido temporalmente por problemas de calidad.',
+    createdAt: '2022-11-12T16:45:00',
+    updatedAt: '2024-08-20T13:25:00'
+  }
+];
+
+// Mock API for Suppliers
+export const mockSupplierApi = {
+  getAll: async (): Promise<Supplier[]> => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return [...mockSuppliers];
+  },
+
+  getById: async (id: number): Promise<Supplier> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const supplier = mockSuppliers.find(s => s.id === id);
+    if (!supplier) {
+      throw new Error('Proveedor no encontrado');
+    }
+    return { ...supplier };
+  },
+
+  create: async (supplierData: CreateSupplierRequest): Promise<Supplier> => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const newSupplier: Supplier = {
+      id: Math.max(...mockSuppliers.map(s => s.id)) + 1,
+      ...supplierData,
+      paymentTerms: '30 días',
+      rating: 0,
+      isActive: true,
+      observations: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockSuppliers.push(newSupplier);
+    return { ...newSupplier };
+  },
+
+  update: async (id: number, supplierData: Partial<CreateSupplierRequest>): Promise<Supplier> => {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const index = mockSuppliers.findIndex(s => s.id === id);
+    if (index === -1) {
+      throw new Error('Proveedor no encontrado');
+    }
+    
+    mockSuppliers[index] = {
+      ...mockSuppliers[index],
+      ...supplierData,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return { ...mockSuppliers[index] };
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const index = mockSuppliers.findIndex(s => s.id === id);
+    if (index === -1) {
+      throw new Error('Proveedor no encontrado');
+    }
+    mockSuppliers.splice(index, 1);
+  },
+
+  search: async (query: string): Promise<Supplier[]> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const lowerQuery = query.toLowerCase();
+    return mockSuppliers.filter(supplier =>
+      supplier.name.toLowerCase().includes(lowerQuery) ||
+      supplier.contactPerson.toLowerCase().includes(lowerQuery) ||
+      supplier.email.toLowerCase().includes(lowerQuery)
+    );
+  },
+
+  getByStatus: async (isActive: boolean): Promise<Supplier[]> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return mockSuppliers.filter(supplier => supplier.isActive === isActive);
+  },
+
+  updateRating: async (id: number, rating: number): Promise<Supplier> => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const index = mockSuppliers.findIndex(s => s.id === id);
+    if (index === -1) {
+      throw new Error('Proveedor no encontrado');
+    }
+    
+    mockSuppliers[index] = {
+      ...mockSuppliers[index],
+      rating,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return { ...mockSuppliers[index] };
   }
 };

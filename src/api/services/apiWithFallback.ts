@@ -1,7 +1,8 @@
 import * as realClienteApi from './clienteApi';
 import * as realContactoClienteApi from './contactoClienteApi';
 import * as realCuentaCorrienteApi from './cuentaCorrienteApi';
-import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi } from './mockData';
+import * as realSupplierApi from './supplierApi';
+import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi } from './mockData';
 
 let backendAvailable: boolean | null = null;
 
@@ -114,6 +115,44 @@ export const cuentaCorrienteApiWithFallback = {
     return isBackendAvailable 
       ? realCuentaCorrienteApi.cuentaCorrienteApi.create(movimiento) 
       : mockCuentaCorrienteApi.create(movimiento);
+  }
+};
+
+// Wrapper for supplier API
+export const supplierApiWithFallback = {
+  getAll: async () => {
+    const isBackendAvailable = await testBackendConnection();
+    return isBackendAvailable 
+      ? realSupplierApi.supplierApi.getAll() 
+      : mockSupplierApi.getAll();
+  },
+
+  getById: async (id: number) => {
+    const isBackendAvailable = await testBackendConnection();
+    return isBackendAvailable 
+      ? realSupplierApi.supplierApi.getById(id) 
+      : mockSupplierApi.getById(id);
+  },
+
+  create: async (supplier: any) => {
+    const isBackendAvailable = await testBackendConnection();
+    return isBackendAvailable 
+      ? realSupplierApi.supplierApi.create(supplier) 
+      : mockSupplierApi.create(supplier);
+  },
+
+  update: async (id: number, supplier: any) => {
+    const isBackendAvailable = await testBackendConnection();
+    return isBackendAvailable 
+      ? realSupplierApi.supplierApi.update(id, supplier) 
+      : mockSupplierApi.update(id, supplier);
+  },
+
+  delete: async (id: number) => {
+    const isBackendAvailable = await testBackendConnection();
+    return isBackendAvailable 
+      ? realSupplierApi.supplierApi.delete(id) 
+      : mockSupplierApi.delete(id);
   }
 };
 

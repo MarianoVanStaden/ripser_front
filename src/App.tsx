@@ -21,7 +21,13 @@ import InformesVentasPage from './components/Ventas/InformesVentasPage';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
-import SuppliersPage from './components/Proveedores/SuppliersPage';
+import { 
+  SuppliersPage, 
+  ComprasPedidosPage, 
+  ContactosCondicionesPage, 
+  HistorialComprasPage, 
+  EvaluacionDesempenoPage 
+} from './components/Proveedores';
 import StockPage from './components/Logistica/StockPage';
 import InventoryPage from './components/Logistica/InventoryPage';
 import TripsPage from './components/Logistica/TripsPage';
@@ -68,10 +74,10 @@ function App() {
             
             {/* PROVEEDORES Module */}
             <Route path="proveedores/gestion" element={<SuppliersPage />} />
-            <Route path="proveedores/compras" element={<PlaceholderPage title="Compras/Pedidos" />} />
-            <Route path="proveedores/contactos" element={<PlaceholderPage title="Contactos y Condiciones" />} />
-            <Route path="proveedores/historial" element={<PlaceholderPage title="Historial de Compras" />} />
-            <Route path="proveedores/evaluacion" element={<PlaceholderPage title="Evaluación de Desempeño" />} />
+            <Route path="proveedores/compras" element={<ComprasPedidosPage />} />
+            <Route path="proveedores/contactos" element={<ContactosCondicionesPage />} />
+            <Route path="proveedores/historial" element={<HistorialComprasPage />} />
+            <Route path="proveedores/evaluacion" element={<EvaluacionDesempenoPage />} />
             
             {/* GARANTÍAS Module */}
             <Route path="garantias/registro" element={<PlaceholderPage title="Registro de Garantías" />} />
