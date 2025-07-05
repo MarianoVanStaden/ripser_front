@@ -1117,3 +1117,315 @@ export interface Capacitacion {
   certificado: boolean;
   costo: number;
 }
+export interface Usuario {
+  id: number;
+  username: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  activo: boolean;
+  rolNombre: string;
+  // Add more fields as needed
+}
+
+// Venta (Sale)
+export interface Venta {
+  id: number;
+  clienteId: number;
+  cliente?: Cliente;
+  empleadoId: number;
+  empleado?: Empleado;
+  ventaNumero?: string;
+  fechaVenta: string;
+  estado: string;
+  subtotal: number;
+  impuesto?: number;
+  descuento?: number;
+  total: number;
+  metodoPago?: string;
+  observaciones?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Vehiculo (Vehicle)
+export interface Vehiculo {
+  id: number;
+  patente: string;
+  marca: string;
+  modelo: string;
+  año: number;
+  estado: string;
+  capacidad?: number;
+  observaciones?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Viaje (Trip)
+export interface Viaje {
+  id: number;
+  fechaViaje: string;
+  destino: string;
+  conductorId: number;
+  conductor?: Empleado;
+  vehiculoId: number;
+  vehiculo?: Vehiculo;
+  estado: string;
+  observaciones?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// UnidadMedida (Unit of Measure)
+export interface UnidadMedida {
+  id: number;
+  nombre: string;
+  abreviatura: string;
+  descripcion?: string;
+}
+
+// TareaServicio (Service Task)
+export interface tareaServicioApi {
+  id: number;
+  ordenServicioId: number;
+  descripcion: string;
+  horasEstimadas: number;
+  horasReales?: number;
+  estado: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA';
+  empleadoId?: number;
+  empleado?: Empleado;
+  fechaInicio?: string;
+  fechaFin?: string;
+  observaciones?: string;
+}
+
+// Puesto (Job Position)
+export interface Puesto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  departamento?: string;
+  salarioBase: number;
+}
+
+// Rol (Role)
+export interface Rol {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  modulo?: string;
+}
+export interface Factura {
+  id: number;
+  clienteId: number;
+  fecha: string;
+  estado: string;
+  total: number;
+  // Add other fields as required by your backend DTO
+}
+export interface FacturaItem {
+  id: number;
+  facturaId: number;
+  productoId: number;
+  cantidad: number;
+  precioUnitario: number;
+  total: number;
+  // Add other fields as required by your backend DTO
+}
+export interface Producto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stock: number;
+  categoriaId?: number;
+  categoria?: Categoria;
+  proveedorId?: number;
+  proveedor?: Proveedor;
+  unidadMedidaId?: number;
+  unidadMedida?: UnidadMedida;
+}
+export interface Categoria {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
+}
+export interface Proveedor {
+  id: number;
+  nombre: string;
+  contacto?: string;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+  estado: string;
+  observaciones?: string;
+}
+export interface ProductoTerminado {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo: string;
+  categoriaProducto?: CategoriaProducto;
+  activo: boolean;
+  fechaCreacion: string;
+}
+export interface CategoriaProducto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
+}
+export interface OrdenCompra {
+  id: number;
+  proveedorId: number;
+  proveedor?: Proveedor;
+  fechaOrden: string;
+  estado: string;
+  total: number;
+  items: OrdenCompraItem[];
+  observaciones?: string;
+}
+export interface OrdenCompraItem {
+  id: number;
+  ordenCompraId: number;
+  productoId: number;
+  producto?: Producto;
+  cantidad: number;
+  precioUnitario: number;
+  total: number;
+}
+export interface Inventario {
+  id: number;
+  productoId: number;
+  producto?: Producto;
+  cantidad: number;
+  ubicacion: string;
+  fechaUltimoMovimiento: string;
+  observaciones?: string;
+}
+export interface InventarioMovimiento {
+  id: number;
+  inventarioId: number;
+  tipoMovimiento: 'ENTRADA' | 'SALIDA';
+  cantidad: number;
+  fechaMovimiento: string;
+  observaciones?: string;
+  empleadoId?: number;
+  empleado?: Empleado;
+}
+export interface InventarioAjuste {
+  id: number;
+  inventarioId: number;
+  cantidadEsperada: number;
+  cantidadReal: number;
+  diferencia: number;
+  motivo: string;
+  fechaAjuste: string;
+  empleadoId?: number;
+  empleado?: Empleado;
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+}
+export interface InventarioRecuento {
+  id: number;
+  inventarioId: number;
+  fechaRecuento: string;
+  cantidadEsperada: number;
+  cantidadReal: number;
+  diferencia: number;
+  motivo: string;
+  empleadoId?: number;
+  empleado?: Empleado;
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+}
+export interface InventarioReporte {
+  id: number;
+  inventarioId: number;
+  fechaInicio: string;
+  fechaFin: string;
+  totalEntradas: number;
+  totalSalidas: number;
+  saldoFinal: number;
+  observaciones?: string;
+} 
+export interface Compra {
+  id: number;
+  proveedorId: number;
+  proveedor?: Proveedor;
+  fechaCompra: string;
+  estado: string;
+  total: number;
+  items: CompraItem[];
+  observaciones?: string;
+}
+export interface CompraItem {
+  id: number;
+  compraId: number;
+  productoId: number;
+  producto?: Producto;
+  cantidad: number;
+  precioUnitario: number;
+  total: number;
+}
+export interface VentaItem {
+  id: number;
+  ventaId: number;
+  productoId: number;
+  producto?: Producto;
+  cantidad: number;
+  precioUnitario: number;
+  total: number;
+}
+export interface MovimientoStock {
+  id: number;
+  productoId: number;
+  producto?: Producto;
+  tipoMovimiento: 'ENTRADA' | 'SALIDA';
+  cantidad: number;
+  fechaMovimiento: string;
+  observaciones?: string;
+  empleadoId?: number;
+  empleado?: Empleado;
+}
+export interface ParametroSistema {
+  id: number;
+  clave: string;
+  valor: string;
+  descripcion?: string;
+  categoria?: string;
+  tipoDato: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON';
+  fechaActualizacion: string;
+}
+export interface Configuracion {
+  id: number;
+  clave: string;
+  valor: string;
+  descripcion?: string;
+  categoria?: string;
+  tipoDato: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON';
+  fechaActualizacion: string;
+}
+export interface Permiso {
+  id: number; 
+  nombre: string;
+  descripcion?: string;
+  modulo?: string;
+  accion?: string;
+  roles?: Rol[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface RecetaItem {
+  id: number;
+  recetaId: number;
+  productoId: number;
+  producto?: Producto;
+  cantidad: number;
+  unidadMedidaId: number;
+  unidadMedida?: UnidadMedida;
+  instrucciones?: string;
+}

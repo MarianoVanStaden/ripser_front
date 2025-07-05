@@ -26,52 +26,21 @@ export const presupuestoApi = {
     return response.data;
   },
 
-  // Delete presupuesto
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/presupuestos/${id}`);
-  },
-
-  // Get presupuestos by client
-  getByClient: async (clientId: number): Promise<Presupuesto[]> => {
-    const response = await api.get(`/api/presupuestos/client/${clientId}`);
+  // Get presupuestos by cliente
+  getByCliente: async (clienteId: number): Promise<Presupuesto[]> => {
+    const response = await api.get(`/api/presupuestos/cliente/${clienteId}`);
     return response.data;
   },
 
-  // Get presupuestos by status
-  getByStatus: async (status: string): Promise<Presupuesto[]> => {
-    const response = await api.get(`/api/presupuestos/status/${status}`);
+  // Get presupuestos by estado
+  getByEstado: async (estado: string): Promise<Presupuesto[]> => {
+    const response = await api.get(`/api/presupuestos/estado/${estado}`);
     return response.data;
   },
 
-  // Get presupuestos by date range
-  getByDateRange: async (startDate: string, endDate: string): Promise<Presupuesto[]> => {
-    const response = await api.get(`/api/presupuestos/date-range?start=${startDate}&end=${endDate}`);
+  // Get vencidos
+  getVencidos: async (): Promise<Presupuesto[]> => {
+    const response = await api.get('/api/presupuestos/vencidos');
     return response.data;
   },
-
-  // Convert presupuesto to sale
-  convertToSale: async (id: number): Promise<any> => {
-    const response = await api.post(`/api/presupuestos/${id}/convert-to-sale`);
-    return response.data;
-  },
-
-  // Send presupuesto to client (email)
-  sendToClient: async (id: number, email?: string): Promise<void> => {
-    const response = await api.post(`/api/presupuestos/${id}/send`, { email });
-    return response.data;
-  },
-
-  // Get presupuesto PDF
-  getPdf: async (id: number): Promise<Blob> => {
-    const response = await api.get(`/api/presupuestos/${id}/pdf`, {
-      responseType: 'blob'
-    });
-    return response.data;
-  },
-
-  // Update presupuesto status
-  updateStatus: async (id: number, status: string): Promise<Presupuesto> => {
-    const response = await api.patch(`/api/presupuestos/${id}/status`, { status });
-    return response.data;
-  }
 };

@@ -4,42 +4,48 @@ import type { Sale, CreateSaleRequest } from '../../types';
 export const saleApi = {
   // Get all sales
   getAll: async (): Promise<Sale[]> => {
-    const response = await api.get('/api/sales');
+    const response = await api.get('/api/ventas'); // <-- updated to match backend
     return response.data;
   },
 
   // Get sale by ID
   getById: async (id: number): Promise<Sale> => {
-    const response = await api.get(`/api/sales/${id}`);
+    const response = await api.get(`/api/ventas/${id}`); // <-- updated
     return response.data;
   },
 
   // Create new sale
   create: async (sale: CreateSaleRequest): Promise<Sale> => {
-    const response = await api.post('/api/sales', sale);
+    const response = await api.post('/api/ventas', sale); // <-- updated
     return response.data;
   },
 
   // Update sale
   update: async (id: number, sale: Partial<CreateSaleRequest>): Promise<Sale> => {
-    const response = await api.put(`/api/sales/${id}`, sale);
+    const response = await api.put(`/api/ventas/${id}`, sale); // <-- updated
     return response.data;
   },
 
   // Delete sale
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/sales/${id}`);
+    await api.delete(`/api/ventas/${id}`);
   },
 
   // Get sales by client
   getByClient: async (clientId: number): Promise<Sale[]> => {
-    const response = await api.get(`/api/sales/client/${clientId}`);
+    const response = await api.get(`/api/ventas/cliente/${clientId}`); // <-- updated
     return response.data;
   },
 
-  // Get sales by date range
-  getByDateRange: async (startDate: string, endDate: string): Promise<Sale[]> => {
-    const response = await api.get(`/api/sales/date-range?start=${startDate}&end=${endDate}`);
+  // Get sales by estado
+  getByEstado: async (estado: string): Promise<Sale[]> => {
+    const response = await api.get(`/api/ventas/estado/${estado}`);
+    return response.data;
+  },
+
+  // Get total sales in a period
+  getTotalPeriodo: async (fechaInicio: string, fechaFin: string): Promise<number> => {
+    const response = await api.get(`/api/ventas/total-periodo?fechaInicio=${encodeURIComponent(fechaInicio)}&fechaFin=${encodeURIComponent(fechaFin)}`);
     return response.data;
   }
 };

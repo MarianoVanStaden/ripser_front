@@ -3,15 +3,21 @@ import api from './config';
 // Test connection to backend
 export const testConnection = async (): Promise<{ connected: boolean; message: string }> => {
   try {
-    // Try to make a basic request to test connectivity
-    await api.get('/health');
-    return { connected: true, message: 'Successfully connected to backend' };
-  } catch (error) {
-    console.error('Backend connection failed:', error);
-    if (error instanceof Error) {
-      return { connected: false, message: `Connection failed: ${error.message}` };
+    // Try actuator health endpoint first (Spring Boot default)
+    await api.get('/actuator/health');
+    return { connected: true, message: 'Successfully connected to backend (actuator/health)' };
+  } catch (error1) {
+    try {
+      // Fallback to /health (custom endpoint)
+      await api.get('/health');
+      return { connected: true, message: 'Successfully connected to backend (/health)' };
+    } catch (error2) {
+      console.error('Backend connection failed:', error2);
+      if (error2 instanceof Error) {
+        return { connected: false, message: `Connection failed: ${error2.message}` };
+      }
+      return { connected: false, message: 'Unknown connection error' };
     }
-    return { connected: false, message: 'Unknown connection error' };
   }
 };
 
