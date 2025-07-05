@@ -2,7 +2,6 @@
 export type Garantia = Warranty;
 export type ReclamoGarantia = WarrantyClaim;
 // Core Business Entities
-
 // Client entity interface (extended to match backend)
 export interface Cliente {
   id: number;
@@ -369,7 +368,6 @@ export interface Delivery {
   id: number;
   tripId?: number;
   orderId?: number;
-  order?: Order;
   clientId: number;
   client?: Client;
   address: string;
@@ -504,32 +502,8 @@ export interface Product {
   updatedAt: string;
 }
 
-// Order entity interface
-export interface Order {
-  id: number;
-  clientId: number;
-  client?: Client;
-  employeeId: number;
-  employee?: Employee;
-  orderDate: string;
-  status: OrderStatus;
-  totalAmount: number;
-  notes: string;
-  orderItems: OrderItem[];
-  createdAt: string;
-  updatedAt: string;
-}
 
-// Order Item entity interface
-export interface OrderItem {
-  id: number;
-  orderId: number;
-  productId: number;
-  product?: Product;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-}
+// Removed Order and OrderItem interfaces: backend does not support /api/ordenes
 
 // Sale entity interface
 export interface Sale {

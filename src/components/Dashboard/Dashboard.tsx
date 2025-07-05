@@ -20,7 +20,7 @@ import {
   Error as ErrorIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
-import { clientApi, productApi, orderApi, saleApi } from '../../api/services';
+import { clientApi, productApi, saleApi } from '../../api/services';
 import { testConnection } from '../../api/testConnection';
 import BackendSetupDialog from '../BackendSetupDialog/BackendSetupDialog';
 
@@ -112,13 +112,16 @@ const Dashboard: React.FC = () => {
       setError(null);
 
       // Fetch data from multiple endpoints
-      const [clients, products, orders, sales, lowStockProducts] = await Promise.all([
+
+      const [clients, products, sales, lowStockProducts] = await Promise.all([
         clientApi.getAll(),
         productApi.getAll(),
-        orderApi.getAll(),
         saleApi.getAll(),
         productApi.getLowStock(10), // Products with stock <= 10
       ]);
+
+      // Orders are not supported by backend, set to empty array
+      const orders: any[] = [];
 
       // Calculate monthly sales amount (this month)
       const currentMonth = new Date().getMonth();
@@ -139,7 +142,7 @@ const Dashboard: React.FC = () => {
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080/RipserApp');
+      setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');
     } finally {
       setLoading(false);
     }

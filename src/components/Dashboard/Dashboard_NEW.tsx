@@ -19,7 +19,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
 } from '@mui/icons-material';
-import { clientApi, productApi, orderApi, saleApi } from '../../api/services';
+import { clientApi, productApi, saleApi } from '../../api/services';
 import { testConnection } from '../../api/testConnection';
 
 interface DashboardStats {
@@ -108,14 +108,14 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch data from multiple endpoints
-      const [clients, products, orders, sales, lowStockProducts] = await Promise.all([
+      // Fetch data from multiple endpoints (orders set to empty array, orderApi removed)
+      const [clients, products, sales, lowStockProducts] = await Promise.all([
         clientApi.getAll(),
         productApi.getAll(),
-        orderApi.getAll(),
         saleApi.getAll(),
         productApi.getLowStock(10), // Products with stock <= 10
       ]);
+      const orders: any[] = [];
 
       // Calculate monthly sales amount (this month)
       const currentMonth = new Date().getMonth();
@@ -129,7 +129,7 @@ const Dashboard: React.FC = () => {
       setStats({
         totalClients: clients.length,
         totalProducts: products.length,
-        totalOrders: orders.length,
+        totalOrders: orders.length, // will be 0
         totalSales: sales.length,
         monthlySalesAmount,
         lowStockProducts: lowStockProducts.length,

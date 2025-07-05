@@ -1,3 +1,4 @@
+/*
 import api from '../config';
 import type { Order, CreateOrderRequest } from '../../types';
 
@@ -43,3 +44,4 @@ export const orderApi = {
     return response.data;
   }
 };
+*/
