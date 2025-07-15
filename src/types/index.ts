@@ -163,36 +163,25 @@ export interface SystemParameter {
 // Presupuesto (Budget/Quote) entity
 export interface Presupuesto {
   id: number;
-  clientId: number;
-  client?: Client;
-  employeeId: number;
-  employee?: Employee;
-  quoteNumber: string;
-  quoteDate: string;
-  validUntil: string;
-  status: PresupuestoStatus;
-  subtotal: number;
-  tax: number;
-  discount: number;
+  numeroPresupuesto: string;
+  cliente: Cliente;
+  fechaPresupuesto: string;
+  fechaVencimiento: string;
+  estado: PresupuestoStatus;
   total: number;
-  observations: string;
-  items: PresupuestoItem[];
-  createdAt: string;
-  updatedAt: string;
+  observaciones: string;
+  detalles: DetallePresupuesto[];
+  usuario?: Usuario;
 }
 
-export interface PresupuestoItem {
+export interface DetallePresupuesto {
   id: number;
-  presupuestoId: number;
-  productId?: number;
-  serviceId?: number;
-  product?: Product;
-  service?: Service;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  total: number;
+  presupuesto?: Presupuesto;
+  producto?: Producto;
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
 }
 
 // Warranty entity
@@ -711,12 +700,10 @@ export type AppointmentStatus = typeof AppointmentStatus[keyof typeof Appointmen
 // Enum types using const assertions for all business entities
 
 export const PresupuestoStatus = {
-  DRAFT: 'DRAFT',
-  SENT: 'SENT',
-  APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
-  EXPIRED: 'EXPIRED',
-  CONVERTED: 'CONVERTED'
+  PENDIENTE: 'PENDIENTE',
+  APROBADO: 'APROBADO', 
+  RECHAZADO: 'RECHAZADO',
+  VENCIDO: 'VENCIDO'
 } as const;
 export type PresupuestoStatus = typeof PresupuestoStatus[keyof typeof PresupuestoStatus];
 
@@ -1001,27 +988,29 @@ export interface CreateInventoryAdjustmentRequest {
 
 // Presupuesto Create Request
 export interface CreatePresupuestoRequest {
-  clientId: number;
-  employeeId: number;
-  quoteDate: string;
-  validUntil: string;
-  status?: PresupuestoStatus;
-  subtotal: number;
-  tax: number;
-  discount: number;
+  numeroPresupuesto?: string;
+  cliente: {
+    id: number;
+  };
+  fechaPresupuesto: string;
+  fechaVencimiento: string;
+  estado?: PresupuestoStatus;
   total: number;
-  observations: string;
-  items: CreatePresupuestoItemRequest[];
+  observaciones: string;
+  detalles: CreateDetallePresupuestoRequest[];
+  usuario?: {
+    id: number;
+  };
 }
 
-export interface CreatePresupuestoItemRequest {
-  productId?: number;
-  serviceId?: number;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  total: number;
+export interface CreateDetallePresupuestoRequest {
+  producto?: {
+    id: number;
+  };
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
 }
 
 // --- RRHH (Human Resources) Entities ---
@@ -1212,13 +1201,12 @@ export interface Producto {
   nombre: string;
   descripcion?: string;
   precio: number;
-  stock: number;
-  categoriaId?: number;
-  categoria?: Categoria;
-  proveedorId?: number;
-  proveedor?: Proveedor;
-  unidadMedidaId?: number;
-  unidadMedida?: UnidadMedida;
+  stockActual?: number;
+  stockMinimo?: number;
+  codigo?: string;
+  categoriaProducto?: CategoriaProducto;
+  activo?: boolean;
+  fechaCreacion?: string;
 }
 export interface Categoria {
   id: number;

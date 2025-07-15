@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Presupuesto, CreatePresupuestoRequest } from '../../types';
+import type { Presupuesto, CreatePresupuestoRequest, PresupuestoStatus } from '../../types';
 
 export const presupuestoApi = {
   // Get all presupuestos
@@ -33,7 +33,7 @@ export const presupuestoApi = {
   },
 
   // Get presupuestos by estado
-  getByEstado: async (estado: string): Promise<Presupuesto[]> => {
+  getByEstado: async (estado: PresupuestoStatus): Promise<Presupuesto[]> => {
     const response = await api.get(`/api/presupuestos/estado/${estado}`);
     return response.data;
   },

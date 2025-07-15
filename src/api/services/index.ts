@@ -1,4 +1,5 @@
 export { clientApi } from "./clientApi";
+export { clienteApi } from "./clienteApi";
 export { employeeApi } from "./employeeApi";
 export { productApi } from "./productApi";
 export { categoryApi } from "./categoryApi";
@@ -14,3 +15,4 @@ export {
   tripApi,
   deliveryApi,
 } from "./stockApi";
+export { usuarioApi } from "./usuarioApi";
