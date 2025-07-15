@@ -61,6 +61,7 @@ const PresupuestosPage: React.FC = () => {
     precioUnitario: number;
     subtotal: number;
   }>>([]);
+  const [readOnly, setReadOnly] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -130,6 +131,7 @@ const PresupuestosPage: React.FC = () => {
   };
 
   const addDetalle = () => {
+    if (readOnly) return;
     setDetalles([...detalles, {
       productoId: '',
       descripcion: '',
@@ -140,19 +142,20 @@ const PresupuestosPage: React.FC = () => {
   };
 
   const updateDetalle = (index: number, field: string, value: string | number) => {
+    if (readOnly) return;
     const newDetalles = [...detalles];
     const detalle = newDetalles[index];
-    
+
     if (field === 'productoId') detalle.productoId = value as string;
     else if (field === 'descripcion') detalle.descripcion = value as string;
     else if (field === 'cantidad') detalle.cantidad = value as number;
     else if (field === 'precioUnitario') detalle.precioUnitario = value as number;
-    
+
     // Recalculate subtotal when cantidad or precioUnitario changes
     if (field === 'cantidad' || field === 'precioUnitario') {
       detalle.subtotal = detalle.cantidad * detalle.precioUnitario;
     }
-    
+
     // Update description when product changes
     if (field === 'productoId' && value) {
       const producto = productos.find(p => p.id === parseInt(value as string));
@@ -162,34 +165,39 @@ const PresupuestosPage: React.FC = () => {
         detalle.subtotal = detalle.cantidad * (producto.precio || 0);
       }
     }
-    
+
     setDetalles(newDetalles);
   };
 
   const removeDetalle = (index: number) => {
+    if (readOnly) return;
     setDetalles(detalles.filter((_, i) => i !== index));
   };
 
-  const handleOpenDialog = (presupuesto?: Presupuesto) => {
+  const handleOpenDialog = (presupuesto?: Presupuesto, readOnlyMode = false) => {
+    setReadOnly(readOnlyMode);
     if (presupuesto) {
       setEditingPresupuesto(presupuesto);
       setFormData({
-        clienteId: presupuesto.cliente.id.toString(),
+        clienteId: presupuesto.cliente?.id?.toString() || '',
         usuarioId: presupuesto.usuario?.id?.toString() || '',
-        fechaPresupuesto: presupuesto.fechaPresupuesto.split('T')[0],
-        fechaVencimiento: presupuesto.fechaVencimiento.split('T')[0],
-        observaciones: presupuesto.observaciones,
+        fechaPresupuesto: presupuesto.fechaPresupuesto?.split('T')[0] || '',
+        fechaVencimiento: presupuesto.fechaVencimiento?.split('T')[0] || '',
+        observaciones: presupuesto.observaciones || '',
         estado: presupuesto.estado,
       });
-      // Load existing detalles
-      setDetalles(presupuesto.detalles.map(detalle => ({
-        id: detalle.id,
-        productoId: detalle.producto?.id?.toString() || '',
-        descripcion: detalle.descripcion,
-        cantidad: detalle.cantidad,
-        precioUnitario: detalle.precioUnitario,
-        subtotal: detalle.subtotal,
-      })));
+      setDetalles(
+        Array.isArray(presupuesto.detalles)
+          ? presupuesto.detalles.map(detalle => ({
+              id: detalle.id,
+              productoId: detalle.producto?.id?.toString() || '',
+              descripcion: detalle.descripcion,
+              cantidad: detalle.cantidad,
+              precioUnitario: detalle.precioUnitario,
+              subtotal: detalle.subtotal,
+            }))
+          : []
+      );
     } else {
       setEditingPresupuesto(null);
       const fechaVencimiento = new Date();
@@ -329,6 +337,7 @@ const PresupuestosPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
+          disabled={productos.length === 0 || loading}
         >
           Nuevo Presupuesto
         </Button>
@@ -373,10 +382,20 @@ const PresupuestosPage: React.FC = () => {
                       ${presupuesto.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <IconButton size="small" color="primary">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleOpenDialog(presupuesto, true)}
+                        aria-label="Ver presupuesto"
+                      >
                         <VisibilityIcon />
                       </IconButton>
-                      <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto)}>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleOpenDialog(presupuesto, false)}
+                        aria-label="Editar presupuesto"
+                      >
                         <EditIcon />
                       </IconButton>
                       <IconButton size="small" color="success">
@@ -414,11 +433,16 @@ const PresupuestosPage: React.FC = () => {
 
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="lg" fullWidth>
         <DialogTitle>
-          {editingPresupuesto ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
+          {editingPresupuesto
+            ? readOnly
+              ? 'Ver Presupuesto'
+              : 'Editar Presupuesto'
+            : 'Nuevo Presupuesto'}
         </DialogTitle>
         <DialogContent sx={{ minHeight: '500px' }}>
           <Box sx={{ pt: 1 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
+              
               <TextField
                 fullWidth
                 select
@@ -427,20 +451,16 @@ const PresupuestosPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
                 margin="normal"
                 required
-                error={!formData.clienteId}
-                helperText={!formData.clienteId ? 'Debe seleccionar un cliente' : ''}
+                disabled={readOnly}
               >
-                {clientes.length === 0 ? (
-                  <MenuItem disabled>Cargando clientes...</MenuItem>
-                ) : (
-                  clientes.map((cliente) => (
-                    <MenuItem key={cliente.id} value={cliente.id.toString()}>
-                      {cliente.nombre} {cliente.apellido && `${cliente.apellido}`} {cliente.razonSocial && `- ${cliente.razonSocial}`}
-                    </MenuItem>
-                  ))
-                )}
+                <MenuItem value="">Seleccionar cliente</MenuItem>
+                {clientes.map((cliente) => (
+                  <MenuItem key={cliente.id} value={cliente.id.toString()}>
+                    {cliente.nombre}
+                  </MenuItem>
+                ))}
               </TextField>
-              
+
               {usuarios.length > 0 && (
                 <TextField
                   fullWidth
@@ -449,6 +469,7 @@ const PresupuestosPage: React.FC = () => {
                   value={formData.usuarioId}
                   onChange={(e) => setFormData({ ...formData, usuarioId: e.target.value })}
                   margin="normal"
+                  disabled={readOnly}
                 >
                   <MenuItem value="">Seleccionar usuario</MenuItem>
                   {usuarios.map((usuario) => (
@@ -467,6 +488,7 @@ const PresupuestosPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, estado: e.target.value as PresupuestoStatus })}
                 margin="normal"
                 required
+                disabled={readOnly}
               >
                 <MenuItem value={PresupuestoStatusEnum.PENDIENTE}>Pendiente</MenuItem>
                 <MenuItem value={PresupuestoStatusEnum.APROBADO}>Aprobado</MenuItem>
@@ -483,6 +505,7 @@ const PresupuestosPage: React.FC = () => {
                 margin="normal"
                 required
                 InputLabelProps={{ shrink: true }}
+                disabled={readOnly}
               />
               
               <TextField
@@ -494,6 +517,7 @@ const PresupuestosPage: React.FC = () => {
                 margin="normal"
                 required
                 InputLabelProps={{ shrink: true }}
+                disabled={readOnly}
               />
             </Box>
             
@@ -505,6 +529,7 @@ const PresupuestosPage: React.FC = () => {
               margin="normal"
               multiline
               rows={3}
+              disabled={readOnly}
             />
             
             {/* Detalles Section */}
@@ -527,11 +552,11 @@ const PresupuestosPage: React.FC = () => {
                     <TableCell width="100px">Cantidad</TableCell>
                     <TableCell width="120px">Precio Unit.</TableCell>
                     <TableCell width="120px">Subtotal</TableCell>
-                    <TableCell width="60px">Acciones</TableCell>
+                    {!readOnly && <TableCell width="60px">Acciones</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {detalles.map((detalle, index) => (
+                  {detalles && detalles.length > 0 ? detalles.map((detalle, index) => (
                     <TableRow key={index}>
                       <TableCell>
                         <TextField
@@ -540,6 +565,7 @@ const PresupuestosPage: React.FC = () => {
                           fullWidth
                           value={detalle.productoId}
                           onChange={(e) => updateDetalle(index, 'productoId', e.target.value)}
+                          disabled={readOnly}
                         >
                           <MenuItem value="">Sin producto</MenuItem>
                           {productos.length === 0 ? (
@@ -559,6 +585,7 @@ const PresupuestosPage: React.FC = () => {
                           fullWidth
                           value={detalle.descripcion}
                           onChange={(e) => updateDetalle(index, 'descripcion', e.target.value)}
+                          disabled={readOnly}
                         />
                       </TableCell>
                       <TableCell>
@@ -569,6 +596,7 @@ const PresupuestosPage: React.FC = () => {
                           value={detalle.cantidad}
                           onChange={(e) => updateDetalle(index, 'cantidad', parseInt(e.target.value) || 0)}
                           inputProps={{ min: 1 }}
+                          disabled={readOnly}
                         />
                       </TableCell>
                       <TableCell>
@@ -579,30 +607,41 @@ const PresupuestosPage: React.FC = () => {
                           value={detalle.precioUnitario}
                           onChange={(e) => updateDetalle(index, 'precioUnitario', parseFloat(e.target.value) || 0)}
                           inputProps={{ min: 0, step: 0.01 }}
+                          disabled={readOnly}
                         />
                       </TableCell>
                       <TableCell>
                         ${detalle.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell>
-                        <IconButton size="small" color="error" onClick={() => removeDetalle(index)}>
-                          <DeleteIcon />
-                        </IconButton>
+                      {!readOnly && (
+                        <TableCell>
+                          <IconButton size="small" color="error" onClick={() => removeDetalle(index)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={readOnly ? 5 : 6} align="center">
+                        No hay detalles para este presupuesto.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={addDetalle}
-              >
-                Agregar Detalle
-              </Button>
+              {!readOnly && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addDetalle}
+                >
+                  Agregar Detalle
+                </Button>
+              )}
               <Typography variant="h6">
                 Total: ${calculateTotal().toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </Typography>
@@ -610,14 +649,16 @@ const PresupuestosPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button 
-            variant="contained" 
-            onClick={handleSavePresupuesto}
-            disabled={!formData.clienteId || !formData.fechaPresupuesto || !formData.fechaVencimiento || formLoading}
-          >
-            {editingPresupuesto ? 'Actualizar' : 'Crear'}
-          </Button>
+          <Button onClick={handleCloseDialog}>Cerrar</Button>
+          {!readOnly && (
+            <Button
+              variant="contained"
+              onClick={handleSavePresupuesto}
+              disabled={!formData.clienteId || !formData.fechaPresupuesto || !formData.fechaVencimiento || formLoading}
+            >
+              {editingPresupuesto ? 'Actualizar' : 'Crear'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
