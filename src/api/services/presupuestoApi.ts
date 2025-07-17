@@ -19,6 +19,11 @@ export const presupuestoApi = {
     const response = await api.post('/api/presupuestos', presupuesto);
     return response.data;
   },
+  //Delete presupuesto
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/api/presupuestos/${id}`);
+  }
+,
 
   // Update presupuesto
   update: async (id: number, presupuesto: Partial<CreatePresupuestoRequest>): Promise<Presupuesto> => {

@@ -1083,12 +1083,14 @@ export interface Capacitacion {
 export interface Usuario {
   id: number;
   username: string;
+  password: string;
+  email: string;
   nombre: string;
   apellido: string;
-  email: string;
   activo: boolean;
-  rolNombre: string;
-  // Add more fields as needed
+  fechaCreacion: string;
+  fechaActualizacion: string;
+  roles: any[];
 }
 
 // Venta (Sale)

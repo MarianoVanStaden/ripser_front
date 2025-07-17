@@ -31,17 +31,9 @@ import {
   Delete as DeleteIcon,
   ShoppingCart as ShoppingCartIcon,
 } from '@mui/icons-material';
-import { saleApi, clientApi, employeeApi, productApi } from '../../api/services';
-import type { Sale, Client, Employee, Product, PaymentMethod, CreateSaleRequest, CreateSaleItemRequest } from '../../types';
-
-interface SaleFormData {
-  clientId: number | '';
-  employeeId: number | '';
-  saleDate: string;
-  paymentMethod: PaymentMethod | '';
-  notes: string;
-  items: SaleItem[];
-}
+import { clienteApi, employeeApi, productApi, saleApi, usuarioApi } from '../../api/services';
+import type { Cliente, Employee, Producto, PaymentMethod, Usuario } from '../../types';
+import dayjs from 'dayjs';
 
 interface SaleItem {
   productId: number | '';
@@ -51,17 +43,26 @@ interface SaleItem {
   total: number;
 }
 
+interface SaleFormData {
+  clientId: number | '';
+  usuarioId: number | '';  // Changed from employeeId to usuarioId
+  saleDate: string;
+  paymentMethod: PaymentMethod | '';
+  notes: string;
+  items: SaleItem[];
+}
+
 const FacturacionPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  
+  const [clients, setClients] = useState<Cliente[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);  // Changed from employees to usuarios
+  const [products, setProducts] = useState<Producto[]>([]);
+
   const [formData, setFormData] = useState<SaleFormData>({
     clientId: '',
-    employeeId: '',
+    usuarioId: '',  // Changed from employeeId to usuarioId
     saleDate: new Date().toISOString().split('T')[0],
     paymentMethod: '',
     notes: '',
@@ -73,23 +74,38 @@ const FacturacionPage: React.FC = () => {
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
+
+    // Always try to fetch products first (since it's critical for selling)
+    let productosData: Producto[] = [];
     try {
-      setLoading(true);
-      const [clientsData, employeesData, productsData] = await Promise.all([
-        clientApi.getAll(),
-        employeeApi.getAll(),
-        productApi.getAll(),
-      ]);
-      
-      setClients(clientsData);
-      setEmployees(employeesData);
-      setProducts(productsData);
+      productosData = await productApi.getAll();
+      setProducts(productosData);
     } catch (err) {
-      setError('Error al cargar los datos necesarios');
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
+      setProducts([]);
+      setError('No se pudieron cargar los productos. Verifique el backend.');
     }
+
+    // Try to fetch clients, but don't block UI if it fails
+    try {
+      const clientsData = await clienteApi.getAll();
+      setClients(clientsData);
+    } catch (err) {
+      setClients([]);
+      setError(prev => prev ? prev + ' | No se pudieron cargar los clientes.' : 'No se pudieron cargar los clientes.');
+    }
+
+    // Try to fetch usuarios instead of employees
+    try {
+      const usuariosData = await usuarioApi.getAll();
+      setUsuarios(usuariosData);
+    } catch (err) {
+      setUsuarios([]);
+      setError(prev => prev ? prev + ' | No se pudieron cargar los usuarios.' : 'No se pudieron cargar los usuarios.');
+    }
+
+    setLoading(false);
   };
 
   const handleInputChange = (field: keyof SaleFormData, value: any) => {
@@ -100,16 +116,18 @@ const FacturacionPage: React.FC = () => {
   };
 
   const addItem = () => {
-    const newItem: SaleItem = {
-      productId: '',
-      quantity: 1,
-      unitPrice: 0,
-      discount: 0,
-      total: 0,
-    };
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, newItem]
+      items: [
+        ...prev.items,
+        {
+          productId: '',
+          quantity: 1,
+          unitPrice: 0,
+          discount: 0,
+          total: 0,
+        }
+      ]
     }));
   };
 
@@ -119,6 +137,15 @@ const FacturacionPage: React.FC = () => {
       ...updatedItems[index],
       [field]: value
     };
+
+    // If productId changes, update unitPrice from products
+    if (field === 'productId' && value) {
+      const prod = products.find(p => p.id === Number(value));
+      if (prod) {
+        updatedItems[index].unitPrice = prod.precio || 0;
+        updatedItems[index].total = (updatedItems[index].quantity || 1) * (prod.precio || 0);
+      }
+    }
 
     // Calculate total for the item
     if (field === 'quantity' || field === 'unitPrice' || field === 'discount') {
@@ -145,72 +172,10 @@ const FacturacionPage: React.FC = () => {
     return formData.items.reduce((sum, item) => sum + item.total, 0);
   };
 
-  const getPaymentMethodLabel = (method: PaymentMethod) => {
-    const methods = {
-      CASH: 'Efectivo',
-      CREDIT_CARD: 'Tarjeta de Crédito',
-      DEBIT_CARD: 'Tarjeta de Débito',
-      BANK_TRANSFER: 'Transferencia',
-      CHECK: 'Cheque',
-    };
-    return methods[method] || method;
-  };
-
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSuccess(null);
-
-      // Validation
-      if (!formData.clientId || !formData.employeeId || !formData.paymentMethod) {
-        setError('Por favor, complete todos los campos obligatorios');
-        return;
-      }
-
-      if (formData.items.length === 0) {
-        setError('Debe agregar al menos un producto a la venta');
-        return;
-      }
-
-      const saleData: CreateSaleRequest = {
-        clientId: Number(formData.clientId),
-        employeeId: Number(formData.employeeId),
-        saleDate: formData.saleDate,
-        paymentMethod: formData.paymentMethod,
-        notes: formData.notes,
-        saleItems: formData.items.map(item => ({
-          productId: Number(item.productId),
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        })),
-      };
-
-      await saleApi.create(saleData);
-      setSuccess('Venta creada exitosamente');
-      
-      // Reset form
-      setFormData({
-        clientId: '',
-        employeeId: '',
-        saleDate: new Date().toISOString().split('T')[0],
-        paymentMethod: '',
-        notes: '',
-        items: [],
-      });
-
-    } catch (err) {
-      setError('Error al crear la venta');
-      console.error('Error creating sale:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const clearForm = () => {
     setFormData({
       clientId: '',
-      employeeId: '',
+      usuarioId: '',  // Changed from employeeId to usuarioId
       saleDate: new Date().toISOString().split('T')[0],
       paymentMethod: '',
       notes: '',
@@ -218,6 +183,135 @@ const FacturacionPage: React.FC = () => {
     });
     setError(null);
     setSuccess(null);
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Validation checks
+      if (!formData.clientId) {
+        throw new Error('Cliente es requerido');
+      }
+      if (!formData.usuarioId) {  // Changed from employeeId to usuarioId
+        throw new Error('Usuario es requerido');
+      }
+      if (!formData.paymentMethod) {
+        throw new Error('Método de pago es requerido');
+      }
+      if (formData.items.length === 0) {
+        throw new Error('Debe agregar al menos un producto');
+      }
+
+      // Validate all items have products selected
+      const invalidItems = formData.items.filter(item => !item.productId);
+      if (invalidItems.length > 0) {
+        throw new Error('Todos los productos deben estar seleccionados');
+      }
+
+      // Find the full objects for cliente and usuario
+      const cliente = clients.find(c => c.id === formData.clientId);
+      const usuario = usuarios.find(u => u.id === formData.usuarioId);
+
+      if (!cliente) throw new Error('Cliente no encontrado');
+      if (!usuario) throw new Error('Usuario no encontrado');
+
+      // Build detalleVentas with nested producto objects
+      const detalleVentas = formData.items.map(item => {
+        const producto = products.find(p => p.id === item.productId);
+        if (!producto) throw new Error(`Producto con ID ${item.productId} no encontrado`);
+        return {
+          producto,
+          cantidad: item.quantity,
+          precioUnitario: item.unitPrice,
+          subtotal: item.total,
+          descuento: item.discount || 0,
+        };
+      });
+
+      // Convert saleDate to ISO datetime
+      const fechaVentaIso = dayjs(formData.saleDate)
+        .hour(dayjs().hour())
+        .minute(dayjs().minute())
+        .second(dayjs().second())
+        .format('YYYY-MM-DDTHH:mm:ss');
+
+      const payload = {
+        numeroVenta: `V-${Date.now()}`,
+        cliente, // full object
+        usuario, // full object - this should now reference a valid usuario
+        fechaVenta: fechaVentaIso,
+        total: calculateTotal(),
+        estado: "PENDIENTE",
+        metodoPago: formData.paymentMethod,
+        detalleVentas,
+        notas: formData.notes,
+      };
+
+      console.log('Payload being sent:', payload);
+
+      const response = await saleApi.create(payload);
+      setSuccess('Venta guardada correctamente');
+      clearForm();
+    } catch (err: any) {
+      console.error('Error creating sale:', err);
+      
+      // Enhanced error handling
+      if (err.response?.status === 400) {
+        const errorData = err.response?.data;
+        console.error('Backend validation errors:', errorData);
+        
+        if (errorData?.message) {
+          setError(`Error de validación: ${errorData.message}`);
+        } else if (errorData?.errors) {
+          // Handle field-specific errors
+          const fieldErrors = Object.entries(errorData.errors)
+            .map(([field, message]) => `${field}: ${message}`)
+            .join(', ');
+          setError(`Errores de validación: ${fieldErrors}`);
+        } else {
+          setError('Error de validación en el servidor. Verifique los datos enviados.');
+        }
+      } else if (err.response?.status === 500) {
+        setError('Error interno del servidor. Contacte al administrador.');
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Error desconocido al guardar la venta');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Validation function
+  const validateForm = (): string | null => {
+    if (!formData.clientId) return 'Debe seleccionar un cliente';
+    if (!formData.usuarioId) return 'Debe seleccionar un usuario';  // Changed from employeeId to usuarioId
+    if (!formData.paymentMethod) return 'Debe seleccionar un método de pago';
+    if (formData.items.length === 0) return 'Debe agregar al menos un producto';
+    
+    for (let i = 0; i < formData.items.length; i++) {
+      const item = formData.items[i];
+      if (!item.productId) return `Producto ${i + 1}: Debe seleccionar un producto`;
+      if (item.quantity <= 0) return `Producto ${i + 1}: La cantidad debe ser mayor a 0`;
+      if (item.unitPrice <= 0) return `Producto ${i + 1}: El precio debe ser mayor a 0`;
+    }
+    
+    return null;
+  };
+
+  // Modified submit button with validation
+  const handleSubmitWithValidation = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    
+    await handleSubmit();
   };
 
   if (loading && clients.length === 0) {
@@ -246,7 +340,7 @@ const FacturacionPage: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
-            onClick={handleSubmit}
+            onClick={handleSubmitWithValidation}
             disabled={loading}
           >
             {loading ? 'Guardando...' : 'Guardar Venta'}
@@ -278,10 +372,12 @@ const FacturacionPage: React.FC = () => {
                   value={formData.clientId}
                   label="Cliente"
                   onChange={(e) => handleInputChange('clientId', e.target.value)}
+                  disabled={clients.length === 0}
                 >
+                  <MenuItem value="">Seleccionar cliente</MenuItem>
                   {clients.map((client) => (
                     <MenuItem key={client.id} value={client.id}>
-                      {client.name}
+                      {client.nombre}
                     </MenuItem>
                   ))}
                 </Select>
@@ -289,15 +385,17 @@ const FacturacionPage: React.FC = () => {
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth required>
-                <InputLabel>Vendedor</InputLabel>
+                <InputLabel>Usuario</InputLabel>
                 <Select
-                  value={formData.employeeId}
-                  label="Vendedor"
-                  onChange={(e) => handleInputChange('employeeId', e.target.value)}
+                  value={formData.usuarioId}
+                  label="Usuario"
+                  onChange={(e) => handleInputChange('usuarioId', e.target.value)}
+                  disabled={usuarios.length === 0}
                 >
-                  {employees.map((employee) => (
-                    <MenuItem key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName}
+                  <MenuItem value="">Seleccionar usuario</MenuItem>
+                  {usuarios.map((usuario) => (
+                    <MenuItem key={usuario.id} value={usuario.id}>
+                      {usuario.nombre} {usuario.apellido}
                     </MenuItem>
                   ))}
                 </Select>
@@ -385,7 +483,7 @@ const FacturacionPage: React.FC = () => {
                             <MenuItem value="">Seleccionar producto...</MenuItem>
                             {products.map((product) => (
                               <MenuItem key={product.id} value={product.id}>
-                                {product.name}
+                                {product.nombre}
                               </MenuItem>
                             ))}
                           </Select>
@@ -431,6 +529,7 @@ const FacturacionPage: React.FC = () => {
                           size="small"
                           onClick={() => removeItem(index)}
                           color="error"
+                          aria-label="Eliminar producto"
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -451,14 +550,11 @@ const FacturacionPage: React.FC = () => {
               </Typography>
             </Box>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Total */}
-      <Card>
-        <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">Total de la Venta:</Typography>
+          <Divider sx={{ my: 2 }} />
+          <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
+            <Typography variant="h6" color="primary">
+              Total:
+            </Typography>
             <Typography variant="h4" color="primary">
               ${calculateTotal().toFixed(2)}
             </Typography>

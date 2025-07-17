@@ -52,7 +52,9 @@ const RegistroVentasPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
+  const [ventaToDelete, setVentaToDelete] = useState<Sale | null>(null);
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -453,7 +455,10 @@ const RegistroVentasPage: React.FC = () => {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleDeleteSale(sale.id)}
+                        onClick={() => {
+                          setVentaToDelete(sale);
+                          setDeleteDialogOpen(true);
+                        }}
                         title="Eliminar"
                         color="error"
                       >
@@ -565,6 +570,38 @@ const RegistroVentasPage: React.FC = () => {
             onClick={() => alert('Función de impresión en desarrollo')}
           >
             Imprimir
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Sale Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Eliminar venta</DialogTitle>
+        <DialogContent>
+          <Typography>
+            ¿Está seguro que desea eliminar la venta <b>{ventaToDelete?.saleNumber}</b>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={async () => {
+              if (ventaToDelete) {
+                try {
+                  await saleApi.delete(ventaToDelete.id);
+                  setSales(sales.filter(sale => sale.id !== ventaToDelete.id));
+                  setDeleteDialogOpen(false);
+                  setError(null);
+                } catch (err) {
+                  setError('Error al eliminar la venta');
+                  console.error('Error deleting sale:', err);
+                }
+              }
+            }}
+          >
+            Eliminar
           </Button>
         </DialogActions>
       </Dialog>
