@@ -110,14 +110,14 @@ const InformesVentasPage: React.FC = () => {
   };
 
   const getFilteredSales = () => {
-    return sales.filter((sale: Sale) => {
-      const saleDate = new Date(sale.saleDate);
+    return sales.filter((sale: any) => {
+      const saleDate = new Date(sale.fechaVenta);
       const fromDate = new Date(dateFrom);
       const toDate = new Date(dateTo);
 
       const dateMatch = saleDate >= fromDate && saleDate <= toDate;
-      const clientMatch = selectedClient === 'all' || sale.clientId.toString() === selectedClient;
-      const employeeMatch = selectedEmployee === 'all' || sale.employeeId.toString() === selectedEmployee;
+      const clientMatch = selectedClient === 'all' || sale.cliente?.id.toString() === selectedClient;
+      const employeeMatch = selectedEmployee === 'all' || sale.usuario?.id.toString() === selectedEmployee;
 
       return dateMatch && clientMatch && employeeMatch;
     });
@@ -140,15 +140,15 @@ const InformesVentasPage: React.FC = () => {
       return;
     }
 
-    const totalRevenue = filteredSales.reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
+    const totalRevenue = filteredSales.reduce((sum: number, sale: any) => sum + (sale.total || 0), 0);
     const totalTransactions = filteredSales.length;
     const averageOrderValue = totalRevenue / totalTransactions;
 
     // Calculate top client
     const clientSales = clients.map((client: Client) => {
       const clientRevenue = filteredSales
-        .filter((sale: Sale) => sale.clientId === client.id)
-        .reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
+        .filter((sale: any) => sale.cliente?.id === client.id)
+        .reduce((sum: number, sale: any) => sum + (sale.total || 0), 0);
       return { client, revenue: clientRevenue };
     });
     const topClient = clientSales.reduce((prev: any, current: any) => 
@@ -158,8 +158,8 @@ const InformesVentasPage: React.FC = () => {
     // Calculate top employee
     const employeeSales = employees.map((employee: Employee) => {
       const employeeRevenue = filteredSales
-        .filter((sale: Sale) => sale.employeeId === employee.id)
-        .reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
+        .filter((sale: any) => sale.usuario?.id === employee.id)
+        .reduce((sum: number, sale: any) => sum + (sale.total || 0), 0);
       return { employee, revenue: employeeRevenue };
     });
     const topEmployee = employeeSales.reduce((prev: any, current: any) => 
@@ -168,15 +168,15 @@ const InformesVentasPage: React.FC = () => {
 
     // Calculate monthly growth (simplified)
     const currentMonth = new Date().getMonth();
-    const currentMonthSales = filteredSales.filter((sale: Sale) => 
-      new Date(sale.saleDate).getMonth() === currentMonth
+    const currentMonthSales = filteredSales.filter((sale: any) => 
+      new Date(sale.fechaVenta).getMonth() === currentMonth
     );
-    const previousMonthSales = filteredSales.filter((sale: Sale) => 
-      new Date(sale.saleDate).getMonth() === currentMonth - 1
+    const previousMonthSales = filteredSales.filter((sale: any) => 
+      new Date(sale.fechaVenta).getMonth() === currentMonth - 1
     );
     
-    const currentMonthRevenue = currentMonthSales.reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
-    const previousMonthRevenue = previousMonthSales.reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
+    const currentMonthRevenue = currentMonthSales.reduce((sum: number, sale: any) => sum + (sale.total || 0), 0);
+    const previousMonthRevenue = previousMonthSales.reduce((sum: number, sale: any) => sum + (sale.total || 0), 0);
     
     const monthlyGrowth = previousMonthRevenue > 0 
       ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 
@@ -201,12 +201,12 @@ const InformesVentasPage: React.FC = () => {
       // Group by day
       const dailyData = new Map<string, { sales: number; revenue: number; transactions: number }>();
       
-      filteredSales.forEach((sale: Sale) => {
-        const dateKey = new Date(sale.saleDate).toISOString().split('T')[0];
+      filteredSales.forEach((sale: any) => {
+        const dateKey = new Date(sale.fechaVenta).toISOString().split('T')[0];
         const existing = dailyData.get(dateKey) || { sales: 0, revenue: 0, transactions: 0 };
         dailyData.set(dateKey, {
           sales: existing.sales + 1,
-          revenue: existing.revenue + (sale.total || sale.totalAmount || 0),
+          revenue: existing.revenue + (sale.total || 0),
           transactions: existing.transactions + 1,
         });
       });
@@ -221,13 +221,13 @@ const InformesVentasPage: React.FC = () => {
       // Group by month
       const monthlyData = new Map<string, { sales: number; revenue: number; transactions: number }>();
       
-      filteredSales.forEach((sale: Sale) => {
-        const date = new Date(sale.saleDate);
+      filteredSales.forEach((sale: any) => {
+        const date = new Date(sale.fechaVenta);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         const existing = monthlyData.get(monthKey) || { sales: 0, revenue: 0, transactions: 0 };
         monthlyData.set(monthKey, {
           sales: existing.sales + 1,
-          revenue: existing.revenue + (sale.total || sale.totalAmount || 0),
+          revenue: existing.revenue + (sale.total || 0),
           transactions: existing.transactions + 1,
         });
       });
@@ -247,6 +247,18 @@ const InformesVentasPage: React.FC = () => {
 
   const handlePrintReport = () => {
     window.print();
+  };
+
+  // Helper function to get client name safely
+  const getClientName = (clientId: number | string): string => {
+    const client = clients.find(c => c.id.toString() === clientId.toString());
+    return client ? client.name : `Cliente #${clientId}`;
+  };
+
+  // Helper function to get employee name safely
+  const getEmployeeName = (employeeId: number | string): string => {
+    const employee = employees.find(e => e.id.toString() === employeeId.toString());
+    return employee ? `${employee.firstName} ${employee.lastName}` : `Empleado #${employeeId}`;
   };
 
   if (loading) {
@@ -306,7 +318,7 @@ const InformesVentasPage: React.FC = () => {
                 <Select
                   value={reportType}
                   label="Tipo de Reporte"
-                  onChange={(e: any) => setReportType(e.target.value)}
+                  onChange={(e) => setReportType(e.target.value)}
                 >
                   <MenuItem value="daily">Diario</MenuItem>
                   <MenuItem value="monthly">Mensual</MenuItem>
@@ -321,7 +333,7 @@ const InformesVentasPage: React.FC = () => {
                 size="small"
                 fullWidth
                 value={dateFrom}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value)}
+                onChange={(e) => setDateFrom(e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
@@ -332,7 +344,7 @@ const InformesVentasPage: React.FC = () => {
                 size="small"
                 fullWidth
                 value={dateTo}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value)}
+                onChange={(e) => setDateTo(e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
@@ -342,12 +354,12 @@ const InformesVentasPage: React.FC = () => {
                 <Select
                   value={selectedClient}
                   label="Cliente"
-                  onChange={(e: any) => setSelectedClient(e.target.value)}
+                  onChange={(e) => setSelectedClient(e.target.value)}
                 >
                   <MenuItem value="all">Todos los Clientes</MenuItem>
-                  {clients.map((client: Client) => (
+                  {clients.map((client) => (
                     <MenuItem key={client.id} value={client.id.toString()}>
-                      {client.name}
+                      {client.name || `Cliente #${client.id}`}
                     </MenuItem>
                   ))}
                 </Select>
@@ -359,12 +371,12 @@ const InformesVentasPage: React.FC = () => {
                 <Select
                   value={selectedEmployee}
                   label="Vendedor"
-                  onChange={(e: any) => setSelectedEmployee(e.target.value)}
+                  onChange={(e) => setSelectedEmployee(e.target.value)}
                 >
                   <MenuItem value="all">Todos los Vendedores</MenuItem>
-                  {employees.map((employee: Employee) => (
+                  {employees.map((employee) => (
                     <MenuItem key={employee.id} value={employee.id.toString()}>
-                      {employee.firstName} {employee.lastName}
+                      {`${employee.firstName || ''} ${employee.lastName || ''}`.trim() || `Empleado #${employee.id}`}
                     </MenuItem>
                   ))}
                 </Select>
@@ -461,7 +473,9 @@ const InformesVentasPage: React.FC = () => {
                 {metrics.topClient ? (
                   <Box>
                     <Typography variant="h5">{metrics.topClient.name}</Typography>
-                    <Typography color="textSecondary">{metrics.topClient.email}</Typography>
+                    <Typography color="textSecondary">
+                      {metrics.topClient.email || 'Sin email'}
+                    </Typography>
                   </Box>
                 ) : (
                   <Typography color="textSecondary">No hay datos</Typography>
@@ -476,9 +490,11 @@ const InformesVentasPage: React.FC = () => {
                 {metrics.topEmployee ? (
                   <Box>
                     <Typography variant="h5">
-                      {metrics.topEmployee.firstName} {metrics.topEmployee.lastName}
+                      {`${metrics.topEmployee.firstName || ''} ${metrics.topEmployee.lastName || ''}`.trim()}
                     </Typography>
-                    <Typography color="textSecondary">{metrics.topEmployee.position}</Typography>
+                    <Typography color="textSecondary">
+                      {metrics.topEmployee.position || 'Sin posición'}
+                    </Typography>
                   </Box>
                 ) : (
                   <Typography color="textSecondary">No hay datos</Typography>
@@ -494,7 +510,7 @@ const InformesVentasPage: React.FC = () => {
                   <Box>
                     <Typography variant="h5">{metrics.topProduct.name}</Typography>
                     <Typography color="textSecondary">
-                      ${metrics.topProduct.price.toLocaleString()}
+                      ${metrics.topProduct.price?.toLocaleString() || '0'}
                     </Typography>
                   </Box>
                 ) : (

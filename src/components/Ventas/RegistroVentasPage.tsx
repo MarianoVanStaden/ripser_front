@@ -27,6 +27,9 @@ import {
   InputLabel,
   Select,
   Divider,
+  Autocomplete,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,19 +45,32 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
-import { saleApi, clientApi, employeeApi } from '../../api/services';
-import type { Sale, Client, Employee, SaleStatus, PaymentMethod } from '../../types';
+import { saleApi, clienteApi, usuarioApi } from '../../api/services';
+import type { Sale, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
 
 const RegistroVentasPage: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [clients, setClients] = useState<Cliente[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [ventaToDelete, setVentaToDelete] = useState<Sale | null>(null);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [editForm, setEditForm] = useState({
+    numeroVenta: '',
+    clienteId: '',
+    usuarioId: '',
+    estado: '',
+    metodoPago: 'CASH' as PaymentMethod,
+    fechaVenta: '',
+    notas: '',
+    total: 0,
+  });
+  const [editLoading, setEditLoading] = useState(false);
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,66 +84,188 @@ const RegistroVentasPage: React.FC = () => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
     try {
       setLoading(true);
-      const [salesData, clientsData, employeesData] = await Promise.all([
+      setError(null);
+      
+      // Load all data in parallel
+      const [salesData, clientsData, usuariosData] = await Promise.all([
         saleApi.getAll(),
-        clientApi.getAll(),
-        employeeApi.getAll(),
+        clienteApi.getAll(),
+        usuarioApi.getAll(),
       ]);
       
-      setSales(salesData);
+      console.log('Sales data:', salesData);
+      console.log('Clients data:', clientsData);
+      console.log('Usuarios data:', usuariosData);
+      
+      // Create maps for quick lookups
+      const clientsMap = new Map(clientsData.map((client: Cliente) => [client.id, client]));
+      const usuariosMap = new Map(usuariosData.map((usuario: Usuario) => [usuario.id, usuario]));
+      
+      // Enrich sales data with client and usuario information
+      const enrichedSales = salesData.map((sale: any) => {
+        // The backend seems to be missing cliente field entirely
+        // We need to assign a default client or handle this case
+        let cliente = null;
+        
+        // Check if there's a clienteId field (hidden in the object)
+        if (sale.clienteId) {
+          cliente = clientsMap.get(sale.clienteId);
+        } else if (sale.cliente?.id) {
+          cliente = clientsMap.get(sale.cliente.id);
+        } else if (sale.cliente) {
+          cliente = sale.cliente;
+        } else {
+          // If no client is specified, assign the first available client as default
+          // or create a placeholder
+          cliente = clientsData.length > 0 ? clientsData[0] : {
+            id: 0,
+            nombre: 'Cliente',
+            apellido: 'No Especificado',
+            razonSocial: '',
+            cuit: '',
+            email: '',
+            telefono: '',
+            direccion: ''
+          };
+        }
+        
+        // Find usuario (this seems to be working correctly)
+        let usuario = null;
+        if (sale.usuarioId) {
+          usuario = usuariosMap.get(sale.usuarioId);
+        } else if (sale.usuario?.id) {
+          usuario = usuariosMap.get(sale.usuario.id);
+        } else if (sale.usuario) {
+          usuario = sale.usuario;
+        }
+        
+        // Handle metodoPago - if it's missing, set a default
+        const metodoPago = sale.metodoPago || 'CASH';
+        
+        console.log(`Sale ${sale.id}: cliente=`, cliente, 'usuario=', usuario, 'metodoPago=', metodoPago);
+        
+        return {
+          ...sale,
+          cliente,
+          usuario: usuario || null,
+          metodoPago,
+        };
+      });
+      
+      setSales(enrichedSales);
       setClients(clientsData);
-      setEmployees(employeesData);
-      setError(null);
+      setUsuarios(usuariosData);
+      
     } catch (err) {
-      setError('Error al cargar las ventas. Asegúrese de que el backend esté funcionando.');
-      console.error('Error loading sales:', err);
+      console.error('Error loading data:', err);
+      setError('Error al cargar los datos. Verifique la conexión con el servidor.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewSale = (sale: Sale) => {
+  const handleViewSale = (sale: Sale): void => {
+    console.log('Viewing sale:', sale);
     setViewingSale(sale);
     setViewDialogOpen(true);
   };
 
-  const handleDeleteSale = async (saleId: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta venta?')) {
-      try {
-        await saleApi.delete(saleId);
-        await loadData();
-      } catch (err) {
-        setError('Error al eliminar la venta');
-        console.error('Error deleting sale:', err);
-      }
+  const handleEditSale = (sale: Sale): void => {
+    setEditingSale(sale);
+    setEditForm({
+      numeroVenta: sale.numeroVenta || '',
+      clienteId: sale.cliente?.id?.toString() || '',
+      usuarioId: sale.usuario?.id?.toString() || '',
+      estado: sale.estado || 'PENDIENTE',
+      metodoPago: sale.metodoPago || 'CASH',
+      fechaVenta: sale.fechaVenta ? new Date(sale.fechaVenta).toISOString().split('T')[0] : '',
+      notas: sale.notas || '',
+      total: sale.total || 0,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateSale = async (): Promise<void> => {
+    if (!editingSale) return;
+
+    try {
+      setEditLoading(true);
+      setError(null);
+
+      const updatedSaleData = {
+        ...editingSale,
+        numeroVenta: editForm.numeroVenta,
+        clienteId: parseInt(editForm.clienteId),
+        usuarioId: parseInt(editForm.usuarioId),
+        estado: editForm.estado,
+        metodoPago: editForm.metodoPago,
+        fechaVenta: editForm.fechaVenta,
+        notas: editForm.notas,
+        total: editForm.total,
+      };
+
+      const updatedSale = await saleApi.update(editingSale.id, updatedSaleData);
+      
+      // Update the local state with enriched data
+      const clientsMap = new Map(clients.map((client: Cliente) => [client.id, client]));
+      const usuariosMap = new Map(usuarios.map((usuario: Usuario) => [usuario.id, usuario]));
+      
+      const enrichedUpdatedSale = {
+        ...updatedSale,
+        cliente: clientsMap.get(parseInt(editForm.clienteId)) || null,
+        usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || null,
+      };
+
+      setSales(prevSales => 
+        prevSales.map(sale => 
+          sale.id === editingSale.id ? enrichedUpdatedSale : sale
+        )
+      );
+
+      setEditDialogOpen(false);
+      setEditingSale(null);
+    } catch (err) {
+      console.error('Error updating sale:', err);
+      setError('Error al actualizar la venta. Verifique los datos e intente nuevamente.');
+    } finally {
+      setEditLoading(false);
     }
   };
 
-  const getStatusLabel = (status: SaleStatus) => {
-    const statusLabels = {
-      DRAFT: 'Borrador',
-      PENDING: 'Pendiente',
-      COMPLETED: 'Completada',
-      CANCELLED: 'Cancelada',
+  const handleEditFormChange = (field: string, value: string | number): void => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const getStatusLabel = (status: string): string => {
+    const statusLabels: Record<string, string> = {
+      'PENDIENTE': 'Pendiente',
+      'ENVIADA': 'Enviada', 
+      'CANCELADA': 'Cancelada',
+      'ENTREGADA': 'Entregada',
+      'CONFIRMADA': 'Confirmada',
     };
     return statusLabels[status] || status;
   };
 
-  const getStatusColor = (status: SaleStatus) => {
-    const statusColors = {
-      DRAFT: 'default' as const,
-      PENDING: 'warning' as const,
-      COMPLETED: 'success' as const,
-      CANCELLED: 'error' as const,
+  const getStatusColor = (status: string): 'warning' | 'info' | 'error' | 'success' | 'default' => {
+    const statusColors: Record<string, 'warning' | 'info' | 'error' | 'success' | 'default'> = {
+      'PENDIENTE': 'warning',
+      'ENVIADA': 'info',
+      'CANCELADA': 'error',
+      'ENTREGADA': 'success',
+      'CONFIRMADA': 'success',
     };
     return statusColors[status] || 'default';
   };
 
-  const getPaymentMethodLabel = (method: PaymentMethod) => {
-    const methods = {
+  const getPaymentMethodLabel = (method: PaymentMethod): string => {
+    const methods: Record<PaymentMethod, string> = {
       CASH: 'Efectivo',
       CREDIT_CARD: 'Tarjeta de Crédito',
       DEBIT_CARD: 'Tarjeta de Débito',
@@ -137,17 +275,42 @@ const RegistroVentasPage: React.FC = () => {
     return methods[method] || method;
   };
 
+  // Helper function to get client full name
+  const getClientFullName = (cliente: Cliente | null): string => {
+    if (!cliente) return 'Cliente no disponible';
+    
+    // If it's a business (persona jurídica), prioritize razón social
+    if (cliente.razonSocial && cliente.razonSocial.trim()) {
+      return cliente.razonSocial;
+    }
+    
+    // Otherwise, use name and lastname
+    const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : 'Cliente no disponible';
+  };
+
+  // Helper function to get usuario full name
+  const getUsuarioFullName = (usuario: Usuario | null): string => {
+    if (!usuario) return 'Vendedor no disponible';
+    
+    const parts = [usuario.nombre, usuario.apellido].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : 'Vendedor no disponible';
+  };
+
   const filteredSales = sales.filter((sale: Sale) => {
+    const clientName = getClientFullName(sale.cliente);
+    const usuarioName = getUsuarioFullName(sale.usuario);
+    
     const matchesSearch = searchTerm === '' || 
-      sale.saleNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.employee?.firstName?.toLowerCase().includes(searchTerm.toLowerCase());
+      sale.numeroVenta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      usuarioName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || sale.status === statusFilter;
-    const matchesPaymentMethod = paymentMethodFilter === 'all' || sale.paymentMethod === paymentMethodFilter;
-    const matchesClient = clientFilter === 'all' || sale.clientId.toString() === clientFilter;
+    const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter;
+    const matchesClient = clientFilter === 'all' || sale.cliente?.id?.toString() === clientFilter;
 
-    const saleDate = new Date(sale.saleDate);
+    const saleDate = new Date(sale.fechaVenta);
     const matchesDateFrom = !dateFromFilter || saleDate >= new Date(dateFromFilter);
     const matchesDateTo = !dateToFilter || saleDate <= new Date(dateToFilter);
 
@@ -155,7 +318,7 @@ const RegistroVentasPage: React.FC = () => {
            matchesClient && matchesDateFrom && matchesDateTo;
   });
 
-  const clearFilters = () => {
+  const clearFilters = (): void => {
     setSearchTerm('');
     setStatusFilter('all');
     setPaymentMethodFilter('all');
@@ -166,7 +329,7 @@ const RegistroVentasPage: React.FC = () => {
 
   const calculateTotals = () => {
     const totalRevenue = filteredSales.reduce((sum: number, sale: Sale) => 
-      sum + (sale.total || sale.totalAmount || 0), 0);
+      sum + (sale.total || 0), 0);
     const totalTransactions = filteredSales.length;
     const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
 
@@ -291,13 +454,14 @@ const RegistroVentasPage: React.FC = () => {
                 <Select
                   value={statusFilter}
                   label="Estado"
-                  onChange={(e: any) => setStatusFilter(e.target.value)}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="DRAFT">Borrador</MenuItem>
-                  <MenuItem value="PENDING">Pendiente</MenuItem>
-                  <MenuItem value="COMPLETED">Completada</MenuItem>
-                  <MenuItem value="CANCELLED">Cancelada</MenuItem>
+                  <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                  <MenuItem value="ENVIADA">Enviada</MenuItem>
+                  <MenuItem value="CANCELADA">Cancelada</MenuItem>
+                  <MenuItem value="ENTREGADA">Entregada</MenuItem>
+                  <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -307,7 +471,7 @@ const RegistroVentasPage: React.FC = () => {
                 <Select
                   value={paymentMethodFilter}
                   label="Método de Pago"
-                  onChange={(e: any) => setPaymentMethodFilter(e.target.value)}
+                  onChange={(e) => setPaymentMethodFilter(e.target.value)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="CASH">Efectivo</MenuItem>
@@ -324,12 +488,12 @@ const RegistroVentasPage: React.FC = () => {
                 <Select
                   value={clientFilter}
                   label="Cliente"
-                  onChange={(e: any) => setClientFilter(e.target.value)}
+                  onChange={(e) => setClientFilter(e.target.value)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  {clients.map((client: Client) => (
+                  {clients.map((client: Cliente) => (
                     <MenuItem key={client.id} value={client.id.toString()}>
-                      {client.name}
+                      {getClientFullName(client)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -394,38 +558,47 @@ const RegistroVentasPage: React.FC = () => {
                       <Typography variant="body2" fontWeight="bold">
                         #{sale.id}
                       </Typography>
-                      {sale.saleNumber && (
+                      {sale.numeroVenta && (
                         <Typography variant="caption" color="text.secondary">
-                          {sale.saleNumber}
+                          {sale.numeroVenta}
                         </Typography>
                       )}
                     </TableCell>
                     <TableCell>
-                      {new Date(sale.saleDate).toLocaleDateString()}
+                      {sale.fechaVenta ? new Date(sale.fechaVenta).toLocaleDateString() : '-'}
                     </TableCell>
                     <TableCell>
-                      {sale.client?.name || `Cliente #${sale.clientId}`}
+                      <Box>
+                        <Typography variant="body2">
+                          {getClientFullName(sale.cliente)}
+                        </Typography>
+                        {sale.cliente?.email && (
+                          <Typography variant="caption" color="text.secondary">
+                            {sale.cliente.email}
+                          </Typography>
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
-                      {sale.employee?.firstName 
-                        ? `${sale.employee.firstName} ${sale.employee.lastName}`
-                        : `Vendedor #${sale.employeeId}`}
+                      <Typography variant="body2">
+                        {getUsuarioFullName(sale.usuario)}
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getStatusLabel(sale.status)}
-                        color={getStatusColor(sale.status)}
+                        label={getStatusLabel(sale.estado)}
+                        color={getStatusColor(sale.estado)}
                         size="small"
                       />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
-                        ${(sale.total || sale.totalAmount || 0).toLocaleString()}
+                        ${(sale.total || 0).toLocaleString()}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getPaymentMethodLabel(sale.paymentMethod)}
+                        label={getPaymentMethodLabel(sale.metodoPago)}
                         size="small"
                         color="primary"
                         variant="outlined"
@@ -441,7 +614,7 @@ const RegistroVentasPage: React.FC = () => {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => alert('Función de edición en desarrollo')}
+                        onClick={() => handleEditSale(sale)}
                         title="Editar"
                       >
                         <EditIcon />
@@ -492,31 +665,53 @@ const RegistroVentasPage: React.FC = () => {
             <Box>
               <Grid container spacing={2} mb={3}>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Información General
                   </Typography>
-                  <Typography><strong>Número:</strong> {viewingSale.saleNumber || 'N/A'}</Typography>
-                  <Typography><strong>Fecha:</strong> {new Date(viewingSale.saleDate).toLocaleDateString()}</Typography>
-                  <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.status)}</Typography>
-                  <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.paymentMethod)}</Typography>
+                  <Box sx={{ mb: 1 }}>
+                    <Typography><strong>Número:</strong> {viewingSale.numeroVenta || 'N/A'}</Typography>
+                    <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
+                    <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
+                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago)}</Typography>
+                  </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Cliente y Vendedor
                   </Typography>
-                  <Typography><strong>Cliente:</strong> {viewingSale.client?.name || `Cliente #${viewingSale.clientId}`}</Typography>
-                  <Typography><strong>Vendedor:</strong> {viewingSale.employee?.firstName 
-                    ? `${viewingSale.employee.firstName} ${viewingSale.employee.lastName}`
-                    : `Vendedor #${viewingSale.employeeId}`}</Typography>
+                  <Box sx={{ mb: 1 }}>
+                    <Typography>
+                      <strong>Cliente:</strong> {getClientFullName(viewingSale.cliente)}
+                    </Typography>
+                    {viewingSale.cliente?.email && (
+                      <Typography variant="body2" color="text.secondary">
+                        Email: {viewingSale.cliente.email}
+                      </Typography>
+                    )}
+                    {viewingSale.cliente?.telefono && (
+                      <Typography variant="body2" color="text.secondary">
+                        Teléfono: {viewingSale.cliente.telefono}
+                      </Typography>
+                    )}
+                    {viewingSale.cliente?.cuit && (
+                      <Typography variant="body2" color="text.secondary">
+                        CUIT: {viewingSale.cliente.cuit}
+                      </Typography>
+                    )}
+                    
+                    <Typography sx={{ mt: 2 }}>
+                      <strong>Vendedor:</strong> {getUsuarioFullName(viewingSale.usuario)}
+                    </Typography>
+                  </Box>
                 </Grid>
               </Grid>
 
               <Divider sx={{ my: 2 }} />
 
-              {viewingSale.items && viewingSale.items.length > 0 && (
+              {viewingSale.detalleVentas && viewingSale.detalleVentas.length > 0 ? (
                 <>
                   <Typography variant="subtitle2" color="text.secondary" mb={2}>
-                    Artículos
+                    Productos ({viewingSale.detalleVentas.length} artículos)
                   </Typography>
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
@@ -526,39 +721,59 @@ const RegistroVentasPage: React.FC = () => {
                           <TableCell align="center">Cantidad</TableCell>
                           <TableCell align="right">Precio Unit.</TableCell>
                           <TableCell align="right">Descuento</TableCell>
-                          <TableCell align="right">Total</TableCell>
+                          <TableCell align="right">Subtotal</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {viewingSale.items.map((item: any, index: number) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.product?.name || item.productName || 'Producto N/A'}</TableCell>
-                            <TableCell align="center">{item.quantity}</TableCell>
-                            <TableCell align="right">${item.unitPrice?.toFixed(2) || '0.00'}</TableCell>
-                            <TableCell align="right">{item.discount || 0}%</TableCell>
-                            <TableCell align="right">${item.total?.toFixed(2) || '0.00'}</TableCell>
+                        {viewingSale.detalleVentas.map((item: DetalleVenta, index: number) => (
+                          <TableRow key={item.id || index}>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {item.producto?.nombre || 'Producto no disponible'}
+                              </Typography>
+                              {item.producto?.descripcion && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {item.producto.descripcion}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="center">{item.cantidad}</TableCell>
+                            <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>
+                            <TableCell align="right">{item.descuento || 0}%</TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight="bold">
+                                ${item.subtotal?.toFixed(2) || '0.00'}
+                              </Typography>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </TableContainer>
                 </>
+              ) : (
+                <Alert severity="info">
+                  No hay productos asociados a esta venta
+                </Alert>
               )}
 
-              <Box mt={3} display="flex" justifyContent="space-between">
-                <Typography variant="h6">
-                  Total: ${(viewingSale.total || viewingSale.totalAmount || 0).toLocaleString()}
+              <Box mt={3} display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  {viewingSale.notas && (
+                    <>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Notas
+                      </Typography>
+                      <Typography variant="body2">
+                        {viewingSale.notas}
+                      </Typography>
+                    </>
+                  )}
+                </Box>
+                <Typography variant="h5" color="primary" fontWeight="bold">
+                  Total: ${(viewingSale.total || 0).toLocaleString()}
                 </Typography>
               </Box>
-
-              {viewingSale.notes && (
-                <Box mt={2}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Notas
-                  </Typography>
-                  <Typography>{viewingSale.notes}</Typography>
-                </Box>
-              )}
             </Box>
           )}
         </DialogContent>
@@ -574,12 +789,195 @@ const RegistroVentasPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Edit Sale Dialog */}
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => setEditDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle>
+          Editar Venta #{editingSale?.id}
+        </DialogTitle>
+        <DialogContent>
+          {editingSale && (
+            <Box sx={{ mt: 2 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Número de Venta"
+                    value={editForm.numeroVenta}
+                    onChange={(e) => handleEditFormChange('numeroVenta', e.target.value)}
+                    variant="outlined"
+                    size="small"
+                  />
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Fecha de Venta"
+                    type="date"
+                    value={editForm.fechaVenta}
+                    onChange={(e) => handleEditFormChange('fechaVenta', e.target.value)}
+                    variant="outlined"
+                    size="small"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Cliente</InputLabel>
+                    <Select
+                      value={editForm.clienteId}
+                      label="Cliente"
+                      onChange={(e) => handleEditFormChange('clienteId', e.target.value)}
+                    >
+                      {clients.map((client: Cliente) => (
+                        <MenuItem key={client.id} value={client.id.toString()}>
+                          {getClientFullName(client)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Vendedor</InputLabel>
+                    <Select
+                      value={editForm.usuarioId}
+                      label="Vendedor"
+                      onChange={(e) => handleEditFormChange('usuarioId', e.target.value)}
+                    >
+                      {usuarios.map((usuario: Usuario) => (
+                        <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                          {getUsuarioFullName(usuario)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Estado</InputLabel>
+                    <Select
+                      value={editForm.estado}
+                      label="Estado"
+                      onChange={(e) => handleEditFormChange('estado', e.target.value)}
+                    >
+                      <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                      <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
+                      <MenuItem value="ENVIADA">Enviada</MenuItem>
+                      <MenuItem value="ENTREGADA">Entregada</MenuItem>
+                      <MenuItem value="CANCELADA">Cancelada</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Método de Pago</InputLabel>
+                    <Select
+                      value={editForm.metodoPago}
+                      label="Método de Pago"
+                      onChange={(e) => handleEditFormChange('metodoPago', e.target.value as PaymentMethod)}
+                    >
+                      <MenuItem value="CASH">Efectivo</MenuItem>
+                      <MenuItem value="CREDIT_CARD">Tarjeta de Crédito</MenuItem>
+                      <MenuItem value="DEBIT_CARD">Tarjeta de Débito</MenuItem>
+                      <MenuItem value="BANK_TRANSFER">Transferencia</MenuItem>
+                      <MenuItem value="CHECK">Cheque</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Total"
+                    type="number"
+                    value={editForm.total}
+                    onChange={(e) => handleEditFormChange('total', parseFloat(e.target.value) || 0)}
+                    variant="outlined"
+                    size="small"
+                    InputProps={{
+                      startAdornment: <Typography variant="body2" sx={{ mr: 1 }}>$</Typography>,
+                    }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Notas"
+                    multiline
+                    rows={3}
+                    value={editForm.notas}
+                    onChange={(e) => handleEditFormChange('notas', e.target.value)}
+                    variant="outlined"
+                    size="small"
+                    placeholder="Agregar notas adicionales sobre la venta..."
+                  />
+                </Grid>
+
+                {/* Current Sale Details Summary */}
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Resumen de la Venta
+                  </Typography>
+                  <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2">
+                          <strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2">
+                          <strong>Vendedor Actual:</strong> {getUsuarioFullName(editingSale.usuario)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2">
+                          <strong>Estado Actual:</strong> {getStatusLabel(editingSale.estado)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2">
+                          <strong>Total Actual:</strong> ${(editingSale.total || 0).toLocaleString()}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+          <Button
+            onClick={handleUpdateSale}
+            color="primary"
+            variant="contained"
+            disabled={editLoading}
+          >
+            {editLoading ? <CircularProgress size={24} /> : 'Guardar Cambios'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Delete Sale Dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Eliminar venta</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Está seguro que desea eliminar la venta <b>{ventaToDelete?.saleNumber}</b>?
+            ¿Está seguro que desea eliminar la venta <b>{ventaToDelete?.numeroVenta}</b>?
           </Typography>
         </DialogContent>
         <DialogActions>

@@ -1094,6 +1094,15 @@ export interface Usuario {
 }
 
 // Venta (Sale)
+export interface DetalleVenta {
+  id: number;
+  ventaId: number;
+  productoId?: number;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
 export interface Venta {
   id: number;
   clienteId: number;
@@ -1111,6 +1120,7 @@ export interface Venta {
   observaciones?: string;
   createdAt?: string;
   updatedAt?: string;
+  detalleVentas: DetalleVenta[];
 }
 
 // Vehiculo (Vehicle)
