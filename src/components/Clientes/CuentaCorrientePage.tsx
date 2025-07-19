@@ -41,8 +41,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
-import { cuentaCorrienteApiWithFallback as cuentaCorrienteApi } from '../../api/services/apiWithFallback';
+import { clienteApi } from '../../api/services/clienteApi';
+import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
 import type { Cliente, CuentaCorriente, TipoMovimiento } from '../../types';
 
 dayjs.locale('es');
@@ -66,106 +66,84 @@ const CuentaCorrientePage: React.FC = () => {
     numeroComprobante: ''
   });
 
-  // Mock data for demonstration
-  const mockMovimientos: CuentaCorriente[] = [
-    {
-      id: 1,
-      clienteId: 1,
-      fecha: '2024-01-15',
-      tipo: 'DEBITO',
-      importe: 15000,
-      concepto: 'Factura 001-00001234',
-      numeroComprobante: '001-00001234',
-      saldo: 15000
-    },
-    {
-      id: 2,
-      clienteId: 1,
-      fecha: '2024-01-20',
-      tipo: 'CREDITO',
-      importe: 10000,
-      concepto: 'Pago en efectivo',
-      numeroComprobante: 'REC-0001',
-      saldo: 5000
-    },
-    {
-      id: 3,
-      clienteId: 1,
-      fecha: '2024-02-01',
-      tipo: 'DEBITO',
-      importe: 8500,
-      concepto: 'Factura 001-00001235',
-      numeroComprobante: '001-00001235',
-      saldo: 13500
-    },
-    {
-      id: 4,
-      clienteId: 2,
-      fecha: '2024-02-10',
-      tipo: 'CREDITO',
-      importe: 5000,
-      concepto: 'Transferencia bancaria',
-      numeroComprobante: 'TRANSF-001',
-      saldo: 8500
-    }
-  ];
-
   useEffect(() => {
-    loadData();
+    // Load only the list of clients on initial render
+    const loadClients = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const clientesData = await clienteApi.getAll();
+        setClientes(clientesData);
+      } catch (err) {
+        setError('Error al cargar la lista de clientes.');
+        console.error('Error loading clients:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadClients();
   }, []);
 
   const loadData = async () => {
+    if (!selectedCliente) return;
     try {
       setLoading(true);
       setError(null);
-      const clientesData = await clienteApi.getAll();
-      setClientes(clientesData);
-      setMovimientos(mockMovimientos);
+      const movimientosData = await cuentaCorrienteApi.getByClienteId(selectedCliente.id);
+      setMovimientos(movimientosData);
     } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
+      setError('Error al cargar los movimientos del cliente.');
+      console.error('Error loading movements:', err);
+      setMovimientos([]); // Clear movements on error
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClienteChange = async (clienteId: number) => {
+  const handleClienteChange = (clienteId: number) => {
     const cliente = clientes.find(c => c.id === clienteId) || null;
     setSelectedCliente(cliente);
     
     if (cliente) {
-      try {
-        setLoading(true);
-        // Filter movements for selected client
-        const clienteMovimientos = mockMovimientos.filter(m => m.clienteId === clienteId);
-        setMovimientos(clienteMovimientos);
-      } catch (err) {
-        setError('Error al cargar los movimientos del cliente');
-        console.error('Error loading client movements:', err);
-      } finally {
-        setLoading(false);
-      }
+      // Fetch movements for the newly selected client
+      const fetchMovimientos = async () => {
+        try {
+          setLoading(true);
+          const data = await cuentaCorrienteApi.getByClienteId(cliente.id);
+          setMovimientos(data);
+        } catch (err) {
+          setError('Error al cargar los movimientos del cliente.');
+          console.error('Error loading client movements:', err);
+          setMovimientos([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchMovimientos();
     } else {
-      setMovimientos(mockMovimientos);
+      // If "Todos los clientes" is selected, clear the movements
+      setMovimientos([]);
     }
   };
 
   const handleSaveMovimiento = async () => {
-    if (!selectedCliente) return;
+    if (!selectedCliente) {
+      setError("Debe seleccionar un cliente para registrar un movimiento.");
+      return;
+    }
 
     try {
-      const nuevoMovimiento: CuentaCorriente = {
-        id: Date.now(),
-        clienteId: selectedCliente.id,
-        fecha: new Date().toISOString().split('T')[0],
-        tipo: newMovimiento.tipo,
-        importe: newMovimiento.importe,
-        concepto: newMovimiento.concepto,
-        numeroComprobante: newMovimiento.numeroComprobante,
-        saldo: calculateNewSaldo(newMovimiento.tipo, newMovimiento.importe)
+      setLoading(true);
+      // The backend expects a 'cliente' object with just the 'id'
+      const payload = {
+        ...newMovimiento,
+        cliente: { id: selectedCliente.id },
+        fecha: new Date().toISOString(), // Send date in ISO format
       };
 
-      setMovimientos([nuevoMovimiento, ...movimientos]);
+      await cuentaCorrienteApi.create(payload);
+      
+      // Reset form and close dialog
       setNewMovimiento({
         tipo: 'CREDITO',
         importe: 0,
@@ -173,15 +151,15 @@ const CuentaCorrientePage: React.FC = () => {
         numeroComprobante: ''
       });
       setOpenMovimientoDialog(false);
-    } catch (err) {
-      setError('Error al guardar el movimiento');
-      console.error('Error saving movement:', err);
-    }
-  };
 
-  const calculateNewSaldo = (tipo: TipoMovimiento, importe: number): number => {
-    const saldoActual = movimientos.length > 0 ? movimientos[0].saldo : 0;
-    return tipo === 'DEBITO' ? saldoActual + importe : saldoActual - importe;
+      // Refresh the movements for the current client
+      await loadData();
+    } catch (err) {
+      setError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
+      console.error('Error saving movement:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredMovimientos = movimientos.filter(mov => {
@@ -200,7 +178,8 @@ const CuentaCorrientePage: React.FC = () => {
   });
 
   const getSaldoTotal = () => {
-    return filteredMovimientos.length > 0 ? filteredMovimientos[0].saldo : 0;
+    // Use the saldoActual from the selected client object for the most up-to-date balance
+    return selectedCliente?.saldoActual ?? 0;
   };
 
   const getTotalDebitos = () => {
@@ -379,7 +358,7 @@ const CuentaCorrientePage: React.FC = () => {
               {filteredMovimientos.map((movimiento) => (
                 <TableRow key={movimiento.id}>
                   <TableCell>
-                    {new Date(movimiento.fecha).toLocaleDateString()}
+                    {dayjs(movimiento.fecha).format('DD/MM/YYYY HH:mm')}
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -389,21 +368,14 @@ const CuentaCorrientePage: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell>{movimiento.concepto}</TableCell>
-                  <TableCell>{movimiento.numeroComprobante}</TableCell>
+                  <TableCell>{movimiento.numeroComprobante || '-'}</TableCell>
                   <TableCell align="right">
-                    <Typography
-                      color={movimiento.tipo === 'DEBITO' ? 'error.main' : 'success.main'}
-                    >
-                      ${movimiento.importe.toLocaleString()}
-                    </Typography>
+                    {/* Defensive check for importe */}
+                    ${(movimiento.importe ?? 0).toLocaleString('es-AR')}
                   </TableCell>
-                  <TableCell align="right">
-                    <Typography
-                      color={movimiento.saldo >= 0 ? 'success.main' : 'error.main'}
-                      fontWeight="bold"
-                    >
-                      ${movimiento.saldo.toLocaleString()}
-                    </Typography>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                    {/* This is the fix: provide a fallback for null saldo */}
+                    ${(movimiento.saldo ?? 0).toLocaleString('es-AR')}
                   </TableCell>
                 </TableRow>
               ))}

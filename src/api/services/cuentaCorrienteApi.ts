@@ -1,22 +1,27 @@
-import api from '../config';
+import api from '../api'; // Import the configured axios instance
 import type { CuentaCorriente } from '../../types';
 
+const BASE_PATH = '/clientes/cuenta-corriente';
+
+type CreateMovimientoPayload = Omit<CuentaCorriente, 'id' | 'saldo' | 'cliente' | 'fecha'> & {
+  cliente: { id: number };
+  fecha: string; // ISO string
+};
+
 export const cuentaCorrienteApi = {
-  // Get cuenta corriente by cliente
-  getByCliente: async (clienteId: number): Promise<CuentaCorriente[]> => {
-    const response = await api.get(`/api/clientes/cuenta-corriente/cliente/${clienteId}`);
+  /**
+   * Fetches all account movements for a specific client.
+   */
+  getByClienteId: async (clienteId: number): Promise<CuentaCorriente[]> => {
+    const response = await api.get<CuentaCorriente[]>(`${BASE_PATH}/cliente/${clienteId}`);
     return response.data;
   },
 
-  // Get saldo by cliente
-  getSaldo: async (clienteId: number): Promise<number> => {
-    const response = await api.get(`/api/clientes/cuenta-corriente/saldo/${clienteId}`);
-    return response.data;
-  },
-
-  // Create movimiento
-  create: async (movimiento: CuentaCorriente): Promise<CuentaCorriente> => {
-    const response = await api.post('/api/clientes/cuenta-corriente', movimiento);
+  /**
+   * Creates a new account movement.
+   */
+  create: async (movimiento: CreateMovimientoPayload): Promise<CuentaCorriente> => {
+    const response = await api.post<CuentaCorriente>(BASE_PATH, movimiento);
     return response.data;
   },
 };
