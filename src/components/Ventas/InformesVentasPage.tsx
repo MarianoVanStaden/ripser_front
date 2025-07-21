@@ -103,32 +103,85 @@ const InformeVentasPage = () => {
     try {
       setLoading(true);
       setError(null);
+      
       const [salesData, clientsData, usuariosData] = await Promise.all([
         saleApi.getAll(),
         clienteApi.getAll(),
         usuarioApi.getAll(),
       ]);
-      const clientsMap = new Map(clientsData.map(client => [client.id, client]));
-      const usuariosMap = new Map(usuariosData.map(usuario => [usuario.id, usuario]));
+
+      console.log('Sales data:', salesData);
+      console.log('Clients data:', clientsData);
+      console.log('Usuarios data:', usuariosData);
+
+      // Create maps for faster lookups
+      const clientsMap = new Map();
+      const usuariosMap = new Map();
+
+      // Handle different possible data structures for clients
+      if (Array.isArray(clientsData)) {
+        clientsData.forEach(client => {
+          if (client && client.id !== undefined && client.id !== null) {
+            clientsMap.set(client.id, client);
+            // Also map by string version of ID
+            clientsMap.set(String(client.id), client);
+          }
+        });
+      }
+
+      // Handle different possible data structures for usuarios
+      if (Array.isArray(usuariosData)) {
+        usuariosData.forEach(usuario => {
+          if (usuario && usuario.id !== undefined && usuario.id !== null) {
+            usuariosMap.set(usuario.id, usuario);
+            // Also map by string version of ID
+            usuariosMap.set(String(usuario.id), usuario);
+          }
+        });
+      }
+
+      // Enrich sales data with client and usuario information
       const enrichedSales = salesData.map(sale => {
-        let cliente = sale.cliente || null;
-        if (sale.clienteId && !cliente) {
-          cliente = clientsMap.get(sale.clienteId) || null;
+        let cliente = null;
+        let usuario = null;
+
+        // Try to get client info from multiple possible fields
+        if (sale.cliente && typeof sale.cliente === 'object') {
+          cliente = sale.cliente;
+        } else if (sale.clienteId) {
+          cliente = clientsMap.get(sale.clienteId) || clientsMap.get(String(sale.clienteId)) || null;
+        } else if (sale.cliente_id) {
+          cliente = clientsMap.get(sale.cliente_id) || clientsMap.get(String(sale.cliente_id)) || null;
         }
-        let usuario = sale.usuario || null;
-        if (sale.usuarioId && !usuario) {
-          usuario = usuariosMap.get(sale.usuarioId) || null;
+
+        // Try to get usuario info from multiple possible fields
+        if (sale.usuario && typeof sale.usuario === 'object') {
+          usuario = sale.usuario;
+        } else if (sale.usuarioId) {
+          usuario = usuariosMap.get(sale.usuarioId) || usuariosMap.get(String(sale.usuarioId)) || null;
+        } else if (sale.usuario_id) {
+          usuario = usuariosMap.get(sale.usuario_id) || usuariosMap.get(String(sale.usuario_id)) || null;
         }
+
+        console.log(`Sale ${sale.id}:`, { 
+          clienteId: sale.clienteId || sale.cliente_id, 
+          cliente, 
+          usuarioId: sale.usuarioId || sale.usuario_id, 
+          usuario 
+        });
+
         return {
           ...sale,
           cliente,
           usuario,
-          metodoPago: sale.metodoPago || 'CASH',
+          metodoPago: sale.metodoPago || sale.metodo_pago || 'CASH',
         };
       });
+
       setSales(enrichedSales);
-      setClients(clientsData);
-      setUsuarios(usuariosData);
+      setClients(clientsData || []);
+      setUsuarios(usuariosData || []);
+
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Error al cargar los datos. Verifique la conexión con el servidor.');
@@ -176,18 +229,67 @@ const InformeVentasPage = () => {
   };
 
   const getClientFullName = (cliente) => {
-    if (!cliente) return 'Cliente no disponible';
-    if (cliente.razonSocial && cliente.razonSocial.trim()) {
-      return cliente.razonSocial;
+    if (!cliente) {
+      return 'Cliente no disponible';
+    else return cliente.fullName || cliente.displayName || cliente.email || 'Cliente sin nombre';
     }
-    const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
-    return parts.length > 0 ? parts.join(' ') : 'Cliente no disponible';
+
+    // Handle different possible field names
+    const razonSocial = cliente.razonSocial || cliente.razon_social || cliente.businessName;
+    const nombre = cliente.nombre || cliente.name || cliente.firstName;
+    const apellido = cliente.apellido || cliente.surname || cliente.lastName;
+
+    // First try business name / razon social
+    if (razonSocial && razonSocial.trim()) {
+      return razonSocial.trim();
+    }
+
+    // Then try combining first and last name
+    const nameParts = [nombre, apellido].filter(part => part && part.trim());
+    if (nameParts.length > 0) {
+      return nameParts.join(' ').trim();
+    }
+
+    // Fallback to any available name field
+    const fallbackName = cliente.fullName || cliente.displayName || cliente.email;
+    if (fallbackName && fallbackName.trim()) {
+      return fallbackName.trim();
+    }
+
+    // If we have an ID, show that at least
+    if (cliente.id) {
+      return `Cliente #${cliente.id}`;
+    }
+
+    return 'Cliente no disponible';
   };
 
   const getUsuarioFullName = (usuario) => {
-    if (!usuario) return 'Vendedor no disponible';
-    const parts = [usuario.nombre, usuario.apellido].filter(Boolean);
-    return parts.length > 0 ? parts.join(' ') : 'Vendedor no disponible';
+    if (!usuario) {
+      return 'Vendedor no disponible';
+    }
+
+    // Handle different possible field names
+    const nombre = usuario.nombre || usuario.name || usuario.firstName;
+    const apellido = usuario.apellido || usuario.surname || usuario.lastName;
+
+    const nameParts = [nombre, apellido].filter(part => part && part.trim());
+    if (nameParts.length > 0) {
+      return nameParts.join(' ').trim();
+    }
+
+    // Fallback options
+    const fallbackName = usuario.fullName || usuario.displayName || usuario.username || usuario.email;
+    if (fallbackName && fallbackName.trim()) {
+      return fallbackName.trim();
+    }
+
+    // If we have an ID, show that at least
+    if (usuario.id) {
+      return `Vendedor #${usuario.id}`;
+    }
+
+    return 'Vendedor no disponible';
   };
 
   const safeParseDate = (dateString) => {
@@ -197,24 +299,37 @@ const InformeVentasPage = () => {
   };
 
   const filteredSales = sales.filter(sale => {
-    const clientName = sale.cliente ? getClientFullName(sale.cliente) : '';
-    const usuarioName = sale.usuario ? getUsuarioFullName(sale.usuario) : '';
+    const clientName = getClientFullName(sale.cliente);
+    const usuarioName = getUsuarioFullName(sale.usuario);
+    
     const matchesSearch =
       searchTerm === '' ||
       (sale.numeroVenta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       sale.numero_venta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
        clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
        usuarioName.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
-    const matchesPaymentMethod = paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter;
-    const matchesClient = clientFilter === 'all' || (sale.cliente?.id?.toString() === clientFilter);
-    const saleDate = safeParseDate(sale.fechaVenta);
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || 
+      sale.metodoPago === paymentMethodFilter || 
+      sale.metodo_pago === paymentMethodFilter;
+    
+    const matchesClient = clientFilter === 'all' || 
+      (sale.cliente?.id?.toString() === clientFilter) ||
+      (sale.clienteId?.toString() === clientFilter) ||
+      (sale.cliente_id?.toString() === clientFilter);
+    
+    const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta);
     if (!saleDate) return false;
+    
     const toDateEndOfDay = dateToFilter ? new Date(dateToFilter) : null;
     if (toDateEndOfDay) {
       toDateEndOfDay.setHours(23, 59, 59, 999);
     }
+    
     const matchesDateFrom = !dateFromFilter || saleDate >= dateFromFilter;
     const matchesDateTo = !toDateEndOfDay || saleDate <= toDateEndOfDay;
+    
     return matchesSearch && matchesStatus && matchesPaymentMethod &&
            matchesClient && matchesDateFrom && matchesDateTo;
   });
@@ -240,7 +355,7 @@ const InformeVentasPage = () => {
   const generateSalesReport = () => {
     const groupedSales = {};
     filteredSales.forEach(sale => {
-      const saleDate = safeParseDate(sale.fechaVenta) || new Date();
+      const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta) || new Date();
       let key = '';
       switch (groupBy) {
         case 'day':
@@ -259,7 +374,7 @@ const InformeVentasPage = () => {
           key = getStatusLabel(sale.estado);
           break;
         case 'payment':
-          key = getPaymentMethodLabel(sale.metodoPago);
+          key = getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago);
           break;
         case 'client':
           key = getClientFullName(sale.cliente);
@@ -365,6 +480,13 @@ const InformeVentasPage = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
+        </Alert>
+      )}
+
+      {/* Debug Information - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Debug: {filteredSales.length} ventas cargadas, {clients.length} clientes, {usuarios.length} usuarios
         </Alert>
       )}
 
@@ -647,19 +769,26 @@ const InformeVentasPage = () => {
                       <Typography variant="body2" fontWeight="bold">
                         #{sale.id}
                       </Typography>
-                      {sale.numeroVenta && (
+                      {(sale.numeroVenta || sale.numero_venta) && (
                         <Typography variant="caption" color="text.secondary">
-                          {sale.numeroVenta}
+                          {sale.numeroVenta || sale.numero_venta}
                         </Typography>
                       )}
                     </TableCell>
                     <TableCell>
-                      {sale.fechaVenta ? new Date(sale.fechaVenta).toLocaleDateString() : '-'}
+                      {(sale.fechaVenta || sale.fecha_venta) ? 
+                        new Date(sale.fechaVenta || sale.fecha_venta).toLocaleDateString() : '-'}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
                         {getClientFullName(sale.cliente)}
                       </Typography>
+                      {/* Debug info - remove in production */}
+                      {process.env.NODE_ENV === 'development' && sale.clienteId && (
+                        <Typography variant="caption" color="text.secondary">
+                          ID: {sale.clienteId}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
@@ -680,7 +809,7 @@ const InformeVentasPage = () => {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getPaymentMethodLabel(sale.metodoPago)}
+                        label={getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago)}
                         size="small"
                         color="primary"
                         variant="outlined"
