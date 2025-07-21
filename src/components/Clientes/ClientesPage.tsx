@@ -297,7 +297,10 @@ const ClientesPage: React.FC = () => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Cuenta Corriente">
-                    <IconButton size="small" onClick={() => navigate(`/clientes/cuenta-corriente/${cliente.id}`)}>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => navigate('/clientes/cuenta-corriente', { state: { clienteId: cliente.id } })}
+                    >
                       <AccountBalanceWalletIcon />
                     </IconButton>
                   </Tooltip>

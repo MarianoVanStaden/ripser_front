@@ -35,7 +35,7 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -49,6 +49,7 @@ dayjs.locale('es');
 
 const CuentaCorrientePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // Use the useLocation hook
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [movimientos, setMovimientos] = useState<CuentaCorriente[]>([]);
@@ -67,22 +68,34 @@ const CuentaCorrientePage: React.FC = () => {
   });
 
   useEffect(() => {
-    // Load only the list of clients on initial render
-    const loadClients = async () => {
+    const loadInitialData = async () => {
       try {
         setLoading(true);
         setError(null);
         const clientesData = await clienteApi.getAll();
         setClientes(clientesData);
+
+        // Check for a client ID passed via navigation state
+        const initialClienteId = location.state?.clienteId;
+        if (initialClienteId) {
+          const initialCliente = clientesData.find(c => c.id === initialClienteId);
+          if (initialCliente) {
+            setSelectedCliente(initialCliente);
+            // Fetch movements for the pre-selected client
+            const movimientosData = await cuentaCorrienteApi.getByClienteId(initialCliente.id);
+            setMovimientos(movimientosData);
+          }
+        }
       } catch (err) {
-        setError('Error al cargar la lista de clientes.');
-        console.error('Error loading clients:', err);
+        setError('Error al cargar los datos iniciales.');
+        console.error('Error loading initial data:', err);
       } finally {
         setLoading(false);
       }
     };
-    loadClients();
-  }, []);
+
+    loadInitialData();
+  }, [location.state]); // Re-run effect if navigation state changes
 
   const loadData = async () => {
     if (!selectedCliente) return;
