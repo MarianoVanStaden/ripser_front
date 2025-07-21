@@ -6,10 +6,12 @@ import {
   Button,
   Tabs,
   Tab,
-  CircularProgress,
-  Alert,
+  Grid,
   Chip,
   Divider,
+  CircularProgress,
+  Alert,
+  Rating,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -204,6 +206,13 @@ const ClienteDetailPage: React.FC = () => {
               <Typography>
                 <strong>Estado:</strong> {cliente.estado}
               </Typography>
+              <Typography variant="subtitle2" color="text.secondary">Calificación</Typography>
+                <Rating
+                  name="read-only-rating"
+                  value={cliente.calificacion ?? 0}
+                  precision={0.5}
+                  readOnly
+                />
             </Box>
           </Box>
 

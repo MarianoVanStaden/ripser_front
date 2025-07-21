@@ -17,15 +17,24 @@ export interface Cliente {
   codigoPostal?: string;
   tipo: TipoCliente;
   estado: EstadoCliente;
-  limiteCredito: number;
+  limiteCredito?: number;
   saldoActual: number;
-  fechaAlta: string;
-  fechaActualizacion: string;
+  fechaAlta: string; // ISO 8601 string
+  fechaActualizacion: string; // ISO 8601 string
   contactos?: ContactoCliente[];
   cuentaCorriente?: CuentaCorriente[];
-  ventas?: any[]; // Reference to sales
+  ventas?: Venta[];
+  creditos?: CreditoCliente[]; // New field
+  calificacion?: number; // New field (e.g., 0.00 to 5.00)
 }
-
+  
+export interface CreditoCliente {
+  id: number;
+  montoOtorgado: number;
+  saldoPendiente: number;
+  fechaOtorgamiento: string; // ISO 8601 string
+  estado: 'VIGENTE' | 'PAGADO' | 'VENCIDO';
+}
 // Client Contact entity
 export interface ContactoCliente {
   id: number;

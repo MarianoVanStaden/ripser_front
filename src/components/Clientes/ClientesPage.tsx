@@ -7,6 +7,7 @@ import {
   TextField,
   Card,
   CardContent,
+  Grid,
   Chip,
   IconButton,
   Dialog,
@@ -18,6 +19,7 @@ import {
   MenuItem,
   Tooltip,
   CircularProgress,
+  Rating, // Import the Rating component
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -29,10 +31,11 @@ import {
   Business as BusinessIcon,
   Person as PersonIcon,
   Clear as ClearIcon,
+  AccountBalanceWallet as AccountBalanceWalletIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { Cliente, TipoCliente, EstadoCliente } from '../../types';
-import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import { clienteApi } from '../../api/services/clienteApi';
 
 const ClientesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -269,15 +272,33 @@ const ClientesPage: React.FC = () => {
                   Crédito: ${cliente.limiteCredito?.toLocaleString() || 'N/A'}
                 </Typography>
 
+                <Box display="flex" alignItems="center" mt={1} mb={2}>
+                  <Typography variant="body2" color="text.secondary" mr={1}>
+                    Calificación:
+                  </Typography>
+                  <Rating
+                    name={`rating-${cliente.id}`}
+                    value={cliente.calificacion ?? 0}
+                    precision={0.5}
+                    readOnly
+                    size="small"
+                  />
+                </Box>
+
                 <Box display="flex" justifyContent="flex-end" gap={1}>
                   <Tooltip title="Ver detalles">
-                    <IconButton onClick={() => handleViewCliente(cliente)}>
+                    <IconButton size="small" onClick={() => handleViewCliente(cliente)}>
                       <ViewIcon />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Editar">
-                    <IconButton onClick={() => navigate(`/clientes/editar/${cliente.id}`)}>
+                    <IconButton size="small" onClick={() => navigate(`/clientes/editar/${cliente.id}`)}>
                       <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Cuenta Corriente">
+                    <IconButton size="small" onClick={() => navigate(`/clientes/cuenta-corriente/${cliente.id}`)}>
+                      <AccountBalanceWalletIcon />
                     </IconButton>
                   </Tooltip>
                 </Box>
@@ -333,6 +354,18 @@ const ClientesPage: React.FC = () => {
                 </Typography>
                 <Typography><strong>Límite de Crédito:</strong> ${selectedCliente.limiteCredito?.toLocaleString() || 'N/A'}</Typography>
                 <Typography><strong>Saldo Actual:</strong> ${selectedCliente.saldoActual?.toLocaleString() || '0'}</Typography>
+                <Box display="flex" alignItems="center" mt={1}>
+                  <Typography variant="body2" color="text.secondary" mr={1}>
+                    Calificación:
+                  </Typography>
+                  <Rating
+                    name={`rating-detail-${selectedCliente.id}`}
+                    value={selectedCliente.calificacion ?? 0}
+                    precision={0.5}
+                    readOnly
+                    size="small"
+                  />
+                </Box>
               </Box>
             </Box>
           )}
