@@ -228,10 +228,9 @@ const InformeVentasPage = () => {
     return methods[method] || method;
   };
 
-  const getClientFullName = (cliente) => {
+  function getClientFullName(cliente) {
     if (!cliente) {
       return 'Cliente no disponible';
-    else return cliente.fullName || cliente.displayName || cliente.email || 'Cliente sin nombre';
     }
 
     // Handle different possible field names
@@ -262,7 +261,7 @@ const InformeVentasPage = () => {
     }
 
     return 'Cliente no disponible';
-  };
+  }
 
   const getUsuarioFullName = (usuario) => {
     if (!usuario) {
