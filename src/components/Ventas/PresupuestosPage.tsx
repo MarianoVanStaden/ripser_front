@@ -309,7 +309,8 @@ const PresupuestosPage: React.FC = () => {
 
       const totalCalculado = calculateTotal();
 
-      const presupuestoData: CreatePresupuestoRequest = {
+      const presupuestoData: CreatePresupuestoRequest & { clienteId?: number; usuarioId?: number } = {
+        clienteId: clienteId, // Add flat clienteId for backend compatibility
         cliente: {
           id: clienteId,
         },
@@ -331,6 +332,7 @@ const PresupuestosPage: React.FC = () => {
         })),
         ...(formData.usuarioId &&
           formData.usuarioId !== "" && {
+            usuarioId: parseInt(formData.usuarioId), // Add flat usuarioId for backend compatibility
             usuario: {
               id: parseInt(formData.usuarioId),
             },
@@ -815,9 +817,9 @@ const PresupuestosPage: React.FC = () => {
 
             <Box
               sx={{
-                display: "flex",yContent: "space-between",
-                justifyContent: "space-between",alignItems: "center",
-                alignItems: "center",   mb: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 mb: 2,
               }}
             >
