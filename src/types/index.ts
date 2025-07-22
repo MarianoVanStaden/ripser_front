@@ -1107,8 +1107,10 @@ export interface DetalleVenta {
   id: number;
   ventaId: number;
   productoId?: number;
+  producto?: Producto; // Add product info for display
   cantidad: number;
   precioUnitario: number;
+  descuento?: number;
   subtotal: number;
 }
 
@@ -1118,7 +1120,9 @@ export interface Venta {
   cliente?: Cliente;
   empleadoId: number;
   empleado?: Empleado;
+  usuario?: Usuario; // Add for compatibility
   ventaNumero?: string;
+  numeroVenta?: string; // Add for compatibility
   fechaVenta: string;
   estado: string;
   subtotal: number;
@@ -1127,6 +1131,7 @@ export interface Venta {
   total: number;
   metodoPago?: string;
   observaciones?: string;
+  notas?: string; // Add for compatibility
   createdAt?: string;
   updatedAt?: string;
   detalleVentas: DetalleVenta[];

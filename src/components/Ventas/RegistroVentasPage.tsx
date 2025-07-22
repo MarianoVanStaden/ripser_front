@@ -27,9 +27,6 @@ import {
   InputLabel,
   Select,
   Divider,
-  Autocomplete,
-  Switch,
-  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -46,10 +43,10 @@ import {
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
 import { saleApi, clienteApi, usuarioApi } from '../../api/services';
-import type { Sale, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
+import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
 
 const RegistroVentasPage: React.FC = () => {
-  const [sales, setSales] = useState<Sale[]>([]);
+  const [sales, setSales] = useState<Venta[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,9 +54,9 @@ const RegistroVentasPage: React.FC = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [viewingSale, setViewingSale] = useState<Sale | null>(null);
-  const [ventaToDelete, setVentaToDelete] = useState<Sale | null>(null);
-  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [viewingSale, setViewingSale] = useState<Venta | null>(null);
+  const [ventaToDelete, setVentaToDelete] = useState<Venta | null>(null);
+  const [editingSale, setEditingSale] = useState<Venta | null>(null);
   const [editForm, setEditForm] = useState({
     numeroVenta: '',
     clienteId: '',
@@ -106,51 +103,34 @@ const RegistroVentasPage: React.FC = () => {
       
       // Enrich sales data with client and usuario information
       const enrichedSales = salesData.map((sale: any) => {
-        // The backend seems to be missing cliente field entirely
-        // We need to assign a default client or handle this case
+        // Map cliente - preserve existing if available
         let cliente = null;
-        
-        // Check if there's a clienteId field (hidden in the object)
-        if (sale.clienteId) {
-          cliente = clientsMap.get(sale.clienteId);
-        } else if (sale.cliente?.id) {
-          cliente = clientsMap.get(sale.cliente.id);
-        } else if (sale.cliente) {
+        if (sale.cliente) {
           cliente = sale.cliente;
-        } else {
-          // If no client is specified, assign the first available client as default
-          // or create a placeholder
-          cliente = clientsData.length > 0 ? clientsData[0] : {
-            id: 0,
-            nombre: 'Cliente',
-            apellido: 'No Especificado',
-            razonSocial: '',
-            cuit: '',
-            email: '',
-            telefono: '',
-            direccion: ''
-          };
+        } else if (sale.clienteId) {
+          cliente = clientsMap.get(sale.clienteId);
         }
         
-        // Find usuario (this seems to be working correctly)
+        // Map usuario/empleado - preserve existing if available
         let usuario = null;
-        if (sale.usuarioId) {
-          usuario = usuariosMap.get(sale.usuarioId);
-        } else if (sale.usuario?.id) {
-          usuario = usuariosMap.get(sale.usuario.id);
-        } else if (sale.usuario) {
+        if (sale.usuario) {
           usuario = sale.usuario;
+        } else if (sale.empleado) {
+          usuario = sale.empleado;
+        } else if (sale.usuarioId || sale.empleadoId) {
+          usuario = usuariosMap.get(sale.usuarioId || sale.empleadoId);
         }
         
-        // Handle metodoPago - if it's missing, set a default
-        const metodoPago = sale.metodoPago || 'CASH';
+        // Preserve metodoPago from the backend - don't override with defaults unless absolutely necessary
+        const metodoPago = sale.metodoPago; // Keep the original value
         
-        console.log(`Sale ${sale.id}: cliente=`, cliente, 'usuario=', usuario, 'metodoPago=', metodoPago);
+        console.log(`Sale ${sale.id}: metodoPago=`, sale.metodoPago, 'preserved=', metodoPago);
         
         return {
           ...sale,
           cliente,
-          usuario: usuario || null,
+          usuario, // Add usuario field for compatibility
+          empleado: usuario, // Keep empleado field as well
           metodoPago,
         };
       });
@@ -167,22 +147,22 @@ const RegistroVentasPage: React.FC = () => {
     }
   };
 
-  const handleViewSale = (sale: Sale): void => {
+  const handleViewSale = (sale: Venta): void => {
     console.log('Viewing sale:', sale);
     setViewingSale(sale);
     setViewDialogOpen(true);
   };
 
-  const handleEditSale = (sale: Sale): void => {
+  const handleEditSale = (sale: Venta): void => {
     setEditingSale(sale);
     setEditForm({
-      numeroVenta: sale.numeroVenta || '',
+      numeroVenta: sale.ventaNumero || '',
       clienteId: sale.cliente?.id?.toString() || '',
-      usuarioId: sale.usuario?.id?.toString() || '',
+      usuarioId: sale.usuario?.id?.toString() || sale.empleado?.id?.toString() || '',
       estado: sale.estado || 'PENDIENTE',
-      metodoPago: sale.metodoPago || 'CASH',
+      metodoPago: sale.metodoPago as PaymentMethod || 'CASH',
       fechaVenta: sale.fechaVenta ? new Date(sale.fechaVenta).toISOString().split('T')[0] : '',
-      notas: sale.notas || '',
+      notas: sale.observaciones || '',
       total: sale.total || 0,
     });
     setEditDialogOpen(true);
@@ -195,16 +175,20 @@ const RegistroVentasPage: React.FC = () => {
       setEditLoading(true);
       setError(null);
 
+      // For now, disable editing until API is properly mapped
+      alert('La funcionalidad de edición está en desarrollo. Las correcciones se están aplicando al sistema de visualización.');
+      setEditDialogOpen(false);
+      setEditingSale(null);
+      
+      /* 
+      // TODO: Map to correct API format when backend is ready
       const updatedSaleData = {
-        ...editingSale,
-        numeroVenta: editForm.numeroVenta,
-        clienteId: parseInt(editForm.clienteId),
-        usuarioId: parseInt(editForm.usuarioId),
-        estado: editForm.estado,
-        metodoPago: editForm.metodoPago,
-        fechaVenta: editForm.fechaVenta,
-        notas: editForm.notas,
-        total: editForm.total,
+        clientId: parseInt(editForm.clienteId),
+        employeeId: parseInt(editForm.usuarioId),
+        saleDate: editForm.fechaVenta,
+        paymentMethod: editForm.metodoPago,
+        notes: editForm.notas,
+        // Add other required fields
       };
 
       const updatedSale = await saleApi.update(editingSale.id, updatedSaleData);
@@ -224,9 +208,8 @@ const RegistroVentasPage: React.FC = () => {
           sale.id === editingSale.id ? enrichedUpdatedSale : sale
         )
       );
-
-      setEditDialogOpen(false);
-      setEditingSale(null);
+      */
+      
     } catch (err) {
       console.error('Error updating sale:', err);
       setError('Error al actualizar la venta. Verifique los datos e intente nuevamente.');
@@ -297,12 +280,12 @@ const RegistroVentasPage: React.FC = () => {
     return parts.length > 0 ? parts.join(' ') : 'Vendedor no disponible';
   };
 
-  const filteredSales = sales.filter((sale: Sale) => {
-    const clientName = getClientFullName(sale.cliente);
-    const usuarioName = getUsuarioFullName(sale.usuario);
+  const filteredSales = sales.filter((sale: Venta) => {
+    const clientName = getClientFullName(sale.cliente || null);
+    const usuarioName = getUsuarioFullName((sale.usuario || sale.empleado) as Usuario || null);
     
     const matchesSearch = searchTerm === '' || 
-      sale.numeroVenta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sale.ventaNumero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       usuarioName.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -328,7 +311,7 @@ const RegistroVentasPage: React.FC = () => {
   };
 
   const calculateTotals = () => {
-    const totalRevenue = filteredSales.reduce((sum: number, sale: Sale) => 
+    const totalRevenue = filteredSales.reduce((sum: number, sale: Venta) => 
       sum + (sale.total || 0), 0);
     const totalTransactions = filteredSales.length;
     const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
@@ -552,15 +535,15 @@ const RegistroVentasPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredSales.map((sale: Sale) => (
+                {filteredSales.map((sale: Venta) => (
                   <TableRow key={sale.id}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
                         #{sale.id}
                       </Typography>
-                      {sale.numeroVenta && (
+                      {sale.ventaNumero && (
                         <Typography variant="caption" color="text.secondary">
-                          {sale.numeroVenta}
+                          {sale.ventaNumero}
                         </Typography>
                       )}
                     </TableCell>
@@ -570,7 +553,7 @@ const RegistroVentasPage: React.FC = () => {
                     <TableCell>
                       <Box>
                         <Typography variant="body2">
-                          {getClientFullName(sale.cliente)}
+                          {getClientFullName(sale.cliente || null)}
                         </Typography>
                         {sale.cliente?.email && (
                           <Typography variant="caption" color="text.secondary">
@@ -581,7 +564,7 @@ const RegistroVentasPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {getUsuarioFullName(sale.usuario)}
+                        {getUsuarioFullName((sale.usuario || sale.empleado) as Usuario || null)}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -598,7 +581,7 @@ const RegistroVentasPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getPaymentMethodLabel(sale.metodoPago)}
+                        label={getPaymentMethodLabel(sale.metodoPago as PaymentMethod || 'CASH')}
                         size="small"
                         color="primary"
                         variant="outlined"
@@ -669,10 +652,10 @@ const RegistroVentasPage: React.FC = () => {
                     Información General
                   </Typography>
                   <Box sx={{ mb: 1 }}>
-                    <Typography><strong>Número:</strong> {viewingSale.numeroVenta || 'N/A'}</Typography>
+                    <Typography><strong>Número:</strong> {viewingSale.ventaNumero || 'N/A'}</Typography>
                     <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
                     <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
-                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago)}</Typography>
+                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'CASH')}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -681,7 +664,7 @@ const RegistroVentasPage: React.FC = () => {
                   </Typography>
                   <Box sx={{ mb: 1 }}>
                     <Typography>
-                      <strong>Cliente:</strong> {getClientFullName(viewingSale.cliente)}
+                      <strong>Cliente:</strong> {getClientFullName(viewingSale.cliente || null)}
                     </Typography>
                     {viewingSale.cliente?.email && (
                       <Typography variant="body2" color="text.secondary">
@@ -700,7 +683,7 @@ const RegistroVentasPage: React.FC = () => {
                     )}
                     
                     <Typography sx={{ mt: 2 }}>
-                      <strong>Vendedor:</strong> {getUsuarioFullName(viewingSale.usuario)}
+                      <strong>Vendedor:</strong> {getUsuarioFullName((viewingSale.usuario || viewingSale.empleado) as Usuario || null)}
                     </Typography>
                   </Box>
                 </Grid>
@@ -759,13 +742,13 @@ const RegistroVentasPage: React.FC = () => {
 
               <Box mt={3} display="flex" justifyContent="space-between" alignItems="center">
                 <Box>
-                  {viewingSale.notas && (
+                  {(viewingSale.notas || viewingSale.observaciones) && (
                     <>
                       <Typography variant="subtitle2" color="text.secondary">
                         Notas
                       </Typography>
                       <Typography variant="body2">
-                        {viewingSale.notas}
+                        {viewingSale.notas || viewingSale.observaciones}
                       </Typography>
                     </>
                   )}
@@ -934,12 +917,12 @@ const RegistroVentasPage: React.FC = () => {
                     <Grid container spacing={2}>
                       <Grid item xs={6}>
                         <Typography variant="body2">
-                          <strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente)}
+                          <strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente || null)}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
                         <Typography variant="body2">
-                          <strong>Vendedor Actual:</strong> {getUsuarioFullName(editingSale.usuario)}
+                          <strong>Vendedor Actual:</strong> {getUsuarioFullName((editingSale.usuario || editingSale.empleado) as Usuario || null)}
                         </Typography>
                       </Grid>
                       <Grid item xs={6}>
@@ -977,7 +960,7 @@ const RegistroVentasPage: React.FC = () => {
         <DialogTitle>Eliminar venta</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Está seguro que desea eliminar la venta <b>{ventaToDelete?.numeroVenta}</b>?
+            ¿Está seguro que desea eliminar la venta <b>{ventaToDelete?.ventaNumero || ventaToDelete?.numeroVenta || `#${ventaToDelete?.id}`}</b>?
           </Typography>
         </DialogContent>
         <DialogActions>
