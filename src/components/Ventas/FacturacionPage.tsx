@@ -33,10 +33,28 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { clienteApi, productApi, saleApi, usuarioApi } from '../../api/services';
-import type { Cliente, Producto, Usuario, CreateVentaPayload, CreateDetalleVentaPayload, MetodoPago } from '../../types';
+import type { Cliente, Producto, Usuario, MetodoPago } from '../../types';
 import dayjs from 'dayjs';
 
-// Represents an item in the shopping cart
+// Define available payment methods
+const PAYMENT_METHODS = [
+  { value: 'EFECTIVO', label: 'Efectivo' },
+  { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
+  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia Bancaria' },
+  { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
+  { value: 'CUENTA_CORRIENTE', label: 'Cuenta Corriente' },
+  { value: 'CHEQUE', label: 'Cheque' },
+];
+
+
+
+// Define IVA options based on TipoIva enum
+const IVA_OPTIONS = [
+  { value: 'IVA_21', label: 'IVA 21% (21%)', rate: 0.21 },
+  { value: 'IVA_10_5', label: 'IVA 10.5% (10.5%)', rate: 0.105 },
+  { value: 'EXENTO', label: 'Exento (0%)', rate: 0 },
+];
+
 interface CartItem {
   productoId: number;
   productoNombre: string;
@@ -46,34 +64,21 @@ interface CartItem {
   precioManualmenteModificado: boolean;
 }
 
-const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
-    { value: 'EFECTIVO', label: 'Efectivo' },
-    { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
-    { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
-    { value: 'TRANSFERENCIA', label: 'Transferencia Bancaria' },
-    { value: 'CHEQUE', label: 'Cheque' },
-];
-
 const FacturacionPage: React.FC = () => {
-  // State for data loading and errors
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // State for data from API
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [products, setProducts] = useState<Producto[]>([]);
-
-  // State for form inputs
   const [selectedClientId, setSelectedClientId] = useState<number | ''>('');
   const [selectedUsuarioId, setSelectedUsuarioId] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState<MetodoPago>('EFECTIVO');
   const [saleDate, setSaleDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedIva, setSelectedIva] = useState<string>('IVA_21'); // Default to IVA_21
 
-  // Load initial data from the backend
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -98,14 +103,25 @@ const FacturacionPage: React.FC = () => {
     loadData();
   }, []);
 
-  // Memoized calculation for the total amount
-  const totalVenta = useMemo(() => {
+  // Calculate subtotal (before IVA)
+  const subtotalVenta = useMemo(() => {
     return cart.reduce((sum, item) => {
       const itemSubtotal = item.cantidad * item.precioUnitario;
       const discountAmount = itemSubtotal * (item.descuento / 100);
       return sum + (itemSubtotal - discountAmount);
     }, 0);
   }, [cart]);
+
+  // Calculate IVA amount
+  const ivaAmount = useMemo(() => {
+    const ivaRate = IVA_OPTIONS.find((option) => option.value === selectedIva)?.rate || 0;
+    return subtotalVenta * ivaRate;
+  }, [subtotalVenta, selectedIva]);
+
+  // Calculate total (subtotal + IVA)
+  const totalVenta = useMemo(() => {
+    return subtotalVenta + ivaAmount;
+  }, [subtotalVenta, ivaAmount]);
 
   const clearForm = () => {
     setSelectedClientId('');
@@ -114,6 +130,7 @@ const FacturacionPage: React.FC = () => {
     setSaleDate(dayjs().format('YYYY-MM-DD'));
     setNotes('');
     setCart([]);
+    setSelectedIva('IVA_21'); // Reset to default IVA
     setError(null);
     setSuccess(null);
   };
@@ -121,7 +138,7 @@ const FacturacionPage: React.FC = () => {
   const addItemToCart = () => {
     if (products.length === 0) return;
     const defaultProduct = products[0];
-    setCart(prev => [
+    setCart((prev) => [
       ...prev,
       {
         productoId: defaultProduct.id,
@@ -139,7 +156,7 @@ const FacturacionPage: React.FC = () => {
     const item = { ...newCart[index] };
 
     if (field === 'productoId') {
-      const product = products.find(p => p.id === Number(value));
+      const product = products.find((p) => p.id === Number(value));
       if (product) {
         item.productoId = product.id;
         item.productoNombre = product.nombre;
@@ -161,11 +178,10 @@ const FacturacionPage: React.FC = () => {
   };
 
   const removeItemFromCart = (index: number) => {
-    setCart(prev => prev.filter((_, i) => i !== index));
+    setCart((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
-    // --- Form Validation ---
     if (!selectedClientId) {
       setError('Debe seleccionar un cliente.');
       return;
@@ -178,22 +194,22 @@ const FacturacionPage: React.FC = () => {
       setError('Debe agregar al menos un producto al carrito.');
       return;
     }
-    if (cart.some(item => !item.productoId)) {
-        setError('Todos los productos en el carrito deben ser válidos.');
-        return;
+    if (cart.some((item) => !item.productoId)) {
+      setError('Todos los productos en el carrito deben ser válidos.');
+      return;
     }
 
     setLoading(true);
     setError(null);
     setSuccess(null);
 
-    // --- Payload Creation ---
     const payload: CreateVentaPayload = {
       clienteId: selectedClientId,
       usuarioId: selectedUsuarioId,
       metodoPago: paymentMethod,
       observaciones: notes,
-      detalleVentas: cart.map(item => ({
+      tipoIva: selectedIva as 'IVA_21' | 'IVA_10_5' | 'EXENTO', // Add tipoIva to payload
+      detalleVentas: cart.map((item) => ({
         productoId: item.productoId,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,
@@ -226,15 +242,18 @@ const FacturacionPage: React.FC = () => {
 
   if (error && !products.length) {
     return (
-        <Box p={3}>
-            <Alert severity="error" action={
-                <Button color="inherit" size="small" startIcon={<RefreshIcon />} onClick={loadData}>
-                    Reintentar
-                </Button>
-            }>
-                {error}
-            </Alert>
-        </Box>
+      <Box p={3}>
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" startIcon={<RefreshIcon />} onClick={loadData}>
+              Reintentar
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      </Box>
     );
   }
 
@@ -259,11 +278,12 @@ const FacturacionPage: React.FC = () => {
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
       <Grid container spacing={3}>
-        {/* Sale Information Card */}
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h6" mb={2}>Información de la Venta</Typography>
+              <Typography variant="h6" mb={2}>
+                Información de la Venta
+              </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth required>
@@ -300,20 +320,20 @@ const FacturacionPage: React.FC = () => {
                   </FormControl>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
-                        <InputLabel>Método de Pago</InputLabel>
-                        <Select
-                          value={paymentMethod}
-                          label="Método de Pago"
-                          onChange={(e) => setPaymentMethod(e.target.value as MetodoPago)}
-                        >
-                          {PAYMENT_METHODS.map((method) => (
-                            <MenuItem key={method.value} value={method.value}>
-                              {method.label}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                    </FormControl>
+                  <FormControl fullWidth required>
+                    <InputLabel>Método de Pago</InputLabel>
+                    <Select
+                      value={paymentMethod}
+                      label="Método de Pago"
+                      onChange={(e) => setPaymentMethod(e.target.value as MetodoPago)}
+                    >
+                      {PAYMENT_METHODS.map((method) => (
+                        <MenuItem key={method.value} value={method.value}>
+                          {method.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <TextField
@@ -326,12 +346,28 @@ const FacturacionPage: React.FC = () => {
                     required
                   />
                 </Grid>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Tipo de IVA</InputLabel>
+                    <Select
+                      value={selectedIva}
+                      label="Tipo de IVA"
+                      onChange={(e) => setSelectedIva(e.target.value)}
+                    >
+                      {IVA_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="Notas"
                     multiline
-                    rows={2}
+                    rows={4} // Fixed typo from 'rows7111' to 'rows={4}'
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Notas adicionales sobre la venta..."
@@ -342,7 +378,6 @@ const FacturacionPage: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Sale Items Card */}
         <Grid item xs={12}>
           <Card>
             <CardContent>
@@ -436,6 +471,18 @@ const FacturacionPage: React.FC = () => {
                 </Box>
               )}
               <Divider sx={{ my: 2 }} />
+              <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
+                <Typography variant="h6">Subtotal:</Typography>
+                <Typography variant="h6" fontWeight="bold">
+                  ${subtotalVenta.toFixed(2)}
+                </Typography>
+              </Box>
+              <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
+                <Typography variant="h6">IVA ({IVA_OPTIONS.find((option) => option.value === selectedIva)?.label || 'N/A'}):</Typography>
+                <Typography variant="h6" fontWeight="bold">
+                  ${ivaAmount.toFixed(2)}
+                </Typography>
+              </Box>
               <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
                 <Typography variant="h6">Total:</Typography>
                 <Typography variant="h4" color="primary" fontWeight="bold">

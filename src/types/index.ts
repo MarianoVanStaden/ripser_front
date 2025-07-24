@@ -1129,14 +1129,14 @@ export interface Venta {
   impuesto?: number;
   descuento?: number;
   total: number;
-  metodoPago?: string;
+  metodoPago?: MetodoPago;
   observaciones?: string;
   notas?: string; // Add for compatibility
   createdAt?: string;
   updatedAt?: string;
   detalleVentas: DetalleVenta[];
 }
-
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE';
 // Vehiculo (Vehicle)
 export interface Vehiculo {
   id: number;
