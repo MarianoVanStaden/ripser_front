@@ -46,8 +46,6 @@ const PAYMENT_METHODS = [
   { value: 'CHEQUE', label: 'Cheque' },
 ];
 
-
-
 // Define IVA options based on TipoIva enum
 const IVA_OPTIONS = [
   { value: 'IVA_21', label: 'IVA 21% (21%)', rate: 0.21 },
@@ -89,7 +87,8 @@ const FacturacionPage: React.FC = () => {
         productApi.getAll(),
       ]);
       setClients(clientsData);
-      setUsuarios(usuariosData);
+      // Ensure usuarios is always an array
+      setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
       setProducts(productsData);
     } catch (err: any) {
       console.error('Error loading initial data:', err);

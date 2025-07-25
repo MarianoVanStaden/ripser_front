@@ -500,6 +500,79 @@ export interface Product {
   updatedAt: string;
 }
 
+// Producto interface matches ProductoDTO from backend
+export interface Producto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+  fechaCreacion: string; // ISO string
+}
+
+// ProductoCreateDTO interface for product creation
+export interface CreateProductRequest {
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+}
+
+// --- Product DTOs matching backend ---
+// ProductoCreateDTO
+export interface ProductoCreateDTO {
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+}
+
+// ProductoUpdateDTO
+export interface ProductoUpdateDTO {
+  nombre?: string;
+  descripcion?: string;
+  precio?: number;
+  stockMinimo?: number;
+  categoriaProductoId?: number;
+  activo?: boolean;
+}
+
+// ProductoDTO
+export interface ProductoDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+  fechaCreacion: string;
+}
+
+// ProductoListDTO
+export interface ProductoListDTO {
+  id: number;
+  nombre: string;
+  codigo?: string;
+  precio: number;
+  stockActual: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+}
 
 // Removed Order and OrderItem interfaces: backend does not support /api/ordenes
 

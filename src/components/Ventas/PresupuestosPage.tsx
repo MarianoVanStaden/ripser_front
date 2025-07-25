@@ -84,6 +84,21 @@ const PresupuestosPage: React.FC = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    productApi.getAll()
+      .then((data) => {
+        // If backend returns paginated data
+        if (data && Array.isArray(data.content)) {
+          setProductos(data.content);
+        } else if (Array.isArray(data)) {
+          setProductos(data);
+        } else {
+          setProductos([]);
+        }
+      })
+      .catch(() => setProductos([]));
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -92,10 +107,9 @@ const PresupuestosPage: React.FC = () => {
       const [clientesData, usuariosData, presupuestosData, productosData] =
         await Promise.all([
           clienteApi.getAll(),
-          usuarioApi.getAll().catch(() => []), // usuarios might not be available
+          usuarioApi.getAll().catch(() => []),
           presupuestoApi.getAll(),
           productApi.getAll().catch(() => {
-            // If productos API is not available, return mock data
             console.warn("Productos API not available, using empty array");
             return [];
           }),
@@ -104,7 +118,15 @@ const PresupuestosPage: React.FC = () => {
       setClientes(clientesData);
       setUsuarios(usuariosData);
       setPresupuestos(presupuestosData);
-      setProductos(productosData);
+
+      // Handle paginated products
+      if (productosData && Array.isArray(productosData.content)) {
+        setProductos(productosData.content);
+      } else if (Array.isArray(productosData)) {
+        setProductos(productosData);
+      } else {
+        setProductos([]);
+      }
     } catch (err: unknown) {
       console.error("Error fetching data:", err);
       const errorMessage =
@@ -304,42 +326,48 @@ const PresupuestosPage: React.FC = () => {
         return;
       }
 
+      // Validate detalles
+      for (const detalle of detalles) {
+        if (
+          !detalle.productoId ||
+          detalle.productoId === "" ||
+          isNaN(Number(detalle.productoId)) ||
+          Number(detalle.productoId) <= 0
+        ) {
+          setError("Todos los detalles deben tener un producto válido seleccionado.");
+          return;
+        }
+        if (!detalle.descripcion || detalle.descripcion.trim() === "") {
+          setError("Todos los detalles deben tener una descripción.");
+          return;
+        }
+        if (!detalle.cantidad || detalle.cantidad <= 0) {
+          setError("La cantidad debe ser mayor a 0.");
+          return;
+        }
+        if (!detalle.precioUnitario || detalle.precioUnitario <= 0) {
+          setError("El precio unitario debe ser mayor a 0.");
+          return;
+        }
+      }
+
       setFormLoading(true);
       setError(null);
 
-      const totalCalculado = calculateTotal();
-
-      const presupuestoData: CreatePresupuestoRequest & { clienteId?: number; usuarioId?: number } = {
-        clienteId: clienteId, // Add flat clienteId for backend compatibility
-        cliente: {
-          id: clienteId,
-        },
+      const presupuestoData: CreatePresupuestoRequest = {
+        clienteId: parseInt(formData.clienteId),
         fechaPresupuesto: `${formData.fechaPresupuesto}T00:00:00`,
         fechaVencimiento: `${formData.fechaVencimiento}T23:59:59`,
         estado: formData.estado,
-        total: totalCalculado,
         observaciones: formData.observaciones || "",
         detalles: detalles.map((detalle) => ({
-          ...(detalle.productoId && {
-            producto: {
-              id: parseInt(detalle.productoId),
-            },
-          }),
+          productoId: Number(detalle.productoId),
           descripcion: detalle.descripcion,
           cantidad: detalle.cantidad,
           precioUnitario: detalle.precioUnitario,
-          subtotal: detalle.subtotal,
         })),
-        ...(formData.usuarioId &&
-          formData.usuarioId !== "" && {
-            usuarioId: parseInt(formData.usuarioId), // Add flat usuarioId for backend compatibility
-            usuario: {
-              id: parseInt(formData.usuarioId),
-            },
-          }),
+        usuarioId: formData.usuarioId ? parseInt(formData.usuarioId) : undefined,
       };
-
-      console.log("Sending presupuesto data:", presupuestoData); // Debug log
 
       let savedPresupuesto: Presupuesto;
 
