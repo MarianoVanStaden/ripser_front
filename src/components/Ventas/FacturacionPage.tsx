@@ -48,9 +48,9 @@ const PAYMENT_METHODS = [
 
 // Define IVA options based on TipoIva enum
 const IVA_OPTIONS = [
-  { value: 'IVA_21', label: 'IVA 21% (21%)', rate: 0.21 },
-  { value: 'IVA_10_5', label: 'IVA 10.5% (10.5%)', rate: 0.105 },
-  { value: 'EXENTO', label: 'Exento (0%)', rate: 0 },
+  { value: 'IVA_21', label: 'IVA 21%', rate: 0.21 },
+  { value: 'IVA_10_5', label: 'IVA 10.5%', rate: 0.105 },
+  { value: 'EXENTO', label: 'Exento 0%', rate: 0 },
 ];
 
 interface CartItem {
@@ -60,6 +60,18 @@ interface CartItem {
   precioUnitario: number;
   descuento: number;
   precioManualmenteModificado: boolean;
+}
+
+// Add interface for paginated response
+interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
 }
 
 const FacturacionPage: React.FC = () => {
@@ -81,15 +93,52 @@ const FacturacionPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [clientsData, usuariosData, productsData] = await Promise.all([
+      const [clientsData, usuariosResponse, productsData] = await Promise.all([
         clienteApi.getAll(),
         usuarioApi.getAll(),
         productApi.getAll(),
       ]);
+      
+      console.log('Products data received:', productsData);
+      
       setClients(clientsData);
-      // Ensure usuarios is always an array
-      setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
-      setProducts(productsData);
+      
+      // Handle paginated usuarios response
+      if (usuariosResponse && typeof usuariosResponse === 'object') {
+        // Check if it's a paginated response
+        if ('content' in usuariosResponse && Array.isArray(usuariosResponse.content)) {
+          setUsuarios(usuariosResponse.content);
+        } else if (Array.isArray(usuariosResponse)) {
+          // If it's already an array
+          setUsuarios(usuariosResponse);
+        } else {
+          // Fallback: empty array
+          setUsuarios([]);
+        }
+      } else {
+        setUsuarios([]);
+      }
+      
+      // Handle products data - it might also be paginated
+      if (productsData && typeof productsData === 'object') {
+        if ('content' in productsData && Array.isArray(productsData.content)) {
+          // Paginated response
+          const validProducts = productsData.content.filter(p => p && p.id);
+          setProducts(validProducts);
+          console.log('Set products (paginated):', validProducts);
+        } else if (Array.isArray(productsData)) {
+          // Array response
+          const validProducts = productsData.filter(p => p && p.id);
+          setProducts(validProducts);
+          console.log('Set products (array):', validProducts);
+        } else {
+          setProducts([]);
+          console.log('Set products to empty array - invalid format');
+        }
+      } else {
+        setProducts([]);
+        console.log('Set products to empty array - no data');
+      }
     } catch (err: any) {
       console.error('Error loading initial data:', err);
       setError('No se pudieron cargar los datos necesarios. Verifique la conexión con el backend e intente de nuevo.');
@@ -135,15 +184,24 @@ const FacturacionPage: React.FC = () => {
   };
 
   const addItemToCart = () => {
-    if (products.length === 0) return;
+    if (products.length === 0) {
+      setError('No hay productos disponibles para agregar al carrito.');
+      return;
+    }
+    
     const defaultProduct = products[0];
+    if (!defaultProduct || !defaultProduct.id) {
+      setError('El producto seleccionado no es válido.');
+      return;
+    }
+    
     setCart((prev) => [
       ...prev,
       {
         productoId: defaultProduct.id,
-        productoNombre: defaultProduct.nombre,
+        productoNombre: defaultProduct.nombre || 'Producto sin nombre',
         cantidad: 1,
-        precioUnitario: defaultProduct.precio,
+        precioUnitario: defaultProduct.precio || 0,
         descuento: 0,
         precioManualmenteModificado: false,
       },
@@ -151,16 +209,18 @@ const FacturacionPage: React.FC = () => {
   };
 
   const updateCartItem = (index: number, field: keyof CartItem, value: any) => {
+    if (!cart[index]) return;
+    
     const newCart = [...cart];
     const item = { ...newCart[index] };
 
     if (field === 'productoId') {
-      const product = products.find((p) => p.id === Number(value));
+      const product = products.find((p) => p && p.id === Number(value));
       if (product) {
         item.productoId = product.id;
-        item.productoNombre = product.nombre;
+        item.productoNombre = product.nombre || 'Producto sin nombre';
         if (!item.precioManualmenteModificado) {
-          item.precioUnitario = product.precio;
+          item.precioUnitario = product.precio || 0;
         }
       }
     } else if (field === 'cantidad') {
@@ -366,7 +426,7 @@ const FacturacionPage: React.FC = () => {
                     fullWidth
                     label="Notas"
                     multiline
-                    rows={4} // Fixed typo from 'rows7111' to 'rows={4}'
+                    rows={4}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Notas adicionales sobre la venta..."
@@ -382,8 +442,14 @@ const FacturacionPage: React.FC = () => {
             <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Typography variant="h6">Productos</Typography>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={addItemToCart} disabled={products.length === 0}>
-                  Agregar Producto
+                <Button 
+                  variant="outlined" 
+                  startIcon={<AddIcon />} 
+                  onClick={addItemToCart} 
+                  disabled={products.length === 0 || loading}
+                  title={products.length === 0 ? 'No hay productos disponibles' : loading ? 'Cargando...' : 'Agregar producto al carrito'}
+                >
+                  Agregar Producto ({products.length} disponibles)
                 </Button>
               </Box>
 
@@ -412,8 +478,8 @@ const FacturacionPage: React.FC = () => {
                                 value={item.productoId}
                                 onChange={(e) => updateCartItem(index, 'productoId', e.target.value)}
                               >
-                                {products.map((p) => (
-                                  <MenuItem key={p.id} value={p.id}>{p.nombre}</MenuItem>
+                                {products.filter(p => p && p.id).map((p) => (
+                                  <MenuItem key={p.id} value={p.id}>{p.nombre || 'Producto sin nombre'}</MenuItem>
                                 ))}
                               </Select>
                             </TableCell>
@@ -477,7 +543,7 @@ const FacturacionPage: React.FC = () => {
                 </Typography>
               </Box>
               <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
-                <Typography variant="h6">IVA ({IVA_OPTIONS.find((option) => option.value === selectedIva)?.label || 'N/A'}):</Typography>
+                <Typography variant="h6">{IVA_OPTIONS.find((option) => option.value === selectedIva)?.label || 'N/A'}:</Typography>
                 <Typography variant="h6" fontWeight="bold">
                   ${ivaAmount.toFixed(2)}
                 </Typography>

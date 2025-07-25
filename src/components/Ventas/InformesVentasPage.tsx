@@ -98,97 +98,152 @@ const InformeVentasPage = () => {
   useEffect(() => {
     loadData();
   }, []);
+const testUsuarioExistence = (usuariosData) => {
+  console.log('=== TESTING USUARIO EXISTENCE ===');
+  console.log('Total usuarios:', usuariosData.length);
+  
+  // Check if usuario with ID 2 exists
+  const usuario2ById = usuariosData.find(u => u.id === 2);
+  const usuario2ByStringId = usuariosData.find(u => u.id === '2');
+  const usuario2ByNumberId = usuariosData.find(u => u.id === Number(2));
+  
+  console.log('Usuario with id === 2:', usuario2ById);
+  console.log('Usuario with id === "2":', usuario2ByStringId);
+  console.log('Usuario with id === Number(2):', usuario2ByNumberId);
+  
+  // List all usuario IDs
+  console.log('All usuario IDs and types:');
+  usuariosData.forEach((u, index) => {
+    console.log(`${index}: ID=${u.id} (type: ${typeof u.id}), nombre: ${u.nombre || 'N/A'}`);
+  });
+  
+  console.log('=== END TEST ===');
+};
+const loadData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    const [salesResponse, clientsResponse, usuariosResponse] = await Promise.all([
+      saleApi.getAll(),
+      clienteApi.getAll(),
+      usuarioApi.getAll(),
+    ]);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const [salesData, clientsData, usuariosData] = await Promise.all([
-        saleApi.getAll(),
-        clienteApi.getAll(),
-        usuarioApi.getAll(),
-      ]);
+    // Extract actual data from paginated responses
+    const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
+    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
+    const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
 
-      console.log('Sales data:', salesData);
-      console.log('Clients data:', clientsData);
-      console.log('Usuarios data:', usuariosData);
+    console.log('Sales data:', salesData);
+    console.log('Clients data:', clientsData);
+    console.log('Usuarios data:', usuariosData);
 
-      // Create maps for faster lookups
-      const clientsMap = new Map();
-      const usuariosMap = new Map();
-
-      // Handle different possible data structures for clients
-      if (Array.isArray(clientsData)) {
-        clientsData.forEach(client => {
-          if (client && client.id !== undefined && client.id !== null) {
-            clientsMap.set(client.id, client);
-            // Also map by string version of ID
-            clientsMap.set(String(client.id), client);
-          }
+    // Debug the usuarios structure
+    console.log('=== USUARIOS DEBUG ===');
+    console.log('Usuarios count:', usuariosData.length);
+    if (usuariosData.length > 0) {
+      console.log('First usuario:', usuariosData[0]);
+      usuariosData.forEach((usuario, index) => {
+        console.log(`Usuario ${index}:`, {
+          id: usuario.id,
+          idType: typeof usuario.id,
+          nombre: usuario.nombre,
+          apellido: usuario.apellido
         });
-      }
-
-      // Handle different possible data structures for usuarios
-      if (Array.isArray(usuariosData)) {
-        usuariosData.forEach(usuario => {
-          if (usuario && usuario.id !== undefined && usuario.id !== null) {
-            usuariosMap.set(usuario.id, usuario);
-            // Also map by string version of ID
-            usuariosMap.set(String(usuario.id), usuario);
-          }
-        });
-      }
-
-      // Enrich sales data with client and usuario information
-      const enrichedSales = salesData.map(sale => {
-        let cliente = null;
-        let usuario = null;
-
-        // Try to get client info from multiple possible fields
-        if (sale.cliente && typeof sale.cliente === 'object') {
-          cliente = sale.cliente;
-        } else if (sale.clienteId) {
-          cliente = clientsMap.get(sale.clienteId) || clientsMap.get(String(sale.clienteId)) || null;
-        } else if (sale.cliente_id) {
-          cliente = clientsMap.get(sale.cliente_id) || clientsMap.get(String(sale.cliente_id)) || null;
-        }
-
-        // Try to get usuario info from multiple possible fields
-        if (sale.usuario && typeof sale.usuario === 'object') {
-          usuario = sale.usuario;
-        } else if (sale.usuarioId) {
-          usuario = usuariosMap.get(sale.usuarioId) || usuariosMap.get(String(sale.usuarioId)) || null;
-        } else if (sale.usuario_id) {
-          usuario = usuariosMap.get(sale.usuario_id) || usuariosMap.get(String(sale.usuario_id)) || null;
-        }
-
-        console.log(`Sale ${sale.id}:`, { 
-          clienteId: sale.clienteId || sale.cliente_id, 
-          cliente, 
-          usuarioId: sale.usuarioId || sale.usuario_id, 
-          usuario 
-        });
-
-        return {
-          ...sale,
-          cliente,
-          usuario,
-          metodoPago: sale.metodoPago || sale.metodo_pago || 'CASH',
-        };
       });
-
-      setSales(enrichedSales);
-      setClients(clientsData || []);
-      setUsuarios(usuariosData || []);
-
-    } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Error al cargar los datos. Verifique la conexión con el servidor.');
-    } finally {
-      setLoading(false);
     }
-  };
+    console.log('=== END USUARIOS DEBUG ===');
+
+    // Create maps for faster lookups
+    const clientsMap = new Map();
+    const usuariosMap = new Map();
+
+    // Handle clients mapping
+    if (Array.isArray(clientsData)) {
+      clientsData.forEach(client => {
+        if (client && client.id !== undefined && client.id !== null) {
+          clientsMap.set(client.id, client);
+          clientsMap.set(String(client.id), client);
+          clientsMap.set(parseInt(client.id), client);
+        }
+      });
+    }
+
+    // Handle usuarios mapping
+    if (Array.isArray(usuariosData)) {
+      usuariosData.forEach(usuario => {
+        if (usuario && usuario.id !== undefined && usuario.id !== null) {
+          console.log(`Mapping usuario ID ${usuario.id} (type: ${typeof usuario.id}):`, usuario);
+          
+          // Map all possible formats of the ID
+          usuariosMap.set(usuario.id, usuario);
+          usuariosMap.set(String(usuario.id), usuario);
+          
+          // Only add parseInt if it's a valid number
+          const parsedId = parseInt(usuario.id);
+          if (!isNaN(parsedId)) {
+            usuariosMap.set(parsedId, usuario);
+          }
+        }
+      });
+    }
+
+    // Debug: Log the maps to see what we have
+    console.log('Usuarios map keys:', Array.from(usuariosMap.keys()));
+    console.log('Usuarios map size:', usuariosMap.size);
+    
+    // Test if usuario with ID 2 exists in different formats
+    console.log('Usuario with ID 2:', usuariosMap.get(2));
+    console.log('Usuario with ID "2":', usuariosMap.get("2"));
+
+    // Enrich sales data with client and usuario information
+    const enrichedSales = salesData.map(sale => {
+      let cliente = null;
+      let usuario = null;
+
+      // Client lookup
+      if (sale.cliente && typeof sale.cliente === 'object') {
+        cliente = sale.cliente;
+      } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
+        cliente = clientsMap.get(sale.clienteId) || 
+                 clientsMap.get(String(sale.clienteId)) || 
+                 clientsMap.get(parseInt(sale.clienteId));
+      }
+
+      // Usuario lookup
+      if (sale.usuario && typeof sale.usuario === 'object') {
+        usuario = sale.usuario;
+      } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
+        const uid = sale.usuarioId;
+        
+        // Try different formats
+        usuario = usuariosMap.get(uid) || 
+                 usuariosMap.get(String(uid)) || 
+                 usuariosMap.get(parseInt(uid));
+        
+        console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
+      }
+
+      return {
+        ...sale,
+        cliente,
+        usuario,
+        metodoPago: sale.metodoPago || sale.metodo_pago || 'CASH',
+      };
+    });
+
+    setSales(enrichedSales);
+    setClients(clientsData);
+    setUsuarios(usuariosData);
+
+  } catch (err) {
+    console.error('Error loading data:', err);
+    setError('Error al cargar los datos. Verifique la conexión con el servidor.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleViewSale = (sale) => {
     setViewingSale(sale);
@@ -263,33 +318,115 @@ const InformeVentasPage = () => {
     return 'Cliente no disponible';
   }
 
-  const getUsuarioFullName = (usuario) => {
-    if (!usuario) {
-      return 'Vendedor no disponible';
-    }
-
-    // Handle different possible field names
-    const nombre = usuario.nombre || usuario.name || usuario.firstName;
-    const apellido = usuario.apellido || usuario.surname || usuario.lastName;
-
-    const nameParts = [nombre, apellido].filter(part => part && part.trim());
-    if (nameParts.length > 0) {
-      return nameParts.join(' ').trim();
-    }
-
-    // Fallback options
-    const fallbackName = usuario.fullName || usuario.displayName || usuario.username || usuario.email;
-    if (fallbackName && fallbackName.trim()) {
-      return fallbackName.trim();
-    }
-
-    // If we have an ID, show that at least
-    if (usuario.id) {
-      return `Vendedor #${usuario.id}`;
-    }
-
+const getUsuarioFullName = (usuario, usuarioId = null) => {
+  if (!usuario && !usuarioId) {
     return 'Vendedor no disponible';
-  };
+  }
+
+  // If we have the usuario object, use it
+  if (usuario && typeof usuario === 'object') {
+    // Handle different possible field names for usuario
+    const possibleNameFields = [
+      // Combined fields
+      usuario.nombreCompleto,
+      usuario.nombre_completo,
+      usuario.fullName,
+      usuario.full_name,
+      usuario.displayName,
+      usuario.display_name,
+    ];
+
+    // Try combined name fields first
+    for (const nameField of possibleNameFields) {
+      if (nameField && typeof nameField === 'string' && nameField.trim()) {
+        return nameField.trim();
+      }
+    }
+
+    // Try first and last name combinations
+    const firstName = usuario.nombre || usuario.name || usuario.firstName || usuario.first_name;
+    const lastName = usuario.apellido || usuario.surname || usuario.lastName || usuario.last_name;
+    
+    if (firstName && lastName) {
+      return `${firstName.trim()} ${lastName.trim()}`;
+    }
+    
+    if (firstName) {
+      return firstName.trim();
+    }
+
+    if (lastName) {
+      return lastName.trim();
+    }
+
+    // Fallback to other identification fields
+    const fallbackFields = [
+      usuario.username,
+      usuario.user_name,
+      usuario.login,
+      usuario.email,
+      usuario.cedula,
+      usuario.documento
+    ];
+
+    for (const field of fallbackFields) {
+      if (field && typeof field === 'string' && field.trim()) {
+        return field.trim();
+      }
+    }
+
+    // If we have an ID in the object, show that
+    if (usuario.id) {
+      return `Usuario #${usuario.id}`;
+    }
+  }
+
+  // If we only have an ID, show that
+  if (usuarioId) {
+    return `Usuario #${usuarioId}`;
+  }
+
+  return 'Vendedor no disponible';
+};
+const debugUsuarioMapping = (salesData, usuariosData) => {
+  console.log('=== DEBUGGING USUARIO MAPPING ===');
+  
+  // Log the structure of usuarios data
+  console.log('Usuarios data structure:', usuariosData);
+  if (usuariosData && usuariosData.length > 0) {
+    console.log('First usuario example:', usuariosData[0]);
+    console.log('Usuario fields:', Object.keys(usuariosData[0]));
+  }
+  
+  // Log the structure of sales data
+  console.log('Sales data structure (first item):', salesData[0]);
+  if (salesData && salesData.length > 0) {
+    console.log('Sale fields:', Object.keys(salesData[0]));
+    
+    // Check what usuario-related fields exist in sales
+    const saleUsuarioFields = Object.keys(salesData[0]).filter(key => 
+      key.toLowerCase().includes('usuario') || 
+      key.toLowerCase().includes('vendedor') ||
+      key.toLowerCase().includes('user')
+    );
+    console.log('Usuario-related fields in sales:', saleUsuarioFields);
+  }
+  
+  // Check specific sales with usuarioId = 2
+  const salesWithUsuario2 = salesData.filter(sale => 
+    sale.usuarioId === 2 || sale.usuario_id === 2
+  );
+  console.log('Sales with usuarioId = 2:', salesWithUsuario2);
+  
+  // Check if usuario with ID = 2 exists
+  const usuario2 = usuariosData.find(u => u.id === 2 || u.id === '2');
+  console.log('Usuario with ID = 2:', usuario2);
+  
+  console.log('=== END DEBUG ===');
+};
+
+// Call this function in your loadData function after getting the data:
+// debugUsuarioMapping(salesData, usuariosData);
 
   const safeParseDate = (dateString) => {
     if (!dateString) return null;
@@ -790,10 +927,27 @@ const InformeVentasPage = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        {getUsuarioFullName(sale.usuario)}
-                      </Typography>
-                    </TableCell>
+  <Typography variant="body2">
+    {getUsuarioFullName(sale.usuario)}
+  </Typography>
+  {/* Enhanced debug info - remove in production */}
+  {process.env.NODE_ENV === 'development' && (
+    <Box>
+      <Typography variant="caption" color="text.secondary" display="block">
+        Usuario ID fields: {JSON.stringify({
+          usuarioId: sale.usuarioId,
+          usuario_id: sale.usuario_id,
+          user_id: sale.user_id,
+          vendedorId: sale.vendedorId,
+          vendedor_id: sale.vendedor_id
+        })}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" display="block">
+        Usuario object: {sale.usuario ? JSON.stringify(sale.usuario) : 'null'}
+      </Typography>
+    </Box>
+  )}
+</TableCell>
                     <TableCell>
                       <Chip
                         label={getStatusLabel(sale.estado)}
