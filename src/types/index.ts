@@ -1307,11 +1307,50 @@ export interface Producto {
   activo?: boolean;
   fechaCreacion?: string;
 }
+export interface ProductoDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+  fechaCreacion: string; // ISO string
+}
+
 export interface Categoria {
   id: number;
   nombre: string;
   descripcion?: string;
   activo: boolean;
+}
+export interface ProveedorDTO {
+  id: number;
+  razonSocial: string;
+  cuit: string;
+  email: string;
+  telefono: string;
+  direccion: string;
+  ciudad: string;
+  provincia: string;
+  codigoPostal: string;
+  estado: 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO';
+  fechaAlta: string;
+  fechaActualizacion: string;
+}
+
+export interface CreateProveedorDTO {
+  razonSocial: string;
+  cuit: string;
+  email: string;
+  telefono?: string;
+  direccion?: string;
+  ciudad?: string;
+  provincia?: string;
+  codigoPostal?: string;
 }
 export interface Proveedor {
   id: number;
@@ -1341,16 +1380,67 @@ export interface CategoriaProducto {
   descripcion?: string;
   activo: boolean;
 }
-export interface OrdenCompra {
+
+export interface DetalleCompraDTO {
   id: number;
-  proveedorId: number;
-  proveedor?: Proveedor;
-  fechaOrden: string;
+  productoId: number;
+  productoNombre: string;
+  cantidad: number;
+  costoUnitario: number;
+  subtotal: number;
+}
+
+export interface CompraDTO {
+  id: number;
+  numeroCompra: string;
+  fechaCompra: string;
+  fechaEntrega: string;
   estado: string;
   total: number;
-  items: OrdenCompraItem[];
   observaciones?: string;
+  proveedor: {
+    id: number;
+    razonSocial: string;
+  };
+  detalles: DetalleCompraDTO[];
 }
+
+export interface CreateCompraDTO {
+  proveedorId: number;
+  fechaEntrega: string;
+  observaciones?: string;
+  detalles: {
+    productoId?: number;
+    nombreProductoTemporal?: string;
+    descripcionProductoTemporal?: string;
+    codigoProductoTemporal?: string;
+    esProductoNuevo: boolean;
+    cantidad: number;
+    costoUnitario: number;
+  }[];
+}
+
+export interface OrdenCompra {
+  id: number;
+  numero: string;
+  supplierId: number;
+  proveedor?: ProveedorDTO;
+  fechaCreacion: string;
+  fechaEntregaEstimada: string;
+  fechaEntregaReal?: string;
+  estado: string;
+  observaciones?: string;
+  items: {
+    id: number;
+    productoId?: number;
+    descripcion: string;
+    cantidad: number;
+    precioUnitario: number;
+    subtotal: number;
+  }[];
+  total: number;
+}
+
 export interface OrdenCompraItem {
   id: number;
   ordenCompraId: number;

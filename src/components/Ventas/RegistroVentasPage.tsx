@@ -81,64 +81,124 @@ const RegistroVentasPage: React.FC = () => {
     loadData();
   }, []);
 
-  const loadData = async (): Promise<void> => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Load all data in parallel
-      const [salesData, clientsData, usuariosData] = await Promise.all([
+      const [salesResponse, clientsResponse, usuariosResponse] = await Promise.all([
         saleApi.getAll(),
         clienteApi.getAll(),
         usuarioApi.getAll(),
       ]);
-      
+  
+      // Extract actual data from paginated responses
+      const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
+      const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
+      const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
+  
       console.log('Sales data:', salesData);
       console.log('Clients data:', clientsData);
       console.log('Usuarios data:', usuariosData);
+  
+      // Debug the usuarios structure
+      console.log('=== USUARIOS DEBUG ===');
+      console.log('Usuarios count:', usuariosData.length);
+      if (usuariosData.length > 0) {
+        console.log('First usuario:', usuariosData[0]);
+        usuariosData.forEach((usuario, index) => {
+          console.log(`Usuario ${index}:`, {
+            id: usuario.id,
+            idType: typeof usuario.id,
+            nombre: usuario.nombre,
+            apellido: usuario.apellido
+          });
+        });
+      }
+      console.log('=== END USUARIOS DEBUG ===');
+  
+      // Create maps for faster lookups
+      const clientsMap = new Map();
+      const usuariosMap = new Map();
+  
+      // Handle clients mapping
+      if (Array.isArray(clientsData)) {
+        clientsData.forEach(client => {
+          if (client && client.id !== undefined && client.id !== null) {
+            clientsMap.set(client.id, client);
+            clientsMap.set(String(client.id), client);
+            clientsMap.set(parseInt(client.id), client);
+          }
+        });
+      }
+  
+      // Handle usuarios mapping
+      if (Array.isArray(usuariosData)) {
+        usuariosData.forEach(usuario => {
+          if (usuario && usuario.id !== undefined && usuario.id !== null) {
+            console.log(`Mapping usuario ID ${usuario.id} (type: ${typeof usuario.id}):`, usuario);
+            
+            // Map all possible formats of the ID
+            usuariosMap.set(usuario.id, usuario);
+            usuariosMap.set(String(usuario.id), usuario);
+            
+            // Only add parseInt if it's a valid number
+            const parsedId = parseInt(usuario.id);
+            if (!isNaN(parsedId)) {
+              usuariosMap.set(parsedId, usuario);
+            }
+          }
+        });
+      }
+  
+      // Debug: Log the maps to see what we have
+      console.log('Usuarios map keys:', Array.from(usuariosMap.keys()));
+      console.log('Usuarios map size:', usuariosMap.size);
       
-      // Create maps for quick lookups
-      const clientsMap = new Map(clientsData.map((client: Cliente) => [client.id, client]));
-      const usuariosMap = new Map(usuariosData.map((usuario: Usuario) => [usuario.id, usuario]));
-      
+      // Test if usuario with ID 2 exists in different formats
+      console.log('Usuario with ID 2:', usuariosMap.get(2));
+      console.log('Usuario with ID "2":', usuariosMap.get("2"));
+  
       // Enrich sales data with client and usuario information
-      const enrichedSales = salesData.map((sale: any) => {
-        // Map cliente - preserve existing if available
+      const enrichedSales = salesData.map(sale => {
         let cliente = null;
-        if (sale.cliente) {
-          cliente = sale.cliente;
-        } else if (sale.clienteId) {
-          cliente = clientsMap.get(sale.clienteId);
-        }
-        
-        // Map usuario/empleado - preserve existing if available
         let usuario = null;
-        if (sale.usuario) {
-          usuario = sale.usuario;
-        } else if (sale.empleado) {
-          usuario = sale.empleado;
-        } else if (sale.usuarioId || sale.empleadoId) {
-          usuario = usuariosMap.get(sale.usuarioId || sale.empleadoId);
+  
+        // Client lookup
+        if (sale.cliente && typeof sale.cliente === 'object') {
+          cliente = sale.cliente;
+        } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
+          cliente = clientsMap.get(sale.clienteId) || 
+                   clientsMap.get(String(sale.clienteId)) || 
+                   clientsMap.get(parseInt(sale.clienteId));
         }
-        
-        // Preserve metodoPago from the backend - don't override with defaults unless absolutely necessary
-        const metodoPago = sale.metodoPago; // Keep the original value
-        
-        console.log(`Sale ${sale.id}: metodoPago=`, sale.metodoPago, 'preserved=', metodoPago);
-        
+  
+        // Usuario lookup
+        if (sale.usuario && typeof sale.usuario === 'object') {
+          usuario = sale.usuario;
+        } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
+          const uid = sale.usuarioId;
+          
+          // Try different formats
+          usuario = usuariosMap.get(uid) || 
+                   usuariosMap.get(String(uid)) || 
+                   usuariosMap.get(parseInt(uid));
+          
+          console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
+        }
+  
         return {
           ...sale,
           cliente,
-          usuario, // Add usuario field for compatibility
-          empleado: usuario, // Keep empleado field as well
-          metodoPago,
+          usuario,
+          metodoPago: sale.metodoPago || sale.metodo_pago || 'CASH',
         };
       });
-      
+  
       setSales(enrichedSales);
       setClients(clientsData);
       setUsuarios(usuariosData);
-      
+  
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Error al cargar los datos. Verifique la conexión con el servidor.');
@@ -249,11 +309,14 @@ const RegistroVentasPage: React.FC = () => {
 
   const getPaymentMethodLabel = (method: PaymentMethod): string => {
     const methods: Record<PaymentMethod, string> = {
-      CASH: 'Efectivo',
-      CREDIT_CARD: 'Tarjeta de Crédito',
-      DEBIT_CARD: 'Tarjeta de Débito',
-      BANK_TRANSFER: 'Transferencia',
-      CHECK: 'Cheque',
+      EFECTIVO: 'Efectivo',
+      CHEQUE: 'Cheque',
+      CUENTA_CORRIENTE: 'Cuenta Corriente',
+      MERCADO_PAGO: 'Mercado Pago',
+      TARJETA_CREDITO: 'Tarjeta de Crédito',
+      TARJETA_DEBITO: 'Tarjeta de Débito',
+      TRANSFERENCIA_BANCARIA: 'Transferencia',
+
     };
     return methods[method] || method;
   };
@@ -457,11 +520,14 @@ const RegistroVentasPage: React.FC = () => {
                   onChange={(e) => setPaymentMethodFilter(e.target.value)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="CASH">Efectivo</MenuItem>
-                  <MenuItem value="CREDIT_CARD">Tarjeta de Crédito</MenuItem>
-                  <MenuItem value="DEBIT_CARD">Tarjeta de Débito</MenuItem>
-                  <MenuItem value="BANK_TRANSFER">Transferencia</MenuItem>
-                  <MenuItem value="CHECK">Cheque</MenuItem>
+                  <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                  <MenuItem value="CHEQUE">Cheque</MenuItem>
+                  <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
+                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                  <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                  <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
+
                 </Select>
               </FormControl>
             </Grid>
@@ -869,11 +935,14 @@ const RegistroVentasPage: React.FC = () => {
                       label="Método de Pago"
                       onChange={(e) => handleEditFormChange('metodoPago', e.target.value as PaymentMethod)}
                     >
-                      <MenuItem value="CASH">Efectivo</MenuItem>
-                      <MenuItem value="CREDIT_CARD">Tarjeta de Crédito</MenuItem>
-                      <MenuItem value="DEBIT_CARD">Tarjeta de Débito</MenuItem>
-                      <MenuItem value="BANK_TRANSFER">Transferencia</MenuItem>
-                      <MenuItem value="CHECK">Cheque</MenuItem>
+                      <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                      <MenuItem value="CHEQUE">Cheque</MenuItem>
+                      <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
+                      <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                      <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                      <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                      <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
+
                     </Select>
                   </FormControl>
                 </Grid>

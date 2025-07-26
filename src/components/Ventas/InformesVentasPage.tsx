@@ -92,7 +92,7 @@ const InformeVentasPage = () => {
   const [dateFromFilter, setDateFromFilter] = useState(null);
   const [dateToFilter, setDateToFilter] = useState(null);
   const [reportType, setReportType] = useState('summary');
-  const [groupBy, setGroupBy] = useState('day');
+  const [groupBy, setGroupBy] = useState('Día');
   const [chartType, setChartType] = useState('bar');
 
   useEffect(() => {
@@ -274,11 +274,13 @@ const loadData = async () => {
 
   const getPaymentMethodLabel = (method) => {
     const methods = {
-      CASH: 'Efectivo',
-      CREDIT_CARD: 'Tarjeta de Crédito',
-      DEBIT_CARD: 'Tarjeta de Débito',
-      BANK_TRANSFER: 'Transferencia',
-      CHECK: 'Cheque',
+      EFECTIVO: 'Efectivo',
+      TARJETA_CREDITO: 'Tarjeta de Crédito',
+      TARJETA_DEBITO: 'Tarjeta de Débito',
+      TRANSFERENCIA_BANCARIA: 'Transferencia',
+      CUENTA_CORRIENTE: 'Cuenta Corriente',
+      CHEQUE: 'Cheque',
+      MERCADO_PAGO: 'Mercado Pago',
     };
     return methods[method] || method;
   };
@@ -494,28 +496,28 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
       const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta) || new Date();
       let key = '';
       switch (groupBy) {
-        case 'day':
+        case 'Dia':
           key = saleDate.toLocaleDateString();
           break;
-        case 'week':
+        case 'Semana':
           key = `Semana ${Math.ceil(saleDate.getDate() / 7)}`;
           break;
-        case 'month':
+        case 'Mes':
           key = saleDate.toLocaleString('default', { month: 'long' });
           break;
-        case 'year':
+        case 'Año':
           key = saleDate.getFullYear().toString();
           break;
-        case 'status':
+        case 'Estado':
           key = getStatusLabel(sale.estado);
           break;
-        case 'payment':
+        case 'Método de Pago':
           key = getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago);
           break;
-        case 'client':
+        case 'Cliente':
           key = getClientFullName(sale.cliente);
           break;
-        case 'seller':
+        case 'Vendedor':
           key = getUsuarioFullName(sale.usuario);
           break;
         default:
@@ -654,14 +656,14 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                   label="Agrupar por"
                   onChange={(e) => setGroupBy(e.target.value)}
                 >
-                  <MenuItem value="day">Día</MenuItem>
-                  <MenuItem value="week">Semana</MenuItem>
-                  <MenuItem value="month">Mes</MenuItem>
-                  <MenuItem value="year">Año</MenuItem>
-                  <MenuItem value="status">Estado</MenuItem>
-                  <MenuItem value="payment">Método de Pago</MenuItem>
-                  <MenuItem value="client">Cliente</MenuItem>
-                  <MenuItem value="seller">Vendedor</MenuItem>
+                  <MenuItem value="Dia">Día</MenuItem>
+                  <MenuItem value="Semana">Semana</MenuItem>
+                  <MenuItem value="Mes">Mes</MenuItem>
+                  <MenuItem value="Año">Año</MenuItem>
+                  <MenuItem value="Estado">Estado</MenuItem>
+                  <MenuItem value="Método de Pago">Método de Pago</MenuItem>
+                  <MenuItem value="Cliente">Cliente</MenuItem>
+                  <MenuItem value="Vendedor">Vendedor</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -778,11 +780,14 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                   onChange={(e) => setPaymentMethodFilter(e.target.value)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="CASH">Efectivo</MenuItem>
-                  <MenuItem value="CREDIT_CARD">Tarjeta de Crédito</MenuItem>
-                  <MenuItem value="DEBIT_CARD">Tarjeta de Débito</MenuItem>
-                  <MenuItem value="BANK_TRANSFER">Transferencia</MenuItem>
-                  <MenuItem value="CHECK">Cheque</MenuItem>
+                  <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                  <MenuItem value="CHEQUE">Cheque</MenuItem>
+                  <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
+                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem> 
+                  <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                  <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
+                                   
                 </Select>
               </FormControl>
             </Grid>
@@ -904,12 +909,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
                         #{sale.id}
-                      </Typography>
-                      {(sale.numeroVenta || sale.numero_venta) && (
-                        <Typography variant="caption" color="text.secondary">
-                          {sale.numeroVenta || sale.numero_venta}
-                        </Typography>
-                      )}
+                      </Typography>                
                     </TableCell>
                     <TableCell>
                       {(sale.fechaVenta || sale.fecha_venta) ? 
@@ -919,34 +919,12 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                       <Typography variant="body2">
                         {getClientFullName(sale.cliente)}
                       </Typography>
-                      {/* Debug info - remove in production */}
-                      {process.env.NODE_ENV === 'development' && sale.clienteId && (
-                        <Typography variant="caption" color="text.secondary">
-                          ID: {sale.clienteId}
-                        </Typography>
-                      )}
                     </TableCell>
                     <TableCell>
   <Typography variant="body2">
     {getUsuarioFullName(sale.usuario)}
   </Typography>
-  {/* Enhanced debug info - remove in production */}
-  {process.env.NODE_ENV === 'development' && (
-    <Box>
-      <Typography variant="caption" color="text.secondary" display="block">
-        Usuario ID fields: {JSON.stringify({
-          usuarioId: sale.usuarioId,
-          usuario_id: sale.usuario_id,
-          user_id: sale.user_id,
-          vendedorId: sale.vendedorId,
-          vendedor_id: sale.vendedor_id
-        })}
-      </Typography>
-      <Typography variant="caption" color="text.secondary" display="block">
-        Usuario object: {sale.usuario ? JSON.stringify(sale.usuario) : 'null'}
-      </Typography>
-    </Box>
-  )}
+  
 </TableCell>
                     <TableCell>
                       <Chip

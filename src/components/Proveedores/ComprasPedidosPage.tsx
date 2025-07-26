@@ -56,38 +56,32 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { supplierApiWithFallback as supplierApi } from '../../api/services/apiWithFallback';
-import type { Supplier } from '../../types';
-
+import { supplierApi } from '../../api/services/supplierApi';
+import { compraApi} from '../../api/services/compraApi';
+import type { ProveedorDTO, CompraDTO, CreateCompraDTO } from '../../types';
+import Autocomplete from '@mui/material/Autocomplete';
+import { productApi } from '../../api/services/productApi';
+import type { OrdenCompra, ProductoDTO} from '../../types';
 dayjs.locale('es');
+class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
+  state = { hasError: false };
 
-// Purchase Order interface
-interface OrdenCompra {
-  id: number;
-  numero: string;
-  supplierId: number;
-  supplier?: Supplier;
-  fechaCreacion: string;
-  fechaEntregaEstimada: string;
-  fechaEntregaReal?: string;
-  estado: 'PENDIENTE' | 'CONFIRMADA' | 'EN_TRANSITO' | 'ENTREGADA' | 'CANCELADA';
-  total: number;
-  observaciones?: string;
-  items: OrdenCompraItem[];
-  createdBy: string;
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <Alert severity="error">Algo salió mal. Por favor, intenta de nuevo.</Alert>;
+    }
+    return this.props.children;
+  }
 }
-
-interface OrdenCompraItem {
-  id: number;
-  descripcion: string;
-  cantidad: number;
-  precioUnitario: number;
-  subtotal: number;
-}
-
 const ComprasPedidosPage: React.FC = () => {
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [proveedores, setProveedores] = useState<ProveedorDTO[]>([]);
+  const [compras, setCompras] = useState<CompraDTO[]>([]);
+  const [productos, setProductos] = useState<ProductDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,142 +94,67 @@ const ComprasPedidosPage: React.FC = () => {
   const [selectedOrden, setSelectedOrden] = useState<OrdenCompra | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Mock data for purchase orders
-  const mockOrdenes: OrdenCompra[] = [
-    {
-      id: 1,
-      numero: 'OC-2024-001',
-      supplierId: 1,
-      fechaCreacion: '2024-01-15',
-      fechaEntregaEstimada: '2024-01-25',
-      fechaEntregaReal: '2024-01-24',
-      estado: 'ENTREGADA',
-      total: 125000,
-      observaciones: 'Entrega urgente',
-      createdBy: 'María González',
-      items: [
-        {
-          id: 1,
-          descripcion: 'Laptop HP ProBook 450',
-          cantidad: 5,
-          precioUnitario: 20000,
-          subtotal: 100000
-        },
-        {
-          id: 2,
-          descripcion: 'Mouse óptico inalámbrico',
-          cantidad: 10,
-          precioUnitario: 2500,
-          subtotal: 25000
-        }
-      ]
-    },
-    {
-      id: 2,
-      numero: 'OC-2024-002',
-      supplierId: 2,
-      fechaCreacion: '2024-02-01',
-      fechaEntregaEstimada: '2024-02-15',
-      estado: 'EN_TRANSITO',
-      total: 85000,
-      observaciones: 'Material para obra nueva',
-      createdBy: 'Carlos López',
-      items: [
-        {
-          id: 3,
-          descripcion: 'Cemento Portland',
-          cantidad: 20,
-          precioUnitario: 3500,
-          subtotal: 70000
-        },
-        {
-          id: 4,
-          descripcion: 'Arena gruesa m³',
-          cantidad: 5,
-          precioUnitario: 3000,
-          subtotal: 15000
-        }
-      ]
-    },
-    {
-      id: 3,
-      numero: 'OC-2024-003',
-      supplierId: 4,
-      fechaCreacion: '2024-02-10',
-      fechaEntregaEstimada: '2024-02-20',
-      estado: 'CONFIRMADA',
-      total: 450000,
-      observaciones: 'Equipos para nueva sucursal',
-      createdBy: 'Ana Rodríguez',
-      items: [
-        {
-          id: 5,
-          descripcion: 'Servidor Dell PowerEdge',
-          cantidad: 2,
-          precioUnitario: 180000,
-          subtotal: 360000
-        },
-        {
-          id: 6,
-          descripcion: 'Switch Cisco 24 puertos',
-          cantidad: 3,
-          precioUnitario: 30000,
-          subtotal: 90000
-        }
-      ]
-    },
-    {
-      id: 4,
-      numero: 'OC-2024-004',
-      supplierId: 3,
-      fechaCreacion: '2024-02-12',
-      fechaEntregaEstimada: '2024-02-25',
-      estado: 'PENDIENTE',
-      total: 95000,
-      createdBy: 'Roberto Silva',
-      items: [
-        {
-          id: 7,
-          descripcion: 'Herramientas industriales',
-          cantidad: 1,
-          precioUnitario: 95000,
-          subtotal: 95000
-        }
-      ]
-    }
-  ];
-
-  const [newOrden, setNewOrden] = useState({
-    supplierId: '',
-    fechaEntregaEstimada: dayjs().add(15, 'day'),
-    observaciones: '',
-    items: [{ descripcion: '', cantidad: 1, precioUnitario: 0 }]
-  });
+const [newOrden, setNewOrden] = useState({
+  supplierId: '',
+  fechaEntregaEstimada: dayjs().add(15, 'day'),
+  observaciones: '',
+  items: [{
+    productoId: '',
+    nombreProductoTemporal: '',
+    descripcionProductoTemporal: '',
+    codigoProductoTemporal: '',
+    esProductoNuevo: false,
+    cantidad: 1,
+    precioUnitario: 0,
+  }],
+});
 
   useEffect(() => {
-    loadData();
+    loadProveedores();
+    loadCompras();
+    loadProductos();
   }, []);
 
-  const loadData = async () => {
+  const loadProveedores = async () => {
     try {
       setLoading(true);
+      const data = await supplierApi.getAll();
+      setProveedores(data);
       setError(null);
-      const suppliersData = await supplierApi.getAll();
-      setSuppliers(suppliersData);
-      
-      // Add supplier data to orders
-      const ordenesWithSuppliers = mockOrdenes.map(orden => ({
-        ...orden,
-        supplier: suppliersData.find(s => s.id === orden.supplierId)
-      }));
-      setOrdenes(ordenesWithSuppliers);
     } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
+      setError('Error al cargar los proveedores');
     } finally {
       setLoading(false);
     }
   };
+
+  const loadCompras = async () => {
+    try {
+      setLoading(true);
+      const data = await compraApi.getAll();
+      setCompras(data);
+      setError(null);
+    } catch (err) {
+      setError('Error al cargar las compras');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+const loadProductos = async () => {
+  try {
+    setLoading(true);
+    const data = await productApi.getAll();
+    console.log('Productos:', data); // Debug the response
+    setProductos(data.content); // Extract the content array
+    setError(null);
+  } catch (err) {
+    setError('Error al cargar los productos');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleViewOrden = (orden: OrdenCompra) => {
     setSelectedOrden(orden);
@@ -250,6 +169,7 @@ const ComprasPedidosPage: React.FC = () => {
       fechaEntregaEstimada: dayjs(orden.fechaEntregaEstimada),
       observaciones: orden.observaciones || '',
       items: orden.items.map(item => ({
+        productoId: item.productoId.toString(),
         descripcion: item.descripcion,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario
@@ -258,60 +178,79 @@ const ComprasPedidosPage: React.FC = () => {
     setOpenOrdenDialog(true);
   };
 
-  const handleSaveOrden = () => {
-    try {
-      const supplier = suppliers.find(s => s.id === parseInt(newOrden.supplierId));
-      if (!supplier) return;
+const handleSaveOrden = async () => {
+  try {
+    setLoading(true);
 
-      const items = newOrden.items.map((item, index) => ({
-        id: Date.now() + index,
-        descripcion: item.descripcion,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario,
-        subtotal: item.cantidad * item.precioUnitario
-      }));
-
-      const total = items.reduce((sum, item) => sum + item.subtotal, 0);
-
-      const ordenData: OrdenCompra = {
-        id: isEditMode ? selectedOrden!.id : Date.now(),
-        numero: isEditMode ? selectedOrden!.numero : `OC-2024-${String(ordenes.length + 1).padStart(3, '0')}`,
-        supplierId: parseInt(newOrden.supplierId),
-        supplier,
-        fechaCreacion: isEditMode ? selectedOrden!.fechaCreacion : new Date().toISOString().split('T')[0],
-        fechaEntregaEstimada: newOrden.fechaEntregaEstimada.format('YYYY-MM-DD'),
-        estado: isEditMode ? selectedOrden!.estado : 'PENDIENTE',
-        total,
-        observaciones: newOrden.observaciones,
-        items,
-        createdBy: 'Usuario Actual'
-      };
-
-      if (isEditMode) {
-        setOrdenes(ordenes.map(o => o.id === selectedOrden!.id ? ordenData : o));
-      } else {
-        setOrdenes([ordenData, ...ordenes]);
-      }
-
-      setOpenOrdenDialog(false);
-      setIsEditMode(false);
-      setSelectedOrden(null);
-      setNewOrden({
-        supplierId: '',
-        fechaEntregaEstimada: dayjs().add(15, 'day'),
-        observaciones: '',
-        items: [{ descripcion: '', cantidad: 1, precioUnitario: 0 }]
-      });
-    } catch (err) {
-      setError('Error al guardar la orden');
-      console.error('Error saving order:', err);
+    // Validate inputs
+    if (!newOrden.supplierId) {
+      setError('Debe seleccionar un proveedor');
+      return;
     }
-  };
+    if (
+      newOrden.items.length === 0 ||
+      newOrden.items.some(
+        (item) =>
+          // Allow either productoId (existing product) or nombreProductoTemporal (new product)
+          (!item.productoId && !item.nombreProductoTemporal) ||
+          item.cantidad <= 0 ||
+          item.precioUnitario <= 0
+      )
+    ) {
+      setError('Todos los items deben tener un producto (existente o nuevo), cantidad y precio unitario válidos');
+      return;
+    }
+
+    const compraPayload: CreateCompraDTO = {
+      proveedorId: parseInt(newOrden.supplierId),
+      fechaEntrega: newOrden.fechaEntregaEstimada.format('YYYY-MM-DDTHH:mm:ss'),
+      observaciones: newOrden.observaciones,
+      detalles: newOrden.items.map((item) => ({
+        productoId: item.productoId ? parseInt(item.productoId) : undefined,
+        nombreProductoTemporal: item.nombreProductoTemporal || undefined,
+        descripcionProductoTemporal: item.descripcionProductoTemporal || item.nombreProductoTemporal || undefined,
+        codigoProductoTemporal: item.codigoProductoTemporal || undefined,
+        esProductoNuevo: !!item.nombreProductoTemporal, // Mark as new if nombreProductoTemporal is provided
+        cantidad: item.cantidad,
+        costoUnitario: item.precioUnitario,
+      })),
+    };
+
+    const createdCompra = await compraApi.create(compraPayload);
+    setCompras([createdCompra, ...compras]);
+    setOpenOrdenDialog(false);
+    setIsEditMode(false);
+    setSelectedOrden(null);
+    setNewOrden({
+      supplierId: '',
+      fechaEntregaEstimada: dayjs().add(15, 'day'),
+      observaciones: '',
+      items: [{
+        productoId: '',
+        nombreProductoTemporal: '',
+        descripcionProductoTemporal: '',
+        codigoProductoTemporal: '',
+        esProductoNuevo: false,
+        cantidad: 1,
+        precioUnitario: 0,
+      }],
+    });
+    setError(null);
+  } catch (err) {
+    setError('Error al guardar la compra');
+    console.error('Error saving compra:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleAddItem = () => {
     setNewOrden({
       ...newOrden,
-      items: [...newOrden.items, { descripcion: '', cantidad: 1, precioUnitario: 0 }]
+      items: [
+        ...newOrden.items,
+        { productoId: '', nombreProductoTemporal: '', cantidad: 1, precioUnitario: 0 },
+      ],
     });
   };
 
@@ -322,11 +261,16 @@ const ComprasPedidosPage: React.FC = () => {
     });
   };
 
-  const handleItemChange = (index: number, field: string, value: any) => {
-    const updatedItems = [...newOrden.items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-    setNewOrden({ ...newOrden, items: updatedItems });
-  };
+const handleItemChange = (index: number, field: string, value: any) => {
+  const updatedItems = [...newOrden.items];
+  updatedItems[index] = { ...updatedItems[index], [field]: value };
+  // If changing the product name for a new product, update descripcionProductoTemporal
+  if (field === 'nombreProductoTemporal') {
+    updatedItems[index].descripcionProductoTemporal = value;
+    updatedItems[index].esProductoNuevo = !!value; // Mark as new product if nombreProductoTemporal is set
+  }
+  setNewOrden({ ...newOrden, items: updatedItems });
+};
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -351,27 +295,60 @@ const ComprasPedidosPage: React.FC = () => {
   };
 
   const filteredOrdenes = ordenes.filter(orden => {
-    const matchesSearch = 
-      orden.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (orden.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false);
-    
-    const matchesEstado = !estadoFilter || orden.estado === estadoFilter;
-    const matchesSupplier = !supplierFilter || orden.supplierId.toString() === supplierFilter;
-    
-    const fechaOrden = dayjs(orden.fechaCreacion);
-    const matchesFecha = 
-      (!fechaDesde || fechaOrden.isAfter(fechaDesde.subtract(1, 'day'))) &&
-      (!fechaHasta || fechaOrden.isBefore(fechaHasta.add(1, 'day')));
+  const matchesSearch =
+    orden.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (orden.proveedor?.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) || false);
 
-    return matchesSearch && matchesEstado && matchesSupplier && matchesFecha;
-  });
+  const matchesEstado = !estadoFilter || orden.estado === estadoFilter;
+  const matchesSupplier = !supplierFilter || orden.supplierId.toString() === supplierFilter;
 
+  const fechaOrden = dayjs(orden.fechaCreacion);
+  const matchesFecha =
+    (!fechaDesde || fechaOrden.isAfter(fechaDesde.subtract(1, 'day'))) &&
+    (!fechaHasta || fechaOrden.isBefore(fechaHasta.add(1, 'day')));
+
+  return matchesSearch && matchesEstado && matchesSupplier && matchesFecha;
+});
   const getTotalAmount = () => {
     return filteredOrdenes.reduce((sum, orden) => sum + orden.total, 0);
   };
 
   const getOrderCountByStatus = (status: string) => {
     return ordenes.filter(orden => orden.estado === status).length;
+  };
+
+  const handleSaveCompra = async (compraData: CreateCompraDTO) => {
+    try {
+      setLoading(true);
+      const created = await compraApi.create(compraData);
+      setCompras([created, ...compras]);
+      setOpenOrdenDialog(false);
+      setError(null);
+    } catch (err) {
+      setError('Error al guardar la compra');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+const [openDeleteDialog, setOpenDeleteDialog] = useState<number | null>(null);
+
+const handleDeleteCompra = async (id: number) => {
+  try {
+    setLoading(true);
+    await compraApi.delete(id);
+    setCompras(compras.filter(c => c.id !== id));
+    setOpenDeleteDialog(null);
+  } catch (err) {
+    setError('Error al eliminar la compra');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Reemplaza el uso de loadData por una función que recargue proveedores y compras:
+  const reloadData = async () => {
+    await Promise.all([loadProveedores(), loadCompras()]);
   };
 
   if (loading) {
@@ -383,11 +360,12 @@ const ComprasPedidosPage: React.FC = () => {
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box p={3}>
-        {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" display="flex" alignItems="center">
+    <ErrorBoundary>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Box p={3}>
+          {/* Header */}
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h4" component="h1" display="flex" alignItems="center">
             <ShoppingCartIcon sx={{ mr: 2 }} />
             Compras y Pedidos
           </Typography>
@@ -504,9 +482,9 @@ const ComprasPedidosPage: React.FC = () => {
               sx={{ minWidth: 200 }}
             >
               <MenuItem value="">Todos</MenuItem>
-              {suppliers.map((supplier) => (
-                <MenuItem key={supplier.id} value={supplier.id.toString()}>
-                  {supplier.name}
+              {proveedores.map((proveedor) => (
+                <MenuItem key={proveedor.id} value={proveedor.id.toString()}>
+                  {proveedor.razonSocial}
                 </MenuItem>
               ))}
             </TextField>
@@ -525,7 +503,7 @@ const ComprasPedidosPage: React.FC = () => {
               slotProps={{ textField: { size: 'small' } }}
             />
 
-            <IconButton onClick={loadData}>
+            <IconButton onClick={reloadData}>
               <RefreshIcon />
             </IconButton>
           </Box>
@@ -560,10 +538,10 @@ const ComprasPedidosPage: React.FC = () => {
                       </Avatar>
                       <Box>
                         <Typography variant="body2">
-                          {orden.supplier?.name}
+                          {orden.proveedor?.razonSocial}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {orden.supplier?.contactPerson}
+                          {orden.proveedor?.email}
                         </Typography>
                       </Box>
                     </Box>
@@ -584,7 +562,8 @@ const ComprasPedidosPage: React.FC = () => {
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="subtitle2">
-                      ${orden.total.toLocaleString()}
+                      ${orden.total.toLocaleString()
+                      }
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
@@ -618,117 +597,195 @@ const ComprasPedidosPage: React.FC = () => {
         )}
 
         {/* New/Edit Order Dialog */}
-        <Dialog open={openOrdenDialog} onClose={() => setOpenOrdenDialog(false)} maxWidth="md" fullWidth>
-          <DialogTitle>
-            {isEditMode ? 'Editar Orden de Compra' : 'Nueva Orden de Compra'}
-          </DialogTitle>
-          <DialogContent>
-            <Box pt={2}>
-              <TextField
-                fullWidth
-                select
-                label="Proveedor"
-                value={newOrden.supplierId}
-                onChange={(e) => setNewOrden({ ...newOrden, supplierId: e.target.value })}
-                margin="normal"
-              >
-                {suppliers.map((supplier) => (
-                  <MenuItem key={supplier.id} value={supplier.id.toString()}>
-                    {supplier.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+<Dialog
+  open={openOrdenDialog}
+  onClose={() => setOpenOrdenDialog(false)}
+  maxWidth="md"
+  fullWidth
+>
+  <DialogTitle>{isEditMode ? 'Editar Orden de Compra' : 'Nueva Orden de Compra'}</DialogTitle>
+  <DialogContent>
+    <Box pt={2}>
+      <TextField
+        fullWidth
+        select
+        label="Proveedor"
+        value={newOrden.supplierId}
+        onChange={(e) => setNewOrden({ ...newOrden, supplierId: e.target.value })}
+        margin="normal"
+        required
+      >
+        {proveedores.map((proveedor) => (
+          <MenuItem key={proveedor.id} value={proveedor.id.toString()}>
+            {proveedor.razonSocial}
+          </MenuItem>
+        ))}
+      </TextField>
 
-              <DatePicker
-                label="Fecha de Entrega Estimada"
-                value={newOrden.fechaEntregaEstimada}
-                onChange={(date) => setNewOrden({ ...newOrden, fechaEntregaEstimada: date || dayjs() })}
-                slotProps={{ textField: { fullWidth: true, margin: 'normal' } }}
-              />
+      <DatePicker
+        label="Fecha de Entrega Estimada"
+        value={newOrden.fechaEntregaEstimada}
+        onChange={(date) => setNewOrden({ ...newOrden, fechaEntregaEstimada: date || dayjs() })}
+        slotProps={{ textField: { fullWidth: true, margin: 'normal' } }}
+      />
 
-              <TextField
-                fullWidth
-                label="Observaciones"
-                value={newOrden.observaciones}
-                onChange={(e) => setNewOrden({ ...newOrden, observaciones: e.target.value })}
-                margin="normal"
-                multiline
-                rows={2}
-              />
+      <TextField
+        fullWidth
+        label="Observaciones"
+        value={newOrden.observaciones}
+        onChange={(e) => setNewOrden({ ...newOrden, observaciones: e.target.value })}
+        margin="normal"
+        multiline
+        rows={2}
+      />
 
-              <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
-                Items de la Orden
-              </Typography>
-
-              {newOrden.items.map((item, index) => (
-                <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
-                    <TextField
-                      label="Descripción"
-                      value={item.descripcion}
-                      onChange={(e) => handleItemChange(index, 'descripcion', e.target.value)}
-                      sx={{ flex: 1 }}
-                    />
-                    <TextField
-                      label="Cantidad"
-                      type="number"
-                      value={item.cantidad}
-                      onChange={(e) => handleItemChange(index, 'cantidad', parseInt(e.target.value) || 0)}
-                      sx={{ width: 100 }}
-                    />
-                    <TextField
-                      label="Precio Unit."
-                      type="number"
-                      value={item.precioUnitario}
-                      onChange={(e) => handleItemChange(index, 'precioUnitario', parseFloat(e.target.value) || 0)}
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                      }}
-                      sx={{ width: 120 }}
-                    />
-                    <Typography variant="body2" sx={{ minWidth: 80 }}>
-                      ${(item.cantidad * item.precioUnitario).toLocaleString()}
-                    </Typography>
-                    <IconButton 
-                      onClick={() => handleRemoveItem(index)}
-                      disabled={newOrden.items.length === 1}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
-              ))}
-
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={handleAddItem}
-                sx={{ mb: 2 }}
-              >
-                Agregar Item
-              </Button>
-
-              <Box sx={{ textAlign: 'right', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                <Typography variant="h6">
-                  Total: ${newOrden.items.reduce((sum, item) => sum + (item.cantidad * item.precioUnitario), 0).toLocaleString()}
-                </Typography>
-              </Box>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenOrdenDialog(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              variant="contained" 
-              onClick={handleSaveOrden}
-              disabled={!newOrden.supplierId || newOrden.items.some(item => !item.descripcion)}
-            >
-              {isEditMode ? 'Actualizar' : 'Crear'} Orden
-            </Button>
-          </DialogActions>
-        </Dialog>
+      <Typography variant="h6" sx={{ mt: 2 }}>
+        Items de la Orden
+      </Typography>
+      {newOrden.items.map((item, index) => (
+  <Box key={index} display="flex" gap={2} alignItems="center" mb={2}>
+    <Autocomplete
+  freeSolo
+  options={productos}
+  getOptionLabel={(option) =>
+    typeof option === 'string' ? option : option.nombre || ''
+  }
+  value={item.nombreProductoTemporal || productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''}
+  onChange={(_, newValue) => {
+    const updatedItems = [...newOrden.items];
+    if (typeof newValue === 'string') {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        productoId: '',
+        nombreProductoTemporal: newValue,
+        descripcionProductoTemporal: newValue,
+        esProductoNuevo: true,
+      };
+    } else if (newValue && newValue.id) {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        productoId: newValue.id.toString(),
+        nombreProductoTemporal: '',
+        descripcionProductoTemporal: newValue.nombre,
+        esProductoNuevo: false,
+      };
+    } else {
+      updatedItems[index] = {
+        ...updatedItems[index],
+        productoId: '',
+        nombreProductoTemporal: '',
+        descripcionProductoTemporal: '',
+        esProductoNuevo: false,
+      };
+    }
+    console.log('Updated items:', updatedItems); // Debug log
+    setNewOrden({ ...newOrden, items: updatedItems });
+  }}
+  onInputChange={(_, newInputValue, reason) => {
+    if (reason === 'input') {
+      console.log('Input changed:', newInputValue); // Debug log
+      handleItemChange(index, 'nombreProductoTemporal', newInputValue);
+      handleItemChange(index, 'descripcionProductoTemporal', newInputValue);
+      handleItemChange(index, 'esProductoNuevo', !!newInputValue);
+      handleItemChange(index, 'productoId', '');
+    }
+  }}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Producto"
+      required
+      sx={{ flex: 2, minWidth: 200 }}
+    />
+  )}
+/>
+    <TextField
+      type="number"
+      label="Cantidad"
+      value={item.cantidad}
+      onChange={(e) => handleItemChange(index, 'cantidad', parseInt(e.target.value) || 0)}
+      sx={{ width: 100 }}
+      required
+    />
+    <TextField
+      type="number"
+      label="Precio Unitario"
+      value={item.precioUnitario}
+      onChange={(e) => handleItemChange(index, 'precioUnitario', parseFloat(e.target.value) || 0)}
+      InputProps={{
+        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+      }}
+      sx={{ width: 120 }}
+      required
+    />
+    <TextField
+      label="Total"
+      value={(item.cantidad * item.precioUnitario).toFixed(2)}
+      InputProps={{
+        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+        readOnly: true,
+      }}
+      sx={{ width: 120 }}
+    />
+    <IconButton
+      onClick={() => handleRemoveItem(index)}
+      disabled={newOrden.items.length === 1}
+      color="error"
+    >
+      <DeleteIcon />
+    </IconButton>
+  </Box>
+))}
+      <Button onClick={handleAddItem} sx={{ mb: 2 }} startIcon={<AddIcon />}>
+        Agregar Item
+      </Button>
+      <Typography>
+        Total: $
+        {newOrden.items
+          .reduce((sum, item) => sum + item.cantidad * item.precioUnitario, 0)
+          .toLocaleString()}
+      </Typography>
+    </Box>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpenOrdenDialog(false)}>Cancelar</Button>
+    <Button
+      variant="contained"
+      onClick={handleSaveOrden}
+      disabled={
+  !newOrden.supplierId ||
+  newOrden.items.length === 0 ||
+  newOrden.items.some(
+    (item) =>
+      (!item.productoId && !item.nombreProductoTemporal) ||
+      item.cantidad <= 0 ||
+      item.precioUnitario <= 0
+  )
+}
+    >
+      {isEditMode ? 'Actualizar' : 'Crear'} Orden
+    </Button>
+  </DialogActions>
+</Dialog>
+        <Dialog
+  open={openDeleteDialog !== null}
+  onClose={() => setOpenDeleteDialog(null)}
+>
+  <DialogTitle>Confirmar Eliminación</DialogTitle>
+  <DialogContent>
+    <Typography>¿Está seguro de que desea eliminar esta compra?</Typography>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpenDeleteDialog(null)}>Cancelar</Button>
+    <Button
+      variant="contained"
+      color="error"
+      onClick={() => handleDeleteCompra(openDeleteDialog!)}
+    >
+      Eliminar
+    </Button>
+  </DialogActions>
+</Dialog>
 
         {/* View Order Dialog */}
         <Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)} maxWidth="md" fullWidth>
@@ -819,11 +876,11 @@ const ComprasPedidosPage: React.FC = () => {
             <Button onClick={() => setOpenViewDialog(false)}>
               Cerrar
             </Button>
-          </DialogActions>
+          </DialogActions>       
         </Dialog>
-      </Box>
+      </Box>    
     </LocalizationProvider>
+    </ErrorBoundary>
   );
 };
-
 export default ComprasPedidosPage;

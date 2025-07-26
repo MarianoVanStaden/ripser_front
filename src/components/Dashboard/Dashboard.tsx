@@ -127,21 +127,21 @@ const Dashboard: React.FC = () => {
 
       // Calculate monthly sales amount (this month)
       const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const monthlySales = sales.filter(sale => {
-        const saleDate = new Date(sale.saleDate);
-        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
-      });
-      const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+const currentYear = new Date().getFullYear();
+const monthlySales = sales.filter(sale => {
+  const saleDate = new Date(sale.fechaVenta); // Use fechaVenta from Venta entity
+  return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+});
+const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total), 0); // Use total instead of totalAmount
 
-      setStats({
-        totalClients: clients.length,
-        totalProducts: products.length,
-        totalOrders: orders.length,
-        totalSales: sales.length,
-        monthlySalesAmount,
-        lowStockProducts: lowStockProducts.length,
-      });
+setStats({
+  totalClients: clients.length,
+  totalProducts: products.length,
+  totalOrders: orders.length,
+  totalSales: sales.length,
+  monthlySalesAmount,
+  lowStockProducts: lowStockProducts.length,
+});
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');

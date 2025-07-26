@@ -39,11 +39,13 @@ import dayjs from 'dayjs';
 // Define available payment methods
 const PAYMENT_METHODS = [
   { value: 'EFECTIVO', label: 'Efectivo' },
+  { value: 'CHEQUE', label: 'Cheque' },
+  { value: 'CUENTA_CORRIENTE', label: 'Cuenta Corriente' },
+  { value: 'MERCADO_PAGO', label: 'Mercado Pago' },
   { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
   { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia Bancaria' },
   { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
-  { value: 'CUENTA_CORRIENTE', label: 'Cuenta Corriente' },
-  { value: 'CHEQUE', label: 'Cheque' },
+
 ];
 
 // Define IVA options based on TipoIva enum
