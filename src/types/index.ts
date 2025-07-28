@@ -1389,20 +1389,46 @@ export interface DetalleCompraDTO {
   costoUnitario: number;
   subtotal: number;
 }
-
-export interface CompraDTO {
+interface OrdenCompra {
   id: number;
-  numeroCompra: string;
-  fechaCompra: string;
-  fechaEntrega: string;
+  numero: string;
+  proveedor?: ProveedorDTO;
+  supplierId?: string | number; // Allow string or number
+  fechaCreacion: string;
+  fechaEntregaEstimada: string;
+  fechaEntregaReal?: string;
   estado: string;
   total: number;
+  items: {
+    id?: number;
+    productoId?: string | number; // Allow string or number
+    descripcion: string;
+    cantidad: number;
+    precioUnitario: number;
+    subtotal: number;
+  }[];
   observaciones?: string;
-  proveedor: {
-    id: number;
-    razonSocial: string;
-  };
-  detalles: DetalleCompraDTO[];
+}
+
+interface CompraDTO {
+  id: number;
+  proveedorId: number;
+  proveedor?: ProveedorDTO;
+  numero?: string;
+  fechaCreacion: string;
+  fechaEntrega: string;
+  estado: string;
+  observaciones?: string;
+  detalles: {
+    id?: number;
+    productoId?: number;
+    nombreProductoTemporal?: string;
+    descripcionProductoTemporal?: string;
+    codigoProductoTemporal?: string;
+    esProductoNuevo: boolean;
+    cantidad: number;
+    costoUnitario: number;
+  }[];
 }
 
 export interface CreateCompraDTO {
@@ -1418,27 +1444,6 @@ export interface CreateCompraDTO {
     cantidad: number;
     costoUnitario: number;
   }[];
-}
-
-export interface OrdenCompra {
-  id: number;
-  numero: string;
-  supplierId: number;
-  proveedor?: ProveedorDTO;
-  fechaCreacion: string;
-  fechaEntregaEstimada: string;
-  fechaEntregaReal?: string;
-  estado: string;
-  observaciones?: string;
-  items: {
-    id: number;
-    productoId?: number;
-    descripcion: string;
-    cantidad: number;
-    precioUnitario: number;
-    subtotal: number;
-  }[];
-  total: number;
 }
 
 export interface OrdenCompraItem {

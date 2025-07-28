@@ -128,25 +128,50 @@ const [newOrden, setNewOrden] = useState({
     }
   };
 
-  const loadCompras = async () => {
-    try {
-      setLoading(true);
-      const data = await compraApi.getAll();
-      setCompras(data);
-      setError(null);
-    } catch (err) {
-      setError('Error al cargar las compras');
-    } finally {
-      setLoading(false);
-    }
+const loadCompras = async () => {
+  try {
+    setLoading(true);
+    const data = await compraApi.getAll();
+    console.log('Compras data:', JSON.stringify(data, null, 2)); // Detailed logging
+    setCompras(data);
+    setOrdenes(data.map(compra => {
+  const orden = {
+    id: compra.id,
+    numero: compra.numero || `COMPRA-${compra.id}`,
+    proveedor: compra.proveedor,
+    supplierId: compra.proveedorId ?? '', // Fallback
+    fechaCreacion: compra.fechaCreacion,
+    fechaEntregaEstimada: compra.fechaEntrega,
+    estado: compra.estado,
+    total: compra.detalles.reduce((sum, item) => sum + item.cantidad * item.costoUnitario, 0),
+    items: compra.detalles.map(detalle => ({
+      id: detalle.id,
+      productoId: detalle.productoId ?? '',
+      descripcion: detalle.nombreProductoTemporal || detalle.descripcionProductoTemporal || '',
+      cantidad: detalle.cantidad,
+      precioUnitario: detalle.costoUnitario,
+      subtotal: detalle.cantidad * detalle.costoUnitario,
+    })),
+    observaciones: compra.observaciones,
   };
+  console.log('Mapped orden:', orden); // Log each mapped orden
+  return orden;
+}));
+    setError(null);
+  } catch (err) {
+    console.error('Error loading compras:', err);
+    setError('Error al cargar las compras');
+  } finally {
+    setLoading(false);
+  }
+};
 
 const loadProductos = async () => {
   try {
     setLoading(true);
     const data = await productApi.getAll();
-    console.log('Productos:', data); // Debug the response
-    setProductos(data.content); // Extract the content array
+    console.log('Productos response:', data); // Log the full response
+    setProductos(data.content || data); // Fallback to data if content is not present
     setError(null);
   } catch (err) {
     setError('Error al cargar los productos');
@@ -161,23 +186,114 @@ const loadProductos = async () => {
     setOpenViewDialog(true);
   };
 
-  const handleEditOrden = (orden: OrdenCompra) => {
-    setSelectedOrden(orden);
-    setIsEditMode(true);
-    setNewOrden({
-      supplierId: orden.supplierId.toString(),
-      fechaEntregaEstimada: dayjs(orden.fechaEntregaEstimada),
-      observaciones: orden.observaciones || '',
-      items: orden.items.map(item => ({
-        productoId: item.productoId.toString(),
-        descripcion: item.descripcion,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario
-      }))
-    });
-    setOpenOrdenDialog(true);
-  };
+const handleEditOrden = (orden: OrdenCompra) => {
+  setSelectedOrden(orden);
+  setIsEditMode(true);
+  setNewOrden({
+    supplierId: orden.supplierId ? orden.supplierId.toString() : '', // Safe conversion
+    fechaEntregaEstimada: dayjs(orden.fechaEntregaEstimada),
+    observaciones: orden.observaciones || '',
+    items: orden.items.map(item => ({
+      productoId: item.productoId ? item.productoId.toString() : '', // Safe conversion
+      descripcion: item.descripcion,
+      nombreProductoTemporal: item.descripcion || '', // Use descripcion as fallback
+      descripcionProductoTemporal: item.descripcion || '',
+      codigoProductoTemporal: '',
+      esProductoNuevo: !item.productoId, // Mark as new if no productoId
+      cantidad: item.cantidad,
+      precioUnitario: item.precioUnitario
+    }))
+  });
+  setOpenOrdenDialog(true);
+};
 
+const validateOrder = (orden) => {
+  // Check if there are items
+  if (!orden.items || orden.items.length === 0) {
+    return { isValid: false, message: 'La orden debe tener al menos un item' };
+  }
+
+  // Validate each item
+  for (let i = 0; i < orden.items.length; i++) {
+    const item = orden.items[i];
+    
+    // Check if item has a product (either existing or new)
+    const hasExistingProduct = item.productoId && item.productoId.trim() !== '';
+    const hasNewProduct = item.esProductoNuevo && item.nombreProductoTemporal && item.nombreProductoTemporal.trim() !== '';
+    
+    if (!hasExistingProduct && !hasNewProduct) {
+      return { 
+        isValid: false, 
+        message: `El item ${i + 1} debe tener un producto seleccionado o un nombre de producto nuevo` 
+      };
+    }
+    
+    // Check if item has quantity
+    if (!item.cantidad || item.cantidad <= 0) {
+      return { 
+        isValid: false, 
+        message: `El item ${i + 1} debe tener una cantidad válida` 
+      };
+    }
+    
+    // Check if item has price (important for new products)
+    if (!item.precio || item.precio <= 0) {
+      return { 
+        isValid: false, 
+        message: `El item ${i + 1} debe tener un precio válido` 
+      };
+    }
+  }
+  
+  return { isValid: true };
+};
+const handleCrearOrden = async () => {
+  try {
+    // Validate the order
+    const validation = validateOrder(newOrden);
+    if (!validation.isValid) {
+      alert(validation.message);
+      return;
+    }
+
+    // Prepare the order data
+    const orderData = {
+      ...newOrden,
+      items: newOrden.items.map(item => ({
+        ...item,
+        // Ensure we have the right product identifier
+        productoId: item.esProductoNuevo ? null : item.productoId,
+        nombreProducto: item.esProductoNuevo ? item.nombreProductoTemporal : item.descripcionProductoTemporal,
+        esProductoNuevo: item.esProductoNuevo || false,
+        cantidad: parseFloat(item.cantidad) || 0,
+        precio: parseFloat(item.precio) || 0,
+        subtotal: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0)
+      }))
+    };
+
+    console.log('Order data to send:', orderData);
+
+    // Send to your API
+    const response = await fetch('/api/ordenes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData)
+    });
+
+    if (response.ok) {
+      alert('Orden creada exitosamente');
+      // Reset form or redirect
+    } else {
+      const errorData = await response.json();
+      alert(`Error: ${errorData.message || 'No se pudo crear la orden'}`);
+    }
+  } catch (error) {
+    console.error('Error creating order:', error);
+    alert('Error al crear la orden');
+  }
+};
 const handleSaveOrden = async () => {
   try {
     setLoading(true);
@@ -294,13 +410,13 @@ const handleItemChange = (index: number, field: string, value: any) => {
     }
   };
 
-  const filteredOrdenes = ordenes.filter(orden => {
+const filteredOrdenes = ordenes.filter(orden => {
   const matchesSearch =
     orden.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (orden.proveedor?.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) || false);
 
   const matchesEstado = !estadoFilter || orden.estado === estadoFilter;
-  const matchesSupplier = !supplierFilter || orden.supplierId.toString() === supplierFilter;
+  const matchesSupplier = !supplierFilter || (orden.supplierId ? orden.supplierId.toString() : '') === supplierFilter;
 
   const fechaOrden = dayjs(orden.fechaCreacion);
   const matchesFecha =
@@ -654,40 +770,57 @@ const handleDeleteCompra = async (id: number) => {
   onChange={(_, newValue) => {
     const updatedItems = [...newOrden.items];
     if (typeof newValue === 'string') {
+      // Handle new product (string input)
       updatedItems[index] = {
         ...updatedItems[index],
-        productoId: '',
+        productoId: '', // Clear existing product ID
         nombreProductoTemporal: newValue,
         descripcionProductoTemporal: newValue,
         esProductoNuevo: true,
+        // Ensure price is maintained or set to 0 if not specified
+        precio: updatedItems[index].precio || 0
       };
     } else if (newValue && newValue.id) {
+      // Handle existing product selection
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: newValue.id.toString(),
         nombreProductoTemporal: '',
         descripcionProductoTemporal: newValue.nombre,
         esProductoNuevo: false,
+        // Use product price from database
+        precio: newValue.precio || updatedItems[index].precio || 0
       };
     } else {
+      // Handle clearing the selection
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: '',
         nombreProductoTemporal: '',
         descripcionProductoTemporal: '',
         esProductoNuevo: false,
+        precio: updatedItems[index].precio || 0 // Keep existing price
       };
     }
-    console.log('Updated items:', updatedItems); // Debug log
+    console.log('Updated items:', updatedItems);
     setNewOrden({ ...newOrden, items: updatedItems });
   }}
   onInputChange={(_, newInputValue, reason) => {
     if (reason === 'input') {
-      console.log('Input changed:', newInputValue); // Debug log
-      handleItemChange(index, 'nombreProductoTemporal', newInputValue);
-      handleItemChange(index, 'descripcionProductoTemporal', newInputValue);
-      handleItemChange(index, 'esProductoNuevo', !!newInputValue);
-      handleItemChange(index, 'productoId', '');
+      console.log('Input changed:', newInputValue);
+      
+      const updatedItems = [...newOrden.items];
+      updatedItems[index] = {
+        ...updatedItems[index],
+        nombreProductoTemporal: newInputValue,
+        descripcionProductoTemporal: newInputValue,
+        esProductoNuevo: !!newInputValue && newInputValue.trim() !== '',
+        productoId: '', // Clear product ID when typing
+        // Maintain existing price
+        precio: updatedItems[index].precio || 0
+      };
+      
+      setNewOrden({ ...newOrden, items: updatedItems });
     }
   }}
   renderInput={(params) => (
