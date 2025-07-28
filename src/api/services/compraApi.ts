@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Compra } from '../../types';
+import type { Compra, CreateCompraDTO, CompraDTO} from '../../types';
 
 export const compraApi = {
   // Get all compras
@@ -41,8 +41,18 @@ export const compraApi = {
   },
 
   // Update compra
-  update: async (id: number, compra: Compra): Promise<Compra> => {
-    const response = await api.put(`/api/compras/${id}`, compra);
-    return response.data;
+// In compraApi.ts
+async update(id: number, compra: CreateCompraDTO): Promise<CompraDTO> {
+  const response = await fetch(`/api/compras/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(compra),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update compra');
   }
+  return response.json();
+}
 };

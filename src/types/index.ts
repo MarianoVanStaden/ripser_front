@@ -1389,7 +1389,7 @@ export interface DetalleCompraDTO {
   costoUnitario: number;
   subtotal: number;
 }
-interface OrdenCompra {
+export interface OrdenCompra {
   id: number;
   numero: string;
   proveedor?: ProveedorDTO;
@@ -1410,7 +1410,7 @@ interface OrdenCompra {
   observaciones?: string;
 }
 
-interface CompraDTO {
+export interface CompraDTO {
   id: number;
   proveedorId: number;
   proveedor?: ProveedorDTO;

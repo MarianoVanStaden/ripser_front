@@ -115,48 +115,60 @@ const [newOrden, setNewOrden] = useState({
     loadProductos();
   }, []);
 
-  const loadProveedores = async () => {
-    try {
-      setLoading(true);
-      const data = await supplierApi.getAll();
-      setProveedores(data);
-      setError(null);
-    } catch (err) {
-      setError('Error al cargar los proveedores');
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadProveedores = async () => {
+  try {
+    setLoading(true);
+    const data = await supplierApi.getAll();
+    console.log('Proveedores:', data); // Debug log
+    setProveedores(data);
+    setError(null);
+  } catch (err) {
+    setError('Error al cargar los proveedores');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
 const loadCompras = async () => {
   try {
     setLoading(true);
     const data = await compraApi.getAll();
-    console.log('Compras data:', JSON.stringify(data, null, 2)); // Detailed logging
+    console.log('Compras data:', JSON.stringify(data, null, 2));
     setCompras(data);
-    setOrdenes(data.map(compra => {
-  const orden = {
-    id: compra.id,
-    numero: compra.numero || `COMPRA-${compra.id}`,
-    proveedor: compra.proveedor,
-    supplierId: compra.proveedorId ?? '', // Fallback
-    fechaCreacion: compra.fechaCreacion,
-    fechaEntregaEstimada: compra.fechaEntrega,
-    estado: compra.estado,
-    total: compra.detalles.reduce((sum, item) => sum + item.cantidad * item.costoUnitario, 0),
-    items: compra.detalles.map(detalle => ({
-      id: detalle.id,
-      productoId: detalle.productoId ?? '',
-      descripcion: detalle.nombreProductoTemporal || detalle.descripcionProductoTemporal || '',
-      cantidad: detalle.cantidad,
-      precioUnitario: detalle.costoUnitario,
-      subtotal: detalle.cantidad * detalle.costoUnitario,
-    })),
-    observaciones: compra.observaciones,
-  };
-  console.log('Mapped orden:', orden); // Log each mapped orden
-  return orden;
-}));
+    setOrdenes(
+      data.map((compra) => {
+        console.log(`Compra ID: ${compra.id}, proveedorId: ${compra.proveedorId}, proveedor: ${JSON.stringify(compra.proveedor, null, 2)}`);
+        const orden = {
+          id: compra.id,
+          numero: compra.numero || `COMPRA-${compra.id}`,
+          proveedor: compra.proveedor,
+          supplierId: compra.proveedorId
+            ? compra.proveedorId.toString()
+            : compra.proveedor?.id
+              ? compra.proveedor.id.toString()
+              : '',
+          fechaCreacion: compra.fechaCreacion && dayjs(compra.fechaCreacion).isValid()
+            ? compra.fechaCreacion
+            : new Date().toISOString(),
+          fechaEntregaEstimada: compra.fechaEntrega && dayjs(compra.fechaEntrega).isValid()
+            ? compra.fechaEntrega
+            : new Date().toISOString(),
+          estado: compra.estado,
+          total: compra.detalles.reduce((sum, item) => sum + item.cantidad * item.costoUnitario, 0),
+          items: compra.detalles.map((detalle) => ({
+            id: detalle.id,
+            productoId: detalle.productoId ? detalle.productoId.toString() : '',
+            descripcion: detalle.nombreProductoTemporal || detalle.descripcionProductoTemporal || '',
+            cantidad: detalle.cantidad,
+            precioUnitario: detalle.costoUnitario,
+            subtotal: detalle.cantidad * detalle.costoUnitario,
+          })),
+          observaciones: compra.observaciones,
+        };
+        return orden;
+      })
+    );
     setError(null);
   } catch (err) {
     console.error('Error loading compras:', err);
@@ -298,7 +310,6 @@ const handleSaveOrden = async () => {
   try {
     setLoading(true);
 
-    // Validate inputs
     if (!newOrden.supplierId) {
       setError('Debe seleccionar un proveedor');
       return;
@@ -307,7 +318,6 @@ const handleSaveOrden = async () => {
       newOrden.items.length === 0 ||
       newOrden.items.some(
         (item) =>
-          // Allow either productoId (existing product) or nombreProductoTemporal (new product)
           (!item.productoId && !item.nombreProductoTemporal) ||
           item.cantidad <= 0 ||
           item.precioUnitario <= 0
@@ -321,19 +331,33 @@ const handleSaveOrden = async () => {
       proveedorId: parseInt(newOrden.supplierId),
       fechaEntrega: newOrden.fechaEntregaEstimada.format('YYYY-MM-DDTHH:mm:ss'),
       observaciones: newOrden.observaciones,
-      detalles: newOrden.items.map((item) => ({
-        productoId: item.productoId ? parseInt(item.productoId) : undefined,
-        nombreProductoTemporal: item.nombreProductoTemporal || undefined,
-        descripcionProductoTemporal: item.descripcionProductoTemporal || item.nombreProductoTemporal || undefined,
-        codigoProductoTemporal: item.codigoProductoTemporal || undefined,
-        esProductoNuevo: !!item.nombreProductoTemporal, // Mark as new if nombreProductoTemporal is provided
-        cantidad: item.cantidad,
-        costoUnitario: item.precioUnitario,
-      })),
+      detalles: newOrden.items.map((item) => {
+        const detalle = {
+          productoId: item.productoId ? parseInt(item.productoId) : undefined,
+          nombreProductoTemporal: item.nombreProductoTemporal || undefined,
+          descripcionProductoTemporal: item.descripcionProductoTemporal || item.nombreProductoTemporal || undefined,
+          codigoProductoTemporal: item.codigoProductoTemporal || undefined,
+          esProductoNuevo: !!item.nombreProductoTemporal,
+          cantidad: item.cantidad,
+          costoUnitario: item.precioUnitario,
+        };
+        console.log('Detalle:', detalle); // Debug log
+        return detalle;
+      }),
     };
 
-    const createdCompra = await compraApi.create(compraPayload);
-    setCompras([createdCompra, ...compras]);
+    console.log('Compra Payload:', JSON.stringify(compraPayload, null, 2)); // Debug log
+
+    let createdOrUpdatedCompra;
+    if (isEditMode && selectedOrden?.id) {
+      createdOrUpdatedCompra = await compraApi.update(selectedOrden.id, compraPayload);
+      setCompras(compras.map((c) => (c.id === selectedOrden.id ? createdOrUpdatedCompra : c)));
+    } else {
+      createdOrUpdatedCompra = await compraApi.create(compraPayload);
+      setCompras([createdOrUpdatedCompra, ...compras]);
+    }
+
+    await loadCompras();
     setOpenOrdenDialog(false);
     setIsEditMode(false);
     setSelectedOrden(null);
@@ -353,7 +377,7 @@ const handleSaveOrden = async () => {
     });
     setError(null);
   } catch (err) {
-    setError('Error al guardar la compra');
+    setError(`Error al guardar la compra: ${err.message}`);
     console.error('Error saving compra:', err);
   } finally {
     setLoading(false);
@@ -410,18 +434,24 @@ const handleItemChange = (index: number, field: string, value: any) => {
     }
   };
 
-const filteredOrdenes = ordenes.filter(orden => {
+const filteredOrdenes = ordenes.filter((orden) => {
   const matchesSearch =
     orden.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (orden.proveedor?.razonSocial.toLowerCase().includes(searchTerm.toLowerCase()) || false);
+    (orden.proveedor?.razonSocial.toLowerCase()?.includes(searchTerm.toLowerCase()) || false);
 
   const matchesEstado = !estadoFilter || orden.estado === estadoFilter;
-  const matchesSupplier = !supplierFilter || (orden.supplierId ? orden.supplierId.toString() : '') === supplierFilter;
+
+  const ordenSupplierId = orden.supplierId ? orden.supplierId.toString() : '';
+  const matchesSupplier = !supplierFilter || ordenSupplierId === supplierFilter;
 
   const fechaOrden = dayjs(orden.fechaCreacion);
   const matchesFecha =
     (!fechaDesde || fechaOrden.isAfter(fechaDesde.subtract(1, 'day'))) &&
     (!fechaHasta || fechaOrden.isBefore(fechaHasta.add(1, 'day')));
+
+  if (!matchesSupplier && supplierFilter) {
+    console.log(`Supplier mismatch: orden.supplierId=${ordenSupplierId}, supplierFilter=${supplierFilter}`);
+  }
 
   return matchesSearch && matchesEstado && matchesSupplier && matchesFecha;
 });
@@ -590,20 +620,20 @@ const handleDeleteCompra = async (id: number) => {
               <MenuItem value="CANCELADA">Cancelada</MenuItem>
             </TextField>
 
-            <TextField
-              select
-              label="Proveedor"
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-              sx={{ minWidth: 200 }}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {proveedores.map((proveedor) => (
-                <MenuItem key={proveedor.id} value={proveedor.id.toString()}>
-                  {proveedor.razonSocial}
-                </MenuItem>
-              ))}
-            </TextField>
+<TextField
+  select
+  label="Proveedor"
+  value={supplierFilter}
+  onChange={(e) => setSupplierFilter(e.target.value)}
+  sx={{ minWidth: 200 }}
+>
+  <MenuItem value="">Todos</MenuItem>
+  {proveedores.map((proveedor) => (
+    <MenuItem key={proveedor.id} value={proveedor.id.toString()}>
+      {proveedor.razonSocial}
+    </MenuItem>
+  ))}
+</TextField>
 
             <DatePicker
               label="Desde"
@@ -662,12 +692,16 @@ const handleDeleteCompra = async (id: number) => {
                       </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>
-                    {new Date(orden.fechaCreacion).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(orden.fechaEntregaEstimada).toLocaleDateString()}
-                  </TableCell>
+                 <TableCell>
+  {orden.fechaCreacion && dayjs(orden.fechaCreacion).isValid()
+    ? dayjs(orden.fechaCreacion).format('DD/MM/YYYY')
+    : 'Sin fecha'}
+</TableCell>
+<TableCell>
+  {orden.fechaEntregaEstimada && dayjs(orden.fechaEntregaEstimada).isValid()
+    ? dayjs(orden.fechaEntregaEstimada).format('DD/MM/YYYY')
+    : 'Sin fecha'}
+</TableCell>
                   <TableCell>
                     <Chip
                       icon={getEstadoIcon(orden.estado)}
@@ -760,7 +794,7 @@ const handleDeleteCompra = async (id: number) => {
       </Typography>
       {newOrden.items.map((item, index) => (
   <Box key={index} display="flex" gap={2} alignItems="center" mb={2}>
-    <Autocomplete
+   <Autocomplete
   freeSolo
   options={productos}
   getOptionLabel={(option) =>
@@ -770,56 +804,46 @@ const handleDeleteCompra = async (id: number) => {
   onChange={(_, newValue) => {
     const updatedItems = [...newOrden.items];
     if (typeof newValue === 'string') {
-      // Handle new product (string input)
       updatedItems[index] = {
         ...updatedItems[index],
-        productoId: '', // Clear existing product ID
+        productoId: '',
         nombreProductoTemporal: newValue,
         descripcionProductoTemporal: newValue,
         esProductoNuevo: true,
-        // Ensure price is maintained or set to 0 if not specified
-        precio: updatedItems[index].precio || 0
+        precioUnitario: updatedItems[index].precioUnitario || 0, // Preserve existing price
       };
     } else if (newValue && newValue.id) {
-      // Handle existing product selection
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: newValue.id.toString(),
         nombreProductoTemporal: '',
         descripcionProductoTemporal: newValue.nombre,
         esProductoNuevo: false,
-        // Use product price from database
-        precio: newValue.precio || updatedItems[index].precio || 0
+        precioUnitario: newValue.precio || updatedItems[index].precioUnitario || 0, // Use product price or preserve existing
       };
     } else {
-      // Handle clearing the selection
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: '',
         nombreProductoTemporal: '',
         descripcionProductoTemporal: '',
         esProductoNuevo: false,
-        precio: updatedItems[index].precio || 0 // Keep existing price
+        precioUnitario: updatedItems[index].precioUnitario || 0, // Preserve existing price
       };
     }
-    console.log('Updated items:', updatedItems);
     setNewOrden({ ...newOrden, items: updatedItems });
   }}
   onInputChange={(_, newInputValue, reason) => {
     if (reason === 'input') {
-      console.log('Input changed:', newInputValue);
-      
       const updatedItems = [...newOrden.items];
       updatedItems[index] = {
         ...updatedItems[index],
         nombreProductoTemporal: newInputValue,
         descripcionProductoTemporal: newInputValue,
         esProductoNuevo: !!newInputValue && newInputValue.trim() !== '',
-        productoId: '', // Clear product ID when typing
-        // Maintain existing price
-        precio: updatedItems[index].precio || 0
+        productoId: '',
+        precioUnitario: updatedItems[index].precioUnitario || 0, // Preserve existing price
       };
-      
       setNewOrden({ ...newOrden, items: updatedItems });
     }
   }}
