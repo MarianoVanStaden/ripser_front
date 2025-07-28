@@ -959,7 +959,7 @@ const handleDeleteCompra = async (id: number) => {
                   <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                     <Box>
                       <Typography variant="body2" color="text.secondary">Proveedor</Typography>
-                      <Typography variant="body1">{selectedOrden.supplier?.name}</Typography>
+                      <Typography variant="body1">{selectedOrden.proveedor?.razonSocial}</Typography>
                     </Box>
                     <Box>
                       <Typography variant="body2" color="text.secondary">Estado</Typography>
