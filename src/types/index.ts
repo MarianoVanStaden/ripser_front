@@ -1436,7 +1436,9 @@ export interface CreateCompraDTO {
   proveedorId: number;
   fechaEntrega: string;
   observaciones?: string;
-  detalles: {
+  estado?: string; // Included for state updates
+  detalles: Array<{
+    id?: number; // For existing detalles
     productoId?: number;
     nombreProductoTemporal?: string;
     descripcionProductoTemporal?: string;
@@ -1444,7 +1446,7 @@ export interface CreateCompraDTO {
     esProductoNuevo: boolean;
     cantidad: number;
     costoUnitario: number;
-  }[];
+  }>;
 }
 
 export interface OrdenCompraItem {

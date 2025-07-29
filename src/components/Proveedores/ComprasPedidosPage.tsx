@@ -98,6 +98,7 @@ const [newOrden, setNewOrden] = useState({
   supplierId: '',
   fechaEntregaEstimada: dayjs().add(15, 'day'),
   observaciones: '',
+  estado: 'PENDIENTE', // Add estado field
   items: [{
     productoId: '',
     nombreProductoTemporal: '',
@@ -202,61 +203,53 @@ const handleEditOrden = (orden: OrdenCompra) => {
   setSelectedOrden(orden);
   setIsEditMode(true);
   setNewOrden({
-    supplierId: orden.supplierId ? orden.supplierId.toString() : '', // Safe conversion
+    supplierId: orden.supplierId ? orden.supplierId.toString() : '',
     fechaEntregaEstimada: dayjs(orden.fechaEntregaEstimada),
     observaciones: orden.observaciones || '',
-    items: orden.items.map(item => ({
-      productoId: item.productoId ? item.productoId.toString() : '', // Safe conversion
-      descripcion: item.descripcion,
-      nombreProductoTemporal: item.descripcion || '', // Use descripcion as fallback
+    estado: orden.estado || 'PENDIENTE', // Set estado from the selected order
+    items: orden.items.map((item) => ({
+      productoId: item.productoId ? item.productoId.toString() : '',
+      nombreProductoTemporal: item.descripcion || '',
       descripcionProductoTemporal: item.descripcion || '',
       codigoProductoTemporal: '',
-      esProductoNuevo: !item.productoId, // Mark as new if no productoId
+      esProductoNuevo: !item.productoId,
       cantidad: item.cantidad,
-      precioUnitario: item.precioUnitario
-    }))
+      precioUnitario: item.precioUnitario,
+    })),
   });
   setOpenOrdenDialog(true);
 };
 
 const validateOrder = (orden) => {
-  // Check if there are items
+  if (!orden.estado || !['PENDIENTE', 'CONFIRMADA', 'EN_TRANSITO', 'RECIBIDA', 'CANCELADA'].includes(orden.estado)) {
+    return { isValid: false, message: 'Debe seleccionar un estado válido' };
+  }
   if (!orden.items || orden.items.length === 0) {
     return { isValid: false, message: 'La orden debe tener al menos un item' };
   }
-
-  // Validate each item
   for (let i = 0; i < orden.items.length; i++) {
     const item = orden.items[i];
-    
-    // Check if item has a product (either existing or new)
     const hasExistingProduct = item.productoId && item.productoId.trim() !== '';
     const hasNewProduct = item.esProductoNuevo && item.nombreProductoTemporal && item.nombreProductoTemporal.trim() !== '';
-    
     if (!hasExistingProduct && !hasNewProduct) {
-      return { 
-        isValid: false, 
-        message: `El item ${i + 1} debe tener un producto seleccionado o un nombre de producto nuevo` 
+      return {
+        isValid: false,
+        message: `El item ${i + 1} debe tener un producto seleccionado o un nombre de producto nuevo`,
       };
     }
-    
-    // Check if item has quantity
     if (!item.cantidad || item.cantidad <= 0) {
-      return { 
-        isValid: false, 
-        message: `El item ${i + 1} debe tener una cantidad válida` 
+      return {
+        isValid: false,
+        message: `El item ${i + 1} debe tener una cantidad válida`,
       };
     }
-    
-    // Check if item has price (important for new products)
-    if (!item.precio || item.precio <= 0) {
-      return { 
-        isValid: false, 
-        message: `El item ${i + 1} debe tener un precio válido` 
+    if (!item.precioUnitario || item.precioUnitario <= 0) {
+      return {
+        isValid: false,
+        message: `El item ${i + 1} debe tener un precio válido`,
       };
     }
   }
-  
   return { isValid: true };
 };
 const handleCrearOrden = async () => {
@@ -326,24 +319,25 @@ const handleSaveOrden = async () => {
       setError('Todos los items deben tener un producto (existente o nuevo), cantidad y precio unitario válidos');
       return;
     }
+    if (!newOrden.estado) {
+      setError('Debe seleccionar un estado válido');
+      return;
+    }
 
     const compraPayload: CreateCompraDTO = {
       proveedorId: parseInt(newOrden.supplierId),
       fechaEntrega: newOrden.fechaEntregaEstimada.format('YYYY-MM-DDTHH:mm:ss'),
       observaciones: newOrden.observaciones,
-      detalles: newOrden.items.map((item) => {
-        const detalle = {
-          productoId: item.productoId ? parseInt(item.productoId) : undefined,
-          nombreProductoTemporal: item.nombreProductoTemporal || undefined,
-          descripcionProductoTemporal: item.descripcionProductoTemporal || item.nombreProductoTemporal || undefined,
-          codigoProductoTemporal: item.codigoProductoTemporal || undefined,
-          esProductoNuevo: !!item.nombreProductoTemporal,
-          cantidad: item.cantidad,
-          costoUnitario: item.precioUnitario,
-        };
-        console.log('Detalle:', detalle); // Debug log
-        return detalle;
-      }),
+      estado: newOrden.estado, // Add estado to the payload
+      detalles: newOrden.items.map((item) => ({
+        productoId: item.productoId ? parseInt(item.productoId) : undefined,
+        nombreProductoTemporal: item.nombreProductoTemporal || undefined,
+        descripcionProductoTemporal: item.descripcionProductoTemporal || item.nombreProductoTemporal || undefined,
+        codigoProductoTemporal: item.codigoProductoTemporal || undefined,
+        esProductoNuevo: !!item.nombreProductoTemporal,
+        cantidad: item.cantidad,
+        costoUnitario: item.precioUnitario,
+      })),
     };
 
     console.log('Compra Payload:', JSON.stringify(compraPayload, null, 2)); // Debug log
@@ -365,6 +359,7 @@ const handleSaveOrden = async () => {
       supplierId: '',
       fechaEntregaEstimada: dayjs().add(15, 'day'),
       observaciones: '',
+      estado: 'PENDIENTE', // Reset estado
       items: [{
         productoId: '',
         nombreProductoTemporal: '',
@@ -417,7 +412,7 @@ const handleItemChange = (index: number, field: string, value: any) => {
       case 'PENDIENTE': return 'warning';
       case 'CONFIRMADA': return 'info';
       case 'EN_TRANSITO': return 'primary';
-      case 'ENTREGADA': return 'success';
+      case 'RECIBIDA': return 'success';
       case 'CANCELADA': return 'error';
       default: return 'default';
     }
@@ -428,7 +423,7 @@ const handleItemChange = (index: number, field: string, value: any) => {
       case 'PENDIENTE': return <ScheduleIcon />;
       case 'CONFIRMADA': return <CheckIcon />;
       case 'EN_TRANSITO': return <ShippingIcon />;
-      case 'ENTREGADA': return <CheckIcon />;
+      case 'RECIBIDA': return <CheckIcon />;
       case 'CANCELADA': return <CancelIcon />;
       default: return <ReceiptIcon />;
     }
@@ -564,10 +559,10 @@ const handleDeleteCompra = async (id: number) => {
             <CardContent>
               <Box display="flex" alignItems="center" mb={1}>
                 <CheckIcon color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Entregadas</Typography>
+                <Typography variant="h6">Recibidas</Typography>
               </Box>
               <Typography variant="h4">
-                {getOrderCountByStatus('ENTREGADA')}
+                {getOrderCountByStatus('RECIBIDA')}
               </Typography>
             </CardContent>
           </Card>
@@ -616,7 +611,7 @@ const handleDeleteCompra = async (id: number) => {
               <MenuItem value="PENDIENTE">Pendiente</MenuItem>
               <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
               <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
-              <MenuItem value="ENTREGADA">Entregada</MenuItem>
+              <MenuItem value="RECIBIDA">Recibida</MenuItem>
               <MenuItem value="CANCELADA">Cancelada</MenuItem>
             </TextField>
 
@@ -775,21 +770,21 @@ const handleDeleteCompra = async (id: number) => {
 
 
         // TODO--CORREGIR EDICION DE ESTADO DE COMPRA
-        <TextField
-        fullWidth
-        select
-        label="Estado"
-        value={newOrden.estado}
-        onChange={(e) => setNewOrden({ ...newOrden, estado: e.target.value })}
-        margin="normal"
-        required
-      >
-        {proveedores.map((compra) => (
-          <MenuItem key={compra.id} value={compra.id.toString()}>
-            {compra.estado}
-          </MenuItem>
-        ))}
-      </TextField>
+<TextField
+  fullWidth
+  select
+  label="Estado"
+  value={newOrden.estado || 'PENDIENTE'}
+  onChange={(e) => setNewOrden({ ...newOrden, estado: e.target.value })}
+  margin="normal"
+  required
+>
+  {['PENDIENTE', 'CONFIRMADA', 'EN_TRANSITO', 'RECIBIDA', 'CANCELADA'].map((estado) => (
+    <MenuItem key={estado} value={estado}>
+      {estado}
+    </MenuItem>
+  ))}
+</TextField>
 
       <DatePicker
         label="Fecha de Entrega Estimada"
