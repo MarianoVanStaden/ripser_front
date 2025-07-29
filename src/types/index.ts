@@ -1180,6 +1180,7 @@ export interface DetalleVenta {
   id: number;
   ventaId: number;
   productoId?: number;
+  productoNombre?: string; // Add product name for display
   producto?: Producto; // Add product info for display
   cantidad: number;
   precioUnitario: number;

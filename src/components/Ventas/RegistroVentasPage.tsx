@@ -62,7 +62,7 @@ const RegistroVentasPage: React.FC = () => {
     clienteId: '',
     usuarioId: '',
     estado: '',
-    metodoPago: 'CASH' as PaymentMethod,
+    metodoPago: 'EFECTIVO' as PaymentMethod,
     fechaVenta: '',
     notas: '',
     total: 0,
@@ -159,6 +159,22 @@ const RegistroVentasPage: React.FC = () => {
       console.log('Usuario with ID 2:', usuariosMap.get(2));
       console.log('Usuario with ID "2":', usuariosMap.get("2"));
   
+
+      const enrichedDetalleVentas = sale.detalleVentas?.map(detalle => {
+  let producto = null;
+  if (detalle.producto && typeof detalle.producto === 'object') {
+    producto = detalle.producto;
+  } else if (detalle.productoId !== undefined && detalle.productoId !== null) {
+    producto = productsMap.get(detalle.productoId) ||
+              productsMap.get(String(detalle.productoId)) ||
+              productsMap.get(parseInt(detalle.productoId));
+  }
+  return {
+    ...detalle,
+    producto,
+    productoNombre: detalle.productoNombre || producto?.nombre, // Preserve productoNombre or use producto.nombre
+  };
+}) || [];
       // Enrich sales data with client and usuario information
       const enrichedSales = salesData.map(sale => {
         let cliente = null;
@@ -191,7 +207,7 @@ const RegistroVentasPage: React.FC = () => {
           ...sale,
           cliente,
           usuario,
-          metodoPago: sale.metodoPago || sale.metodo_pago || 'CASH',
+          metodoPago: sale.metodoPago || sale.metodo_pago || 'EFECTIVO',
         };
       });
   
@@ -647,7 +663,7 @@ const RegistroVentasPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getPaymentMethodLabel(sale.metodoPago as PaymentMethod || 'CASH')}
+                        label={getPaymentMethodLabel(sale.metodoPago as PaymentMethod || 'EFECTIVO')}
                         size="small"
                         color="primary"
                         variant="outlined"
@@ -707,27 +723,21 @@ const RegistroVentasPage: React.FC = () => {
       {/* View Sale Dialog */}
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          Detalles de la Venta #{viewingSale?.id}
+          Detalles de la Venta
         </DialogTitle>
         <DialogContent>
           {viewingSale && (
             <Box>
               <Grid container spacing={2} mb={3}>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Información General
-                  </Typography>
                   <Box sx={{ mb: 1 }}>
-                    <Typography><strong>Número:</strong> {viewingSale.ventaNumero || 'N/A'}</Typography>
+                    <Typography><strong>Número:</strong> #{viewingSale?.id}</Typography>
                     <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
                     <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
-                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'CASH')}</Typography>
+                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'EFECTIVO')}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Cliente y Vendedor
-                  </Typography>
                   <Box sx={{ mb: 1 }}>
                     <Typography>
                       <strong>Cliente:</strong> {getClientFullName(viewingSale.cliente || null)}
@@ -747,7 +757,6 @@ const RegistroVentasPage: React.FC = () => {
                         CUIT: {viewingSale.cliente.cuit}
                       </Typography>
                     )}
-                    
                     <Typography sx={{ mt: 2 }}>
                       <strong>Vendedor:</strong> {getUsuarioFullName((viewingSale.usuario || viewingSale.empleado) as Usuario || null)}
                     </Typography>
@@ -774,29 +783,29 @@ const RegistroVentasPage: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {viewingSale.detalleVentas.map((item: DetalleVenta, index: number) => (
-                          <TableRow key={item.id || index}>
-                            <TableCell>
-                              <Typography variant="body2">
-                                {item.producto?.nombre || 'Producto no disponible'}
-                              </Typography>
-                              {item.producto?.descripcion && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {item.producto.descripcion}
-                                </Typography>
-                              )}
-                            </TableCell>
-                            <TableCell align="center">{item.cantidad}</TableCell>
-                            <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>
-                            <TableCell align="right">{item.descuento || 0}%</TableCell>
-                            <TableCell align="right">
-                              <Typography variant="body2" fontWeight="bold">
-                                ${item.subtotal?.toFixed(2) || '0.00'}
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
+  {viewingSale.detalleVentas.map((item: DetalleVenta, index: number) => (
+    <TableRow key={item.id || index}>
+      <TableCell>
+        <Typography variant="body2">
+          {item.productoNombre || item.producto?.nombre || 'Producto no disponible'}
+        </Typography>
+        {item.producto?.descripcion && (
+          <Typography variant="caption" color="text.secondary">
+            {item.producto.descripcion}
+          </Typography>
+        )}
+      </TableCell>
+      <TableCell align="center">{item.cantidad}</TableCell>
+      <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>
+      <TableCell align="right">{item.descuento || 0}%</TableCell>
+      <TableCell align="right">
+        <Typography variant="body2" fontWeight="bold">
+          ${item.subtotal?.toFixed(2) || '0.00'}
+        </Typography>
+      </TableCell>
+    </TableRow>
+  ))}
+</TableBody>
                     </Table>
                   </TableContainer>
                 </>

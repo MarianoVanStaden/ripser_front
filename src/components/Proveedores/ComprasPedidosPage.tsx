@@ -772,6 +772,25 @@ const handleDeleteCompra = async (id: number) => {
         ))}
       </TextField>
 
+
+
+        // TODO--CORREGIR EDICION DE ESTADO DE COMPRA
+        <TextField
+        fullWidth
+        select
+        label="Estado"
+        value={newOrden.estado}
+        onChange={(e) => setNewOrden({ ...newOrden, estado: e.target.value })}
+        margin="normal"
+        required
+      >
+        {proveedores.map((compra) => (
+          <MenuItem key={compra.id} value={compra.id.toString()}>
+            {compra.estado}
+          </MenuItem>
+        ))}
+      </TextField>
+
       <DatePicker
         label="Fecha de Entrega Estimada"
         value={newOrden.fechaEntregaEstimada}
