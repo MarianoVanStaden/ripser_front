@@ -42,7 +42,7 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
-import { saleApi, clienteApi, usuarioApi } from '../../api/services';
+import { saleApi, clienteApi, usuarioApi, productApi } from '../../api/services';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
 
 const RegistroVentasPage: React.FC = () => {
@@ -81,147 +81,159 @@ const RegistroVentasPage: React.FC = () => {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const [salesResponse, clientsResponse, usuariosResponse] = await Promise.all([
-        saleApi.getAll(),
-        clienteApi.getAll(),
-        usuarioApi.getAll(),
-      ]);
-  
-      // Extract actual data from paginated responses
-      const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
-      const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
-      const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
-  
-      console.log('Sales data:', salesData);
-      console.log('Clients data:', clientsData);
-      console.log('Usuarios data:', usuariosData);
-  
-      // Debug the usuarios structure
-      console.log('=== USUARIOS DEBUG ===');
-      console.log('Usuarios count:', usuariosData.length);
-      if (usuariosData.length > 0) {
-        console.log('First usuario:', usuariosData[0]);
-        usuariosData.forEach((usuario, index) => {
-          console.log(`Usuario ${index}:`, {
-            id: usuario.id,
-            idType: typeof usuario.id,
-            nombre: usuario.nombre,
-            apellido: usuario.apellido
-          });
-        });
-      }
-      console.log('=== END USUARIOS DEBUG ===');
-  
-      // Create maps for faster lookups
-      const clientsMap = new Map();
-      const usuariosMap = new Map();
-  
-      // Handle clients mapping
-      if (Array.isArray(clientsData)) {
-        clientsData.forEach(client => {
-          if (client && client.id !== undefined && client.id !== null) {
-            clientsMap.set(client.id, client);
-            clientsMap.set(String(client.id), client);
-            clientsMap.set(parseInt(client.id), client);
-          }
-        });
-      }
-  
-      // Handle usuarios mapping
-      if (Array.isArray(usuariosData)) {
-        usuariosData.forEach(usuario => {
-          if (usuario && usuario.id !== undefined && usuario.id !== null) {
-            console.log(`Mapping usuario ID ${usuario.id} (type: ${typeof usuario.id}):`, usuario);
-            
-            // Map all possible formats of the ID
-            usuariosMap.set(usuario.id, usuario);
-            usuariosMap.set(String(usuario.id), usuario);
-            
-            // Only add parseInt if it's a valid number
-            const parsedId = parseInt(usuario.id);
-            if (!isNaN(parsedId)) {
-              usuariosMap.set(parsedId, usuario);
-            }
-          }
-        });
-      }
-  
-      // Debug: Log the maps to see what we have
-      console.log('Usuarios map keys:', Array.from(usuariosMap.keys()));
-      console.log('Usuarios map size:', usuariosMap.size);
-      
-      // Test if usuario with ID 2 exists in different formats
-      console.log('Usuario with ID 2:', usuariosMap.get(2));
-      console.log('Usuario with ID "2":', usuariosMap.get("2"));
-  
+const loadData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      const enrichedDetalleVentas = sale.detalleVentas?.map(detalle => {
-  let producto = null;
-  if (detalle.producto && typeof detalle.producto === 'object') {
-    producto = detalle.producto;
-  } else if (detalle.productoId !== undefined && detalle.productoId !== null) {
-    producto = productsMap.get(detalle.productoId) ||
-              productsMap.get(String(detalle.productoId)) ||
-              productsMap.get(parseInt(detalle.productoId));
-  }
-  return {
-    ...detalle,
-    producto,
-    productoNombre: detalle.productoNombre || producto?.nombre, // Preserve productoNombre or use producto.nombre
-  };
-}) || [];
-      // Enrich sales data with client and usuario information
-      const enrichedSales = salesData.map(sale => {
-        let cliente = null;
-        let usuario = null;
-  
-        // Client lookup
-        if (sale.cliente && typeof sale.cliente === 'object') {
-          cliente = sale.cliente;
-        } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
-          cliente = clientsMap.get(sale.clienteId) || 
-                   clientsMap.get(String(sale.clienteId)) || 
-                   clientsMap.get(parseInt(sale.clienteId));
-        }
-  
-        // Usuario lookup
-        if (sale.usuario && typeof sale.usuario === 'object') {
-          usuario = sale.usuario;
-        } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
-          const uid = sale.usuarioId;
-          
-          // Try different formats
-          usuario = usuariosMap.get(uid) || 
-                   usuariosMap.get(String(uid)) || 
-                   usuariosMap.get(parseInt(uid));
-          
-          console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
-        }
-  
-        return {
-          ...sale,
-          cliente,
-          usuario,
-          metodoPago: sale.metodoPago || sale.metodo_pago || 'EFECTIVO',
-        };
+    // Fetch data for sales, clients, usuarios, and products
+    const [salesResponse, clientsResponse, usuariosResponse, productsResponse] = await Promise.all([
+      saleApi.getAll(),
+      clienteApi.getAll(),
+      usuarioApi.getAll(),
+      productApi.getAll(), // Assuming you have a productApi
+    ]);
+
+    // Extract actual data from paginated responses
+    const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
+    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
+    const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
+    const productsData = Array.isArray(productsResponse) ? productsResponse : productsResponse.content || productsResponse.data || [];
+
+    console.log('Sales data:', salesData);
+    console.log('Clients data:', clientsData);
+    console.log('Usuarios data:', usuariosData);
+    console.log('Products data:', productsData);
+
+    // Debug the usuarios structure
+    console.log('=== USUARIOS DEBUG ===');
+    console.log('Usuarios count:', usuariosData.length);
+    if (usuariosData.length > 0) {
+      console.log('First usuario:', usuariosData[0]);
+      usuariosData.forEach((usuario, index) => {
+        console.log(`Usuario ${index}:`, {
+          id: usuario.id,
+          idType: typeof usuario.id,
+          nombre: usuario.nombre,
+          apellido: usuario.apellido,
+        });
       });
-  
-      setSales(enrichedSales);
-      setClients(clientsData);
-      setUsuarios(usuariosData);
-  
-    } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Error al cargar los datos. Verifique la conexión con el servidor.');
-    } finally {
-      setLoading(false);
     }
-  };
+    console.log('=== END USUARIOS DEBUG ===');
+
+    // Create maps for faster lookups
+    const clientsMap = new Map();
+    const usuariosMap = new Map();
+    const productsMap = new Map();
+
+    // Handle clients mapping
+    if (Array.isArray(clientsData)) {
+      clientsData.forEach((client) => {
+        if (client && client.id !== undefined && client.id !== null) {
+          clientsMap.set(client.id, client);
+          clientsMap.set(String(client.id), client);
+          clientsMap.set(parseInt(client.id), client);
+        }
+      });
+    }
+
+    // Handle usuarios mapping
+    if (Array.isArray(usuariosData)) {
+      usuariosData.forEach((usuario) => {
+        if (usuario && usuario.id !== undefined && usuario.id !== null) {
+          console.log(`Mapping usuario ID ${usuario.id} (type: ${typeof usuario.id}):`, usuario);
+          usuariosMap.set(usuario.id, usuario);
+          usuariosMap.set(String(usuario.id), usuario);
+          const parsedId = parseInt(usuario.id);
+          if (!isNaN(parsedId)) {
+            usuariosMap.set(parsedId, usuario);
+          }
+        }
+      });
+    }
+
+    // Handle products mapping
+    if (Array.isArray(productsData)) {
+      productsData.forEach((product) => {
+        if (product && product.id !== undefined && product.id !== null) {
+          productsMap.set(product.id, product);
+          productsMap.set(String(product.id), product);
+          productsMap.set(parseInt(product.id), product);
+        }
+      });
+    }
+
+    // Debug: Log the maps to see what we have
+    console.log('Usuarios map keys:', Array.from(usuariosMap.keys()));
+    console.log('Usuarios map size:', usuariosMap.size);
+    console.log('Usuario with ID 2:', usuariosMap.get(2));
+    console.log('Usuario with ID "2":', usuariosMap.get('2'));
+
+    // Enrich sales data with client, usuario, and product information
+    const enrichedSales = salesData.map((sale) => {
+      let cliente = null;
+      let usuario = null;
+
+      // Client lookup
+      if (sale.cliente && typeof sale.cliente === 'object') {
+        cliente = sale.cliente;
+      } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
+        cliente =
+          clientsMap.get(sale.clienteId) ||
+          clientsMap.get(String(sale.clienteId)) ||
+          clientsMap.get(parseInt(sale.clienteId));
+      }
+
+      // Usuario lookup
+      if (sale.usuario && typeof sale.usuario === 'object') {
+        usuario = sale.usuario;
+      } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
+        const uid = sale.usuarioId;
+        usuario =
+          usuariosMap.get(uid) ||
+          usuariosMap.get(String(uid)) ||
+          usuariosMap.get(parseInt(uid));
+        console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
+      }
+
+      // Enrich detalleVentas
+      const enrichedDetalleVentas = sale.detalleVentas?.map((detalle) => {
+        let producto = null;
+        if (detalle.producto && typeof detalle.producto === 'object') {
+          producto = detalle.producto;
+        } else if (detalle.productoId !== undefined && detalle.productoId !== null) {
+          producto =
+            productsMap.get(detalle.productoId) ||
+            productsMap.get(String(detalle.productoId)) ||
+            productsMap.get(parseInt(detalle.productoId));
+        }
+        return {
+          ...detalle,
+          producto,
+          productoNombre: detalle.productoNombre || producto?.nombre, // Preserve productoNombre or use producto.nombre
+        };
+      }) || [];
+
+      return {
+        ...sale,
+        cliente,
+        usuario,
+        detalleVentas: enrichedDetalleVentas, // Add enriched detalleVentas to the sale
+        metodoPago: sale.metodoPago || sale.metodo_pago || 'EFECTIVO',
+      };
+    });
+
+    setSales(enrichedSales);
+    setClients(clientsData);
+    setUsuarios(usuariosData);
+
+  } catch (err) {
+    console.error('Error loading data:', err);
+    setError('Error al cargar los datos. Verifique la conexión con el servidor.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleViewSale = (sale: Venta): void => {
     console.log('Viewing sale:', sale);
