@@ -27,6 +27,17 @@ export interface Cliente {
   creditos?: CreditoCliente[]; // New field
   calificacion?: number; // New field (e.g., 0.00 to 5.00)
 }
+
+export interface ContactoProveedorDTO {
+  id?: number;
+  proveedorId: number;
+  fechaContacto?: string; // ISO string
+  tipoContacto?: string;
+  descripcion?: string;
+  resultado?: string;
+  proximoContacto?: string; // ISO string
+  usuarioId?: number;
+}
   
 export interface CreditoCliente {
   id: number;
