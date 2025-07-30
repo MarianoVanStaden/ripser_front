@@ -28,6 +28,16 @@ export interface Cliente {
   calificacion?: number; // New field (e.g., 0.00 to 5.00)
 }
 
+export interface CreateMovimientoPayload {
+  clienteId: number;
+  fecha: string;
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+}
+
+
 export interface ContactoProveedorDTO {
   id?: number;
   proveedorId: number;

@@ -1,27 +1,26 @@
-import api from '../api'; // Import the configured axios instance
-import type { CuentaCorriente } from '../../types';
+import axios from 'axios';
+import type { CuentaCorriente, CreateMovimientoPayload } from '../../types';
 
-const BASE_PATH = '/clientes/cuenta-corriente';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'; // Fallback to backend port
 
-type CreateMovimientoPayload = Omit<CuentaCorriente, 'id' | 'saldo' | 'cliente' | 'fecha'> & {
-  cliente: { id: number };
-  fecha: string; // ISO string
-};
+const api = axios.create({
+  baseURL: API_URL,
+});
 
 export const cuentaCorrienteApi = {
   /**
    * Fetches all account movements for a specific client.
    */
   getByClienteId: async (clienteId: number): Promise<CuentaCorriente[]> => {
-    const response = await api.get<CuentaCorriente[]>(`${BASE_PATH}/cliente/${clienteId}`);
-    return response.data;
+    const res = await api.get(`/cuentas-corriente/cliente/${clienteId}`);
+    return res.data;
   },
 
   /**
    * Creates a new account movement.
    */
   create: async (movimiento: CreateMovimientoPayload): Promise<CuentaCorriente> => {
-    const response = await api.post<CuentaCorriente>(BASE_PATH, movimiento);
+    const response = await api.post(`/cuentas-corriente`, movimiento); // Adjust based on actual create endpoint
     return response.data;
   },
 };
