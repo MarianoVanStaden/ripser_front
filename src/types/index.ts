@@ -700,8 +700,6 @@ export interface InventoryAdjustment {
   date: string;
   notes: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  createdAt: string;
-  updatedAt: string;
 }
 
 // --- Taller (Workshop) Entities ---
@@ -758,6 +756,8 @@ export interface OrdenServicio {
 export interface CategoriaProducto {
   id: number;
   nombre: string;
+  descripcion?: string;
+  activo: boolean;
 }
 
 // Enum types using const assertions
@@ -1608,4 +1608,60 @@ export interface RecetaItem {
   unidadMedidaId: number;
   unidadMedida?: UnidadMedida;
   instrucciones?: string;
+}
+
+export const EstadoDocumento = {
+  PENDIENTE: "PENDIENTE",
+  APROBADO: "APROBADO",
+  RECHAZADO: "RECHAZADO",
+  PAGADA: "PAGADA",
+  VENCIDA: "VENCIDA"
+}
+
+export interface DocumentoComercial {
+  id: number;
+  numeroDocumento: string;
+  tipoDocumento: 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA';
+  clienteId: number;
+  clienteNombre: string;
+  usuarioId: number;
+  usuarioNombre: string;
+  fechaEmision: string; // ISO string
+  fechaVencimiento: string; // ISO string
+  subtotal: number;
+  iva: number;
+  total: number;
+  tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  estado: EstadoDocumento;
+  metodoPago: MetodoPago;
+  observaciones?: string;
+  detalles: DetalleDocumento[];
+}
+export interface DetalleDocumento {
+  id: number;
+  documentoComercialId: number;
+  productoId: number;
+  productoNombre: string; // For display purposes
+  cantidad: number;
+  precioUnitario: number;
+  descuento?: number;
+  subtotal: number;
+  descripcion?: string; // Optional description for the item
+}
+export interface DetalleDocumentoDTO {
+  id?: number; // Opcional al crear
+  productoId: number;
+  productoNombre?: string;
+  cantidad: number;
+  precioUnitario: number;
+  descuento?: number;
+  subtotal?: number;
+  descripcion?: string;
+}
+
+export interface CreatePresupuestoRequest {
+  clienteId: number;
+  usuarioId: number;
+  detalles: DetalleDocumentoDTO[];
+  observaciones?: string;
 }

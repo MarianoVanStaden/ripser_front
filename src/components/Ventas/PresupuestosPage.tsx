@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Button,
@@ -22,6 +22,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -31,24 +32,51 @@ import {
   Send as SendIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
-import {
-  clienteApi,
-  presupuestoApi,
-  usuarioApi,
-  productApi,
-} from "../../api/services";
-import type {
-  Presupuesto,
-  Cliente,
-  Usuario,
-  Producto,
-  PresupuestoStatus,
-  CreatePresupuestoRequest,
-} from "../../types";
-import { PresupuestoStatus as PresupuestoStatusEnum } from "../../types";
+import { clienteApi, usuarioApi, productApi } from "../../api/services";
+import { documentoApi } from "../../api/documentoApi";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, CreatePresupuestoRequest, DetalleDocumento } from "../../types";
+import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
+
+// Define interfaces for clarity
+interface DetalleForm {
+  id?: number;
+  productoId: string;
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
+interface FormData {
+  clienteId: string;
+  usuarioId: string;
+  fechaEmision: string;
+  observaciones: string;
+  estado: EstadoDocumento;
+}
+
+// Initial states
+const initialFormData: FormData = {
+  clienteId: "",
+  usuarioId: "",
+  fechaEmision: new Date().toISOString().split("T")[0],
+  observaciones: "",
+  estado: EstadoDocumentoEnum.PENDIENTE,
+};
+
+const initialDetalle: DetalleForm = {
+  productoId: "",
+  descripcion: "",
+  cantidad: 1,
+  precioUnitario: 0,
+  subtotal: 0,
+};
+
+// Configurable default user ID (set to a valid ID or null if not applicable)
+const DEFAULT_USER_ID = null; // Replace with a valid user ID if known (e.g., 1 for a system user)
 
 const PresupuestosPage: React.FC = () => {
-  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
+  const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -56,212 +84,151 @@ const PresupuestosPage: React.FC = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingPresupuesto, setEditingPresupuesto] =
-    useState<Presupuesto | null>(null);
-  const [formData, setFormData] = useState({
-    clienteId: "",
-    usuarioId: "",
-    fechaPresupuesto: new Date().toISOString().split("T")[0],
-    fechaVencimiento: "",
-    observaciones: "",
-    estado: PresupuestoStatusEnum.PENDIENTE as PresupuestoStatus,
-  });
-  const [detalles, setDetalles] = useState<
-    Array<{
-      id?: number;
-      productoId: string;
-      descripcion: string;
-      cantidad: number;
-      precioUnitario: number;
-      subtotal: number;
-    }>
-  >([]);
+  const [editingPresupuesto, setEditingPresupuesto] = useState<DocumentoComercial | null>(null);
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [detalles, setDetalles] = useState<DetalleForm[]>([]);
   const [readOnly, setReadOnly] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [presupuestoToDelete, setPresupuestoToDelete] = useState<Presupuesto | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    productApi.getAll()
-      .then((data) => {
-        // If backend returns paginated data
-        if (data && Array.isArray(data.content)) {
-          setProductos(data.content);
-        } else if (Array.isArray(data)) {
-          setProductos(data);
-        } else {
-          setProductos([]);
-        }
-      })
-      .catch(() => setProductos([]));
-  }, []);
-
-  const fetchData = async () => {
+  // Fetch all initial data
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [clientesData, usuariosData, presupuestosData, productosData] =
-        await Promise.all([
-          clienteApi.getAll(),
-          usuarioApi.getAll().catch(() => []),
-          presupuestoApi.getAll(),
-          productApi.getAll().catch(() => {
-            console.warn("Productos API not available, using empty array");
-            return [];
-          }),
-        ]);
+      const [clientesData, usuariosData, presupuestosData, productosData] = await Promise.all([
+        clienteApi.getAll().catch((err) => {
+          console.error("Error fetching clientes:", err);
+          setError("Error al cargar clientes");
+          return [];
+        }),
+        usuarioApi.getAll().catch((err) => {
+          console.error("Error fetching usuarios:", err);
+          setError("Error al cargar usuarios");
+          return [];
+        }),
+        documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
+          console.error("Error fetching presupuestos:", err);
+          setError("Error al cargar presupuestos");
+          return [];
+        }),
+        productApi.getAll().catch((err) => {
+          console.error("Error fetching productos:", err);
+          setError("Error al cargar productos");
+          return [];
+        }),
+      ]);
 
-      setClientes(clientesData);
-      setUsuarios(usuariosData);
-      setPresupuestos(presupuestosData);
+      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
 
-      // Handle paginated products
-      if (productosData && Array.isArray(productosData.content)) {
-        setProductos(productosData.content);
-      } else if (Array.isArray(productosData)) {
-        setProductos(productosData);
-      } else {
-        setProductos([]);
-      }
-    } catch (err: unknown) {
+      setClientes(Array.isArray(clientesData) ? clientesData : []);
+      setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
+      setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
+      setProductos(Array.isArray(productosData.content) ? productosData.content : Array.isArray(productosData) ? productosData : []);
+    } catch (err) {
       console.error("Error fetching data:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Error desconocido";
-      setError(`Error al cargar los datos: ${errorMessage}`);
-
-      // Try to load individual endpoints if the full load fails
-      try {
-        const clientesData = await clienteApi.getAll();
-        setClientes(clientesData);
-      } catch (clientError) {
-        console.error("Error loading clientes:", clientError);
-      }
+      setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
     } finally {
       setLoading(false);
+      console.log("Loading complete, loading:", false);
     }
-  };
+  }, []);
 
-  const getStatusColor = (
-    estado: PresupuestoStatus
-  ):
-    | "default"
-    | "primary"
-    | "secondary"
-    | "error"
-    | "info"
-    | "success"
-    | "warning" => {
-    switch (estado) {
-      case PresupuestoStatusEnum.PENDIENTE:
-        return "warning";
-      case PresupuestoStatusEnum.APROBADO:
-        return "success";
-      case PresupuestoStatusEnum.RECHAZADO:
-        return "error";
-      case PresupuestoStatusEnum.VENCIDO:
-        return "error";
-      default:
-        return "default";
-    }
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const getStatusLabel = (estado: PresupuestoStatus): string => {
-    switch (estado) {
-      case PresupuestoStatusEnum.PENDIENTE:
-        return "Pendiente";
-      case PresupuestoStatusEnum.APROBADO:
-        return "Aprobado";
-      case PresupuestoStatusEnum.RECHAZADO:
-        return "Rechazado";
-      case PresupuestoStatusEnum.VENCIDO:
-        return "Vencido";
-      default:
-        return estado;
-    }
-  };
-
-  const calculateTotal = () => {
-    return detalles.reduce((total, detalle) => total + detalle.subtotal, 0);
-  };
-
-  const addDetalle = () => {
-    if (readOnly) return;
-    setDetalles([
-      ...detalles,
-      {
-        productoId: "",
-        descripcion: "",
-        cantidad: 1,
-        precioUnitario: 0,
-        subtotal: 0,
-      },
-    ]);
-  };
-
-  const updateDetalle = (
-    index: number,
-    field: string,
-    value: string | number
-  ) => {
-    if (readOnly) return;
-    const newDetalles = [...detalles];
-    const detalle = newDetalles[index];
-
-    if (field === "productoId") detalle.productoId = value as string;
-    else if (field === "descripcion") detalle.descripcion = value as string;
-    else if (field === "cantidad") detalle.cantidad = value as number;
-    else if (field === "precioUnitario")
-      detalle.precioUnitario = value as number;
-
-    // Recalculate subtotal when cantidad or precioUnitario changes
-    if (field === "cantidad" || field === "precioUnitario") {
-      detalle.subtotal = detalle.cantidad * detalle.precioUnitario;
-    }
-
-    // Update description when product changes
-    if (field === "productoId" && value) {
-      const producto = productos.find(
-        (p) => p.id === parseInt(value as string)
-      );
-      if (producto) {
-        detalle.descripcion = producto.nombre;
-        detalle.precioUnitario = producto.precio || 0;
-        detalle.subtotal = detalle.cantidad * (producto.precio || 0);
+  // Auto-select first user or default for new presupuesto
+  useEffect(() => {
+    if (dialogOpen && !editingPresupuesto && !formData.usuarioId) {
+      if (usuarios.length > 0) {
+        setFormData((prev) => ({ ...prev, usuarioId: usuarios[0].id.toString() }));
+      } else if (DEFAULT_USER_ID) {
+        setFormData((prev) => ({ ...prev, usuarioId: DEFAULT_USER_ID.toString() }));
       }
     }
+  }, [dialogOpen, editingPresupuesto, usuarios]);
 
-    setDetalles(newDetalles);
-  };
+  // Memoized status helpers
+  const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+    switch (estado) {
+      case EstadoDocumentoEnum.PENDIENTE: return "warning";
+      case EstadoDocumentoEnum.APROBADO: return "success";
+      case EstadoDocumentoEnum.RECHAZADO: return "error";
+      default: return "default";
+    }
+  }, []);
 
-  const removeDetalle = (index: number) => {
+  const getStatusLabel = useCallback((estado: EstadoDocumento): string => {
+    switch (estado) {
+      case EstadoDocumentoEnum.PENDIENTE: return "Pendiente";
+      case EstadoDocumentoEnum.APROBADO: return "Aprobado";
+      case EstadoDocumentoEnum.RECHAZADO: return "Rechazado";
+      default: return estado;
+    }
+  }, []);
+
+  // Memoized total calculation
+  const total = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
+
+  const addDetalle = useCallback(() => {
     if (readOnly) return;
-    setDetalles(detalles.filter((_, i) => i !== index));
-  };
+    setDetalles((prev) => [...prev, { ...initialDetalle }]);
+    setHasUnsavedChanges(true);
+  }, [readOnly]);
 
-  const handleOpenDialog = (
-    presupuesto?: Presupuesto,
-    readOnlyMode = false
-  ) => {
+  const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number) => {
+    if (readOnly) return;
+    setDetalles((prev) => {
+      const newDetalles = [...prev];
+      const detalle = newDetalles[index];
+
+      if (field === "productoId") detalle.productoId = value as string;
+      else if (field === "descripcion") detalle.descripcion = value as string;
+      else if (field === "cantidad") detalle.cantidad = Number(value) || 0;
+      else if (field === "precioUnitario") detalle.precioUnitario = Number(value) || 0;
+
+      if (field === "cantidad" || field === "precioUnitario") {
+        detalle.subtotal = detalle.cantidad * detalle.precioUnitario;
+      }
+
+      if (field === "productoId" && value) {
+        const producto = productos.find((p) => p.id === Number(value));
+        if (producto) {
+          detalle.descripcion = producto.nombre;
+          detalle.precioUnitario = producto.precio || 0;
+          detalle.subtotal = detalle.cantidad * (producto.precio || 0);
+        }
+      }
+
+      return newDetalles;
+    });
+    setHasUnsavedChanges(true);
+  }, [readOnly, productos]);
+
+  const removeDetalle = useCallback((index: number) => {
+    if (readOnly) return;
+    setDetalles((prev) => prev.filter((_, i) => i !== index));
+    setHasUnsavedChanges(true);
+  }, [readOnly]);
+
+  const handleOpenDialog = useCallback((presupuesto?: DocumentoComercial, readOnlyMode = false) => {
     setReadOnly(readOnlyMode);
+    setHasUnsavedChanges(false);
     if (presupuesto) {
       setEditingPresupuesto(presupuesto);
       setFormData({
-        clienteId: presupuesto.cliente?.id?.toString() || "",
-        usuarioId: presupuesto.usuario?.id?.toString() || "",
-        fechaPresupuesto: presupuesto.fechaPresupuesto?.split("T")[0] || "",
-        fechaVencimiento: presupuesto.fechaVencimiento?.split("T")[0] || "",
+        clienteId: presupuesto.clienteId.toString() || "",
+        usuarioId: presupuesto.usuarioId.toString() || "",
+        fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
         observaciones: presupuesto.observaciones || "",
         estado: presupuesto.estado,
       });
       setDetalles(
         Array.isArray(presupuesto.detalles)
-          ? presupuesto.detalles.map((detalle) => ({
+          ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
               id: detalle.id,
-              productoId: detalle.producto?.id?.toString() || "",
+              productoId: detalle.productoId?.toString() || "",
               descripcion: detalle.descripcion,
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
@@ -271,82 +238,56 @@ const PresupuestosPage: React.FC = () => {
       );
     } else {
       setEditingPresupuesto(null);
-      const fechaVencimiento = new Date();
-      fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 1);
-      setFormData({
-        clienteId: "",
-        usuarioId: "",
-        fechaPresupuesto: new Date().toISOString().split("T")[0],
-        fechaVencimiento: fechaVencimiento.toISOString().split("T")[0],
-        observaciones: "",
-        estado: PresupuestoStatusEnum.PENDIENTE,
-      });
+      setFormData({ ...initialFormData, usuarioId: DEFAULT_USER_ID?.toString() || "" });
       setDetalles([]);
     }
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = useCallback(() => {
+    if (hasUnsavedChanges && !window.confirm("¿Descartar cambios no guardados?")) return;
     setDialogOpen(false);
     setEditingPresupuesto(null);
-  };
-  const handleDeletePresupuesto = async (presupuestoId: number) => {
-    if (!window.confirm("¿Está seguro que desea eliminar este presupuesto?"))
-      return;
+    setFormData({ ...initialFormData, usuarioId: DEFAULT_USER_ID?.toString() || "" });
+    setDetalles([]);
+    setError(null);
+    setHasUnsavedChanges(false);
+  }, [hasUnsavedChanges]);
+
+  const handleSavePresupuesto = useCallback(async () => {
     try {
-      await presupuestoApi.delete(presupuestoId);
-      setPresupuestos(presupuestos.filter((p) => p.id !== presupuestoId));
-    } catch (err) {
-      setError("Error al eliminar el presupuesto");
-      console.error(err);
-    }
-  };
-  const handleSavePresupuesto = async () => {
-    try {
-      // Validate required fields
-      if (!formData.clienteId || formData.clienteId === "") {
+      // Validate form fields
+      if (!formData.clienteId) {
         setError("Debe seleccionar un cliente");
         return;
       }
-
-      if (!formData.fechaPresupuesto) {
-        setError("Debe especificar la fecha del presupuesto");
+      if (!formData.usuarioId && usuarios.length > 0) {
+        setError("Debe seleccionar un usuario");
         return;
       }
-
-      if (!formData.fechaVencimiento) {
-        setError("Debe especificar la fecha de vencimiento");
+      if (!formData.usuarioId && !DEFAULT_USER_ID) {
+        setError("No hay usuarios disponibles y no se configuró un usuario por defecto");
         return;
       }
-
-      // Validate that cliente ID is a valid number
-      const clienteId = parseInt(formData.clienteId);
-      if (isNaN(clienteId) || clienteId <= 0) {
-        setError("Debe seleccionar un cliente válido");
+      if (detalles.length === 0) {
+        setError("Debe agregar al menos un detalle");
         return;
       }
-
-      // Validate detalles
       for (const detalle of detalles) {
-        if (
-          !detalle.productoId ||
-          detalle.productoId === "" ||
-          isNaN(Number(detalle.productoId)) ||
-          Number(detalle.productoId) <= 0
-        ) {
-          setError("Todos los detalles deben tener un producto válido seleccionado.");
+        if (!detalle.productoId || isNaN(Number(detalle.productoId)) || Number(detalle.productoId) <= 0) {
+          setError("Todos los detalles deben tener un producto válido");
           return;
         }
-        if (!detalle.descripcion || detalle.descripcion.trim() === "") {
-          setError("Todos los detalles deben tener una descripción.");
+        if (!detalle.descripcion.trim()) {
+          setError("Todos los detalles deben tener una descripción");
           return;
         }
-        if (!detalle.cantidad || detalle.cantidad <= 0) {
-          setError("La cantidad debe ser mayor a 0.");
+        if (detalle.cantidad <= 0) {
+          setError("La cantidad debe ser mayor a 0");
           return;
         }
-        if (!detalle.precioUnitario || detalle.precioUnitario <= 0) {
-          setError("El precio unitario debe ser mayor a 0.");
+        if (detalle.precioUnitario <= 0) {
+          setError("El precio unitario debe ser mayor a 0");
           return;
         }
       }
@@ -354,100 +295,57 @@ const PresupuestosPage: React.FC = () => {
       setFormLoading(true);
       setError(null);
 
-      const presupuestoData: CreatePresupuestoRequest = {
-        clienteId: parseInt(formData.clienteId),
-        fechaPresupuesto: `${formData.fechaPresupuesto}T00:00:00`,
-        fechaVencimiento: `${formData.fechaVencimiento}T23:59:59`,
-        estado: formData.estado,
-        observaciones: formData.observaciones || "",
-        detalles: detalles.map((detalle) => ({
-          productoId: Number(detalle.productoId),
-          descripcion: detalle.descripcion,
-          cantidad: detalle.cantidad,
-          precioUnitario: detalle.precioUnitario,
-        })),
-        usuarioId: formData.usuarioId ? parseInt(formData.usuarioId) : undefined,
-      };
-
-      let savedPresupuesto: Presupuesto;
-
+      let savedPresupuesto: DocumentoComercial;
       if (editingPresupuesto) {
-        savedPresupuesto = await presupuestoApi.update(
-          editingPresupuesto.id,
-          presupuestoData
-        );
-        setPresupuestos(
-          presupuestos.map((p) =>
-            p.id === editingPresupuesto.id ? savedPresupuesto : p
-          )
-        );
+        savedPresupuesto = await documentoApi.updateEstado(editingPresupuesto.id, formData.estado);
+        setPresupuestos((prev) => prev.map((p) => (p.id === editingPresupuesto.id ? savedPresupuesto : p)));
       } else {
-        savedPresupuesto = await presupuestoApi.create(presupuestoData);
-        setPresupuestos([savedPresupuesto, ...presupuestos]);
+        const presupuestoData: CreatePresupuestoRequest = {
+          clienteId: Number(formData.clienteId),
+          usuarioId: Number(formData.usuarioId || DEFAULT_USER_ID),
+          observaciones: formData.observaciones,
+          detalles: detalles.map((detalle) => ({
+            productoId: Number(detalle.productoId),
+            descripcion: detalle.descripcion,
+            cantidad: detalle.cantidad,
+            precioUnitario: detalle.precioUnitario,
+          })),
+        };
+        console.log("Enviando datos:", JSON.stringify(presupuestoData));
+        savedPresupuesto = await documentoApi.createPresupuesto(presupuestoData);
+        setPresupuestos((prev) => [savedPresupuesto, ...prev]);
       }
 
       handleCloseDialog();
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error("Error saving presupuesto:", err);
-      let errorMessage = "Error desconocido";
-
-      if (err instanceof Error) {
+      let errorMessage = "Error al guardar el presupuesto";
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error) {
+        errorMessage = `${err.response.data.error}: ${err.response.data.message || ""}`;
+      } else if (err.response?.data) {
+        errorMessage = `Error ${err.response.status}: ${JSON.stringify(err.response.data)}`;
+      } else if (err.message) {
         errorMessage = err.message;
-        // If it's an axios error, try to get more details
-        if ("response" in err && err.response) {
-          const axiosError = err as Error & {
-            response?: { status?: number; data?: unknown };
-          };
-          console.error("Response status:", axiosError.response?.status);
-          console.error("Response data:", axiosError.response?.data);
-
-          if (
-            axiosError.response?.data &&
-            typeof axiosError.response.data === "object" &&
-            "message" in axiosError.response.data
-          ) {
-            errorMessage = String(
-              (axiosError.response.data as { message: string }).message
-            );
-          } else if (axiosError.response?.data) {
-            errorMessage = `Error ${
-              axiosError.response.status
-            }: ${JSON.stringify(axiosError.response.data)}`;
-          }
-        }
       }
-
-      setError(`Error al guardar el presupuesto: ${errorMessage}`);
+      setError(errorMessage);
     } finally {
       setFormLoading(false);
     }
-  };
+  }, [formData, detalles, editingPresupuesto, usuarios, handleCloseDialog]);
 
   if (loading) {
     return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: 400,
-        }}
-      >
-        <CircularProgress />
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
+        <CircularProgress aria-label="Cargando datos" />
       </Box>
     );
   }
 
   return (
-    <Box>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 3,
-        }}
-      >
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Presupuestos
         </Typography>
@@ -455,48 +353,49 @@ const PresupuestosPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
-          disabled={productos.length === 0 || loading}
+          disabled={loading}
+          aria-label="Crear nuevo presupuesto"
         >
           Nuevo Presupuesto
         </Button>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {(usuarios.length === 0 || productos.length === 0) && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {usuarios.length === 0 && productos.length === 0
+            ? "No hay usuarios ni productos disponibles. Contacte al administrador para configurar usuarios y productos."
+            : usuarios.length === 0
+            ? "No hay usuarios disponibles. Contacte al administrador para configurar usuarios."
+            : "No hay productos disponibles. Contacte al administrador para configurar productos."}
         </Alert>
       )}
 
       <Card>
         <CardContent>
           <TableContainer component={Paper}>
-            <Table>
+            <Table aria-label="Tabla de presupuestos">
               <TableHead>
                 <TableRow>
-                  <TableCell>Número</TableCell>
+                  <TableCell width="100px">Número</TableCell>
                   <TableCell>Cliente</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Vence</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell width="120px">Fecha</TableCell>
+                  <TableCell width="100px">Estado</TableCell>
+                  <TableCell width="120px" align="right">Total</TableCell>
+                  <TableCell width="150px">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {presupuestos.map((presupuesto) => (
                   <TableRow key={presupuesto.id}>
-                    <TableCell>{presupuesto.numeroPresupuesto}</TableCell>
-                    <TableCell>{presupuesto.cliente?.nombre}</TableCell>
-                    <TableCell>
-                      {new Date(
-                        presupuesto.fechaPresupuesto
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        presupuesto.fechaVencimiento
-                      ).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell>{presupuesto.numeroDocumento}</TableCell>
+                    <TableCell>{presupuesto.clienteNombre}</TableCell>
+                    <TableCell>{new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
                     <TableCell>
                       <Chip
                         label={getStatusLabel(presupuesto.estado)}
@@ -505,45 +404,29 @@ const PresupuestosPage: React.FC = () => {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      $
-                      {presupuesto.total.toLocaleString("es-AR", {
-                        minimumFractionDigits: 2,
-                      })}
+                      ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleOpenDialog(presupuesto, true)}
-                        aria-label="Ver presupuesto"
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleOpenDialog(presupuesto, false)}
-                        aria-label="Editar presupuesto"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton size="small" color="success">
-                        <PrintIcon />
-                      </IconButton>
-                      <IconButton size="small" color="info">
-                        <SendIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => {
-                          setPresupuestoToDelete(presupuesto);
-                          setDeleteDialogOpen(true);
-                        }}
-                        aria-label="Eliminar presupuesto"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      <Tooltip title="Ver">
+                        <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, true)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
+                          <VisibilityIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Editar">
+                        <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, false)} aria-label={`Editar presupuesto ${presupuesto.numeroDocumento}`}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Imprimir">
+                        <IconButton size="small" color="success" aria-label={`Imprimir presupuesto ${presupuesto.numeroDocumento}`}>
+                          <PrintIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Enviar">
+                        <IconButton size="small" color="info" aria-label={`Enviar presupuesto ${presupuesto.numeroDocumento}`}>
+                          <SendIcon />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -563,6 +446,8 @@ const PresupuestosPage: React.FC = () => {
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => handleOpenDialog()}
+                disabled={loading}
+                aria-label="Crear primer presupuesto"
               >
                 Crear Presupuesto
               </Button>
@@ -576,34 +461,33 @@ const PresupuestosPage: React.FC = () => {
         onClose={handleCloseDialog}
         maxWidth="lg"
         fullWidth
+        aria-labelledby="presupuesto-dialog-title"
       >
-        <DialogTitle>
-          {editingPresupuesto
-            ? readOnly
-              ? "Ver Presupuesto"
-              : "Editar Presupuesto"
-            : "Nuevo Presupuesto"}
+        <DialogTitle id="presupuesto-dialog-title">
+          {editingPresupuesto ? (readOnly ? "Ver Presupuesto" : "Editar Presupuesto") : "Nuevo Presupuesto"}
         </DialogTitle>
         <DialogContent sx={{ minHeight: "500px" }}>
-          <Box sx={{ pt: 1 }}>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: 2,
-              }}
-            >
+          <Box sx={{ pt: 2 }}>
+            {usuarios.length === 0 && !editingPresupuesto && !DEFAULT_USER_ID && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                No hay usuarios disponibles. Configure un usuario por defecto o contacte al administrador.
+              </Alert>
+            )}
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fit, minmax(300px, 1fr))" }, gap: 2 }}>
               <TextField
                 fullWidth
                 select
                 label="Cliente"
                 value={formData.clienteId}
-                onChange={(e) =>
-                  setFormData({ ...formData, clienteId: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, clienteId: e.target.value });
+                  setHasUnsavedChanges(true);
+                }}
                 margin="normal"
                 required
-                disabled={readOnly}
+                disabled={readOnly || !!editingPresupuesto}
+                error={!formData.clienteId && hasUnsavedChanges}
+                helperText={!formData.clienteId && hasUnsavedChanges ? "Seleccione un cliente" : ""}
               >
                 <MenuItem value="">Seleccionar cliente</MenuItem>
                 {clientes.map((cliente) => (
@@ -613,82 +497,69 @@ const PresupuestosPage: React.FC = () => {
                 ))}
               </TextField>
 
-              {usuarios.length > 0 && (
-                <TextField
-                  fullWidth
-                  select
-                  label="Usuario"
-                  value={formData.usuarioId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, usuarioId: e.target.value })
-                  }
-                  margin="normal"
-                  disabled={readOnly}
-                >
-                  <MenuItem value="">Seleccionar usuario</MenuItem>
-                  {usuarios.map((usuario) => (
-                    <MenuItem key={usuario.id} value={usuario.id.toString()}>
-                      {usuario.nombre}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
+              <TextField
+                fullWidth
+                select
+                label="Usuario"
+                value={formData.usuarioId}
+                onChange={(e) => {
+                  console.log("Usuario seleccionado:", e.target.value);
+                  setFormData({ ...formData, usuarioId: e.target.value });
+                  setHasUnsavedChanges(true);
+                }}
+                margin="normal"
+                required={usuarios.length > 0 && !DEFAULT_USER_ID}
+                disabled={readOnly || !!editingPresupuesto || (usuarios.length === 0 && !DEFAULT_USER_ID)}
+                error={!formData.usuarioId && hasUnsavedChanges && usuarios.length > 0 && !DEFAULT_USER_ID}
+                helperText={!formData.usuarioId && hasUnsavedChanges && usuarios.length > 0 && !DEFAULT_USER_ID ? "Seleccione un usuario" : ""}
+              >
+                {usuarios.length > 0 ? (
+                  <>
+                    <MenuItem value="">Seleccionar usuario</MenuItem>
+                    {usuarios.map((usuario) => (
+                      <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                        {usuario.nombre}
+                      </MenuItem>
+                    ))}
+                  </>
+                ) : (
+                  <MenuItem value={DEFAULT_USER_ID?.toString() || ""} disabled>
+                    {DEFAULT_USER_ID ? "Usuario por defecto" : "No hay usuarios disponibles"}
+                  </MenuItem>
+                )}
+              </TextField>
 
               <TextField
                 fullWidth
                 select
                 label="Estado"
                 value={formData.estado}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    estado: e.target.value as PresupuestoStatus,
-                  })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, estado: e.target.value as EstadoDocumento });
+                  setHasUnsavedChanges(true);
+                }}
                 margin="normal"
                 required
-                disabled={readOnly}
+                disabled={readOnly || !editingPresupuesto}
               >
-                <MenuItem value={PresupuestoStatusEnum.PENDIENTE}>
-                  Pendiente
-                </MenuItem>
-                <MenuItem value={PresupuestoStatusEnum.APROBADO}>
-                  Aprobado
-                </MenuItem>
-                <MenuItem value={PresupuestoStatusEnum.RECHAZADO}>
-                  Rechazado
-                </MenuItem>
-                <MenuItem value={PresupuestoStatusEnum.VENCIDO}>
-                  Vencido
-                </MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.APROBADO}>Aprobado</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>
               </TextField>
 
               <TextField
                 fullWidth
-                label="Fecha del Presupuesto"
+                label="Fecha de Emisión"
                 type="date"
-                value={formData.fechaPresupuesto}
-                onChange={(e) =>
-                  setFormData({ ...formData, fechaPresupuesto: e.target.value })
-                }
+                value={formData.fechaEmision}
+                onChange={(e) => {
+                  setFormData({ ...formData, fechaEmision: e.target.value });
+                  setHasUnsavedChanges(true);
+                }}
                 margin="normal"
                 required
                 InputLabelProps={{ shrink: true }}
-                disabled={readOnly}
-              />
-
-              <TextField
-                fullWidth
-                label="Fecha de Vencimiento"
-                type="date"
-                value={formData.fechaVencimiento}
-                onChange={(e) =>
-                  setFormData({ ...formData, fechaVencimiento: e.target.value })
-                }
-                margin="normal"
-                required
-                InputLabelProps={{ shrink: true }}
-                disabled={readOnly}
+                disabled
               />
             </Box>
 
@@ -696,41 +567,40 @@ const PresupuestosPage: React.FC = () => {
               fullWidth
               label="Observaciones"
               value={formData.observaciones}
-              onChange={(e) =>
-                setFormData({ ...formData, observaciones: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, observaciones: e.target.value });
+                setHasUnsavedChanges(true);
+              }}
               margin="normal"
               multiline
               rows={3}
-              disabled={readOnly}
+              disabled={readOnly || !!editingPresupuesto}
             />
 
-            {/* Detalles Section */}
             <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>
               Detalles del Presupuesto
             </Typography>
 
             {productos.length === 0 && (
               <Alert severity="warning" sx={{ mb: 2 }}>
-                No hay productos disponibles. Contacte al administrador para
-                configurar el catálogo de productos.
+                No hay productos disponibles. Contacte al administrador para configurar el catálogo de productos.
               </Alert>
             )}
 
             <TableContainer component={Paper} sx={{ mb: 2 }}>
-              <Table size="small">
+              <Table size="small" aria-label="Tabla de detalles del presupuesto">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Producto</TableCell>
+                    <TableCell width="200px">Producto</TableCell>
                     <TableCell>Descripción</TableCell>
                     <TableCell width="100px">Cantidad</TableCell>
                     <TableCell width="120px">Precio Unit.</TableCell>
                     <TableCell width="120px">Subtotal</TableCell>
-                    {!readOnly && <TableCell width="60px">Acciones</TableCell>}
+                    {!readOnly && !editingPresupuesto && <TableCell width="60px">Acciones</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {detalles && detalles.length > 0 ? (
+                  {detalles.length > 0 ? (
                     detalles.map((detalle, index) => (
                       <TableRow key={index}>
                         <TableCell>
@@ -739,26 +609,17 @@ const PresupuestosPage: React.FC = () => {
                             size="small"
                             fullWidth
                             value={detalle.productoId}
-                            onChange={(e) =>
-                              updateDetalle(index, "productoId", e.target.value)
-                            }
-                            disabled={readOnly}
+                            onChange={(e) => updateDetalle(index, "productoId", e.target.value)}
+                            disabled={readOnly || !!editingPresupuesto}
+                            error={!detalle.productoId && hasUnsavedChanges}
                           >
                             <MenuItem value="">Sin producto</MenuItem>
                             {productos.length === 0 ? (
-                              <MenuItem disabled>
-                                No hay productos disponibles
-                              </MenuItem>
+                              <MenuItem disabled>No hay productos disponibles</MenuItem>
                             ) : (
                               productos.map((producto) => (
-                                <MenuItem
-                                  key={producto.id}
-                                  value={producto.id.toString()}
-                                >
-                                  {producto.nombre} - $
-                                  {producto.precio?.toLocaleString("es-AR", {
-                                    minimumFractionDigits: 2,
-                                  })}
+                                <MenuItem key={producto.id} value={producto.id.toString()}>
+                                  {producto.nombre} - ${producto.precio?.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                                 </MenuItem>
                               ))
                             )}
@@ -769,14 +630,9 @@ const PresupuestosPage: React.FC = () => {
                             size="small"
                             fullWidth
                             value={detalle.descripcion}
-                            onChange={(e) =>
-                              updateDetalle(
-                                index,
-                                "descripcion",
-                                e.target.value
-                              )
-                            }
-                            disabled={readOnly}
+                            onChange={(e) => updateDetalle(index, "descripcion", e.target.value)}
+                            disabled={readOnly || !!editingPresupuesto}
+                            error={!detalle.descripcion.trim() && hasUnsavedChanges}
                           />
                         </TableCell>
                         <TableCell>
@@ -785,15 +641,10 @@ const PresupuestosPage: React.FC = () => {
                             type="number"
                             fullWidth
                             value={detalle.cantidad}
-                            onChange={(e) =>
-                              updateDetalle(
-                                index,
-                                "cantidad",
-                                parseInt(e.target.value) || 0
-                              )
-                            }
+                            onChange={(e) => updateDetalle(index, "cantidad", parseInt(e.target.value) || 0)}
                             inputProps={{ min: 1 }}
-                            disabled={readOnly}
+                            disabled={readOnly || !!editingPresupuesto}
+                            error={detalle.cantidad <= 0 && hasUnsavedChanges}
                           />
                         </TableCell>
                         <TableCell>
@@ -802,127 +653,67 @@ const PresupuestosPage: React.FC = () => {
                             type="number"
                             fullWidth
                             value={detalle.precioUnitario}
-                            onChange={(e) =>
-                              updateDetalle(
-                                index,
-                                "precioUnitario",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
+                            onChange={(e) => updateDetalle(index, "precioUnitario", parseFloat(e.target.value) || 0)}
                             inputProps={{ min: 0, step: 0.01 }}
-                            disabled={readOnly}
+                            disabled={readOnly || !!editingPresupuesto}
+                            error={detalle.precioUnitario <= 0 && hasUnsavedChanges}
                           />
                         </TableCell>
                         <TableCell>
-                          $
-                          {detalle.subtotal.toLocaleString("es-AR", {
-                            minimumFractionDigits: 2,
-                          })}
+                          ${detalle.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                         </TableCell>
-                        {!readOnly && (
+                        {!readOnly && !editingPresupuesto && (
                           <TableCell>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => removeDetalle(index)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                            <Tooltip title="Eliminar detalle">
+                              <IconButton size="small" color="error" onClick={() => removeDetalle(index)} aria-label="Eliminar detalle">
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
                           </TableCell>
                         )}
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={readOnly ? 5 : 6} align="center">
+                      <TableCell colSpan={readOnly || editingPresupuesto ? 5 : 6} align="center">
                         No hay detalles para este presupuesto.
                       </TableCell>
                     </TableRow>
-                   )}
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
 
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
-              {!readOnly && (
-                <Button
-  variant="outlined"
-  startIcon={<AddIcon />}
-  onClick={addDetalle}
->
-  Agregar Detalle
-</Button>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+              {!readOnly && !editingPresupuesto && (
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={addDetalle} disabled={productos.length === 0}>
+                  Agregar Detalle
+                </Button>
               )}
               <Typography variant="h6">
-  Total: ${calculateTotal().toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-</Typography>
+                Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              </Typography>
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-  <Button onClick={handleCloseDialog}>Cerrar</Button>
-  {!readOnly && (
-    <Button
-      variant="contained"
-      onClick={handleSavePresupuesto}
-      disabled={
-        !formData.clienteId ||
-        !formData.fechaPresupuesto ||
-        !formData.fechaVencimiento ||
-        formLoading
-      }
-    >
-      {editingPresupuesto ? "Actualizar" : "Crear"}
-    </Button>
-  )}
-</DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Eliminar presupuesto</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Está seguro que desea eliminar el presupuesto{' '}
-            <b>{presupuestoToDelete?.numeroPresupuesto}</b>?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={async () => {
-              if (presupuestoToDelete) {
-                try {
-                  await presupuestoApi.delete(presupuestoToDelete.id);
-                  setPresupuestos(presupuestos.filter(p => p.id !== presupuestoToDelete.id));
-                } catch (err) {
-                  setError("Error al eliminar el presupuesto");
-                  console.error(err);
-                }
-              }
-              setDeleteDialogOpen(false);
-              setPresupuestoToDelete(null);
-            }}
-          >
-            Eliminar
+          <Button onClick={handleCloseDialog} disabled={formLoading}>
+            Cerrar
           </Button>
+          {!readOnly && (
+            <Button
+              variant="contained"
+              onClick={handleSavePresupuesto}
+              disabled={formLoading || !formData.clienteId || detalles.length === 0 || (!formData.usuarioId && usuarios.length > 0 && !DEFAULT_USER_ID)}
+              aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
+            >
+              {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>
   );
 };
-
-
 
 export default PresupuestosPage;
