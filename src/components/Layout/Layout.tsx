@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Box,
@@ -7,9 +7,13 @@ import {
   Typography,
   useTheme,
   useMediaQuery,
+  Fab,
 } from '@mui/material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import LayoutWrapper from './LayoutWrapper';
+import CommandPalette from './CommandPalette';
+import SearchIcon from '@mui/icons-material/Search';
 
 const Layout: React.FC = () => {
   const theme = useTheme();
@@ -17,6 +21,7 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -29,17 +34,34 @@ const Layout: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
       <Sidebar />
-      <Box
-        component="main"
-        sx={{ flexGrow: 1, p: 3 }}
-      >
+      <LayoutWrapper>
         <Toolbar />
         <Outlet />
-      </Box>
+      </LayoutWrapper>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <Fab
+        color="primary"
+        aria-label="Abrir paleta de comandos"
+        sx={{ position: 'fixed', bottom: 32, right: 32, zIndex: 1300 }}
+        onClick={() => setPaletteOpen(true)}
+      >
+        <SearchIcon />
+      </Fab>
     </Box>
   );
 };
