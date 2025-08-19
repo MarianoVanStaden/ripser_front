@@ -25,6 +25,7 @@ import RecentActivity from './RecentActivity';
 import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
 import BackendSetupDialog from '../BackendSetupDialog/BackendSetupDialog';
+import { useAuth } from "../../context/AuthContext";
 
 interface DashboardStats {
   totalClients: number;
@@ -82,6 +83,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
 );
 
 const Dashboard: React.FC = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     connected: false,
@@ -175,6 +177,11 @@ setStats({
           Dashboard
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {user && (
+            <Typography variant="subtitle1">
+              Hola {user.nombre || user.username}
+            </Typography>
+          )}
           <Chip
             icon={connectionStatus.connected ? <CheckCircleIcon /> : <ErrorIcon />}
             label={connectionStatus.connected ? 'Backend Connected' : 'Backend Disconnected'}
