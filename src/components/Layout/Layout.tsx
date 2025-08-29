@@ -14,6 +14,7 @@ import Sidebar from './Sidebar';
 import LayoutWrapper from './LayoutWrapper';
 import CommandPalette from './CommandPalette';
 import SearchIcon from '@mui/icons-material/Search';
+import ScrollToTopButton from './ScrollToTopButton';
 
 const Layout: React.FC = () => {
   const theme = useTheme();
@@ -62,6 +63,7 @@ const Layout: React.FC = () => {
       >
         <SearchIcon />
       </Fab>
+      <ScrollToTopButton />
     </Box>
   );
 };
