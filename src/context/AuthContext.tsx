@@ -1,18 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../api/authApi";
 import axios from "axios";
+import { setAuthToken } from "../api/config";
 
 export interface AuthUser {
   id: number;
   username: string;
-  nombre?: string;
-  apellido?: string;
+  email?: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (usernameOrEmail: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -26,16 +26,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const validateToken = async () => {
-      const t = localStorage.getItem("auth_token");
+  const t = localStorage.getItem("auth_token");
       const u = localStorage.getItem("auth_user");
       if (t && u) {
         try {
-          await authApi.validateToken(t); // Verify token
+          await authApi.validateToken(t);
           setToken(t);
           setUser(JSON.parse(u));
+          // Set for global axios (fallback) and our dedicated api instance
           axios.defaults.headers.common.Authorization = `Bearer ${t}`;
+          setAuthToken(t);
         } catch {
-          logout(); // Clear invalid token
+          logout();
         }
       }
       setLoading(false);
@@ -43,23 +45,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     validateToken();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (usernameOrEmail: string, password: string) => {
     setLoading(true);
     try {
-      const res = await authApi.login({ username, password });
+      const res = await authApi.login({ usernameOrEmail, password });
       const usr: AuthUser = {
-        id: res.id,
-        username: res.username,
-        nombre: res.nombre,
-        apellido: res.apellido,
+        id: res.id || 0,
+        username: res.username || usernameOrEmail,
+        email: res.email || "",
       };
-      setToken(res.token);
+  const access = res.accessToken || (res as any).token; // support alternate field name
+  if (!access) throw new Error('No access token en la respuesta');
+  setToken(access);
       setUser(usr);
-      localStorage.setItem("auth_token", res.token);
+  localStorage.setItem("auth_token", access);
+      if (res.refreshToken) {
+        localStorage.setItem("auth_refresh_token", res.refreshToken);
+      }
       localStorage.setItem("auth_user", JSON.stringify(usr));
-      axios.defaults.headers.common.Authorization = `Bearer ${res.token}`;
+  axios.defaults.headers.common.Authorization = `Bearer ${access}`;
+  setAuthToken(access);
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || "Error de autenticación");
+      throw new Error(error.response?.data?.error || "Error de autenticación");
     } finally {
       setLoading(false);
     }
@@ -69,8 +76,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
     localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
-    delete axios.defaults.headers.common.Authorization;
+  localStorage.removeItem("auth_user");
+  localStorage.removeItem("auth_refresh_token");
+  delete axios.defaults.headers.common.Authorization;
+  setAuthToken(null);
   };
 
   useEffect(() => {

@@ -75,6 +75,8 @@ function App() {
               }
             >
               <Route index element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              {/* Explicit dashboard path so navigating to /dashboard works */}
+              <Route path="dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
               {/* ADMIN Module */}
               <Route path="admin/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
               <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />

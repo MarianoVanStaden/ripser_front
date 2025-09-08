@@ -13,7 +13,7 @@ import { useNavigate, Navigate } from "react-router-dom";
 const LoginPage: React.FC = () => {
   const { login, user, loading } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +25,18 @@ const LoginPage: React.FC = () => {
     setError(null);
     setSubmitting(true);
     try {
-      await login(username.trim(), password);
+      console.log("Submitting with:", { usernameOrEmail, password });
+      await login(usernameOrEmail.trim(), password.trim());
+      console.log("Login successful");
       navigate("/dashboard");
-    } catch {
-      setError("Credenciales inválidas");
+    } catch (error: any) {
+      console.error("Login error:", error.response?.data, error.message);
+      const errorMessage = error.response?.data?.usernameOrEmail ||
+                          error.response?.data?.password ||
+                          error.response?.data?.error ||
+                          error.response?.data?.message ||
+                          "Credenciales inválidas";
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -62,17 +70,17 @@ const LoginPage: React.FC = () => {
           Ingresa tus credenciales para continuar
         </Typography>
         {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
         <Box component="form" onSubmit={handleSubmit} noValidate>
           <TextField
-            label="Usuario"
+            label="Usuario o Correo"
             fullWidth
             margin="normal"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={usernameOrEmail}
+            onChange={(e) => setUsernameOrEmail(e.target.value)}
             required
             autoFocus
             autoComplete="username"
@@ -92,7 +100,7 @@ const LoginPage: React.FC = () => {
             fullWidth
             variant="contained"
             sx={{ mt: 3 }}
-            disabled={submitting || !username || !password}
+            disabled={submitting || !usernameOrEmail || !password}
           >
             {submitting ? "Ingresando..." : "Ingresar"}
           </Button>
@@ -103,3 +111,4 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
+
