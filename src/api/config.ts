@@ -13,12 +13,10 @@ export const setAuthToken = (token: string | null) => {
 // Resolve base URL and ensure it ends with /api for consistency
 const rawBase =
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? '/api' : 'http://localhost:8080/RipserApp/api');
-
-// If absolute URL without trailing /api but backend expects /api/*, append it
+  (import.meta.env.DEV ? '/api' : 'http://localhost:8080/RipserApp');
 const normalizedBase = /^https?:\/\//.test(rawBase)
-  ? (rawBase.match(/\/api\/?$/) ? rawBase.replace(/\/$/, '') : rawBase.replace(/\/$/, '') + '/api')
-  : rawBase; // relative '/api' proxy path is fine
+  ? rawBase.replace(/\/$/, '')
+  : rawBase;
 
 const api = axios.create({
   baseURL: normalizedBase,
@@ -31,11 +29,13 @@ const api = axios.create({
 // Request interceptor: attach Authorization header if token exists
 api.interceptors.request.use(
   (config) => {
-    // Prefer in-memory token; fallback to localStorage for hard refresh cases
     const token = authToken || localStorage.getItem('auth_token');
     if (token) {
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
+      console.log('Attaching token to request:', token.substring(0, 10) + '...', config.url);
+    } else {
+      console.warn('No token available for request:', config.url);
     }
     return config;
   },
