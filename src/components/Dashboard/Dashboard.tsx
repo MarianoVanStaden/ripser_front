@@ -33,6 +33,7 @@ interface DashboardStats {
   totalOrders: number;
   totalSales: number;
   monthlySalesAmount: number;
+  monthlySalesCount: number; // Added to track number of sales this month
   lowStockProducts: number;
 }
 
@@ -87,7 +88,7 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     connected: false,
-    message: 'Checking connection...'
+    message: 'Checking connection...',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,51 +106,57 @@ const Dashboard: React.FC = () => {
     } catch (err) {
       setConnectionStatus({
         connected: false,
-        message: 'Failed to check backend connection'
+        message: 'Failed to check backend connection',
       });
     }
   };
 
-const fetchDashboardData = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-
-    const [clients, products, sales, lowStockProducts] = await Promise.all([
-      clientApi.getAll(),
-      productApi.getAll(),
-      saleApi.getAll(),
-      productApi.getLowStock(),
-    ]);
-
-    const orders = [];
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const monthlySales = sales.filter(sale => {
-      const saleDate = new Date(sale.fechaVenta);
-      return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
-    });
-    const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total), 0);
-
-    setStats({
-      totalClients: clients.length,
-      totalProducts: products.length,
-      totalOrders: orders.length,
-      totalSales: sales.length,
-      monthlySalesAmount,
-      lowStockProducts: lowStockProducts.length,
-    });
-  } catch (err) {
-    console.error('Error fetching dashboard data:', err);
-    if (err.response?.status === 403) {
-      setError('Access denied. Please ensure you have the necessary permissions.');
-    } else {
-      setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [clients, products, sales, lowStockProducts] = await Promise.all([
+        clientApi.getAll().catch((err) => {
+          throw new Error(`clientApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
+        }),
+        productApi.getAll(0, 100).catch((err) => {
+          throw new Error(`productApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
+        }),
+        saleApi.getAll().catch((err) => {
+          throw new Error(`saleApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
+        }),
+        productApi.getLowStock().catch((err) => {
+          throw new Error(`productApi.getLowStock failed: ${err.response?.status} ${err.response?.data}`);
+        }),
+      ]);
+      const currentMonth = new Date().getMonth(); // 8 (September)
+      const currentYear = new Date().getFullYear(); // 2025
+      const monthlySales = sales.filter((sale) => {
+        const saleDate = new Date(sale.fechaVenta);
+        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+      });
+      const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+      const monthlySalesCount = monthlySales.length; // Count sales for this month
+      setStats({
+        totalClients: clients.length,
+        totalProducts: products.length,
+        totalOrders: sales.length, // Use sales as orders
+        totalSales: sales.length,
+        monthlySalesAmount,
+        monthlySalesCount,
+        lowStockProducts: lowStockProducts.length,
+      });
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err.message);
+      if (err.message.includes('403')) {
+        setError('Access denied. Please ensure you have the necessary permissions.');
+      } else {
+        setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleRetry = () => {
     checkConnection();
@@ -215,9 +222,9 @@ const fetchDashboardData = async () => {
             Please ensure your Spring Boot backend is running on <code>http://localhost:8080/RipserApp</code>
           </Typography>
           <Box sx={{ mt: 1 }}>
-            <Button 
-              size="small" 
-              variant="outlined" 
+            <Button
+              size="small"
+              variant="outlined"
               onClick={() => setSetupDialogOpen(true)}
               startIcon={<SettingsIcon />}
             >
@@ -260,7 +267,7 @@ const fetchDashboardData = async () => {
               value={`$${stats.monthlySalesAmount.toLocaleString()}`}
               icon={<TrendingUpIcon />}
               color="#7b1fa2"
-              subtitle={`${stats.totalSales} total sales`}
+              subtitle={`${stats.monthlySalesCount} sales this month`}
             />
           </Box>
 
@@ -297,9 +304,9 @@ const fetchDashboardData = async () => {
         </Box>
       )}
 
-      <BackendSetupDialog 
-        open={setupDialogOpen} 
-        onClose={() => setSetupDialogOpen(false)} 
+      <BackendSetupDialog
+        open={setupDialogOpen}
+        onClose={() => setSetupDialogOpen(false)}
       />
     </Box>
   );

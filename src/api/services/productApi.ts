@@ -3,9 +3,34 @@ import type { Producto, CreateProductRequest } from '../../types';
 
 export const productApi = {
   // Get all products
-  getAll: async (): Promise<Producto[]> => {
-    const response = await api.get('/api/productos');
-    return response.data;
+
+  getAll: async (page: number = 0, size: number = 10): Promise<Producto[]> => {
+    try {
+      const response = await api.get('/api/productos', { params: { page, size } });
+      return response.data.content; // Handle Spring Page object
+    } catch (error: any) {
+      console.error('Error fetching products:', {
+        status: error.response?.status,
+        message: error.response?.data,
+        url: error.config?.url,
+      });
+      throw error;
+    }
+  },
+  getLowStock: async (): Promise<Producto[]> => {
+    try {
+      const response = await api.get('/api/productos/bajo-stock');
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching low stock products:', {
+        status: error.response?.status,
+        message: error.response?.data,
+        url: error.config?.url,
+      });
+      throw error;
+    }
+
+  // ... other methods
   },
 
   // Get product by ID
@@ -37,9 +62,5 @@ export const productApi = {
     return response.data;
   },
 
-  // Get products with low stock (backend: /api/productos/bajo-stock)
-  getLowStock: async (): Promise<Producto[]> => {
-    const response = await api.get('/api/productos/bajo-stock');
-    return response.data;
-  }
+
 };
