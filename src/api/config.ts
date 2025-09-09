@@ -11,14 +11,12 @@ export const setAuthToken = (token: string | null) => {
 
 // Create axios instance with default configuration
 // Resolve base URL and ensure it ends with /api for consistency
-
 const rawBase =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.DEV ? '/api' : 'http://localhost:8080/RipserApp');
 const normalizedBase = /^https?:\/\//.test(rawBase)
   ? rawBase.replace(/\/$/, '')
   : rawBase;
-
 
 const api = axios.create({
   baseURL: normalizedBase,
@@ -34,7 +32,7 @@ api.interceptors.request.use(
     const token = authToken || localStorage.getItem('auth_token');
     if (token) {
       config.headers = config.headers || {};
-      (config.headers as any).Authorization = token; // Remove "Bearer " prefix
+      (config.headers as any).Authorization = `Bearer ${token}`;
       console.log('Attaching token to request:', token.substring(0, 10) + '...', config.url);
     } else {
       console.warn('No token available for request:', config.url);
@@ -64,7 +62,7 @@ api.interceptors.response.use(
         const storedRefresh = localStorage.getItem('auth_refresh_token');
         if (!storedRefresh) throw new Error('No refresh token');
         const refreshRes = await authApi.refresh(storedRefresh);
-        const newAccess = refreshRes.accessToken || (refreshRes as any).token; // support alternate field name
+        const newAccess = refreshRes.accessToken;
         if (!newAccess) throw new Error('No access token in refresh response');
         // Persist & set new tokens
         localStorage.setItem('auth_token', newAccess);
@@ -74,7 +72,7 @@ api.interceptors.response.use(
         }
         // Update header & retry
         originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = newAccess; // Remove "Bearer " prefix
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (refreshErr) {
         console.error('Token refresh failed:', refreshErr);

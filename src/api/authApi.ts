@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/RipserApp") + "/api/auth";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/RipserApp/api/auth";
 
 export interface LoginRequest {
   usernameOrEmail: string;
@@ -19,8 +19,7 @@ export interface LoginResponse {
 }
 
 export interface RefreshResponse {
-  accessToken?: string; // primary expected field
-  token?: string; // fallback field name some backends use
+  accessToken: string;
   refreshToken?: string; // backend might return a new refresh token
   tokenType?: string;
   expiresIn?: number;
@@ -33,23 +32,10 @@ export const authApi = {
     return res.data;
   },
   validateToken: async (token: string): Promise<void> => {
-    await axios.post(`${BASE}/validate`, { token }, {
-      headers: {
-        Authorization: token
-      }
-    });
+    await axios.post(`${BASE}/validate`, { token });
   },
   refresh: async (refreshToken: string): Promise<RefreshResponse> => {
-    const res = await axios.post(`${BASE}/refresh`, { refreshToken }, {
-      headers: {
-        Authorization: refreshToken
-      }
-    });
-    // Ensure we return the token in the expected format
-    const data = res.data;
-    if (data.token && !data.accessToken) {
-      data.accessToken = data.token;
-    }
-    return data;
+    const res = await axios.post(`${BASE}/refresh`, { refreshToken });
+    return res.data;
   }
 };
