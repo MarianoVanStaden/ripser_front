@@ -9,11 +9,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { Link, useLocation } from 'react-router-dom';
-import EventIcon from '@mui/icons-material/Event';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import CreditScoreIcon from '@mui/icons-material/CreditScore';
 
 const drawerWidth = 240;
 
@@ -37,10 +33,10 @@ const navigation = [
     title: 'CLIENTES',
     items: [
       { text: 'Gestión Clientes', icon: <PeopleIcon />, path: '/clientes/gestion' },
-      { text: 'Carpeta Cliente', icon: <AssignmentIcon />, path: '/clientes/carpeta' },
-      { text: 'Agenda Visitas', icon: <EventIcon />, path: '/clientes/agenda' },
-      { text: 'Cuenta Corriente', icon: <AccountBalanceWalletIcon />, path: '/clientes/cuenta-corriente' },
-      { text: 'Crédito Personal', icon: <CreditScoreIcon />, path: '/clientes/credito' },
+      { text: 'Carpeta Cliente', icon: <PeopleIcon />, path: '/clientes/carpeta' },
+      { text: 'Agenda Visitas', icon: <PeopleIcon />, path: '/clientes/agenda' },
+      { text: 'Cuenta Corriente', icon: <PeopleIcon />, path: '/clientes/cuenta-corriente' },
+      { text: 'Crédito Personal', icon: <PeopleIcon />, path: '/clientes/credito' },
     ],
   },
   {
@@ -87,20 +83,6 @@ const navigation = [
       { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
       { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
       { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
-    ],
-  },
-  {
-    title: 'EVENTOS',
-    items: [
-      { text: 'Calendario', icon: <EventIcon />, path: '/eventos/calendario' },
-      { text: 'Reservas', icon: <AccountBalanceWalletIcon />, path: '/eventos/reservas' },
-      { text: 'Pagos', icon: <CreditScoreIcon />, path: '/eventos/pagos' },
-    ],
-  },
-  {
-    title: 'CONFIGURACIÓN',
-    items: [
-      { text: 'Ajustes', icon: <SettingsIcon />, path: '/admin/settings' },
     ],
   },
 ];
