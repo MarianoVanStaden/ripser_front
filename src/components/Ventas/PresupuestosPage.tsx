@@ -36,6 +36,7 @@ import { clienteApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/documentoApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, CreatePresupuestoRequest, DetalleDocumento } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
+import { useAuth } from "../../context/AuthContext";
 
 // Define interfaces for clarity
 interface DetalleForm {
@@ -76,6 +77,7 @@ const initialDetalle: DetalleForm = {
 const DEFAULT_USER_ID = null; // Replace with a valid user ID if known (e.g., 1 for a system user)
 
 const PresupuestosPage: React.FC = () => {
+  const { user } = useAuth();
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -255,6 +257,18 @@ const fetchData = useCallback(async () => {
   }, [hasUnsavedChanges]);
 
   const handleSavePresupuesto = useCallback(async () => {
+    if (!user) { setError("Debe iniciar sesión"); return; }
+    const payload: CreatePresupuestoRequest = {
+      clienteId: Number(formData.clienteId),
+      usuarioId: user.id, // tomado del contexto
+      observaciones: formData.observaciones,
+      detalles: detalles.map(d=>({
+        productoId: Number(d.productoId),
+        cantidad: d.cantidad,
+        precioUnitario: d.precioUnitario,
+        descripcion: d.descripcion
+      }))
+    };
     try {
       // Validate form fields
       if (!formData.clienteId) {
@@ -300,19 +314,8 @@ const fetchData = useCallback(async () => {
         savedPresupuesto = await documentoApi.updateEstado(editingPresupuesto.id, formData.estado);
         setPresupuestos((prev) => prev.map((p) => (p.id === editingPresupuesto.id ? savedPresupuesto : p)));
       } else {
-        const presupuestoData: CreatePresupuestoRequest = {
-          clienteId: Number(formData.clienteId),
-          usuarioId: Number(formData.usuarioId || DEFAULT_USER_ID),
-          observaciones: formData.observaciones,
-          detalles: detalles.map((detalle) => ({
-            productoId: Number(detalle.productoId),
-            descripcion: detalle.descripcion,
-            cantidad: detalle.cantidad,
-            precioUnitario: detalle.precioUnitario,
-          })),
-        };
-        console.log("Enviando datos:", JSON.stringify(presupuestoData));
-        savedPresupuesto = await documentoApi.createPresupuesto(presupuestoData);
+        console.log("Enviando datos:", JSON.stringify(payload));
+        savedPresupuesto = await documentoApi.createPresupuesto(payload);
         setPresupuestos((prev) => [savedPresupuesto, ...prev]);
       }
 
@@ -333,7 +336,7 @@ const fetchData = useCallback(async () => {
     } finally {
       setFormLoading(false);
     }
-  }, [formData, detalles, editingPresupuesto, usuarios, handleCloseDialog]);
+  }, [user, formData, detalles, editingPresupuesto, usuarios, handleCloseDialog]);
 
   if (loading) {
     return (

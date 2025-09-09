@@ -1,10 +1,13 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import theme from './theme';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
-import { 
+import { AuthProvider } from "./context/AuthContext";
+import LoginPage from "./components/Auth/LoginPage";
+import { useAuth } from "./context/AuthContext";
+import {
   ClientesPage, 
   ClienteFormPage, 
   ClienteDetailPage,
@@ -38,16 +41,22 @@ import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
 import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
 import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
-// RRHH pages
 import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
 
-// Placeholder component for unimplemented pages
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '24px', textAlign: 'center' }}>
     <h2>{title}</h2>
     <p>Esta página está en desarrollo</p>
   </div>
 );
+
+const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <div>Loading...</div>; // Replace with a proper loading component if needed
+  }
+  return user ? children : <Navigate to="/login" replace />;
+};
 
 function App() {
   return (
@@ -116,6 +125,7 @@ function App() {
         </Routes>
       </Router>
     </ThemeProvider>
+
 
   );
 }

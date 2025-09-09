@@ -37,6 +37,7 @@ const LoginPage: React.FC = () => {
                           error.response?.data?.message ||
                           "Credenciales inválidas";
       setError(errorMessage);
+
     } finally {
       setSubmitting(false);
     }
@@ -81,6 +82,7 @@ const LoginPage: React.FC = () => {
             margin="normal"
             value={usernameOrEmail}
             onChange={(e) => setUsernameOrEmail(e.target.value)}
+
             required
             autoFocus
             autoComplete="username"
@@ -101,6 +103,7 @@ const LoginPage: React.FC = () => {
             variant="contained"
             sx={{ mt: 3 }}
             disabled={submitting || !usernameOrEmail || !password}
+
           >
             {submitting ? "Ingresando..." : "Ingresar"}
           </Button>
