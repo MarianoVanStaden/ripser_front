@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Box, Paper, TextField, Typography, Button, Alert } from "@mui/material";
+import {
+  Box,
+  Paper,
+  TextField,
+  Typography,
+  Button,
+  Alert,
+} from "@mui/material";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, Navigate } from "react-router-dom";
 
@@ -18,15 +25,17 @@ const LoginPage: React.FC = () => {
     setError(null);
     setSubmitting(true);
     try {
+      console.log("Submitting with:", { usernameOrEmail, password });
       await login(usernameOrEmail.trim(), password.trim());
+      console.log("Login successful");
       navigate("/dashboard");
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.usernameOrEmail ||
-        error.response?.data?.password ||
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        "Credenciales inválidas";
+      console.error("Login error:", error.response?.data, error.message);
+      const errorMessage = error.response?.data?.usernameOrEmail ||
+                          error.response?.data?.password ||
+                          error.response?.data?.error ||
+                          error.response?.data?.message ||
+                          "Credenciales inválidas";
       setError(errorMessage);
     } finally {
       setSubmitting(false);
@@ -36,54 +45,35 @@ const LoginPage: React.FC = () => {
   return (
     <Box
       sx={{
-        // 🔒 Ocupa TODA la pantalla por encima del layout padre
-        position: "fixed",
-        inset: 0,
-        width: "100vw",
-        height: "100dvh",
+        minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: { xs: 2, sm: 3 },
-        py: { xs: 4, md: 0 },
-        overflow: "hidden",
-        zIndex: 0,
+        p: 2,
         background:
           "linear-gradient(135deg, rgba(25,118,210,0.08), rgba(123,31,162,0.08))",
-        "&:before": {
-          content: '""',
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(900px 700px at 70% 20%, rgba(25,118,210,0.22), transparent 60%), radial-gradient(800px 600px at 30% 80%, rgba(123,31,162,0.22), transparent 60%)",
-          pointerEvents: "none",
-        },
       }}
     >
       <Paper
         elevation={6}
         sx={{
+          p: 4,
           width: "100%",
-          maxWidth: 420,
-          p: { xs: 3, sm: 4 },
-          borderRadius: { xs: 2, sm: 3 },
-          backdropFilter: "blur(6px)",
-          background: "rgba(255,255,255,0.9)",
+          maxWidth: 400,
+          borderRadius: 3,
         }}
       >
-        <Typography variant="h5" fontWeight={700} gutterBottom>
+        <Typography variant="h5" fontWeight="bold" gutterBottom>
           Iniciar sesión
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Ingresa tus credenciales para continuar
         </Typography>
-
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
-
         <Box component="form" onSubmit={handleSubmit} noValidate>
           <TextField
             label="Usuario o Correo"
@@ -94,7 +84,6 @@ const LoginPage: React.FC = () => {
             required
             autoFocus
             autoComplete="username"
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
           />
           <TextField
             label="Contraseña"
@@ -105,22 +94,13 @@ const LoginPage: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
           />
-
           <Button
             type="submit"
             fullWidth
             variant="contained"
+            sx={{ mt: 3 }}
             disabled={submitting || !usernameOrEmail || !password}
-            sx={{
-              mt: 3,
-              py: 1.2,
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 700,
-              background: "linear-gradient(135deg, #1976D2, #7B1FA2)",
-            }}
           >
             {submitting ? "Ingresando..." : "Ingresar"}
           </Button>

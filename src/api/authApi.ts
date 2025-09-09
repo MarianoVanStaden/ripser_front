@@ -4,12 +4,10 @@ const BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/RipserApp/ap
 
 export interface LoginRequest {
   usernameOrEmail: string;
-
   password: string;
 }
 
 export interface LoginResponse {
-
   accessToken?: string; // primary expected field
   token?: string; // fallback field name some backends use
   refreshToken?: string;
@@ -25,7 +23,6 @@ export interface RefreshResponse {
   refreshToken?: string; // backend might return a new refresh token
   tokenType?: string;
   expiresIn?: number;
-
 }
 
 export const authApi = {
@@ -41,5 +38,4 @@ export const authApi = {
     const res = await axios.post(`${BASE}/refresh`, { refreshToken });
     return res.data;
   }
-
 };

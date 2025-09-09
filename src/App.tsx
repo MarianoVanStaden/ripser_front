@@ -4,8 +4,9 @@ import { CssBaseline } from '@mui/material';
 import theme from './theme';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import LoginPage from "./components/Auth/LoginPage";
+import { useAuth } from "./context/AuthContext";
 import {
   ClientesPage, 
   ClienteFormPage, 
@@ -42,24 +43,29 @@ import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
 import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
 import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
 
+const PlaceholderPage = ({ title }: { title: string }) => (
+  <div style={{ padding: '24px', textAlign: 'center' }}>
+    <h2>{title}</h2>
+    <p>Esta página está en desarrollo</p>
+  </div>
+);
+
 const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return <div>Loading...</div>; // Replace with a proper loading component if needed
+  }
   return user ? children : <Navigate to="/login" replace />;
 };
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      {/* 👇 Todo lo que use useAuth debe estar debajo del Provider */}
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
         <Router>
           <Routes>
-            {/* Ruta pública de login (normalmente sin Layout) */}
             <Route path="/login" element={<LoginPage />} />
-
-            {/* Rutas protegidas: envolvés Layout con PrivateRoute */}
             <Route
               path="/"
               element={
@@ -68,67 +74,61 @@ function App() {
                 </PrivateRoute>
               }
             >
-              <Route index element={<Dashboard />} />
-
-              {/* ADMIN */}
-              <Route path="admin/users" element={<UsersPage />} />
-              <Route path="admin/roles" element={<RolesPage />} />
-              <Route path="admin/settings" element={<SettingsPage />} />
-
-              {/* VENTAS */}
-              <Route path="ventas/presupuestos" element={<PresupuestosPage />} />
-              <Route path="ventas/registro" element={<RegistroVentasPage />} />
-              <Route path="ventas/facturacion" element={<FacturacionPage />} />
-              <Route path="ventas/informes" element={<InformesVentasPage />} />
-
-              {/* CLIENTES */}
-              <Route path="clientes/gestion" element={<ClientesPage />} />
-              <Route path="clientes/nuevo" element={<ClienteFormPage />} />
-              <Route path="clientes/editar/:id" element={<ClienteFormPage />} />
-              <Route path="clientes/detalle/:id" element={<ClienteDetailPage />} />
-              <Route path="clientes/carpeta" element={<CarpetaClienteSelector />} />
-              <Route path="clientes/carpeta/:id" element={<CarpetaClientePage />} />
-              <Route path="clientes/agenda" element={<AgendaVisitasPage />} />
-              <Route path="clientes/cuenta-corriente" element={<CuentaCorrientePage />} />
-              <Route path="clientes/credito" element={<CreditoPersonalPage />} />
-
-              {/* PROVEEDORES */}
-              <Route path="proveedores/gestion" element={<SuppliersPage />} />
-              <Route path="proveedores/compras" element={<ComprasPedidosPage />} />
-              <Route path="proveedores/contactos" element={<ContactosCondicionesPage />} />
-              <Route path="proveedores/historial" element={<HistorialComprasPage />} />
-              <Route path="proveedores/evaluacion" element={<EvaluacionDesempenoPage />} />
-
-              {/* GARANTÍAS */}
-              <Route path="garantias/registro" element={<GarantiasPage />} />
-              <Route path="garantias/reclamos" element={<ReclamosGarantiaPage />} />
-              <Route path="garantias/estado" element={<GarantiasPage />} />
-
-              {/* RRHH */}
-              <Route path="rrhh/empleados" element={<EmpleadosPage />} />
-              <Route path="rrhh/puestos" element={<PuestosPage />} />
-              <Route path="rrhh/asistencia" element={<AsistenciasPage />} />
-              <Route path="rrhh/licencias" element={<LicenciasPage />} />
-              <Route path="rrhh/capacitaciones" element={<CapacitacionesPage />} />
-              <Route path="rrhh/sueldos" element={<SueldosPage />} />
-              <Route path="rrhh/legajos" element={<LegajosPage />} />
-
-              {/* LOGÍSTICA */}
-              <Route path="logistica/stock" element={<StockPage />} />
-              <Route path="logistica/viajes" element={<TripsPage />} />
-              <Route path="logistica/inventario" element={<InventoryPage />} />
-              <Route path="logistica/entregas" element={<DeliveriesPage />} />
-
-              {/* TALLER */}
-              <Route path="taller/trabajos" element={<TrabajosRealizadosPage />} />
-              <Route path="taller/ordenes" element={<OrdenesServicioPage />} />
-              <Route path="taller/materiales" element={<ControlMaterialesPage />} />
-              <Route path="taller/tareas" element={<AsignacionTareasPage />} />
+              <Route index element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              {/* Explicit dashboard path so navigating to /dashboard works */}
+              <Route path="dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              {/* ADMIN Module */}
+              <Route path="admin/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
+              <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
+              <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+              {/* VENTAS Module */}
+              <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
+              <Route path="ventas/registro" element={<PrivateRoute><RegistroVentasPage /></PrivateRoute>} />
+              <Route path="ventas/facturacion" element={<PrivateRoute><FacturacionPage /></PrivateRoute>} />
+              <Route path="ventas/informes" element={<PrivateRoute><InformesVentasPage /></PrivateRoute>} />
+              {/* CLIENTES Module */}
+              <Route path="clientes/gestion" element={<PrivateRoute><ClientesPage /></PrivateRoute>} />
+              <Route path="clientes/nuevo" element={<PrivateRoute><ClienteFormPage /></PrivateRoute>} />
+              <Route path="clientes/editar/:id" element={<PrivateRoute><ClienteFormPage /></PrivateRoute>} />
+              <Route path="clientes/detalle/:id" element={<PrivateRoute><ClienteDetailPage /></PrivateRoute>} />
+              <Route path="clientes/carpeta" element={<PrivateRoute><CarpetaClienteSelector /></PrivateRoute>} />
+              <Route path="clientes/carpeta/:id" element={<PrivateRoute><CarpetaClientePage /></PrivateRoute>} />
+              <Route path="clientes/agenda" element={<PrivateRoute><AgendaVisitasPage /></PrivateRoute>} />
+              <Route path="clientes/cuenta-corriente" element={<PrivateRoute><CuentaCorrientePage /></PrivateRoute>} />
+              <Route path="clientes/credito" element={<PrivateRoute><CreditoPersonalPage /></PrivateRoute>} />
+              {/* PROVEEDORES Module */}
+              <Route path="proveedores/gestion" element={<PrivateRoute><SuppliersPage /></PrivateRoute>} />
+              <Route path="proveedores/compras" element={<PrivateRoute><ComprasPedidosPage /></PrivateRoute>} />
+              <Route path="proveedores/contactos" element={<PrivateRoute><ContactosCondicionesPage /></PrivateRoute>} />
+              <Route path="proveedores/historial" element={<PrivateRoute><HistorialComprasPage /></PrivateRoute>} />
+              <Route path="proveedores/evaluacion" element={<PrivateRoute><EvaluacionDesempenoPage /></PrivateRoute>} />
+              {/* GARANTÍAS Module */}
+              <Route path="garantias/registro" element={<PrivateRoute><GarantiasPage /></PrivateRoute>} />
+              <Route path="garantias/reclamos" element={<PrivateRoute><ReclamosGarantiaPage /></PrivateRoute>} />
+              <Route path="garantias/estado" element={<PrivateRoute><GarantiasPage /></PrivateRoute>} />
+              {/* RRHH Module */}
+              <Route path="rrhh/empleados" element={<PrivateRoute><EmpleadosPage /></PrivateRoute>} />
+              <Route path="rrhh/puestos" element={<PrivateRoute><PuestosPage /></PrivateRoute>} />
+              <Route path="rrhh/asistencia" element={<PrivateRoute><AsistenciasPage /></PrivateRoute>} />
+              <Route path="rrhh/licencias" element={<PrivateRoute><LicenciasPage /></PrivateRoute>} />
+              <Route path="rrhh/capacitaciones" element={<PrivateRoute><CapacitacionesPage /></PrivateRoute>} />
+              <Route path="rrhh/sueldos" element={<PrivateRoute><SueldosPage /></PrivateRoute>} />
+              <Route path="rrhh/legajos" element={<PrivateRoute><LegajosPage /></PrivateRoute>} />
+              {/* LOGÍSTICA Module */}
+              <Route path="logistica/stock" element={<PrivateRoute><StockPage /></PrivateRoute>} />
+              <Route path="logistica/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
+              <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
+              <Route path="logistica/entregas" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
+              {/* TALLER Module */}
+              <Route path="taller/trabajos" element={<PrivateRoute><TrabajosRealizadosPage /></PrivateRoute>} />
+              <Route path="taller/ordenes" element={<PrivateRoute><OrdenesServicioPage /></PrivateRoute>} />
+              <Route path="taller/materiales" element={<PrivateRoute><ControlMaterialesPage /></PrivateRoute>} />
+              <Route path="taller/tareas" element={<PrivateRoute><AsignacionTareasPage /></PrivateRoute>} />
             </Route>
           </Routes>
         </Router>
-      </AuthProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 
