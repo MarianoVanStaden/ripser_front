@@ -1616,7 +1616,8 @@ export const EstadoDocumento = {
   RECHAZADO: "RECHAZADO",
   PAGADA: "PAGADA",
   VENCIDA: "VENCIDA"
-}
+} as const;
+export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocumento];
 
 export interface DocumentoComercial {
   id: number;
