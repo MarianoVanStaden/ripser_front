@@ -1,4 +1,4 @@
-import api from '../api';
+import api from '../config';
 import type { Cliente } from '../../types';
 
 const BASE_PATH = '/clientes';

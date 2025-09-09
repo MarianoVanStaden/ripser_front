@@ -1,15 +1,20 @@
-import api from './config';
+// frontend/src/api/testConnection.ts
+const API_BASE_URL =
+  (import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:8080/RipserApp";
 
-// Test connection to backend using a simple endpoint (e.g., /api/productos)
-export const testConnection = async (): Promise<{ connected: boolean; message: string }> => {
+export type ConnectionStatus = { connected: boolean; message: string };
+
+export async function testConnection(): Promise<ConnectionStatus> {
   try {
-    await api.get('/api/productos');
-    return { connected: true, message: 'Successfully connected to backend (/api/productos)' };
-  } catch (error) {
-    console.error('Backend connection failed:', error);
-    if (error instanceof Error) {
-      return { connected: false, message: `Connection failed: ${error.message}` };
+    const res = await fetch(`${API_BASE_URL}/api/public/ping`, {
+      credentials: "include",
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { connected: true, message: data.status ?? "OK" };
     }
-    return { connected: false, message: 'Unknown connection error' };
+    return { connected: false, message: `HTTP ${res.status}` };
+  } catch (e: any) {
+    return { connected: false, message: e?.message ?? "Network error" };
   }
-};
+}

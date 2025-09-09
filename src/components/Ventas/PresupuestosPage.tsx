@@ -91,48 +91,48 @@ const PresupuestosPage: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Fetch all initial data
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+const fetchData = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      const [clientesData, usuariosData, presupuestosData, productosData] = await Promise.all([
-        clienteApi.getAll().catch((err) => {
-          console.error("Error fetching clientes:", err);
-          setError("Error al cargar clientes");
-          return [];
-        }),
-        usuarioApi.getAll().catch((err) => {
-          console.error("Error fetching usuarios:", err);
-          setError("Error al cargar usuarios");
-          return [];
-        }),
-        documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
-          console.error("Error fetching presupuestos:", err);
-          setError("Error al cargar presupuestos");
-          return [];
-        }),
-        productApi.getAll().catch((err) => {
-          console.error("Error fetching productos:", err);
-          setError("Error al cargar productos");
-          return [];
-        }),
-      ]);
+    const [clientesData, usuariosData, presupuestosData, productosData] = await Promise.all([
+      clienteApi.getAll().catch((err) => {
+        console.error("Error fetching clientes:", err);
+        setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
+        return [];
+      }),
+      usuarioApi.getAll().catch((err) => {
+        console.error("Error fetching usuarios:", err);
+        setError("Error al cargar usuarios: " + (err.response?.data?.message || err.message));
+        return [];
+      }),
+      documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
+        console.error("Error fetching presupuestos:", err);
+        setError("Error al cargar presupuestos: " + (err.response?.data?.message || err.message));
+        return [];
+      }),
+      productApi.getAll().catch((err) => {
+        console.error("Error fetching productos:", err);
+        setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
+        return [];
+      }),
+    ]);
 
-      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
+    console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
 
-      setClientes(Array.isArray(clientesData) ? clientesData : []);
-      setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
-      setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
-      setProductos(Array.isArray(productosData.content) ? productosData.content : Array.isArray(productosData) ? productosData : []);
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
-    } finally {
-      setLoading(false);
-      console.log("Loading complete, loading:", false);
-    }
-  }, []);
+    setClientes(Array.isArray(clientesData) ? clientesData : []);
+    setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
+    setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
+    setProductos(Array.isArray(productosData.content) ? productosData.content : Array.isArray(productosData) ? productosData : []);
+  } catch (err) {
+    console.error("Error fetching data:", err);
+    setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
+  } finally {
+    setLoading(false);
+    console.log("Loading complete, loading:", false);
+  }
+}, []);
 
   useEffect(() => {
     fetchData();

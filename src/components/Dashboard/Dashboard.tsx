@@ -108,47 +108,46 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+const fetchDashboardData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      // Fetch data from multiple endpoints
+    const [clients, products, sales, lowStockProducts] = await Promise.all([
+      clientApi.getAll(),
+      productApi.getAll(),
+      saleApi.getAll(),
+      productApi.getLowStock(),
+    ]);
 
-      const [clients, products, sales, lowStockProducts] = await Promise.all([
-        clientApi.getAll(),
-        productApi.getAll(),
-        saleApi.getAll(),
-        productApi.getLowStock(), // Products with low stock
-      ]);
+    const orders = [];
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlySales = sales.filter(sale => {
+      const saleDate = new Date(sale.fechaVenta);
+      return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+    });
+    const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total), 0);
 
-      // Orders are not supported by backend, set to empty array
-      const orders: any[] = [];
-
-      // Calculate monthly sales amount (this month)
-      const currentMonth = new Date().getMonth();
-const currentYear = new Date().getFullYear();
-const monthlySales = sales.filter(sale => {
-  const saleDate = new Date(sale.fechaVenta); // Use fechaVenta from Venta entity
-  return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
-});
-const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total), 0); // Use total instead of totalAmount
-
-setStats({
-  totalClients: clients.length,
-  totalProducts: products.length,
-  totalOrders: orders.length,
-  totalSales: sales.length,
-  monthlySalesAmount,
-  lowStockProducts: lowStockProducts.length,
-});
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
+    setStats({
+      totalClients: clients.length,
+      totalProducts: products.length,
+      totalOrders: orders.length,
+      totalSales: sales.length,
+      monthlySalesAmount,
+      lowStockProducts: lowStockProducts.length,
+    });
+  } catch (err) {
+    console.error('Error fetching dashboard data:', err);
+    if (err.response?.status === 403) {
+      setError('Access denied. Please ensure you have the necessary permissions.');
+    } else {
       setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleRetry = () => {
     checkConnection();
