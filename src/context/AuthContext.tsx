@@ -1,18 +1,22 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../api/authApi";
 import axios from "axios";
+
 import { setAuthToken } from "../api/config";
+
 
 export interface AuthUser {
   id: number;
   username: string;
   email?: string;
+
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   login: (usernameOrEmail: string, password: string) => Promise<void>;
+
   logout: () => void;
   loading: boolean;
 }
@@ -26,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const validateToken = async () => {
+
   const t = localStorage.getItem("auth_token");
       const u = localStorage.getItem("auth_user");
       if (t && u) {
@@ -38,6 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAuthToken(t);
         } catch {
           logout();
+
         }
       }
       setLoading(false);
@@ -67,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   setAuthToken(access);
     } catch (error: any) {
       throw new Error(error.response?.data?.error || "Error de autenticación");
+
     } finally {
       setLoading(false);
     }
@@ -80,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   localStorage.removeItem("auth_refresh_token");
   delete axios.defaults.headers.common.Authorization;
   setAuthToken(null);
+
   };
 
   useEffect(() => {
