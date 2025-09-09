@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(t);
           setUser(JSON.parse(u));
           // Set for global axios (fallback) and our dedicated api instance
-          axios.defaults.headers.common.Authorization = `Bearer ${t}`;
+          axios.defaults.headers.common.Authorization = t; // Remove "Bearer " prefix
           setAuthToken(t);
         } catch {
           logout();
@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem("auth_refresh_token", res.refreshToken);
       }
       localStorage.setItem("auth_user", JSON.stringify(usr));
-  axios.defaults.headers.common.Authorization = `Bearer ${access}`;
+  axios.defaults.headers.common.Authorization = access; // Remove "Bearer " prefix
   setAuthToken(access);
     } catch (error: any) {
       throw new Error(error.response?.data?.error || "Error de autenticación");

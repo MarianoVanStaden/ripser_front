@@ -1610,13 +1610,15 @@ export interface RecetaItem {
   instrucciones?: string;
 }
 
+
 export const EstadoDocumento = {
   PENDIENTE: "PENDIENTE",
   APROBADO: "APROBADO",
   RECHAZADO: "RECHAZADO",
   PAGADA: "PAGADA",
   VENCIDA: "VENCIDA"
-}
+} as const;
+export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocumento];
 
 export interface DocumentoComercial {
   id: number;
