@@ -38,7 +38,6 @@ import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, C
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
-// Define interfaces for clarity
 interface DetalleForm {
   id?: number;
   productoId: string;
@@ -56,7 +55,6 @@ interface FormData {
   estado: EstadoDocumento;
 }
 
-// Initial states
 const initialFormData: FormData = {
   clienteId: "",
   usuarioId: "",
@@ -72,9 +70,6 @@ const initialDetalle: DetalleForm = {
   precioUnitario: 0,
   subtotal: 0,
 };
-
-// Configurable default user ID (set to a valid ID or null if not applicable)
-const DEFAULT_USER_ID = null; // Replace with a valid user ID if known (e.g., 1 for a system user)
 
 const PresupuestosPage: React.FC = () => {
   const { user } = useAuth();
@@ -92,66 +87,57 @@ const PresupuestosPage: React.FC = () => {
   const [readOnly, setReadOnly] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Fetch all initial data
-const fetchData = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const [clientesData, usuariosData, presupuestosData, productosData] = await Promise.all([
-      clienteApi.getAll().catch((err) => {
-        console.error("Error fetching clientes:", err);
-        setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
-        return [];
-      }),
-      usuarioApi.getAll().catch((err) => {
-        console.error("Error fetching usuarios:", err);
-        setError("Error al cargar usuarios: " + (err.response?.data?.message || err.message));
-        return [];
-      }),
-      documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
-        console.error("Error fetching presupuestos:", err);
-        setError("Error al cargar presupuestos: " + (err.response?.data?.message || err.message));
-        return [];
-      }),
-      productApi.getAll().catch((err) => {
-        console.error("Error fetching productos:", err);
-        setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
-        return [];
-      }),
-    ]);
+      const [clientesData, usuariosData, presupuestosData, productosData] = await Promise.all([
+        clienteApi.getAll().catch((err) => {
+          console.error("Error fetching clientes:", err);
+          setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
+          return [];
+        }),
+        usuarioApi.getAll().catch((err) => {
+          console.error("Error fetching usuarios:", err);
+          console.log("Usuarios response:", err.response?.data, err.response?.status);
+          setError("Error al cargar usuarios: " + (err.response?.data?.message || err.message));
+          return [];
+        }),
+        documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
+          console.error("Error fetching presupuestos:", err);
+          console.log("Presupuestos response:", err.response?.data, err.response?.status);
+          const errorMessage = err.response?.status === 403
+            ? "No tiene permisos para ver los presupuestos. Contacte al administrador."
+            : "Error al cargar presupuestos: " + (err.response?.data?.message || err.message);
+          setError(errorMessage);
+          return [];
+        }),
+        productApi.getAll().catch((err) => {
+          console.error("Error fetching productos:", err);
+          setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
+          return [];
+        }),
+      ]);
 
-    console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
-
-    setClientes(Array.isArray(clientesData) ? clientesData : []);
-    setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
-    setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
-    setProductos(Array.isArray(productosData.content) ? productosData.content : Array.isArray(productosData) ? productosData : []);
-  } catch (err) {
-    console.error("Error fetching data:", err);
-    setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
-  } finally {
-    setLoading(false);
-    console.log("Loading complete, loading:", false);
-  }
-}, []);
+      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
+      setClientes(Array.isArray(clientesData) ? clientesData : []);
+      setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
+      setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
+      setProductos(Array.isArray(productosData.content) ? productosData.content : Array.isArray(productosData) ? productosData : []);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
+    } finally {
+      setLoading(false);
+      console.log("Loading complete, loading:", false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Auto-select first user or default for new presupuesto
-  useEffect(() => {
-    if (dialogOpen && !editingPresupuesto && !formData.usuarioId) {
-      if (usuarios.length > 0) {
-        setFormData((prev) => ({ ...prev, usuarioId: usuarios[0].id.toString() }));
-      } else if (DEFAULT_USER_ID) {
-        setFormData((prev) => ({ ...prev, usuarioId: DEFAULT_USER_ID.toString() }));
-      }
-    }
-  }, [dialogOpen, editingPresupuesto, usuarios]);
-
-  // Memoized status helpers
   const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (estado) {
       case EstadoDocumentoEnum.PENDIENTE: return "warning";
@@ -170,7 +156,6 @@ const fetchData = useCallback(async () => {
     }
   }, []);
 
-  // Memoized total calculation
   const total = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
 
   const addDetalle = useCallback(() => {
@@ -221,7 +206,7 @@ const fetchData = useCallback(async () => {
       setEditingPresupuesto(presupuesto);
       setFormData({
         clienteId: presupuesto.clienteId.toString() || "",
-        usuarioId: presupuesto.usuarioId.toString() || "",
+        usuarioId: presupuesto.usuarioId.toString() || user.id.toString(),
         fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
         observaciones: presupuesto.observaciones || "",
         estado: presupuesto.estado,
@@ -240,47 +225,41 @@ const fetchData = useCallback(async () => {
       );
     } else {
       setEditingPresupuesto(null);
-      setFormData({ ...initialFormData, usuarioId: DEFAULT_USER_ID?.toString() || "" });
+      setFormData({ ...initialFormData, usuarioId: user.id.toString() });
       setDetalles([]);
     }
     setDialogOpen(true);
-  }, []);
+  }, [user]);
 
   const handleCloseDialog = useCallback(() => {
     if (hasUnsavedChanges && !window.confirm("¿Descartar cambios no guardados?")) return;
     setDialogOpen(false);
     setEditingPresupuesto(null);
-    setFormData({ ...initialFormData, usuarioId: DEFAULT_USER_ID?.toString() || "" });
+    setFormData({ ...initialFormData, usuarioId: user.id.toString() });
     setDetalles([]);
     setError(null);
     setHasUnsavedChanges(false);
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, user]);
 
   const handleSavePresupuesto = useCallback(async () => {
-    if (!user) { setError("Debe iniciar sesión"); return; }
+    if (!user) {
+      setError("Debe iniciar sesión");
+      return;
+    }
     const payload: CreatePresupuestoRequest = {
       clienteId: Number(formData.clienteId),
-      usuarioId: user.id, // tomado del contexto
+      usuarioId: Number(formData.usuarioId) || user.id,
       observaciones: formData.observaciones,
-      detalles: detalles.map(d=>({
+      detalles: detalles.map((d) => ({
         productoId: Number(d.productoId),
         cantidad: d.cantidad,
         precioUnitario: d.precioUnitario,
-        descripcion: d.descripcion
-      }))
+        descripcion: d.descripcion,
+      })),
     };
     try {
-      // Validate form fields
       if (!formData.clienteId) {
         setError("Debe seleccionar un cliente");
-        return;
-      }
-      if (!formData.usuarioId && usuarios.length > 0) {
-        setError("Debe seleccionar un usuario");
-        return;
-      }
-      if (!formData.usuarioId && !DEFAULT_USER_ID) {
-        setError("No hay usuarios disponibles y no se configuró un usuario por defecto");
         return;
       }
       if (detalles.length === 0) {
@@ -336,7 +315,7 @@ const fetchData = useCallback(async () => {
     } finally {
       setFormLoading(false);
     }
-  }, [user, formData, detalles, editingPresupuesto, usuarios, handleCloseDialog]);
+  }, [user, formData, detalles, editingPresupuesto, handleCloseDialog]);
 
   if (loading) {
     return (
@@ -369,13 +348,9 @@ const fetchData = useCallback(async () => {
         </Alert>
       )}
 
-      {(usuarios.length === 0 || productos.length === 0) && (
+      {productos.length === 0 && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          {usuarios.length === 0 && productos.length === 0
-            ? "No hay usuarios ni productos disponibles. Contacte al administrador para configurar usuarios y productos."
-            : usuarios.length === 0
-            ? "No hay usuarios disponibles. Contacte al administrador para configurar usuarios."
-            : "No hay productos disponibles. Contacte al administrador para configurar productos."}
+          No hay productos disponibles. Contacte al administrador para configurar productos.
         </Alert>
       )}
 
@@ -471,11 +446,6 @@ const fetchData = useCallback(async () => {
         </DialogTitle>
         <DialogContent sx={{ minHeight: "500px" }}>
           <Box sx={{ pt: 2 }}>
-            {usuarios.length === 0 && !editingPresupuesto && !DEFAULT_USER_ID && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                No hay usuarios disponibles. Configure un usuario por defecto o contacte al administrador.
-              </Alert>
-            )}
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fit, minmax(300px, 1fr))" }, gap: 2 }}>
               <TextField
                 fullWidth
@@ -500,37 +470,28 @@ const fetchData = useCallback(async () => {
                 ))}
               </TextField>
 
-              <TextField
-                fullWidth
-                select
-                label="Usuario"
-                value={formData.usuarioId}
-                onChange={(e) => {
-                  console.log("Usuario seleccionado:", e.target.value);
-                  setFormData({ ...formData, usuarioId: e.target.value });
-                  setHasUnsavedChanges(true);
-                }}
-                margin="normal"
-                required={usuarios.length > 0 && !DEFAULT_USER_ID}
-                disabled={readOnly || !!editingPresupuesto || (usuarios.length === 0 && !DEFAULT_USER_ID)}
-                error={!formData.usuarioId && hasUnsavedChanges && usuarios.length > 0 && !DEFAULT_USER_ID}
-                helperText={!formData.usuarioId && hasUnsavedChanges && usuarios.length > 0 && !DEFAULT_USER_ID ? "Seleccione un usuario" : ""}
-              >
-                {usuarios.length > 0 ? (
-                  <>
-                    <MenuItem value="">Seleccionar usuario</MenuItem>
-                    {usuarios.map((usuario) => (
-                      <MenuItem key={usuario.id} value={usuario.id.toString()}>
-                        {usuario.nombre}
-                      </MenuItem>
-                    ))}
-                  </>
-                ) : (
-                  <MenuItem value={DEFAULT_USER_ID?.toString() || ""} disabled>
-                    {DEFAULT_USER_ID ? "Usuario por defecto" : "No hay usuarios disponibles"}
-                  </MenuItem>
-                )}
-              </TextField>
+              {editingPresupuesto && usuarios.length > 0 && (
+                <TextField
+                  fullWidth
+                  select
+                  label="Usuario"
+                  value={formData.usuarioId}
+                  onChange={(e) => {
+                    console.log("Usuario seleccionado:", e.target.value);
+                    setFormData({ ...formData, usuarioId: e.target.value });
+                    setHasUnsavedChanges(true);
+                  }}
+                  margin="normal"
+                  disabled={readOnly}
+                >
+                  <MenuItem value="">Seleccionar usuario</MenuItem>
+                  {usuarios.map((usuario) => (
+                    <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                      {usuario.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
 
               <TextField
                 fullWidth
@@ -707,7 +668,7 @@ const fetchData = useCallback(async () => {
             <Button
               variant="contained"
               onClick={handleSavePresupuesto}
-              disabled={formLoading || !formData.clienteId || detalles.length === 0 || (!formData.usuarioId && usuarios.length > 0 && !DEFAULT_USER_ID)}
+              disabled={formLoading || !formData.clienteId || detalles.length === 0}
               aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
             >
               {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}

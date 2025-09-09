@@ -1,7 +1,7 @@
 import api from '../config';
 import type { Cliente } from '../../types';
 
-const BASE_PATH = '/clientes';
+const BASE_PATH = '/api/clientes';
 
 // A payload type for creating/updating that makes most fields optional
 type ClientePayload = Partial<Omit<Cliente, 'id' | 'fechaAlta' | 'fechaActualizacion'>>;
