@@ -42,11 +42,18 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
-import { saleApi, clienteApi, usuarioApi, productApi } from '../../api/services';
-import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
+import { documentoApi, clienteApi, usuarioApi, productApi } from '../../api/services';
+import type { 
+  DocumentoComercial, 
+  Cliente, 
+  Usuario, 
+  DetalleDocumento,
+  EstadoDocumento,
+  MetodoPago 
+} from '../../types';
 
 const RegistroVentasPage: React.FC = () => {
-  const [sales, setSales] = useState<Venta[]>([]);
+  const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,17 +61,17 @@ const RegistroVentasPage: React.FC = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [viewingSale, setViewingSale] = useState<Venta | null>(null);
-  const [ventaToDelete, setVentaToDelete] = useState<Venta | null>(null);
-  const [editingSale, setEditingSale] = useState<Venta | null>(null);
+  const [viewingFactura, setViewingFactura] = useState<DocumentoComercial | null>(null);
+  const [facturaToDelete, setFacturaToDelete] = useState<DocumentoComercial | null>(null);
+  const [editingFactura, setEditingFactura] = useState<DocumentoComercial | null>(null);
   const [editForm, setEditForm] = useState({
-    numeroVenta: '',
+    numeroDocumento: '',
     clienteId: '',
     usuarioId: '',
     estado: '',
-    metodoPago: 'EFECTIVO' as PaymentMethod,
-    fechaVenta: '',
-    notas: '',
+    metodoPago: 'EFECTIVO' as MetodoPago,
+    fecha: '',
+    observaciones: '',
     total: 0,
   });
   const [editLoading, setEditLoading] = useState(false);
@@ -81,183 +88,157 @@ const RegistroVentasPage: React.FC = () => {
     loadData();
   }, []);
 
-const loadData = async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // Fetch data for sales, clients, usuarios, and products
-    const [salesResponse, clientsResponse, usuariosResponse, productsResponse] = await Promise.all([
-      saleApi.getAll(),
-      clienteApi.getAll(),
-      usuarioApi.getAll(),
-      productApi.getAll(), // Assuming you have a productApi
-    ]);
+      // Fetch facturas, clients, usuarios, and products
+      const [facturasResponse, clientsResponse, usuariosResponse, productsResponse] = await Promise.all([
+        documentoApi.getByTipo('FACTURA'),
+        clienteApi.getAll(),
+        usuarioApi.getAll(),
+        productApi.getAll(),
+      ]);
 
-    // Extract actual data from paginated responses
-    const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
-    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
-    const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
-    const productsData = Array.isArray(productsResponse) ? productsResponse : productsResponse.content || productsResponse.data || [];
+      // Extract actual data from paginated responses
+      const facturasData = Array.isArray(facturasResponse) ? facturasResponse : facturasResponse.content || facturasResponse.data || [];
+      const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
+      const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
+      const productsData = Array.isArray(productsResponse) ? productsResponse : productsResponse.content || productsResponse.data || [];
 
-    console.log('Sales data:', salesData);
-    console.log('Clients data:', clientsData);
-    console.log('Usuarios data:', usuariosData);
-    console.log('Products data:', productsData);
+      console.log('Facturas data:', facturasData);
+      console.log('Clients data:', clientsData);
+      console.log('Usuarios data:', usuariosData);
+      console.log('Products data:', productsData);
 
-    // Debug the usuarios structure
-    console.log('=== USUARIOS DEBUG ===');
-    console.log('Usuarios count:', usuariosData.length);
-    if (usuariosData.length > 0) {
-      console.log('First usuario:', usuariosData[0]);
-      usuariosData.forEach((usuario, index) => {
-        console.log(`Usuario ${index}:`, {
-          id: usuario.id,
-          idType: typeof usuario.id,
-          nombre: usuario.nombre,
-          apellido: usuario.apellido,
-        });
-      });
-    }
-    console.log('=== END USUARIOS DEBUG ===');
+      // Create maps for faster lookups
+      const clientsMap = new Map();
+      const usuariosMap = new Map();
+      const productsMap = new Map();
 
-    // Create maps for faster lookups
-    const clientsMap = new Map();
-    const usuariosMap = new Map();
-    const productsMap = new Map();
-
-    // Handle clients mapping
-    if (Array.isArray(clientsData)) {
-      clientsData.forEach((client) => {
-        if (client && client.id !== undefined && client.id !== null) {
-          clientsMap.set(client.id, client);
-          clientsMap.set(String(client.id), client);
-          clientsMap.set(parseInt(client.id), client);
-        }
-      });
-    }
-
-    // Handle usuarios mapping
-    if (Array.isArray(usuariosData)) {
-      usuariosData.forEach((usuario) => {
-        if (usuario && usuario.id !== undefined && usuario.id !== null) {
-          console.log(`Mapping usuario ID ${usuario.id} (type: ${typeof usuario.id}):`, usuario);
-          usuariosMap.set(usuario.id, usuario);
-          usuariosMap.set(String(usuario.id), usuario);
-          const parsedId = parseInt(usuario.id);
-          if (!isNaN(parsedId)) {
-            usuariosMap.set(parsedId, usuario);
+      // Handle clients mapping
+      if (Array.isArray(clientsData)) {
+        clientsData.forEach((client) => {
+          if (client && client.id !== undefined && client.id !== null) {
+            clientsMap.set(client.id, client);
+            clientsMap.set(String(client.id), client);
+            clientsMap.set(parseInt(client.id), client);
           }
-        }
-      });
-    }
-
-    // Handle products mapping
-    if (Array.isArray(productsData)) {
-      productsData.forEach((product) => {
-        if (product && product.id !== undefined && product.id !== null) {
-          productsMap.set(product.id, product);
-          productsMap.set(String(product.id), product);
-          productsMap.set(parseInt(product.id), product);
-        }
-      });
-    }
-
-    // Debug: Log the maps to see what we have
-    console.log('Usuarios map keys:', Array.from(usuariosMap.keys()));
-    console.log('Usuarios map size:', usuariosMap.size);
-    console.log('Usuario with ID 2:', usuariosMap.get(2));
-    console.log('Usuario with ID "2":', usuariosMap.get('2'));
-
-    // Enrich sales data with client, usuario, and product information
-    const enrichedSales = salesData.map((sale) => {
-      let cliente = null;
-      let usuario = null;
-
-      // Client lookup
-      if (sale.cliente && typeof sale.cliente === 'object') {
-        cliente = sale.cliente;
-      } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
-        cliente =
-          clientsMap.get(sale.clienteId) ||
-          clientsMap.get(String(sale.clienteId)) ||
-          clientsMap.get(parseInt(sale.clienteId));
+        });
       }
 
-      // Usuario lookup
-      if (sale.usuario && typeof sale.usuario === 'object') {
-        usuario = sale.usuario;
-      } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
-        const uid = sale.usuarioId;
-        usuario =
-          usuariosMap.get(uid) ||
-          usuariosMap.get(String(uid)) ||
-          usuariosMap.get(parseInt(uid));
-        console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
+      // Handle usuarios mapping
+      if (Array.isArray(usuariosData)) {
+        usuariosData.forEach((usuario) => {
+          if (usuario && usuario.id !== undefined && usuario.id !== null) {
+            usuariosMap.set(usuario.id, usuario);
+            usuariosMap.set(String(usuario.id), usuario);
+            const parsedId = parseInt(usuario.id);
+            if (!isNaN(parsedId)) {
+              usuariosMap.set(parsedId, usuario);
+            }
+          }
+        });
       }
 
-      // Enrich detalleVentas
-      const enrichedDetalleVentas = sale.detalleVentas?.map((detalle) => {
-        let producto = null;
-        if (detalle.producto && typeof detalle.producto === 'object') {
-          producto = detalle.producto;
-        } else if (detalle.productoId !== undefined && detalle.productoId !== null) {
-          producto =
-            productsMap.get(detalle.productoId) ||
-            productsMap.get(String(detalle.productoId)) ||
-            productsMap.get(parseInt(detalle.productoId));
+      // Handle products mapping
+      if (Array.isArray(productsData)) {
+        productsData.forEach((product) => {
+          if (product && product.id !== undefined && product.id !== null) {
+            productsMap.set(product.id, product);
+            productsMap.set(String(product.id), product);
+            productsMap.set(parseInt(product.id), product);
+          }
+        });
+      }
+
+      // Enrich facturas data with client, usuario, and product information
+      const enrichedFacturas = facturasData.map((factura) => {
+        let cliente = null;
+        let usuario = null;
+
+        // Client lookup
+        if (factura.cliente && typeof factura.cliente === 'object') {
+          cliente = factura.cliente;
+        } else if (factura.clienteId !== undefined && factura.clienteId !== null) {
+          cliente =
+            clientsMap.get(factura.clienteId) ||
+            clientsMap.get(String(factura.clienteId)) ||
+            clientsMap.get(parseInt(factura.clienteId));
         }
+
+        // Usuario lookup
+        if (factura.usuario && typeof factura.usuario === 'object') {
+          usuario = factura.usuario;
+        } else if (factura.usuarioId !== undefined && factura.usuarioId !== null) {
+          const uid = factura.usuarioId;
+          usuario =
+            usuariosMap.get(uid) ||
+            usuariosMap.get(String(uid)) ||
+            usuariosMap.get(parseInt(uid));
+        }
+
+        // Enrich detalles
+        const enrichedDetalles = factura.detalles?.map((detalle) => {
+          let producto = null;
+          if (detalle.producto && typeof detalle.producto === 'object') {
+            producto = detalle.producto;
+          } else if (detalle.productoId !== undefined && detalle.productoId !== null) {
+            producto =
+              productsMap.get(detalle.productoId) ||
+              productsMap.get(String(detalle.productoId)) ||
+              productsMap.get(parseInt(detalle.productoId));
+          }
+          return {
+            ...detalle,
+            producto,
+          };
+        }) || [];
+
         return {
-          ...detalle,
-          producto,
-          productoNombre: detalle.productoNombre || producto?.nombre, // Preserve productoNombre or use producto.nombre
+          ...factura,
+          cliente,
+          usuario,
+          detalles: enrichedDetalles,
         };
-      }) || [];
+      });
 
-      return {
-        ...sale,
-        cliente,
-        usuario,
-        detalleVentas: enrichedDetalleVentas, // Add enriched detalleVentas to the sale
-        metodoPago: sale.metodoPago || sale.metodo_pago || 'EFECTIVO',
-      };
-    });
+      setFacturas(enrichedFacturas);
+      setClients(clientsData);
+      setUsuarios(usuariosData);
 
-    setSales(enrichedSales);
-    setClients(clientsData);
-    setUsuarios(usuariosData);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Error al cargar los datos. Verifique la conexión con el servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  } catch (err) {
-    console.error('Error loading data:', err);
-    setError('Error al cargar los datos. Verifique la conexión con el servidor.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const handleViewSale = (sale: Venta): void => {
-    console.log('Viewing sale:', sale);
-    setViewingSale(sale);
+  const handleViewFactura = (factura: DocumentoComercial): void => {
+    console.log('Viewing factura:', factura);
+    setViewingFactura(factura);
     setViewDialogOpen(true);
   };
 
-  const handleEditSale = (sale: Venta): void => {
-    setEditingSale(sale);
+  const handleEditFactura = (factura: DocumentoComercial): void => {
+    setEditingFactura(factura);
     setEditForm({
-      numeroVenta: sale.ventaNumero || '',
-      clienteId: sale.cliente?.id?.toString() || '',
-      usuarioId: sale.usuario?.id?.toString() || sale.empleado?.id?.toString() || '',
-      estado: sale.estado || 'PENDIENTE',
-      metodoPago: sale.metodoPago as PaymentMethod || 'CASH',
-      fechaVenta: sale.fechaVenta ? new Date(sale.fechaVenta).toISOString().split('T')[0] : '',
-      notas: sale.observaciones || '',
-      total: sale.total || 0,
+      numeroDocumento: factura.numeroDocumento || '',
+      clienteId: factura.cliente?.id?.toString() || factura.clienteId?.toString() || '',
+      usuarioId: factura.usuario?.id?.toString() || factura.usuarioId?.toString() || '',
+      estado: factura.estado || 'BORRADOR',
+      metodoPago: factura.metodoPago || 'EFECTIVO',
+      fecha: factura.fecha ? new Date(factura.fecha).toISOString().split('T')[0] : '',
+      observaciones: factura.observaciones || '',
+      total: factura.total || 0,
     });
     setEditDialogOpen(true);
   };
 
-  const handleUpdateSale = async (): Promise<void> => {
-    if (!editingSale) return;
+  const handleUpdateFactura = async (): Promise<void> => {
+    if (!editingFactura) return;
 
     try {
       setEditLoading(true);
@@ -266,41 +247,11 @@ const loadData = async () => {
       // For now, disable editing until API is properly mapped
       alert('La funcionalidad de edición está en desarrollo. Las correcciones se están aplicando al sistema de visualización.');
       setEditDialogOpen(false);
-      setEditingSale(null);
-      
-      /* 
-      // TODO: Map to correct API format when backend is ready
-      const updatedSaleData = {
-        clientId: parseInt(editForm.clienteId),
-        employeeId: parseInt(editForm.usuarioId),
-        saleDate: editForm.fechaVenta,
-        paymentMethod: editForm.metodoPago,
-        notes: editForm.notas,
-        // Add other required fields
-      };
-
-      const updatedSale = await saleApi.update(editingSale.id, updatedSaleData);
-      
-      // Update the local state with enriched data
-      const clientsMap = new Map(clients.map((client: Cliente) => [client.id, client]));
-      const usuariosMap = new Map(usuarios.map((usuario: Usuario) => [usuario.id, usuario]));
-      
-      const enrichedUpdatedSale = {
-        ...updatedSale,
-        cliente: clientsMap.get(parseInt(editForm.clienteId)) || null,
-        usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || null,
-      };
-
-      setSales(prevSales => 
-        prevSales.map(sale => 
-          sale.id === editingSale.id ? enrichedUpdatedSale : sale
-        )
-      );
-      */
+      setEditingFactura(null);
       
     } catch (err) {
-      console.error('Error updating sale:', err);
-      setError('Error al actualizar la venta. Verifique los datos e intente nuevamente.');
+      console.error('Error updating factura:', err);
+      setError('Error al actualizar la factura. Verifique los datos e intente nuevamente.');
     } finally {
       setEditLoading(false);
     }
@@ -313,30 +264,34 @@ const loadData = async () => {
     }));
   };
 
-  const getStatusLabel = (status: string): string => {
-    const statusLabels: Record<string, string> = {
+  const getStatusLabel = (status: EstadoDocumento): string => {
+    const statusLabels: Record<EstadoDocumento, string> = {
+      'BORRADOR': 'Borrador',
       'PENDIENTE': 'Pendiente',
-      'ENVIADA': 'Enviada', 
-      'CANCELADA': 'Cancelada',
-      'ENTREGADA': 'Entregada',
-      'CONFIRMADA': 'Confirmada',
+      'APROBADO': 'Aprobado',
+      'RECHAZADO': 'Rechazado',
+      'CANCELADO': 'Cancelado',
+      'FINALIZADO': 'Finalizado',
+      'ANULADO': 'Anulado'
     };
     return statusLabels[status] || status;
   };
 
-  const getStatusColor = (status: string): 'warning' | 'info' | 'error' | 'success' | 'default' => {
-    const statusColors: Record<string, 'warning' | 'info' | 'error' | 'success' | 'default'> = {
+  const getStatusColor = (status: EstadoDocumento): 'warning' | 'info' | 'error' | 'success' | 'default' => {
+    const statusColors: Record<EstadoDocumento, 'warning' | 'info' | 'error' | 'success' | 'default'> = {
+      'BORRADOR': 'default',
       'PENDIENTE': 'warning',
-      'ENVIADA': 'info',
-      'CANCELADA': 'error',
-      'ENTREGADA': 'success',
-      'CONFIRMADA': 'success',
+      'APROBADO': 'success',
+      'RECHAZADO': 'error',
+      'CANCELADO': 'error',
+      'FINALIZADO': 'success',
+      'ANULADO': 'error'
     };
     return statusColors[status] || 'default';
   };
 
-  const getPaymentMethodLabel = (method: PaymentMethod): string => {
-    const methods: Record<PaymentMethod, string> = {
+  const getPaymentMethodLabel = (method: MetodoPago): string => {
+    const methods: Record<MetodoPago, string> = {
       EFECTIVO: 'Efectivo',
       CHEQUE: 'Cheque',
       CUENTA_CORRIENTE: 'Cuenta Corriente',
@@ -344,7 +299,6 @@ const loadData = async () => {
       TARJETA_CREDITO: 'Tarjeta de Crédito',
       TARJETA_DEBITO: 'Tarjeta de Débito',
       TRANSFERENCIA_BANCARIA: 'Transferencia',
-
     };
     return methods[method] || method;
   };
@@ -371,22 +325,22 @@ const loadData = async () => {
     return parts.length > 0 ? parts.join(' ') : 'Vendedor no disponible';
   };
 
-  const filteredSales = sales.filter((sale: Venta) => {
-    const clientName = getClientFullName(sale.cliente || null);
-    const usuarioName = getUsuarioFullName((sale.usuario || sale.empleado) as Usuario || null);
+  const filteredFacturas = facturas.filter((factura: DocumentoComercial) => {
+    const clientName = getClientFullName(factura.cliente || null);
+    const usuarioName = getUsuarioFullName(factura.usuario || null);
     
     const matchesSearch = searchTerm === '' || 
-      sale.ventaNumero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      factura.numeroDocumento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       usuarioName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
-    const matchesPaymentMethod = paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter;
-    const matchesClient = clientFilter === 'all' || sale.cliente?.id?.toString() === clientFilter;
+    const matchesStatus = statusFilter === 'all' || factura.estado === statusFilter;
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || factura.metodoPago === paymentMethodFilter;
+    const matchesClient = clientFilter === 'all' || factura.cliente?.id?.toString() === clientFilter;
 
-    const saleDate = new Date(sale.fechaVenta);
-    const matchesDateFrom = !dateFromFilter || saleDate >= new Date(dateFromFilter);
-    const matchesDateTo = !dateToFilter || saleDate <= new Date(dateToFilter);
+    const facturaDate = new Date(factura.fecha);
+    const matchesDateFrom = !dateFromFilter || facturaDate >= new Date(dateFromFilter);
+    const matchesDateTo = !dateToFilter || facturaDate <= new Date(dateToFilter);
 
     return matchesSearch && matchesStatus && matchesPaymentMethod && 
            matchesClient && matchesDateFrom && matchesDateTo;
@@ -402,9 +356,9 @@ const loadData = async () => {
   };
 
   const calculateTotals = () => {
-    const totalRevenue = filteredSales.reduce((sum: number, sale: Venta) => 
-      sum + (sale.total || 0), 0);
-    const totalTransactions = filteredSales.length;
+    const totalRevenue = filteredFacturas.reduce((sum: number, factura: DocumentoComercial) => 
+      sum + (factura.total || 0), 0);
+    const totalTransactions = filteredFacturas.length;
     const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
 
     return { totalRevenue, totalTransactions, averageOrderValue };
@@ -425,7 +379,7 @@ const loadData = async () => {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1}>
           <ReceiptIcon />
-          Registro de Ventas
+          Registro de Facturas
         </Typography>
         <Box display="flex" gap={1}>
           <Button
@@ -438,9 +392,9 @@ const loadData = async () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => alert('Ir a Facturación para crear nueva venta')}
+            onClick={() => alert('Ir a Facturación para crear nueva factura')}
           >
-            Nueva Venta
+            Nueva Factura
           </Button>
         </Box>
       </Box>
@@ -476,7 +430,7 @@ const loadData = async () => {
                 <Box>
                   <Typography variant="h6">{totalTransactions}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Total Ventas
+                    Total Facturas
                   </Typography>
                 </Box>
               </Box>
@@ -531,11 +485,13 @@ const loadData = async () => {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="BORRADOR">Borrador</MenuItem>
                   <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                  <MenuItem value="ENVIADA">Enviada</MenuItem>
-                  <MenuItem value="CANCELADA">Cancelada</MenuItem>
-                  <MenuItem value="ENTREGADA">Entregada</MenuItem>
-                  <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
+                  <MenuItem value="APROBADO">Aprobado</MenuItem>
+                  <MenuItem value="RECHAZADO">Rechazado</MenuItem>
+                  <MenuItem value="CANCELADO">Cancelado</MenuItem>
+                  <MenuItem value="FINALIZADO">Finalizado</MenuItem>
+                  <MenuItem value="ANULADO">Anulado</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -555,7 +511,6 @@ const loadData = async () => {
                   <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
                   <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
                   <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
-
                 </Select>
               </FormControl>
             </Grid>
@@ -611,14 +566,14 @@ const loadData = async () => {
         </CardContent>
       </Card>
 
-      {/* Sales Table */}
+      {/* Facturas Table */}
       <Card>
         <CardContent>
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
+                  <TableCell>Número</TableCell>
                   <TableCell>Fecha</TableCell>
                   <TableCell>Cliente</TableCell>
                   <TableCell>Vendedor</TableCell>
@@ -629,53 +584,53 @@ const loadData = async () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredSales.map((sale: Venta) => (
-                  <TableRow key={sale.id}>
+                {filteredFacturas.map((factura: DocumentoComercial) => (
+                  <TableRow key={factura.id}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
-                        #{sale.id}
+                        #{factura.id}
                       </Typography>
-                      {sale.ventaNumero && (
+                      {factura.numeroDocumento && (
                         <Typography variant="caption" color="text.secondary">
-                          {sale.ventaNumero}
+                          {factura.numeroDocumento}
                         </Typography>
                       )}
                     </TableCell>
                     <TableCell>
-                      {sale.fechaVenta ? new Date(sale.fechaVenta).toLocaleDateString() : '-'}
+                      {factura.fecha ? new Date(factura.fecha).toLocaleDateString() : '-'}
                     </TableCell>
                     <TableCell>
                       <Box>
                         <Typography variant="body2">
-                          {getClientFullName(sale.cliente || null)}
+                          {getClientFullName(factura.cliente || null)}
                         </Typography>
-                        {sale.cliente?.email && (
+                        {factura.cliente?.email && (
                           <Typography variant="caption" color="text.secondary">
-                            {sale.cliente.email}
+                            {factura.cliente.email}
                           </Typography>
                         )}
                       </Box>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {getUsuarioFullName((sale.usuario || sale.empleado) as Usuario || null)}
+                        {getUsuarioFullName(factura.usuario || null)}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getStatusLabel(sale.estado)}
-                        color={getStatusColor(sale.estado)}
+                        label={getStatusLabel(factura.estado)}
+                        color={getStatusColor(factura.estado)}
                         size="small"
                       />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
-                        ${(sale.total || 0).toLocaleString()}
+                        ${(factura.total || 0).toLocaleString()}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={getPaymentMethodLabel(sale.metodoPago as PaymentMethod || 'EFECTIVO')}
+                        label={getPaymentMethodLabel(factura.metodoPago || 'EFECTIVO')}
                         size="small"
                         color="primary"
                         variant="outlined"
@@ -684,14 +639,14 @@ const loadData = async () => {
                     <TableCell align="center">
                       <IconButton
                         size="small"
-                        onClick={() => handleViewSale(sale)}
+                        onClick={() => handleViewFactura(factura)}
                         title="Ver detalles"
                       >
                         <VisibilityIcon />
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleEditSale(sale)}
+                        onClick={() => handleEditFactura(factura)}
                         title="Editar"
                       >
                         <EditIcon />
@@ -706,7 +661,7 @@ const loadData = async () => {
                       <IconButton
                         size="small"
                         onClick={() => {
-                          setVentaToDelete(sale);
+                          setFacturaToDelete(factura);
                           setDeleteDialogOpen(true);
                         }}
                         title="Eliminar"
@@ -717,11 +672,11 @@ const loadData = async () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredSales.length === 0 && (
+                {filteredFacturas.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography color="text.secondary">
-                        No se encontraron ventas que coincidan con los filtros aplicados
+                        No se encontraron facturas que coincidan con los filtros aplicados
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -732,45 +687,45 @@ const loadData = async () => {
         </CardContent>
       </Card>
 
-      {/* View Sale Dialog */}
+      {/* View Factura Dialog */}
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          Detalles de la Venta
+          Detalles de la Factura
         </DialogTitle>
         <DialogContent>
-          {viewingSale && (
+          {viewingFactura && (
             <Box>
               <Grid container spacing={2} mb={3}>
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 1 }}>
-                    <Typography><strong>Número:</strong> #{viewingSale?.id}</Typography>
-                    <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
-                    <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
-                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'EFECTIVO')}</Typography>
+                    <Typography><strong>Número:</strong> {viewingFactura.numeroDocumento || `#${viewingFactura.id}`}</Typography>
+                    <Typography><strong>Fecha:</strong> {new Date(viewingFactura.fecha).toLocaleDateString()}</Typography>
+                    <Typography><strong>Estado:</strong> {getStatusLabel(viewingFactura.estado)}</Typography>
+                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingFactura.metodoPago || 'EFECTIVO')}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 1 }}>
                     <Typography>
-                      <strong>Cliente:</strong> {getClientFullName(viewingSale.cliente || null)}
+                      <strong>Cliente:</strong> {getClientFullName(viewingFactura.cliente || null)}
                     </Typography>
-                    {viewingSale.cliente?.email && (
+                    {viewingFactura.cliente?.email && (
                       <Typography variant="body2" color="text.secondary">
-                        Email: {viewingSale.cliente.email}
+                        Email: {viewingFactura.cliente.email}
                       </Typography>
                     )}
-                    {viewingSale.cliente?.telefono && (
+                    {viewingFactura.cliente?.telefono && (
                       <Typography variant="body2" color="text.secondary">
-                        Teléfono: {viewingSale.cliente.telefono}
+                        Teléfono: {viewingFactura.cliente.telefono}
                       </Typography>
                     )}
-                    {viewingSale.cliente?.cuit && (
+                    {viewingFactura.cliente?.cuit && (
                       <Typography variant="body2" color="text.secondary">
-                        CUIT: {viewingSale.cliente.cuit}
+                        CUIT: {viewingFactura.cliente.cuit}
                       </Typography>
                     )}
                     <Typography sx={{ mt: 2 }}>
-                      <strong>Vendedor:</strong> {getUsuarioFullName((viewingSale.usuario || viewingSale.empleado) as Usuario || null)}
+                      <strong>Vendedor:</strong> {getUsuarioFullName(viewingFactura.usuario || null)}
                     </Typography>
                   </Box>
                 </Grid>
@@ -778,10 +733,10 @@ const loadData = async () => {
 
               <Divider sx={{ my: 2 }} />
 
-              {viewingSale.detalleVentas && viewingSale.detalleVentas.length > 0 ? (
+              {viewingFactura.detalles && viewingFactura.detalles.length > 0 ? (
                 <>
                   <Typography variant="subtitle2" color="text.secondary" mb={2}>
-                    Productos ({viewingSale.detalleVentas.length} artículos)
+                    Productos ({viewingFactura.detalles.length} artículos)
                   </Typography>
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
@@ -795,62 +750,65 @@ const loadData = async () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-  {viewingSale.detalleVentas.map((item: DetalleVenta, index: number) => (
-    <TableRow key={item.id || index}>
-      <TableCell>
-        <Typography variant="body2">
-          {item.productoNombre || item.producto?.nombre || 'Producto no disponible'}
-        </Typography>
-        {item.producto?.descripcion && (
-          <Typography variant="caption" color="text.secondary">
-            {item.producto.descripcion}
-          </Typography>
-        )}
-      </TableCell>
-      <TableCell align="center">{item.cantidad}</TableCell>
-      <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>
-      <TableCell align="right">{item.descuento || 0}%</TableCell>
-      <TableCell align="right">
-        <Typography variant="body2" fontWeight="bold">
-          ${item.subtotal?.toFixed(2) || '0.00'}
-        </Typography>
-      </TableCell>
-    </TableRow>
-  ))}
-</TableBody>
+                        {viewingFactura.detalles.map((item: DetalleDocumento, index: number) => (
+                          <TableRow key={item.id || index}>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {item.descripcion || item.producto?.nombre || 'Producto no disponible'}
+                              </Typography>
+                              {item.producto?.descripcion && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {item.producto.descripcion}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="center">{item.cantidad}</TableCell>
+                            <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>
+                            <TableCell align="right">{item.descuento || 0}%</TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight="bold">
+                                ${item.subtotal?.toFixed(2) || '0.00'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        </TableBody>
                     </Table>
                   </TableContainer>
                 </>
               ) : (
-                <Alert severity="info">
-                  No hay productos asociados a esta venta
-                </Alert>
+                <Typography color="text.secondary" align="center" py={3}>
+                  No hay detalles de productos disponibles
+                </Typography>
               )}
 
-              <Box mt={3} display="flex" justifyContent="space-between" alignItems="center">
-                <Box>
-                  {(viewingSale.notas || viewingSale.observaciones) && (
-                    <>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Notas
-                      </Typography>
-                      <Typography variant="body2">
-                        {viewingSale.notas || viewingSale.observaciones}
-                      </Typography>
-                    </>
-                  )}
-                </Box>
-                <Typography variant="h5" color="primary" fontWeight="bold">
-                  Total: ${(viewingSale.total || 0).toLocaleString()}
+              <Divider sx={{ my: 2 }} />
+
+              <Box display="flex" justifyContent="flex-end">
+                <Typography variant="h6">
+                  <strong>Total: ${(viewingFactura.total || 0).toLocaleString()}</strong>
                 </Typography>
               </Box>
+
+              {viewingFactura.observaciones && (
+                <Box mt={2}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Observaciones:
+                  </Typography>
+                  <Typography variant="body2">
+                    {viewingFactura.observaciones}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setViewDialogOpen(false)}>Cerrar</Button>
+          <Button onClick={() => setViewDialogOpen(false)}>
+            Cerrar
+          </Button>
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<PrintIcon />}
             onClick={() => alert('Función de impresión en desarrollo')}
           >
@@ -859,246 +817,177 @@ const loadData = async () => {
         </DialogActions>
       </Dialog>
 
-      {/* Edit Sale Dialog */}
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={() => setEditDialogOpen(false)} 
-        maxWidth="md" 
-        fullWidth
-      >
+      {/* Edit Factura Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
-          Editar Venta #{editingSale?.id}
+          Editar Factura
         </DialogTitle>
         <DialogContent>
-          {editingSale && (
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Número de Venta"
-                    value={editForm.numeroVenta}
-                    onChange={(e) => handleEditFormChange('numeroVenta', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Venta"
-                    type="date"
-                    value={editForm.fechaVenta}
-                    onChange={(e) => handleEditFormChange('fechaVenta', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Cliente</InputLabel>
-                    <Select
-                      value={editForm.clienteId}
-                      label="Cliente"
-                      onChange={(e) => handleEditFormChange('clienteId', e.target.value)}
-                    >
-                      {clients.map((client: Cliente) => (
-                        <MenuItem key={client.id} value={client.id.toString()}>
-                          {getClientFullName(client)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Vendedor</InputLabel>
-                    <Select
-                      value={editForm.usuarioId}
-                      label="Vendedor"
-                      onChange={(e) => handleEditFormChange('usuarioId', e.target.value)}
-                    >
-                      {usuarios.map((usuario: Usuario) => (
-                        <MenuItem key={usuario.id} value={usuario.id.toString()}>
-                          {getUsuarioFullName(usuario)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Estado</InputLabel>
-                    <Select
-                      value={editForm.estado}
-                      label="Estado"
-                      onChange={(e) => handleEditFormChange('estado', e.target.value)}
-                    >
-                      <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                      <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
-                      <MenuItem value="ENVIADA">Enviada</MenuItem>
-                      <MenuItem value="ENTREGADA">Entregada</MenuItem>
-                      <MenuItem value="CANCELADA">Cancelada</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Método de Pago</InputLabel>
-                    <Select
-                      value={editForm.metodoPago}
-                      label="Método de Pago"
-                      onChange={(e) => handleEditFormChange('metodoPago', e.target.value as PaymentMethod)}
-                    >
-                      <MenuItem value="EFECTIVO">Efectivo</MenuItem>
-                      <MenuItem value="CHEQUE">Cheque</MenuItem>
-                      <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
-                      <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
-                      <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
-                      <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
-                      <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
-
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Total"
-                    type="number"
-                    value={editForm.total}
-                    onChange={(e) => handleEditFormChange('total', parseFloat(e.target.value) || 0)}
-                    variant="outlined"
-                    size="small"
-                    InputProps={{
-                      startAdornment: <Typography variant="body2" sx={{ mr: 1 }}>$</Typography>,
-                    }}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Notas"
-                    multiline
-                    rows={3}
-                    value={editForm.notas}
-                    onChange={(e) => handleEditFormChange('notas', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    placeholder="Agregar notas adicionales sobre la venta..."
-                  />
-                </Grid>
-
-                {/* Current Sale Details Summary */}
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Resumen de la Venta
-                  </Typography>
-                  <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente || null)}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Vendedor Actual:</strong> {getUsuarioFullName((editingSale.usuario || editingSale.empleado) as Usuario || null)}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Estado Actual:</strong> {getStatusLabel(editingSale.estado)}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Total Actual:</strong> ${(editingSale.total || 0).toLocaleString()}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Número de Documento"
+                value={editForm.numeroDocumento}
+                onChange={(e) => handleEditFormChange('numeroDocumento', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Cliente</InputLabel>
+                <Select
+                  value={editForm.clienteId}
+                  label="Cliente"
+                  onChange={(e) => handleEditFormChange('clienteId', e.target.value)}
+                >
+                  {clients.map((client: Cliente) => (
+                    <MenuItem key={client.id} value={client.id.toString()}>
+                      {getClientFullName(client)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Vendedor</InputLabel>
+                <Select
+                  value={editForm.usuarioId}
+                  label="Vendedor"
+                  onChange={(e) => handleEditFormChange('usuarioId', e.target.value)}
+                >
+                  {usuarios.map((usuario: Usuario) => (
+                    <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                      {getUsuarioFullName(usuario)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={editForm.estado}
+                  label="Estado"
+                  onChange={(e) => handleEditFormChange('estado', e.target.value)}
+                >
+                  <MenuItem value="BORRADOR">Borrador</MenuItem>
+                  <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                  <MenuItem value="APROBADO">Aprobado</MenuItem>
+                  <MenuItem value="RECHAZADO">Rechazado</MenuItem>
+                  <MenuItem value="CANCELADO">Cancelado</MenuItem>
+                  <MenuItem value="FINALIZADO">Finalizado</MenuItem>
+                  <MenuItem value="ANULADO">Anulado</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Método de Pago</InputLabel>
+                <Select
+                  value={editForm.metodoPago}
+                  label="Método de Pago"
+                  onChange={(e) => handleEditFormChange('metodoPago', e.target.value)}
+                >
+                  <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                  <MenuItem value="CHEQUE">Cheque</MenuItem>
+                  <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
+                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                  <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                  <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Fecha"
+                type="date"
+                value={editForm.fecha}
+                onChange={(e) => handleEditFormChange('fecha', e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Total"
+                type="number"
+                value={editForm.total}
+                onChange={(e) => handleEditFormChange('total', parseFloat(e.target.value) || 0)}
+                InputProps={{
+                  startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Observaciones"
+                multiline
+                rows={3}
+                value={editForm.observaciones}
+                onChange={(e) => handleEditFormChange('observaciones', e.target.value)}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setEditDialogOpen(false)}>
+            Cancelar
+          </Button>
           <Button
-            onClick={handleUpdateSale}
-            color="primary"
             variant="contained"
+            onClick={handleUpdateFactura}
             disabled={editLoading}
           >
-            {editLoading ? <CircularProgress size={24} /> : 'Guardar Cambios'}
+            {editLoading ? <CircularProgress size={20} /> : 'Guardar Cambios'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Sale Dialog */}
+      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Eliminar venta</DialogTitle>
+        <DialogTitle>
+          Confirmar Eliminación
+        </DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Está seguro que desea eliminar la venta <b>{ventaToDelete?.ventaNumero || ventaToDelete?.numeroVenta || `#${ventaToDelete?.id}`}</b>?
+            ¿Está seguro de que desea eliminar esta factura? Esta acción no se puede deshacer.
           </Typography>
+          {facturaToDelete && (
+            <Box mt={2} p={2} bgcolor="grey.50" borderRadius={1}>
+              <Typography variant="body2">
+                <strong>Factura:</strong> #{facturaToDelete.id}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Cliente:</strong> {getClientFullName(facturaToDelete.cliente || null)}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Total:</strong> ${(facturaToDelete.total || 0).toLocaleString()}
+              </Typography>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>
+            Cancelar
+          </Button>
           <Button
-            color="error"
             variant="contained"
-            onClick={async () => {
-              if (ventaToDelete) {
-                try {
-                  await saleApi.delete(ventaToDelete.id);
-                  setSales(sales.filter(sale => sale.id !== ventaToDelete.id));
-                  setDeleteDialogOpen(false);
-                  setError(null);
-                } catch (err) {
-                  setError('Error al eliminar la venta');
-                  console.error('Error deleting sale:', err);
-                }
-              }
+            color="error"
+            onClick={() => {
+              alert('Función de eliminación en desarrollo');
+              setDeleteDialogOpen(false);
+              setFacturaToDelete(null);
             }}
           >
             Eliminar
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Integration Info */}
-      <Box mt={3}>
-        <Alert severity="info">
-          <Typography variant="body2">
-            <strong>Este módulo integra con:</strong>
-          </Typography>
-          <Box component="ul" mt={1} sx={{ pl: 2 }}>
-            <Typography component="li" variant="body2">
-              <strong>Facturación:</strong> Para crear y editar ventas
-            </Typography>
-            <Typography component="li" variant="body2">
-              <strong>Presupuestos:</strong> Para convertir presupuestos en ventas
-            </Typography>
-            <Typography component="li" variant="body2">
-              <strong>Informes:</strong> Para análisis detallado de ventas
-            </Typography>
-            <Typography component="li" variant="body2">
-              <strong>Inventario:</strong> Para control de stock
-            </Typography>
-          </Box>
-        </Alert>
-      </Box>
     </Box>
   );
 };
