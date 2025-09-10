@@ -24,8 +24,9 @@ const navigation = [
     title: 'VENTAS',
     items: [
       { text: 'Presupuestos', icon: <AssignmentIcon />, path: '/ventas/presupuestos' },
-      { text: 'Registro Ventas', icon: <AssignmentIcon />, path: '/ventas/registro' },
+      { text: 'Notas de Pedido', icon: <AssignmentIcon />, path: '/ventas/notasPedido' },
       { text: 'Facturación', icon: <AssignmentIcon />, path: '/ventas/facturacion' },
+      { text: 'Registro Ventas', icon: <AssignmentIcon />, path: '/ventas/registro' },
       { text: 'Informes', icon: <AssignmentIcon />, path: '/ventas/informes' },
     ],
   },

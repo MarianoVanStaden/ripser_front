@@ -1,5 +1,19 @@
 import api from '../config';
-import type { DocumentoComercial, EstadoDocumento, DetalleDocumento, CreatePresupuestoRequest } from '../../types';
+import type {
+  DocumentoComercial,
+  EstadoDocumento,
+  DetalleDocumento,
+  MetodoPago,
+  DetalleDocumentoDTO,
+} from '../../types';
+
+// Narrow DTO for creating presupuesto in current backend
+type CreatePresupuestoPayload = {
+  clienteId: number;
+  usuarioId: number;
+  observaciones?: string;
+  detalles: DetalleDocumentoDTO[];
+};
 
 export const documentoApi = {
   // Get all documentos - Note: This endpoint doesn't exist in backend, using getByTipo instead
@@ -60,7 +74,7 @@ export const documentoApi = {
     return response.data;
   },
   // Create new presupuesto
-  createPresupuesto: async (presupuesto: CreatePresupuestoRequest): Promise<DocumentoComercial> => {
+  createPresupuesto: async (presupuesto: CreatePresupuestoPayload): Promise<DocumentoComercial> => {
     const response = await api.post('/api/documentos/presupuesto', presupuesto);
     return response.data;
   },
@@ -69,4 +83,19 @@ export const documentoApi = {
     const response = await api.put(`/api/documentos/${id}/estado`, estado);
     return response.data;
   },
+  // Convert presupuesto to nota de pedido
+  convertToNotaPedido: async (dto: {
+    presupuestoId: number;
+    metodoPago: MetodoPago;
+    tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  }): Promise<DocumentoComercial> => {
+    const response = await api.post('/api/documentos/nota-pedido', dto);
+    return response.data;
+  },
+  // Convert nota de pedido to factura
+  convertToFactura: async (dto: { notaPedidoId: number; descuento?: number }): Promise<DocumentoComercial> => {
+    const response = await api.post('/api/documentos/factura', dto);
+    return response.data;
+  },
 };
+

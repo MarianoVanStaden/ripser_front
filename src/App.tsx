@@ -17,6 +17,7 @@ import {
   CarpetaClienteSelector,
   CuentaCorrientePage
 } from './components/Clientes';
+import NotasPedidoPage from './components/Ventas/NotasPedidoPage';
 import PresupuestosPage from './components/Ventas/PresupuestosPage';
 import RegistroVentasPage from './components/Ventas/RegistroVentasPage';
 import FacturacionPage from './components/Ventas/FacturacionPage';
@@ -82,6 +83,7 @@ function App() {
               <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
               <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
               {/* VENTAS Module */}
+              <Route path="ventas/notasPedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
               <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
               <Route path="ventas/registro" element={<PrivateRoute><RegistroVentasPage /></PrivateRoute>} />
               <Route path="ventas/facturacion" element={<PrivateRoute><FacturacionPage /></PrivateRoute>} />
