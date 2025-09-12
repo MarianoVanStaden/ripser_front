@@ -23,7 +23,12 @@ import {
   TableHead,
   TableRow,
   Tooltip,
+  AppBar,
+  Toolbar,
+  Divider,
+  useMediaQuery
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -31,10 +36,20 @@ import {
   Print as PrintIcon,
   Send as SendIcon,
   Delete as DeleteIcon,
+  Close as CloseIcon,
+  Save as SaveIcon
 } from "@mui/icons-material";
 import { clienteApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/documentoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, CreatePresupuestoRequest, DetalleDocumento } from "../../types";
+import type {
+  DocumentoComercial,
+  Cliente,
+  Usuario,
+  Producto,
+  EstadoDocumento,
+  CreatePresupuestoRequest,
+  DetalleDocumento
+} from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
@@ -72,7 +87,10 @@ const initialDetalle: DetalleForm = {
 };
 
 const PresupuestosPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user } = useAuth();
+
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -93,44 +111,49 @@ const PresupuestosPage: React.FC = () => {
       setError(null);
 
       const [clientesData, usuariosData, presupuestosData, productosData] = await Promise.all([
-        clienteApi.getAll().catch((err) => {
+        clienteApi.getAll().catch((err: any) => {
           console.error("Error fetching clientes:", err);
           setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        usuarioApi.getAll().catch((err) => {
+        usuarioApi.getAll().catch((err: any) => {
           console.error("Error fetching usuarios:", err);
           console.log("Usuarios response:", err.response?.data, err.response?.status);
           setError("Error al cargar usuarios: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
+        documentoApi.getByTipo("PRESUPUESTO").catch((err: any) => {
           console.error("Error fetching presupuestos:", err);
           console.log("Presupuestos response:", err.response?.data, err.response?.status);
-          const errorMessage = err.response?.status === 403
-            ? "No tiene permisos para ver los presupuestos. Contacte al administrador."
-            : "Error al cargar presupuestos: " + (err.response?.data?.message || err.message);
+          const errorMessage =
+            err.response?.status === 403
+              ? "No tiene permisos para ver los presupuestos. Contacte al administrador."
+              : "Error al cargar presupuestos: " + (err.response?.data?.message || err.message);
           setError(errorMessage);
           return [];
         }),
-        productApi.getAll().catch((err) => {
+        productApi.getAll().catch((err: any) => {
           console.error("Error fetching productos:", err);
           setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
           return [];
         }),
       ]);
 
-      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
       setClientes(Array.isArray(clientesData) ? clientesData : []);
       setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
       setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
-      setProductos(Array.isArray(productosData.content) ? productosData.content : Array.isArray(productosData) ? productosData : []);
+      setProductos(
+        Array.isArray(productosData?.content)
+          ? productosData.content
+          : Array.isArray(productosData)
+          ? productosData
+          : []
+      );
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
     } finally {
       setLoading(false);
-      console.log("Loading complete, loading:", false);
     }
   }, []);
 
@@ -138,25 +161,36 @@ const PresupuestosPage: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
-    switch (estado) {
-      case EstadoDocumentoEnum.PENDIENTE: return "warning";
-      case EstadoDocumentoEnum.APROBADO: return "success";
-      case EstadoDocumentoEnum.RECHAZADO: return "error";
-      default: return "default";
-    }
-  }, []);
+  const getStatusColor = useCallback(
+    (estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+      switch (estado) {
+        case EstadoDocumentoEnum.PENDIENTE:
+          return "warning";
+        case EstadoDocumentoEnum.APROBADO:
+          return "success";
+        case EstadoDocumentoEnum.RECHAZADO:
+          return "error";
+        default:
+          return "default";
+      }
+    },
+    []
+  );
 
   const getStatusLabel = useCallback((estado: EstadoDocumento): string => {
     switch (estado) {
-      case EstadoDocumentoEnum.PENDIENTE: return "Pendiente";
-      case EstadoDocumentoEnum.APROBADO: return "Aprobado";
-      case EstadoDocumentoEnum.RECHAZADO: return "Rechazado";
-      default: return estado;
+      case EstadoDocumentoEnum.PENDIENTE:
+        return "Pendiente";
+      case EstadoDocumentoEnum.APROBADO:
+        return "Aprobado";
+      case EstadoDocumentoEnum.RECHAZADO:
+        return "Rechazado";
+      default:
+        return estado as string;
     }
   }, []);
 
-  const total = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
+  const total = useMemo(() => detalles.reduce((sum, d) => sum + d.subtotal, 0), [detalles]);
 
   const addDetalle = useCallback(() => {
     if (readOnly) return;
@@ -164,78 +198,87 @@ const PresupuestosPage: React.FC = () => {
     setHasUnsavedChanges(true);
   }, [readOnly]);
 
-  const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number) => {
-    if (readOnly) return;
-    setDetalles((prev) => {
-      const newDetalles = [...prev];
-      const detalle = newDetalles[index];
+  const updateDetalle = useCallback(
+    (index: number, field: keyof DetalleForm, value: string | number) => {
+      if (readOnly) return;
+      setDetalles((prev) => {
+        const newDetalles = [...prev];
+        const detalle = newDetalles[index];
 
-      if (field === "productoId") detalle.productoId = value as string;
-      else if (field === "descripcion") detalle.descripcion = value as string;
-      else if (field === "cantidad") detalle.cantidad = Number(value) || 0;
-      else if (field === "precioUnitario") detalle.precioUnitario = Number(value) || 0;
+        if (field === "productoId") detalle.productoId = value as string;
+        else if (field === "descripcion") detalle.descripcion = value as string;
+        else if (field === "cantidad") detalle.cantidad = Number(value) || 0;
+        else if (field === "precioUnitario") detalle.precioUnitario = Number(value) || 0;
 
-      if (field === "cantidad" || field === "precioUnitario") {
-        detalle.subtotal = detalle.cantidad * detalle.precioUnitario;
-      }
-
-      if (field === "productoId" && value) {
-        const producto = productos.find((p) => p.id === Number(value));
-        if (producto) {
-          detalle.descripcion = producto.nombre;
-          detalle.precioUnitario = producto.precio || 0;
-          detalle.subtotal = detalle.cantidad * (producto.precio || 0);
+        if (field === "cantidad" || field === "precioUnitario") {
+          detalle.subtotal = detalle.cantidad * detalle.precioUnitario;
         }
-      }
 
-      return newDetalles;
-    });
-    setHasUnsavedChanges(true);
-  }, [readOnly, productos]);
+        if (field === "productoId" && value) {
+          const producto = productos.find((p) => p.id === Number(value));
+          if (producto) {
+            detalle.descripcion = producto.nombre;
+            detalle.precioUnitario = producto.precio || 0;
+            detalle.subtotal = detalle.cantidad * (producto.precio || 0);
+          }
+        }
 
-  const removeDetalle = useCallback((index: number) => {
-    if (readOnly) return;
-    setDetalles((prev) => prev.filter((_, i) => i !== index));
-    setHasUnsavedChanges(true);
-  }, [readOnly]);
-
-  const handleOpenDialog = useCallback((presupuesto?: DocumentoComercial, readOnlyMode = false) => {
-    setReadOnly(readOnlyMode);
-    setHasUnsavedChanges(false);
-    if (presupuesto) {
-      setEditingPresupuesto(presupuesto);
-      setFormData({
-        clienteId: presupuesto.clienteId.toString() || "",
-        usuarioId: presupuesto.usuarioId.toString() || user.id.toString(),
-        fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
-        observaciones: presupuesto.observaciones || "",
-        estado: presupuesto.estado,
+        return newDetalles;
       });
-      setDetalles(
-        Array.isArray(presupuesto.detalles)
-          ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
-              id: detalle.id,
-              productoId: detalle.productoId?.toString() || "",
-              descripcion: detalle.descripcion,
-              cantidad: detalle.cantidad,
-              precioUnitario: detalle.precioUnitario,
-              subtotal: detalle.subtotal,
-            }))
-          : []
-      );
-    } else {
-      setEditingPresupuesto(null);
-      setFormData({ ...initialFormData, usuarioId: user.id.toString() });
-      setDetalles([]);
-    }
-    setDialogOpen(true);
-  }, [user]);
+      setHasUnsavedChanges(true);
+    },
+    [readOnly, productos]
+  );
+
+  const removeDetalle = useCallback(
+    (index: number) => {
+      if (readOnly) return;
+      setDetalles((prev) => prev.filter((_, i) => i !== index));
+      setHasUnsavedChanges(true);
+    },
+    [readOnly]
+  );
+
+  const handleOpenDialog = useCallback(
+    (presupuesto?: DocumentoComercial, readOnlyMode = false) => {
+      setReadOnly(readOnlyMode);
+      setHasUnsavedChanges(false);
+      if (presupuesto) {
+        setEditingPresupuesto(presupuesto);
+        setFormData({
+          clienteId: presupuesto.clienteId?.toString?.() || "",
+          usuarioId: presupuesto.usuarioId?.toString?.() || user.id?.toString?.() || "",
+          fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
+          observaciones: presupuesto.observaciones || "",
+          estado: presupuesto.estado,
+        });
+        setDetalles(
+          Array.isArray(presupuesto.detalles)
+            ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
+                id: detalle.id,
+                productoId: detalle.productoId?.toString() || "",
+                descripcion: detalle.descripcion,
+                cantidad: detalle.cantidad,
+                precioUnitario: detalle.precioUnitario,
+                subtotal: detalle.subtotal,
+              }))
+            : []
+        );
+      } else {
+        setEditingPresupuesto(null);
+        setFormData({ ...initialFormData, usuarioId: user.id?.toString?.() || "" });
+        setDetalles([]);
+      }
+      setDialogOpen(true);
+    },
+    [user]
+  );
 
   const handleCloseDialog = useCallback(() => {
     if (hasUnsavedChanges && !window.confirm("¿Descartar cambios no guardados?")) return;
     setDialogOpen(false);
     setEditingPresupuesto(null);
-    setFormData({ ...initialFormData, usuarioId: user.id.toString() });
+    setFormData({ ...initialFormData, usuarioId: user.id?.toString?.() || "" });
     setDetalles([]);
     setError(null);
     setHasUnsavedChanges(false);
@@ -248,7 +291,7 @@ const PresupuestosPage: React.FC = () => {
     }
     const payload: CreatePresupuestoRequest = {
       clienteId: Number(formData.clienteId),
-      usuarioId: Number(formData.usuarioId) || user.id,
+      usuarioId: Number(formData.usuarioId) || (user as any).id,
       observaciones: formData.observaciones,
       detalles: detalles.map((d) => ({
         productoId: Number(d.productoId),
@@ -317,18 +360,82 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [user, formData, detalles, editingPresupuesto, handleCloseDialog]);
 
+  // --- MOBILE CARDS VIEW (xs) ---
+  const MobileCards: React.FC = () => (
+    <Box sx={{ display: "grid", gap: 1.5 }}>
+      {presupuestos.map((p) => (
+        <Card key={p.id} variant="outlined">
+          <CardContent sx={{ p: 1.5 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mr: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {p.numeroDocumento}
+              </Typography>
+              <Chip size="small" label={getStatusLabel(p.estado)} color={getStatusColor(p.estado)} />
+            </Box>
+            <Typography variant="body2" sx={{ mb: 0.25 }}>
+              <strong>Cliente:</strong> {p.clienteNombre}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 0.25 }}>
+              <strong>Fecha:</strong> {new Date(p.fechaEmision).toLocaleDateString("es-AR")}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>Total:</strong> ${p.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+            </Typography>
+            <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+              <Tooltip title="Ver">
+                <IconButton size="small" color="primary" onClick={() => handleOpenDialog(p, true)} aria-label={`Ver presupuesto ${p.numeroDocumento}`}>
+                  <VisibilityIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Editar">
+                <IconButton size="small" color="primary" onClick={() => handleOpenDialog(p, false)} aria-label={`Editar presupuesto ${p.numeroDocumento}`}>
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Imprimir">
+                <IconButton size="small" color="success" aria-label={`Imprimir presupuesto ${p.numeroDocumento}`}>
+                  <PrintIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Enviar">
+                <IconButton size="small" color="info" aria-label={`Enviar presupuesto ${p.numeroDocumento}`}>
+                  <SendIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </CardContent>
+        </Card>
+      ))}
+    </Box>
+  );
+
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: { xs: 280, sm: 360, md: 400 }, px: 2 }}>
         <CircularProgress aria-label="Cargando datos" />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4" component="h1" fontWeight="bold">
+    <Box sx={{ px: { xs: 1, sm: 2 }, py: { xs: 1, sm: 2 } }}>
+      {/* Header responsive */}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "flex-start", sm: "center" },
+          justifyContent: "space-between",
+          gap: 1.5,
+          mb: { xs: 2, sm: 3 },
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          fontWeight="bold"
+          sx={{ m: 0, fontSize: { xs: "1.6rem", sm: "1.8rem", md: "2rem" } }}
+        >
           Presupuestos
         </Typography>
         <Button
@@ -337,87 +444,126 @@ const PresupuestosPage: React.FC = () => {
           onClick={() => handleOpenDialog()}
           disabled={loading}
           aria-label="Crear nuevo presupuesto"
+          sx={{ alignSelf: { xs: "stretch", sm: "auto" } }}
         >
           Nuevo Presupuesto
         </Button>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 } }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
       {productos.length === 0 && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
+        <Alert severity="warning" sx={{ mb: { xs: 2, sm: 3 } }}>
           No hay productos disponibles. Contacte al administrador para configurar productos.
         </Alert>
       )}
 
       <Card>
-        <CardContent>
-          <TableContainer component={Paper}>
-            <Table aria-label="Tabla de presupuestos">
-              <TableHead>
-                <TableRow>
-                  <TableCell width="100px">Número</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell width="120px">Fecha</TableCell>
-                  <TableCell width="100px">Estado</TableCell>
-                  <TableCell width="120px" align="right">Total</TableCell>
-                  <TableCell width="150px">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {presupuestos.map((presupuesto) => (
-                  <TableRow key={presupuesto.id}>
-                    <TableCell>{presupuesto.numeroDocumento}</TableCell>
-                    <TableCell>{presupuesto.clienteNombre}</TableCell>
-                    <TableCell>{new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getStatusLabel(presupuesto.estado)}
-                        color={getStatusColor(presupuesto.estado)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Ver">
-                        <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, true)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
-                          <VisibilityIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Editar">
-                        <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, false)} aria-label={`Editar presupuesto ${presupuesto.numeroDocumento}`}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Imprimir">
-                        <IconButton size="small" color="success" aria-label={`Imprimir presupuesto ${presupuesto.numeroDocumento}`}>
-                          <PrintIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Enviar">
-                        <IconButton size="small" color="info" aria-label={`Enviar presupuesto ${presupuesto.numeroDocumento}`}>
-                          <SendIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
+        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          {/* List view on mobile; table on >= sm */}
+          {isMobile ? (
+            <MobileCards />
+          ) : (
+            <TableContainer
+              component={Paper}
+              sx={{
+                overflowX: "auto",
+                maxWidth: "100%",
+                "&::-webkit-scrollbar": { height: 8 },
+              }}
+            >
+              <Table
+                aria-label="Tabla de presupuestos"
+                size="small"
+                stickyHeader
+                sx={{
+                  minWidth: 680, // asegura scroll en pantallas medianas
+                  tableLayout: "fixed",
+                }}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: 110 }}>Número</TableCell>
+                    <TableCell>Cliente</TableCell>
+                    <TableCell sx={{ width: 120 }}>Fecha</TableCell>
+                    <TableCell sx={{ width: 110 }}>Estado</TableCell>
+                    <TableCell sx={{ width: 120, textAlign: "right" }}>Total</TableCell>
+                    <TableCell sx={{ width: 170 }}>Acciones</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {presupuestos.map((presupuesto) => (
+                    <TableRow key={presupuesto.id} hover>
+                      <TableCell sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {presupuesto.numeroDocumento}
+                      </TableCell>
+                      <TableCell sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {presupuesto.clienteNombre}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getStatusLabel(presupuesto.estado)}
+                          color={getStatusColor(presupuesto.estado)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell sx={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          <Tooltip title="Ver">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleOpenDialog(presupuesto, true)}
+                              aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Editar">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleOpenDialog(presupuesto, false)}
+                              aria-label={`Editar presupuesto ${presupuesto.numeroDocumento}`}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Imprimir">
+                            <IconButton size="small" color="success" aria-label={`Imprimir presupuesto ${presupuesto.numeroDocumento}`}>
+                              <PrintIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Enviar">
+                            <IconButton size="small" color="info" aria-label={`Enviar presupuesto ${presupuesto.numeroDocumento}`}>
+                              <SendIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
 
           {presupuestos.length === 0 && (
-            <Box sx={{ textAlign: "center", py: 8 }}>
+            <Box sx={{ textAlign: "center", py: { xs: 5, md: 8 }, px: { xs: 2 } }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No hay presupuestos registrados
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Comience creando su primer presupuesto
               </Typography>
               <Button
@@ -439,14 +585,48 @@ const PresupuestosPage: React.FC = () => {
         onClose={handleCloseDialog}
         maxWidth="lg"
         fullWidth
+        fullScreen={isMobile}
         aria-labelledby="presupuesto-dialog-title"
       >
-        <DialogTitle id="presupuesto-dialog-title">
-          {editingPresupuesto ? (readOnly ? "Ver Presupuesto" : "Editar Presupuesto") : "Nuevo Presupuesto"}
-        </DialogTitle>
-        <DialogContent sx={{ minHeight: "500px" }}>
-          <Box sx={{ pt: 2 }}>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fit, minmax(300px, 1fr))" }, gap: 2 }}>
+        {/* AppBar only on mobile */}
+        {isMobile && (
+          <AppBar position="sticky" elevation={0} color="default" sx={{ borderBottom: 1, borderColor: "divider" }}>
+            <Toolbar sx={{ gap: 1 }}>
+              <IconButton edge="start" onClick={handleCloseDialog} aria-label="Cerrar">
+                <CloseIcon />
+              </IconButton>
+              <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                {editingPresupuesto ? (readOnly ? "Ver Presupuesto" : "Editar Presupuesto") : "Nuevo Presupuesto"}
+              </Typography>
+              {!readOnly && (
+                <Button
+                  startIcon={<SaveIcon />}
+                  onClick={handleSavePresupuesto}
+                  disabled={formLoading || !formData.clienteId || detalles.length === 0}
+                >
+                  {editingPresupuesto ? "Actualizar" : "Crear"}
+                </Button>
+              )}
+            </Toolbar>
+          </AppBar>
+        )}
+
+        {!isMobile && (
+          <DialogTitle id="presupuesto-dialog-title" sx={{ pr: { xs: 2, sm: 3 } }}>
+            {editingPresupuesto ? (readOnly ? "Ver Presupuesto" : "Editar Presupuesto") : "Nuevo Presupuesto"}
+          </DialogTitle>
+        )}
+
+        <DialogContent sx={{ minHeight: { xs: "auto", sm: 500 }, px: { xs: 1.5, sm: 3 } }}>
+          <Box sx={{ pt: { xs: 0.5, sm: 2 } }}>
+            {/* Form header responsive */}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fit, minmax(240px, 1fr))" },
+                gap: { xs: 1.5, sm: 2 },
+              }}
+            >
               <TextField
                 fullWidth
                 select
@@ -477,7 +657,6 @@ const PresupuestosPage: React.FC = () => {
                   label="Usuario"
                   value={formData.usuarioId}
                   onChange={(e) => {
-                    console.log("Usuario seleccionado:", e.target.value);
                     setFormData({ ...formData, usuarioId: e.target.value });
                     setHasUnsavedChanges(true);
                   }}
@@ -551,22 +730,28 @@ const PresupuestosPage: React.FC = () => {
               </Alert>
             )}
 
-            <TableContainer component={Paper} sx={{ mb: 2 }}>
-              <Table size="small" aria-label="Tabla de detalles del presupuesto">
+            {/* Tabla detalles responsive */}
+            <TableContainer component={Paper} sx={{ mb: 2, overflowX: "auto" }}>
+              <Table
+                size="small"
+                aria-label="Tabla de detalles del presupuesto"
+                stickyHeader
+                sx={{ minWidth: 720, tableLayout: "fixed" }}
+              >
                 <TableHead>
                   <TableRow>
-                    <TableCell width="200px">Producto</TableCell>
+                    <TableCell sx={{ width: { xs: 200, sm: 220 } }}>Producto</TableCell>
                     <TableCell>Descripción</TableCell>
-                    <TableCell width="100px">Cantidad</TableCell>
-                    <TableCell width="120px">Precio Unit.</TableCell>
-                    <TableCell width="120px">Subtotal</TableCell>
-                    {!readOnly && !editingPresupuesto && <TableCell width="60px">Acciones</TableCell>}
+                    <TableCell sx={{ width: 110 }}>Cantidad</TableCell>
+                    <TableCell sx={{ width: 130 }}>Precio Unit.</TableCell>
+                    <TableCell sx={{ width: 130 }}>Subtotal</TableCell>
+                    {!readOnly && !editingPresupuesto && <TableCell sx={{ width: 70 }}>Acciones</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {detalles.length > 0 ? (
                     detalles.map((detalle, index) => (
-                      <TableRow key={index}>
+                      <TableRow key={index} hover>
                         <TableCell>
                           <TextField
                             select
@@ -606,7 +791,7 @@ const PresupuestosPage: React.FC = () => {
                             fullWidth
                             value={detalle.cantidad}
                             onChange={(e) => updateDetalle(index, "cantidad", parseInt(e.target.value) || 0)}
-                            inputProps={{ min: 1 }}
+                            inputProps={{ min: 1, inputMode: "numeric", pattern: "[0-9]*" }}
                             disabled={readOnly || !!editingPresupuesto}
                             error={detalle.cantidad <= 0 && hasUnsavedChanges}
                           />
@@ -617,19 +802,26 @@ const PresupuestosPage: React.FC = () => {
                             type="number"
                             fullWidth
                             value={detalle.precioUnitario}
-                            onChange={(e) => updateDetalle(index, "precioUnitario", parseFloat(e.target.value) || 0)}
-                            inputProps={{ min: 0, step: 0.01 }}
+                            onChange={(e) =>
+                              updateDetalle(index, "precioUnitario", parseFloat(e.target.value) || 0)
+                            }
+                            inputProps={{ min: 0, step: 0.01, inputMode: "decimal" }}
                             disabled={readOnly || !!editingPresupuesto}
                             error={detalle.precioUnitario <= 0 && hasUnsavedChanges}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }}>
                           ${detalle.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                         </TableCell>
                         {!readOnly && !editingPresupuesto && (
                           <TableCell>
                             <Tooltip title="Eliminar detalle">
-                              <IconButton size="small" color="error" onClick={() => removeDetalle(index)} aria-label="Eliminar detalle">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => removeDetalle(index)}
+                                aria-label="Eliminar detalle"
+                              >
                                 <DeleteIcon />
                               </IconButton>
                             </Tooltip>
@@ -648,33 +840,59 @@ const PresupuestosPage: React.FC = () => {
               </Table>
             </TableContainer>
 
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                gap: 1.5,
+                justifyContent: "space-between",
+                alignItems: { xs: "stretch", sm: "center" },
+                mb: 2,
+              }}
+            >
               {!readOnly && !editingPresupuesto && (
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={addDetalle} disabled={productos.length === 0}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addDetalle}
+                  disabled={productos.length === 0}
+                  sx={{ alignSelf: { xs: "stretch", sm: "auto" } }}
+                >
                   Agregar Detalle
                 </Button>
               )}
-              <Typography variant="h6">
+              <Typography variant="h6" sx={{ textAlign: { xs: "right", sm: "left" } }}>
                 Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
               </Typography>
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} disabled={formLoading}>
-            Cerrar
-          </Button>
-          {!readOnly && (
-            <Button
-              variant="contained"
-              onClick={handleSavePresupuesto}
-              disabled={formLoading || !formData.clienteId || detalles.length === 0}
-              aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
-            >
-              {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}
+
+        {!isMobile && (
+          <DialogActions
+            sx={{
+              px: { xs: 1.5, sm: 3 },
+              py: { xs: 1, sm: 1.5 },
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
+            <Button onClick={handleCloseDialog} disabled={formLoading}>
+              Cerrar
             </Button>
-          )}
-        </DialogActions>
+            {!readOnly && (
+              <Button
+                variant="contained"
+                onClick={handleSavePresupuesto}
+                disabled={formLoading || !formData.clienteId || detalles.length === 0}
+                aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
+              >
+                {formLoading ? <CircularProgress size={22} /> : editingPresupuesto ? "Actualizar" : "Crear"}
+              </Button>
+            )}
+          </DialogActions>
+        )}
       </Dialog>
     </Box>
   );
