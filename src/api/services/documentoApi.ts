@@ -5,6 +5,9 @@ import type {
   DetalleDocumento,
   MetodoPago,
   DetalleDocumentoDTO,
+  OpcionFinanciamiento,
+  CreateOpcionFinanciamientoDTO
+  
 } from '../../types';
 
 // Narrow DTO for creating presupuesto in current backend
@@ -96,6 +99,34 @@ export const documentoApi = {
   convertToFactura: async (dto: { notaPedidoId: number; descuento?: number }): Promise<DocumentoComercial> => {
     const response = await api.post('/api/documentos/factura', dto);
     return response.data;
+  },
+// Seleccionar opción de financiamiento
+  selectFinanciamiento: async (presupuestoId: number, opcionId: number): Promise<DocumentoComercial> => {
+    const response = await api.put(`/api/documentos/presupuesto/${presupuestoId}/opcion-financiamiento/${opcionId}`);
+    return response.data;
+  },
+
+  // Obtener opciones de financiamiento de un presupuesto
+  getOpcionesFinanciamiento: async (presupuestoId: number): Promise<OpcionFinanciamiento[]> => {
+    const response = await api.get(`/api/documentos/${presupuestoId}/opciones-financiamiento`);
+    return response.data;
+  },
+
+  // Crear opción de financiamiento personalizada
+  createOpcionFinanciamiento: async (presupuestoId: number, opcion: CreateOpcionFinanciamientoDTO): Promise<OpcionFinanciamiento> => {
+    const response = await api.post(`/api/documentos/${presupuestoId}/opciones-financiamiento`, opcion);
+    return response.data;
+  },
+
+  // Actualizar opción de financiamiento
+  updateOpcionFinanciamiento: async (presupuestoId: number, opcionId: number, opcion: Partial<OpcionFinanciamiento>): Promise<OpcionFinanciamiento> => {
+    const response = await api.put(`/api/documentos/${presupuestoId}/opciones-financiamiento/${opcionId}`, opcion);
+    return response.data;
+  },
+
+  // Eliminar opción de financiamiento
+  deleteOpcionFinanciamiento: async (presupuestoId: number, opcionId: number): Promise<void> => {
+    await api.delete(`/api/documentos/${presupuestoId}/opciones-financiamiento/${opcionId}`);
   },
 };
 

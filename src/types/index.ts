@@ -1654,7 +1654,59 @@ export interface DocumentoComercial {
   metodoPago: MetodoPago;
   observaciones?: string;
   detalles: DetalleDocumento[];
+  opcionesFinanciamiento?: OpcionFinanciamiento[];
+  opcionFinanciamientoSeleccionadaId?: number;
 }
+// En types/index.ts agregar:
+export interface CreateOpcionFinanciamientoDTO {
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  ordenPresentacion?: number;
+}
+
+export interface OpcionFinanciamiento {
+  id: number;
+  nombre: string;
+  metodoPago: string;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  esSeleccionada?: boolean;
+  ordenPresentacion?: number;
+}
+
+export interface Presupuesto {
+  id: number;
+  numeroDocumento: string;
+  clienteNombre: string;
+  fechaEmision: string;
+  estado: string;
+  subtotal: number;
+  total: number;
+  opcionesFinanciamiento?: OpcionFinanciamiento[];
+  opcionFinanciamientoSeleccionadaId?: number;
+}
+
+export interface OpcionFinanciamiento {
+  id?: number;
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  esSeleccionada?: boolean;
+  ordenPresentacion?: number;
+}
+
 export interface DetalleDocumento {
   id: number;
   documentoComercialId: number;

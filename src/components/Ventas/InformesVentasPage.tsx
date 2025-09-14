@@ -46,6 +46,7 @@ import {
   PieChart as PieChartIcon,
   ShowChart as ShowChartIcon,
 } from '@mui/icons-material';
+// Ensure we import named APIs from the barrel; there is no default export for clienteApi
 import { saleApi, clienteApi, usuarioApi } from '../../api/services';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
