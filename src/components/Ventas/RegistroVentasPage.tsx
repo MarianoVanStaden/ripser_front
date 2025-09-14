@@ -27,7 +27,11 @@ import {
   InputLabel,
   Select,
   Divider,
+  Stack,
+  useMediaQuery,
+  InputAdornment,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -45,7 +49,14 @@ import {
 import { saleApi, clienteApi, usuarioApi, productApi } from '../../api/services';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
 
+const formatMoney = (n: number | undefined | null) =>
+  (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const RegistroVentasPage: React.FC = () => {
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [sales, setSales] = useState<Venta[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -68,7 +79,7 @@ const RegistroVentasPage: React.FC = () => {
     total: 0,
   });
   const [editLoading, setEditLoading] = useState(false);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -79,164 +90,121 @@ const RegistroVentasPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-const loadData = async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // Fetch data for sales, clients, usuarios, and products
-    const [salesResponse, clientsResponse, usuariosResponse, productsResponse] = await Promise.all([
-      saleApi.getAll(),
-      clienteApi.getAll(),
-      usuarioApi.getAll(),
-      productApi.getAll(), // Assuming you have a productApi
-    ]);
+      const [salesResponse, clientsResponse, usuariosResponse, productsResponse] = await Promise.all([
+        saleApi.getAll(),
+        clienteApi.getAll(),
+        usuarioApi.getAll(),
+        productApi.getAll(),
+      ]);
 
-    // Extract actual data from paginated responses
-    const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
-    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
-    const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
-    const productsData = Array.isArray(productsResponse) ? productsResponse : productsResponse.content || productsResponse.data || [];
+      const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
+      const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
+      const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
+      const productsData = Array.isArray(productsResponse) ? productsResponse : productsResponse.content || productsResponse.data || [];
 
-    console.log('Sales data:', salesData);
-    console.log('Clients data:', clientsData);
-    console.log('Usuarios data:', usuariosData);
-    console.log('Products data:', productsData);
+      const clientsMap = new Map<any, Cliente>();
+      const usuariosMap = new Map<any, Usuario>();
+      const productsMap = new Map<any, any>();
 
-    // Debug the usuarios structure
-    console.log('=== USUARIOS DEBUG ===');
-    console.log('Usuarios count:', usuariosData.length);
-    if (usuariosData.length > 0) {
-      console.log('First usuario:', usuariosData[0]);
-      usuariosData.forEach((usuario, index) => {
-        console.log(`Usuario ${index}:`, {
-          id: usuario.id,
-          idType: typeof usuario.id,
-          nombre: usuario.nombre,
-          apellido: usuario.apellido,
-        });
-      });
-    }
-    console.log('=== END USUARIOS DEBUG ===');
-
-    // Create maps for faster lookups
-    const clientsMap = new Map();
-    const usuariosMap = new Map();
-    const productsMap = new Map();
-
-    // Handle clients mapping
-    if (Array.isArray(clientsData)) {
-      clientsData.forEach((client) => {
-        if (client && client.id !== undefined && client.id !== null) {
+      clientsData.forEach((client: any) => {
+        if (client?.id !== undefined && client?.id !== null) {
           clientsMap.set(client.id, client);
           clientsMap.set(String(client.id), client);
-          clientsMap.set(parseInt(client.id), client);
+          const n = parseInt(client.id, 10);
+          if (!Number.isNaN(n)) clientsMap.set(n, client);
         }
       });
-    }
 
-    // Handle usuarios mapping
-    if (Array.isArray(usuariosData)) {
-      usuariosData.forEach((usuario) => {
-        if (usuario && usuario.id !== undefined && usuario.id !== null) {
-          console.log(`Mapping usuario ID ${usuario.id} (type: ${typeof usuario.id}):`, usuario);
+      usuariosData.forEach((usuario: any) => {
+        if (usuario?.id !== undefined && usuario?.id !== null) {
           usuariosMap.set(usuario.id, usuario);
           usuariosMap.set(String(usuario.id), usuario);
-          const parsedId = parseInt(usuario.id);
-          if (!isNaN(parsedId)) {
-            usuariosMap.set(parsedId, usuario);
-          }
+          const n = parseInt(usuario.id, 10);
+          if (!Number.isNaN(n)) usuariosMap.set(n, usuario);
         }
       });
-    }
 
-    // Handle products mapping
-    if (Array.isArray(productsData)) {
-      productsData.forEach((product) => {
-        if (product && product.id !== undefined && product.id !== null) {
+      productsData.forEach((product: any) => {
+        if (product?.id !== undefined && product?.id !== null) {
           productsMap.set(product.id, product);
           productsMap.set(String(product.id), product);
-          productsMap.set(parseInt(product.id), product);
+          const n = parseInt(product.id, 10);
+          if (!Number.isNaN(n)) productsMap.set(n, product);
         }
       });
-    }
 
-    // Debug: Log the maps to see what we have
-    console.log('Usuarios map keys:', Array.from(usuariosMap.keys()));
-    console.log('Usuarios map size:', usuariosMap.size);
-    console.log('Usuario with ID 2:', usuariosMap.get(2));
-    console.log('Usuario with ID "2":', usuariosMap.get('2'));
+      const enrichedSales: Venta[] = salesData.map((sale: any) => {
+        let cliente: Cliente | null = null;
+        let usuario: Usuario | null = null;
 
-    // Enrich sales data with client, usuario, and product information
-    const enrichedSales = salesData.map((sale) => {
-      let cliente = null;
-      let usuario = null;
-
-      // Client lookup
-      if (sale.cliente && typeof sale.cliente === 'object') {
-        cliente = sale.cliente;
-      } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
-        cliente =
-          clientsMap.get(sale.clienteId) ||
-          clientsMap.get(String(sale.clienteId)) ||
-          clientsMap.get(parseInt(sale.clienteId));
-      }
-
-      // Usuario lookup
-      if (sale.usuario && typeof sale.usuario === 'object') {
-        usuario = sale.usuario;
-      } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
-        const uid = sale.usuarioId;
-        usuario =
-          usuariosMap.get(uid) ||
-          usuariosMap.get(String(uid)) ||
-          usuariosMap.get(parseInt(uid));
-        console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
-      }
-
-      // Enrich detalleVentas
-      const enrichedDetalleVentas = sale.detalleVentas?.map((detalle) => {
-        let producto = null;
-        if (detalle.producto && typeof detalle.producto === 'object') {
-          producto = detalle.producto;
-        } else if (detalle.productoId !== undefined && detalle.productoId !== null) {
-          producto =
-            productsMap.get(detalle.productoId) ||
-            productsMap.get(String(detalle.productoId)) ||
-            productsMap.get(parseInt(detalle.productoId));
+        if (sale?.cliente && typeof sale.cliente === 'object') {
+          cliente = sale.cliente as Cliente;
+        } else if (sale?.clienteId !== undefined && sale?.clienteId !== null) {
+          cliente =
+            clientsMap.get(sale.clienteId) ||
+            clientsMap.get(String(sale.clienteId)) ||
+            clientsMap.get(parseInt(sale.clienteId, 10)) ||
+            null;
         }
+
+        if (sale?.usuario && typeof sale.usuario === 'object') {
+          usuario = sale.usuario as Usuario;
+        } else if (sale?.usuarioId !== undefined && sale?.usuarioId !== null) {
+          const uid = sale.usuarioId;
+          usuario =
+            usuariosMap.get(uid) ||
+            usuariosMap.get(String(uid)) ||
+            usuariosMap.get(parseInt(uid, 10)) ||
+            null;
+        }
+
+        const enrichedDetalleVentas: DetalleVenta[] = (sale.detalleVentas || []).map((detalle: any) => {
+          let producto: any = null;
+          if (detalle?.producto && typeof detalle.producto === 'object') {
+            producto = detalle.producto;
+          } else if (detalle?.productoId !== undefined && detalle?.productoId !== null) {
+            producto =
+              productsMap.get(detalle.productoId) ||
+              productsMap.get(String(detalle.productoId)) ||
+              productsMap.get(parseInt(detalle.productoId, 10)) ||
+              null;
+          }
+          return {
+            ...detalle,
+            producto,
+            productoNombre: detalle.productoNombre || producto?.nombre,
+          };
+        });
+
         return {
-          ...detalle,
-          producto,
-          productoNombre: detalle.productoNombre || producto?.nombre, // Preserve productoNombre or use producto.nombre
-        };
-      }) || [];
+          ...sale,
+          cliente,
+          usuario,
+          detalleVentas: enrichedDetalleVentas,
+          metodoPago: sale.metodoPago || sale.metodo_pago || 'EFECTIVO',
+        } as Venta;
+      });
 
-      return {
-        ...sale,
-        cliente,
-        usuario,
-        detalleVentas: enrichedDetalleVentas, // Add enriched detalleVentas to the sale
-        metodoPago: sale.metodoPago || sale.metodo_pago || 'EFECTIVO',
-      };
-    });
-
-    setSales(enrichedSales);
-    setClients(clientsData);
-    setUsuarios(usuariosData);
-
-  } catch (err) {
-    console.error('Error loading data:', err);
-    setError('Error al cargar los datos. Verifique la conexión con el servidor.');
-  } finally {
-    setLoading(false);
-  }
-};
+      setSales(enrichedSales);
+      setClients(clientsData);
+      setUsuarios(usuariosData);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setError('Error al cargar los datos. Verifique la conexión con el servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleViewSale = (sale: Venta): void => {
-    console.log('Viewing sale:', sale);
     setViewingSale(sale);
     setViewDialogOpen(true);
   };
@@ -244,13 +212,13 @@ const loadData = async () => {
   const handleEditSale = (sale: Venta): void => {
     setEditingSale(sale);
     setEditForm({
-      numeroVenta: sale.ventaNumero || '',
+      numeroVenta: (sale as any).ventaNumero || '',
       clienteId: sale.cliente?.id?.toString() || '',
-      usuarioId: sale.usuario?.id?.toString() || sale.empleado?.id?.toString() || '',
-      estado: sale.estado || 'PENDIENTE',
-      metodoPago: sale.metodoPago as PaymentMethod || 'CASH',
+      usuarioId: sale.usuario?.id?.toString() || (sale as any).empleado?.id?.toString() || '',
+      estado: (sale as any).estado || 'PENDIENTE',
+      metodoPago: (sale.metodoPago as PaymentMethod) || 'CASH',
       fechaVenta: sale.fechaVenta ? new Date(sale.fechaVenta).toISOString().split('T')[0] : '',
-      notas: sale.observaciones || '',
+      notas: (sale as any).observaciones || '',
       total: sale.total || 0,
     });
     setEditDialogOpen(true);
@@ -258,46 +226,12 @@ const loadData = async () => {
 
   const handleUpdateSale = async (): Promise<void> => {
     if (!editingSale) return;
-
     try {
       setEditLoading(true);
       setError(null);
-
-      // For now, disable editing until API is properly mapped
-      alert('La funcionalidad de edición está en desarrollo. Las correcciones se están aplicando al sistema de visualización.');
+      alert('La funcionalidad de edición está en desarrollo.');
       setEditDialogOpen(false);
       setEditingSale(null);
-      
-      /* 
-      // TODO: Map to correct API format when backend is ready
-      const updatedSaleData = {
-        clientId: parseInt(editForm.clienteId),
-        employeeId: parseInt(editForm.usuarioId),
-        saleDate: editForm.fechaVenta,
-        paymentMethod: editForm.metodoPago,
-        notes: editForm.notas,
-        // Add other required fields
-      };
-
-      const updatedSale = await saleApi.update(editingSale.id, updatedSaleData);
-      
-      // Update the local state with enriched data
-      const clientsMap = new Map(clients.map((client: Cliente) => [client.id, client]));
-      const usuariosMap = new Map(usuarios.map((usuario: Usuario) => [usuario.id, usuario]));
-      
-      const enrichedUpdatedSale = {
-        ...updatedSale,
-        cliente: clientsMap.get(parseInt(editForm.clienteId)) || null,
-        usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || null,
-      };
-
-      setSales(prevSales => 
-        prevSales.map(sale => 
-          sale.id === editingSale.id ? enrichedUpdatedSale : sale
-        )
-      );
-      */
-      
     } catch (err) {
       console.error('Error updating sale:', err);
       setError('Error al actualizar la venta. Verifique los datos e intente nuevamente.');
@@ -307,30 +241,29 @@ const loadData = async () => {
   };
 
   const handleEditFormChange = (field: string, value: string | number): void => {
-    setEditForm(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+    setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const getStatusLabel = (status: string): string => {
     const statusLabels: Record<string, string> = {
-      'PENDIENTE': 'Pendiente',
-      'ENVIADA': 'Enviada', 
-      'CANCELADA': 'Cancelada',
-      'ENTREGADA': 'Entregada',
-      'CONFIRMADA': 'Confirmada',
+      PENDIENTE: 'Pendiente',
+      ENVIADA: 'Enviada',
+      CANCELADA: 'Cancelada',
+      ENTREGADA: 'Entregada',
+      CONFIRMADA: 'Confirmada',
     };
     return statusLabels[status] || status;
   };
 
-  const getStatusColor = (status: string): 'warning' | 'info' | 'error' | 'success' | 'default' => {
+  const getStatusColor = (
+    status: string,
+  ): 'warning' | 'info' | 'error' | 'success' | 'default' => {
     const statusColors: Record<string, 'warning' | 'info' | 'error' | 'success' | 'default'> = {
-      'PENDIENTE': 'warning',
-      'ENVIADA': 'info',
-      'CANCELADA': 'error',
-      'ENTREGADA': 'success',
-      'CONFIRMADA': 'success',
+      PENDIENTE: 'warning',
+      ENVIADA: 'info',
+      CANCELADA: 'error',
+      ENTREGADA: 'success',
+      CONFIRMADA: 'success',
     };
     return statusColors[status] || 'default';
   };
@@ -344,52 +277,51 @@ const loadData = async () => {
       TARJETA_CREDITO: 'Tarjeta de Crédito',
       TARJETA_DEBITO: 'Tarjeta de Débito',
       TRANSFERENCIA_BANCARIA: 'Transferencia',
-
-    };
-    return methods[method] || method;
+    } as any;
+    return (methods as any)[method] || (method as any);
   };
 
-  // Helper function to get client full name
   const getClientFullName = (cliente: Cliente | null): string => {
     if (!cliente) return 'Cliente no disponible';
-    
-    // If it's a business (persona jurídica), prioritize razón social
-    if (cliente.razonSocial && cliente.razonSocial.trim()) {
-      return cliente.razonSocial;
+    if ((cliente as any).razonSocial && (cliente as any).razonSocial.trim()) {
+      return (cliente as any).razonSocial;
     }
-    
-    // Otherwise, use name and lastname
     const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
     return parts.length > 0 ? parts.join(' ') : 'Cliente no disponible';
   };
 
-  // Helper function to get usuario full name
   const getUsuarioFullName = (usuario: Usuario | null): string => {
     if (!usuario) return 'Vendedor no disponible';
-    
     const parts = [usuario.nombre, usuario.apellido].filter(Boolean);
     return parts.length > 0 ? parts.join(' ') : 'Vendedor no disponible';
   };
 
   const filteredSales = sales.filter((sale: Venta) => {
     const clientName = getClientFullName(sale.cliente || null);
-    const usuarioName = getUsuarioFullName((sale.usuario || sale.empleado) as Usuario || null);
-    
-    const matchesSearch = searchTerm === '' || 
-      sale.ventaNumero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const usuarioName = getUsuarioFullName(((sale as any).usuario || (sale as any).empleado) as Usuario || null);
+
+    const matchesSearch =
+      searchTerm === '' ||
+      (sale as any).ventaNumero?.toLowerCase?.().includes(searchTerm.toLowerCase()) ||
       clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       usuarioName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
-    const matchesPaymentMethod = paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter;
+    const matchesStatus = statusFilter === 'all' || (sale as any).estado === statusFilter;
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || (sale as any).metodoPago === paymentMethodFilter;
     const matchesClient = clientFilter === 'all' || sale.cliente?.id?.toString() === clientFilter;
 
-    const saleDate = new Date(sale.fechaVenta);
-    const matchesDateFrom = !dateFromFilter || saleDate >= new Date(dateFromFilter);
-    const matchesDateTo = !dateToFilter || saleDate <= new Date(dateToFilter);
+    const saleDate = sale.fechaVenta ? new Date(sale.fechaVenta) : null;
+    const matchesDateFrom = !dateFromFilter || (saleDate && saleDate >= new Date(dateFromFilter));
+    const matchesDateTo = !dateToFilter || (saleDate && saleDate <= new Date(dateToFilter));
 
-    return matchesSearch && matchesStatus && matchesPaymentMethod && 
-           matchesClient && matchesDateFrom && matchesDateTo;
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesPaymentMethod &&
+      matchesClient &&
+      matchesDateFrom &&
+      matchesDateTo
+    );
   });
 
   const clearFilters = (): void => {
@@ -401,16 +333,9 @@ const loadData = async () => {
     setDateToFilter('');
   };
 
-  const calculateTotals = () => {
-    const totalRevenue = filteredSales.reduce((sum: number, sale: Venta) => 
-      sum + (sale.total || 0), 0);
-    const totalTransactions = filteredSales.length;
-    const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
-
-    return { totalRevenue, totalTransactions, averageOrderValue };
-  };
-
-  const { totalRevenue, totalTransactions, averageOrderValue } = calculateTotals();
+  const totalRevenue = filteredSales.reduce((sum: number, sale: Venta) => sum + (sale.total || 0), 0);
+  const totalTransactions = filteredSales.length;
+  const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
 
   if (loading) {
     return (
@@ -421,14 +346,23 @@ const loadData = async () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, md: 3 }}>
+      {/* Header */}
+      <Box
+        display="flex"
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        gap={2}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        mb={3}
+      >
+        <Typography variant={isSmDown ? 'h5' : 'h4'} display="flex" alignItems="center" gap={1}>
           <ReceiptIcon />
           Registro de Ventas
         </Typography>
-        <Box display="flex" gap={1}>
+        <Box display="flex" gap={1} width={{ xs: '100%', sm: 'auto' }}>
           <Button
+            fullWidth={isSmDown}
             variant="outlined"
             startIcon={<GetAppIcon />}
             onClick={() => alert('Función de exportación en desarrollo')}
@@ -436,6 +370,7 @@ const loadData = async () => {
             Exportar
           </Button>
           <Button
+            fullWidth={isSmDown}
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => alert('Ir a Facturación para crear nueva venta')}
@@ -452,47 +387,41 @@ const loadData = async () => {
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={4}>
+      <Grid container spacing={2} mb={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
                 <AttachMoneyIcon color="primary" />
                 <Box>
-                  <Typography variant="h6">${totalRevenue.toLocaleString()}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Ingresos Totales
-                  </Typography>
+                  <Typography variant="h6">${formatMoney(totalRevenue)}</Typography>
+                  <Typography variant="body2" color="text.secondary">Ingresos Totales</Typography>
                 </Box>
               </Box>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
                 <ShoppingCartIcon color="success" />
                 <Box>
                   <Typography variant="h6">{totalTransactions}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Ventas
-                  </Typography>
+                  <Typography variant="body2" color="text.secondary">Total Ventas</Typography>
                 </Box>
               </Box>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
                 <TrendingUpIcon color="warning" />
                 <Box>
-                  <Typography variant="h6">${averageOrderValue.toFixed(2)}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Valor Promedio
-                  </Typography>
+                  <Typography variant="h6">${formatMoney(averageOrderValue)}</Typography>
+                  <Typography variant="body2" color="text.secondary">Valor Promedio</Typography>
                 </Box>
               </Box>
             </CardContent>
@@ -518,18 +447,18 @@ const loadData = async () => {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por número, cliente..."
                 InputProps={{
-                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Estado"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
+                <Select value={statusFilter} label="Estado" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="PENDIENTE">Pendiente</MenuItem>
                   <MenuItem value="ENVIADA">Enviada</MenuItem>
@@ -539,14 +468,10 @@ const loadData = async () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Método de Pago</InputLabel>
-                <Select
-                  value={paymentMethodFilter}
-                  label="Método de Pago"
-                  onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                >
+                <Select value={paymentMethodFilter} label="Método de Pago" onChange={(e) => setPaymentMethodFilter(e.target.value)}>
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="EFECTIVO">Efectivo</MenuItem>
                   <MenuItem value="CHEQUE">Cheque</MenuItem>
@@ -555,28 +480,23 @@ const loadData = async () => {
                   <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
                   <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
                   <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
-
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Cliente</InputLabel>
-                <Select
-                  value={clientFilter}
-                  label="Cliente"
-                  onChange={(e) => setClientFilter(e.target.value)}
-                >
+                <Select value={clientFilter} label="Cliente" onChange={(e) => setClientFilter(e.target.value)}>
                   <MenuItem value="all">Todos</MenuItem>
                   {clients.map((client: Cliente) => (
-                    <MenuItem key={client.id} value={client.id.toString()}>
+                    <MenuItem key={client.id} value={client.id?.toString?.() || String(client.id)}>
                       {getClientFullName(client)}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid item xs={12} sm={6} md={2}>
               <TextField
                 fullWidth
                 label="Desde"
@@ -587,7 +507,7 @@ const loadData = async () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid item xs={12} sm={6} md={2}>
               <TextField
                 fullWidth
                 label="Hasta"
@@ -599,144 +519,159 @@ const loadData = async () => {
               />
             </Grid>
           </Grid>
-          <Box mt={2}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={clearFilters}
-            >
+          <Box mt={2} display="flex" justifyContent={{ xs: 'stretch', sm: 'flex-start' }}>
+            <Button variant="outlined" size="small" onClick={clearFilters} fullWidth={isSmDown}>
               Limpiar Filtros
             </Button>
           </Box>
         </CardContent>
       </Card>
 
-      {/* Sales Table */}
-      <Card>
-        <CardContent>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Vendedor</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Total</TableCell>
-                  <TableCell>Método de Pago</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredSales.map((sale: Venta) => (
-                  <TableRow key={sale.id}>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="bold">
-                        #{sale.id}
-                      </Typography>
-                      {sale.ventaNumero && (
-                        <Typography variant="caption" color="text.secondary">
-                          {sale.ventaNumero}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {sale.fechaVenta ? new Date(sale.fechaVenta).toLocaleDateString() : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body2">
-                          {getClientFullName(sale.cliente || null)}
-                        </Typography>
-                        {sale.cliente?.email && (
+      {/* Sales List/Table - responsive switch */}
+      {isMdUp ? (
+        <Card>
+          <CardContent>
+            <TableContainer sx={{ maxHeight: 600, overflowX: 'auto' }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Fecha</TableCell>
+                    <TableCell>Cliente</TableCell>
+                    <TableCell>Vendedor</TableCell>
+                    <TableCell>Estado</TableCell>
+                    <TableCell>Total</TableCell>
+                    <TableCell>Método de Pago</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredSales.map((sale: Venta) => (
+                    <TableRow key={sale.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">#{sale.id}</Typography>
+                        {(sale as any).ventaNumero && (
                           <Typography variant="caption" color="text.secondary">
-                            {sale.cliente.email}
+                            {(sale as any).ventaNumero}
                           </Typography>
                         )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {getUsuarioFullName((sale.usuario || sale.empleado) as Usuario || null)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getStatusLabel(sale.estado)}
-                        color={getStatusColor(sale.estado)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="bold">
-                        ${(sale.total || 0).toLocaleString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getPaymentMethodLabel(sale.metodoPago as PaymentMethod || 'EFECTIVO')}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleViewSale(sale)}
-                        title="Ver detalles"
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEditSale(sale)}
-                        title="Editar"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => alert('Función de impresión en desarrollo')}
-                        title="Imprimir"
-                      >
-                        <PrintIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setVentaToDelete(sale);
-                          setDeleteDialogOpen(true);
-                        }}
-                        title="Eliminar"
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredSales.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      <Typography color="text.secondary">
-                        No se encontraron ventas que coincidan con los filtros aplicados
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
+                      </TableCell>
+                      <TableCell>{sale.fechaVenta ? new Date(sale.fechaVenta).toLocaleDateString() : '-'}</TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2">{getClientFullName(sale.cliente || null)}</Typography>
+                          {sale.cliente?.email && (
+                            <Typography variant="caption" color="text.secondary">{sale.cliente.email}</Typography>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{getUsuarioFullName(((sale as any).usuario || (sale as any).empleado) as Usuario || null)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={getStatusLabel((sale as any).estado)} color={getStatusColor((sale as any).estado)} size="small" />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">${(sale.total || 0).toLocaleString()}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={getPaymentMethodLabel(((sale as any).metodoPago as PaymentMethod) || 'EFECTIVO')} size="small" color="primary" variant="outlined" />
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton size="small" onClick={() => handleViewSale(sale)} title="Ver detalles" aria-label={`ver venta ${sale.id}`}>
+                          <VisibilityIcon />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleEditSale(sale)} title="Editar" aria-label={`editar venta ${sale.id}`}>
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => alert('Función de impresión en desarrollo')} title="Imprimir" aria-label={`imprimir venta ${sale.id}`}>
+                          <PrintIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setVentaToDelete(sale);
+                            setDeleteDialogOpen(true);
+                          }}
+                          title="Eliminar"
+                          color="error"
+                          aria-label={`eliminar venta ${sale.id}`}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredSales.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center">
+                        <Typography color="text.secondary">No se encontraron ventas que coincidan con los filtros aplicados</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      ) : (
+        // MOBILE / TABLET: Card list view
+        <Stack spacing={2}>
+          {filteredSales.length === 0 && (
+            <Alert severity="info">No se encontraron ventas que coincidan con los filtros aplicados</Alert>
+          )}
+          {filteredSales.map((sale: Venta) => (
+            <Card key={sale.id} variant="outlined">
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" gap={2} alignItems="flex-start" flexWrap="wrap">
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700}>#{sale.id} {(sale as any).ventaNumero ? `· ${(sale as any).ventaNumero}` : ''}</Typography>
+                    <Typography variant="body2" color="text.secondary">{sale.fechaVenta ? new Date(sale.fechaVenta).toLocaleDateString() : '-'}</Typography>
+                  </Box>
+                  <Chip label={getStatusLabel((sale as any).estado)} color={getStatusColor((sale as any).estado)} size="small"/>
+                </Box>
+
+                <Box mt={1.5}>
+                  <Typography variant="body2"><strong>Cliente:</strong> {getClientFullName(sale.cliente || null)}</Typography>
+                  <Typography variant="body2"><strong>Vendedor:</strong> {getUsuarioFullName(((sale as any).usuario || (sale as any).empleado) as Usuario || null)}</Typography>
+                </Box>
+
+                <Box mt={1.5} display="flex" justifyContent="space-between" flexWrap="wrap" gap={1}>
+                  <Chip label={`Total $${(sale.total || 0).toLocaleString()}`} variant="outlined"/>
+                  <Chip label={getPaymentMethodLabel(((sale as any).metodoPago as PaymentMethod) || 'EFECTIVO')} variant="outlined"/>
+                </Box>
+
+                <Box mt={1.5} display="flex" gap={1}>
+                  <Button size="small" startIcon={<VisibilityIcon />} onClick={() => handleViewSale(sale)}>
+                    Ver
+                  </Button>
+                  <Button size="small" startIcon={<EditIcon />} onClick={() => handleEditSale(sale)}>
+                    Editar
+                  </Button>
+                  <IconButton size="small" onClick={() => alert('Función de impresión en desarrollo')} aria-label="imprimir">
+                    <PrintIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      setVentaToDelete(sale);
+                      setDeleteDialogOpen(true);
+                    }}
+                    color="error"
+                    aria-label="eliminar"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
 
       {/* View Sale Dialog */}
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Detalles de la Venta
-        </DialogTitle>
+        <DialogTitle>Detalles de la Venta</DialogTitle>
         <DialogContent>
           {viewingSale && (
             <Box>
@@ -744,9 +679,9 @@ const loadData = async () => {
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 1 }}>
                     <Typography><strong>Número:</strong> #{viewingSale?.id}</Typography>
-                    <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
-                    <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
-                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'EFECTIVO')}</Typography>
+                    <Typography><strong>Fecha:</strong> {viewingSale.fechaVenta ? new Date(viewingSale.fechaVenta).toLocaleDateString() : '-'}</Typography>
+                    <Typography><strong>Estado:</strong> {getStatusLabel((viewingSale as any).estado)}</Typography>
+                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(((viewingSale as any).metodoPago as PaymentMethod) || 'EFECTIVO')}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -755,22 +690,16 @@ const loadData = async () => {
                       <strong>Cliente:</strong> {getClientFullName(viewingSale.cliente || null)}
                     </Typography>
                     {viewingSale.cliente?.email && (
-                      <Typography variant="body2" color="text.secondary">
-                        Email: {viewingSale.cliente.email}
-                      </Typography>
+                      <Typography variant="body2" color="text.secondary">Email: {viewingSale.cliente.email}</Typography>
                     )}
                     {viewingSale.cliente?.telefono && (
-                      <Typography variant="body2" color="text.secondary">
-                        Teléfono: {viewingSale.cliente.telefono}
-                      </Typography>
+                      <Typography variant="body2" color="text.secondary">Teléfono: {viewingSale.cliente.telefono}</Typography>
                     )}
-                    {viewingSale.cliente?.cuit && (
-                      <Typography variant="body2" color="text.secondary">
-                        CUIT: {viewingSale.cliente.cuit}
-                      </Typography>
+                    {(viewingSale as any).cliente?.cuit && (
+                      <Typography variant="body2" color="text.secondary">CUIT: {(viewingSale as any).cliente.cuit}</Typography>
                     )}
                     <Typography sx={{ mt: 2 }}>
-                      <strong>Vendedor:</strong> {getUsuarioFullName((viewingSale.usuario || viewingSale.empleado) as Usuario || null)}
+                      <strong>Vendedor:</strong> {getUsuarioFullName(((viewingSale as any).usuario || (viewingSale as any).empleado) as Usuario || null)}
                     </Typography>
                   </Box>
                 </Grid>
@@ -795,53 +724,41 @@ const loadData = async () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-  {viewingSale.detalleVentas.map((item: DetalleVenta, index: number) => (
-    <TableRow key={item.id || index}>
-      <TableCell>
-        <Typography variant="body2">
-          {item.productoNombre || item.producto?.nombre || 'Producto no disponible'}
-        </Typography>
-        {item.producto?.descripcion && (
-          <Typography variant="caption" color="text.secondary">
-            {item.producto.descripcion}
-          </Typography>
-        )}
-      </TableCell>
-      <TableCell align="center">{item.cantidad}</TableCell>
-      <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>
-      <TableCell align="right">{item.descuento || 0}%</TableCell>
-      <TableCell align="right">
-        <Typography variant="body2" fontWeight="bold">
-          ${item.subtotal?.toFixed(2) || '0.00'}
-        </Typography>
-      </TableCell>
-    </TableRow>
-  ))}
-</TableBody>
+                        {viewingSale.detalleVentas.map((item: DetalleVenta, index: number) => (
+                          <TableRow key={(item as any).id || index}>
+                            <TableCell>
+                              <Typography variant="body2">{(item as any).productoNombre || (item as any).producto?.nombre || 'Producto no disponible'}</Typography>
+                              {(item as any).producto?.descripcion && (
+                                <Typography variant="caption" color="text.secondary">{(item as any).producto.descripcion}</Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="center">{(item as any).cantidad}</TableCell>
+                            <TableCell align="right">${(item as any).precioUnitario?.toFixed?.(2) || '0.00'}</TableCell>
+                            <TableCell align="right">{(item as any).descuento || 0}%</TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight="bold">${(item as any).subtotal?.toFixed?.(2) || '0.00'}</Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
                     </Table>
                   </TableContainer>
                 </>
               ) : (
-                <Alert severity="info">
-                  No hay productos asociados a esta venta
-                </Alert>
+                <Alert severity="info">No hay productos asociados a esta venta</Alert>
               )}
 
-              <Box mt={3} display="flex" justifyContent="space-between" alignItems="center">
+              <Box mt={3} display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
                 <Box>
-                  {(viewingSale.notas || viewingSale.observaciones) && (
+                  {((viewingSale as any).notas || (viewingSale as any).observaciones) && (
                     <>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Notas
-                      </Typography>
-                      <Typography variant="body2">
-                        {viewingSale.notas || viewingSale.observaciones}
-                      </Typography>
+                      <Typography variant="subtitle2" color="text.secondary">Notas</Typography>
+                      <Typography variant="body2">{(viewingSale as any).notas || (viewingSale as any).observaciones}</Typography>
                     </>
                   )}
                 </Box>
-                <Typography variant="h5" color="primary" fontWeight="bold">
-                  Total: ${(viewingSale.total || 0).toLocaleString()}
+                <Typography variant={isSmDown ? 'h6' : 'h5'} color="primary" fontWeight="bold">
+                  Total: ${formatMoney(viewingSale.total)}
                 </Typography>
               </Box>
             </Box>
@@ -849,30 +766,19 @@ const loadData = async () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setViewDialogOpen(false)}>Cerrar</Button>
-          <Button
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={() => alert('Función de impresión en desarrollo')}
-          >
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => alert('Función de impresión en desarrollo')}>
             Imprimir
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit Sale Dialog */}
-      <Dialog 
-        open={editDialogOpen} 
-        onClose={() => setEditDialogOpen(false)} 
-        maxWidth="md" 
-        fullWidth
-      >
-        <DialogTitle>
-          Editar Venta #{editingSale?.id}
-        </DialogTitle>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Editar Venta #{editingSale?.id}</DialogTitle>
         <DialogContent>
           {editingSale && (
             <Box sx={{ mt: 2 }}>
-              <Grid container spacing={3}>
+              <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
@@ -883,7 +789,6 @@ const loadData = async () => {
                     size="small"
                   />
                 </Grid>
-                
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
@@ -896,49 +801,34 @@ const loadData = async () => {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Cliente</InputLabel>
-                    <Select
-                      value={editForm.clienteId}
-                      label="Cliente"
-                      onChange={(e) => handleEditFormChange('clienteId', e.target.value)}
-                    >
+                    <Select value={editForm.clienteId} label="Cliente" onChange={(e) => handleEditFormChange('clienteId', e.target.value)}>
                       {clients.map((client: Cliente) => (
-                        <MenuItem key={client.id} value={client.id.toString()}>
+                        <MenuItem key={client.id} value={client.id?.toString?.() || String(client.id)}>
                           {getClientFullName(client)}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Grid>
-
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Vendedor</InputLabel>
-                    <Select
-                      value={editForm.usuarioId}
-                      label="Vendedor"
-                      onChange={(e) => handleEditFormChange('usuarioId', e.target.value)}
-                    >
+                    <Select value={editForm.usuarioId} label="Vendedor" onChange={(e) => handleEditFormChange('usuarioId', e.target.value)}>
                       {usuarios.map((usuario: Usuario) => (
-                        <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                        <MenuItem key={usuario.id} value={usuario.id?.toString?.() || String(usuario.id)}>
                           {getUsuarioFullName(usuario)}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Grid>
-
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Estado</InputLabel>
-                    <Select
-                      value={editForm.estado}
-                      label="Estado"
-                      onChange={(e) => handleEditFormChange('estado', e.target.value)}
-                    >
+                    <Select value={editForm.estado} label="Estado" onChange={(e) => handleEditFormChange('estado', e.target.value)}>
                       <MenuItem value="PENDIENTE">Pendiente</MenuItem>
                       <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
                       <MenuItem value="ENVIADA">Enviada</MenuItem>
@@ -947,15 +837,10 @@ const loadData = async () => {
                     </Select>
                   </FormControl>
                 </Grid>
-
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Método de Pago</InputLabel>
-                    <Select
-                      value={editForm.metodoPago}
-                      label="Método de Pago"
-                      onChange={(e) => handleEditFormChange('metodoPago', e.target.value as PaymentMethod)}
-                    >
+                    <Select value={editForm.metodoPago} label="Método de Pago" onChange={(e) => handleEditFormChange('metodoPago', e.target.value as PaymentMethod)}>
                       <MenuItem value="EFECTIVO">Efectivo</MenuItem>
                       <MenuItem value="CHEQUE">Cheque</MenuItem>
                       <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
@@ -963,11 +848,9 @@ const loadData = async () => {
                       <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
                       <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
                       <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
-
                     </Select>
                   </FormControl>
                 </Grid>
-
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
@@ -977,12 +860,9 @@ const loadData = async () => {
                     onChange={(e) => handleEditFormChange('total', parseFloat(e.target.value) || 0)}
                     variant="outlined"
                     size="small"
-                    InputProps={{
-                      startAdornment: <Typography variant="body2" sx={{ mr: 1 }}>$</Typography>,
-                    }}
+                    InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                   />
                 </Grid>
-
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
@@ -996,8 +876,7 @@ const loadData = async () => {
                     placeholder="Agregar notas adicionales sobre la venta..."
                   />
                 </Grid>
-
-                {/* Current Sale Details Summary */}
+                {/* Resumen */}
                 <Grid item xs={12}>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -1005,25 +884,17 @@ const loadData = async () => {
                   </Typography>
                   <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente || null)}
-                        </Typography>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2"><strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente || null)}</Typography>
                       </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Vendedor Actual:</strong> {getUsuarioFullName((editingSale.usuario || editingSale.empleado) as Usuario || null)}
-                        </Typography>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2"><strong>Vendedor Actual:</strong> {getUsuarioFullName(((editingSale as any).usuario || (editingSale as any).empleado) as Usuario || null)}</Typography>
                       </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Estado Actual:</strong> {getStatusLabel(editingSale.estado)}
-                        </Typography>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2"><strong>Estado Actual:</strong> {getStatusLabel((editingSale as any).estado)}</Typography>
                       </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2">
-                          <strong>Total Actual:</strong> ${(editingSale.total || 0).toLocaleString()}
-                        </Typography>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="body2"><strong>Total Actual:</strong> ${(editingSale.total || 0).toLocaleString()}</Typography>
                       </Grid>
                     </Grid>
                   </Box>
@@ -1034,12 +905,7 @@ const loadData = async () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
-          <Button
-            onClick={handleUpdateSale}
-            color="primary"
-            variant="contained"
-            disabled={editLoading}
-          >
+          <Button onClick={handleUpdateSale} color="primary" variant="contained" disabled={editLoading}>
             {editLoading ? <CircularProgress size={24} /> : 'Guardar Cambios'}
           </Button>
         </DialogActions>
@@ -1050,7 +916,7 @@ const loadData = async () => {
         <DialogTitle>Eliminar venta</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Está seguro que desea eliminar la venta <b>{ventaToDelete?.ventaNumero || ventaToDelete?.numeroVenta || `#${ventaToDelete?.id}`}</b>?
+            ¿Está seguro que desea eliminar la venta <b>{(ventaToDelete as any)?.ventaNumero || (ventaToDelete as any)?.numeroVenta || `#${ventaToDelete?.id}`}</b>?
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -1061,8 +927,8 @@ const loadData = async () => {
             onClick={async () => {
               if (ventaToDelete) {
                 try {
-                  await saleApi.delete(ventaToDelete.id);
-                  setSales(sales.filter(sale => sale.id !== ventaToDelete.id));
+                  await saleApi.delete(ventaToDelete.id as any);
+                  setSales((prev) => prev.filter((s) => s.id !== ventaToDelete.id));
                   setDeleteDialogOpen(false);
                   setError(null);
                 } catch (err) {
@@ -1080,22 +946,12 @@ const loadData = async () => {
       {/* Integration Info */}
       <Box mt={3}>
         <Alert severity="info">
-          <Typography variant="body2">
-            <strong>Este módulo integra con:</strong>
-          </Typography>
+          <Typography variant="body2"><strong>Este módulo integra con:</strong></Typography>
           <Box component="ul" mt={1} sx={{ pl: 2 }}>
-            <Typography component="li" variant="body2">
-              <strong>Facturación:</strong> Para crear y editar ventas
-            </Typography>
-            <Typography component="li" variant="body2">
-              <strong>Presupuestos:</strong> Para convertir presupuestos en ventas
-            </Typography>
-            <Typography component="li" variant="body2">
-              <strong>Informes:</strong> Para análisis detallado de ventas
-            </Typography>
-            <Typography component="li" variant="body2">
-              <strong>Inventario:</strong> Para control de stock
-            </Typography>
+            <Typography component="li" variant="body2"><strong>Facturación:</strong> Para crear y editar ventas</Typography>
+            <Typography component="li" variant="body2"><strong>Presupuestos:</strong> Para convertir presupuestos en ventas</Typography>
+            <Typography component="li" variant="body2"><strong>Informes:</strong> Para análisis detallado de ventas</Typography>
+            <Typography component="li" variant="body2"><strong>Inventario:</strong> Para control de stock</Typography>
           </Box>
         </Alert>
       </Box>
