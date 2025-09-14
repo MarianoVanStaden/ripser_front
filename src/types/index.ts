@@ -1232,6 +1232,23 @@ export interface Venta {
   detalleVentas: DetalleVenta[];
 }
 export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE';
+
+// DTO para crear una Venta desde el frontend
+export interface CreateVentaDTO {
+  clienteId: number;
+  empleadoId: number; // usamos el usuario seleccionado como empleado responsable
+  usuarioId?: number; // opcional si el backend lo acepta
+  fechaVenta: string; // YYYY-MM-DD
+  metodoPago: MetodoPago;
+  observaciones?: string;
+  tipoIva?: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  detalleVentas: Array<{
+    productoId: number;
+    cantidad: number;
+    precioUnitario: number;
+    descuento?: number;
+  }>;
+}
 // Vehiculo (Vehicle)
 export interface Vehiculo {
   id: number;
@@ -1637,7 +1654,59 @@ export interface DocumentoComercial {
   metodoPago: MetodoPago;
   observaciones?: string;
   detalles: DetalleDocumento[];
+  opcionesFinanciamiento?: OpcionFinanciamiento[];
+  opcionFinanciamientoSeleccionadaId?: number;
 }
+// En types/index.ts agregar:
+export interface CreateOpcionFinanciamientoDTO {
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  ordenPresentacion?: number;
+}
+
+export interface OpcionFinanciamiento {
+  id: number;
+  nombre: string;
+  metodoPago: string;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  esSeleccionada?: boolean;
+  ordenPresentacion?: number;
+}
+
+export interface Presupuesto {
+  id: number;
+  numeroDocumento: string;
+  clienteNombre: string;
+  fechaEmision: string;
+  estado: string;
+  subtotal: number;
+  total: number;
+  opcionesFinanciamiento?: OpcionFinanciamiento[];
+  opcionFinanciamientoSeleccionadaId?: number;
+}
+
+export interface OpcionFinanciamiento {
+  id?: number;
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  esSeleccionada?: boolean;
+  ordenPresentacion?: number;
+}
+
 export interface DetalleDocumento {
   id: number;
   documentoComercialId: number;

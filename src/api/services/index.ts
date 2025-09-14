@@ -8,6 +8,7 @@ export { saleApi } from "./saleApi";
 export { presupuestoApi } from "./presupuestoApi";
 export { serviceApi, serviceAppointmentApi } from "./serviceApi";
 export { supplierApi } from "./supplierApi";
+export { documentoApi } from "./documentoApi";
 export {
   stockMovementApi,
   warehouseApi,
