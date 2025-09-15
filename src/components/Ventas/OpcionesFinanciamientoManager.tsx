@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// OpcionesFinanciamientoManager.tsx
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -21,44 +22,41 @@ import {
   Alert,
   Slider,
   InputAdornment,
+  CircularProgress,
+  Snackbar,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Calculate as CalculateIcon,
+  Save as SaveIcon,
 } from "@mui/icons-material";
-
-interface OpcionFinanciamiento {
-  id?: number;
-  nombre: string;
-  metodoPago: string;
-  cantidadCuotas: number;
-  tasaInteres: number;
-  montoTotal?: number;
-  montoCuota?: number;
-  descripcion?: string;
-  ordenPresentacion?: number;
-}
+import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
+import type { OpcionFinanciamientoDTO } from "../../types";
 
 interface OpcionesFinanciamientoManagerProps {
   open: boolean;
   onClose: () => void;
   montoBase: number;
-  opciones: OpcionFinanciamiento[];
-  onSave: (opciones: OpcionFinanciamiento[]) => void;
+  documentoId?: number; // optional: we guard at runtime
+  onSave?: (opciones: OpcionFinanciamientoDTO[]) => void;
 }
 
 const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps> = ({
   open,
   onClose,
   montoBase,
-  opciones: opcionesIniciales,
+  documentoId,
   onSave,
 }) => {
-  const [opciones, setOpciones] = useState<OpcionFinanciamiento[]>(opcionesIniciales);
-  const [editingOpcion, setEditingOpcion] = useState<OpcionFinanciamiento | null>(null);
-  const [formData, setFormData] = useState<OpcionFinanciamiento>({
+  const [opciones, setOpciones] = useState<OpcionFinanciamientoDTO[]>([]);
+  const [editingOpcion, setEditingOpcion] = useState<OpcionFinanciamientoDTO | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [formData, setFormData] = useState<Partial<OpcionFinanciamientoDTO>>({
     nombre: "",
     metodoPago: "EFECTIVO",
     cantidadCuotas: 1,
@@ -76,17 +74,44 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
     { value: "CHEQUE", label: "Cheque" },
   ];
 
+  // Load existing options when dialog opens
+  useEffect(() => {
+    if (open && documentoId) {
+      cargarOpciones();
+    } else if (open && !documentoId) {
+      setOpciones([]);
+    }
+  }, [open, documentoId]);
+
+  const cargarOpciones = async () => {
+    setLoading(true);
+    try {
+      const opcionesCargadas = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(documentoId);
+      setOpciones(opcionesCargadas);
+    } catch (error) {
+      console.error('Error cargando opciones:', error);
+      setSnackbar({ 
+        open: true, 
+        message: 'Error al cargar las opciones de financiamiento', 
+        severity: 'error' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const calcularMontos = (cantidadCuotas: number, tasaInteres: number) => {
     const montoConInteres = montoBase * (1 + tasaInteres / 100);
     const montoCuota = montoConInteres / cantidadCuotas;
     return {
-      montoTotal: montoConInteres,
-      montoCuota: montoCuota,
+      montoTotal: Number(montoConInteres.toFixed(2)),
+      montoCuota: Number(montoCuota.toFixed(2)),
     };
   };
 
   const handleAddOpcion = () => {
     setEditingOpcion(null);
+    setEditingIndex(null);
     setFormData({
       nombre: "",
       metodoPago: "EFECTIVO",
@@ -97,27 +122,53 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
     setFormOpen(true);
   };
 
-  const handleEditOpcion = (opcion: OpcionFinanciamiento) => {
+  const handleEditOpcion = (opcion: OpcionFinanciamientoDTO, index: number) => {
     setEditingOpcion(opcion);
+    setEditingIndex(index);
     setFormData(opcion);
     setFormOpen(true);
   };
 
-  const handleDeleteOpcion = (index: number) => {
+  const handleDeleteOpcion = async (opcion: OpcionFinanciamientoDTO, index: number) => {
+    if (opcion.id) {
+      // If it has an ID, it exists in the database
+      try {
+        await opcionFinanciamientoApi.eliminar(opcion.id);
+        setSnackbar({ 
+          open: true, 
+          message: 'Opción eliminada correctamente', 
+          severity: 'success' 
+        });
+      } catch (error) {
+        setSnackbar({ 
+          open: true, 
+          message: 'Error al eliminar la opción', 
+          severity: 'error' 
+        });
+        return;
+      }
+    }
+    // Remove from local state
     setOpciones(opciones.filter((_, i) => i !== index));
   };
 
   const handleSaveOpcion = () => {
-    const { montoTotal, montoCuota } = calcularMontos(formData.cantidadCuotas, formData.tasaInteres);
-    const opcionCompleta = {
-      ...formData,
+    const { montoTotal, montoCuota } = calcularMontos(
+      formData.cantidadCuotas || 1, 
+      formData.tasaInteres || 0
+    );
+    
+    const opcionCompleta: OpcionFinanciamientoDTO = {
+      ...formData as OpcionFinanciamientoDTO,
       montoTotal,
       montoCuota,
-      ordenPresentacion: editingOpcion ? editingOpcion.ordenPresentacion : opciones.length + 1,
+      ordenPresentacion: editingIndex !== null ? editingIndex + 1 : opciones.length + 1,
     };
 
-    if (editingOpcion) {
-      setOpciones(opciones.map((o) => (o === editingOpcion ? opcionCompleta : o)));
+    if (editingIndex !== null) {
+      const nuevasOpciones = [...opciones];
+      nuevasOpciones[editingIndex] = opcionCompleta;
+      setOpciones(nuevasOpciones);
     } else {
       setOpciones([...opciones, opcionCompleta]);
     }
@@ -126,13 +177,14 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
   };
 
   const handleGenerarOpcionesAutomaticas = () => {
-    const opcionesAutomaticas: OpcionFinanciamiento[] = [
+    const opcionesAutomaticas: OpcionFinanciamientoDTO[] = [
       {
         nombre: "Contado - 10% descuento",
         metodoPago: "EFECTIVO",
         cantidadCuotas: 1,
         tasaInteres: -10,
         descripcion: "Descuento especial por pago al contado",
+        ordenPresentacion: 1,
         ...calcularMontos(1, -10),
       },
       {
@@ -141,6 +193,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
         cantidadCuotas: 3,
         tasaInteres: 0,
         descripcion: "Con tarjetas seleccionadas",
+        ordenPresentacion: 2,
         ...calcularMontos(3, 0),
       },
       {
@@ -149,6 +202,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
         cantidadCuotas: 6,
         tasaInteres: 15,
         descripcion: "Financiación con tarjeta",
+        ordenPresentacion: 3,
         ...calcularMontos(6, 15),
       },
       {
@@ -157,6 +211,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
         cantidadCuotas: 12,
         tasaInteres: 30,
         descripcion: "Financiación directa con la empresa",
+        ordenPresentacion: 4,
         ...calcularMontos(12, 30),
       },
       {
@@ -165,11 +220,46 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
         cantidadCuotas: 18,
         tasaInteres: 45,
         descripcion: "Plan extendido de financiación",
+        ordenPresentacion: 5,
         ...calcularMontos(18, 45),
       },
     ];
 
     setOpciones(opcionesAutomaticas);
+  };
+
+  const handleSaveToBackend = async () => {
+    if (!documentoId) {
+      setSnackbar({
+        open: true,
+        message: 'No se puede guardar: falta el documento asociado',
+        severity: 'error'
+      });
+      return;
+    }
+    setSaving(true);
+    try {
+      // Replace all options for this document
+      const opcionesGuardadas = await opcionFinanciamientoApi.reemplazarOpciones(documentoId, opciones);
+      setOpciones(opcionesGuardadas);
+      setSnackbar({ 
+        open: true, 
+        message: 'Opciones guardadas correctamente', 
+        severity: 'success' 
+      });
+      if (onSave) {
+        onSave(opcionesGuardadas);
+      }
+      setTimeout(() => onClose(), 1500);
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: 'Error al guardar las opciones', 
+        severity: 'error' 
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -192,100 +282,134 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ mb: 2 }}>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Configure las opciones de pago que desea ofrecer al cliente. Puede generar opciones automáticas o crear
-              opciones personalizadas.
+          {!documentoId && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              No hay documento seleccionado. Seleccione o cree un documento antes de guardar opciones de financiamiento.
             </Alert>
-
-            <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-              <Button
-                variant="outlined"
-                startIcon={<CalculateIcon />}
-                onClick={handleGenerarOpcionesAutomaticas}
-              >
-                Generar Opciones Automáticas
-              </Button>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddOpcion}>
-                Agregar Opción Personalizada
-              </Button>
+          )}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
             </Box>
+          ) : (
+            <Box sx={{ mb: 2 }}>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Configure las opciones de pago que desea ofrecer al cliente. Puede generar opciones automáticas o crear
+                opciones personalizadas.
+              </Alert>
 
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Nombre</TableCell>
-                    <TableCell>Método</TableCell>
-                    <TableCell align="center">Cuotas</TableCell>
-                    <TableCell align="center">Interés (%)</TableCell>
-                    <TableCell align="right">Valor Cuota</TableCell>
-                    <TableCell align="right">Total</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {opciones.length === 0 ? (
+              <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<CalculateIcon />}
+                  onClick={handleGenerarOpcionesAutomaticas}
+                >
+                  Generar Opciones Automáticas
+                </Button>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddOpcion}>
+                  Agregar Opción Personalizada
+                </Button>
+              </Box>
+
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
-                          No hay opciones de financiamiento configuradas
-                        </Typography>
-                      </TableCell>
+                      <TableCell>Nombre</TableCell>
+                      <TableCell>Método</TableCell>
+                      <TableCell align="center">Cuotas</TableCell>
+                      <TableCell align="center">Interés (%)</TableCell>
+                      <TableCell align="right">Valor Cuota</TableCell>
+                      <TableCell align="right">Total</TableCell>
+                      <TableCell align="center">Acciones</TableCell>
                     </TableRow>
-                  ) : (
-                    opciones.map((opcion, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {opcion.nombre}
+                  </TableHead>
+                  <TableBody>
+                    {opciones.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} align="center">
+                          <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
+                            No hay opciones de financiamiento configuradas
                           </Typography>
-                          {opcion.descripcion && (
-                            <Typography variant="caption" color="text.secondary">
-                              {opcion.descripcion}
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>{metodosPago.find((m) => m.value === opcion.metodoPago)?.label}</TableCell>
-                        <TableCell align="center">{opcion.cantidadCuotas}</TableCell>
-                        <TableCell align="center">
-                          <Typography
-                            color={opcion.tasaInteres < 0 ? "success.main" : opcion.tasaInteres > 0 ? "error.main" : "text.primary"}
-                          >
-                            {opcion.tasaInteres}%
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">{formatCurrency(opcion.montoCuota || 0)}</TableCell>
-                        <TableCell align="right">
-                          <Typography fontWeight="medium">{formatCurrency(opcion.montoTotal || 0)}</Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <IconButton size="small" onClick={() => handleEditOpcion(opcion)}>
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton size="small" color="error" onClick={() => handleDeleteOpcion(index)}>
-                            <DeleteIcon />
-                          </IconButton>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
+                    ) : (
+                      opciones.map((opcion, index) => (
+                        <TableRow key={opcion.id || index}>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="medium">
+                              {opcion.nombre}
+                            </Typography>
+                            {opcion.descripcion && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {opcion.descripcion}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {metodosPago.find((m) => m.value === opcion.metodoPago)?.label}
+                          </TableCell>
+                          <TableCell align="center">{opcion.cantidadCuotas}</TableCell>
+                          <TableCell align="center">
+                            <Typography
+                              color={
+                                opcion.tasaInteres < 0 
+                                  ? "success.main" 
+                                  : opcion.tasaInteres > 0 
+                                  ? "error.main" 
+                                  : "text.primary"
+                              }
+                            >
+                              {opcion.tasaInteres}%
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">{formatCurrency(opcion.montoCuota || 0)}</TableCell>
+                          <TableCell align="right">
+                            <Typography fontWeight="medium">
+                              {formatCurrency(opcion.montoTotal || 0)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton size="small" onClick={() => handleEditOpcion(opcion, index)}>
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton 
+                              size="small" 
+                              color="error" 
+                              onClick={() => handleDeleteOpcion(opcion, index)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button variant="contained" onClick={() => onSave(opciones)}>
-            Guardar Opciones
+          <Button onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveToBackend}
+            disabled={saving || opciones.length === 0}
+            startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
+          >
+            {saving ? 'Guardando...' : 'Guardar Opciones'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog para crear/editar opción */}
       <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingOpcion ? "Editar" : "Nueva"} Opción de Financiamiento</DialogTitle>
+        <DialogTitle>
+          {editingOpcion ? "Editar" : "Nueva"} Opción de Financiamiento
+        </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
@@ -303,7 +427,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 select
                 label="Método de pago"
                 value={formData.metodoPago}
-                onChange={(e) => setFormData({ ...formData, metodoPago: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, metodoPago: e.target.value as any })}
               >
                 {metodosPago.map((metodo) => (
                   <MenuItem key={metodo.value} value={metodo.value}>
@@ -338,7 +462,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
             <Grid item xs={12}>
               <Typography gutterBottom>Interés: {formData.tasaInteres}%</Typography>
               <Slider
-                value={formData.tasaInteres}
+                value={formData.tasaInteres || 0}
                 onChange={(_, value) => setFormData({ ...formData, tasaInteres: value as number })}
                 min={-20}
                 max={100}
@@ -372,15 +496,19 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 </Typography>
                 <Typography variant="body2">
                   Interés ({formData.tasaInteres}%):{" "}
-                  {formatCurrency((montoBase * formData.tasaInteres) / 100)}
+                  {formatCurrency((montoBase * (formData.tasaInteres || 0)) / 100)}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Total a financiar:</strong>{" "}
-                  {formatCurrency(calcularMontos(formData.cantidadCuotas, formData.tasaInteres).montoTotal)}
+                  {formatCurrency(
+                    calcularMontos(formData.cantidadCuotas || 1, formData.tasaInteres || 0).montoTotal
+                  )}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Valor de cada cuota:</strong>{" "}
-                  {formatCurrency(calcularMontos(formData.cantidadCuotas, formData.tasaInteres).montoCuota)}
+                  {formatCurrency(
+                    calcularMontos(formData.cantidadCuotas || 1, formData.tasaInteres || 0).montoCuota
+                  )}
                 </Typography>
               </Alert>
             </Grid>
@@ -393,6 +521,13 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        message={snackbar.message}
+      />
     </>
   );
 };

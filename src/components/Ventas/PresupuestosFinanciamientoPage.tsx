@@ -99,6 +99,12 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
           ordenPresentacion: 4,
         },
       ],
+      numeroPresupuesto: "",
+      cliente: undefined,
+      fechaPresupuesto: "",
+      fechaVencimiento: "",
+      observaciones: "",
+      detalles: []
     },
   ]);
 

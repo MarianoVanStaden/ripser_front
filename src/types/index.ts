@@ -1735,3 +1735,16 @@ export interface CreatePresupuestoRequest {
   detalles: DetalleDocumentoDTO[];
   observaciones?: string;
 }
+
+export interface OpcionFinanciamientoDTO {
+  id?: number;
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  ordenPresentacion?: number;
+  esSeleccionada?: boolean;
+}
