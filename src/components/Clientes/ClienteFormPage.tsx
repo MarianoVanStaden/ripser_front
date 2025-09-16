@@ -6,17 +6,21 @@ import {
   TextField,
   MenuItem,
   Grid,
-  Divider,
   InputAdornment,
   Button,
   CircularProgress,
   Alert,
   FormLabel,
   Rating,
+  Divider,
 } from '@mui/material';
-import { Save as SaveIcon, ArrowBack as ArrowBackIcon, Cancel as CancelIcon } from '@mui/icons-material';
+import {
+  Save as SaveIcon,
+  ArrowBack as ArrowBackIcon,
+  Cancel as CancelIcon,
+} from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { CreateClienteRequest, TipoCliente, EstadoCliente } from '../../types';
+import type { TipoCliente, EstadoCliente } from '../../types';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 
 const ClienteFormPage: React.FC = () => {
@@ -39,10 +43,10 @@ const ClienteFormPage: React.FC = () => {
     ciudad: '',
     provincia: '',
     codigoPostal: '',
-    tipo: "PERSONA_FISICA" as TipoCliente,
-    estado: "ACTIVO" as EstadoCliente,
+    tipo: 'PERSONA_FISICA' as TipoCliente,
+    estado: 'ACTIVO' as EstadoCliente,
     limiteCredito: 0,
-    calificacion: 0, // Add calificacion to initial state
+    calificacion: 0,
   });
 
   useEffect(() => {
@@ -68,30 +72,26 @@ const ClienteFormPage: React.FC = () => {
         codigoPostal: cliente.codigoPostal || '',
         tipo: cliente.tipo,
         estado: cliente.estado,
-        limiteCredito: cliente.limiteCredito || 0,
-        calificacion: cliente.calificacion ?? 0, // Set calificacion from fetched data
+        limiteCredito: cliente.limiteCredito ?? 0,
+        calificacion: cliente.calificacion ?? 0,
       });
-    } catch (err) {
+    } catch {
       setError('Error al cargar el cliente');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
+    const { name, value, type } = e.target as HTMLInputElement;
+    setFormData((prev) => ({
       ...prev,
-      [name]: (e.target as HTMLInputElement).type === 'number' ? parseFloat(value) : value,
+      [name]: type === 'number' ? Number(value) : value,
     }));
   };
 
-  const handleRatingChange = (event: React.SyntheticEvent, newValue: number | null) => {
-    setFormData(prev => ({
-      ...prev,
-      calificacion: newValue ?? 0,
-    }));
+  const handleRatingChange = (_: React.SyntheticEvent, newValue: number | null) => {
+    setFormData((prev) => ({ ...prev, calificacion: newValue ?? 0 }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,32 +99,23 @@ const ClienteFormPage: React.FC = () => {
     setError(null);
     setSuccess(null);
 
-    // Validaciones básicas
     if (!formData.nombre.trim()) {
       setError('El nombre es obligatorio');
       return;
     }
-
-    if (formData.tipo === 'PERSONA_JURIDICA' && !formData.razonSocial?.trim()) {
+    if (formData.tipo === 'PERSONA_JURIDICA' && !formData.razonSocial.trim()) {
       setError('La razón social es obligatoria para personas jurídicas');
-      return;
-    }
-
-    if (formData.limiteCredito < 0) {
-      setError('El límite de crédito no puede ser negativo');
       return;
     }
 
     try {
       setLoading(true);
-      
       if (isEdit && id) {
         await clienteApi.update(Number(id), formData);
         setSuccess('Cliente actualizado exitosamente');
       } else {
         await clienteApi.create(formData);
         setSuccess('Cliente creado exitosamente');
-        // Reset form for new client
         setFormData({
           nombre: '',
           apellido: '',
@@ -142,17 +133,14 @@ const ClienteFormPage: React.FC = () => {
           calificacion: 0,
         });
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar el cliente');
-      console.error(err);
+    } catch {
+      setError('Error al guardar el cliente');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate('/clientes/gestion');
-  };
+  const handleCancel = () => navigate('/clientes/gestion');
 
   if (loading && isEdit) {
     return (
@@ -163,264 +151,233 @@ const ClienteFormPage: React.FC = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: 'lg', mx: 'auto', p: { xs: 2, md: 3 } }}>
       {/* Header */}
       <Box display="flex" alignItems="center" mb={3}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={handleCancel}
-          sx={{ mr: 2 }}
-        >
+        <Button startIcon={<ArrowBackIcon />} onClick={handleCancel} sx={{ mr: 2 }}>
           Volver
         </Button>
-        <Typography variant="h4" component="h1">
-          {isEdit ? 'Editar Cliente' : 'Nuevo Cliente'}
-        </Typography>
+        <Typography variant="h4">{isEdit ? 'Editar Cliente' : 'Nuevo Cliente'}</Typography>
       </Box>
 
-      {/* Alerts */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-      {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
-          {success}
-        </Alert>
-      )}
-
-      {/* Form */}
-      <Paper sx={{ p: 3 }}>
-        <form onSubmit={handleSubmit}>
-          <Box display="flex" flexDirection="column" gap={3}>
-            
-            {/* Tipo de Cliente */}
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Tipo de Cliente
-              </Typography>
+      <form onSubmit={handleSubmit}>
+        <Paper sx={{ p: 3 }}>
+          <Grid container spacing={2}>
+            {/* Tipo */}
+            <Grid item xs={12} md={6}>
               <TextField
                 select
                 fullWidth
-                label="Tipo"
+                size="small"
+                label="Tipo de Cliente"
                 value={formData.tipo}
                 onChange={handleFormChange}
                 name="tipo"
-                required
               >
                 <MenuItem value="PERSONA_FISICA">Persona Física</MenuItem>
                 <MenuItem value="PERSONA_JURIDICA">Persona Jurídica</MenuItem>
               </TextField>
-            </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Estado"
+                value={formData.estado}
+                onChange={handleFormChange}
+                name="estado"
+              >
+                <MenuItem value="ACTIVO">Activo</MenuItem>
+                <MenuItem value="INACTIVO">Inactivo</MenuItem>
+                <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
+                <MenuItem value="MOROSO">Moroso</MenuItem>
+              </TextField>
+            </Grid>
 
-            <Divider />
+            <Divider flexItem sx={{ my: 2, width: '100%' }} />
 
-            {/* Información Básica */}
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Información Básica
-              </Typography>
-              <Box display="flex" flexDirection="column" gap={2}>
-                {formData.tipo === 'PERSONA_FISICA' ? (
-                  <>
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                      <Box flex="1" minWidth="200px">
-                        <TextField
-                          fullWidth
-                          label="Nombre"
-                          value={formData.nombre}
-                          onChange={handleFormChange}
-                          name="nombre"
-                          required
-                        />
-                      </Box>
-                      <Box flex="1" minWidth="200px">
-                        <TextField
-                          fullWidth
-                          label="Apellido"
-                          value={formData.apellido}
-                          onChange={handleFormChange}
-                          name="apellido"
-                        />
-                      </Box>
-                    </Box>
-                  </>
-                ) : (
-                  <>
-                    <TextField
-                      fullWidth
-                      label="Razón Social"
-                      value={formData.razonSocial}
-                      onChange={handleFormChange}
-                      name="razonSocial"
-                      required
-                    />
-                    <TextField
-                      fullWidth
-                      label="Nombre de Fantasía"
-                      value={formData.nombre}
-                      onChange={handleFormChange}
-                      name="nombre"
-                      required
-                    />
-                  </>
-                )}
-                
-                <TextField
-                  fullWidth
-                  label={formData.tipo === 'PERSONA_FISICA' ? 'DNI/CUIL' : 'CUIT'}
-                  value={formData.cuit}
-                  onChange={handleFormChange}
-                  name="cuit"
-                />
-              </Box>
-            </Box>
-
-            <Divider />
-
-            {/* Información de Contacto */}
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Información de Contacto
-              </Typography>
-              <Box display="flex" flexDirection="column" gap={2}>
-                <Box display="flex" gap={2} flexWrap="wrap">
-                  <Box flex="1" minWidth="200px">
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleFormChange}
-                      name="email"
-                    />
-                  </Box>
-                  <Box flex="1" minWidth="200px">
-                    <TextField
-                      fullWidth
-                      label="Teléfono"
-                      value={formData.telefono}
-                      onChange={handleFormChange}
-                      name="telefono"
-                    />
-                  </Box>
-                </Box>
-                
-                <TextField
-                  fullWidth
-                  label="Dirección"
-                  value={formData.direccion}
-                  onChange={handleFormChange}
-                  name="direccion"
-                />
-                
-                <Box display="flex" gap={2} flexWrap="wrap">
-                  <Box flex="1" minWidth="200px">
-                    <TextField
-                      fullWidth
-                      label="Ciudad"
-                      value={formData.ciudad}
-                      onChange={handleFormChange}
-                      name="ciudad"
-                    />
-                  </Box>
-                  <Box flex="1" minWidth="200px">
-                    <TextField
-                      fullWidth
-                      label="Provincia"
-                      value={formData.provincia}
-                      onChange={handleFormChange}
-                      name="provincia"
-                    />
-                  </Box>
-                  <Box flex="1" minWidth="150px">
-                    <TextField
-                      fullWidth
-                      label="Código Postal"
-                      value={formData.codigoPostal}
-                      onChange={handleFormChange}
-                      name="codigoPostal"
-                    />
-                  </Box>
-                </Box>
-              </Box>
-            </Box>
-
-            <Divider />
-
-            {/* Información Comercial */}
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Información Comercial
-              </Typography>
-              <Paper sx={{ p: 2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      select
-                      fullWidth
-                      label="Estado"
-                      value={formData.estado}
-                      onChange={handleFormChange}
-                      name="estado"
-                      required
-                    >
-                      <MenuItem value="ACTIVO">Activo</MenuItem>
-                      <MenuItem value="INACTIVO">Inactivo</MenuItem>
-                      <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
-                      <MenuItem value="MOROSO">Moroso</MenuItem>
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Límite de Crédito"
-                      name="limiteCredito"
-                      value={formData.limiteCredito}
-                      onChange={handleFormChange}
-                      InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormLabel component="legend">Calificación</FormLabel>
-                    <Rating
-                      name="calificacion"
-                      value={formData.calificacion}
-                      onChange={handleRatingChange}
-                      precision={0.5}
-                    />
-                  </Grid>
+            {/* Datos básicos */}
+            {formData.tipo === 'PERSONA_FISICA' ? (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Nombre"
+                    value={formData.nombre}
+                    onChange={handleFormChange}
+                    name="nombre"
+                  />
                 </Grid>
-              </Paper>
-            </Box>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Apellido"
+                    value={formData.apellido}
+                    onChange={handleFormChange}
+                    name="apellido"
+                  />
+                </Grid>
+              </>
+            ) : (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Razón Social"
+                    value={formData.razonSocial}
+                    onChange={handleFormChange}
+                    name="razonSocial"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Nombre Fantasía"
+                    value={formData.nombre}
+                    onChange={handleFormChange}
+                    name="nombre"
+                  />
+                </Grid>
+              </>
+            )}
 
-            {/* Actions */}
-            <Box display="flex" gap={2} justifyContent="flex-end" mt={4}>
-              <Button
-                variant="outlined"
-                onClick={handleCancel}
-                startIcon={<CancelIcon />}
-                disabled={loading}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                type="submit"
-                startIcon={<SaveIcon />}
-                disabled={loading}
-              >
-                {loading ? 'Guardando...' : (isEdit ? 'Actualizar' : 'Crear Cliente')}
-              </Button>
-            </Box>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label={formData.tipo === 'PERSONA_FISICA' ? 'DNI/CUIL' : 'CUIT'}
+                value={formData.cuit}
+                onChange={handleFormChange}
+                name="cuit"
+              />
+            </Grid>
+
+            <Divider flexItem sx={{ my: 2, width: '100%' }} />
+
+            {/* Contacto */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={handleFormChange}
+                name="email"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Teléfono"
+                value={formData.telefono}
+                onChange={handleFormChange}
+                name="telefono"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Dirección"
+                value={formData.direccion}
+                onChange={handleFormChange}
+                name="direccion"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Ciudad"
+                value={formData.ciudad}
+                onChange={handleFormChange}
+                name="ciudad"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Provincia"
+                value={formData.provincia}
+                onChange={handleFormChange}
+                name="provincia"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Código Postal"
+                value={formData.codigoPostal}
+                onChange={handleFormChange}
+                name="codigoPostal"
+              />
+            </Grid>
+
+            <Divider flexItem sx={{ my: 2, width: '100%' }} />
+
+            {/* Comercial */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Límite de Crédito"
+                name="limiteCredito"
+                value={formData.limiteCredito}
+                onChange={handleFormChange}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormLabel>Calificación</FormLabel>
+              <Rating
+                name="calificacion"
+                value={formData.calificacion}
+                onChange={handleRatingChange}
+                precision={0.5}
+              />
+            </Grid>
+          </Grid>
+
+          {/* Botones */}
+          <Box display="flex" justifyContent="flex-end" gap={2} mt={3}>
+            <Button
+              variant="outlined"
+              onClick={handleCancel}
+              startIcon={<CancelIcon />}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              type="submit"
+              startIcon={<SaveIcon />}
+              disabled={loading}
+            >
+              {loading ? 'Guardando...' : isEdit ? 'Actualizar' : 'Crear Cliente'}
+            </Button>
           </Box>
-        </form>
-      </Paper>
+        </Paper>
+      </form>
     </Box>
   );
 };
 
 export default ClienteFormPage;
+
+
