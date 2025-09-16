@@ -293,30 +293,30 @@ const Dashboard: React.FC = () => {
             }}
           >
             <StatCard
-              title="Total Clients"
+              title="Total de Clientes"
               value={stats.totalClients}
               icon={<PeopleIcon />}
               color="#1976d2"
             />
             <StatCard
-              title="Total Products"
+              title="Total de Productos"
               value={stats.totalProducts}
               icon={<InventoryIcon />}
               color="#388e3c"
-              subtitle={`${stats.lowStockProducts} low stock`}
+              subtitle={`${stats.lowStockProducts} bajo stock`}
             />
             <StatCard
-              title="Total Orders"
+              title="Ordenes Totales"
               value={stats.totalOrders}
               icon={<ShoppingCartIcon />}
               color="#f57c00"
             />
             <StatCard
-              title="Monthly Sales"
+              title="Ventas Mensuales"
               value={`$${stats.monthlySalesAmount.toLocaleString()}`}
               icon={<TrendingUpIcon />}
               color="#7b1fa2"
-              subtitle={`${stats.monthlySalesCount} sales this month`}
+              subtitle={`${stats.monthlySalesCount} ventas este mes`}
             />
           </Box>
 
