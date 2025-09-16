@@ -33,70 +33,24 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
 } from '@mui/icons-material';
-import type { Supplier } from '../../types';
-
-// Mock data for development
-const mockSuppliers: Supplier[] = [
-  {
-    id: 1,
-    name: 'Proveedor Tech S.A.',
-    email: 'contacto@proveedortech.com',
-    phone: '+54 11 4567-8901',
-    address: 'Av. Tecnología 123, Buenos Aires',
-    contactPerson: 'María González',
-    paymentTerms: '30 días',
-    rating: 4.5,
-    isActive: true,
-    observations: 'Excelente proveedor de equipos tecnológicos',
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-15T10:30:00Z',
-  },
-  {
-    id: 2,
-    name: 'Materiales del Sur',
-    email: 'ventas@materialesdelsur.com',
-    phone: '+54 11 2345-6789',
-    address: 'Calle Industrial 456, Buenos Aires',
-    contactPerson: 'Carlos Rodríguez',
-    paymentTerms: '15 días',
-    rating: 4.0,
-    isActive: true,
-    observations: 'Proveedor confiable de materiales de construcción',
-    createdAt: '2024-01-02T00:00:00Z',
-    updatedAt: '2024-01-20T14:15:00Z',
-  },
-  {
-    id: 3,
-    name: 'Servicios Integrales López',
-    email: 'info@servicioslopez.com',
-    phone: '+54 11 9876-5432',
-    address: 'Boulevard Servicios 789, Buenos Aires',
-    contactPerson: 'Ana López',
-    paymentTerms: '45 días',
-    rating: 3.5,
-    isActive: false,
-    observations: 'Proveedor de servicios varios - suspendido temporalmente',
-    createdAt: '2024-01-03T00:00:00Z',
-    updatedAt: '2024-01-25T09:45:00Z',
-  },
-];
+import { supplierApi } from '../../api/services/supplierApi';
+import type { ProveedorDTO, CreateProveedorDTO } from '../../types';
 
 const SuppliersPage: React.FC = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
+  const [editingSupplier, setEditingSupplier] = useState<ProveedorDTO | null>(null);
+  const [formData, setFormData] = useState<CreateProveedorDTO>({
+    razonSocial: '',
+    cuit: '',
     email: '',
-    phone: '',
-    address: '',
-    contactPerson: '',
-    paymentTerms: '',
-    rating: 0,
-    isActive: true,
-    observations: '',
+    telefono: '',
+    direccion: '',
+    ciudad: '',
+    provincia: '',
+    codigoPostal: '',
   });
 
   useEffect(() => {
@@ -106,9 +60,8 @@ const SuppliersPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      // Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSuppliers(mockSuppliers);
+      const data = await supplierApi.getAll();
+      setSuppliers(data);
       setError(null);
     } catch (err) {
       setError('Error al cargar los datos');
@@ -121,85 +74,79 @@ const SuppliersPage: React.FC = () => {
   const handleAdd = () => {
     setEditingSupplier(null);
     setFormData({
-      name: '',
+      razonSocial: '',
+      cuit: '',
       email: '',
-      phone: '',
-      address: '',
-      contactPerson: '',
-      paymentTerms: '',
-      rating: 0,
-      isActive: true,
-      observations: '',
+      telefono: '',
+      direccion: '',
+      ciudad: '',
+      provincia: '',
+      codigoPostal: '',
     });
     setDialogOpen(true);
   };
 
-  const handleEdit = (supplier: Supplier) => {
+  const handleEdit = (supplier: ProveedorDTO) => {
     setEditingSupplier(supplier);
     setFormData({
-      name: supplier.name,
-      email: supplier.email,
-      phone: supplier.phone,
-      address: supplier.address,
-      contactPerson: supplier.contactPerson,
-      paymentTerms: supplier.paymentTerms,
-      rating: supplier.rating,
-      isActive: supplier.isActive,
-      observations: supplier.observations,
+      razonSocial: supplier.razonSocial || '',
+      cuit: supplier.cuit || '',
+      email: supplier.email || '',
+      telefono: supplier.telefono || '',
+      direccion: supplier.direccion || '',
+      ciudad: supplier.ciudad || '',
+      provincia: supplier.provincia || '',
+      codigoPostal: supplier.codigoPostal || '',
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     try {
-      console.log('Saving supplier:', formData);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      setLoading(true);
       if (editingSupplier) {
-        // Update existing supplier
-        setSuppliers(suppliers.map(supplier => 
-          supplier.id === editingSupplier.id 
-            ? { 
-                ...supplier, 
-                ...formData, 
-                updatedAt: new Date().toISOString() 
-              }
-            : supplier
-        ));
+        const updated = await supplierApi.update(editingSupplier.id, formData);
+        setSuppliers(suppliers.map(s => (s.id === updated.id ? updated : s)));
       } else {
-        // Add new supplier
-        const newSupplier: Supplier = {
-          id: Math.max(...suppliers.map(s => s.id)) + 1,
-          ...formData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setSuppliers([...suppliers, newSupplier]);
+        const created = await supplierApi.create(formData);
+        setSuppliers([...suppliers, created]);
       }
-      
       setDialogOpen(false);
+      setError(null);
     } catch (err) {
       setError('Error al guardar el proveedor');
       console.error('Error saving supplier:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de que desea eliminar este proveedor?')) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setLoading(true);
+        await supplierApi.delete(id);
         setSuppliers(suppliers.filter(supplier => supplier.id !== id));
       } catch (err) {
         setError('Error al eliminar el proveedor');
         console.error('Error deleting supplier:', err);
+      } finally {
+        setLoading(false);
       }
     }
   };
 
-  const getRatingColor = (rating: number) => {
-    if (rating >= 4.5) return 'success';
-    if (rating >= 3.5) return 'warning';
-    return 'error';
+  const getEstadoLabel = (estado: string) => {
+    switch (estado) {
+      case 'ACTIVO':
+        return 'Activo';
+      case 'INACTIVO':
+        return 'Inactivo';
+      case 'BLOQUEADO':
+        return 'Bloqueado';
+      default:
+        return estado;
+    }
   };
 
   if (loading) {
@@ -238,11 +185,14 @@ const SuppliersPage: React.FC = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Proveedor</TableCell>
-                  <TableCell>Contacto</TableCell>
-                  <TableCell>Persona de Contacto</TableCell>
-                  <TableCell>Términos de Pago</TableCell>
-                  <TableCell>Calificación</TableCell>
+                  <TableCell>Razón Social</TableCell>
+                  <TableCell>CUIT</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Teléfono</TableCell>
+                  <TableCell>Dirección</TableCell>
+                  <TableCell>Ciudad</TableCell>
+                  <TableCell>Provincia</TableCell>
+                  <TableCell>Código Postal</TableCell>
                   <TableCell>Estado</TableCell>
                   <TableCell align="center">Acciones</TableCell>
                 </TableRow>
@@ -250,50 +200,34 @@ const SuppliersPage: React.FC = () => {
               <TableBody>
                 {suppliers.map((supplier) => (
                   <TableRow key={supplier.id}>
+                    <TableCell>{supplier.razonSocial}</TableCell>
+                    <TableCell>{supplier.cuit}</TableCell>
                     <TableCell>
-                      <Box>
-                        <Typography variant="body2" fontWeight="bold">
-                          {supplier.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {supplier.address}
-                        </Typography>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <EmailIcon sx={{ fontSize: 16 }} />
+                        <Typography variant="caption">{supplier.email}</Typography>
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Box display="flex" flexDirection="column" gap={0.5}>
-                        <Box display="flex" alignItems="center" gap={0.5}>
-                          <EmailIcon sx={{ fontSize: 16 }} />
-                          <Typography variant="caption">{supplier.email}</Typography>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={0.5}>
-                          <PhoneIcon sx={{ fontSize: 16 }} />
-                          <Typography variant="caption">{supplier.phone}</Typography>
-                        </Box>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <PhoneIcon sx={{ fontSize: 16 }} />
+                        <Typography variant="caption">{supplier.telefono}</Typography>
                       </Box>
                     </TableCell>
-                    <TableCell>{supplier.contactPerson}</TableCell>
-                    <TableCell>{supplier.paymentTerms}</TableCell>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Rating
-                          value={supplier.rating}
-                          readOnly
-                          size="small"
-                          precision={0.5}
-                        />
-                        <Chip
-                          label={supplier.rating.toFixed(1)}
-                          color={getRatingColor(supplier.rating)}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </Box>
-                    </TableCell>
+                    <TableCell>{supplier.direccion}</TableCell>
+                    <TableCell>{supplier.ciudad}</TableCell>
+                    <TableCell>{supplier.provincia}</TableCell>
+                    <TableCell>{supplier.codigoPostal}</TableCell>
                     <TableCell>
                       <Chip
-                        label={supplier.isActive ? 'Activo' : 'Inactivo'}
-                        color={supplier.isActive ? 'success' : 'error'}
+                        label={getEstadoLabel(supplier.estado)}
+                        color={
+                          supplier.estado === 'ACTIVO'
+                            ? 'success'
+                            : supplier.estado === 'INACTIVO'
+                            ? 'warning'
+                            : 'error'
+                        }
                         size="small"
                       />
                     </TableCell>
@@ -324,83 +258,59 @@ const SuppliersPage: React.FC = () => {
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <TextField
-              label="Nombre del Proveedor"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              label="Razón Social"
+              value={formData.razonSocial}
+              onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
               fullWidth
               required
             />
-            
-            <Box display="flex" gap={2}>
-              <TextField
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                fullWidth
-                required
-              />
-              <TextField
-                label="Teléfono"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                fullWidth
-                required
-              />
-            </Box>
-            
+            <TextField
+              label="CUIT"
+              value={formData.cuit}
+              onChange={(e) => setFormData({ ...formData, cuit: e.target.value })}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              fullWidth
+              required
+            />
+            <TextField
+              label="Teléfono"
+              value={formData.telefono}
+              onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+              fullWidth
+            />
             <TextField
               label="Dirección"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              value={formData.direccion}
+              onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
               fullWidth
-              required
             />
-            
             <Box display="flex" gap={2}>
               <TextField
-                label="Persona de Contacto"
-                value={formData.contactPerson}
-                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                label="Ciudad"
+                value={formData.ciudad}
+                onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
                 fullWidth
-                required
               />
               <TextField
-                label="Términos de Pago"
-                value={formData.paymentTerms}
-                onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
+                label="Provincia"
+                value={formData.provincia}
+                onChange={(e) => setFormData({ ...formData, provincia: e.target.value })}
                 fullWidth
-                placeholder="ej: 30 días"
+              />
+              <TextField
+                label="Código Postal"
+                value={formData.codigoPostal}
+                onChange={(e) => setFormData({ ...formData, codigoPostal: e.target.value })}
+                fullWidth
               />
             </Box>
-            
-            <Box display="flex" alignItems="center" gap={2}>
-              <Typography component="legend">Calificación</Typography>
-              <Rating
-                value={formData.rating}
-                onChange={(_, newValue) => setFormData({ ...formData, rating: newValue || 0 })}
-                precision={0.5}
-              />
-            </Box>
-            
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                />
-              }
-              label="Proveedor Activo"
-            />
-            
-            <TextField
-              label="Observaciones"
-              value={formData.observations}
-              onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-              fullWidth
-              multiline
-              rows={3}
-            />
           </Box>
         </DialogContent>
         <DialogActions>

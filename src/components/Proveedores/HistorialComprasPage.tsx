@@ -55,7 +55,8 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { supplierApiWithFallback as supplierApi } from '../../api/services/apiWithFallback';
-import type { Supplier } from '../../types';
+import { compraApi } from '../../api/services/compraApi';
+import type { Supplier, CompraDTO } from '../../types';
 
 dayjs.locale('es');
 
@@ -66,7 +67,7 @@ interface CompraHistorial {
   supplier?: Supplier;
   fecha: string;
   total: number;
-  estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA';
+  estado: string;
   metodoPago: string;
   observaciones?: string;
   items: CompraItem[];
@@ -125,126 +126,6 @@ const HistorialComprasPage: React.FC = () => {
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [selectedCompra, setSelectedCompra] = useState<CompraHistorial | null>(null);
 
-  // Mock data for purchase history
-  const mockCompras: CompraHistorial[] = [
-    {
-      id: 1,
-      numero: 'COMP-2024-001',
-      supplierId: 1,
-      fecha: '2024-01-15',
-      total: 125000,
-      estado: 'PAGADA',
-      metodoPago: 'Transferencia bancaria',
-      observaciones: 'Compra de equipos tecnológicos',
-      items: [
-        {
-          id: 1,
-          descripcion: 'Laptop HP ProBook 450',
-          cantidad: 5,
-          precioUnitario: 20000,
-          subtotal: 100000
-        },
-        {
-          id: 2,
-          descripcion: 'Mouse óptico inalámbrico',
-          cantidad: 10,
-          precioUnitario: 2500,
-          subtotal: 25000
-        }
-      ]
-    },
-    {
-      id: 2,
-      numero: 'COMP-2024-002',
-      supplierId: 2,
-      fecha: '2024-01-28',
-      total: 85000,
-      estado: 'PAGADA',
-      metodoPago: 'Efectivo',
-      observaciones: 'Material para obra',
-      items: [
-        {
-          id: 3,
-          descripcion: 'Cemento Portland',
-          cantidad: 20,
-          precioUnitario: 3500,
-          subtotal: 70000
-        },
-        {
-          id: 4,
-          descripcion: 'Arena gruesa m³',
-          cantidad: 5,
-          precioUnitario: 3000,
-          subtotal: 15000
-        }
-      ]
-    },
-    {
-      id: 3,
-      numero: 'COMP-2024-003',
-      supplierId: 4,
-      fecha: '2024-02-10',
-      total: 450000,
-      estado: 'PENDIENTE',
-      metodoPago: 'Crédito 30 días',
-      observaciones: 'Equipos para nueva sucursal',
-      items: [
-        {
-          id: 5,
-          descripcion: 'Servidor Dell PowerEdge',
-          cantidad: 2,
-          precioUnitario: 180000,
-          subtotal: 360000
-        },
-        {
-          id: 6,
-          descripcion: 'Switch Cisco 24 puertos',
-          cantidad: 3,
-          precioUnitario: 30000,
-          subtotal: 90000
-        }
-      ]
-    },
-    {
-      id: 4,
-      numero: 'COMP-2024-004',
-      supplierId: 3,
-      fecha: '2024-02-15',
-      total: 95000,
-      estado: 'VENCIDA',
-      metodoPago: 'Crédito 60 días',
-      observaciones: 'Herramientas industriales',
-      items: [
-        {
-          id: 7,
-          descripcion: 'Set herramientas industriales',
-          cantidad: 1,
-          precioUnitario: 95000,
-          subtotal: 95000
-        }
-      ]
-    },
-    {
-      id: 5,
-      numero: 'COMP-2023-045',
-      supplierId: 1,
-      fecha: '2023-12-20',
-      total: 250000,
-      estado: 'PAGADA',
-      metodoPago: 'Transferencia bancaria',
-      observaciones: 'Compra de fin de año',
-      items: [
-        {
-          id: 8,
-          descripcion: 'Impresoras láser',
-          cantidad: 10,
-          precioUnitario: 25000,
-          subtotal: 250000
-        }
-      ]
-    }
-  ];
-
   useEffect(() => {
     loadData();
   }, []);
@@ -255,14 +136,32 @@ const HistorialComprasPage: React.FC = () => {
       setError(null);
       const suppliersData = await supplierApi.getAll();
       setSuppliers(suppliersData);
-      
-      // Add supplier data to purchases
-      const comprasWithSuppliers = mockCompras.map(compra => ({
-        ...compra,
-        supplier: suppliersData.find(s => s.id === compra.supplierId)
+
+      // Get compras from API
+      const comprasData: CompraDTO[] = await compraApi.getAll();
+
+      // Map API data to CompraHistorial
+      const comprasWithSuppliers: CompraHistorial[] = comprasData.map(compra => ({
+        id: compra.id,
+        numero: compra.numero || `COMP-${compra.id}`,
+        supplierId: compra.proveedorId,
+        supplier: suppliersData.find(s => s.id === compra.proveedorId),
+        fecha: compra.fechaCreacion || compra.fechaEntrega || '',
+        total: compra.detalles.reduce((sum, item) => sum + item.cantidad * item.costoUnitario, 0),
+        estado: compra.estado,
+        metodoPago: compra.metodoPago || 'Sin método',
+        observaciones: compra.observaciones,
+        items: compra.detalles.map(item => ({
+          id: item.id,
+          descripcion: item.nombreProductoTemporal || item.descripcionProductoTemporal || '',
+          cantidad: item.cantidad,
+          precioUnitario: item.costoUnitario,
+          subtotal: item.cantidad * item.costoUnitario,
+        })),
       }));
+
       setCompras(comprasWithSuppliers);
-      
+
       // Calculate statistics
       calculateEstadisticas(comprasWithSuppliers, suppliersData);
     } catch (err) {
@@ -277,19 +176,19 @@ const HistorialComprasPage: React.FC = () => {
     const totalCompras = comprasData.length;
     const montoTotal = comprasData.reduce((sum, compra) => sum + compra.total, 0);
     const promedioMensual = montoTotal / 6; // Assuming 6 months of data
-    
+
     // Find top supplier by total purchases
     const supplierTotals = comprasData.reduce((acc, compra) => {
       acc[compra.supplierId] = (acc[compra.supplierId] || 0) + compra.total;
       return acc;
     }, {} as Record<number, number>);
-    
-    const topSupplierId = Object.entries(supplierTotals).reduce((a, b) => 
+
+    const topSupplierId = Object.entries(supplierTotals).reduce((a, b) =>
       supplierTotals[parseInt(a[0])] > supplierTotals[parseInt(b[0])] ? a : b
     )[0];
-    
+
     const proveedorTop = suppliersData.find(s => s.id === parseInt(topSupplierId)) || null;
-    
+
     setEstadisticas({
       totalCompras,
       montoTotal,
@@ -319,15 +218,15 @@ const HistorialComprasPage: React.FC = () => {
   };
 
   const filteredCompras = compras.filter(compra => {
-    const matchesSearch = 
+    const matchesSearch =
       compra.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (compra.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false);
-    
+      (compra.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
+
     const matchesSupplier = !supplierFilter || compra.supplierId.toString() === supplierFilter;
     const matchesEstado = !estadoFilter || compra.estado === estadoFilter;
-    
+
     const fechaCompra = dayjs(compra.fecha);
-    const matchesFecha = 
+    const matchesFecha =
       (!fechaDesde || fechaCompra.isAfter(fechaDesde.subtract(1, 'day'))) &&
       (!fechaHasta || fechaCompra.isBefore(fechaHasta.add(1, 'day')));
 
@@ -603,7 +502,7 @@ const HistorialComprasPage: React.FC = () => {
                 <Typography variant="h6" gutterBottom>
                   Estadísticas Generales
                 </Typography>
-                
+
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3, mb: 4 }}>
                   <Card>
                     <CardContent>
@@ -703,7 +602,7 @@ const HistorialComprasPage: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               Análisis por Proveedor
             </Typography>
-            
+
             <List>
               {getTopSuppliersByAmount().map((supplier, index) => (
                 <React.Fragment key={supplier.id}>

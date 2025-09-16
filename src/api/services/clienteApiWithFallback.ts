@@ -51,7 +51,7 @@ export const clienteApi = {
   getAll: async (): Promise<Cliente[]> => {
     return withFallback(
       async () => {
-        const response = await api.get('/clientes');
+  const response = await api.get('/clientes'); // baseURL now ends with /api
         return response.data;
       },
       () => mockClienteApi.getAll()
@@ -62,7 +62,7 @@ export const clienteApi = {
   getById: async (id: number): Promise<Cliente> => {
     return withFallback(
       async () => {
-        const response = await api.get(`/clientes/${id}`);
+  const response = await api.get(`/clientes/${id}`);
         return response.data;
       },
       () => mockClienteApi.getById(id)
@@ -73,7 +73,7 @@ export const clienteApi = {
   create: async (cliente: CreateClienteRequest): Promise<Cliente> => {
     return withFallback(
       async () => {
-        const response = await api.post('/clientes', cliente);
+  const response = await api.post('/clientes', cliente);
         return response.data;
       },
       () => mockClienteApi.create(cliente)
@@ -84,7 +84,7 @@ export const clienteApi = {
   update: async (id: number, cliente: Partial<CreateClienteRequest>): Promise<Cliente> => {
     return withFallback(
       async () => {
-        const response = await api.put(`/clientes/${id}`, cliente);
+  const response = await api.put(`/clientes/${id}`, cliente);
         return response.data;
       },
       () => mockClienteApi.update(id, cliente)
@@ -95,7 +95,7 @@ export const clienteApi = {
   delete: async (id: number): Promise<void> => {
     return withFallback(
       async () => {
-        await api.delete(`/clientes/${id}`);
+  await api.delete(`/clientes/${id}`);
       },
       () => mockClienteApi.delete(id)
     );
@@ -105,7 +105,7 @@ export const clienteApi = {
   search: async (query: string): Promise<Cliente[]> => {
     return withFallback(
       async () => {
-        const response = await api.get(`/clientes/buscar?q=${encodeURIComponent(query)}`);
+  const response = await api.get(`/clientes/buscar?q=${encodeURIComponent(query)}`);
         return response.data;
       },
       () => mockClienteApi.search(query)
@@ -116,7 +116,7 @@ export const clienteApi = {
   getByEstado: async (estado: string): Promise<Cliente[]> => {
     return withFallback(
       async () => {
-        const response = await api.get(`/clientes/estado/${estado}`);
+  const response = await api.get(`/clientes/estado/${estado}`);
         return response.data;
       },
       () => mockClienteApi.getByEstado(estado)
@@ -127,7 +127,7 @@ export const clienteApi = {
   getByTipo: async (tipo: string): Promise<Cliente[]> => {
     return withFallback(
       async () => {
-        const response = await api.get(`/clientes/tipo/${tipo}`);
+  const response = await api.get(`/clientes/tipo/${tipo}`);
         return response.data;
       },
       () => mockClienteApi.getByTipo(tipo)
@@ -138,7 +138,7 @@ export const clienteApi = {
   updateCreditLimit: async (id: number, limite: number): Promise<Cliente> => {
     return withFallback(
       async () => {
-        const response = await api.put(`/clientes/${id}/limite-credito`, { limiteCredito: limite });
+  const response = await api.put(`/clientes/${id}/limite-credito`, { limiteCredito: limite });
         return response.data;
       },
       () => mockClienteApi.updateCreditLimit(id, limite)
@@ -149,7 +149,7 @@ export const clienteApi = {
   updateEstado: async (id: number, estado: string): Promise<Cliente> => {
     return withFallback(
       async () => {
-        const response = await api.put(`/clientes/${id}/estado`, { estado });
+  const response = await api.put(`/clientes/${id}/estado`, { estado });
         return response.data;
       },
       () => mockClienteApi.updateEstado(id, estado)

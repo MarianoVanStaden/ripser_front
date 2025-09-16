@@ -4,19 +4,19 @@ import {
   Paper,
   Typography,
   TextField,
-  Button,
   MenuItem,
-  Alert,
-  CircularProgress,
+  Grid,
   Divider,
+  InputAdornment,
+  Button,
+  CircularProgress,
+  Alert,
+  FormLabel,
+  Rating,
 } from '@mui/material';
-import {
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-  ArrowBack as ArrowBackIcon,
-} from '@mui/icons-material';
+import { Save as SaveIcon, ArrowBack as ArrowBackIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { CreateClienteRequest } from '../../types';
+import type { CreateClienteRequest, TipoCliente, EstadoCliente } from '../../types';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 
 const ClienteFormPage: React.FC = () => {
@@ -28,7 +28,7 @@ const ClienteFormPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<CreateClienteRequest>({
+  const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
     razonSocial: '',
@@ -39,9 +39,10 @@ const ClienteFormPage: React.FC = () => {
     ciudad: '',
     provincia: '',
     codigoPostal: '',
-    tipo: 'PERSONA_FISICA',
-    estado: 'ACTIVO',
+    tipo: "PERSONA_FISICA" as TipoCliente,
+    estado: "ACTIVO" as EstadoCliente,
     limiteCredito: 0,
+    calificacion: 0, // Add calificacion to initial state
   });
 
   useEffect(() => {
@@ -67,7 +68,8 @@ const ClienteFormPage: React.FC = () => {
         codigoPostal: cliente.codigoPostal || '',
         tipo: cliente.tipo,
         estado: cliente.estado,
-        limiteCredito: cliente.limiteCredito,
+        limiteCredito: cliente.limiteCredito || 0,
+        calificacion: cliente.calificacion ?? 0, // Set calificacion from fetched data
       });
     } catch (err) {
       setError('Error al cargar el cliente');
@@ -77,18 +79,23 @@ const ClienteFormPage: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof CreateClienteRequest) => (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const value = field === 'limiteCredito' ? Number(event.target.value) : event.target.value;
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [field]: value,
+      [name]: (e.target as HTMLInputElement).type === 'number' ? parseFloat(value) : value,
     }));
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleRatingChange = (event: React.SyntheticEvent, newValue: number | null) => {
+    setFormData(prev => ({
+      ...prev,
+      calificacion: newValue ?? 0,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
     setSuccess(null);
 
@@ -132,6 +139,7 @@ const ClienteFormPage: React.FC = () => {
           tipo: 'PERSONA_FISICA',
           estado: 'ACTIVO',
           limiteCredito: 0,
+          calificacion: 0,
         });
       }
     } catch (err: any) {
@@ -198,7 +206,8 @@ const ClienteFormPage: React.FC = () => {
                 fullWidth
                 label="Tipo"
                 value={formData.tipo}
-                onChange={handleInputChange('tipo')}
+                onChange={handleFormChange}
+                name="tipo"
                 required
               >
                 <MenuItem value="PERSONA_FISICA">Persona Física</MenuItem>
@@ -222,7 +231,8 @@ const ClienteFormPage: React.FC = () => {
                           fullWidth
                           label="Nombre"
                           value={formData.nombre}
-                          onChange={handleInputChange('nombre')}
+                          onChange={handleFormChange}
+                          name="nombre"
                           required
                         />
                       </Box>
@@ -231,7 +241,8 @@ const ClienteFormPage: React.FC = () => {
                           fullWidth
                           label="Apellido"
                           value={formData.apellido}
-                          onChange={handleInputChange('apellido')}
+                          onChange={handleFormChange}
+                          name="apellido"
                         />
                       </Box>
                     </Box>
@@ -242,14 +253,16 @@ const ClienteFormPage: React.FC = () => {
                       fullWidth
                       label="Razón Social"
                       value={formData.razonSocial}
-                      onChange={handleInputChange('razonSocial')}
+                      onChange={handleFormChange}
+                      name="razonSocial"
                       required
                     />
                     <TextField
                       fullWidth
                       label="Nombre de Fantasía"
                       value={formData.nombre}
-                      onChange={handleInputChange('nombre')}
+                      onChange={handleFormChange}
+                      name="nombre"
                       required
                     />
                   </>
@@ -259,7 +272,8 @@ const ClienteFormPage: React.FC = () => {
                   fullWidth
                   label={formData.tipo === 'PERSONA_FISICA' ? 'DNI/CUIL' : 'CUIT'}
                   value={formData.cuit}
-                  onChange={handleInputChange('cuit')}
+                  onChange={handleFormChange}
+                  name="cuit"
                 />
               </Box>
             </Box>
@@ -279,7 +293,8 @@ const ClienteFormPage: React.FC = () => {
                       label="Email"
                       type="email"
                       value={formData.email}
-                      onChange={handleInputChange('email')}
+                      onChange={handleFormChange}
+                      name="email"
                     />
                   </Box>
                   <Box flex="1" minWidth="200px">
@@ -287,7 +302,8 @@ const ClienteFormPage: React.FC = () => {
                       fullWidth
                       label="Teléfono"
                       value={formData.telefono}
-                      onChange={handleInputChange('telefono')}
+                      onChange={handleFormChange}
+                      name="telefono"
                     />
                   </Box>
                 </Box>
@@ -296,7 +312,8 @@ const ClienteFormPage: React.FC = () => {
                   fullWidth
                   label="Dirección"
                   value={formData.direccion}
-                  onChange={handleInputChange('direccion')}
+                  onChange={handleFormChange}
+                  name="direccion"
                 />
                 
                 <Box display="flex" gap={2} flexWrap="wrap">
@@ -305,7 +322,8 @@ const ClienteFormPage: React.FC = () => {
                       fullWidth
                       label="Ciudad"
                       value={formData.ciudad}
-                      onChange={handleInputChange('ciudad')}
+                      onChange={handleFormChange}
+                      name="ciudad"
                     />
                   </Box>
                   <Box flex="1" minWidth="200px">
@@ -313,7 +331,8 @@ const ClienteFormPage: React.FC = () => {
                       fullWidth
                       label="Provincia"
                       value={formData.provincia}
-                      onChange={handleInputChange('provincia')}
+                      onChange={handleFormChange}
+                      name="provincia"
                     />
                   </Box>
                   <Box flex="1" minWidth="150px">
@@ -321,7 +340,8 @@ const ClienteFormPage: React.FC = () => {
                       fullWidth
                       label="Código Postal"
                       value={formData.codigoPostal}
-                      onChange={handleInputChange('codigoPostal')}
+                      onChange={handleFormChange}
+                      name="codigoPostal"
                     />
                   </Box>
                 </Box>
@@ -335,35 +355,46 @@ const ClienteFormPage: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Información Comercial
               </Typography>
-              <Box display="flex" gap={2} flexWrap="wrap">
-                <Box flex="1" minWidth="200px">
-                  <TextField
-                    select
-                    fullWidth
-                    label="Estado"
-                    value={formData.estado}
-                    onChange={handleInputChange('estado')}
-                    required
-                  >
-                    <MenuItem value="ACTIVO">Activo</MenuItem>
-                    <MenuItem value="INACTIVO">Inactivo</MenuItem>
-                    <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
-                    <MenuItem value="MOROSO">Moroso</MenuItem>
-                  </TextField>
-                </Box>
-                <Box flex="1" minWidth="200px">
-                  <TextField
-                    fullWidth
-                    label="Límite de Crédito"
-                    type="number"
-                    value={formData.limiteCredito}
-                    onChange={handleInputChange('limiteCredito')}
-                    InputProps={{
-                      startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-                    }}
-                  />
-                </Box>
-              </Box>
+              <Paper sx={{ p: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Estado"
+                      value={formData.estado}
+                      onChange={handleFormChange}
+                      name="estado"
+                      required
+                    >
+                      <MenuItem value="ACTIVO">Activo</MenuItem>
+                      <MenuItem value="INACTIVO">Inactivo</MenuItem>
+                      <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
+                      <MenuItem value="MOROSO">Moroso</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      label="Límite de Crédito"
+                      name="limiteCredito"
+                      value={formData.limiteCredito}
+                      onChange={handleFormChange}
+                      InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormLabel component="legend">Calificación</FormLabel>
+                    <Rating
+                      name="calificacion"
+                      value={formData.calificacion}
+                      onChange={handleRatingChange}
+                      precision={0.5}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
             </Box>
 
             {/* Actions */}

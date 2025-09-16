@@ -7,246 +7,580 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  Grid,
-  Paper,
+  IconButton,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Paper,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   TextField,
   MenuItem,
+  Grid,
   FormControl,
   InputLabel,
   Select,
-  Chip,
+  Divider,
 } from '@mui/material';
 import {
-  Assessment as AssessmentIcon,
-  TrendingUp as TrendingUpIcon,
-  PictureAsPdf as PictureAsPdfIcon,
+  Add as AddIcon,
+  Edit as EditIcon,
+  Visibility as VisibilityIcon,
+  Receipt as ReceiptIcon,
   Print as PrintIcon,
+  Delete as DeleteIcon,
+  Search as SearchIcon,
+  FilterList as FilterListIcon,
   GetApp as GetAppIcon,
+  TrendingUp as TrendingUpIcon,
+  ShoppingCart as ShoppingCartIcon,
+  AttachMoney as AttachMoneyIcon,
+  DateRange as DateRangeIcon,
   BarChart as BarChartIcon,
   PieChart as PieChartIcon,
-  Timeline as TimelineIcon,
+  ShowChart as ShowChartIcon,
 } from '@mui/icons-material';
-import { saleApi, clientApi, employeeApi, productApi } from '../../api/services';
-import type { Sale, Client, Employee, Product } from '../../types';
+// Ensure we import named APIs from the barrel; there is no default export for clienteApi
+import { saleApi, clienteApi, usuarioApi } from '../../api/services';
+import { Bar, Pie, Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
-interface SalesMetrics {
-  totalSales: number;
-  totalRevenue: number;
-  averageOrderValue: number;
-  totalTransactions: number;
-  topClient: Client | null;
-  topEmployee: Employee | null;
-  topProduct: Product | null;
-  monthlyGrowth: number;
-}
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
-interface SalesReportData {
-  period: string;
-  sales: number;
-  revenue: number;
-  transactions: number;
-}
-
-const InformesVentasPage: React.FC = () => {
+const InformeVentasPage = () => {
+  const [sales, setSales] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [metrics, setMetrics] = useState<SalesMetrics | null>(null);
-  const [reportData, setReportData] = useState<SalesReportData[]>([]);
-  
-  // Filter states
-  const [reportType, setReportType] = useState<string>('monthly');
-  const [dateFrom, setDateFrom] = useState<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().split('T')[0]
-  );
-  const [dateTo, setDateTo] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
-  const [selectedClient, setSelectedClient] = useState<string>('all');
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
+  const [error, setError] = useState(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingSale, setViewingSale] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [clientFilter, setClientFilter] = useState('all');
+  const [dateFromFilter, setDateFromFilter] = useState(null);
+  const [dateToFilter, setDateToFilter] = useState(null);
+  const [reportType, setReportType] = useState('summary');
+  const [groupBy, setGroupBy] = useState('Día');
+  const [chartType, setChartType] = useState('bar');
 
   useEffect(() => {
-    fetchData();
+    loadData();
   }, []);
-
-  useEffect(() => {
-    if (sales.length > 0) {
-      calculateMetrics();
-      generateReportData();
-    }
-  }, [sales, reportType, dateFrom, dateTo, selectedClient, selectedEmployee]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [salesData, clientsData, employeesData, productsData] = await Promise.all([
-        saleApi.getAll(),
-        clientApi.getAll(),
-        employeeApi.getAll(),
-        productApi.getAll(),
-      ]);
-
-      setSales(salesData);
-      setClients(clientsData);
-      setEmployees(employeesData);
-      setProducts(productsData);
-    } catch (err) {
-      setError('Error al cargar los datos para el informe');
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getFilteredSales = () => {
-    return sales.filter((sale: Sale) => {
-      const saleDate = new Date(sale.saleDate);
-      const fromDate = new Date(dateFrom);
-      const toDate = new Date(dateTo);
-
-      const dateMatch = saleDate >= fromDate && saleDate <= toDate;
-      const clientMatch = selectedClient === 'all' || sale.clientId.toString() === selectedClient;
-      const employeeMatch = selectedEmployee === 'all' || sale.employeeId.toString() === selectedEmployee;
-
-      return dateMatch && clientMatch && employeeMatch;
-    });
-  };
-
-  const calculateMetrics = () => {
-    const filteredSales = getFilteredSales();
+const testUsuarioExistence = (usuariosData) => {
+  console.log('=== TESTING USUARIO EXISTENCE ===');
+  console.log('Total usuarios:', usuariosData.length);
+  
+  // Check if usuario with ID 2 exists
+  const usuario2ById = usuariosData.find(u => u.id === 2);
+  const usuario2ByStringId = usuariosData.find(u => u.id === '2');
+  const usuario2ByNumberId = usuariosData.find(u => u.id === Number(2));
+  
+  console.log('Usuario with id === 2:', usuario2ById);
+  console.log('Usuario with id === "2":', usuario2ByStringId);
+  console.log('Usuario with id === Number(2):', usuario2ByNumberId);
+  
+  // List all usuario IDs
+  console.log('All usuario IDs and types:');
+  usuariosData.forEach((u, index) => {
+    console.log(`${index}: ID=${u.id} (type: ${typeof u.id}), nombre: ${u.nombre || 'N/A'}`);
+  });
+  
+  console.log('=== END TEST ===');
+};
+const loadData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
     
-    if (filteredSales.length === 0) {
-      setMetrics({
-        totalSales: 0,
-        totalRevenue: 0,
-        averageOrderValue: 0,
-        totalTransactions: 0,
-        topClient: null,
-        topEmployee: null,
-        topProduct: null,
-        monthlyGrowth: 0,
+    const [salesResponse, clientsResponse, usuariosResponse] = await Promise.all([
+      saleApi.getAll(),
+      clienteApi.getAll(),
+      usuarioApi.getAll(),
+    ]);
+
+    // Extract actual data from paginated responses
+    const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
+    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
+    const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
+
+    console.log('Sales data:', salesData);
+    console.log('Clients data:', clientsData);
+    console.log('Usuarios data:', usuariosData);
+
+    // Debug the usuarios structure
+    console.log('=== USUARIOS DEBUG ===');
+    console.log('Usuarios count:', usuariosData.length);
+    if (usuariosData.length > 0) {
+      console.log('First usuario:', usuariosData[0]);
+      usuariosData.forEach((usuario, index) => {
+        console.log(`Usuario ${index}:`, {
+          id: usuario.id,
+          idType: typeof usuario.id,
+          nombre: usuario.nombre,
+          apellido: usuario.apellido
+        });
       });
-      return;
+    }
+    console.log('=== END USUARIOS DEBUG ===');
+
+    // Create maps for faster lookups
+    const clientsMap = new Map();
+    const usuariosMap = new Map();
+
+    // Handle clients mapping
+    if (Array.isArray(clientsData)) {
+      clientsData.forEach(client => {
+        if (client && client.id !== undefined && client.id !== null) {
+          clientsMap.set(client.id, client);
+          clientsMap.set(String(client.id), client);
+          clientsMap.set(parseInt(client.id), client);
+        }
+      });
     }
 
-    const totalRevenue = filteredSales.reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
+    // Handle usuarios mapping
+    if (Array.isArray(usuariosData)) {
+      usuariosData.forEach(usuario => {
+        if (usuario && usuario.id !== undefined && usuario.id !== null) {
+          console.log(`Mapping usuario ID ${usuario.id} (type: ${typeof usuario.id}):`, usuario);
+          
+          // Map all possible formats of the ID
+          usuariosMap.set(usuario.id, usuario);
+          usuariosMap.set(String(usuario.id), usuario);
+          
+          // Only add parseInt if it's a valid number
+          const parsedId = parseInt(usuario.id);
+          if (!isNaN(parsedId)) {
+            usuariosMap.set(parsedId, usuario);
+          }
+        }
+      });
+    }
+
+    // Debug: Log the maps to see what we have
+    console.log('Usuarios map keys:', Array.from(usuariosMap.keys()));
+    console.log('Usuarios map size:', usuariosMap.size);
+    
+    // Test if usuario with ID 2 exists in different formats
+    console.log('Usuario with ID 2:', usuariosMap.get(2));
+    console.log('Usuario with ID "2":', usuariosMap.get("2"));
+
+    // Enrich sales data with client and usuario information
+    const enrichedSales = salesData.map(sale => {
+      let cliente = null;
+      let usuario = null;
+
+      // Client lookup
+      if (sale.cliente && typeof sale.cliente === 'object') {
+        cliente = sale.cliente;
+      } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
+        cliente = clientsMap.get(sale.clienteId) || 
+                 clientsMap.get(String(sale.clienteId)) || 
+                 clientsMap.get(parseInt(sale.clienteId));
+      }
+
+      // Usuario lookup
+      if (sale.usuario && typeof sale.usuario === 'object') {
+        usuario = sale.usuario;
+      } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
+        const uid = sale.usuarioId;
+        
+        // Try different formats
+        usuario = usuariosMap.get(uid) || 
+                 usuariosMap.get(String(uid)) || 
+                 usuariosMap.get(parseInt(uid));
+        
+        console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
+      }
+
+      return {
+        ...sale,
+        cliente,
+        usuario,
+        metodoPago: sale.metodoPago || sale.metodo_pago || 'CASH',
+      };
+    });
+
+    setSales(enrichedSales);
+    setClients(clientsData);
+    setUsuarios(usuariosData);
+
+  } catch (err) {
+    console.error('Error loading data:', err);
+    setError('Error al cargar los datos. Verifique la conexión con el servidor.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleViewSale = (sale) => {
+    setViewingSale(sale);
+    setViewDialogOpen(true);
+  };
+
+  const getStatusLabel = (status) => {
+    const statusLabels = {
+      PENDIENTE: 'Pendiente',
+      ENVIADA: 'Enviada',
+      CANCELADA: 'Cancelada',
+      ENTREGADA: 'Entregada',
+      CONFIRMADA: 'Confirmada',
+    };
+    return statusLabels[status] || status;
+  };
+
+  const getStatusColor = (status) => {
+    const statusColors = {
+      PENDIENTE: 'warning',
+      ENVIADA: 'info',
+      CANCELADA: 'error',
+      ENTREGADA: 'success',
+      CONFIRMADA: 'success',
+    };
+    return statusColors[status] || 'default';
+  };
+
+  const getPaymentMethodLabel = (method) => {
+    const methods = {
+      EFECTIVO: 'Efectivo',
+      TARJETA_CREDITO: 'Tarjeta de Crédito',
+      TARJETA_DEBITO: 'Tarjeta de Débito',
+      TRANSFERENCIA_BANCARIA: 'Transferencia',
+      CUENTA_CORRIENTE: 'Cuenta Corriente',
+      CHEQUE: 'Cheque',
+      MERCADO_PAGO: 'Mercado Pago',
+    };
+    return methods[method] || method;
+  };
+
+  function getClientFullName(cliente) {
+    if (!cliente) {
+      return 'Cliente no disponible';
+    }
+
+    // Handle different possible field names
+    const razonSocial = cliente.razonSocial || cliente.razon_social || cliente.businessName;
+    const nombre = cliente.nombre || cliente.name || cliente.firstName;
+    const apellido = cliente.apellido || cliente.surname || cliente.lastName;
+
+    // First try business name / razon social
+    if (razonSocial && razonSocial.trim()) {
+      return razonSocial.trim();
+    }
+
+    // Then try combining first and last name
+    const nameParts = [nombre, apellido].filter(part => part && part.trim());
+    if (nameParts.length > 0) {
+      return nameParts.join(' ').trim();
+    }
+
+    // Fallback to any available name field
+    const fallbackName = cliente.fullName || cliente.displayName || cliente.email;
+    if (fallbackName && fallbackName.trim()) {
+      return fallbackName.trim();
+    }
+
+    // If we have an ID, show that at least
+    if (cliente.id) {
+      return `Cliente #${cliente.id}`;
+    }
+
+    return 'Cliente no disponible';
+  }
+
+const getUsuarioFullName = (usuario, usuarioId = null) => {
+  if (!usuario && !usuarioId) {
+    return 'Vendedor no disponible';
+  }
+
+  // If we have the usuario object, use it
+  if (usuario && typeof usuario === 'object') {
+    // Handle different possible field names for usuario
+    const possibleNameFields = [
+      // Combined fields
+      usuario.nombreCompleto,
+      usuario.nombre_completo,
+      usuario.fullName,
+      usuario.full_name,
+      usuario.displayName,
+      usuario.display_name,
+    ];
+
+    // Try combined name fields first
+    for (const nameField of possibleNameFields) {
+      if (nameField && typeof nameField === 'string' && nameField.trim()) {
+        return nameField.trim();
+      }
+    }
+
+    // Try first and last name combinations
+    const firstName = usuario.nombre || usuario.name || usuario.firstName || usuario.first_name;
+    const lastName = usuario.apellido || usuario.surname || usuario.lastName || usuario.last_name;
+    
+    if (firstName && lastName) {
+      return `${firstName.trim()} ${lastName.trim()}`;
+    }
+    
+    if (firstName) {
+      return firstName.trim();
+    }
+
+    if (lastName) {
+      return lastName.trim();
+    }
+
+    // Fallback to other identification fields
+    const fallbackFields = [
+      usuario.username,
+      usuario.user_name,
+      usuario.login,
+      usuario.email,
+      usuario.cedula,
+      usuario.documento
+    ];
+
+    for (const field of fallbackFields) {
+      if (field && typeof field === 'string' && field.trim()) {
+        return field.trim();
+      }
+    }
+
+    // If we have an ID in the object, show that
+    if (usuario.id) {
+      return `Usuario #${usuario.id}`;
+    }
+  }
+
+  // If we only have an ID, show that
+  if (usuarioId) {
+    return `Usuario #${usuarioId}`;
+  }
+
+  return 'Vendedor no disponible';
+};
+const debugUsuarioMapping = (salesData, usuariosData) => {
+  console.log('=== DEBUGGING USUARIO MAPPING ===');
+  
+  // Log the structure of usuarios data
+  console.log('Usuarios data structure:', usuariosData);
+  if (usuariosData && usuariosData.length > 0) {
+    console.log('First usuario example:', usuariosData[0]);
+    console.log('Usuario fields:', Object.keys(usuariosData[0]));
+  }
+  
+  // Log the structure of sales data
+  console.log('Sales data structure (first item):', salesData[0]);
+  if (salesData && salesData.length > 0) {
+    console.log('Sale fields:', Object.keys(salesData[0]));
+    
+    // Check what usuario-related fields exist in sales
+    const saleUsuarioFields = Object.keys(salesData[0]).filter(key => 
+      key.toLowerCase().includes('usuario') || 
+      key.toLowerCase().includes('vendedor') ||
+      key.toLowerCase().includes('user')
+    );
+    console.log('Usuario-related fields in sales:', saleUsuarioFields);
+  }
+  
+  // Check specific sales with usuarioId = 2
+  const salesWithUsuario2 = salesData.filter(sale => 
+    sale.usuarioId === 2 || sale.usuario_id === 2
+  );
+  console.log('Sales with usuarioId = 2:', salesWithUsuario2);
+  
+  // Check if usuario with ID = 2 exists
+  const usuario2 = usuariosData.find(u => u.id === 2 || u.id === '2');
+  console.log('Usuario with ID = 2:', usuario2);
+  
+  console.log('=== END DEBUG ===');
+};
+
+// Call this function in your loadData function after getting the data:
+// debugUsuarioMapping(salesData, usuariosData);
+
+  const safeParseDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  const filteredSales = sales.filter(sale => {
+    const clientName = getClientFullName(sale.cliente);
+    const usuarioName = getUsuarioFullName(sale.usuario);
+    
+    const matchesSearch =
+      searchTerm === '' ||
+      (sale.numeroVenta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       sale.numero_venta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       usuarioName.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || 
+      sale.metodoPago === paymentMethodFilter || 
+      sale.metodo_pago === paymentMethodFilter;
+    
+    const matchesClient = clientFilter === 'all' || 
+      (sale.cliente?.id?.toString() === clientFilter) ||
+      (sale.clienteId?.toString() === clientFilter) ||
+      (sale.cliente_id?.toString() === clientFilter);
+    
+    const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta);
+    if (!saleDate) return false;
+    
+    const toDateEndOfDay = dateToFilter ? new Date(dateToFilter) : null;
+    if (toDateEndOfDay) {
+      toDateEndOfDay.setHours(23, 59, 59, 999);
+    }
+    
+    const matchesDateFrom = !dateFromFilter || saleDate >= dateFromFilter;
+    const matchesDateTo = !toDateEndOfDay || saleDate <= toDateEndOfDay;
+    
+    return matchesSearch && matchesStatus && matchesPaymentMethod &&
+           matchesClient && matchesDateFrom && matchesDateTo;
+  });
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setPaymentMethodFilter('all');
+    setClientFilter('all');
+    setDateFromFilter(null);
+    setDateToFilter(null);
+  };
+
+  const calculateTotals = () => {
+    const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
     const totalTransactions = filteredSales.length;
-    const averageOrderValue = totalRevenue / totalTransactions;
-
-    // Calculate top client
-    const clientSales = clients.map((client: Client) => {
-      const clientRevenue = filteredSales
-        .filter((sale: Sale) => sale.clientId === client.id)
-        .reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
-      return { client, revenue: clientRevenue };
-    });
-    const topClient = clientSales.reduce((prev: any, current: any) => 
-      current.revenue > prev.revenue ? current : prev, { client: null, revenue: 0 }
-    ).client;
-
-    // Calculate top employee
-    const employeeSales = employees.map((employee: Employee) => {
-      const employeeRevenue = filteredSales
-        .filter((sale: Sale) => sale.employeeId === employee.id)
-        .reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
-      return { employee, revenue: employeeRevenue };
-    });
-    const topEmployee = employeeSales.reduce((prev: any, current: any) => 
-      current.revenue > prev.revenue ? current : prev, { employee: null, revenue: 0 }
-    ).employee;
-
-    // Calculate monthly growth (simplified)
-    const currentMonth = new Date().getMonth();
-    const currentMonthSales = filteredSales.filter((sale: Sale) => 
-      new Date(sale.saleDate).getMonth() === currentMonth
-    );
-    const previousMonthSales = filteredSales.filter((sale: Sale) => 
-      new Date(sale.saleDate).getMonth() === currentMonth - 1
-    );
-    
-    const currentMonthRevenue = currentMonthSales.reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
-    const previousMonthRevenue = previousMonthSales.reduce((sum: number, sale: Sale) => sum + (sale.total || sale.totalAmount || 0), 0);
-    
-    const monthlyGrowth = previousMonthRevenue > 0 
-      ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 
-      : 0;
-
-    setMetrics({
-      totalSales: filteredSales.length,
-      totalRevenue,
-      averageOrderValue,
-      totalTransactions,
-      topClient,
-      topEmployee,
-      topProduct: products[0] || null, // Simplified for now
-      monthlyGrowth,
-    });
+    const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+    return { totalRevenue, totalTransactions, averageOrderValue };
   };
 
-  const generateReportData = () => {
-    const filteredSales = getFilteredSales();
-    
-    if (reportType === 'daily') {
-      // Group by day
-      const dailyData = new Map<string, { sales: number; revenue: number; transactions: number }>();
-      
-      filteredSales.forEach((sale: Sale) => {
-        const dateKey = new Date(sale.saleDate).toISOString().split('T')[0];
-        const existing = dailyData.get(dateKey) || { sales: 0, revenue: 0, transactions: 0 };
-        dailyData.set(dateKey, {
-          sales: existing.sales + 1,
-          revenue: existing.revenue + (sale.total || sale.totalAmount || 0),
-          transactions: existing.transactions + 1,
-        });
-      });
+  const { totalRevenue, totalTransactions, averageOrderValue } = calculateTotals();
 
-      const reportArray = Array.from(dailyData.entries()).map(([period, data]) => ({
-        period,
-        ...data,
-      }));
-      
-      setReportData(reportArray.sort((a, b) => a.period.localeCompare(b.period)));
-    } else if (reportType === 'monthly') {
-      // Group by month
-      const monthlyData = new Map<string, { sales: number; revenue: number; transactions: number }>();
-      
-      filteredSales.forEach((sale: Sale) => {
-        const date = new Date(sale.saleDate);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        const existing = monthlyData.get(monthKey) || { sales: 0, revenue: 0, transactions: 0 };
-        monthlyData.set(monthKey, {
-          sales: existing.sales + 1,
-          revenue: existing.revenue + (sale.total || sale.totalAmount || 0),
-          transactions: existing.transactions + 1,
-        });
-      });
-
-      const reportArray = Array.from(monthlyData.entries()).map(([period, data]) => ({
-        period,
-        ...data,
-      }));
-      
-      setReportData(reportArray.sort((a, b) => a.period.localeCompare(b.period)));
-    }
+  const generateSalesReport = () => {
+    const groupedSales = {};
+    filteredSales.forEach(sale => {
+      const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta) || new Date();
+      let key = '';
+      switch (groupBy) {
+        case 'Dia':
+          key = saleDate.toLocaleDateString();
+          break;
+        case 'Semana':
+          key = `Semana ${Math.ceil(saleDate.getDate() / 7)}`;
+          break;
+        case 'Mes':
+          key = saleDate.toLocaleString('default', { month: 'long' });
+          break;
+        case 'Año':
+          key = saleDate.getFullYear().toString();
+          break;
+        case 'Estado':
+          key = getStatusLabel(sale.estado);
+          break;
+        case 'Método de Pago':
+          key = getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago);
+          break;
+        case 'Cliente':
+          key = getClientFullName(sale.cliente);
+          break;
+        case 'Vendedor':
+          key = getUsuarioFullName(sale.usuario);
+          break;
+        default:
+          key = 'Todos';
+      }
+      if (!groupedSales[key]) {
+        groupedSales[key] = { count: 0, total: 0 };
+      }
+      groupedSales[key].count += 1;
+      groupedSales[key].total += sale.total || 0;
+    });
+    return groupedSales;
   };
 
-  const handleExportReport = () => {
-    alert('Funcionalidad de exportación en desarrollo');
+  const salesReport = generateSalesReport();
+
+  // Prepare chart data
+  const chartData = {
+    labels: Object.keys(salesReport),
+    datasets: [
+      {
+        label: 'Total Ventas ($)',
+        data: Object.values(salesReport).map(item => item.total),
+        backgroundColor: chartType === 'pie' ? [
+          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+        ] : 'rgba(75, 192, 192, 0.6)',
+        borderColor: chartType === 'pie' ? [
+          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+        ] : 'rgba(75, 192, 192, 1)',
+        borderWidth: 1,
+        fill: chartType === 'line' ? false : true,
+      },
+    ],
   };
 
-  const handlePrintReport = () => {
-    window.print();
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: `Ventas por ${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}`,
+      },
+    },
+    scales: chartType !== 'pie' ? {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Total ($)',
+        },
+      },
+      x: {
+        title: {
+          display: true,
+          text: groupBy.charAt(0).toUpperCase() + groupBy.slice(1),
+        },
+      },
+    } : {},
   };
 
   if (loading) {
@@ -261,30 +595,23 @@ const InformesVentasPage: React.FC = () => {
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-          <AssessmentIcon />
-          Informes de Ventas
+          <BarChartIcon />
+          Informe de Ventas
         </Typography>
         <Box display="flex" gap={1}>
           <Button
             variant="outlined"
+            startIcon={<GetAppIcon />}
+            onClick={() => alert('Función de exportación en desarrollo')}
+          >
+            Exportar
+          </Button>
+          <Button
+            variant="contained"
             startIcon={<PrintIcon />}
-            onClick={handlePrintReport}
+            onClick={() => window.print()}
           >
             Imprimir
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PictureAsPdfIcon />}
-            onClick={() => alert('Exportar PDF en desarrollo')}
-          >
-            Exportar PDF
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<GetAppIcon />}
-            onClick={handleExportReport}
-          >
-            Exportar Excel
           </Button>
         </Box>
       </Box>
@@ -295,78 +622,63 @@ const InformesVentasPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Filters */}
+      {/* Debug Information - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Debug: {filteredSales.length} ventas cargadas, {clients.length} clientes, {usuarios.length} usuarios
+        </Alert>
+      )}
+
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" mb={2}>Filtros del Reporte</Typography>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6} md={2}>
+          <Typography variant="h6" gutterBottom>
+            Configuración del Informe
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Tipo de Reporte</InputLabel>
+                <InputLabel>Tipo de Informe</InputLabel>
                 <Select
                   value={reportType}
-                  label="Tipo de Reporte"
-                  onChange={(e: any) => setReportType(e.target.value)}
+                  label="Tipo de Informe"
+                  onChange={(e) => setReportType(e.target.value)}
                 >
-                  <MenuItem value="daily">Diario</MenuItem>
-                  <MenuItem value="monthly">Mensual</MenuItem>
-                  <MenuItem value="yearly">Anual</MenuItem>
+                  <MenuItem value="summary">Resumen</MenuItem>
+                  <MenuItem value="detailed">Detallado</MenuItem>
+                  <MenuItem value="comparative">Comparativo</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <TextField
-                type="date"
-                label="Fecha Desde"
-                size="small"
-                fullWidth
-                value={dateFrom}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <TextField
-                type="date"
-                label="Fecha Hasta"
-                size="small"
-                fullWidth
-                value={dateTo}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Cliente</InputLabel>
+                <InputLabel>Agrupar por</InputLabel>
                 <Select
-                  value={selectedClient}
-                  label="Cliente"
-                  onChange={(e: any) => setSelectedClient(e.target.value)}
+                  value={groupBy}
+                  label="Agrupar por"
+                  onChange={(e) => setGroupBy(e.target.value)}
                 >
-                  <MenuItem value="all">Todos los Clientes</MenuItem>
-                  {clients.map((client: Client) => (
-                    <MenuItem key={client.id} value={client.id.toString()}>
-                      {client.name}
-                    </MenuItem>
-                  ))}
+                  <MenuItem value="Dia">Día</MenuItem>
+                  <MenuItem value="Semana">Semana</MenuItem>
+                  <MenuItem value="Mes">Mes</MenuItem>
+                  <MenuItem value="Año">Año</MenuItem>
+                  <MenuItem value="Estado">Estado</MenuItem>
+                  <MenuItem value="Método de Pago">Método de Pago</MenuItem>
+                  <MenuItem value="Cliente">Cliente</MenuItem>
+                  <MenuItem value="Vendedor">Vendedor</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Vendedor</InputLabel>
+                <InputLabel>Tipo de Gráfico</InputLabel>
                 <Select
-                  value={selectedEmployee}
-                  label="Vendedor"
-                  onChange={(e: any) => setSelectedEmployee(e.target.value)}
+                  value={chartType}
+                  label="Tipo de Gráfico"
+                  onChange={(e) => setChartType(e.target.value)}
                 >
-                  <MenuItem value="all">Todos los Vendedores</MenuItem>
-                  {employees.map((employee: Employee) => (
-                    <MenuItem key={employee.id} value={employee.id.toString()}>
-                      {employee.firstName} {employee.lastName}
-                    </MenuItem>
-                  ))}
+                  <MenuItem value="bar">Barras</MenuItem>
+                  <MenuItem value="pie">Torta</MenuItem>
+                  <MenuItem value="line">Líneas</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -374,185 +686,283 @@ const InformesVentasPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Metrics Cards */}
-      {metrics && (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom>
-                      Total Ventas
-                    </Typography>
-                    <Typography variant="h4">
-                      {metrics.totalSales}
-                    </Typography>
-                  </Box>
-                  <BarChartIcon color="primary" sx={{ fontSize: 40 }} />
+      <Grid container spacing={3} mb={3}>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={2}>
+                <AttachMoneyIcon color="primary" />
+                <Box>
+                  <Typography variant="h6">${totalRevenue.toLocaleString()}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Ingresos Totales
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom>
-                      Ingresos Totales
-                    </Typography>
-                    <Typography variant="h4">
-                      ${metrics.totalRevenue.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <TrendingUpIcon color="success" sx={{ fontSize: 40 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom>
-                      Valor Promedio
-                    </Typography>
-                    <Typography variant="h4">
-                      ${metrics.averageOrderValue.toFixed(0)}
-                    </Typography>
-                  </Box>
-                  <PieChartIcon color="info" sx={{ fontSize: 40 }} />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom>
-                      Crecimiento Mensual
-                    </Typography>
-                    <Typography variant="h4">
-                      {metrics.monthlyGrowth.toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <TimelineIcon 
-                    color={metrics.monthlyGrowth >= 0 ? "success" : "error"} 
-                    sx={{ fontSize: 40 }} 
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+              </Box>
+            </CardContent>
+          </Card>
         </Grid>
-      )}
-
-      {/* Top Performers */}
-      {metrics && (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" mb={2}>Mejor Cliente</Typography>
-                {metrics.topClient ? (
-                  <Box>
-                    <Typography variant="h5">{metrics.topClient.name}</Typography>
-                    <Typography color="textSecondary">{metrics.topClient.email}</Typography>
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No hay datos</Typography>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" mb={2}>Mejor Vendedor</Typography>
-                {metrics.topEmployee ? (
-                  <Box>
-                    <Typography variant="h5">
-                      {metrics.topEmployee.firstName} {metrics.topEmployee.lastName}
-                    </Typography>
-                    <Typography color="textSecondary">{metrics.topEmployee.position}</Typography>
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No hay datos</Typography>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" mb={2}>Producto Destacado</Typography>
-                {metrics.topProduct ? (
-                  <Box>
-                    <Typography variant="h5">{metrics.topProduct.name}</Typography>
-                    <Typography color="textSecondary">
-                      ${metrics.topProduct.price.toLocaleString()}
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No hay datos</Typography>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={2}>
+                <ShoppingCartIcon color="success" />
+                <Box>
+                  <Typography variant="h6">{totalTransactions}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total Ventas
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
         </Grid>
-      )}
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={2}>
+                <TrendingUpIcon color="warning" />
+                <Box>
+                  <Typography variant="h6">${averageOrderValue.toFixed(2)}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Valor Promedio
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
-      {/* Report Data Table */}
-      <Card>
+      <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" mb={2}>
-            Detalle del Reporte - {reportType === 'daily' ? 'Diario' : 'Mensual'}
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <FilterListIcon />
+            <Typography variant="h6">Filtros</Typography>
+          </Box>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                label="Buscar"
+                variant="outlined"
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por número, cliente..."
+                InputProps={{
+                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Estado"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                  <MenuItem value="ENVIADA">Enviada</MenuItem>
+                  <MenuItem value="CANCELADA">Cancelada</MenuItem>
+                  <MenuItem value="ENTREGADA">Entregada</MenuItem>
+                  <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Método de Pago</InputLabel>
+                <Select
+                  value={paymentMethodFilter}
+                  label="Método de Pago"
+                  onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                  <MenuItem value="CHEQUE">Cheque</MenuItem>
+                  <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
+                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem> 
+                  <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                  <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
+                                   
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Cliente</InputLabel>
+                <Select
+                  value={clientFilter}
+                  label="Cliente"
+                  onChange={(e) => setClientFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  {clients.map(client => (
+                    <MenuItem key={client.id} value={client.id.toString()}>
+                      {getClientFullName(client)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={1.5}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Desde"
+                  value={dateFromFilter}
+                  onChange={(newValue) => setDateFromFilter(newValue)}
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={12} md={1.5}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Hasta"
+                  value={dateToFilter}
+                  onChange={(newValue) => setDateToFilter(newValue)}
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </LocalizationProvider>
+            </Grid>
+          </Grid>
+          <Box mt={2}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={clearFilters}
+            >
+              Limpiar Filtros
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Visualización del Informe
           </Typography>
+          <Box sx={{ height: 400, mb: 3 }}>
+            {chartType === 'bar' && <Bar data={chartData} options={chartOptions} />}
+            {chartType === 'pie' && <Pie data={chartData} options={chartOptions} />}
+            {chartType === 'line' && <Line data={chartData} options={chartOptions} />}
+          </Box>
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Período</TableCell>
-                  <TableCell align="center">Ventas</TableCell>
-                  <TableCell align="right">Ingresos</TableCell>
-                  <TableCell align="center">Transacciones</TableCell>
-                  <TableCell align="right">Promedio</TableCell>
+                  <TableCell>{groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}</TableCell>
+                  <TableCell align="right">Cantidad de Ventas</TableCell>
+                  <TableCell align="right">Total</TableCell>
+                  <TableCell align="right">Porcentaje</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {reportData.map((row: SalesReportData, index: number) => (
-                  <TableRow key={index} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="bold">
-                        {reportType === 'daily' 
-                          ? new Date(row.period).toLocaleDateString()
-                          : row.period
-                        }
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip label={row.sales} color="primary" size="small" />
-                    </TableCell>
+                {Object.entries(salesReport).map(([key, value]) => (
+                  <TableRow key={key}>
+                    <TableCell>{key}</TableCell>
+                    <TableCell align="right">{value.count}</TableCell>
+                    <TableCell align="right">${value.total.toLocaleString()}</TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" fontWeight="bold" color="success.main">
-                        ${row.revenue.toLocaleString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">{row.transactions}</TableCell>
-                    <TableCell align="right">
-                      ${(row.revenue / (row.transactions || 1)).toFixed(2)}
+                      {totalRevenue > 0 ? ((value.total / totalRevenue) * 100).toFixed(2) : 0}%
                     </TableCell>
                   </TableRow>
                 ))}
-                {reportData.length === 0 && (
+                <TableRow>
+                  <TableCell><strong>Total</strong></TableCell>
+                  <TableCell align="right"><strong>{totalTransactions}</strong></TableCell>
+                  <TableCell align="right"><strong>${totalRevenue.toLocaleString()}</strong></TableCell>
+                  <TableCell align="right"><strong>100%</strong></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Detalle de Ventas ({filteredSales.length})
+          </Typography>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>Cliente</TableCell>
+                  <TableCell>Vendedor</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell>Total</TableCell>
+                  <TableCell>Método de Pago</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredSales.map(sale => (
+                  <TableRow key={sale.id}>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="bold">
+                        #{sale.id}
+                      </Typography>                
+                    </TableCell>
+                    <TableCell>
+                      {(sale.fechaVenta || sale.fecha_venta) ? 
+                        new Date(sale.fechaVenta || sale.fecha_venta).toLocaleDateString() : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {getClientFullName(sale.cliente)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+  <Typography variant="body2">
+    {getUsuarioFullName(sale.usuario)}
+  </Typography>
+  
+</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getStatusLabel(sale.estado)}
+                        color={getStatusColor(sale.estado)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="bold">
+                        ${(sale.total || 0).toLocaleString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago)}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleViewSale(sale)}
+                        title="Ver detalles"
+                      >
+                        <VisibilityIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredSales.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      <Typography color="textSecondary">
-                        No hay datos para mostrar en el período seleccionado
+                    <TableCell colSpan={8} align="center">
+                      <Typography color="text.secondary">
+                        No se encontraron ventas que coincidan con los filtros aplicados
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -563,23 +973,124 @@ const InformesVentasPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Box mt={3}>
-        <Alert severity="info">
-          <Typography variant="body2">
-            <strong>Próximas funcionalidades:</strong>
-          </Typography>
-          <Box component="ul" mt={1} sx={{ pl: 2 }}>
-            <Typography component="li" variant="body2">Gráficos interactivos con Chart.js o Recharts</Typography>
-            <Typography component="li" variant="body2">Comparación entre períodos</Typography>
-            <Typography component="li" variant="body2">Análisis de tendencias y predicciones</Typography>
-            <Typography component="li" variant="body2">Reportes personalizados por usuario</Typography>
-            <Typography component="li" variant="body2">Exportación a múltiples formatos</Typography>
-            <Typography component="li" variant="body2">Programación de reportes automáticos</Typography>
-          </Box>
-        </Alert>
-      </Box>
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Detalles de la Venta #{viewingSale?.id}
+        </DialogTitle>
+        <DialogContent>
+          {viewingSale && (
+            <Box>
+              <Grid container spacing={2} mb={3}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Información General
+                  </Typography>
+                  <Box sx={{ mb: 1 }}>
+                    <Typography><strong>Número:</strong> {viewingSale.numeroVenta || 'N/A'}</Typography>
+                    <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
+                    <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
+                    <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago)}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Cliente y Vendedor
+                  </Typography>
+                  <Box sx={{ mb: 1 }}>
+                    <Typography>
+                      <strong>Cliente:</strong> {getClientFullName(viewingSale.cliente)}
+                    </Typography>
+                    {viewingSale.cliente?.email && (
+                      <Typography variant="body2" color="text.secondary">
+                        Email: {viewingSale.cliente.email}
+                      </Typography>
+                    )}
+                    <Typography sx={{ mt: 2 }}>
+                      <strong>Vendedor:</strong> {getUsuarioFullName(viewingSale.usuario)}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 2 }} />
+
+              {viewingSale.detalleVentas && viewingSale.detalleVentas.length > 0 ? (
+                <>
+                  <Typography variant="subtitle2" color="text.secondary" mb={2}>
+                    Productos ({viewingSale.detalleVentas.length} artículos)
+                  </Typography>
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Producto</TableCell>
+                          <TableCell align="center">Cantidad</TableCell>
+                          <TableCell align="right">Precio Unit.</TableCell>
+                          <TableCell align="right">Descuento</TableCell>
+                          <TableCell align="right">Subtotal</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {viewingSale.detalleVentas.map((item, index) => (
+                          <TableRow key={item.id || index}>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {item.producto?.nombre || 'Producto no disponible'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="center">{item.cantidad}</TableCell>
+                            <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>
+                            <TableCell align="right">{item.descuento || 0}%</TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" fontWeight="bold">
+                                ${item.subtotal?.toFixed(2) || '0.00'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </>
+              ) : (
+                <Alert severity="info">
+                  No hay productos asociados a esta venta
+                </Alert>
+              )}
+
+              <Box mt={3} display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  {viewingSale.notas && (
+                    <>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Notas
+                      </Typography>
+                      <Typography variant="body2">
+                        {viewingSale.notas}
+                      </Typography>
+                    </>
+                  )}
+                </Box>
+                <Typography variant="h5" color="primary" fontWeight="bold">
+                  Total: ${(viewingSale.total || 0).toLocaleString()}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDialogOpen(false)}>Cerrar</Button>
+          <Button
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            onClick={() => alert('Función de impresión en desarrollo')}
+          >
+            Imprimir
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
-export default InformesVentasPage;
+export default InformeVentasPage;

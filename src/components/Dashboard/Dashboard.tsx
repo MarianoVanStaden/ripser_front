@@ -25,6 +25,7 @@ import RecentActivity from './RecentActivity';
 import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
 import BackendSetupDialog from '../BackendSetupDialog/BackendSetupDialog';
+import { useAuth } from "../../context/AuthContext";
 
 interface DashboardStats {
   totalClients: number;
@@ -32,6 +33,7 @@ interface DashboardStats {
   totalOrders: number;
   totalSales: number;
   monthlySalesAmount: number;
+  monthlySalesCount: number; // Added to track number of sales this month
   lowStockProducts: number;
 }
 
@@ -82,10 +84,11 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
 );
 
 const Dashboard: React.FC = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     connected: false,
-    message: 'Checking connection...'
+    message: 'Checking connection...',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +106,7 @@ const Dashboard: React.FC = () => {
     } catch (err) {
       setConnectionStatus({
         connected: false,
-        message: 'Failed to check backend connection'
+        message: 'Failed to check backend connection',
       });
     }
   };
@@ -112,39 +115,44 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Fetch data from multiple endpoints
-
       const [clients, products, sales, lowStockProducts] = await Promise.all([
-        clientApi.getAll(),
-        productApi.getAll(),
-        saleApi.getAll(),
-        productApi.getLowStock(), // Products with low stock
+        clientApi.getAll().catch((err) => {
+          throw new Error(`clientApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
+        }),
+        productApi.getAll(0, 100).catch((err) => {
+          throw new Error(`productApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
+        }),
+        saleApi.getAll().catch((err) => {
+          throw new Error(`saleApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
+        }),
+        productApi.getLowStock().catch((err) => {
+          throw new Error(`productApi.getLowStock failed: ${err.response?.status} ${err.response?.data}`);
+        }),
       ]);
-
-      // Orders are not supported by backend, set to empty array
-      const orders: any[] = [];
-
-      // Calculate monthly sales amount (this month)
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const monthlySales = sales.filter(sale => {
-        const saleDate = new Date(sale.saleDate);
+      const currentMonth = new Date().getMonth(); // 8 (September)
+      const currentYear = new Date().getFullYear(); // 2025
+      const monthlySales = sales.filter((sale) => {
+        const saleDate = new Date(sale.fechaVenta);
         return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
       });
-      const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-
+      const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+      const monthlySalesCount = monthlySales.length; // Count sales for this month
       setStats({
         totalClients: clients.length,
         totalProducts: products.length,
-        totalOrders: orders.length,
+        totalOrders: sales.length, // Use sales as orders
         totalSales: sales.length,
         monthlySalesAmount,
+        monthlySalesCount,
         lowStockProducts: lowStockProducts.length,
       });
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err.message);
+      if (err.message.includes('403')) {
+        setError('Access denied. Please ensure you have the necessary permissions.');
+      } else {
+        setError('Failed to load dashboard data. Make sure your backend is running on http://localhost:8080');
+      }
     } finally {
       setLoading(false);
     }
@@ -175,6 +183,11 @@ const Dashboard: React.FC = () => {
           Dashboard
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {user && (
+            <Typography variant="subtitle1">
+              Hola {user.nombre || user.username}
+            </Typography>
+          )}
           <Chip
             icon={connectionStatus.connected ? <CheckCircleIcon /> : <ErrorIcon />}
             label={connectionStatus.connected ? 'Backend Connected' : 'Backend Disconnected'}
@@ -209,9 +222,9 @@ const Dashboard: React.FC = () => {
             Please ensure your Spring Boot backend is running on <code>http://localhost:8080/RipserApp</code>
           </Typography>
           <Box sx={{ mt: 1 }}>
-            <Button 
-              size="small" 
-              variant="outlined" 
+            <Button
+              size="small"
+              variant="outlined"
               onClick={() => setSetupDialogOpen(true)}
               startIcon={<SettingsIcon />}
             >
@@ -231,30 +244,30 @@ const Dashboard: React.FC = () => {
         <>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3, mb: 4 }}>
             <StatCard
-              title="Total Clients"
+              title="Total de Clientes"
               value={stats.totalClients}
               icon={<PeopleIcon />}
               color="#1976d2"
             />
             <StatCard
-              title="Total Products"
+              title="Total de Productos"
               value={stats.totalProducts}
               icon={<InventoryIcon />}
               color="#388e3c"
-              subtitle={`${stats.lowStockProducts} low stock`}
+              subtitle={`${stats.lowStockProducts} bajo stock`}
             />
             <StatCard
-              title="Total Orders"
+              title="Ordenes Totales"
               value={stats.totalOrders}
               icon={<ShoppingCartIcon />}
               color="#f57c00"
             />
             <StatCard
-              title="Monthly Sales"
+              title="Ventas Mensuales"
               value={`$${stats.monthlySalesAmount.toLocaleString()}`}
               icon={<TrendingUpIcon />}
               color="#7b1fa2"
-              subtitle={`${stats.totalSales} total sales`}
+              subtitle={`${stats.monthlySalesCount} ventas este mes`}
             />
           </Box>
 
@@ -291,9 +304,9 @@ const Dashboard: React.FC = () => {
         </Box>
       )}
 
-      <BackendSetupDialog 
-        open={setupDialogOpen} 
-        onClose={() => setSetupDialogOpen(false)} 
+      <BackendSetupDialog
+        open={setupDialogOpen}
+        onClose={() => setSetupDialogOpen(false)}
       />
     </Box>
   );

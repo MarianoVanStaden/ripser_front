@@ -17,15 +17,45 @@ export interface Cliente {
   codigoPostal?: string;
   tipo: TipoCliente;
   estado: EstadoCliente;
-  limiteCredito: number;
+  limiteCredito?: number;
   saldoActual: number;
-  fechaAlta: string;
-  fechaActualizacion: string;
+  fechaAlta: string; // ISO 8601 string
+  fechaActualizacion: string; // ISO 8601 string
   contactos?: ContactoCliente[];
   cuentaCorriente?: CuentaCorriente[];
-  ventas?: any[]; // Reference to sales
+  ventas?: Venta[];
+  creditos?: CreditoCliente[]; // New field
+  calificacion?: number; // New field (e.g., 0.00 to 5.00)
 }
 
+export interface CreateMovimientoPayload {
+  clienteId: number;
+  fecha: string;
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+}
+
+
+export interface ContactoProveedorDTO {
+  id?: number;
+  proveedorId: number;
+  fechaContacto?: string; // ISO string
+  tipoContacto?: string;
+  descripcion?: string;
+  resultado?: string;
+  proximoContacto?: string; // ISO string
+  usuarioId?: number;
+}
+  
+export interface CreditoCliente {
+  id: number;
+  montoOtorgado: number;
+  saldoPendiente: number;
+  fechaOtorgamiento: string; // ISO 8601 string
+  estado: 'VIGENTE' | 'PAGADO' | 'VENCIDO';
+}
 // Client Contact entity
 export interface ContactoCliente {
   id: number;
@@ -163,36 +193,25 @@ export interface SystemParameter {
 // Presupuesto (Budget/Quote) entity
 export interface Presupuesto {
   id: number;
-  clientId: number;
-  client?: Client;
-  employeeId: number;
-  employee?: Employee;
-  quoteNumber: string;
-  quoteDate: string;
-  validUntil: string;
-  status: PresupuestoStatus;
-  subtotal: number;
-  tax: number;
-  discount: number;
+  numeroPresupuesto: string;
+  cliente: Cliente;
+  fechaPresupuesto: string;
+  fechaVencimiento: string;
+  estado: PresupuestoStatus;
   total: number;
-  observations: string;
-  items: PresupuestoItem[];
-  createdAt: string;
-  updatedAt: string;
+  observaciones: string;
+  detalles: DetallePresupuesto[];
+  usuario?: Usuario;
 }
 
-export interface PresupuestoItem {
+export interface DetallePresupuesto {
   id: number;
-  presupuestoId: number;
-  productId?: number;
-  serviceId?: number;
-  product?: Product;
-  service?: Service;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  total: number;
+  presupuesto?: Presupuesto;
+  producto?: Producto;
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
 }
 
 // Warranty entity
@@ -502,6 +521,79 @@ export interface Product {
   updatedAt: string;
 }
 
+// Producto interface matches ProductoDTO from backend
+export interface Producto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+  fechaCreacion: string; // ISO string
+}
+
+// ProductoCreateDTO interface for product creation
+export interface CreateProductRequest {
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+}
+
+// --- Product DTOs matching backend ---
+// ProductoCreateDTO
+export interface ProductoCreateDTO {
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+}
+
+// ProductoUpdateDTO
+export interface ProductoUpdateDTO {
+  nombre?: string;
+  descripcion?: string;
+  precio?: number;
+  stockMinimo?: number;
+  categoriaProductoId?: number;
+  activo?: boolean;
+}
+
+// ProductoDTO
+export interface ProductoDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+  fechaCreacion: string;
+}
+
+// ProductoListDTO
+export interface ProductoListDTO {
+  id: number;
+  nombre: string;
+  codigo?: string;
+  precio: number;
+  stockActual: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+}
 
 // Removed Order and OrderItem interfaces: backend does not support /api/ordenes
 
@@ -608,8 +700,6 @@ export interface InventoryAdjustment {
   date: string;
   notes: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  createdAt: string;
-  updatedAt: string;
 }
 
 // --- Taller (Workshop) Entities ---
@@ -666,6 +756,8 @@ export interface OrdenServicio {
 export interface CategoriaProducto {
   id: number;
   nombre: string;
+  descripcion?: string;
+  activo: boolean;
 }
 
 // Enum types using const assertions
@@ -711,12 +803,10 @@ export type AppointmentStatus = typeof AppointmentStatus[keyof typeof Appointmen
 // Enum types using const assertions for all business entities
 
 export const PresupuestoStatus = {
-  DRAFT: 'DRAFT',
-  SENT: 'SENT',
-  APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
-  EXPIRED: 'EXPIRED',
-  CONVERTED: 'CONVERTED'
+  PENDIENTE: 'PENDIENTE',
+  APROBADO: 'APROBADO', 
+  RECHAZADO: 'RECHAZADO',
+  VENCIDO: 'VENCIDO'
 } as const;
 export type PresupuestoStatus = typeof PresupuestoStatus[keyof typeof PresupuestoStatus];
 
@@ -1001,27 +1091,29 @@ export interface CreateInventoryAdjustmentRequest {
 
 // Presupuesto Create Request
 export interface CreatePresupuestoRequest {
-  clientId: number;
-  employeeId: number;
-  quoteDate: string;
-  validUntil: string;
-  status?: PresupuestoStatus;
-  subtotal: number;
-  tax: number;
-  discount: number;
+  numeroPresupuesto?: string;
+  cliente: {
+    id: number;
+  };
+  fechaPresupuesto: string;
+  fechaVencimiento: string;
+  estado?: PresupuestoStatus;
   total: number;
-  observations: string;
-  items: CreatePresupuestoItemRequest[];
+  observaciones: string;
+  detalles: CreateDetallePresupuestoRequest[];
+  usuario?: {
+    id: number;
+  };
 }
 
-export interface CreatePresupuestoItemRequest {
-  productId?: number;
-  serviceId?: number;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  total: number;
+export interface CreateDetallePresupuestoRequest {
+  producto?: {
+    id: number;
+  };
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
 }
 
 // --- RRHH (Human Resources) Entities ---
@@ -1094,34 +1186,69 @@ export interface Capacitacion {
 export interface Usuario {
   id: number;
   username: string;
+  password: string;
+  email: string;
   nombre: string;
   apellido: string;
-  email: string;
   activo: boolean;
-  rolNombre: string;
-  // Add more fields as needed
+  fechaCreacion: string;
+  fechaActualizacion: string;
+  roles: any[];
 }
 
 // Venta (Sale)
+export interface DetalleVenta {
+  id: number;
+  ventaId: number;
+  productoId?: number;
+  productoNombre?: string; // Add product name for display
+  producto?: Producto; // Add product info for display
+  cantidad: number;
+  precioUnitario: number;
+  descuento?: number;
+  subtotal: number;
+}
+
 export interface Venta {
   id: number;
   clienteId: number;
   cliente?: Cliente;
   empleadoId: number;
   empleado?: Empleado;
+  usuario?: Usuario; // Add for compatibility
   ventaNumero?: string;
+  numeroVenta?: string; // Add for compatibility
   fechaVenta: string;
   estado: string;
   subtotal: number;
   impuesto?: number;
   descuento?: number;
   total: number;
-  metodoPago?: string;
+  metodoPago?: MetodoPago;
   observaciones?: string;
+  notas?: string; // Add for compatibility
   createdAt?: string;
   updatedAt?: string;
+  detalleVentas: DetalleVenta[];
 }
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE';
 
+// DTO para crear una Venta desde el frontend
+export interface CreateVentaDTO {
+  clienteId: number;
+  empleadoId: number; // usamos el usuario seleccionado como empleado responsable
+  usuarioId?: number; // opcional si el backend lo acepta
+  fechaVenta: string; // YYYY-MM-DD
+  metodoPago: MetodoPago;
+  observaciones?: string;
+  tipoIva?: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  detalleVentas: Array<{
+    productoId: number;
+    cantidad: number;
+    precioUnitario: number;
+    descuento?: number;
+  }>;
+}
 // Vehiculo (Vehicle)
 export interface Vehiculo {
   id: number;
@@ -1212,19 +1339,57 @@ export interface Producto {
   nombre: string;
   descripcion?: string;
   precio: number;
-  stock: number;
-  categoriaId?: number;
-  categoria?: Categoria;
-  proveedorId?: number;
-  proveedor?: Proveedor;
-  unidadMedidaId?: number;
-  unidadMedida?: UnidadMedida;
+  stockActual?: number;
+  stockMinimo?: number;
+  codigo?: string;
+  categoriaProducto?: CategoriaProducto;
+  activo?: boolean;
+  fechaCreacion?: string;
 }
+export interface ProductoDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+  fechaCreacion: string; // ISO string
+}
+
 export interface Categoria {
   id: number;
   nombre: string;
   descripcion?: string;
   activo: boolean;
+}
+export interface ProveedorDTO {
+  id: number;
+  razonSocial: string;
+  cuit: string;
+  email: string;
+  telefono: string;
+  direccion: string;
+  ciudad: string;
+  provincia: string;
+  codigoPostal: string;
+  estado: 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO';
+  fechaAlta: string;
+  fechaActualizacion: string;
+}
+
+export interface CreateProveedorDTO {
+  razonSocial: string;
+  cuit: string;
+  email: string;
+  telefono?: string;
+  direccion?: string;
+  ciudad?: string;
+  provincia?: string;
+  codigoPostal?: string;
 }
 export interface Proveedor {
   id: number;
@@ -1254,16 +1419,74 @@ export interface CategoriaProducto {
   descripcion?: string;
   activo: boolean;
 }
+
+export interface DetalleCompraDTO {
+  id: number;
+  productoId: number;
+  productoNombre: string;
+  cantidad: number;
+  costoUnitario: number;
+  subtotal: number;
+}
 export interface OrdenCompra {
   id: number;
-  proveedorId: number;
-  proveedor?: Proveedor;
-  fechaOrden: string;
+  numero: string;
+  proveedor?: ProveedorDTO;
+  supplierId?: string | number; // Allow string or number
+  fechaCreacion: string;
+  fechaEntregaEstimada: string;
+  fechaEntregaReal?: string;
   estado: string;
   total: number;
-  items: OrdenCompraItem[];
+  items: {
+    id?: number;
+    productoId?: string | number; // Allow string or number
+    descripcion: string;
+    cantidad: number;
+    precioUnitario: number;
+    subtotal: number;
+  }[];
   observaciones?: string;
 }
+
+export interface CompraDTO {
+  id: number;
+  proveedorId: number;
+  proveedor?: ProveedorDTO;
+  numero?: string;
+  fechaCreacion: string;
+  fechaEntrega: string;
+  estado: string;
+  observaciones?: string;
+  detalles: {
+    id?: number;
+    productoId?: number;
+    nombreProductoTemporal?: string;
+    descripcionProductoTemporal?: string;
+    codigoProductoTemporal?: string;
+    esProductoNuevo: boolean;
+    cantidad: number;
+    costoUnitario: number;
+  }[];
+}
+
+export interface CreateCompraDTO {
+  proveedorId: number;
+  fechaEntrega: string;
+  observaciones?: string;
+  estado?: string; // Included for state updates
+  detalles: Array<{
+    id?: number; // For existing detalles
+    productoId?: number;
+    nombreProductoTemporal?: string;
+    descripcionProductoTemporal?: string;
+    codigoProductoTemporal?: string;
+    esProductoNuevo: boolean;
+    cantidad: number;
+    costoUnitario: number;
+  }>;
+}
+
 export interface OrdenCompraItem {
   id: number;
   ordenCompraId: number;
@@ -1402,4 +1625,126 @@ export interface RecetaItem {
   unidadMedidaId: number;
   unidadMedida?: UnidadMedida;
   instrucciones?: string;
+}
+
+export const EstadoDocumento = {
+  PENDIENTE: "PENDIENTE",
+  APROBADO: "APROBADO",
+  RECHAZADO: "RECHAZADO",
+  PAGADA: "PAGADA",
+  VENCIDA: "VENCIDA"
+} as const;
+export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocumento];
+
+export interface DocumentoComercial {
+  id: number;
+  numeroDocumento: string;
+  tipoDocumento: 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA';
+  clienteId: number;
+  clienteNombre: string;
+  usuarioId: number;
+  usuarioNombre: string;
+  fechaEmision: string; // ISO string
+  fechaVencimiento: string; // ISO string
+  subtotal: number;
+  iva: number;
+  total: number;
+  tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  estado: EstadoDocumento;
+  metodoPago: MetodoPago;
+  observaciones?: string;
+  detalles: DetalleDocumento[];
+  opcionesFinanciamiento?: OpcionFinanciamiento[];
+  opcionFinanciamientoSeleccionadaId?: number;
+}
+// En types/index.ts agregar:
+export interface CreateOpcionFinanciamientoDTO {
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  ordenPresentacion?: number;
+}
+
+export interface OpcionFinanciamiento {
+  id: number;
+  nombre: string;
+  metodoPago: string;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  esSeleccionada?: boolean;
+  ordenPresentacion?: number;
+}
+
+export interface Presupuesto {
+  id: number;
+  numeroDocumento: string;
+  clienteNombre: string;
+  fechaEmision: string;
+  estado: string;
+  subtotal: number;
+  total: number;
+  opcionesFinanciamiento?: OpcionFinanciamiento[];
+  opcionFinanciamientoSeleccionadaId?: number;
+}
+
+export interface OpcionFinanciamiento {
+  id?: number;
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  esSeleccionada?: boolean;
+  ordenPresentacion?: number;
+}
+
+export interface DetalleDocumento {
+  id: number;
+  documentoComercialId: number;
+  productoId: number;
+  productoNombre: string; // For display purposes
+  cantidad: number;
+  precioUnitario: number;
+  descuento?: number;
+  subtotal: number;
+  descripcion?: string; // Optional description for the item
+}
+export interface DetalleDocumentoDTO {
+  id?: number; // Opcional al crear
+  productoId: number;
+  productoNombre?: string;
+  cantidad: number;
+  precioUnitario: number;
+  descuento?: number;
+  subtotal?: number;
+  descripcion?: string;
+}
+
+export interface CreatePresupuestoRequest {
+  clienteId: number;
+  usuarioId: number;
+  detalles: DetalleDocumentoDTO[];
+  observaciones?: string;
+}
+
+export interface OpcionFinanciamientoDTO {
+  id?: number;
+  nombre: string;
+  metodoPago: MetodoPago;
+  cantidadCuotas: number;
+  tasaInteres: number;
+  montoTotal: number;
+  montoCuota: number;
+  descripcion?: string;
+  ordenPresentacion?: number;
+  esSeleccionada?: boolean;
 }

@@ -61,14 +61,14 @@ export const RecentActivity: React.FC = () => {
           avatarColor: avatarColors.client,
           icon: <PeopleIcon />,
         }));
-        const recentProducts = products.slice(-3).map((p: Product) => ({
+        const recentProducts = products.slice(-3).map((p: any) => ({
           id: p.id,
           type: 'product' as ActivityType,
-          title: p.name,
+          title: p.nombre || p.name || '',
           subtitle: 'Nuevo producto',
-          date: p.createdAt,
-          details: p.category?.name ? `Categoría: ${p.category.name}` : `Stock: ${p.stock}`,
-          avatarText: p.name?.[0]?.toUpperCase() || 'P',
+          date: p.fechaAlta || p.createdAt || '',
+          details: p.categoria?.nombre ? `Categoría: ${p.categoria.nombre}` : p.category?.name ? `Categoría: ${p.category.name}` : `Stock: ${p.stock}`,
+          avatarText: (p.nombre?.[0] || p.name?.[0] || 'P').toUpperCase(),
           avatarColor: avatarColors.product,
           icon: <InventoryIcon />,
         }));
