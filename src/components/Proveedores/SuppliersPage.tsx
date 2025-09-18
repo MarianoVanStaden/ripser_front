@@ -21,9 +21,6 @@ import {
   TableRow,
   Paper,
   Chip,
-  Rating,
-  Switch,
-  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -61,11 +58,19 @@ const SuppliersPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await supplierApi.getAll();
-      setSuppliers(data);
-      setError(null);
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setSuppliers(data);
+        setError(null);
+      } else {
+        console.error('Unexpected data format:', data);
+        setSuppliers([]);
+        setError('Formato de datos inesperado');
+      }
     } catch (err) {
       setError('Error al cargar los datos');
       console.error('Error loading data:', err);
+      setSuppliers([]); // Ensure suppliers is always an array
     } finally {
       setLoading(false);
     }
@@ -127,6 +132,7 @@ const SuppliersPage: React.FC = () => {
         setLoading(true);
         await supplierApi.delete(id);
         setSuppliers(suppliers.filter(supplier => supplier.id !== id));
+        setError(null);
       } catch (err) {
         setError('Error al eliminar el proveedor');
         console.error('Error deleting supplier:', err);
@@ -146,6 +152,19 @@ const SuppliersPage: React.FC = () => {
         return 'Bloqueado';
       default:
         return estado;
+    }
+  };
+
+  const getEstadoColor = (estado: string): "success" | "warning" | "error" | "default" => {
+    switch (estado) {
+      case 'ACTIVO':
+        return 'success';
+      case 'INACTIVO':
+        return 'warning';
+      case 'BLOQUEADO':
+        return 'error';
+      default:
+        return 'default';
     }
   };
 
@@ -198,49 +217,59 @@ const SuppliersPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {suppliers.map((supplier) => (
-                  <TableRow key={supplier.id}>
-                    <TableCell>{supplier.razonSocial}</TableCell>
-                    <TableCell>{supplier.cuit}</TableCell>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={0.5}>
-                        <EmailIcon sx={{ fontSize: 16 }} />
-                        <Typography variant="caption">{supplier.email}</Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={0.5}>
-                        <PhoneIcon sx={{ fontSize: 16 }} />
-                        <Typography variant="caption">{supplier.telefono}</Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>{supplier.direccion}</TableCell>
-                    <TableCell>{supplier.ciudad}</TableCell>
-                    <TableCell>{supplier.provincia}</TableCell>
-                    <TableCell>{supplier.codigoPostal}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getEstadoLabel(supplier.estado)}
-                        color={
-                          supplier.estado === 'ACTIVO'
-                            ? 'success'
-                            : supplier.estado === 'INACTIVO'
-                            ? 'warning'
-                            : 'error'
-                        }
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton onClick={() => handleEdit(supplier)} size="small">
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => handleDelete(supplier.id)} size="small">
-                        <DeleteIcon />
-                      </IconButton>
+                {suppliers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} align="center">
+                      <Typography variant="body1" color="textSecondary">
+                        No hay proveedores registrados
+                      </Typography>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  suppliers.map((supplier) => (
+                    <TableRow key={supplier.id}>
+                      <TableCell>{supplier.razonSocial}</TableCell>
+                      <TableCell>{supplier.cuit}</TableCell>
+                      <TableCell>
+                        {supplier.email && (
+                          <Box display="flex" alignItems="center" gap={0.5}>
+                            <EmailIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="caption">{supplier.email}</Typography>
+                          </Box>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {supplier.telefono && (
+                          <Box display="flex" alignItems="center" gap={0.5}>
+                            <PhoneIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="caption">{supplier.telefono}</Typography>
+                          </Box>
+                        )}
+                      </TableCell>
+                      <TableCell>{supplier.direccion}</TableCell>
+                      <TableCell>{supplier.ciudad}</TableCell>
+                      <TableCell>{supplier.provincia}</TableCell>
+                      <TableCell>{supplier.codigoPostal}</TableCell>
+                      <TableCell>
+                        {supplier.estado && (
+                          <Chip
+                            label={getEstadoLabel(supplier.estado)}
+                            color={getEstadoColor(supplier.estado)}
+                            size="small"
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton onClick={() => handleEdit(supplier)} size="small">
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton onClick={() => handleDelete(supplier.id)} size="small">
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>
