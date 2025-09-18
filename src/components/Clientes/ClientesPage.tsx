@@ -19,7 +19,7 @@ import {
   MenuItem,
   Tooltip,
   CircularProgress,
-  Rating, // Import the Rating component
+  Rating,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -70,7 +70,6 @@ const ClientesPage: React.FC = () => {
       loadClientes();
       return;
     }
-
     try {
       setLoading(true);
       const results = await clienteApi.search(searchTerm);
@@ -90,7 +89,7 @@ const ClientesPage: React.FC = () => {
     loadClientes();
   };
 
-  const filteredClientes = clientes.filter(cliente => {
+  const filteredClientes = clientes.filter((cliente) => {
     const matchesTipo = !tipoFilter || cliente.tipo === tipoFilter;
     const matchesEstado = !estadoFilter || cliente.estado === estadoFilter;
     return matchesTipo && matchesEstado;
@@ -136,20 +135,33 @@ const ClientesPage: React.FC = () => {
   }
 
   return (
-    <Box>
+    <Box
+      sx={{
+        px: { sm: 2, md: 3, lg: 4 },
+        py: { sm: 2, md: 3 },
+        maxWidth: '1600px',
+        mx: 'auto',
+      }}
+    >
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Gestión de Clientes
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/clientes/nuevo')}
-        >
-          Nuevo Cliente
-        </Button>
-      </Box>
+      <Grid container alignItems="center" justifyContent="space-between" mb={3} spacing={2}>
+        <Grid item xs={12} sm="auto">
+          <Typography variant="h4" component="h1" sx={{ whiteSpace: 'nowrap' }}>
+            Gestión de Clientes
+          </Typography>
+        </Grid>
+        <Grid item xs={12} sm="auto">
+          <Box textAlign={{ xs: 'left', sm: 'right' }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/clientes/nuevo')}
+            >
+              Nuevo Cliente
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -157,84 +169,146 @@ const ClientesPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Search and Filters */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
-          <Box flex="1" minWidth="300px">
-            <TextField
-              fullWidth
-              label="Buscar clientes"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
-          <Box minWidth="150px">
-            <TextField
-              fullWidth
-              select
-              label="Tipo"
-              value={tipoFilter}
-              onChange={(e) => setTipoFilter(e.target.value as TipoCliente | '')}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="PERSONA_FISICA">Persona Física</MenuItem>
-              <MenuItem value="PERSONA_JURIDICA">Persona Jurídica</MenuItem>
-            </TextField>
-          </Box>
-          <Box minWidth="150px">
-            <TextField
-              fullWidth
-              select
-              label="Estado"
-              value={estadoFilter}
-              onChange={(e) => setEstadoFilter(e.target.value as EstadoCliente | '')}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="ACTIVO">Activo</MenuItem>
-              <MenuItem value="INACTIVO">Inactivo</MenuItem>
-              <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
-              <MenuItem value="MOROSO">Moroso</MenuItem>
-            </TextField>
-          </Box>
-          <Box>
-            <Button
-              variant="outlined"
-              onClick={handleSearch}
-              disabled={loading}
-              sx={{ mr: 1 }}
-            >
-              Buscar
-            </Button>
-            <Button
-              variant="text"
-              onClick={clearFilters}
-              startIcon={<ClearIcon />}
-            >
-              Limpiar
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
+      {/* Buscador y Filtros */}
+      {/* Buscador y Filtros – versión compacta y más linda */}
+<Paper
+  sx={{
+    p: { sm: 2, md: 2.5 },
+    mb: 3,
+    borderRadius: 3,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+    border: '1px solid',
+    borderColor: 'divider',
+    bgcolor: 'background.paper',
+  }}
+>
+  <Box
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 1.5,
+    }}
+  >
+    {/* Buscar */}
+    <TextField
+      size="small"
+      variant="outlined"
+      placeholder="Buscar clientes"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+      sx={{
+        minWidth: { xs: '100%', sm: 360, md: 420 },
+        flex: { xs: '1 1 100%', sm: '0 0 auto' },
+        '& .MuiOutlinedInput-root': {
+          borderRadius: 999,
+        },
+      }}
+      InputProps={{
+        startAdornment: (
+          <InputAdornment position="start" sx={{ ml: 0.5 }}>
+            <SearchIcon fontSize="small" color="action" />
+          </InputAdornment>
+        ),
+      }}
+    />
 
-      {/* Results Summary */}
+    {/* Separador sutil */}
+    <Box
+      sx={{
+        width: 1,
+        display: { xs: 'block', sm: 'none' },
+        my: 0.5,
+        opacity: 0.5,
+      }}
+    />
+
+    {/* Tipo */}
+    <TextField
+      select
+      size="small"
+      label="Tipo"
+      value={tipoFilter}
+      onChange={(e) => setTipoFilter(e.target.value as TipoCliente | '')}
+      sx={{
+        minWidth: 160,
+        '& .MuiOutlinedInput-root': { borderRadius: 999 },
+      }}
+    >
+      <MenuItem value="">Todos</MenuItem>
+      <MenuItem value="PERSONA_FISICA">Persona Física</MenuItem>
+      <MenuItem value="PERSONA_JURIDICA">Persona Jurídica</MenuItem>
+    </TextField>
+
+    {/* Estado */}
+    <TextField
+      select
+      size="small"
+      label="Estado"
+      value={estadoFilter}
+      onChange={(e) => setEstadoFilter(e.target.value as EstadoCliente | '')}
+      sx={{
+        minWidth: 160,
+        '& .MuiOutlinedInput-root': { borderRadius: 999 },
+      }}
+    >
+      <MenuItem value="">Todos</MenuItem>
+      <MenuItem value="ACTIVO">Activo</MenuItem>
+      <MenuItem value="INACTIVO">Inactivo</MenuItem>
+      <MenuItem value="SUSPENDIDO">Suspendido</MenuItem>
+      <MenuItem value="MOROSO">Moroso</MenuItem>
+    </TextField>
+
+    {/* Botones */}
+    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Button
+        variant="contained"
+        size="small"
+        startIcon={<SearchIcon />}
+        onClick={handleSearch}
+        disabled={loading}
+        sx={{
+          borderRadius: 999,
+          px: 2.2,
+          textTransform: 'none',
+          fontWeight: 600,
+        }}
+      >
+        Buscar
+      </Button>
+
+      <Button
+        size="small"
+        variant="text"
+        startIcon={<ClearIcon />}
+        onClick={clearFilters}
+        sx={{
+          borderRadius: 999,
+          textTransform: 'none',
+          color: 'text.secondary',
+          '&:hover': { backgroundColor: 'action.hover' },
+        }}
+      >
+        Limpiar
+      </Button>
+    </Box>
+  </Box>
+</Paper>
+
+
+      {/* Resumen */}
       <Box mb={2}>
         <Typography variant="body2" color="text.secondary">
           {loading ? 'Cargando...' : `${filteredClientes.length} cliente(s) encontrado(s)`}
         </Typography>
       </Box>
 
-      {/* Clients Grid */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 2 }}>
+      {/* Grid de Cards */}
+      <Grid container spacing={2}>
         {filteredClientes.map((cliente) => (
-          <Card key={cliente.id}>
+          <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
+            <Card>
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                   <Box display="flex" alignItems="center" gap={1}>
@@ -297,9 +371,11 @@ const ClientesPage: React.FC = () => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Cuenta Corriente">
-                    <IconButton 
-                      size="small" 
-                      onClick={() => navigate('/clientes/cuenta-corriente', { state: { clienteId: cliente.id } })}
+                    <IconButton
+                      size="small"
+                      onClick={() =>
+                        navigate('/clientes/cuenta-corriente', { state: { clienteId: cliente.id } })
+                      }
                     >
                       <AccountBalanceWalletIcon />
                     </IconButton>
@@ -307,8 +383,9 @@ const ClientesPage: React.FC = () => {
                 </Box>
               </CardContent>
             </Card>
+          </Grid>
         ))}
-      </Box>
+      </Grid>
 
       {filteredClientes.length === 0 && !loading && (
         <Box textAlign="center" py={4}>
@@ -318,17 +395,14 @@ const ClientesPage: React.FC = () => {
           <Typography variant="body2" color="text.secondary">
             {searchTerm || tipoFilter || estadoFilter
               ? 'Intenta con diferentes criterios de búsqueda'
-              : 'Comienza agregando tu primer cliente'
-            }
+              : 'Comienza agregando tu primer cliente'}
           </Typography>
         </Box>
       )}
 
-      {/* Cliente Detail Dialog */}
+      {/* Dialog Detalle */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Detalles del Cliente
-        </DialogTitle>
+        <DialogTitle>Detalles del Cliente</DialogTitle>
         <DialogContent>
           {selectedCliente && (
             <Box>
@@ -385,3 +459,4 @@ const ClientesPage: React.FC = () => {
 };
 
 export default ClientesPage;
+

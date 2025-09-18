@@ -9,8 +9,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  MenuItem,
   Chip,
   Paper,
   Table,
@@ -27,7 +25,6 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
-  CardActions,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -35,13 +32,11 @@ import {
   Visibility as VisibilityIcon,
   Print as PrintIcon,
   Send as SendIcon,
-  Delete as DeleteIcon,
   AttachMoney as MoneyIcon,
   CreditCard as CreditCardIcon,
   AccountBalance as BankIcon,
 } from "@mui/icons-material";
-import type { Presupuesto, OpcionFinanciamiento } from "../../types";
-
+import type { Presupuesto } from "../../types"; // OpcionFinanciamiento si lo necesitás en otras partes
 
 const PresupuestosFinanciamientoPage: React.FC = () => {
   const [presupuestos] = useState<Presupuesto[]>([
@@ -120,7 +115,7 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
 
   const handleSelectOpcion = () => {
     if (selectedPresupuesto && selectedOpcionId) {
-      // Here you would call the API to save the selection
+      // Acá iría tu llamada a la API para guardar la selección
       console.log(`Opción ${selectedOpcionId} seleccionada para presupuesto ${selectedPresupuesto.id}`);
       setFinanciamientoDialogOpen(false);
     }
@@ -129,13 +124,13 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
   const getMetodoPagoIcon = (metodoPago: string) => {
     switch (metodoPago) {
       case "EFECTIVO":
-        return <MoneyIcon />;
+        return <MoneyIcon fontSize="small" />;
       case "TARJETA_CREDITO":
-        return <CreditCardIcon />;
+        return <CreditCardIcon fontSize="small" />;
       case "FINANCIACION_PROPIA":
-        return <BankIcon />;
+        return <BankIcon fontSize="small" />;
       default:
-        return <MoneyIcon />;
+        return <MoneyIcon fontSize="small" />;
     }
   };
 
@@ -152,18 +147,27 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-AR", {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("es-AR", {
       style: "currency",
       currency: "ARS",
       minimumFractionDigits: 2,
     }).format(amount);
-  };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4" component="h1" fontWeight="bold">
+    <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }} maxWidth="xl" mx="auto">
+      {/* Header */}
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Typography variant="h4" component="h1" fontWeight={700} sx={{ lineHeight: 1.2 }}>
           Presupuestos con Financiamiento
         </Typography>
         <Button variant="contained" startIcon={<AddIcon />}>
@@ -171,40 +175,62 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
         </Button>
       </Box>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
+      <Alert severity="info" sx={{ mb: 2 }}>
         Los presupuestos ahora incluyen múltiples opciones de financiamiento para ofrecer a sus clientes.
       </Alert>
 
+      {/* Tabla - optimizada para escritorio */}
       <Card>
-        <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
+        <CardContent sx={{ p: 0 }}>
+          <TableContainer
+            component={Paper}
+            elevation={0}
+            sx={{
+              borderRadius: 0,
+              overflowX: "auto",
+              maxHeight: { xs: 560, md: "calc(100vh - 320px)" },
+            }}
+          >
+            <Table stickyHeader size="small" aria-label="tabla-presupuestos" sx={{ minWidth: 1100 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Número</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Total Base</TableCell>
-                  <TableCell>Financiamiento</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell sx={{ fontWeight: 700, minWidth: 140 }}>Número</TableCell>
+                  <TableCell sx={{ fontWeight: 700, minWidth: 220 }}>Cliente</TableCell>
+                  <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>Fecha</TableCell>
+                  <TableCell sx={{ fontWeight: 700, minWidth: 120 }}>Estado</TableCell>
+                  <TableCell sx={{ fontWeight: 700, minWidth: 140 }} align="right">
+                    Total Base
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, minWidth: 220 }}>Financiamiento</TableCell>
+                  <TableCell sx={{ fontWeight: 700, minWidth: 180 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
+
               <TableBody>
                 {presupuestos.map((presupuesto) => {
                   const opcionSeleccionada = presupuesto.opcionesFinanciamiento?.find(
                     (o) => o.id === presupuesto.opcionFinanciamientoSeleccionadaId
                   );
+
                   return (
-                    <TableRow key={presupuesto.id}>
+                    <TableRow hover key={presupuesto.id}>
                       <TableCell>{presupuesto.numeroDocumento}</TableCell>
-                      <TableCell>{presupuesto.clienteNombre}</TableCell>
-                      <TableCell>{new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
+                      <TableCell>
+                        <Tooltip title={presupuesto.clienteNombre}>
+                          <Typography noWrap maxWidth={260}>
+                            {presupuesto.clienteNombre}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={presupuesto.estado}
                           color={presupuesto.estado === "PENDIENTE" ? "warning" : "default"}
                           size="small"
+                          variant="outlined"
                         />
                       </TableCell>
                       <TableCell align="right">{formatCurrency(presupuesto.subtotal)}</TableCell>
@@ -221,30 +247,32 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Tooltip title="Ver opciones de financiamiento">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleOpenFinanciamiento(presupuesto)}
-                          >
-                            <MoneyIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Ver">
-                          <IconButton size="small" color="primary">
-                            <VisibilityIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Editar">
-                          <IconButton size="small" color="primary">
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Imprimir">
-                          <IconButton size="small" color="success">
-                            <PrintIcon />
-                          </IconButton>
-                        </Tooltip>
+                        <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                          <Tooltip title="Ver opciones de financiamiento">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleOpenFinanciamiento(presupuesto)}
+                            >
+                              <MoneyIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Ver">
+                            <IconButton size="small" color="primary">
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Editar">
+                            <IconButton size="small" color="primary">
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Imprimir">
+                            <IconButton size="small" color="success">
+                              <PrintIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   );
@@ -259,41 +287,53 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
       <Dialog
         open={financiamientoDialogOpen}
         onClose={() => setFinanciamientoDialogOpen(false)}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
       >
-        <DialogTitle>
-          <Typography variant="h5">Opciones de Financiamiento</Typography>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h5" fontWeight={700}>
+            Opciones de Financiamiento
+          </Typography>
           <Typography variant="body2" color="text.secondary">
             Seleccione la opción de pago más conveniente para el cliente
           </Typography>
         </DialogTitle>
-        <DialogContent>
+
+        <DialogContent dividers>
           {selectedPresupuesto && (
             <>
-              <Box sx={{ mb: 3, p: 2, bgcolor: "background.paper", borderRadius: 1 }}>
+              <Box
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  bgcolor: "background.paper",
+                  borderRadius: 1,
+                  border: 1,
+                  borderColor: "divider",
+                }}
+              >
                 <Grid container spacing={2}>
-                  <Grid item xs={6}>
+                  <Grid item xs={12} md={4}>
                     <Typography variant="body2" color="text.secondary">
                       Presupuesto:
                     </Typography>
-                    <Typography variant="body1" fontWeight="medium">
+                    <Typography variant="body1" fontWeight={600}>
                       {selectedPresupuesto.numeroDocumento}
                     </Typography>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid item xs={12} md={4}>
                     <Typography variant="body2" color="text.secondary">
                       Cliente:
                     </Typography>
-                    <Typography variant="body1" fontWeight="medium">
+                    <Typography variant="body1" fontWeight={600} noWrap>
                       {selectedPresupuesto.clienteNombre}
                     </Typography>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid item xs={12} md={4}>
                     <Typography variant="body2" color="text.secondary">
                       Subtotal (sin financiamiento):
                     </Typography>
-                    <Typography variant="h6" fontWeight="bold">
+                    <Typography variant="h6" fontWeight={800}>
                       {formatCurrency(selectedPresupuesto.subtotal)}
                     </Typography>
                   </Grid>
@@ -310,23 +350,25 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
                   {selectedPresupuesto.opcionesFinanciamiento
                     ?.sort((a, b) => (a.ordenPresentacion || 0) - (b.ordenPresentacion || 0))
                     .map((opcion) => (
-                      <Grid item xs={12} key={opcion.id}>
+                      <Grid item xs={12} md={6} key={opcion.id}>
                         <Card
                           variant="outlined"
                           sx={{
-                            border: selectedOpcionId === opcion.id ? 2 : 1,
+                            height: "100%",
+                            borderWidth: selectedOpcionId === opcion.id ? 2 : 1,
                             borderColor: selectedOpcionId === opcion.id ? "primary.main" : "divider",
-                            transition: "all 0.3s",
+                            transition: "all 0.2s ease",
                             "&:hover": {
                               borderColor: "primary.main",
                               bgcolor: "action.hover",
                             },
                           }}
                         >
-                          <CardContent>
+                          <CardContent sx={{ pb: 1.5 }}>
                             <FormControlLabel
                               value={opcion.id}
                               control={<Radio />}
+                              sx={{ m: 0, width: "100%" }}
                               label={
                                 <Box sx={{ width: "100%" }}>
                                   <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
@@ -339,23 +381,23 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
                                         label={`${Math.abs(opcion.tasaInteres)}% OFF`}
                                         color="success"
                                         size="small"
-                                        sx={{ ml: 2 }}
+                                        sx={{ ml: 1 }}
                                       />
                                     )}
                                   </Box>
 
-                                  <Grid container spacing={2}>
-                                    <Grid item xs={3}>
+                                  <Grid container spacing={1.5}>
+                                    <Grid item xs={6}>
                                       <Typography variant="body2" color="text.secondary">
-                                        Método de pago:
+                                        Método de pago
                                       </Typography>
                                       <Typography variant="body1">
                                         {getMetodoPagoLabel(opcion.metodoPago)}
                                       </Typography>
                                     </Grid>
-                                    <Grid item xs={3}>
+                                    <Grid item xs={6}>
                                       <Typography variant="body2" color="text.secondary">
-                                        Cuotas:
+                                        Cuotas
                                       </Typography>
                                       <Typography variant="body1">
                                         {opcion.cantidadCuotas === 1
@@ -363,21 +405,21 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
                                           : `${opcion.cantidadCuotas} cuotas`}
                                       </Typography>
                                     </Grid>
-                                    <Grid item xs={3}>
+                                    <Grid item xs={6}>
                                       <Typography variant="body2" color="text.secondary">
-                                        Valor cuota:
+                                        Valor cuota
                                       </Typography>
-                                      <Typography variant="body1" fontWeight="medium">
+                                      <Typography variant="body1" fontWeight={600}>
                                         {formatCurrency(opcion.montoCuota)}
                                       </Typography>
                                     </Grid>
-                                    <Grid item xs={3}>
+                                    <Grid item xs={6}>
                                       <Typography variant="body2" color="text.secondary">
-                                        Total a pagar:
+                                        Total a pagar
                                       </Typography>
                                       <Typography
                                         variant="h6"
-                                        fontWeight="bold"
+                                        fontWeight={800}
                                         color={opcion.tasaInteres < 0 ? "success.main" : "text.primary"}
                                       >
                                         {formatCurrency(opcion.montoTotal)}
@@ -401,7 +443,6 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
                                   )}
                                 </Box>
                               }
-                              sx={{ width: "100%", m: 0 }}
                             />
                           </CardContent>
                         </Card>
@@ -412,8 +453,8 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
 
               {selectedOpcionId && (
                 <Alert severity="success" sx={{ mt: 3 }}>
-                  <Typography variant="body2">
-                    <strong>Resumen de la opción seleccionada:</strong>
+                  <Typography variant="body2" fontWeight={600}>
+                    Resumen de la opción seleccionada:
                   </Typography>
                   {(() => {
                     const opcion = selectedPresupuesto.opcionesFinanciamiento?.find(
@@ -421,8 +462,10 @@ const PresupuestosFinanciamientoPage: React.FC = () => {
                     );
                     return opcion ? (
                       <Typography variant="body2">
-                        {opcion.nombre} - {opcion.cantidadCuotas}{" "}
-                                                {opcion.nombre} - {opcion.cantidadCuotas} cuota(s) de {formatCurrency(opcion.montoCuota)}. Total: {formatCurrency(opcion.montoTotal)}.
+                        {opcion.nombre} — {opcion.cantidadCuotas}{" "}
+                        {opcion.cantidadCuotas === 1 ? "cuota" : "cuotas"} de{" "}
+                        {formatCurrency(opcion.montoCuota)}. Total:{" "}
+                        {formatCurrency(opcion.montoTotal)}.
                       </Typography>
                     ) : null;
                   })()}

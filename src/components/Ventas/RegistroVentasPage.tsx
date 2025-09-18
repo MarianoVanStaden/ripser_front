@@ -27,7 +27,11 @@ import {
   InputLabel,
   Select,
   Divider,
+  Stack,
+  useMediaQuery,
+  InputAdornment,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -52,8 +56,13 @@ import type {
   MetodoPago 
 } from '../../types';
 
+const formatMoney = (n: number | undefined | null) =>
+  (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const RegistroVentasPage: React.FC = () => {
+ 
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
+
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +84,7 @@ const RegistroVentasPage: React.FC = () => {
     total: 0,
   });
   const [editLoading, setEditLoading] = useState(false);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -86,6 +95,7 @@ const RegistroVentasPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -93,19 +103,23 @@ const RegistroVentasPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
+
       // Fetch facturas, clients, usuarios, and products
       const [facturasResponse, clientsResponse, usuariosResponse, productsResponse] = await Promise.all([
         documentoApi.getByTipo('FACTURA'),
+ 
         clienteApi.getAll(),
         usuarioApi.getAll(),
         productApi.getAll(),
       ]);
 
+     
       // Extract actual data from paginated responses
-      const facturasData = Array.isArray(facturasResponse) ? facturasResponse : facturasResponse.content || facturasResponse.data || [];
+      const facturasData = Array.isArray(facturasResponse) ? facturasResponse : facturasResponse.content || facturasResponse.data || [];                
       const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
       const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
       const productsData = Array.isArray(productsResponse) ? productsResponse : productsResponse.content || productsResponse.data || [];
+
 
       console.log('Facturas data:', facturasData);
       console.log('Clients data:', clientsData);
@@ -193,6 +207,7 @@ const RegistroVentasPage: React.FC = () => {
           return {
             ...detalle,
             producto,
+
           };
         }) || [];
 
@@ -216,6 +231,7 @@ const RegistroVentasPage: React.FC = () => {
     }
   };
 
+
   const handleViewFactura = (factura: DocumentoComercial): void => {
     console.log('Viewing factura:', factura);
     setViewingFactura(factura);
@@ -225,6 +241,7 @@ const RegistroVentasPage: React.FC = () => {
   const handleEditFactura = (factura: DocumentoComercial): void => {
     setEditingFactura(factura);
     setEditForm({
+
       numeroDocumento: factura.numeroDocumento || '',
       clienteId: factura.cliente?.id?.toString() || factura.clienteId?.toString() || '',
       usuarioId: factura.usuario?.id?.toString() || factura.usuarioId?.toString() || '',
@@ -237,18 +254,18 @@ const RegistroVentasPage: React.FC = () => {
     setEditDialogOpen(true);
   };
 
+
   const handleUpdateFactura = async (): Promise<void> => {
     if (!editingFactura) return;
 
     try {
       setEditLoading(true);
       setError(null);
-
-      // For now, disable editing until API is properly mapped
-      alert('La funcionalidad de edición está en desarrollo. Las correcciones se están aplicando al sistema de visualización.');
+      alert('La funcionalidad de edición está en desarrollo.');
       setEditDialogOpen(false);
+
       setEditingFactura(null);
-      
+
     } catch (err) {
       console.error('Error updating factura:', err);
       setError('Error al actualizar la factura. Verifique los datos e intente nuevamente.');
@@ -258,11 +275,9 @@ const RegistroVentasPage: React.FC = () => {
   };
 
   const handleEditFormChange = (field: string, value: string | number): void => {
-    setEditForm(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+    setEditForm((prev) => ({ ...prev, [field]: value }));
   };
+
 
   const getStatusLabel = (status: EstadoDocumento): string => {
     const statusLabels: Record<EstadoDocumento, string> = {
@@ -273,9 +288,11 @@ const RegistroVentasPage: React.FC = () => {
       'CANCELADO': 'Cancelado',
       'FINALIZADO': 'Finalizado',
       'ANULADO': 'Anulado'
+
     };
     return statusLabels[status] || status;
   };
+
 
   const getStatusColor = (status: EstadoDocumento): 'warning' | 'info' | 'error' | 'success' | 'default' => {
     const statusColors: Record<EstadoDocumento, 'warning' | 'info' | 'error' | 'success' | 'default'> = {
@@ -286,6 +303,7 @@ const RegistroVentasPage: React.FC = () => {
       'CANCELADO': 'error',
       'FINALIZADO': 'success',
       'ANULADO': 'error'
+
     };
     return statusColors[status] || 'default';
   };
@@ -299,31 +317,27 @@ const RegistroVentasPage: React.FC = () => {
       TARJETA_CREDITO: 'Tarjeta de Crédito',
       TARJETA_DEBITO: 'Tarjeta de Débito',
       TRANSFERENCIA_BANCARIA: 'Transferencia',
+
     };
     return methods[method] || method;
+
   };
 
-  // Helper function to get client full name
   const getClientFullName = (cliente: Cliente | null): string => {
     if (!cliente) return 'Cliente no disponible';
-    
-    // If it's a business (persona jurídica), prioritize razón social
-    if (cliente.razonSocial && cliente.razonSocial.trim()) {
-      return cliente.razonSocial;
+    if ((cliente as any).razonSocial && (cliente as any).razonSocial.trim()) {
+      return (cliente as any).razonSocial;
     }
-    
-    // Otherwise, use name and lastname
     const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
     return parts.length > 0 ? parts.join(' ') : 'Cliente no disponible';
   };
 
-  // Helper function to get usuario full name
   const getUsuarioFullName = (usuario: Usuario | null): string => {
     if (!usuario) return 'Vendedor no disponible';
-    
     const parts = [usuario.nombre, usuario.apellido].filter(Boolean);
     return parts.length > 0 ? parts.join(' ') : 'Vendedor no disponible';
   };
+
 
   const filteredFacturas = facturas.filter((factura: DocumentoComercial) => {
     const clientName = getClientFullName(factura.cliente || null);
@@ -342,8 +356,15 @@ const RegistroVentasPage: React.FC = () => {
     const matchesDateFrom = !dateFromFilter || facturaDate >= new Date(dateFromFilter);
     const matchesDateTo = !dateToFilter || facturaDate <= new Date(dateToFilter);
 
-    return matchesSearch && matchesStatus && matchesPaymentMethod && 
-           matchesClient && matchesDateFrom && matchesDateTo;
+
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesPaymentMethod &&
+      matchesClient &&
+      matchesDateFrom &&
+      matchesDateTo
+    );
   });
 
   const clearFilters = (): void => {
@@ -354,6 +375,7 @@ const RegistroVentasPage: React.FC = () => {
     setDateFromFilter('');
     setDateToFilter('');
   };
+
 
   const calculateTotals = () => {
     const totalRevenue = filteredFacturas.reduce((sum: number, factura: DocumentoComercial) => 
@@ -366,6 +388,7 @@ const RegistroVentasPage: React.FC = () => {
 
   const { totalRevenue, totalTransactions, averageOrderValue } = calculateTotals();
 
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -375,14 +398,23 @@ const RegistroVentasPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, md: 3 }}>
+      {/* Header */}
+      <Box
+        display="flex"
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        gap={2}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        mb={3}
+      >
+        <Typography variant={isSmDown ? 'h5' : 'h4'} display="flex" alignItems="center" gap={1}>
           <ReceiptIcon />
           Registro de Facturas
         </Typography>
-        <Box display="flex" gap={1}>
+        <Box display="flex" gap={1} width={{ xs: '100%', sm: 'auto' }}>
           <Button
+            fullWidth={isSmDown}
             variant="outlined"
             startIcon={<GetAppIcon />}
             onClick={() => alert('Función de exportación en desarrollo')}
@@ -390,6 +422,7 @@ const RegistroVentasPage: React.FC = () => {
             Exportar
           </Button>
           <Button
+            fullWidth={isSmDown}
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => alert('Ir a Facturación para crear nueva factura')}
@@ -406,47 +439,45 @@ const RegistroVentasPage: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={4}>
+      <Grid container spacing={2} mb={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
                 <AttachMoneyIcon color="primary" />
                 <Box>
-                  <Typography variant="h6">${totalRevenue.toLocaleString()}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Ingresos Totales
-                  </Typography>
+                  <Typography variant="h6">${formatMoney(totalRevenue)}</Typography>
+                  <Typography variant="body2" color="text.secondary">Ingresos Totales</Typography>
                 </Box>
               </Box>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
                 <ShoppingCartIcon color="success" />
                 <Box>
                   <Typography variant="h6">{totalTransactions}</Typography>
+
                   <Typography variant="body2" color="text.secondary">
                     Total Facturas
                   </Typography>
+
                 </Box>
               </Box>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
                 <TrendingUpIcon color="warning" />
                 <Box>
-                  <Typography variant="h6">${averageOrderValue.toFixed(2)}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Valor Promedio
-                  </Typography>
+                  <Typography variant="h6">${formatMoney(averageOrderValue)}</Typography>
+                  <Typography variant="body2" color="text.secondary">Valor Promedio</Typography>
                 </Box>
               </Box>
             </CardContent>
@@ -472,18 +503,18 @@ const RegistroVentasPage: React.FC = () => {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por número, cliente..."
                 InputProps={{
-                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Estado"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
+                <Select value={statusFilter} label="Estado" onChange={(e) => setStatusFilter(e.target.value)}>
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="BORRADOR">Borrador</MenuItem>
                   <MenuItem value="PENDIENTE">Pendiente</MenuItem>
@@ -495,14 +526,10 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Método de Pago</InputLabel>
-                <Select
-                  value={paymentMethodFilter}
-                  label="Método de Pago"
-                  onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                >
+                <Select value={paymentMethodFilter} label="Método de Pago" onChange={(e) => setPaymentMethodFilter(e.target.value)}>
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="EFECTIVO">Efectivo</MenuItem>
                   <MenuItem value="CHEQUE">Cheque</MenuItem>
@@ -514,24 +541,20 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Cliente</InputLabel>
-                <Select
-                  value={clientFilter}
-                  label="Cliente"
-                  onChange={(e) => setClientFilter(e.target.value)}
-                >
+                <Select value={clientFilter} label="Cliente" onChange={(e) => setClientFilter(e.target.value)}>
                   <MenuItem value="all">Todos</MenuItem>
                   {clients.map((client: Cliente) => (
-                    <MenuItem key={client.id} value={client.id.toString()}>
+                    <MenuItem key={client.id} value={client.id?.toString?.() || String(client.id)}>
                       {getClientFullName(client)}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid item xs={12} sm={6} md={2}>
               <TextField
                 fullWidth
                 label="Desde"
@@ -542,7 +565,7 @@ const RegistroVentasPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid item xs={12} sm={6} md={2}>
               <TextField
                 fullWidth
                 label="Hasta"
@@ -554,17 +577,14 @@ const RegistroVentasPage: React.FC = () => {
               />
             </Grid>
           </Grid>
-          <Box mt={2}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={clearFilters}
-            >
+          <Box mt={2} display="flex" justifyContent={{ xs: 'stretch', sm: 'flex-start' }}>
+            <Button variant="outlined" size="small" onClick={clearFilters} fullWidth={isSmDown}>
               Limpiar Filtros
             </Button>
           </Box>
         </CardContent>
       </Card>
+
 
       {/* Facturas Table */}
       <Card>
@@ -687,21 +707,26 @@ const RegistroVentasPage: React.FC = () => {
         </CardContent>
       </Card>
 
+
       {/* View Factura Dialog */}
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+
         <DialogTitle>
           Detalles de la Factura
         </DialogTitle>
+
         <DialogContent>
           {viewingFactura && (
             <Box>
               <Grid container spacing={2} mb={3}>
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 1 }}>
+
                     <Typography><strong>Número:</strong> {viewingFactura.numeroDocumento || `#${viewingFactura.id}`}</Typography>
                     <Typography><strong>Fecha:</strong> {new Date(viewingFactura.fecha).toLocaleDateString()}</Typography>
                     <Typography><strong>Estado:</strong> {getStatusLabel(viewingFactura.estado)}</Typography>
                     <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingFactura.metodoPago || 'EFECTIVO')}</Typography>
+
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -709,6 +734,7 @@ const RegistroVentasPage: React.FC = () => {
                     <Typography>
                       <strong>Cliente:</strong> {getClientFullName(viewingFactura.cliente || null)}
                     </Typography>
+
                     {viewingFactura.cliente?.email && (
                       <Typography variant="body2" color="text.secondary">
                         Email: {viewingFactura.cliente.email}
@@ -726,6 +752,7 @@ const RegistroVentasPage: React.FC = () => {
                     )}
                     <Typography sx={{ mt: 2 }}>
                       <strong>Vendedor:</strong> {getUsuarioFullName(viewingFactura.usuario || null)}
+
                     </Typography>
                   </Box>
                 </Grid>
@@ -750,6 +777,7 @@ const RegistroVentasPage: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
+
                         {viewingFactura.detalles.map((item: DetalleDocumento, index: number) => (
                           <TableRow key={item.id || index}>
                             <TableCell>
@@ -773,10 +801,12 @@ const RegistroVentasPage: React.FC = () => {
                           </TableRow>
                         ))}
                         </TableBody>
+
                     </Table>
                   </TableContainer>
                 </>
               ) : (
+
                 <Typography color="text.secondary" align="center" py={3}>
                   No hay detalles de productos disponibles
                 </Typography>
@@ -787,6 +817,7 @@ const RegistroVentasPage: React.FC = () => {
               <Box display="flex" justifyContent="flex-end">
                 <Typography variant="h6">
                   <strong>Total: ${(viewingFactura.total || 0).toLocaleString()}</strong>
+
                 </Typography>
               </Box>
 
@@ -804,6 +835,7 @@ const RegistroVentasPage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
+
           <Button onClick={() => setViewDialogOpen(false)}>
             Cerrar
           </Button>
@@ -812,10 +844,12 @@ const RegistroVentasPage: React.FC = () => {
             startIcon={<PrintIcon />}
             onClick={() => alert('Función de impresión en desarrollo')}
           >
+
             Imprimir
           </Button>
         </DialogActions>
       </Dialog>
+
 
       {/* Edit Factura Dialog */}
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
@@ -944,6 +978,7 @@ const RegistroVentasPage: React.FC = () => {
             disabled={editLoading}
           >
             {editLoading ? <CircularProgress size={20} /> : 'Guardar Cambios'}
+
           </Button>
         </DialogActions>
       </Dialog>
@@ -977,11 +1012,13 @@ const RegistroVentasPage: React.FC = () => {
           </Button>
           <Button
             variant="contained"
+
             color="error"
             onClick={() => {
               alert('Función de eliminación en desarrollo');
               setDeleteDialogOpen(false);
               setFacturaToDelete(null);
+
             }}
           >
             Eliminar

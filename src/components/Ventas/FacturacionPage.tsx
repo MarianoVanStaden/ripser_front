@@ -59,7 +59,6 @@ import type {
 } from '../../types';
 
 // Types
-// Only include methods supported by current backend enum
 const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
   { value: 'EFECTIVO', label: 'Efectivo' },
   { value: 'CHEQUE', label: 'Cheque' },
@@ -118,7 +117,6 @@ const FacturacionPage = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('IVA_21');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  // const [autoCalculateTotal, setAutoCalculateTotal] = useState(true);
   
   // From Nota de Pedido
   const [selectedNotaPedido, setSelectedNotaPedido] = useState<DocumentoComercial | null>(null);
@@ -138,21 +136,17 @@ const FacturacionPage = () => {
       const [clientsData, usuariosResponse, productsData, notasData] = await Promise.all([
         clienteApi.getAll().catch(() => []),
         usuarioApi.getAll().catch((err: any) => {
-          if (err?.response?.status === 403) {
-            // Sin permisos para listar usuarios; seguimos con el usuario actual
-            return [];
-          }
+          if (err?.response?.status === 403) return [];
           return [];
         }),
         productApi.getAll().catch(() => []),
         documentoApi.getByTipo('NOTA_PEDIDO').catch(() => []),
       ]);
       
-  setClients(Array.isArray(clientsData) ? clientsData : []);
-  setUsuarios(Array.isArray(usuariosResponse) ? usuariosResponse : []);
-  setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
+      setClients(Array.isArray(clientsData) ? clientsData : []);
+      setUsuarios(Array.isArray(usuariosResponse) ? usuariosResponse : []);
+      setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
       
-      // Filter notas de pedido that can be invoiced
       const invoiceableNotas = Array.isArray(notasData) 
         ? notasData.filter(n => n.estado === 'APROBADO' || n.estado === 'PENDIENTE')
         : [];
@@ -170,14 +164,12 @@ const FacturacionPage = () => {
     loadData();
   }, []);
 
-  // Ensure current user is preselected if available
   useEffect(() => {
     if (user?.id && !selectedUsuarioId) {
       setSelectedUsuarioId(user.id);
     }
   }, [user?.id]);
 
-  // Calculate totals for manual invoice
   const subtotalVenta = useMemo(() => {
     return cart.reduce((sum, item) => {
       const itemSubtotal = item.cantidad * item.precioUnitario;
@@ -191,11 +183,8 @@ const FacturacionPage = () => {
     return subtotalVenta * ivaRate;
   }, [subtotalVenta, selectedIva]);
 
-  const totalVenta = useMemo(() => {
-    return subtotalVenta + ivaAmount;
-  }, [subtotalVenta, ivaAmount]);
+  const totalVenta = useMemo(() => subtotalVenta + ivaAmount, [subtotalVenta, ivaAmount]);
 
-  // Calculate totals for nota conversion
   const notaSubtotal = useMemo(() => {
     return notaCart.reduce((sum, item) => {
       const itemSubtotal = item.cantidad * item.precioUnitario;
@@ -210,9 +199,7 @@ const FacturacionPage = () => {
     return notaSubtotal * ivaRate;
   }, [notaSubtotal, selectedNotaPedido]);
 
-  const notaTotalVenta = useMemo(() => {
-    return notaSubtotal + notaIvaAmount;
-  }, [notaSubtotal, notaIvaAmount]);
+  const notaTotalVenta = useMemo(() => notaSubtotal + notaIvaAmount, [notaSubtotal, notaIvaAmount]);
 
   const clearForm = () => {
     setSelectedClientId('');
@@ -233,7 +220,6 @@ const FacturacionPage = () => {
       setError('No hay productos disponibles para agregar al carrito.');
       return;
     }
-    
     const defaultProduct = products[0];
     setCart((prev) => [
       ...prev,
@@ -279,25 +265,15 @@ const FacturacionPage = () => {
   };
 
   const handleSubmitManualInvoice = async () => {
-    if (!selectedClientId) {
-      setError('Debe seleccionar un cliente.');
-      return;
-    }
-    if (!selectedUsuarioId) {
-      setError('Debe seleccionar un usuario.');
-      return;
-    }
-    if (cart.length === 0) {
-      setError('Debe agregar al menos un producto al carrito.');
-      return;
-    }
+    if (!selectedClientId) return setError('Debe seleccionar un cliente.');
+    if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
+    if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      // 1) Crear Presupuesto mínimo
       const presupuesto = await documentoApi.createPresupuesto({
         clienteId: Number(selectedClientId),
         usuarioId: Number(selectedUsuarioId),
@@ -307,21 +283,17 @@ const FacturacionPage = () => {
           cantidad: Number(item.cantidad),
           precioUnitario: Number(item.precioUnitario),
           descuento: Number(item.descuento) || 0,
-          subtotal: Number(
-            (item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100)
-          ),
+          subtotal: Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100)),
           descripcion: item.productoNombre || undefined,
         })),
       });
 
-      // 2) Convertir a Nota de Pedido con método de pago e IVA
       const nota = await documentoApi.convertToNotaPedido({
         presupuestoId: presupuesto.id,
         metodoPago: paymentMethod,
         tipoIva: selectedIva,
       });
 
-      // 3) Convertir Nota de Pedido a Factura
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: nota.id,
       });
@@ -369,23 +341,21 @@ const FacturacionPage = () => {
     setError(null);
 
     try {
-  const notaId = selectedNotaPedido.id;
-  await documentoApi.convertToFactura({ notaPedidoId: notaId });
-  // Optimistically remove the converted nota from the local list so it disappears immediately
-  setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+      const notaId = selectedNotaPedido.id;
+      await documentoApi.convertToFactura({ notaPedidoId: notaId });
+      setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
       setSuccess(`Nota de Pedido #${selectedNotaPedido.numeroDocumento} convertida a Factura exitosamente.`);
       handleCloseConvertDialog();
-  // Refresh data in the background to stay in sync with backend state
-  loadData();
+      loadData();
     } catch (err: any) {
       console.error('Error converting to factura:', err);
-        setError(`Error al convertir a factura: ${err?.message || 'Error'}`);
+      setError(`Error al convertir a factura: ${err?.message || 'Error'}`);
     } finally {
       setLoading(false);
     }
   };
 
-    const handleOpenEstadoDialog = (documento: DocumentoComercial) => {
+  const handleOpenEstadoDialog = (documento: DocumentoComercial) => {
     setSelectedDocumento(documento);
     setNewEstado(documento.estado);
     setEstadoDialogOpen(true);
@@ -401,19 +371,15 @@ const FacturacionPage = () => {
       await documentoApi.updateEstado(selectedDocumento.id, newEstado);
       setSuccess(`Estado actualizado exitosamente.`);
       setEstadoDialogOpen(false);
-      // Optimistically reflect the change in the list
       setNotasPedido((prev) => {
         const isInvoiceable = newEstado === 'APROBADO' || newEstado === 'PENDIENTE';
-        if (!isInvoiceable) {
-          return prev.filter((n) => n.id !== selectedDocumento.id);
-        }
+        if (!isInvoiceable) return prev.filter((n) => n.id !== selectedDocumento.id);
         return prev.map((n) => (n.id === selectedDocumento.id ? { ...n, estado: newEstado } : n));
       });
-      // Refresh data to stay in sync
       loadData();
     } catch (err: any) {
       console.error('Error updating estado:', err);
-        setError(`Error al actualizar el estado: ${err?.message || 'Error'}`);
+      setError(`Error al actualizar el estado: ${err?.message || 'Error'}`);
     } finally {
       setLoading(false);
     }
@@ -441,23 +407,23 @@ const FacturacionPage = () => {
     onRemove: (index: number) => void;
     editable?: boolean;
   }) => (
-    <TableContainer component={Paper} variant="outlined">
-      <Table>
+    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+      <Table stickyHeader size="small" sx={{ minWidth: 900 }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ minWidth: 200 }}>Producto</TableCell>
-            <TableCell align="center">Cantidad</TableCell>
-            <TableCell align="right">Precio Unit.</TableCell>
-            <TableCell align="right">Desc. %</TableCell>
-            <TableCell align="right">Subtotal</TableCell>
-            {editable && <TableCell align="center">Acciones</TableCell>}
+            <TableCell sx={{ minWidth: 220 }}>Producto</TableCell>
+            <TableCell align="center" sx={{ minWidth: 120 }}>Cantidad</TableCell>
+            <TableCell align="right" sx={{ minWidth: 160 }}>Precio Unit.</TableCell>
+            <TableCell align="right" sx={{ minWidth: 120 }}>Desc. %</TableCell>
+            <TableCell align="right" sx={{ minWidth: 160 }}>Subtotal</TableCell>
+            {editable && <TableCell align="center" sx={{ minWidth: 120 }}>Acciones</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
           {items.map((item, index) => {
             const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
             return (
-              <TableRow key={index}>
+              <TableRow key={index} hover>
                 <TableCell>
                   {editable ? (
                     <Select
@@ -471,10 +437,10 @@ const FacturacionPage = () => {
                       ))}
                     </Select>
                   ) : (
-                    <Typography>{item.productoNombre}</Typography>
+                    <Typography noWrap maxWidth={360}>{item.productoNombre}</Typography>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell align="center">
                   {editable ? (
                     <TextField
                       type="number"
@@ -482,13 +448,13 @@ const FacturacionPage = () => {
                       value={item.cantidad}
                       onChange={(e) => onUpdate(index, 'cantidad', e.target.value)}
                       inputProps={{ min: 1 }}
-                      sx={{ width: 80 }}
+                      sx={{ width: 90 }}
                     />
                   ) : (
                     <Typography align="center">{item.cantidad}</Typography>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell align="right">
                   {editable ? (
                     <TextField
                       type="number"
@@ -496,13 +462,13 @@ const FacturacionPage = () => {
                       value={item.precioUnitario}
                       onChange={(e) => onUpdate(index, 'precioUnitario', e.target.value)}
                       inputProps={{ min: 0, step: 0.01 }}
-                      sx={{ width: 120 }}
+                      sx={{ width: 140 }}
                     />
                   ) : (
                     <Typography align="right">${item.precioUnitario.toFixed(2)}</Typography>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell align="right">
                   {editable ? (
                     <TextField
                       type="number"
@@ -510,7 +476,7 @@ const FacturacionPage = () => {
                       value={item.descuento}
                       onChange={(e) => onUpdate(index, 'descuento', e.target.value)}
                       inputProps={{ min: 0, max: 100 }}
-                      sx={{ width: 80 }}
+                      sx={{ width: 100 }}
                     />
                   ) : (
                     <Typography align="right">{item.descuento}%</Typography>
@@ -546,8 +512,8 @@ const FacturacionPage = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+    <Box p={3} maxWidth="xl" mx="auto">
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1}>
           <ReceiptIcon />
           Sistema de Facturación
@@ -566,15 +532,15 @@ const FacturacionPage = () => {
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>{success}</Alert>}
 
       <Paper sx={{ mb: 3 }}>
-  <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
           <Tab label="Factura Manual" icon={<EditIcon />} iconPosition="start" />
           <Tab label="Desde Nota de Pedido" icon={<DescriptionIcon />} iconPosition="start" />
         </Tabs>
       </Paper>
 
       {activeTab === 0 && (
-  <Grid container spacing={3}>
-  <Grid item xs={12}>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
             <Card>
               <CardContent>
                 <Typography variant="h6" mb={2}>
@@ -594,9 +560,9 @@ const FacturacionPage = () => {
                     <FormControl fullWidth required>
                       <InputLabel>Cliente</InputLabel>
                       <Select
-        value={selectedClientId}
+                        value={selectedClientId}
                         label="Cliente"
-        onChange={(e) => setSelectedClientId(Number(e.target.value))}
+                        onChange={(e) => setSelectedClientId(Number(e.target.value))}
                         disabled={loading}
                       >
                         {clients.map((client) => (
@@ -613,7 +579,7 @@ const FacturacionPage = () => {
                       <Select
                         value={selectedUsuarioId}
                         label="Usuario"
-        onChange={(e) => setSelectedUsuarioId(Number(e.target.value))}
+                        onChange={(e) => setSelectedUsuarioId(Number(e.target.value))}
                         disabled={loading}
                       >
                         {user && (
@@ -631,13 +597,13 @@ const FacturacionPage = () => {
                       </Select>
                     </FormControl>
                   </Grid>
-  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} md={6}>
                     <FormControl fullWidth required>
                       <InputLabel>Método de Pago</InputLabel>
                       <Select
                         value={paymentMethod}
                         label="Método de Pago"
-        onChange={(e) => setPaymentMethod(e.target.value as MetodoPago)}
+                        onChange={(e) => setPaymentMethod(e.target.value as MetodoPago)}
                       >
                         {PAYMENT_METHODS.map((method) => (
                           <MenuItem key={method.value} value={method.value}>
@@ -675,7 +641,7 @@ const FacturacionPage = () => {
                       <Select
                         value={selectedIva}
                         label="Tipo de IVA"
-        onChange={(e) => setSelectedIva(e.target.value as TipoIva)}
+                        onChange={(e) => setSelectedIva(e.target.value as TipoIva)}
                       >
                         {IVA_OPTIONS.map((option) => (
                           <MenuItem key={option.value} value={option.value}>
@@ -777,7 +743,7 @@ const FacturacionPage = () => {
         </Grid>
       )}
 
-  {activeTab === 1 && (
+      {activeTab === 1 && (
         <Card>
           <CardContent>
             <Typography variant="h6" mb={2}>
@@ -785,8 +751,8 @@ const FacturacionPage = () => {
             </Typography>
             
             {notasPedido.length > 0 ? (
-              <TableContainer component={Paper}>
-                <Table>
+              <TableContainer component={Paper} sx={{ overflowX: 'auto', maxHeight: { xs: 560, md: 'calc(100vh - 360px)' } }}>
+                <Table stickyHeader size="small" sx={{ minWidth: 1000 }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Número</TableCell>
@@ -799,12 +765,14 @@ const FacturacionPage = () => {
                   </TableHead>
                   <TableBody>
                     {notasPedido.map((nota) => (
-                      <TableRow key={nota.id}>
+                      <TableRow key={nota.id} hover>
                         <TableCell>{nota.numeroDocumento}</TableCell>
-                        <TableCell>{nota.clienteNombre}</TableCell>
                         <TableCell>
-                          {new Date(nota.fechaEmision).toLocaleDateString('es-AR')}
+                          <Tooltip title={nota.clienteNombre}>
+                            <Typography noWrap maxWidth={300}>{nota.clienteNombre}</Typography>
+                          </Tooltip>
                         </TableCell>
+                        <TableCell>{new Date(nota.fechaEmision).toLocaleDateString('es-AR')}</TableCell>
                         <TableCell>
                           ${nota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                         </TableCell>
@@ -813,13 +781,13 @@ const FacturacionPage = () => {
                             label={ESTADO_OPTIONS[nota.estado as keyof typeof ESTADO_OPTIONS]?.label || nota.estado}
                             color={ESTADO_OPTIONS[nota.estado as keyof typeof ESTADO_OPTIONS]?.color || 'default'}
                             size="small"
+                            variant="outlined"
                           />
                         </TableCell>
                         <TableCell>
                           <Tooltip title="Convertir a Factura">
                             <IconButton 
                               color="primary"
-                              // Continuación del código desde la línea 434 (después del IconButton)
                               onClick={() => handleOpenConvertDialog(nota)}
                               disabled={loading}
                             >
@@ -852,17 +820,18 @@ const FacturacionPage = () => {
         </Card>
       )}
 
-      {/* Dialog for converting Nota de Pedido to Factura */}
+      {/* Dialog convertir Nota -> Factura (más chico) */}
       <Dialog 
         open={convertDialogOpen} 
         onClose={handleCloseConvertDialog}
-        maxWidth="lg"
+        maxWidth="sm"
         fullWidth
+        PaperProps={{ sx: { maxWidth: 680, maxHeight: '80vh' } }}
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" justifyContent="space-between">
             <Typography variant="h6">
-              Convertir a Factura - Nota #{selectedNotaPedido?.numeroDocumento}
+              Convertir a Factura — Nota #{selectedNotaPedido?.numeroDocumento}
             </Typography>
             <FormControlLabel
               control={
@@ -875,7 +844,7 @@ const FacturacionPage = () => {
             />
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           {selectedNotaPedido && (
             <Box>
               <Grid container spacing={2} mb={3}>
@@ -936,12 +905,16 @@ const FacturacionPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog for changing document status */}
-      <Dialog open={estadoDialogOpen} onClose={() => setEstadoDialogOpen(false)}>
-        <DialogTitle>
-          Cambiar Estado del Documento
-        </DialogTitle>
-        <DialogContent>
+      {/* Dialog cambiar estado (más chico) */}
+      <Dialog 
+        open={estadoDialogOpen} 
+        onClose={() => setEstadoDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { maxWidth: 480, maxHeight: '80vh' } }}
+      >
+        <DialogTitle>Cambiar Estado del Documento</DialogTitle>
+        <DialogContent dividers>
           {selectedDocumento && (
             <Box pt={1}>
               <Typography mb={2}>
