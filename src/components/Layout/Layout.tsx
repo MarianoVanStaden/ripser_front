@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import ScrollToTopButton from './ScrollToTopButton';
 
 const Layout: React.FC = () => {
   const theme = useTheme();
@@ -39,7 +40,17 @@ const Layout: React.FC = () => {
       >
         <Toolbar />
         <Outlet />
-      </Box>
+      </LayoutWrapper>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <Fab
+        color="primary"
+        aria-label="Abrir paleta de comandos"
+        sx={{ position: 'fixed', bottom: 32, right: 32, zIndex: 1300 }}
+        onClick={() => setPaletteOpen(true)}
+      >
+        <SearchIcon />
+      </Fab>
+      <ScrollToTopButton />
     </Box>
   );
 };
