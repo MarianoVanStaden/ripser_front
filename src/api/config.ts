@@ -3,6 +3,18 @@ import { authApi } from './authApi';
 
 // In-memory token reference (faster than hitting localStorage every time)
 let authToken: string | null = null;
+let printedJwtInfo = false;
+
+// Decode JWT payload (no verification) for debugging/diagnostics
+const decodeJwtPayload = (token: string): any | null => {
+  try {
+    const base64 = token.split('.')[1];
+    const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decodeURIComponent(escape(json)));
+  } catch {
+    return null;
+  }
+};
 
 // Helper to set/clear token from outside (AuthContext)
 export const setAuthToken = (token: string | null) => {
@@ -34,6 +46,18 @@ api.interceptors.request.use(
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
       console.log('Attaching token to request:', token.substring(0, 10) + '...', config.url);
+      if (!printedJwtInfo) {
+        const payload = decodeJwtPayload(token);
+        if (payload) {
+          const roles = payload.roles || payload.authorities || payload.scope || payload.scopes;
+          console.log('[JWT]', {
+            sub: payload.sub || payload.username || payload.user_name,
+            roles,
+            exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : undefined,
+          });
+        }
+        printedJwtInfo = true;
+      }
     } else {
       console.warn('No token available for request:', config.url);
     }
@@ -51,9 +75,9 @@ api.interceptors.response.use(
     const originalRequest: any = error.config;
     const status = error.response?.status;
 
-    // Attempt silent refresh on 401/403 (excluding refresh endpoint itself)
+    // Attempt silent refresh only on 401 Unauthorized (excluding refresh endpoint itself)
     if (
-      (status === 401 || status === 403) &&
+      status === 401 &&
       !originalRequest?._retry &&
       !originalRequest?.url?.includes('/auth/refresh')
     ) {

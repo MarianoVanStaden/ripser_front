@@ -1,48 +1,103 @@
+// api/opcionFinanciamientoApi.ts
 import api from '../config';
 import type { OpcionFinanciamientoDTO } from '../../types';
 
-const BASE = '/opciones-financiamiento';
 
-const opcionFinanciamientoApi = {
+
+
+class opcionFinanciamientoApi {
+  // Obtener todas las opciones de financiamiento por documento
   async obtenerOpcionesPorDocumento(documentoId: number): Promise<OpcionFinanciamientoDTO[]> {
-    const { data } = await api.get<OpcionFinanciamientoDTO[]>(`${BASE}/documento/${documentoId}`);
-    return data;
-  },
+    try {
+      const response = await api.get<OpcionFinanciamientoDTO[]>(`/opciones-financiamiento/documento/${documentoId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error obteniendo opciones de financiamiento:', error);
+      throw error;
+    }
+  }
 
+  // Obtener una opción de financiamiento por ID
   async obtenerPorId(id: number): Promise<OpcionFinanciamientoDTO> {
-    const { data } = await api.get<OpcionFinanciamientoDTO>(`${BASE}/${id}`);
-    return data;
-  },
+    try {
+      const response = await api.get<OpcionFinanciamientoDTO>(`/opciones-financiamiento/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error obteniendo opción de financiamiento:', error);
+      throw error;
+    }
+  }
 
+  // Crear una nueva opción de financiamiento
   async crear(documentoId: number, opcion: OpcionFinanciamientoDTO): Promise<OpcionFinanciamientoDTO> {
-    const { data } = await api.post<OpcionFinanciamientoDTO>(`${BASE}/documento/${documentoId}`, opcion);
-    return data;
-  },
+    try {
+      const response = await api.post<OpcionFinanciamientoDTO>(
+        `/opciones-financiamiento/documento/${documentoId}`,
+        opcion
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error creando opción de financiamiento:', error);
+      throw error;
+    }
+  }
 
+  // Crear múltiples opciones de financiamiento
   async crearMultiples(documentoId: number, opciones: OpcionFinanciamientoDTO[]): Promise<OpcionFinanciamientoDTO[]> {
-    const created = await Promise.all(
-      opciones.map((op, idx) => opcionFinanciamientoApi.crear(documentoId, { ...op, ordenPresentacion: idx + 1 }))
-    );
-    return created;
-  },
+    try {
+      const promises = opciones.map((opcion, index) =>
+        this.crear(documentoId, { ...opcion, ordenPresentacion: index + 1 })
+      );
+      return await Promise.all(promises);
+    } catch (error) {
+      console.error('Error creando múltiples opciones:', error);
+      throw error;
+    }
+  }
 
+  // Actualizar una opción de financiamiento
   async actualizar(id: number, opcion: OpcionFinanciamientoDTO): Promise<OpcionFinanciamientoDTO> {
-    const { data } = await api.put<OpcionFinanciamientoDTO>(`${BASE}/${id}`, opcion);
-    return data;
-  },
+    try {
+      const response = await api.put<OpcionFinanciamientoDTO>(`/opciones-financiamiento/${id}`, opcion);
+      return response.data;
+    } catch (error) {
+      console.error('Error actualizando opción de financiamiento:', error);
+      throw error;
+    }
+  }
 
+  // Eliminar una opción de financiamiento
   async eliminar(id: number): Promise<void> {
-    await api.delete(`${BASE}/${id}`);
-  },
+    try {
+      await api.delete(`/opciones-financiamiento/${id}`);
+    } catch (error) {
+      console.error('Error eliminando opción de financiamiento:', error);
+      throw error;
+    }
+  }
 
+  // Eliminar todas las opciones de un documento
   async eliminarPorDocumento(documentoId: number): Promise<void> {
-    await api.delete(`${BASE}/documento/${documentoId}`);
-  },
+    try {
+      await api.delete(`/opciones-financiamiento/documento/${documentoId}`);
+    } catch (error) {
+      console.error('Error eliminando opciones del documento:', error);
+      throw error;
+    }
+  }
 
+  // Reemplazar todas las opciones de un documento
   async reemplazarOpciones(documentoId: number, opciones: OpcionFinanciamientoDTO[]): Promise<OpcionFinanciamientoDTO[]> {
-    await opcionFinanciamientoApi.eliminarPorDocumento(documentoId);
-    return await opcionFinanciamientoApi.crearMultiples(documentoId, opciones);
-  },
-};
+    try {
+      // Primero eliminamos todas las opciones existentes
+      await this.eliminarPorDocumento(documentoId);
+      // Luego creamos las nuevas
+      return await this.crearMultiples(documentoId, opciones);
+    } catch (error) {
+      console.error('Error reemplazando opciones:', error);
+      throw error;
+    }
+  }
+}
 
-export default opcionFinanciamientoApi;
+export default new opcionFinanciamientoApi();

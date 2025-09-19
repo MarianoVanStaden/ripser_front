@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import {
-  AppBar,
   Box,
   CssBaseline,
   Toolbar,
-  Typography,
   useTheme,
   useMediaQuery,
+  Fab,
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ScrollToTopButton from './ScrollToTopButton';
+import CommandPalette from './CommandPalette'; // Make sure this component exists
+
+
 
 const Layout: React.FC = () => {
   const theme = useTheme();
@@ -18,6 +21,7 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -33,14 +37,18 @@ const Layout: React.FC = () => {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <Sidebar />
+      <Sidebar 
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        onNavigate={handleNavigation}
+      />
       <Box
         component="main"
         sx={{ flexGrow: 1, p: 3 }}
       >
         <Toolbar />
         <Outlet />
-      </LayoutWrapper>
+      </Box>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <Fab
         color="primary"

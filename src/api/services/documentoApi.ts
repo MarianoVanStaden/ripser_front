@@ -2,12 +2,10 @@ import api from '../config';
 import type {
   DocumentoComercial,
   EstadoDocumento,
-  DetalleDocumento,
-  MetodoPago,
   DetalleDocumentoDTO,
+  MetodoPago,
   OpcionFinanciamiento,
-  CreateOpcionFinanciamientoDTO
-  
+  CreateOpcionFinanciamientoDTO,
 } from '../../types';
 
 // Narrow DTO for creating presupuesto in current backend
@@ -19,114 +17,156 @@ type CreatePresupuestoPayload = {
 };
 
 export const documentoApi = {
-  // Get all documentos - Note: This endpoint doesn't exist in backend, using getByTipo instead
-  getAll: async (): Promise<DocumentoComercial[]> => {
-    // Since backend doesn't have a getAll, we'll get all presupuestos as a workaround
-    return await documentoApi.getByTipo('PRESUPUESTO');
-  },
-  // Get documento by ID
-  getById: async (id: number): Promise<DocumentoComercial> => {
-    const response = await api.get(`/api/documentos/${id}`);
-    return response.data;
-  },
-  // Create new documento - Note: This endpoint doesn't exist in backend
-  create: async (_documentoData: Partial<DocumentoComercial> & { detalles: DetalleDocumento[] }): Promise<DocumentoComercial> => {
-    throw new Error('Create documento endpoint not implemented in backend');
-  },
-  // Update documento - Note: This endpoint doesn't exist in backend
-  update: async (_id: number, _documentoData: Partial<DocumentoComercial> & { detalles?: DetalleDocumento[] }): Promise<DocumentoComercial> => {
-    throw new Error('Update documento endpoint not implemented in backend');
-  },
-  // Delete documento - Note: This endpoint doesn't exist in backend
-  delete: async (_id: number): Promise<void> => {
-    throw new Error('Delete documento endpoint not implemented in backend');
-  },
-  // Change estado of documento
-  changeEstado: async (id: number, nuevoEstado: EstadoDocumento): Promise<DocumentoComercial> => {
-    const response = await api.put(`/api/documentos/${id}/estado`, nuevoEstado);
-    return response.data;
-  },
-  // Search documentos by numeroDocumento - Note: This endpoint doesn't exist in backend
-  searchByNumero: async (_term: string): Promise<DocumentoComercial[]> => {
-    throw new Error('Search by numero endpoint not implemented in backend');
-  },
-  // Get documentos by estado - Note: This endpoint doesn't exist in backend
-  getByEstado: async (_estado: EstadoDocumento): Promise<DocumentoComercial[]> => {
-    throw new Error('Get by estado endpoint not implemented in backend');
-  },
-  // Get documentos within a date range - Note: This endpoint doesn't exist in backend
-  getByFecha: async (_fechaInicio: string, _fechaFin: string): Promise<DocumentoComercial[]> => {
-    throw new Error('Get by fecha endpoint not implemented in backend');
-  },
   // Get documentos by tipo
   getByTipo: async (tipo: string): Promise<DocumentoComercial[]> => {
     try {
-      const response = await api.get(`/api/documentos/tipo/${encodeURIComponent(tipo)}`);
-      return response.data; // Backend returns List<DocumentoComercialDTO>
+      console.log('Making request to get documentos by tipo:', tipo);
+  const response = await api.get(`/api/documentos/tipo/${encodeURIComponent(tipo)}`);
+      console.log('Successfully retrieved documentos:', response.data?.length || 0, 'items');
+      return response.data;
     } catch (err: any) {
+      console.error('Error in getByTipo:', err?.response?.status, err?.response?.data);
       if (err?.response?.status === 403) {
         console.warn('Sin permisos para documentos; devolviendo lista vacía');
-        return [];
+        throw new Error('No tiene permisos para acceder a los documentos');
       }
       throw err;
     }
   },
+
+  // Get documento by ID
+  getById: async (id: number): Promise<DocumentoComercial> => {
+  const response = await api.get(`/api/documentos/${id}`);
+    return response.data;
+  },
+
   // Get documentos by cliente
   getByCliente: async (clienteId: number): Promise<DocumentoComercial[]> => {
-    const response = await api.get(`/api/documentos/cliente/${clienteId}`);
+  const response = await api.get(`/api/documentos/cliente/${clienteId}`);
     return response.data;
   },
+
   // Create new presupuesto
   createPresupuesto: async (presupuesto: CreatePresupuestoPayload): Promise<DocumentoComercial> => {
-    const response = await api.post('/api/documentos/presupuesto', presupuesto);
-    return response.data;
+    try {
+  const response = await api.post('/api/documentos/presupuesto', presupuesto);
+      return response.data;
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        throw new Error('No tiene permisos para crear presupuestos');
+      }
+      throw err;
+    }
   },
+
   // Update estado of presupuesto
   updateEstado: async (id: number, estado: EstadoDocumento): Promise<DocumentoComercial> => {
-    const response = await api.put(`/api/documentos/${id}/estado`, estado);
-    return response.data;
+    try {
+  const response = await api.put(`/api/documentos/${id}/estado`, { estado });
+      return response.data;
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        throw new Error('No tiene permisos para actualizar el estado del documento');
+      }
+      throw err;
+    }
   },
+
   // Convert presupuesto to nota de pedido
   convertToNotaPedido: async (dto: {
     presupuestoId: number;
     metodoPago: MetodoPago;
     tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
   }): Promise<DocumentoComercial> => {
-    const response = await api.post('/api/documentos/nota-pedido', dto);
-    return response.data;
+    try {
+  const response = await api.post('/api/documentos/nota-pedido', dto);
+      return response.data;
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        throw new Error('No tiene permisos para convertir presupuestos');
+      }
+      throw err;
+    }
   },
+
   // Convert nota de pedido to factura
   convertToFactura: async (dto: { notaPedidoId: number; descuento?: number }): Promise<DocumentoComercial> => {
-    const response = await api.post('/api/documentos/factura', dto);
-    return response.data;
+    try {
+  const response = await api.post('/api/documentos/factura', dto);
+      return response.data;
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        throw new Error('No tiene permisos para convertir a factura');
+      }
+      throw err;
+    }
   },
-// Seleccionar opción de financiamiento
+
+  // Seleccionar opción de financiamiento
   selectFinanciamiento: async (presupuestoId: number, opcionId: number): Promise<DocumentoComercial> => {
-    const response = await api.put(`/api/documentos/presupuesto/${presupuestoId}/opcion-financiamiento/${opcionId}`);
-    return response.data;
+    try {
+  const response = await api.put(`/api/documentos/presupuesto/${presupuestoId}/opcion-financiamiento/${opcionId}`);
+      return response.data;
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        throw new Error('No tiene permisos para seleccionar opciones de financiamiento');
+      }
+      throw err;
+    }
   },
 
-  // Obtener opciones de financiamiento de un presupuesto
-  getOpcionesFinanciamiento: async (presupuestoId: number): Promise<OpcionFinanciamiento[]> => {
-    const response = await api.get(`/api/documentos/${presupuestoId}/opciones-financiamiento`);
-    return response.data;
-  },
 
-  // Crear opción de financiamiento personalizada
-  createOpcionFinanciamiento: async (presupuestoId: number, opcion: CreateOpcionFinanciamientoDTO): Promise<OpcionFinanciamiento> => {
-    const response = await api.post(`/api/documentos/${presupuestoId}/opciones-financiamiento`, opcion);
+// Obtener opciones de financiamiento de un presupuesto
+getOpcionesFinanciamiento: async (presupuestoId: number): Promise<OpcionFinanciamiento[]> => {
+  try {
+    const response = await api.get(`/opciones-financiamiento/documento/${presupuestoId}`);
     return response.data;
-  },
+  } catch (err: any) {
+    if (err?.response?.status === 403) {
+      throw new Error('No tiene permisos para obtener opciones de financiamiento');
+    }
+    throw err;
+  }
+},
 
-  // Actualizar opción de financiamiento
-  updateOpcionFinanciamiento: async (presupuestoId: number, opcionId: number, opcion: Partial<OpcionFinanciamiento>): Promise<OpcionFinanciamiento> => {
-    const response = await api.put(`/api/documentos/${presupuestoId}/opciones-financiamiento/${opcionId}`, opcion);
+// Crear opción de financiamiento personalizada
+createOpcionFinanciamiento: async (presupuestoId: number, opcion: CreateOpcionFinanciamientoDTO): Promise<OpcionFinanciamiento> => {
+  try {
+    const response = await api.post(`/opciones-financiamiento/documento/${presupuestoId}`, opcion);
     return response.data;
-  },
+  } catch (err: any) {
+    if (err?.response?.status === 403) {
+      throw new Error('No tiene permisos para crear opciones de financiamiento');
+    }
+    throw err;
+  }
+},
 
-  // Eliminar opción de financiamiento
-  deleteOpcionFinanciamiento: async (presupuestoId: number, opcionId: number): Promise<void> => {
-    await api.delete(`/api/documentos/${presupuestoId}/opciones-financiamiento/${opcionId}`);
-  },
+// Actualizar opción de financiamiento
+updateOpcionFinanciamiento: async (presupuestoId: number, opcionId: number, opcion: Partial<OpcionFinanciamiento>): Promise<OpcionFinanciamiento> => {
+  try {
+    const response = await api.put(`/opciones-financiamiento/${opcionId}`, opcion);
+    return response.data;
+  } catch (err: any) {
+    if (err?.response?.status === 403) {
+      throw new Error('No tiene permisos para actualizar opciones de financiamiento');
+    }
+    throw err;
+  }
+},
+
+// Eliminar opción de financiamiento
+deleteOpcionFinanciamiento: async (presupuestoId: number, opcionId: number): Promise<void> => {
+  try {
+    await api.delete(`/opciones-financiamiento/${opcionId}`);
+  } catch (err: any) {
+    if (err?.response?.status === 403) {
+      throw new Error('No tiene permisos para eliminar opciones de financiamiento');
+    }
+    throw err;
+  }
+},
 };
+
+export default documentoApi;
 
