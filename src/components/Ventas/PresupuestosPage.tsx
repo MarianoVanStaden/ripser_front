@@ -23,6 +23,11 @@ import {
   TableHead,
   TableRow,
   Tooltip,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Divider,
+  Snackbar,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -31,10 +36,14 @@ import {
   Print as PrintIcon,
   Send as SendIcon,
   Delete as DeleteIcon,
+  AttachMoney as MoneyIcon,
+  CreditCard as CreditCardIcon,
+  AccountBalance as BankIcon,
 } from "@mui/icons-material";
 import { clienteApi, usuarioApi, productApi } from "../../api/services";
-import { documentoApi } from "../../api/documentoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, CreatePresupuestoRequest, DetalleDocumento } from "../../types";
+import { documentoApi } from "../../api/services/documentoApi";
+import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
@@ -86,6 +95,13 @@ const PresupuestosPage: React.FC = () => {
   const [detalles, setDetalles] = useState<DetalleForm[]>([]);
   const [readOnly, setReadOnly] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Financiamiento UI state
+  const [financiamientoDialogOpen, setFinanciamientoDialogOpen] = useState(false);
+  const [selectedPresupuesto, setSelectedPresupuesto] = useState<DocumentoComercial | null>(null);
+  const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
+  const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
+  const [loadingOpciones, setLoadingOpciones] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
 
   const fetchData = useCallback(async () => {
     try {
@@ -120,11 +136,11 @@ const PresupuestosPage: React.FC = () => {
         }),
       ]);
 
-      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
+  console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
       setClientes(Array.isArray(clientesData) ? clientesData : []);
       setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
       setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
-      setProductos(Array.isArray(productosData.content) ? productosData.content : Array.isArray(productosData) ? productosData : []);
+  setProductos(Array.isArray(productosData) ? productosData : []);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
@@ -157,6 +173,39 @@ const PresupuestosPage: React.FC = () => {
   }, []);
 
   const total = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
+
+  const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
+    switch (metodoPago) {
+      case 'EFECTIVO':
+        return <MoneyIcon fontSize="small" />;
+      case 'TARJETA_CREDITO':
+        return <CreditCardIcon fontSize="small" />;
+      case 'TRANSFERENCIA_BANCARIA':
+      case 'FINANCIACION_PROPIA':
+        return <BankIcon fontSize="small" />;
+      default:
+        return <MoneyIcon fontSize="small" />;
+    }
+  };
+
+  const getMetodoPagoLabel = (metodoPago: MetodoPago | string) => {
+    switch (metodoPago) {
+      case 'EFECTIVO':
+        return 'Efectivo';
+      case 'TARJETA_CREDITO':
+        return 'Tarjeta de Crédito';
+      case 'TARJETA_DEBITO':
+        return 'Tarjeta de Débito';
+      case 'TRANSFERENCIA_BANCARIA':
+        return 'Transferencia bancaria';
+      case 'FINANCIACION_PROPIA':
+        return 'Financiación propia';
+      case 'CHEQUE':
+        return 'Cheque';
+      default:
+        return String(metodoPago);
+    }
+  };
 
   const addDetalle = useCallback(() => {
     if (readOnly) return;
@@ -203,10 +252,10 @@ const PresupuestosPage: React.FC = () => {
     setReadOnly(readOnlyMode);
     setHasUnsavedChanges(false);
     if (presupuesto) {
-      setEditingPresupuesto(presupuesto);
+  setEditingPresupuesto(presupuesto);
       setFormData({
         clienteId: presupuesto.clienteId.toString() || "",
-        usuarioId: presupuesto.usuarioId.toString() || user.id.toString(),
+    usuarioId: presupuesto.usuarioId?.toString() || (user?.id ?? 0).toString(),
         fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
         observaciones: presupuesto.observaciones || "",
         estado: presupuesto.estado,
@@ -215,8 +264,8 @@ const PresupuestosPage: React.FC = () => {
         Array.isArray(presupuesto.detalles)
           ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
               id: detalle.id,
-              productoId: detalle.productoId?.toString() || "",
-              descripcion: detalle.descripcion,
+      productoId: detalle.productoId?.toString() || "",
+      descripcion: detalle.descripcion || "",
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
               subtotal: detalle.subtotal,
@@ -225,7 +274,7 @@ const PresupuestosPage: React.FC = () => {
       );
     } else {
       setEditingPresupuesto(null);
-      setFormData({ ...initialFormData, usuarioId: user.id.toString() });
+  setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
       setDetalles([]);
     }
     setDialogOpen(true);
@@ -233,9 +282,9 @@ const PresupuestosPage: React.FC = () => {
 
   const handleCloseDialog = useCallback(() => {
     if (hasUnsavedChanges && !window.confirm("¿Descartar cambios no guardados?")) return;
-    setDialogOpen(false);
+  setDialogOpen(false);
     setEditingPresupuesto(null);
-    setFormData({ ...initialFormData, usuarioId: user.id.toString() });
+  setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
     setDetalles([]);
     setError(null);
     setHasUnsavedChanges(false);
@@ -246,9 +295,9 @@ const PresupuestosPage: React.FC = () => {
       setError("Debe iniciar sesión");
       return;
     }
-    const payload: CreatePresupuestoRequest = {
+    const payload: { clienteId: number; usuarioId: number; observaciones?: string; detalles: DetalleDocumentoDTO[] } = {
       clienteId: Number(formData.clienteId),
-      usuarioId: Number(formData.usuarioId) || user.id,
+      usuarioId: Number(formData.usuarioId) || (user?.id ?? 0),
       observaciones: formData.observaciones,
       detalles: detalles.map((d) => ({
         productoId: Number(d.productoId),
@@ -299,16 +348,19 @@ const PresupuestosPage: React.FC = () => {
       }
 
       handleCloseDialog();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error saving presupuesto:", err);
       let errorMessage = "Error al guardar el presupuesto";
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.response?.data?.error) {
-        errorMessage = `${err.response.data.error}: ${err.response.data.message || ""}`;
-      } else if (err.response?.data) {
-        errorMessage = `Error ${err.response.status}: ${JSON.stringify(err.response.data)}`;
-      } else if (err.message) {
+      if (typeof err === 'object' && err && 'response' in err) {
+        type Resp = { data?: unknown; status?: number };
+        const r = (err as { response?: Resp }).response;
+        if (r?.data) {
+          const data = r.data as Record<string, unknown>;
+          if (typeof data.message === 'string') errorMessage = data.message;
+          else if (typeof data.error === 'string') errorMessage = `${data.error}: ${typeof data.message === 'string' ? data.message : ''}`;
+          else errorMessage = `Error ${r.status}: ${JSON.stringify(r.data)}`;
+        }
+      } else if (err instanceof Error) {
         errorMessage = err.message;
       }
       setError(errorMessage);
@@ -316,6 +368,38 @@ const PresupuestosPage: React.FC = () => {
       setFormLoading(false);
     }
   }, [user, formData, detalles, editingPresupuesto, handleCloseDialog]);
+
+  // Financiamiento handlers
+  const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
+    setSelectedPresupuesto(presupuesto);
+    setSelectedOpcionId(presupuesto.opcionFinanciamientoSeleccionadaId || null);
+    setFinanciamientoDialogOpen(true);
+    setLoadingOpciones(true);
+    try {
+      const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
+      setOpcionesFinanciamiento(opciones);
+      const seleccionada = opciones.find(o => o.esSeleccionada);
+      if (seleccionada) setSelectedOpcionId(seleccionada.id ?? null);
+    } catch (e) {
+      console.error('Error cargando opciones:', e);
+      setSnackbar({ open: true, message: 'Error al cargar opciones de financiamiento', severity: 'error' });
+    } finally {
+      setLoadingOpciones(false);
+    }
+  }, []);
+
+  const handleSelectOpcion = useCallback(async () => {
+    if (!selectedPresupuesto || !selectedOpcionId) return;
+    try {
+      await documentoApi.selectFinanciamiento(selectedPresupuesto.id, selectedOpcionId);
+      setPresupuestos(prev => prev.map(p => p.id === selectedPresupuesto.id ? { ...p, opcionFinanciamientoSeleccionadaId: selectedOpcionId } : p));
+      setSnackbar({ open: true, message: 'Financiamiento seleccionado', severity: 'success' });
+      setFinanciamientoDialogOpen(false);
+    } catch (e) {
+      console.error('Error seleccionando opción:', e);
+      setSnackbar({ open: true, message: 'No se pudo seleccionar la opción', severity: 'error' });
+    }
+  }, [selectedPresupuesto, selectedOpcionId]);
 
   if (loading) {
     return (
@@ -365,6 +449,7 @@ const PresupuestosPage: React.FC = () => {
                   <TableCell width="120px">Fecha</TableCell>
                   <TableCell width="100px">Estado</TableCell>
                   <TableCell width="120px" align="right">Total</TableCell>
+                  <TableCell width="160px">Financiamiento</TableCell>
                   <TableCell width="150px">Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -385,6 +470,13 @@ const PresupuestosPage: React.FC = () => {
                       ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
+                      {presupuesto.opcionFinanciamientoSeleccionadaId ? (
+                        <Chip label="Opción seleccionada" size="small" color="primary" variant="outlined" />
+                      ) : (
+                        <Chip label="Sin seleccionar" size="small" variant="outlined" />
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Tooltip title="Ver">
                         <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, true)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
                           <VisibilityIcon />
@@ -393,6 +485,11 @@ const PresupuestosPage: React.FC = () => {
                       <Tooltip title="Editar">
                         <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, false)} aria-label={`Editar presupuesto ${presupuesto.numeroDocumento}`}>
                           <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Opciones de financiamiento">
+                        <IconButton size="small" color="secondary" onClick={() => handleOpenFinanciamiento(presupuesto)} aria-label={`Financiamiento presupuesto ${presupuesto.numeroDocumento}`}>
+                          <MoneyIcon />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Imprimir">
@@ -676,6 +773,77 @@ const PresupuestosPage: React.FC = () => {
           )}
         </DialogActions>
       </Dialog>
+
+      {/* Dialog Opciones de Financiamiento */}
+      <Dialog
+        open={financiamientoDialogOpen}
+        onClose={() => setFinanciamientoDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6">Opciones de Financiamiento</Typography>
+          <Typography variant="body2" color="text.secondary">Seleccione la opción de pago preferida</Typography>
+        </DialogTitle>
+        <DialogContent>
+          {selectedPresupuesto && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">Presupuesto: {selectedPresupuesto.numeroDocumento}</Typography>
+              <Typography variant="body2" color="text.secondary">Cliente: {selectedPresupuesto.clienteNombre}</Typography>
+              <Typography variant="subtitle1" sx={{ mt: 1 }}>Subtotal: ${selectedPresupuesto.subtotal?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+            </Box>
+          )}
+          <Divider sx={{ mb: 2 }} />
+          {loadingOpciones ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
+              {opcionesFinanciamiento.map((opcion) => (
+                <Box key={opcion.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
+                  <FormControlLabel value={opcion.id} control={<Radio />} label={
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {getMetodoPagoIcon(opcion.metodoPago)}
+                        <Typography variant="subtitle1">{opcion.nombre}</Typography>
+                        {opcion.tasaInteres < 0 && (
+                          <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
+                        )}
+                      </Box>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 1 }}>
+                        <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
+                        <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
+                        <Typography variant="body2">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                        <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                      </Box>
+                      {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
+                    </Box>
+                  } />
+                </Box>
+              ))}
+            </RadioGroup>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFinanciamientoDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSelectOpcion} variant="contained" disabled={!selectedOpcionId}>
+            Confirmar selección
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

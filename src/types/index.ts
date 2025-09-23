@@ -1231,7 +1231,7 @@ export interface Venta {
   updatedAt?: string;
   detalleVentas: DetalleVenta[];
 }
-export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE';
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE'| 'FINANCIACION_PROPIA' | 'OTRO';
 
 // DTO para crear una Venta desde el frontend
 export interface CreateVentaDTO {
