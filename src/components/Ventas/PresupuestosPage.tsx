@@ -28,6 +28,9 @@ import {
   Radio,
   Divider,
   Snackbar,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -47,6 +50,24 @@ import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, D
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
+const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string }>): OpcionFinanciamientoDTO[] => {
+  if (!Array.isArray(opciones)) return [];
+  return opciones
+    .filter((opcion): opcion is Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string } => Boolean(opcion))
+    .map((opcion) => ({
+      id: opcion.id,
+      nombre: opcion.nombre ?? "",
+      metodoPago: (opcion.metodoPago ?? "OTRO") as MetodoPago,
+      cantidadCuotas: opcion.cantidadCuotas ?? 0,
+      tasaInteres: opcion.tasaInteres ?? 0,
+      montoTotal: opcion.montoTotal ?? 0,
+      montoCuota: opcion.montoCuota ?? 0,
+      descripcion: opcion.descripcion,
+      ordenPresentacion: opcion.ordenPresentacion,
+      esSeleccionada: opcion.esSeleccionada,
+    }));
+};
+
 interface DetalleForm {
   id?: number;
   productoId: string;
@@ -62,6 +83,7 @@ interface FormData {
   fechaEmision: string;
   observaciones: string;
   estado: EstadoDocumento;
+  tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 }
 
 const initialFormData: FormData = {
@@ -70,6 +92,7 @@ const initialFormData: FormData = {
   fechaEmision: new Date().toISOString().split("T")[0],
   observaciones: "",
   estado: EstadoDocumentoEnum.PENDIENTE,
+  tipoIva: 'IVA_21',
 };
 
 const initialDetalle: DetalleForm = {
@@ -78,6 +101,20 @@ const initialDetalle: DetalleForm = {
   cantidad: 1,
   precioUnitario: 0,
   subtotal: 0,
+};
+
+const formatCurrency = (value: number | null | undefined): string =>
+  `$${Number(value ?? 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+
+const computeIva = (presupuesto: DocumentoComercial): number => {
+  if (typeof presupuesto.iva === 'number' && !Number.isNaN(presupuesto.iva)) {
+    return presupuesto.iva;
+  }
+  if (typeof presupuesto.subtotal === 'number' && typeof presupuesto.total === 'number') {
+    const diff = presupuesto.total - presupuesto.subtotal;
+    return Number.isFinite(diff) ? diff : 0;
+  }
+  return 0;
 };
 
 const PresupuestosPage: React.FC = () => {
@@ -95,6 +132,11 @@ const PresupuestosPage: React.FC = () => {
   const [detalles, setDetalles] = useState<DetalleForm[]>([]);
   const [readOnly, setReadOnly] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Confirmation dialog state
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmDialogAction, setConfirmDialogAction] = useState<'close' | 'create' | null>(null);
+  
   // Financiamiento UI state
   const [financiamientoDialogOpen, setFinanciamientoDialogOpen] = useState(false);
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<DocumentoComercial | null>(null);
@@ -102,7 +144,45 @@ const PresupuestosPage: React.FC = () => {
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
   const [loadingOpciones, setLoadingOpciones] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
+  const [presupuestosFinanciamiento, setPresupuestosFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
 
+  // Function to fetch financing options for all presupuestos
+  const fetchFinanciamientoOptions = useCallback(async (presupuestosList: DocumentoComercial[]) => {
+    const financiamientoMap: Record<number, OpcionFinanciamientoDTO[]> = {};
+    const selectedIdMap: Record<number, number> = {};
+    
+    await Promise.all(
+      presupuestosList.map(async (presupuesto) => {
+        try {
+          const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
+          if (opciones && opciones.length > 0) {
+            financiamientoMap[presupuesto.id] = opciones;
+            const seleccionada = opciones.find((opcion) => opcion.esSeleccionada);
+            if (seleccionada?.id) {
+              selectedIdMap[presupuesto.id] = seleccionada.id;
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching financing options for presupuesto ${presupuesto.id}:`, error);
+        }
+      })
+    );
+    
+    if (Object.keys(financiamientoMap).length > 0) {
+      setPresupuestosFinanciamiento((prev) => ({ ...prev, ...financiamientoMap }));
+    }
+    if (Object.keys(selectedIdMap).length > 0) {
+      setPresupuestos((prev) =>
+        prev.map((presupuesto) =>
+          selectedIdMap[presupuesto.id]
+            ? { ...presupuesto, opcionFinanciamientoSeleccionadaId: selectedIdMap[presupuesto.id] }
+            : presupuesto
+        )
+      );
+    }
+  }, []);
+
+  // Main fetch data function
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -136,11 +216,37 @@ const PresupuestosPage: React.FC = () => {
         }),
       ]);
 
-  console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
+      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
       setClientes(Array.isArray(clientesData) ? clientesData : []);
       setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
-      setPresupuestos(Array.isArray(presupuestosData) ? presupuestosData : []);
-  setProductos(Array.isArray(productosData) ? productosData : []);
+
+      const presupuestosArray = Array.isArray(presupuestosData)
+        ? presupuestosData.map((presupuesto) => {
+            const embeddedSelected = Array.isArray((presupuesto as any).opcionesFinanciamiento)
+              ? (presupuesto as any).opcionesFinanciamiento.find((opcion: any) => opcion?.esSeleccionada)?.id
+              : undefined;
+            if (!presupuesto.opcionFinanciamientoSeleccionadaId && embeddedSelected) {
+              return { ...presupuesto, opcionFinanciamientoSeleccionadaId: embeddedSelected };
+            }
+            return presupuesto;
+          })
+        : [];
+
+      setPresupuestos(presupuestosArray);
+      setProductos(Array.isArray(productosData) ? productosData : []);
+
+      const embeddedFinanciamientoMap: Record<number, OpcionFinanciamientoDTO[]> = {};
+      presupuestosArray.forEach((presupuesto) => {
+        const normalizadas = normalizeOpcionesFinanciamiento((presupuesto as any).opcionesFinanciamiento);
+        if (normalizadas.length > 0) {
+          embeddedFinanciamientoMap[presupuesto.id] = normalizadas;
+        }
+      });
+      setPresupuestosFinanciamiento(embeddedFinanciamientoMap);
+      
+      if (presupuestosArray.length > 0) {
+        await fetchFinanciamientoOptions(presupuestosArray);
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
@@ -148,7 +254,7 @@ const PresupuestosPage: React.FC = () => {
       setLoading(false);
       console.log("Loading complete, loading:", false);
     }
-  }, []);
+  }, [fetchFinanciamientoOptions]);
 
   useEffect(() => {
     fetchData();
@@ -172,7 +278,41 @@ const PresupuestosPage: React.FC = () => {
     }
   }, []);
 
-  const total = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
+  // Calculate IVA based on selected type
+  const getIvaPercentage = useCallback((tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO'): number => {
+    switch (tipoIva) {
+      case 'IVA_21': return 0.21;
+      case 'IVA_10_5': return 0.105;
+      case 'EXENTO': return 0;
+      default: return 0.21;
+    }
+  }, []);
+
+  // Helper function to get selected financing option for a presupuesto
+  const getSelectedFinancingOption = useCallback((presupuesto: DocumentoComercial): OpcionFinanciamientoDTO | undefined => {
+    const opcionesGuardadas = presupuestosFinanciamiento[presupuesto.id] || [];
+    const selectedId = presupuesto.opcionFinanciamientoSeleccionadaId;
+
+    if (selectedId) {
+      const optionFromMap = opcionesGuardadas.find((opcion) => opcion.id === selectedId);
+      if (optionFromMap) return optionFromMap;
+    }
+
+    const selectedByFlagInMap = opcionesGuardadas.find((opcion) => opcion.esSeleccionada);
+    if (selectedByFlagInMap) return selectedByFlagInMap;
+
+    const opcionesEmbebidas = normalizeOpcionesFinanciamiento((presupuesto as any).opcionesFinanciamiento);
+    if (selectedId) {
+      const optionFromEmbedded = opcionesEmbebidas.find((opcion) => opcion.id === selectedId);
+      if (optionFromEmbedded) return optionFromEmbedded;
+    }
+
+    return opcionesEmbebidas.find((opcion) => opcion.esSeleccionada);
+  }, [presupuestosFinanciamiento]);
+
+  const subtotal = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
+  const ivaAmount = useMemo(() => subtotal * getIvaPercentage(formData.tipoIva), [subtotal, formData.tipoIva, getIvaPercentage]);
+  const total = useMemo(() => subtotal + ivaAmount, [subtotal, ivaAmount]);
 
   const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
     switch (metodoPago) {
@@ -252,20 +392,21 @@ const PresupuestosPage: React.FC = () => {
     setReadOnly(readOnlyMode);
     setHasUnsavedChanges(false);
     if (presupuesto) {
-  setEditingPresupuesto(presupuesto);
+      setEditingPresupuesto(presupuesto);
       setFormData({
         clienteId: presupuesto.clienteId.toString() || "",
-    usuarioId: presupuesto.usuarioId?.toString() || (user?.id ?? 0).toString(),
+        usuarioId: presupuesto.usuarioId?.toString() || (user?.id ?? 0).toString(),
         fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
         observaciones: presupuesto.observaciones || "",
         estado: presupuesto.estado,
+        tipoIva: (presupuesto as any).tipoIva || 'IVA_21',
       });
       setDetalles(
         Array.isArray(presupuesto.detalles)
           ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
               id: detalle.id,
-      productoId: detalle.productoId?.toString() || "",
-      descripcion: detalle.descripcion || "",
+              productoId: detalle.productoId?.toString() || "",
+              descripcion: detalle.descripcion || "",
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
               subtotal: detalle.subtotal,
@@ -274,31 +415,55 @@ const PresupuestosPage: React.FC = () => {
       );
     } else {
       setEditingPresupuesto(null);
-  setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+      setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
       setDetalles([]);
     }
     setDialogOpen(true);
   }, [user]);
 
   const handleCloseDialog = useCallback(() => {
-    if (hasUnsavedChanges && !window.confirm("¿Descartar cambios no guardados?")) return;
-  setDialogOpen(false);
+    if (hasUnsavedChanges && !readOnly) {
+      setConfirmDialogAction('close');
+      setConfirmDialogOpen(true);
+    } else {
+      setDialogOpen(false);
+      setEditingPresupuesto(null);
+      setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+      setDetalles([]);
+      setError(null);
+      setHasUnsavedChanges(false);
+    }
+  }, [hasUnsavedChanges, user, readOnly]);
+
+  const handleConfirmClose = useCallback(() => {
+    setConfirmDialogOpen(false);
+    setDialogOpen(false);
     setEditingPresupuesto(null);
-  setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+    setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
     setDetalles([]);
     setError(null);
     setHasUnsavedChanges(false);
-  }, [hasUnsavedChanges, user]);
+    setConfirmDialogAction(null);
+  }, [user]);
 
   const handleSavePresupuesto = useCallback(async () => {
     if (!user) {
       setError("Debe iniciar sesión");
       return;
     }
-    const payload: { clienteId: number; usuarioId: number; observaciones?: string; detalles: DetalleDocumentoDTO[] } = {
+
+    // Show confirmation dialog before creating
+    if (!editingPresupuesto && confirmDialogAction !== 'create') {
+      setConfirmDialogAction('create');
+      setConfirmDialogOpen(true);
+      return;
+    }
+
+    const payload: any = {
       clienteId: Number(formData.clienteId),
       usuarioId: Number(formData.usuarioId) || (user?.id ?? 0),
       observaciones: formData.observaciones,
+      tipoIva: formData.tipoIva,
       detalles: detalles.map((d) => ({
         productoId: Number(d.productoId),
         cantidad: d.cantidad,
@@ -306,6 +471,7 @@ const PresupuestosPage: React.FC = () => {
         descripcion: d.descripcion,
       })),
     };
+
     try {
       if (!formData.clienteId) {
         setError("Debe seleccionar un cliente");
@@ -347,7 +513,14 @@ const PresupuestosPage: React.FC = () => {
         setPresupuestos((prev) => [savedPresupuesto, ...prev]);
       }
 
-      handleCloseDialog();
+      setConfirmDialogOpen(false);
+      setConfirmDialogAction(null);
+      handleConfirmClose();
+      setSnackbar({ 
+        open: true, 
+        message: editingPresupuesto ? 'Presupuesto actualizado exitosamente' : 'Presupuesto creado exitosamente', 
+        severity: 'success' 
+      });
     } catch (err: unknown) {
       console.error("Error saving presupuesto:", err);
       let errorMessage = "Error al guardar el presupuesto";
@@ -364,10 +537,12 @@ const PresupuestosPage: React.FC = () => {
         errorMessage = err.message;
       }
       setError(errorMessage);
+      setConfirmDialogOpen(false);
+      setConfirmDialogAction(null);
     } finally {
       setFormLoading(false);
     }
-  }, [user, formData, detalles, editingPresupuesto, handleCloseDialog]);
+  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose]);
 
   // Financiamiento handlers
   const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
@@ -392,14 +567,27 @@ const PresupuestosPage: React.FC = () => {
     if (!selectedPresupuesto || !selectedOpcionId) return;
     try {
       await documentoApi.selectFinanciamiento(selectedPresupuesto.id, selectedOpcionId);
-      setPresupuestos(prev => prev.map(p => p.id === selectedPresupuesto.id ? { ...p, opcionFinanciamientoSeleccionadaId: selectedOpcionId } : p));
+      
+      // Update presupuestos state
+      setPresupuestos(prev => prev.map(p => 
+        p.id === selectedPresupuesto.id 
+          ? { ...p, opcionFinanciamientoSeleccionadaId: selectedOpcionId } 
+          : p
+      ));
+      
+      // Update financing options in local state
+      setPresupuestosFinanciamiento(prev => ({
+        ...prev,
+        [selectedPresupuesto.id]: opcionesFinanciamiento
+      }));
+      
       setSnackbar({ open: true, message: 'Financiamiento seleccionado', severity: 'success' });
       setFinanciamientoDialogOpen(false);
     } catch (e) {
       console.error('Error seleccionando opción:', e);
       setSnackbar({ open: true, message: 'No se pudo seleccionar la opción', severity: 'error' });
     }
-  }, [selectedPresupuesto, selectedOpcionId]);
+  }, [selectedPresupuesto, selectedOpcionId, opcionesFinanciamiento]);
 
   if (loading) {
     return (
@@ -448,63 +636,83 @@ const PresupuestosPage: React.FC = () => {
                   <TableCell>Cliente</TableCell>
                   <TableCell width="120px">Fecha</TableCell>
                   <TableCell width="100px">Estado</TableCell>
+                  <TableCell width="120px" align="right">Subtotal</TableCell>
+                  <TableCell width="120px" align="right">IVA</TableCell>
                   <TableCell width="120px" align="right">Total</TableCell>
-                  <TableCell width="160px">Financiamiento</TableCell>
+                  <TableCell width="200px">Financiamiento</TableCell>
                   <TableCell width="150px">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {presupuestos.map((presupuesto) => (
-                  <TableRow key={presupuesto.id}>
-                    <TableCell>{presupuesto.numeroDocumento}</TableCell>
-                    <TableCell>{presupuesto.clienteNombre}</TableCell>
-                    <TableCell>{new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getStatusLabel(presupuesto.estado)}
-                        color={getStatusColor(presupuesto.estado)}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell>
-                      {presupuesto.opcionFinanciamientoSeleccionadaId ? (
-                        <Chip label="Opción seleccionada" size="small" color="primary" variant="outlined" />
-                      ) : (
-                        <Chip label="Sin seleccionar" size="small" variant="outlined" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Ver">
-                        <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, true)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
-                          <VisibilityIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Editar">
-                        <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, false)} aria-label={`Editar presupuesto ${presupuesto.numeroDocumento}`}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Opciones de financiamiento">
-                        <IconButton size="small" color="secondary" onClick={() => handleOpenFinanciamiento(presupuesto)} aria-label={`Financiamiento presupuesto ${presupuesto.numeroDocumento}`}>
-                          <MoneyIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Imprimir">
-                        <IconButton size="small" color="success" aria-label={`Imprimir presupuesto ${presupuesto.numeroDocumento}`}>
-                          <PrintIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Enviar">
-                        <IconButton size="small" color="info" aria-label={`Enviar presupuesto ${presupuesto.numeroDocumento}`}>
-                          <SendIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {presupuestos.map((presupuesto) => {
+                  const selectedOption = getSelectedFinancingOption(presupuesto);
+                  const totalConFinanciamiento = selectedOption ? selectedOption.montoTotal : presupuesto.total;
+
+                  return (
+                    <TableRow key={presupuesto.id}>
+                      <TableCell>{presupuesto.numeroDocumento}</TableCell>
+                      <TableCell>{presupuesto.clienteNombre}</TableCell>
+                      <TableCell>{new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getStatusLabel(presupuesto.estado)}
+                          color={getStatusColor(presupuesto.estado)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="right">{formatCurrency(presupuesto.subtotal)}</TableCell>
+                      <TableCell align="right">{formatCurrency(computeIva(presupuesto))}</TableCell>
+                      <TableCell align="right">{formatCurrency(totalConFinanciamiento)}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: '160px' }}>
+                          {selectedOption ? (
+                            <Chip
+                              label={selectedOption.nombre}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ fontSize: '0.75rem' }}
+                            />
+                          ) : (
+                            <Chip
+                              label="Sin seleccionar"
+                              size="small"
+                              variant="outlined"
+                              sx={{ fontSize: '0.75rem' }}
+                            />
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title="Ver">
+                          <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, true)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
+                            <VisibilityIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Editar">
+                          <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, false)} aria-label={`Editar presupuesto ${presupuesto.numeroDocumento}`}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Opciones de financiamiento">
+                          <IconButton size="small" color="secondary" onClick={() => handleOpenFinanciamiento(presupuesto)} aria-label={`Financiamiento presupuesto ${presupuesto.numeroDocumento}`}>
+                            <MoneyIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Imprimir">
+                          <IconButton size="small" color="success" aria-label={`Imprimir presupuesto ${presupuesto.numeroDocumento}`}>
+                            <PrintIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Enviar">
+                          <IconButton size="small" color="info" aria-label={`Enviar presupuesto ${presupuesto.numeroDocumento}`}>
+                            <SendIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -531,6 +739,7 @@ const PresupuestosPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Main Presupuesto Dialog */}
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}
@@ -589,6 +798,23 @@ const PresupuestosPage: React.FC = () => {
                   ))}
                 </TextField>
               )}
+
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Tipo de IVA</InputLabel>
+                <Select
+                  value={formData.tipoIva}
+                  onChange={(e) => {
+                    setFormData({ ...formData, tipoIva: e.target.value as 'IVA_21' | 'IVA_10_5' | 'EXENTO' });
+                    setHasUnsavedChanges(true);
+                  }}
+                  label="Tipo de IVA"
+                  disabled={readOnly || !!editingPresupuesto}
+                >
+                  <MenuItem value="IVA_21">IVA 21%</MenuItem>
+                  <MenuItem value="IVA_10_5">IVA 10.5%</MenuItem>
+                  <MenuItem value="EXENTO">Exento</MenuItem>
+                </Select>
+              </FormControl>
 
               <TextField
                 fullWidth
@@ -745,21 +971,35 @@ const PresupuestosPage: React.FC = () => {
               </Table>
             </TableContainer>
 
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              {!readOnly && !editingPresupuesto && (
+            {!readOnly && !editingPresupuesto && (
+              <Box sx={{ mb: 2 }}>
                 <Button variant="outlined" startIcon={<AddIcon />} onClick={addDetalle} disabled={productos.length === 0}>
                   Agregar Detalle
                 </Button>
-              )}
-              <Typography variant="h6">
-                Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-              </Typography>
-            </Box>
+              </Box>
+            )}
+
+            {/* Totals section with IVA */}
+            <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
+                <Typography variant="body1">
+                  Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+                <Typography variant="body1">
+                  IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}): 
+                  ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+                <Divider sx={{ width: '200px', my: 1 }} />
+                <Typography variant="h6" fontWeight="bold">
+                  Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+              </Box>
+            </Paper>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} disabled={formLoading}>
-            Cerrar
+            {readOnly ? 'Cerrar' : 'Cancelar'}
           </Button>
           {!readOnly && (
             <Button
@@ -771,6 +1011,58 @@ const PresupuestosPage: React.FC = () => {
               {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {confirmDialogAction === 'close' ? 'Confirmar cierre' : 'Confirmar creación'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            {confirmDialogAction === 'close' 
+              ? '¿Está seguro que desea cerrar? Se perderán todos los cambios no guardados.'
+              : `¿Está seguro que desea crear este presupuesto con un total de ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}?`
+            }
+          </Typography>
+          {confirmDialogAction === 'create' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Cliente: {clientes.find(c => c.id.toString() === formData.clienteId)?.nombre}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Cantidad de items: {detalles.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}): 
+                ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setConfirmDialogOpen(false);
+            setConfirmDialogAction(null);
+          }}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={confirmDialogAction === 'close' ? handleConfirmClose : handleSavePresupuesto}
+            variant="contained" 
+            color={confirmDialogAction === 'close' ? 'error' : 'primary'}
+          >
+            {confirmDialogAction === 'close' ? 'Cerrar sin guardar' : 'Confirmar y crear'}
+          </Button>
         </DialogActions>
       </Dialog>
 

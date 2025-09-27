@@ -14,6 +14,7 @@ import type {
 type CreatePresupuestoPayload = {
   clienteId: number;
   usuarioId: number;
+  tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
   observaciones?: string;
   detalles: DetalleDocumentoDTO[];
 };
@@ -148,7 +149,10 @@ export const documentoApi = {
   // Crear presupuesto con opciones de financiamiento
   createPresupuesto: async (presupuestoData: CreatePresupuestoPayload): Promise<DocumentoComercial> => {
     try {
-      const response = await api.post<DocumentoComercial>(`/api/documentos/presupuesto`, presupuestoData);
+      const response = await api.post<DocumentoComercial>(`/api/documentos/presupuesto`, {
+        ...presupuestoData,
+        tipoIva: presupuestoData.tipoIva ?? 'IVA_21',
+      });
       return response.data;
     } catch (error) {
       console.error('Error creating presupuesto:', error);
