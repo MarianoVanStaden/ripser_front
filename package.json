@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "kpis": "node src/scripts/compute-kpis.cjs",
+    "kpis:build": "npm run build && node src/scripts/compute-kpis.cjs --with-build"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

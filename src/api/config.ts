@@ -11,9 +11,9 @@ export const setAuthToken = (token: string | null) => {
 
 // Create axios instance with default configuration
 // Resolve base URL and ensure it ends with /api for consistency
-const rawBase =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? '/api' : 'http://localhost:8080/RipserApp');
+const rawBase = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/RipserApp');
 const normalizedBase = /^https?:\/\//.test(rawBase)
   ? rawBase.replace(/\/$/, '')
   : rawBase;

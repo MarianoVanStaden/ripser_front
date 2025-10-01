@@ -301,6 +301,7 @@ const FacturacionPage = () => {
       const presupuesto = await documentoApi.createPresupuesto({
         clienteId: Number(selectedClientId),
         usuarioId: Number(selectedUsuarioId),
+        tipoIva: selectedIva,
         observaciones: notes || undefined,
         detalles: cart.map((item) => ({
           productoId: Number(item.productoId),

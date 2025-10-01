@@ -146,7 +146,7 @@ const BackendSetupDialog: React.FC<BackendSetupDialogProps> = ({ open, onClose }
             Expected API Base URL:
           </Typography>
           <Typography variant="body2" fontFamily="monospace">
-            http://localhost:8080/api
+            http://localhost:8080/RipserApp
           </Typography>
         </Box>
       </DialogContent>

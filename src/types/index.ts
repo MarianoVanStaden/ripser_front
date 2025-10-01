@@ -221,6 +221,7 @@ export interface Warranty {
   product?: Product;
   clientId: number;
   client?: Client;
+  tipoIva?: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
   saleId?: number;
   sale?: Sale;
   warrantyNumber: string;
@@ -1089,8 +1090,8 @@ export interface CreateInventoryAdjustmentRequest {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
-// Presupuesto Create Request
-export interface CreatePresupuestoRequest {
+// Legacy Presupuesto Create Request (legacy service)
+export interface LegacyCreatePresupuestoRequest {
   numeroPresupuesto?: string;
   cliente: {
     id: number;
@@ -1100,13 +1101,13 @@ export interface CreatePresupuestoRequest {
   estado?: PresupuestoStatus;
   total: number;
   observaciones: string;
-  detalles: CreateDetallePresupuestoRequest[];
+  detalles: LegacyCreateDetallePresupuestoRequest[];
   usuario?: {
     id: number;
   };
 }
 
-export interface CreateDetallePresupuestoRequest {
+export interface LegacyCreateDetallePresupuestoRequest {
   producto?: {
     id: number;
   };
@@ -1231,7 +1232,7 @@ export interface Venta {
   updatedAt?: string;
   detalleVentas: DetalleVenta[];
 }
-export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE';
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE'| 'FINANCIACION_PROPIA' | 'OTRO';
 
 // DTO para crear una Venta desde el frontend
 export interface CreateVentaDTO {
