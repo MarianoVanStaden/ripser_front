@@ -23,7 +23,7 @@ import {
   TableHead,
   TableRow,
   InputAdornment,
-  Divider,
+  
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,11 +31,10 @@ import {
   AccountBalance as AccountBalanceIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
-  FilterList as FilterIcon,
   Download as DownloadIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import {useLocation } from 'react-router-dom';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -48,7 +47,6 @@ import type { Cliente, CuentaCorriente, TipoMovimiento } from '../../types';
 dayjs.locale('es');
 
 const CuentaCorrientePage: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation(); // Use the useLocation hook
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -147,16 +145,16 @@ const CuentaCorrientePage: React.FC = () => {
 
     try {
       setLoading(true);
-      // The backend expects a 'cliente' object with just the 'id'
+      // El backend espera clienteId, no cliente
       const payload = {
         ...newMovimiento,
-        cliente: { id: selectedCliente.id },
-        fecha: new Date().toISOString(), // Send date in ISO format
+        clienteId: selectedCliente.id,
+        fecha: new Date().toISOString(),
       };
 
       await cuentaCorrienteApi.create(payload);
-      
-      // Reset form and close dialog
+
+      // Reset form y cerrar diálogo
       setNewMovimiento({
         tipo: 'CREDITO',
         importe: 0,
@@ -165,7 +163,6 @@ const CuentaCorrientePage: React.FC = () => {
       });
       setOpenMovimientoDialog(false);
 
-      // Refresh the movements for the current client
       await loadData();
     } catch (err) {
       setError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
@@ -337,15 +334,13 @@ const CuentaCorrientePage: React.FC = () => {
             <DatePicker
               label="Desde"
               value={fechaDesde}
-              onChange={setFechaDesde}
-              slotProps={{ textField: { size: 'small' } }}
+              onChange={(value) => setFechaDesde(dayjs(value))}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
-              onChange={setFechaHasta}
-              slotProps={{ textField: { size: 'small' } }}
+              onChange={(value) => setFechaHasta(dayjs(value))}
             />
 
             <IconButton onClick={loadData}>
