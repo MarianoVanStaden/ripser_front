@@ -979,7 +979,7 @@ const PresupuestosPage: React.FC = () => {
               </Box>
             )}
 
-            {/* Totals section with IVA */}
+{/* Totals section with IVA and Financing */}
             <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
                 <Typography variant="body1">
@@ -990,9 +990,54 @@ const PresupuestosPage: React.FC = () => {
                   ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
                 <Divider sx={{ width: '200px', my: 1 }} />
-                <Typography variant="h6" fontWeight="bold">
-                  Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                <Typography variant="body1" fontWeight="medium">
+                  Subtotal con IVA: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
+                
+                {/* Show financing option if viewing an existing presupuesto */}
+                {editingPresupuesto && (() => {
+                  const selectedFinancing = getSelectedFinancingOption(editingPresupuesto);
+                  if (selectedFinancing) {
+                    return (
+                      <>
+                        <Divider sx={{ width: '200px', my: 1 }} />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-end' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Opción de financiamiento: {selectedFinancing.nombre}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {getMetodoPagoLabel(selectedFinancing.metodoPago)} - {selectedFinancing.cantidadCuotas} cuotas
+                          </Typography>
+                          {selectedFinancing.tasaInteres !== 0 && (
+                            <Typography variant="body2" color={selectedFinancing.tasaInteres < 0 ? 'success.main' : 'text.secondary'}>
+                              {selectedFinancing.tasaInteres < 0 
+                                ? `Descuento: ${Math.abs(selectedFinancing.tasaInteres)}%`
+                                : `Interés: ${selectedFinancing.tasaInteres}%`}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" color="text.secondary">
+                            Valor cuota: ${selectedFinancing.montoCuota.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        <Divider sx={{ width: '200px', my: 1 }} />
+                        <Typography variant="h6" fontWeight="bold" color="primary">
+                          Total con financiamiento: ${selectedFinancing.montoTotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+                
+                {/* If no financing option selected, show regular total */}
+                {(!editingPresupuesto || !getSelectedFinancingOption(editingPresupuesto)) && (
+                  <>
+                    <Divider sx={{ width: '200px', my: 1 }} />
+                    <Typography variant="h6" fontWeight="bold">
+                      Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </>
+                )}
               </Box>
             </Paper>
           </Box>
@@ -1141,3 +1186,4 @@ const PresupuestosPage: React.FC = () => {
 };
 
 export default PresupuestosPage;
+

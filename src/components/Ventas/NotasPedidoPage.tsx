@@ -41,7 +41,6 @@ import type {
   DetalleDocumento 
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
-// Removed useAuth (unused)
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
@@ -128,9 +127,8 @@ const NotasPedidoPage: React.FC = () => {
       EFECTIVO: "Efectivo",
       TARJETA_CREDITO: "Tarjeta de Crédito",
       TARJETA_DEBITO: "Tarjeta de Débito",
-  TRANSFERENCIA_BANCARIA: "Transferencia Bancaria",
-  // Backward-compatibility if old values slip through
-  TRANSFERENCIA: "Transferencia Bancaria",
+      TRANSFERENCIA_BANCARIA: "Transferencia Bancaria",
+      TRANSFERENCIA: "Transferencia Bancaria",
       CHEQUE: "Cheque",
     };
     return labels[metodo] || metodo;
@@ -161,7 +159,17 @@ const NotasPedidoPage: React.FC = () => {
   const handlePresupuestoSelect = useCallback((presupuestoId: string) => {
     const presupuesto = presupuestos.find(p => p.id.toString() === presupuestoId);
     setSelectedPresupuesto(presupuesto || null);
-    setConvertForm(prev => ({ ...prev, presupuestoId }));
+    
+    // If presupuesto has tipoIva defined, set it in the form
+    if (presupuesto && presupuesto.tipoIva) {
+      setConvertForm(prev => ({ 
+        ...prev, 
+        presupuestoId,
+        tipoIva: presupuesto.tipoIva as TipoIva
+      }));
+    } else {
+      setConvertForm(prev => ({ ...prev, presupuestoId }));
+    }
   }, [presupuestos]);
 
   const handleConvertToNotaPedido = useCallback(async () => {
@@ -409,6 +417,11 @@ const NotasPedidoPage: React.FC = () => {
                 <Typography variant="body2">
                   Total: ${selectedPresupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
+                {selectedPresupuesto.tipoIva && (
+                  <Typography variant="body2">
+                    Tipo de IVA: {getTipoIvaLabel(selectedPresupuesto.tipoIva as TipoIva)}
+                  </Typography>
+                )}
                 {selectedPresupuesto.observaciones && (
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     Observaciones: {selectedPresupuesto.observaciones}
@@ -447,6 +460,8 @@ const NotasPedidoPage: React.FC = () => {
               }))}
               margin="normal"
               required
+              disabled={selectedPresupuesto?.tipoIva != null}
+              helperText={selectedPresupuesto?.tipoIva ? "Tipo de IVA definido en el presupuesto" : "Seleccione el tipo de IVA"}
             >
               <MenuItem value="IVA_21">IVA 21%</MenuItem>
               <MenuItem value="IVA_10_5">IVA 10.5%</MenuItem>
@@ -619,3 +634,4 @@ const NotasPedidoPage: React.FC = () => {
 };
 
 export default NotasPedidoPage;
+
