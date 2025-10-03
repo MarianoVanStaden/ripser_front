@@ -122,6 +122,7 @@ export const documentoApi = {
     }
   },
 
+
   // Obtener opciones de financiamiento de un presupuesto
   getOpcionesFinanciamiento: async (presupuestoId: number): Promise<OpcionFinanciamiento[]> => {
     try {
