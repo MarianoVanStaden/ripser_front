@@ -505,7 +505,8 @@ const PresupuestosPage: React.FC = () => {
 
       let savedPresupuesto: DocumentoComercial;
       if (editingPresupuesto) {
-        savedPresupuesto = await documentoApi.updateEstado(editingPresupuesto.id, formData.estado);
+        // Use changeEstado instead of updateEstado - send just the enum string value
+        savedPresupuesto = await documentoApi.changeEstado(editingPresupuesto.id, formData.estado);
         setPresupuestos((prev) => prev.map((p) => (p.id === editingPresupuesto.id ? savedPresupuesto : p)));
       } else {
         console.log("Enviando datos:", JSON.stringify(payload));
