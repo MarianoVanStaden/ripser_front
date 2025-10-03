@@ -1,10 +1,17 @@
 import axios from "axios";
 import type {
   DocumentoComercial,
-  CreatePresupuestoRequest,
   EstadoDocumento,
   DetalleDocumentoDTO
 } from "../types";
+
+type DocumentoPresupuestoPayload = {
+  clienteId: number;
+  usuarioId: number;
+  tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  observaciones?: string;
+  detalles: DetalleDocumentoDTO[];
+};
 
 // Use environment variable for API base URL with correct endpoint
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/RipserApp/api/documentos";
@@ -22,9 +29,12 @@ export const documentoApi = {
   },
 
   // Create a new presupuesto
-  createPresupuesto: async (data: CreatePresupuestoRequest): Promise<DocumentoComercial> => {
+  createPresupuesto: async (data: DocumentoPresupuestoPayload): Promise<DocumentoComercial> => {
     try {
-      const res = await axios.post(`${API_URL}/presupuesto`, data);
+      const res = await axios.post(`${API_URL}/presupuesto`, {
+        ...data,
+        tipoIva: data.tipoIva ?? 'IVA_21',
+      });
       return res.data;
     } catch (error) {
       console.error("Error creating presupuesto:", error);

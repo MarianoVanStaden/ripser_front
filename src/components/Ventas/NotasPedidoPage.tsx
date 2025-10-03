@@ -34,15 +34,15 @@ import {
   CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import { documentoApi } from "../../api/services";
-import type {
-  DocumentoComercial,
+import type { 
+  DocumentoComercial, 
   EstadoDocumento,
   MetodoPago,
-  DetalleDocumento,
+  DetalleDocumento 
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 
-type TipoIva = "IVA_21" | "IVA_10_5" | "EXENTO";
+type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
 interface ConvertFormData {
   presupuestoId: string;
@@ -74,19 +74,20 @@ const NotasPedidoPage: React.FC = () => {
       setError(null);
 
       const [notasData, presupuestosData] = await Promise.all([
-        documentoApi.getByTipo("NOTA_PEDIDO").catch((err: any) => {
+        documentoApi.getByTipo("NOTA_PEDIDO").catch((err) => {
           console.error("Error fetching notas de pedido:", err);
           return [];
         }),
-        documentoApi.getByTipo("PRESUPUESTO").catch((err: any) => {
+        documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
           console.error("Error fetching presupuestos:", err);
           return [];
         }),
       ]);
 
       setNotasPedido(Array.isArray(notasData) ? notasData : []);
+      // Backend requires PRESUPUESTO in PENDIENTE state for conversion
       const pendientes = Array.isArray(presupuestosData)
-        ? presupuestosData.filter((p) => p.estado === EstadoDocumentoEnum.PENDIENTE)
+        ? presupuestosData.filter(p => p.estado === EstadoDocumentoEnum.PENDIENTE)
         : [];
       setPresupuestos(pendientes);
     } catch (err) {
@@ -101,45 +102,23 @@ const NotasPedidoPage: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const getStatusColor = useCallback(
-    (
-      estado: EstadoDocumento
-    ):
-      | "default"
-      | "primary"
-      | "secondary"
-      | "error"
-      | "info"
-      | "success"
-      | "warning" => {
-      switch (estado) {
-        case EstadoDocumentoEnum.PENDIENTE:
-          return "warning";
-        case EstadoDocumentoEnum.APROBADO:
-          return "success";
-        case EstadoDocumentoEnum.PAGADA:
-          return "primary";
-        case EstadoDocumentoEnum.VENCIDA:
-          return "error";
-        default:
-          return "default";
-      }
-    },
-    []
-  );
+  const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+    switch (estado) {
+      case EstadoDocumentoEnum.PENDIENTE: return "warning";
+      case EstadoDocumentoEnum.APROBADO: return "success";
+      case EstadoDocumentoEnum.PAGADA: return "primary";
+      case EstadoDocumentoEnum.VENCIDA: return "error";
+      default: return "default";
+    }
+  }, []);
 
   const getStatusLabel = useCallback((estado: EstadoDocumento): string => {
     switch (estado) {
-      case EstadoDocumentoEnum.PENDIENTE:
-        return "Pendiente";
-      case EstadoDocumentoEnum.APROBADO:
-        return "Aprobado";
-      case EstadoDocumentoEnum.PAGADA:
-        return "Pagada";
-      case EstadoDocumentoEnum.VENCIDA:
-        return "Vencida";
-      default:
-        return estado;
+      case EstadoDocumentoEnum.PENDIENTE: return "Pendiente";
+      case EstadoDocumentoEnum.APROBADO: return "Aprobado";
+      case EstadoDocumentoEnum.PAGADA: return "Pagada";
+      case EstadoDocumentoEnum.VENCIDA: return "Vencida";
+      default: return estado;
     }
   }, []);
 
@@ -164,13 +143,6 @@ const NotasPedidoPage: React.FC = () => {
     return labels[tipo] || tipo;
   };
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(n);
-
   const handleOpenConvertDialog = useCallback(() => {
     setConvertForm(initialConvertForm);
     setSelectedPresupuesto(null);
@@ -184,14 +156,21 @@ const NotasPedidoPage: React.FC = () => {
     setError(null);
   }, []);
 
-  const handlePresupuestoSelect = useCallback(
-    (presupuestoId: string) => {
-      const presupuesto = presupuestos.find((p) => p.id.toString() === presupuestoId);
-      setSelectedPresupuesto(presupuesto || null);
-      setConvertForm((prev) => ({ ...prev, presupuestoId }));
-    },
-    [presupuestos]
-  );
+  const handlePresupuestoSelect = useCallback((presupuestoId: string) => {
+    const presupuesto = presupuestos.find(p => p.id.toString() === presupuestoId);
+    setSelectedPresupuesto(presupuesto || null);
+    
+    // If presupuesto has tipoIva defined, set it in the form
+    if (presupuesto && presupuesto.tipoIva) {
+      setConvertForm(prev => ({ 
+        ...prev, 
+        presupuestoId,
+        tipoIva: presupuesto.tipoIva as TipoIva
+      }));
+    } else {
+      setConvertForm(prev => ({ ...prev, presupuestoId }));
+    }
+  }, [presupuestos]);
 
   const handleConvertToNotaPedido = useCallback(async () => {
     if (!convertForm.presupuestoId) {
@@ -210,8 +189,11 @@ const NotasPedidoPage: React.FC = () => {
       };
 
       const nuevaNota = await documentoApi.convertToNotaPedido(payload);
-      setNotasPedido((prev) => [nuevaNota, ...prev]);
-      setPresupuestos((prev) => prev.filter((p) => p.id !== Number(convertForm.presupuestoId)));
+      setNotasPedido(prev => [nuevaNota, ...prev]);
+      
+      // Remove converted presupuesto from available list
+      setPresupuestos(prev => prev.filter(p => p.id !== Number(convertForm.presupuestoId)));
+      
       handleCloseConvertDialog();
     } catch (err: any) {
       console.error("Error converting to nota de pedido:", err);
@@ -237,38 +219,36 @@ const NotasPedidoPage: React.FC = () => {
     setSelectedNota(null);
   }, []);
 
-  const handleConvertToFactura = useCallback(
-    async (notaId: number) => {
-      if (!window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
-        return;
-      }
+  const handleConvertToFactura = useCallback(async (notaId: number) => {
+    if (!window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
+      return;
+    }
 
-      try {
-        setError(null);
-        await documentoApi.convertToFactura({ notaPedidoId: notaId });
-        fetchData();
-      } catch (err: any) {
-        console.error("Error converting to factura:", err);
-        let errorMessage = "Error al convertir a factura";
-        if (err.response?.data?.message) {
-          errorMessage = err.response.data.message;
-        }
-        setError(errorMessage);
+    try {
+      setError(null);
+      await documentoApi.convertToFactura({ notaPedidoId: notaId });
+      // Refresh data after conversion
+      fetchData();
+    } catch (err: any) {
+      console.error("Error converting to factura:", err);
+      let errorMessage = "Error al convertir a factura";
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
       }
-    },
-    [fetchData]
-  );
+      setError(errorMessage);
+    }
+  }, [fetchData]);
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 420 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }} maxWidth="xl" mx="auto">
+    <Box sx={{ p: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Notas de Pedido
@@ -289,10 +269,16 @@ const NotasPedidoPage: React.FC = () => {
         </Alert>
       )}
 
+      {presupuestos.length === 0 && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          No hay presupuestos pendientes disponibles para convertir en Nota de Pedido.
+        </Alert>
+      )}
+
       <Card>
-        <CardContent sx={{ p: 0 }}>
-          <TableContainer component={Paper} sx={{ overflowX: "auto", maxHeight: "calc(100vh - 320px)" }}>
-            <Table stickyHeader size="small" sx={{ minWidth: 1200 }}>
+        <CardContent>
+          <TableContainer component={Paper}>
+            <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Número</TableCell>
@@ -307,16 +293,18 @@ const NotasPedidoPage: React.FC = () => {
               </TableHead>
               <TableBody>
                 {notasPedido.map((nota) => (
-                  <TableRow hover key={nota.id}>
+                  <TableRow key={nota.id}>
                     <TableCell>{nota.numeroDocumento}</TableCell>
                     <TableCell>{nota.clienteNombre}</TableCell>
                     <TableCell>{new Date(nota.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
                     <TableCell>
-                      {nota.fechaVencimiento
+                      {nota.fechaVencimiento 
                         ? new Date(nota.fechaVencimiento).toLocaleDateString("es-AR")
                         : "-"}
                     </TableCell>
-                    <TableCell>{nota.metodoPago ? getMetodoPagoLabel(nota.metodoPago) : "-"}</TableCell>
+                    <TableCell>
+                      {nota.metodoPago ? getMetodoPagoLabel(nota.metodoPago) : "-"}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={getStatusLabel(nota.estado)}
@@ -324,22 +312,25 @@ const NotasPedidoPage: React.FC = () => {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell align="right">{formatCurrency(nota.total)}</TableCell>
+                    <TableCell align="right">
+                      ${nota.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </TableCell>
                     <TableCell>
                       <Tooltip title="Ver">
-                        <IconButton size="small" color="primary" onClick={() => handleViewNota(nota)}>
+                        <IconButton 
+                          size="small" 
+                          color="primary" 
+                          onClick={() => handleViewNota(nota)}
+                        >
                           <VisibilityIcon />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Convertir a Factura">
-                        <IconButton
-                          size="small"
+                        <IconButton 
+                          size="small" 
                           color="success"
                           onClick={() => handleConvertToFactura(nota.id)}
-                          disabled={
-                            nota.estado !== EstadoDocumentoEnum.APROBADO &&
-                            nota.estado !== EstadoDocumentoEnum.PENDIENTE
-                          }
+                          disabled={nota.estado !== EstadoDocumentoEnum.APROBADO && nota.estado !== EstadoDocumentoEnum.PENDIENTE}
                         >
                           <ReceiptIcon />
                         </IconButton>
@@ -360,16 +351,34 @@ const NotasPedidoPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {notasPedido.length === 0 && (
+            <Box sx={{ textAlign: "center", py: 8 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No hay notas de pedido registradas
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Convierta un presupuesto aprobado para crear una nota de pedido
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenConvertDialog}
+                disabled={presupuestos.length === 0}
+              >
+                Convertir Presupuesto
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Card>
 
-      {/* Convert Dialog más chico */}
+      {/* Convert Dialog */}
       <Dialog
         open={convertDialogOpen}
         onClose={handleCloseConvertDialog}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { maxWidth: 600, maxHeight: "80vh" } }}
       >
         <DialogTitle>Convertir Presupuesto a Nota de Pedido</DialogTitle>
         <DialogContent>
@@ -382,13 +391,14 @@ const NotasPedidoPage: React.FC = () => {
               onChange={(e) => handlePresupuestoSelect(e.target.value)}
               margin="normal"
               required
+              error={!convertForm.presupuestoId && formLoading}
               helperText="Seleccione un presupuesto pendiente para convertir"
             >
               <MenuItem value="">Seleccionar presupuesto</MenuItem>
               {presupuestos.map((presupuesto) => (
                 <MenuItem key={presupuesto.id} value={presupuesto.id.toString()}>
-                  {presupuesto.numeroDocumento} - {presupuesto.clienteNombre} -{" "}
-                  {formatCurrency(presupuesto.total)}
+                  {presupuesto.numeroDocumento} - {presupuesto.clienteNombre} - 
+                  ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </MenuItem>
               ))}
             </TextField>
@@ -398,11 +408,25 @@ const NotasPedidoPage: React.FC = () => {
                 <Typography variant="subtitle2" gutterBottom>
                   Detalles del Presupuesto
                 </Typography>
-                <Typography variant="body2">Cliente: {selectedPresupuesto.clienteNombre}</Typography>
+                <Typography variant="body2">
+                  Cliente: {selectedPresupuesto.clienteNombre}
+                </Typography>
                 <Typography variant="body2">
                   Fecha: {new Date(selectedPresupuesto.fechaEmision).toLocaleDateString("es-AR")}
                 </Typography>
-                <Typography variant="body2">Total: {formatCurrency(selectedPresupuesto.total)}</Typography>
+                <Typography variant="body2">
+                  Total: ${selectedPresupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+                {selectedPresupuesto.tipoIva && (
+                  <Typography variant="body2">
+                    Tipo de IVA: {getTipoIvaLabel(selectedPresupuesto.tipoIva as TipoIva)}
+                  </Typography>
+                )}
+                {selectedPresupuesto.observaciones && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Observaciones: {selectedPresupuesto.observaciones}
+                  </Typography>
+                )}
               </Paper>
             )}
 
@@ -411,9 +435,10 @@ const NotasPedidoPage: React.FC = () => {
               select
               label="Método de Pago"
               value={convertForm.metodoPago}
-              onChange={(e) =>
-                setConvertForm((prev) => ({ ...prev, metodoPago: e.target.value as MetodoPago }))
-              }
+              onChange={(e) => setConvertForm(prev => ({ 
+                ...prev, 
+                metodoPago: e.target.value as MetodoPago 
+              }))}
               margin="normal"
               required
             >
@@ -429,11 +454,14 @@ const NotasPedidoPage: React.FC = () => {
               select
               label="Tipo de IVA"
               value={convertForm.tipoIva}
-              onChange={(e) =>
-                setConvertForm((prev) => ({ ...prev, tipoIva: e.target.value as TipoIva }))
-              }
+              onChange={(e) => setConvertForm(prev => ({ 
+                ...prev, 
+                tipoIva: e.target.value as TipoIva 
+              }))}
               margin="normal"
               required
+              disabled={selectedPresupuesto?.tipoIva != null}
+              helperText={selectedPresupuesto?.tipoIva ? "Tipo de IVA definido en el presupuesto" : "Seleccione el tipo de IVA"}
             >
               <MenuItem value="IVA_21">IVA 21%</MenuItem>
               <MenuItem value="IVA_10_5">IVA 10.5%</MenuItem>
@@ -456,28 +484,92 @@ const NotasPedidoPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* View Dialog más chico */}
+      {/* View Dialog */}
       <Dialog
         open={viewDialogOpen}
         onClose={handleCloseViewDialog}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { maxWidth: 640, maxHeight: "80vh" } }}
       >
-        <DialogTitle>Nota de Pedido {selectedNota?.numeroDocumento}</DialogTitle>
+        <DialogTitle>
+          Nota de Pedido {selectedNota?.numeroDocumento}
+        </DialogTitle>
         <DialogContent>
           {selectedNota && (
             <Box sx={{ pt: 2 }}>
-              <Typography variant="subtitle2">Cliente: {selectedNota.clienteNombre}</Typography>
-              <Typography variant="subtitle2">Usuario: {selectedNota.usuarioNombre}</Typography>
-              <Typography variant="subtitle2">
-                Fecha Emisión: {new Date(selectedNota.fechaEmision).toLocaleDateString("es-AR")}
-              </Typography>
-              <Typography variant="subtitle2">
-                Total: {formatCurrency(selectedNota.total)}
-              </Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mb: 3 }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Cliente
+                  </Typography>
+                  <Typography>{selectedNota.clienteNombre}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Usuario
+                  </Typography>
+                  <Typography>{selectedNota.usuarioNombre}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Fecha de Emisión
+                  </Typography>
+                  <Typography>
+                    {new Date(selectedNota.fechaEmision).toLocaleDateString("es-AR")}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Fecha de Vencimiento
+                  </Typography>
+                  <Typography>
+                    {selectedNota.fechaVencimiento 
+                      ? new Date(selectedNota.fechaVencimiento).toLocaleDateString("es-AR")
+                      : "-"}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Método de Pago
+                  </Typography>
+                  <Typography>
+                    {selectedNota.metodoPago ? getMetodoPagoLabel(selectedNota.metodoPago) : "-"}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Tipo de IVA
+                  </Typography>
+                  <Typography>
+                    {selectedNota.tipoIva ? getTipoIvaLabel(selectedNota.tipoIva as TipoIva) : "-"}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Estado
+                  </Typography>
+                  <Chip
+                    label={getStatusLabel(selectedNota.estado)}
+                    color={getStatusColor(selectedNota.estado)}
+                    size="small"
+                  />
+                </Box>
+              </Box>
+
+              {selectedNota.observaciones && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Observaciones
+                  </Typography>
+                  <Typography>{selectedNota.observaciones}</Typography>
+                </Box>
+              )}
+
               <Divider sx={{ my: 2 }} />
-              <Typography variant="h6">Detalles</Typography>
+
+              <Typography variant="h6" gutterBottom>
+                Detalles
+              </Typography>
               <TableContainer component={Paper}>
                 <Table size="small">
                   <TableHead>
@@ -496,16 +588,40 @@ const NotasPedidoPage: React.FC = () => {
                         <TableCell>{detalle.descripcion}</TableCell>
                         <TableCell align="center">{detalle.cantidad}</TableCell>
                         <TableCell align="right">
-                          {formatCurrency(detalle.precioUnitario)}
+                          ${detalle.precioUnitario.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell align="right">
-                          {formatCurrency(detalle.subtotal)}
+                          ${detalle.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
+                <Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                    <Typography>
+                      ${selectedNota.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Typography sx={{ mr: 4 }}>IVA:</Typography>
+                    <Typography>
+                      ${selectedNota.iva.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
+                    <Typography variant="h6">
+                      ${selectedNota.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           )}
         </DialogContent>
@@ -518,3 +634,4 @@ const NotasPedidoPage: React.FC = () => {
 };
 
 export default NotasPedidoPage;
+

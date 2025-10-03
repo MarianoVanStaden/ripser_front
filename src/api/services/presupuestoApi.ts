@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Presupuesto, CreatePresupuestoRequest, PresupuestoStatus } from '../../types';
+import type { Presupuesto, LegacyCreatePresupuestoRequest, PresupuestoStatus } from '../../types';
 
 export const presupuestoApi = {
   // Get all presupuestos
@@ -15,7 +15,7 @@ export const presupuestoApi = {
   },
 
   // Create new presupuesto
-  create: async (presupuesto: CreatePresupuestoRequest): Promise<Presupuesto> => {
+  create: async (presupuesto: LegacyCreatePresupuestoRequest): Promise<Presupuesto> => {
     const response = await api.post('/api/presupuestos', presupuesto);
     return response.data;
   },
@@ -26,7 +26,7 @@ export const presupuestoApi = {
 ,
 
   // Update presupuesto
-  update: async (id: number, presupuesto: Partial<CreatePresupuestoRequest>): Promise<Presupuesto> => {
+  update: async (id: number, presupuesto: Partial<LegacyCreatePresupuestoRequest>): Promise<Presupuesto> => {
     const response = await api.put(`/api/presupuestos/${id}`, presupuesto);
     return response.data;
   },

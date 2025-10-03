@@ -4,6 +4,7 @@ import { CssBaseline } from '@mui/material';
 import theme from './theme';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
+import DevKPIs from './components/Dashboard/DevKPIs';
 import { AuthProvider } from "./context/AuthContext";
 import LoginPage from "./components/Auth/LoginPage";
 import { useAuth } from "./context/AuthContext";
@@ -80,6 +81,8 @@ function App() {
               <Route index element={<PrivateRoute><Dashboard /></PrivateRoute>} />
               {/* Explicit dashboard path so navigating to /dashboard works */}
               <Route path="dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              {/* Dev KPIs */}
+              <Route path="dashboard/dev-kpis" element={<PrivateRoute><DevKPIs /></PrivateRoute>} />
               {/* ADMIN Module */}
               <Route path="admin/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
               <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
