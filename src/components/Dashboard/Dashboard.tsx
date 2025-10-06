@@ -20,7 +20,7 @@ import {
   Error as ErrorIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
-import { clientApi, productApi, saleApi } from '../../api/services';
+import { clientApi, productApi, documentoApi } from '../../api/services';
 import RecentActivity from './RecentActivity';
 import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
@@ -127,27 +127,36 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [clients, products, sales, lowStockProducts] = await Promise.all([
+      const [clients, products, allDocumentos, lowStockProducts] = await Promise.all([
         clientApi.getAll().catch((err) => {
           throw new Error(`clientApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
         }),
         productApi.getAll(0, 100).catch((err) => {
           throw new Error(`productApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
         }),
-        saleApi.getAll().catch((err) => {
-          throw new Error(`saleApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
+        documentoApi.getByTipo('FACTURA').catch((err) => {
+          throw new Error(`documentoApi.getByTipo failed: ${err.response?.status} ${err.response?.data}`);
         }),
         productApi.getLowStock().catch((err) => {
           throw new Error(`productApi.getLowStock failed: ${err.response?.status} ${err.response?.data}`);
         }),
       ]);
+
+      // Filter only invoices (FAC-), exclude order notes (NP-)
+      const sales = allDocumentos.filter((doc: any) => {
+        const numeroDoc = doc.numeroDocumento || doc.ventaNumero || '';
+        return numeroDoc.startsWith('FAC-');
+      });
+
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-      const monthlySales = sales.filter((sale) => {
-        const saleDate = new Date(sale.fechaVenta);
+      const monthlySales = sales.filter((sale: any) => {
+        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
+        if (!fechaVenta) return false;
+        const saleDate = new Date(fechaVenta);
         return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
       });
-      const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+      const monthlySalesAmount = monthlySales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
       const monthlySalesCount = monthlySales.length;
       setStats({
         totalClients: clients.length,
