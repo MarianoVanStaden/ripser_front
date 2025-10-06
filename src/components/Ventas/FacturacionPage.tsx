@@ -159,15 +159,19 @@ const FacturacionPage = () => {
       const [clientsData, usuariosResponse, productsData, notasData] = await Promise.all([
         clienteApi.getAll().catch(() => []),
         usuarioApi.getAll().catch((err: any) => {
-          if (err?.response?.status === 403) return [];
-          return [];
+          if (err?.response?.status === 403) return { content: [] };
+          return { content: [] };
         }),
         productApi.getAll().catch(() => []),
         documentoApi.getByTipo('NOTA_PEDIDO').catch(() => []),
       ]);
-      
+
       setClients(Array.isArray(clientsData) ? clientsData : []);
-      setUsuarios(Array.isArray(usuariosResponse) ? usuariosResponse : []);
+      // Handle paginated response from usuarioApi
+      const usuariosArray = Array.isArray(usuariosResponse)
+        ? usuariosResponse
+        : (usuariosResponse?.content || []);
+      setUsuarios(usuariosArray);
       setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
       
       const invoiceableNotas = Array.isArray(notasData) 
@@ -765,7 +769,7 @@ const FacturacionPage = () => {
                       <MenuItem value="">Seleccionar Vendedor</MenuItem>
                       {usuarios.map((usuario) => (
                         <MenuItem key={usuario.id} value={usuario.id}>
-                          {usuario.nombre}
+                          {usuario.nombre ? `${usuario.nombre} ${usuario.apellido || ''}`.trim() : usuario.username || usuario.email}
                         </MenuItem>
                       ))}
                     </Select>
