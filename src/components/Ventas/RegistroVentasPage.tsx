@@ -22,7 +22,6 @@ import {
   DialogActions,
   TextField,
   MenuItem,
-  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -44,6 +43,9 @@ import {
 } from '@mui/icons-material';
 import { saleApi, clienteApi, usuarioApi } from '../../api/services';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
+
+// Cambia el import de Grid para MUI v6
+import Grid from '@mui/material/Grid';
 
 const RegistroVentasPage: React.FC = () => {
   const [sales, setSales] = useState<Venta[]>([]);
@@ -87,16 +89,17 @@ const RegistroVentasPage: React.FC = () => {
       setError(null);
       
       // Load all data in parallel
-      const [salesData, clientsData, usuariosData] = await Promise.all([
+      const [salesData, clientsData, usuariosDataRaw] = await Promise.all([
         saleApi.getAll(),
         clienteApi.getAll(),
         usuarioApi.getAll(),
       ]);
       
-      console.log('Sales data:', salesData);
-      console.log('Clients data:', clientsData);
-      console.log('Usuarios data:', usuariosData);
-      
+      // Extraer el array de usuarios desde content si es paginado
+      const usuariosData = Array.isArray(usuariosDataRaw)
+        ? usuariosDataRaw
+        : usuariosDataRaw.content ?? [];
+
       // Create maps for quick lookups
       const clientsMap = new Map(clientsData.map((client: Cliente) => [client.id, client]));
       const usuariosMap = new Map(usuariosData.map((usuario: Usuario) => [usuario.id, usuario]));
@@ -175,8 +178,8 @@ const RegistroVentasPage: React.FC = () => {
       setEditLoading(true);
       setError(null);
 
+      // Solo envía los campos requeridos por el backend
       const updatedSaleData = {
-        ...editingSale,
         numeroVenta: editForm.numeroVenta,
         clienteId: parseInt(editForm.clienteId),
         usuarioId: parseInt(editForm.usuarioId),
@@ -359,7 +362,7 @@ const RegistroVentasPage: React.FC = () => {
 
       {/* Summary Cards */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -374,7 +377,7 @@ const RegistroVentasPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -389,7 +392,7 @@ const RegistroVentasPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
@@ -414,7 +417,7 @@ const RegistroVentasPage: React.FC = () => {
             <Typography variant="h6">Filtros</Typography>
           </Box>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={3}>
+            <Grid xs={12} md={3}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -428,7 +431,7 @@ const RegistroVentasPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid xs={12} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -445,7 +448,7 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid xs={12} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
@@ -462,7 +465,7 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid xs={12} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Cliente</InputLabel>
                 <Select
@@ -479,7 +482,7 @@ const RegistroVentasPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid xs={12} md={1.5}>
               <TextField
                 fullWidth
                 label="Desde"
@@ -490,7 +493,7 @@ const RegistroVentasPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid xs={12} md={1.5}>
               <TextField
                 fullWidth
                 label="Hasta"
@@ -644,7 +647,7 @@ const RegistroVentasPage: React.FC = () => {
           {viewingSale && (
             <Box>
               <Grid container spacing={2} mb={3}>
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Información General
                   </Typography>
@@ -655,7 +658,7 @@ const RegistroVentasPage: React.FC = () => {
                     <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'CASH')}</Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Cliente y Vendedor
                   </Typography>
@@ -783,7 +786,7 @@ const RegistroVentasPage: React.FC = () => {
           {editingSale && (
             <Box sx={{ mt: 2 }}>
               <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <TextField
                     fullWidth
                     label="Número de Venta"
@@ -794,7 +797,7 @@ const RegistroVentasPage: React.FC = () => {
                   />
                 </Grid>
                 
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <TextField
                     fullWidth
                     label="Fecha de Venta"
@@ -807,7 +810,7 @@ const RegistroVentasPage: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Cliente</InputLabel>
                     <Select
@@ -824,7 +827,7 @@ const RegistroVentasPage: React.FC = () => {
                   </FormControl>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Vendedor</InputLabel>
                     <Select
@@ -841,7 +844,7 @@ const RegistroVentasPage: React.FC = () => {
                   </FormControl>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Estado</InputLabel>
                     <Select
@@ -858,7 +861,7 @@ const RegistroVentasPage: React.FC = () => {
                   </FormControl>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Método de Pago</InputLabel>
                     <Select
@@ -875,7 +878,7 @@ const RegistroVentasPage: React.FC = () => {
                   </FormControl>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid xs={12} md={6}>
                   <TextField
                     fullWidth
                     label="Total"
@@ -890,7 +893,7 @@ const RegistroVentasPage: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     fullWidth
                     label="Notas"
@@ -905,29 +908,29 @@ const RegistroVentasPage: React.FC = () => {
                 </Grid>
 
                 {/* Current Sale Details Summary */}
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Resumen de la Venta
                   </Typography>
                   <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid xs={6}>
                         <Typography variant="body2">
                           <strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente || null)}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid xs={6}>
                         <Typography variant="body2">
                           <strong>Vendedor Actual:</strong> {getUsuarioFullName((editingSale.usuario || editingSale.empleado) as Usuario || null)}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid xs={6}>
                         <Typography variant="body2">
                           <strong>Estado Actual:</strong> {getStatusLabel(editingSale.estado)}
                         </Typography>
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid xs={6}>
                         <Typography variant="body2">
                           <strong>Total Actual:</strong> ${(editingSale.total || 0).toLocaleString()}
                         </Typography>
