@@ -35,6 +35,8 @@ export interface CreateMovimientoPayload {
   importe: number;
   concepto: string;
   numeroComprobante?: string;
+  documentoComercialId?: number;
+  opcionFinanciamientoId?: number;
 }
 
 
@@ -81,8 +83,10 @@ export interface CuentaCorriente {
   concepto: string;
   numeroComprobante?: string;
   saldo: number;
-  ventaId?: number;
-  venta?: any; // Reference to sale
+  documentoComercialId?: number;
+  documentoComercial?: DocumentoComercial;
+  opcionFinanciamientoId?: number;
+  opcionFinanciamiento?: OpcionFinanciamientoDTO;
 }
 
 // Client related enums

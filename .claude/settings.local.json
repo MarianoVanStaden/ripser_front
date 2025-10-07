@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Read(//c/Users/maria/ripser_back/src/main/java/com/ripser_back/**)"
     ],
     "deny": [],
     "ask": []

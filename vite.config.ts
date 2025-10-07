@@ -9,6 +9,7 @@ export default defineConfig({
         target: 'http://localhost:8080/RipserApp',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
+
       }
     }
   }
