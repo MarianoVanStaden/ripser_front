@@ -1583,6 +1583,22 @@ export interface VentaItem {
   total: number;
 }
 export interface MovimientoStock {
+  id?: number;
+  productoId: number;
+  producto?: Producto;
+  tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE';
+  cantidad: number;
+  stockAnterior?: number;
+  stockActual?: number;
+  concepto?: string;
+  numeroComprobante?: string;
+  fecha: string;
+  usuarioId?: number;
+  usuario?: Usuario;
+}
+
+// Legacy interface for backward compatibility
+export interface MovimientoStockLegacy {
   id: number;
   productoId: number;
   producto?: Producto;

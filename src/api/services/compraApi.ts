@@ -35,37 +35,20 @@ export const compraApi = {
   },
 
   // Create new compra
-  create: async (compra: Compra): Promise<Compra> => {
+  create: async (compra: CreateCompraDTO): Promise<CompraDTO> => {
     const response = await api.post('/api/compras', compra);
     return response.data;
   },
 
   // Update compra
-// In compraApi.ts
-async update(id: number, compra: CreateCompraDTO): Promise<CompraDTO> {
-    try {
-      const response = await fetch(`/api/compras/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(compra),
-      });
-      if (!response.ok) {
-        let errorMessage = 'Failed to update compra';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          // Non-JSON response
-        }
-        throw new Error(errorMessage);
-      }
-      return response.json();
-    } catch (error) {
-      console.error(`Error updating compra with ID ${id}:`, error);
-      throw error;
-    }
+  update: async (id: number, compra: CreateCompraDTO): Promise<CompraDTO> => {
+    const response = await api.put(`/api/compras/${id}`, compra);
+    return response.data;
+  },
+
+  // Delete compra
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/api/compras/${id}`);
   },
 };
 
