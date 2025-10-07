@@ -42,11 +42,13 @@ import {
   AttachMoney as MoneyIcon,
   CreditCard as CreditCardIcon,
   AccountBalance as BankIcon,
+  FilterList as FilterListIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import { clienteApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO } from "../../types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
@@ -132,6 +134,13 @@ const PresupuestosPage: React.FC = () => {
   const [detalles, setDetalles] = useState<DetalleForm[]>([]);
   const [readOnly, setReadOnly] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.PENDIENTE); // Default to PENDIENTE
+  const [clientFilter, setClientFilter] = useState<string>('all');
+  const [dateFromFilter, setDateFromFilter] = useState<string>('');
+  const [dateToFilter, setDateToFilter] = useState<string>('');
   
   // Confirmation dialog state
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -590,6 +599,38 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [selectedPresupuesto, selectedOpcionId, opcionesFinanciamiento]);
 
+  // Filter presupuestos
+  const filteredPresupuestos = useMemo(() => {
+    return presupuestos.filter((presupuesto) => {
+      const clientName = clientes.find(c => c.id === presupuesto.clienteId)?.razonSocial || 
+                        clientes.find(c => c.id === presupuesto.clienteId)?.nombre || '';
+      
+      const matchesSearch = searchTerm === '' ||
+        presupuesto.numeroDocumento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        clientName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === EstadoDocumentoEnum.PENDIENTE ? 
+        presupuesto.estado === EstadoDocumentoEnum.PENDIENTE : 
+        presupuesto.estado === statusFilter;
+      
+      const matchesClient = clientFilter === 'all' || presupuesto.clienteId?.toString() === clientFilter;
+      
+      const fecha = presupuesto.fechaEmision ? new Date(presupuesto.fechaEmision) : null;
+      const matchesDateFrom = !dateFromFilter || (fecha && fecha >= new Date(dateFromFilter));
+      const matchesDateTo = !dateToFilter || (fecha && fecha <= new Date(dateToFilter));
+      
+      return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
+    });
+  }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, clientes]);
+
+  const clearFilters = useCallback(() => {
+    setSearchTerm('');
+    setStatusFilter(EstadoDocumentoEnum.PENDIENTE); // Reset to PENDIENTE as default
+    setClientFilter('all');
+    setDateFromFilter('');
+    setDateToFilter('');
+  }, []);
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
@@ -627,6 +668,94 @@ const PresupuestosPage: React.FC = () => {
         </Alert>
       )}
 
+      {/* Filtros */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <FilterListIcon />
+            <Typography variant="h6">Filtros</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+            <Box sx={{ flexGrow: 1, minWidth: '250px' }}>
+              <TextField
+                fullWidth
+                label="Buscar"
+                variant="outlined"
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por número, cliente..."
+                InputProps={{
+                  startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
+                }}
+              />
+            </Box>
+            <Box sx={{ minWidth: '180px' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Estado"
+                  onChange={(e) => setStatusFilter(e.target.value as EstadoDocumento)}
+                >
+                  <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
+                  <MenuItem value={EstadoDocumentoEnum.APROBADO}>Aprobado</MenuItem>
+                  <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            <Box sx={{ minWidth: '180px' }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Cliente</InputLabel>
+                <Select
+                  value={clientFilter}
+                  label="Cliente"
+                  onChange={(e) => setClientFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  {clientes.map((client) => (
+                    <MenuItem key={client.id} value={client.id.toString()}>
+                      {client.razonSocial || client.nombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Box sx={{ minWidth: '160px' }}>
+              <TextField
+                fullWidth
+                label="Desde"
+                type="date"
+                size="small"
+                value={dateFromFilter}
+                onChange={(e) => setDateFromFilter(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+            <Box sx={{ minWidth: '160px' }}>
+              <TextField
+                fullWidth
+                label="Hasta"
+                type="date"
+                size="small"
+                value={dateToFilter}
+                onChange={(e) => setDateToFilter(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+          </Box>
+          <Box>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={clearFilters}
+            >
+              Limpiar Filtros
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent>
           <TableContainer component={Paper}>
@@ -645,7 +774,7 @@ const PresupuestosPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {presupuestos.map((presupuesto) => {
+                {filteredPresupuestos.map((presupuesto) => {
                   const selectedOption = getSelectedFinancingOption(presupuesto);
                   const totalConFinanciamiento = selectedOption ? selectedOption.montoTotal : presupuesto.total;
 
@@ -718,23 +847,31 @@ const PresupuestosPage: React.FC = () => {
             </Table>
           </TableContainer>
 
-          {presupuestos.length === 0 && (
+          {filteredPresupuestos.length === 0 && (
             <Box sx={{ textAlign: "center", py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
-                No hay presupuestos registrados
+                {presupuestos.length === 0 
+                  ? "No hay presupuestos registrados"
+                  : "No se encontraron presupuestos con los filtros aplicados"
+                }
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Comience creando su primer presupuesto
+                {presupuestos.length === 0 
+                  ? "Comience creando su primer presupuesto"
+                  : "Intente ajustar los filtros para ver más resultados"
+                }
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenDialog()}
-                disabled={loading}
-                aria-label="Crear primer presupuesto"
-              >
-                Crear Presupuesto
-              </Button>
+              {presupuestos.length === 0 && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenDialog()}
+                  disabled={loading}
+                  aria-label="Crear primer presupuesto"
+                >
+                  Crear Presupuesto
+                </Button>
+              )}
             </Box>
           )}
         </CardContent>
