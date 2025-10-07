@@ -91,9 +91,10 @@ export const documentoApi = {
   },
   // Update estado of presupuesto
   updateEstado: async (id: number, estado: EstadoDocumento): Promise<DocumentoComercial> => {
-    // Many backends expect a JSON object, not a raw string/enum
-    const payload = typeof estado === 'string' ? { estado } : estado;
-    const response = await api.put<DocumentoComercial>(`/api/documentos/${id}/estado`, payload);
+    // Backend expects just the string value, not wrapped in an object
+    const response = await api.put<DocumentoComercial>(`/api/documentos/${id}/estado`, JSON.stringify(estado), {
+      headers: { 'Content-Type': 'application/json' }
+    });
     return response.data;
   },
   // Convert presupuesto to nota de pedido

@@ -275,10 +275,7 @@ const NotasPedidoPage: React.FC = () => {
       fetchData();
     } catch (err: any) {
       console.error("Error converting to factura:", err);
-      let errorMessage = "Error al convertir a factura";
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      }
+      const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
       setError(errorMessage);
     }
   }, [fetchData]);

@@ -453,7 +453,11 @@ const FacturacionPage = () => {
       loadData();
     } catch (err: any) {
       console.error('Error converting to factura:', err);
-      setError(`Error al convertir a factura: ${err?.message || 'Error'}`);
+      console.error('Error response data:', err?.response?.data);
+      console.error('Error response status:', err?.response?.status);
+      console.error('Error response headers:', err?.response?.headers);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Error desconocido';
+      setError(`Error al convertir a factura: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
