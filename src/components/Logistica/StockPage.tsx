@@ -17,15 +17,30 @@ import {
   Tabs,
   Tab,
   Badge,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
   Warning as WarningIcon,
   TrendingDown as TrendingDownIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
-import type { Producto, MovimientoStock } from '../../types';
+import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
+import type { Producto, MovimientoStock, CategoriaProducto } from '../../types';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -51,9 +66,17 @@ function TabPanel(props: TabPanelProps) {
 const StockPage: React.FC = () => {
   const [products, setProducts] = useState<Producto[]>([]);
   const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+  const [editForm, setEditForm] = useState({
+    stockMinimo: 0,
+    categoriaProductoId: 1,
+    activo: true,
+  });
 
   useEffect(() => {
     loadData();
@@ -62,13 +85,15 @@ const StockPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [productsData, movementsData] = await Promise.all([
+      const [productsData, movementsData, categoriasData] = await Promise.all([
         productApi.getAll(),
         movimientoStockApi.getAll(),
+        categoriaProductoApi.getAll(),
       ]);
 
       setProducts(productsData);
       setStockMovements(movementsData);
+      setCategorias(categoriasData);
       setError(null);
     } catch (err) {
       const error = err as { response?: { status?: number } };
@@ -83,13 +108,45 @@ const StockPage: React.FC = () => {
     }
   };
 
-  const lowStockCount = products.filter(p => p.stockActual <= 5 && p.stockActual > 0).length;
+  const handleEditProduct = (product: Producto) => {
+    setSelectedProduct(product);
+    setEditForm({
+      stockMinimo: product.stockMinimo,
+      categoriaProductoId: product.categoriaProducto?.id || 1,
+      activo: product.activo,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      setLoading(true);
+      await productApi.update(selectedProduct.id, {
+        stockMinimo: editForm.stockMinimo,
+        categoriaProductoId: editForm.categoriaProductoId,
+        activo: editForm.activo,
+      });
+
+      await loadData();
+      setEditDialogOpen(false);
+      setSelectedProduct(null);
+    } catch (err) {
+      console.error('Error updating product:', err);
+      setError('Error al actualizar el producto');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const lowStockCount = products.filter(p => p.stockActual <= p.stockMinimo && p.stockActual > 0).length;
   const outOfStockCount = products.filter(p => p.stockActual === 0).length;
 
-  const getStockChip = (stock: number) => {
+  const getStockChip = (stock: number, stockMinimo: number) => {
     if (stock === 0) {
       return <Chip label="Sin Stock" color="error" size="small" />;
-    } else if (stock <= 5) {
+    } else if (stock <= stockMinimo) {
       return <Chip label="Stock Bajo" color="warning" size="small" />;
     } else {
       return <Chip label="Disponible" color="success" size="small" />;
@@ -199,9 +256,12 @@ const StockPage: React.FC = () => {
                   <TableRow>
                     <TableCell>Código</TableCell>
                     <TableCell>Producto</TableCell>
-                    <TableCell align="center">Stock</TableCell>
+                    <TableCell align="center">Stock Actual</TableCell>
+                    <TableCell align="center">Stock Mínimo</TableCell>
+                    <TableCell>Categoría</TableCell>
                     <TableCell>Precio</TableCell>
                     <TableCell>Estado</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -223,8 +283,34 @@ const StockPage: React.FC = () => {
                           {product.stockActual}
                         </Typography>
                       </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2">
+                          {product.stockMinimo}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={product.categoriaProducto?.nombre || 'Sin categoría'}
+                          size="small"
+                          variant="outlined"
+                        />
+                      </TableCell>
                       <TableCell>${product.precio.toLocaleString()}</TableCell>
-                      <TableCell>{getStockChip(product.stockActual)}</TableCell>
+                      <TableCell>
+                        {getStockChip(product.stockActual, product.stockMinimo)}
+                        {!product.activo && (
+                          <Chip label="Inactivo" color="default" size="small" sx={{ ml: 1 }} />
+                        )}
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEditProduct(product)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -283,6 +369,64 @@ const StockPage: React.FC = () => {
           </CardContent>
         </Card>
       </TabPanel>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar Producto: {selectedProduct?.nombre}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Stock Mínimo"
+              type="number"
+              value={editForm.stockMinimo}
+              onChange={(e) => setEditForm({ ...editForm, stockMinimo: parseInt(e.target.value) || 0 })}
+              fullWidth
+              helperText="Define el umbral para 'Stock Bajo'"
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Categoría</InputLabel>
+              <Select
+                value={editForm.categoriaProductoId}
+                label="Categoría"
+                onChange={(e) => setEditForm({ ...editForm, categoriaProductoId: e.target.value as number })}
+              >
+                {categorias.map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editForm.activo}
+                  onChange={(e) => setEditForm({ ...editForm, activo: e.target.checked })}
+                />
+              }
+              label="Producto Activo"
+            />
+
+            <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Stock Actual: <strong>{selectedProduct?.stockActual}</strong>
+              </Typography>
+              <br />
+              <Typography variant="caption" color="text.secondary">
+                Stock se actualiza automáticamente desde Compras
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSaveEdit} variant="contained" color="primary">
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
