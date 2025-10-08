@@ -74,46 +74,95 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest: any = error.config;
     const status = error.response?.status;
+    const errorCode = error.response?.data?.error;
 
-    // Attempt silent refresh only on 401 Unauthorized (excluding refresh endpoint itself)
+    // Check if it's a token expiration error (401 with error code "token_expired")
     if (
       status === 401 &&
+      errorCode === 'token_expired' &&
       !originalRequest?._retry &&
       !originalRequest?.url?.includes('/auth/refresh')
     ) {
+      console.log('🔄 Access token expired, attempting refresh...');
       originalRequest._retry = true;
+      
       try {
         const storedRefresh = localStorage.getItem('auth_refresh_token');
-        if (!storedRefresh) throw new Error('No refresh token');
+        if (!storedRefresh) {
+          console.error('❌ No refresh token available');
+          throw new Error('No refresh token');
+        }
+        
+        console.log('📡 Calling refresh endpoint...');
         const refreshRes = await authApi.refresh(storedRefresh);
         const newAccess = refreshRes.accessToken;
-        if (!newAccess) throw new Error('No access token in refresh response');
+        
+        if (!newAccess) {
+          console.error('❌ No access token in refresh response');
+          throw new Error('No access token in refresh response');
+        }
+        
+        console.log('✅ Token refreshed successfully');
+        
         // Persist & set new tokens
         localStorage.setItem('auth_token', newAccess);
         setAuthToken(newAccess);
+        
         if (refreshRes.refreshToken) {
           localStorage.setItem('auth_refresh_token', refreshRes.refreshToken);
+          console.log('🔄 Refresh token also updated');
         }
-        // Update header & retry
+        
+        // Reset the printed JWT info flag to log the new token info
+        printedJwtInfo = false;
+        
+        // Update header & retry original request
         originalRequest.headers = originalRequest.headers || {};
         originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        
+        console.log('🔁 Retrying original request with new token...');
         return api(originalRequest);
       } catch (refreshErr) {
-        console.error('Token refresh failed:', refreshErr);
+        console.error('❌ Token refresh failed:', refreshErr);
+        
         // Clear tokens & redirect to login page
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_refresh_token');
+        localStorage.removeItem('auth_user');
         setAuthToken(null);
+        printedJwtInfo = false;
+        
         if (window.location.pathname !== '/login') {
+          console.log('🚪 Redirecting to login page...');
           window.location.href = '/login';
         }
+        
         return Promise.reject(refreshErr);
       }
     }
 
-    if (status === 500) {
-      console.error('Server error');
+    // Handle other 401 errors (invalid token, etc.)
+    if (
+      status === 401 &&
+      !originalRequest?._retry &&
+      !originalRequest?.url?.includes('/auth/refresh') &&
+      !originalRequest?.url?.includes('/auth/login')
+    ) {
+      console.warn('⚠️ Unauthorized request, clearing session...');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_refresh_token');
+      localStorage.removeItem('auth_user');
+      setAuthToken(null);
+      
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
+
+    if (status === 500) {
+      console.error('❌ Server error:', error.response?.data);
+    }
+    
     return Promise.reject(error);
   }
 );

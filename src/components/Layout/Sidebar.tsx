@@ -46,6 +46,7 @@ const navigation = [
     items: [
       { text: 'Gestión Proveedores', icon: <StoreIcon />, path: '/proveedores/gestion' },
       { text: 'Compras/Pedidos', icon: <StoreIcon />, path: '/proveedores/compras' },
+      { text: 'Cuenta Corriente', icon: <StoreIcon />, path: '/proveedores/cuenta-corriente' },
       { text: 'Contactos', icon: <StoreIcon />, path: '/proveedores/contactos' },
       { text: 'Historial Compras', icon: <StoreIcon />, path: '/proveedores/historial' },
       { text: 'Evaluación', icon: <StoreIcon />, path: '/proveedores/evaluacion' },
@@ -55,8 +56,9 @@ const navigation = [
     title: 'LOGÍSTICA',
     items: [
       { text: 'Gestión Stock', icon: <LocalShippingIcon />, path: '/logistica/stock' },
-      { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },
       { text: 'Inventario', icon: <LocalShippingIcon />, path: '/logistica/inventario' },
+      { text: 'Tareas de Recuento', icon: <LocalShippingIcon />, path: '/logistica/recuentos' },
+      { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/entregas' },
     ],
   },

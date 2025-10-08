@@ -23,7 +23,6 @@ import {
   TableHead,
   TableRow,
   InputAdornment,
-  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,28 +30,31 @@ import {
   AccountBalance as AccountBalanceIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
-  FilterList as FilterIcon,
-  Download as DownloadIcon,
   Refresh as RefreshIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { clienteApi } from '../../api/services/clienteApi';
-import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
-import type { Cliente, CuentaCorriente, TipoMovimiento } from '../../types';
+import { proveedorApi } from '../../api/services/proveedorApi';
+import { cuentaCorrienteProveedorApi } from '../../api/services/cuentaCorrienteProveedorApi';
+import type { CuentaCorrienteProveedor, TipoMovimiento } from '../../types';
 
 dayjs.locale('es');
 
-const CuentaCorrientePage: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation(); // Use the useLocation hook
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
-  const [movimientos, setMovimientos] = useState<CuentaCorriente[]>([]);
+interface Proveedor {
+  id: number;
+  nombre: string;
+  razonSocial?: string;
+  saldoActual?: number;
+}
+
+const CuentaCorrienteProveedoresPage: React.FC = () => {
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [selectedProveedor, setSelectedProveedor] = useState<Proveedor | null>(null);
+  const [movimientos, setMovimientos] = useState<CuentaCorrienteProveedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,98 +70,83 @@ const CuentaCorrientePage: React.FC = () => {
   });
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const clientesData = await clienteApi.getAll();
-        setClientes(clientesData);
-
-        // Check for a client ID passed via navigation state
-        const initialClienteId = location.state?.clienteId;
-        if (initialClienteId) {
-          const initialCliente = clientesData.find(c => c.id === initialClienteId);
-          if (initialCliente) {
-            setSelectedCliente(initialCliente);
-            // Fetch movements for the pre-selected client
-            const movimientosData = await cuentaCorrienteApi.getByClienteId(initialCliente.id);
-            setMovimientos(movimientosData);
-          }
-        }
-      } catch (err) {
-        setError('Error al cargar los datos iniciales.');
-        console.error('Error loading initial data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadInitialData();
-  }, [location.state]); // Re-run effect if navigation state changes
+  }, []);
 
-  const loadData = async () => {
-    if (!selectedCliente) return;
+  const loadInitialData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const movimientosData = await cuentaCorrienteApi.getByClienteId(selectedCliente.id);
-      setMovimientos(movimientosData);
+      const proveedoresData = await proveedorApi.getAll();
+      setProveedores(proveedoresData);
     } catch (err) {
-      setError('Error al cargar los movimientos del cliente.');
-      console.error('Error loading movements:', err);
-      setMovimientos([]); // Clear movements on error
+      setError('Error al cargar los proveedores.');
+      console.error('Error loading proveedores:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClienteChange = (clienteId: number) => {
-    const cliente = clientes.find(c => c.id === clienteId) || null;
-    setSelectedCliente(cliente);
-    
-    if (cliente) {
-      // Fetch movements for the newly selected client
-      const fetchMovimientos = async () => {
-        try {
-          setLoading(true);
-          const data = await cuentaCorrienteApi.getByClienteId(cliente.id);
-          setMovimientos(data);
-        } catch (err) {
-          setError('Error al cargar los movimientos del cliente.');
-          console.error('Error loading client movements:', err);
-          setMovimientos([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchMovimientos();
+  const loadData = async () => {
+    if (!selectedProveedor) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const movimientosData = await cuentaCorrienteProveedorApi.getByProveedorId(selectedProveedor.id);
+      setMovimientos(movimientosData);
+    } catch (err) {
+      setError('Error al cargar los movimientos del proveedor.');
+      console.error('Error loading movements:', err);
+      setMovimientos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProveedorChange = async (proveedorId: number) => {
+    const proveedor = proveedores.find(p => p.id === proveedorId) || null;
+    setSelectedProveedor(proveedor);
+
+    if (proveedor) {
+      try {
+        setLoading(true);
+        const data = await cuentaCorrienteProveedorApi.getByProveedorId(proveedor.id);
+        setMovimientos(data);
+      } catch (err) {
+        setError('Error al cargar los movimientos del proveedor.');
+        console.error('Error loading movimientos:', err);
+        setMovimientos([]);
+      } finally {
+        setLoading(false);
+      }
     } else {
-      // If "Todos los clientes" is selected, clear the movements
       setMovimientos([]);
     }
   };
 
   const handleSaveMovimiento = async () => {
-    if (!selectedCliente) {
-      setError("Debe seleccionar un cliente para registrar un movimiento.");
+    if (!selectedProveedor) {
+      setError("Debe seleccionar un proveedor para registrar un movimiento.");
       return;
     }
 
     try {
       setLoading(true);
-      // Create payload matching CreateMovimientoPayload interface
+      // Fix: Use local datetime without timezone conversion
+      const now = new Date();
+      const localISOTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
+      
       const payload = {
-        clienteId: selectedCliente.id,
-        fecha: new Date().toISOString(),
+        proveedorId: selectedProveedor.id,
+        fecha: localISOTime,
         tipo: newMovimiento.tipo,
         importe: newMovimiento.importe,
         concepto: newMovimiento.concepto,
         numeroComprobante: newMovimiento.numeroComprobante || undefined,
       };
 
-      await cuentaCorrienteApi.create(payload);
+      await cuentaCorrienteProveedorApi.create(payload);
 
-      // Reset form and close dialog
       setNewMovimiento({
         tipo: 'CREDITO',
         importe: 0,
@@ -168,21 +155,20 @@ const CuentaCorrientePage: React.FC = () => {
       });
       setOpenMovimientoDialog(false);
 
-      // Refresh both the movements AND the client data to get updated saldoActual
-      const [movimientosData, clienteActualizado] = await Promise.all([
-        cuentaCorrienteApi.getByClienteId(selectedCliente.id),
-        clienteApi.getById(selectedCliente.id)
+      // Refresh data
+      const [movimientosData, proveedorActualizado] = await Promise.all([
+        cuentaCorrienteProveedorApi.getByProveedorId(selectedProveedor.id),
+        proveedorApi.getById(selectedProveedor.id)
       ]);
 
       setMovimientos(movimientosData);
-      setSelectedCliente(clienteActualizado);
+      setSelectedProveedor(proveedorActualizado);
 
-      // Also update the cliente in the clientes array
-      setClientes(prevClientes =>
-        prevClientes.map(c => c.id === clienteActualizado.id ? clienteActualizado : c)
+      setProveedores(prevProveedores =>
+        prevProveedores.map(p => p.id === proveedorActualizado.id ? proveedorActualizado : p)
       );
     } catch (err) {
-      setError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
+      setError('Error al guardar el movimiento.');
       console.error('Error saving movement:', err);
     } finally {
       setLoading(false);
@@ -190,14 +176,14 @@ const CuentaCorrientePage: React.FC = () => {
   };
 
   const filteredMovimientos = movimientos.filter(mov => {
-    const matchesSearch = 
+    const matchesSearch =
       mov.concepto.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (mov.numeroComprobante?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
-    
+
     const matchesTipo = !tipoFilter || mov.tipo === tipoFilter;
-    
+
     const fechaMovimiento = dayjs(mov.fecha);
-    const matchesFecha = 
+    const matchesFecha =
       (!fechaDesde || fechaMovimiento.isAfter(fechaDesde.subtract(1, 'day'))) &&
       (!fechaHasta || fechaMovimiento.isBefore(fechaHasta.add(1, 'day')));
 
@@ -206,15 +192,13 @@ const CuentaCorrientePage: React.FC = () => {
 
   const getSaldoTotal = () => {
     // Calculate saldo from all movements: Total Debitos - Total Creditos
-    // DEBITO = Cliente debe dinero (aumenta deuda)
-    // CREDITO = Cliente paga (disminuye deuda)
     const totalDebitos = movimientos
       .filter(m => m.tipo === 'DEBITO')
-      .reduce((sum, m) => sum + m.importe, 0);
+      .reduce((sum, m) => sum + (m.importe ?? 0), 0);
     
     const totalCreditos = movimientos
       .filter(m => m.tipo === 'CREDITO')
-      .reduce((sum, m) => sum + m.importe, 0);
+      .reduce((sum, m) => sum + (m.importe ?? 0), 0);
     
     return totalDebitos - totalCreditos;
   };
@@ -222,16 +206,16 @@ const CuentaCorrientePage: React.FC = () => {
   const getTotalDebitos = () => {
     return filteredMovimientos
       .filter(m => m.tipo === 'DEBITO')
-      .reduce((sum, m) => sum + m.importe, 0);
+      .reduce((sum, m) => sum + (m.importe ?? 0), 0);
   };
 
   const getTotalCreditos = () => {
     return filteredMovimientos
       .filter(m => m.tipo === 'CREDITO')
-      .reduce((sum, m) => sum + m.importe, 0);
+      .reduce((sum, m) => sum + (m.importe ?? 0), 0);
   };
 
-  if (loading) {
+  if (loading && !selectedProveedor) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -240,13 +224,13 @@ const CuentaCorrientePage: React.FC = () => {
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
       <Box p={3}>
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" component="h1" display="flex" alignItems="center">
             <AccountBalanceIcon sx={{ mr: 2 }} />
-            Cuenta Corriente
+            Cuenta Corriente Proveedores
           </Typography>
           <Box display="flex" gap={2}>
             <Button
@@ -259,7 +243,7 @@ const CuentaCorrientePage: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => setOpenMovimientoDialog(true)}
-              disabled={!selectedCliente}
+              disabled={!selectedProveedor}
             >
               Nuevo Movimiento
             </Button>
@@ -267,7 +251,7 @@ const CuentaCorrientePage: React.FC = () => {
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
@@ -280,7 +264,7 @@ const CuentaCorrientePage: React.FC = () => {
                 <AccountBalanceIcon color="primary" sx={{ mr: 1 }} />
                 <Typography variant="h6">Saldo Actual</Typography>
               </Box>
-              <Typography variant="h4" color={getSaldoTotal() >= 0 ? 'success.main' : 'error.main'}>
+              <Typography variant="h4" color={getSaldoTotal() >= 0 ? 'error.main' : 'success.main'}>
                 ${getSaldoTotal().toLocaleString()}
               </Typography>
             </CardContent>
@@ -319,15 +303,15 @@ const CuentaCorrientePage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
               select
-              label="Cliente"
-              value={selectedCliente?.id || ''}
-              onChange={(e) => handleClienteChange(Number(e.target.value))}
+              label="Proveedor"
+              value={selectedProveedor?.id || ''}
+              onChange={(e) => handleProveedorChange(Number(e.target.value))}
               sx={{ minWidth: 200 }}
             >
-              <MenuItem value="">Todos los clientes</MenuItem>
-              {clientes.map((cliente) => (
-                <MenuItem key={cliente.id} value={cliente.id}>
-                  {cliente.nombre} {cliente.apellido}
+              <MenuItem value="">Todos los proveedores</MenuItem>
+              {proveedores.map((proveedor) => (
+                <MenuItem key={proveedor.id} value={proveedor.id}>
+                  {proveedor.razonSocial || proveedor.nombre}
                 </MenuItem>
               ))}
             </TextField>
@@ -361,14 +345,14 @@ const CuentaCorrientePage: React.FC = () => {
             <DatePicker
               label="Desde"
               value={fechaDesde}
-              onChange={setFechaDesde}
+              onChange={(newValue) => setFechaDesde(newValue as Dayjs | null)}
               slotProps={{ textField: { size: 'small' } }}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
-              onChange={setFechaHasta}
+              onChange={(newValue) => setFechaHasta(newValue as Dayjs | null)}
               slotProps={{ textField: { size: 'small' } }}
             />
 
@@ -407,11 +391,9 @@ const CuentaCorrientePage: React.FC = () => {
                   <TableCell>{movimiento.concepto}</TableCell>
                   <TableCell>{movimiento.numeroComprobante || '-'}</TableCell>
                   <TableCell align="right">
-                    {/* Defensive check for importe */}
                     ${(movimiento.importe ?? 0).toLocaleString('es-AR')}
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                    {/* This is the fix: provide a fallback for null saldo */}
                     ${(movimiento.saldo ?? 0).toLocaleString('es-AR')}
                   </TableCell>
                 </TableRow>
@@ -431,7 +413,7 @@ const CuentaCorrientePage: React.FC = () => {
         {/* New Movement Dialog */}
         <Dialog open={openMovimientoDialog} onClose={() => setOpenMovimientoDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle>
-            Nuevo Movimiento - {selectedCliente?.nombre} {selectedCliente?.apellido}
+            Nuevo Movimiento - {selectedProveedor?.razonSocial || selectedProveedor?.nombre}
           </DialogTitle>
           <DialogContent>
             <Box pt={2}>
@@ -442,10 +424,10 @@ const CuentaCorrientePage: React.FC = () => {
                 value={newMovimiento.tipo}
                 onChange={(e) => setNewMovimiento({ ...newMovimiento, tipo: e.target.value as TipoMovimiento })}
                 margin="normal"
-                helperText="Débito: Cliente debe (ej: venta). Crédito: Cliente paga (ej: pago recibido)"
+                helperText="Débito: Pago al proveedor (-). Crédito: Compra/deuda (+)"
               >
-                <MenuItem value="DEBITO">Débito - Cliente debe (+)</MenuItem>
-                <MenuItem value="CREDITO">Crédito - Cliente paga (-)</MenuItem>
+                <MenuItem value="DEBITO">Débito - Pago al proveedor (-)</MenuItem>
+                <MenuItem value="CREDITO">Crédito - Compra/Deuda (+)</MenuItem>
               </TextField>
 
               <TextField
@@ -483,8 +465,8 @@ const CuentaCorrientePage: React.FC = () => {
             <Button onClick={() => setOpenMovimientoDialog(false)}>
               Cancelar
             </Button>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={handleSaveMovimiento}
               disabled={!newMovimiento.concepto || newMovimiento.importe <= 0}
             >
@@ -497,4 +479,4 @@ const CuentaCorrientePage: React.FC = () => {
   );
 };
 
-export default CuentaCorrientePage;
+export default CuentaCorrienteProveedoresPage;

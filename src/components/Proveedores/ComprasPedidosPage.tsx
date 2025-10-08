@@ -940,7 +940,11 @@ const handleDeleteCompra = async (id: number) => {
       ? productos.find((p) => p.id.toString() === item.productoId) || null
       : null
   }
-  inputValue={item.nombreProductoTemporal || ''}
+  inputValue={
+    item.productoId
+      ? productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''
+      : item.nombreProductoTemporal || ''
+  }
   onChange={(_, newValue) => {
     const updatedItems = [...newOrden.items];
     if (typeof newValue === 'string') {
@@ -958,7 +962,7 @@ const handleDeleteCompra = async (id: number) => {
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: newValue.id.toString(),
-        nombreProductoTemporal: '',
+        nombreProductoTemporal: newValue.nombre,
         descripcionProductoTemporal: newValue.nombre,
         esProductoNuevo: false,
         precioUnitario: newValue.precio || updatedItems[index].precioUnitario || 0,

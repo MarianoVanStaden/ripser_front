@@ -27,17 +27,19 @@ import InformesVentasPage from './components/Ventas/InformesVentasPage';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
-import { 
-  SuppliersPage, 
-  ComprasPedidosPage, 
-  ContactosCondicionesPage, 
-  HistorialComprasPage, 
-  EvaluacionDesempenoPage 
+import {
+  SuppliersPage,
+  ComprasPedidosPage,
+  ContactosCondicionesPage,
+  HistorialComprasPage,
+  EvaluacionDesempenoPage
 } from './components/Proveedores';
+import CuentaCorrienteProveedoresPage from './components/Proveedores/CuentaCorrienteProveedoresPage';
 import GarantiasPage from './components/Garantia/GarantiasPage';
 import ReclamosGarantiaPage from './components/Garantia/ReclamosGarantiaPage';
 import StockPage from './components/Logistica/StockPage';
 import InventoryPage from './components/Logistica/InventoryPage';
+import RecountTasksPage from './components/Logistica/RecountTasksPage';
 import TripsPage from './components/Logistica/TripsPage';
 import DeliveriesPage from './components/Logistica/DeliveriesPage';
 import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
@@ -108,6 +110,7 @@ function App() {
               {/* PROVEEDORES Module */}
               <Route path="proveedores/gestion" element={<PrivateRoute><SuppliersPage /></PrivateRoute>} />
               <Route path="proveedores/compras" element={<PrivateRoute><ComprasPedidosPage /></PrivateRoute>} />
+              <Route path="proveedores/cuenta-corriente" element={<PrivateRoute><CuentaCorrienteProveedoresPage /></PrivateRoute>} />
               <Route path="proveedores/contactos" element={<PrivateRoute><ContactosCondicionesPage /></PrivateRoute>} />
               <Route path="proveedores/historial" element={<PrivateRoute><HistorialComprasPage /></PrivateRoute>} />
               <Route path="proveedores/evaluacion" element={<PrivateRoute><EvaluacionDesempenoPage /></PrivateRoute>} />
@@ -127,6 +130,7 @@ function App() {
               <Route path="logistica/stock" element={<PrivateRoute><StockPage /></PrivateRoute>} />
               <Route path="logistica/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
               <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
+              <Route path="logistica/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
               <Route path="logistica/entregas" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
               {/* TALLER Module */}
               <Route path="taller/trabajos" element={<PrivateRoute><TrabajosRealizadosPage /></PrivateRoute>} />

@@ -86,7 +86,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        // Only logout on 401 if it's NOT a token_expired error (those are handled in config.ts)
+        // This prevents double-logout when refresh fails
+        if (error.response?.status === 401 && error.response?.data?.error !== 'token_expired') {
+          console.warn('⚠️ AuthContext: 401 error (non token_expired), logging out...');
           logout();
         }
         return Promise.reject(error);

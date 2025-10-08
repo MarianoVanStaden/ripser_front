@@ -1383,7 +1383,32 @@ export interface Proveedor {
   direccion?: string;
   estado: string;
   observaciones?: string;
+  saldoActual?: number;
 }
+
+export interface CuentaCorrienteProveedor {
+  id: number;
+  proveedorId: number;
+  proveedorNombre?: string;
+  fecha: string; // ISO string
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+  saldo: number;
+  compraId?: number;
+}
+
+export interface CreateMovimientoProveedorPayload {
+  proveedorId: number;
+  fecha?: string;
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+  compraId?: number;
+}
+
 export interface ProductoTerminado {
   id: number;
   nombre: string;

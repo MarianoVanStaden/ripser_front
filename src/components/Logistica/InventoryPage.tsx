@@ -33,77 +33,13 @@ import {
   Assignment as AssignmentIcon,
   Print as PrintIcon,
 } from '@mui/icons-material';
-import type { Product, Supplier, Category, InventoryAdjustment, MovementType } from '../../types';
-import { productApi, supplierApi, categoryApi, stockMovementApi } from '../../api/services';
-
-// Helper function to map inventory adjustment types to movement types
-const mapAdjustmentTypeToMovementType = (adjustmentType: 'RECOUNT' | 'DAMAGE' | 'THEFT' | 'ADJUSTMENT'): MovementType => {
-  switch (adjustmentType) {
-    case 'RECOUNT':
-    case 'ADJUSTMENT':
-      return 'ADJUSTMENT';
-    case 'DAMAGE':
-      return 'DAMAGED';
-    case 'THEFT':
-      return 'LOST';
-    default:
-      return 'ADJUSTMENT';
-  }
-};
-
-// Helper function to map movement types back to adjustment types
-const mapMovementTypeToAdjustmentType = (movementType: MovementType): 'RECOUNT' | 'DAMAGE' | 'THEFT' | 'ADJUSTMENT' => {
-  switch (movementType) {
-    case 'ADJUSTMENT':
-      return 'ADJUSTMENT';
-    case 'DAMAGED':
-      return 'DAMAGE';
-    case 'LOST':
-      return 'THEFT';
-    default:
-      return 'ADJUSTMENT';
-  }
-};
-
-// Mock data for development
-const mockInventoryAdjustments: InventoryAdjustment[] = [
-  {
-    id: 1,
-    productId: 1,
-    type: 'RECOUNT',
-    expectedQuantity: 10,
-    actualQuantity: 8,
-    difference: -2,
-    reason: 'Discrepancia en inventario físico',
-    employeeId: 1,
-    date: '2024-01-20T10:00:00Z',
-    notes: 'Productos dañados encontrados durante recuento',
-    status: 'APPROVED',
-    createdAt: '2024-01-20T10:00:00Z',
-    updatedAt: '2024-01-20T10:00:00Z',
-  },
-  {
-    id: 2,
-    productId: 2,
-    type: 'DAMAGE',
-    expectedQuantity: 15,
-    actualQuantity: 12,
-    difference: -3,
-    reason: 'Productos dañados durante transporte',
-    employeeId: 1,
-    date: '2024-01-22T14:30:00Z',
-    notes: 'Embalaje defectuoso',
-    status: 'PENDING',
-    createdAt: '2024-01-22T14:30:00Z',
-    updatedAt: '2024-01-22T14:30:00Z',
-  },
-];
+import type { Producto, CategoriaProducto, InventoryAdjustment, MovimientoStock } from '../../types';
+import { productApi, movimientoStockApi, categoriaProductoApi } from '../../api/services';
 
 const InventoryPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Producto[]>([]);
   const [adjustments, setAdjustments] = useState<InventoryAdjustment[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
@@ -137,95 +73,45 @@ const InventoryPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Try to load data from backend APIs
-      try {
-        const [productsData, suppliersData, categoriesData, adjustmentsData] = await Promise.all([
-          productApi.getAll(),
-          supplierApi.getAll(),
-          categoryApi.getAll(),
-          stockMovementApi.getAll()
-        ]);
-        
-        setProducts(productsData);
-        setSuppliers(suppliersData);
-        setCategories(categoriesData);
-        
-        // Filter movements to get only adjustments
-        const inventoryAdjustments = adjustmentsData
-          .filter(movement => ['ADJUSTMENT', 'DAMAGED', 'LOST'].includes(movement.type))
-          .map(movement => ({
-            id: movement.id,
-            productId: movement.productId,
-            type: mapMovementTypeToAdjustmentType(movement.type),
-            expectedQuantity: 0, // This would need to be calculated or stored separately
-            actualQuantity: Math.abs(movement.quantity),
-            difference: movement.quantity,
-            reason: movement.reason || 'No especificado',
-            employeeId: movement.employeeId,
-            date: movement.date,
-            notes: movement.notes || '',
-            status: 'APPROVED' as const, // Assume all historical movements are approved
-            createdAt: movement.createdAt,
-            updatedAt: movement.updatedAt,
-          }));
-        
-        setAdjustments(inventoryAdjustments);
-        
-      } catch (apiError) {
-        console.warn('Backend API not available, using mock data:', apiError);
-        
-        // Fallback to mock data if backend is not available
-        setProducts([
-          {
-            id: 1,
-            name: 'Laptop HP Pavilion',
-            description: 'Laptop HP Pavilion 15.6" Intel Core i5',
-            price: 85000,
-            stock: 8,
-            categoryId: 1,
-            supplierId: 1,
-            isActive: true,
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-15T10:30:00Z',
-          },
-          {
-            id: 2,
-            name: 'Mouse Logitech',
-            description: 'Mouse óptico USB Logitech',
-            price: 2500,
-            stock: 12,
-            categoryId: 2,
-            supplierId: 2,
-            isActive: true,
-            createdAt: '2024-01-02T00:00:00Z',
-            updatedAt: '2024-01-20T14:15:00Z',
-          },
-        ]);
-        
-        setSuppliers([
-          {
-            id: 1,
-            name: 'Tech Supplies S.A.',
-            contactPerson: 'María González',
-            email: 'contacto@techsupplies.com',
-            phone: '+54 11 4567-8901',
-            address: 'Av. Tecnología 123, Buenos Aires',
-            paymentTerms: '30 días',
-            rating: 4.5,
-            isActive: true,
-            observations: '',
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-15T10:30:00Z',
-          },
-        ]);
-        
-        setCategories([
-          { id: 1, name: 'Computadoras', description: 'Equipos de computación', isActive: true, createdAt: '', updatedAt: '' },
-          { id: 2, name: 'Periféricos', description: 'Accesorios y periféricos', isActive: true, createdAt: '', updatedAt: '' },
-        ]);
-        
-        setAdjustments(mockInventoryAdjustments);
-      }
+      // Load data from backend APIs
+      const [productsData, categoriesData, movimientosData] = await Promise.all([
+        productApi.getAll(),
+        categoriaProductoApi.getAll(),
+        movimientoStockApi.getAll()
+      ]);
+      
+      console.log('Products loaded:', productsData.length);
+      console.log('Categories loaded:', categoriesData.length, categoriesData);
+      console.log('Sample product:', productsData[0]);
+      
+      setProducts(productsData);
+      setCategories(categoriesData);
+      
+      // Filter movements to get only adjustments (AJUSTE type)
+      const inventoryAdjustments: InventoryAdjustment[] = movimientosData
+        .filter((movement: MovimientoStock) => movement.tipo === 'AJUSTE')
+        .map((movement: MovimientoStock) => {
+          // Backend returns producto as an object, extract the ID
+          const productId = typeof movement.producto === 'object' 
+            ? movement.producto.id 
+            : movement.productoId || 0;
+          
+          return {
+            id: movement.id || 0,
+            productId: productId,
+            type: 'ADJUSTMENT' as const,
+            expectedQuantity: movement.stockAnterior || 0,
+            actualQuantity: movement.stockActual || 0,
+            difference: movement.cantidad,
+            reason: movement.concepto || 'Ajuste de inventario',
+            employeeId: movement.usuarioId || 1,
+            date: movement.fecha,
+            notes: movement.numeroComprobante || '',
+            status: 'APPROVED' as const, // Historical movements are approved
+          };
+        });
+      
+      setAdjustments(inventoryAdjustments);
       
     } catch (err) {
       setError('Error al cargar los datos de inventario');
@@ -236,7 +122,7 @@ const InventoryPage: React.FC = () => {
   };
 
   const filteredProducts = products.filter(product => {
-    return !selectedCategory || product.categoryId === selectedCategory;
+    return !selectedCategory || product.categoriaProductoId === selectedCategory;
   });
 
   const filteredAdjustments = adjustments.filter(adjustment => {
@@ -260,66 +146,64 @@ const InventoryPage: React.FC = () => {
       setLoading(true);
       const difference = adjustmentFormData.actualQuantity - adjustmentFormData.expectedQuantity;
       
-      // Try to create adjustment via API
-      try {
-        const movementData = {
-          productId: parseInt(adjustmentFormData.productId),
-          type: mapAdjustmentTypeToMovementType(adjustmentFormData.type),
-          quantity: difference,
-          reason: adjustmentFormData.reason,
-          notes: adjustmentFormData.notes,
-          employeeId: 1, // This would come from current user context
-          date: new Date().toISOString(),
-          reference: `ADJ-${Date.now()}`
-        };
-        
-        const newMovement = await stockMovementApi.create(movementData);
-        
-        // Convert the stock movement to an inventory adjustment
-        const newAdjustment: InventoryAdjustment = {
-          id: newMovement.id,
-          productId: newMovement.productId,
-          type: newMovement.type as 'RECOUNT' | 'DAMAGE' | 'THEFT' | 'ADJUSTMENT',
-          expectedQuantity: adjustmentFormData.expectedQuantity,
-          actualQuantity: adjustmentFormData.actualQuantity,
-          difference,
-          reason: newMovement.reason,
-          employeeId: newMovement.employeeId,
-          date: newMovement.date,
-          notes: newMovement.notes || '',
-          status: 'APPROVED' as const,
-          createdAt: newMovement.createdAt,
-          updatedAt: newMovement.updatedAt,
-        };
-        
-        setAdjustments([newAdjustment, ...adjustments]);
-        
-        // Update product stock locally
-        const updatedProducts = products.map(product => 
-          product.id === parseInt(adjustmentFormData.productId)
-            ? { ...product, stock: product.stock + difference }
-            : product
-        );
-        setProducts(updatedProducts);
-        
-      } catch (apiError) {
-        console.warn('API not available, creating adjustment locally:', apiError);
-        
-        // Fallback to local creation if API is not available
-        const newAdjustment: InventoryAdjustment = {
-          id: Math.max(...adjustments.map(a => a.id)) + 1,
-          ...adjustmentFormData,
-          productId: parseInt(adjustmentFormData.productId),
-          difference,
-          employeeId: 1, // This would come from current user
-          date: new Date().toISOString(),
-          status: 'PENDING' as const,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        
-        setAdjustments([newAdjustment, ...adjustments]);
+      // Get current product stock
+      const product = products.find(p => p.id === parseInt(adjustmentFormData.productId));
+      if (!product) {
+        setError('Producto no encontrado');
+        setLoading(false);
+        return;
       }
+
+      const newStockActual = product.stockActual + difference;
+      
+      // The backend expects the full producto object (ManyToOne relationship)
+      const movementData = {
+        producto: {
+          id: parseInt(adjustmentFormData.productId)
+        },
+        tipo: 'AJUSTE' as const,
+        cantidad: difference,
+        stockAnterior: product.stockActual,
+        stockActual: newStockActual,
+        concepto: adjustmentFormData.reason,
+        numeroComprobante: `ADJ-${Date.now()}`,
+        fecha: new Date().toISOString(),
+      };
+      
+      console.log('Creating stock movement:', movementData);
+      const newMovement = await movimientoStockApi.create(movementData);
+      
+      console.log('Movement created successfully:', newMovement);
+      
+      // Convert the stock movement to an inventory adjustment
+      // Backend returns producto as an object, extract the ID
+      const productId = typeof newMovement.producto === 'object' 
+        ? newMovement.producto.id 
+        : newMovement.productoId || parseInt(adjustmentFormData.productId);
+      
+      const newAdjustment: InventoryAdjustment = {
+        id: newMovement.id || 0,
+        productId: productId,
+        type: adjustmentFormData.type,
+        expectedQuantity: adjustmentFormData.expectedQuantity,
+        actualQuantity: adjustmentFormData.actualQuantity,
+        difference,
+        reason: newMovement.concepto || adjustmentFormData.reason,
+        employeeId: newMovement.usuarioId || 1,
+        date: newMovement.fecha,
+        notes: adjustmentFormData.notes,
+        status: 'APPROVED' as const,
+      };
+      
+      setAdjustments([newAdjustment, ...adjustments]);
+      
+      // Update product stock locally
+      const updatedProducts = products.map(p => 
+        p.id === parseInt(adjustmentFormData.productId)
+          ? { ...p, stockActual: newStockActual }
+          : p
+      );
+      setProducts(updatedProducts);
       
       setAdjustmentDialogOpen(false);
       
@@ -342,24 +226,39 @@ const InventoryPage: React.FC = () => {
   const handleSaveRecount = async () => {
     try {
       setLoading(true);
-      console.log('Starting recount:', recountFormData);
+      setError(null);
       
-      // Get products for the selected category (or all if no category)
-      const productsToRecount = recountFormData.categoryId 
-        ? products.filter(p => p.categoryId === parseInt(recountFormData.categoryId))
-        : products;
+      const request = {
+        categoriaId: recountFormData.categoryId ? parseInt(recountFormData.categoryId) : null,
+        notas: recountFormData.notes || undefined,
+        // usuarioId would come from AuthContext in a real app
+        usuarioId: 1, // TODO: Get from logged-in user
+      };
+
+      console.log('Starting recount with request:', request);
       
-      // In a real app, this would create recount tasks/movements for all products
-      // For now, we'll just simulate the process
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the real backend API
+      const response = await movimientoStockApi.iniciarRecuento(request);
+      
+      console.log('Recount initiated:', response);
       
       setRecountDialogOpen(false);
       
-      // Show success message
-      alert(`Recuento iniciado exitosamente para ${productsToRecount.length} productos`);
+      // Show detailed success message
+      alert(
+        `✅ Recuento iniciado exitosamente\n\n` +
+        `• Total de productos: ${response.totalProductos}\n` +
+        `• Categoría: ${response.categoriaSeleccionada}\n` +
+        `• Fecha: ${new Date(response.fechaInicio).toLocaleString()}\n\n` +
+        `Los movimientos de recuento han sido creados. ` +
+        `Dirígete a la página de "Tareas de Recuento" para completar el conteo físico.`
+      );
+      
+      // Reload data to show new recount movements
+      await loadData();
       
     } catch (err) {
-      setError('Error al iniciar el recuento');
+      setError('Error al iniciar el recuento. Verifica que el backend esté activo.');
       console.error('Error starting recount:', err);
     } finally {
       setLoading(false);
@@ -379,7 +278,7 @@ const InventoryPage: React.FC = () => {
       // Update product stock locally
       setProducts(products.map(product => 
         product.id === adjustment.productId
-          ? { ...product, stock: product.stock + adjustment.difference }
+          ? { ...product, stockActual: product.stockActual + adjustment.difference }
           : product
       ));
       
@@ -472,7 +371,7 @@ const InventoryPage: React.FC = () => {
                 <MenuItem value="">Todas las categorías</MenuItem>
                 {categories.map((category) => (
                   <MenuItem key={category.id} value={category.id}>
-                    {category.name}
+                    {category.nombre}
                   </MenuItem>
                 ))}
               </Select>
@@ -485,43 +384,54 @@ const InventoryPage: React.FC = () => {
                 <TableRow>
                   <TableCell>Producto</TableCell>
                   <TableCell>Categoría</TableCell>
-                  <TableCell>Proveedor</TableCell>
                   <TableCell align="center">Stock Actual</TableCell>
-                  <TableCell>Valor Inventario</TableCell>
+                  <TableCell align="right">Precio Unitario</TableCell>
+                  <TableCell align="right">Valor Inventario</TableCell>
                   <TableCell align="center">Estado</TableCell>
                   <TableCell align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredProducts.map((product) => {
-                  const category = categories.find(c => c.id === product.categoryId);
-                  const supplier = suppliers.find(s => s.id === product.supplierId);
-                  const inventoryValue = product.price * product.stock;
+                  const category = categories.find(c => c.id === product.categoriaProductoId);
+                  const inventoryValue = product.precio * product.stockActual;
                   
                   return (
                     <TableRow key={product.id}>
                       <TableCell>
                         <Box>
                           <Typography variant="body2" fontWeight="bold">
-                            {product.name}
+                            {product.nombre}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {product.description}
+                            {product.descripcion || '-'}
                           </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell>{category?.name || 'N/A'}</TableCell>
-                      <TableCell>{supplier?.name || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={category?.nombre || product.categoriaProductoNombre || 'Sin categoría'} 
+                          size="small"
+                          variant="outlined"
+                        />
+                      </TableCell>
                       <TableCell align="center">
                         <Typography variant="h6" fontWeight="bold">
-                          {product.stock}
+                          {product.stockActual}
                         </Typography>
                       </TableCell>
-                      <TableCell>${inventoryValue.toLocaleString()}</TableCell>
+                      <TableCell align="right">
+                        ${product.precio.toLocaleString()}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight="bold">
+                          ${inventoryValue.toLocaleString()}
+                        </Typography>
+                      </TableCell>
                       <TableCell align="center">
-                        {product.stock === 0 ? (
+                        {product.stockActual === 0 ? (
                           <Chip label="Sin Stock" color="error" size="small" />
-                        ) : product.stock <= 5 ? (
+                        ) : product.stockActual <= product.stockMinimo ? (
                           <Chip label="Stock Bajo" color="warning" size="small" />
                         ) : (
                           <Chip label="OK" color="success" size="small" />
@@ -586,7 +496,7 @@ const InventoryPage: React.FC = () => {
                       <TableCell>
                         {new Date(adjustment.date).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{product?.name || 'N/A'}</TableCell>
+                      <TableCell>{product?.nombre || 'N/A'}</TableCell>
                       <TableCell>{getAdjustmentTypeChip(adjustment.type)}</TableCell>
                       <TableCell align="center">{adjustment.expectedQuantity}</TableCell>
                       <TableCell align="center">{adjustment.actualQuantity}</TableCell>
@@ -628,13 +538,13 @@ const InventoryPage: React.FC = () => {
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <Autocomplete
               options={products}
-              getOptionLabel={(product) => `${product.name} (Stock: ${product.stock})`}
+              getOptionLabel={(product) => `${product.nombre} (Stock: ${product.stockActual})`}
               value={products.find(p => p.id.toString() === adjustmentFormData.productId) || null}
               onChange={(_, value) => {
                 setAdjustmentFormData({ 
                   ...adjustmentFormData, 
                   productId: value?.id.toString() || '',
-                  expectedQuantity: value?.stock || 0
+                  expectedQuantity: value?.stockActual || 0
                 });
               }}
               renderInput={(params) => (
@@ -736,7 +646,7 @@ const InventoryPage: React.FC = () => {
                 <MenuItem value="">Toda la bodega</MenuItem>
                 {categories.map((category) => (
                   <MenuItem key={category.id} value={category.id.toString()}>
-                    {category.name}
+                    {category.nombre}
                   </MenuItem>
                 ))}
               </Select>
