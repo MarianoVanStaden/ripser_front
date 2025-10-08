@@ -146,3 +146,4 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose }) => {
 };
 
 export default CommandPalette;
+

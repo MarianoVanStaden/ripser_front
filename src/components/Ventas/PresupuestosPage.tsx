@@ -119,6 +119,15 @@ const computeIva = (presupuesto: DocumentoComercial): number => {
 
 const PresupuestosPage: React.FC = () => {
   const { user } = useAuth();
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.PENDIENTE);
+  const [clientFilter, setClientFilter] = useState<string>('all');
+  const [dateFromFilter, setDateFromFilter] = useState<string>('');
+  const [dateToFilter, setDateToFilter] = useState<string>('');
+  
+  // Main data states
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -259,6 +268,22 @@ const PresupuestosPage: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Filter presupuestos
+  const filteredPresupuestos = useMemo(() => {
+    return presupuestos.filter((presupuesto) => {
+      const clientName = clientes.find(c => c.id === presupuesto.clienteId)?.razonSocial || clientes.find(c => c.id === presupuesto.clienteId)?.nombre || '';
+      const matchesSearch = searchTerm === '' ||
+        presupuesto.numeroDocumento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        clientName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = !statusFilter || presupuesto.estado === statusFilter;
+      const matchesClient = clientFilter === 'all' || presupuesto.clienteId?.toString() === clientFilter;
+      const fecha = presupuesto.fechaEmision ? new Date(presupuesto.fechaEmision) : null;
+      const matchesDateFrom = !dateFromFilter || (fecha && fecha >= new Date(dateFromFilter));
+      const matchesDateTo = !dateToFilter || (fecha && fecha <= new Date(dateToFilter));
+      return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
+    });
+  }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, clientes]);
 
   const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (estado) {
@@ -505,7 +530,8 @@ const PresupuestosPage: React.FC = () => {
 
       let savedPresupuesto: DocumentoComercial;
       if (editingPresupuesto) {
-        savedPresupuesto = await documentoApi.updateEstado(editingPresupuesto.id, formData.estado);
+        // Use changeEstado instead of updateEstado - send just the enum string value
+        savedPresupuesto = await documentoApi.changeEstado(editingPresupuesto.id, formData.estado);
         setPresupuestos((prev) => prev.map((p) => (p.id === editingPresupuesto.id ? savedPresupuesto : p)));
       } else {
         console.log("Enviando datos:", JSON.stringify(payload));
@@ -626,6 +652,72 @@ const PresupuestosPage: React.FC = () => {
         </Alert>
       )}
 
+      {/* Filtros */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <Typography variant="h6">Filtros</Typography>
+          </Box>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' }, gap: 2 }}>
+            <TextField
+              fullWidth
+              label="Buscar"
+              variant="outlined"
+              size="small"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por número, cliente..."
+            />
+            <FormControl fullWidth size="small">
+              <InputLabel>Estado</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Estado"
+                onChange={(e) => setStatusFilter(e.target.value as EstadoDocumento)}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.APROBADO}>Aprobado</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth size="small">
+              <InputLabel>Cliente</InputLabel>
+              <Select
+                value={clientFilter}
+                label="Cliente"
+                onChange={(e) => setClientFilter(e.target.value)}
+              >
+                <MenuItem value="all">Todos</MenuItem>
+                {clientes.map((client: Cliente) => (
+                  <MenuItem key={client.id} value={client.id.toString()}>
+                    {client.razonSocial || client.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Desde"
+              type="date"
+              size="small"
+              value={dateFromFilter}
+              onChange={(e) => setDateFromFilter(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              fullWidth
+              label="Hasta"
+              type="date"
+              size="small"
+              value={dateToFilter}
+              onChange={(e) => setDateToFilter(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent>
           <TableContainer component={Paper}>
@@ -644,7 +736,7 @@ const PresupuestosPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {presupuestos.map((presupuesto) => {
+                {filteredPresupuestos.map((presupuesto) => {
                   const selectedOption = getSelectedFinancingOption(presupuesto);
                   const totalConFinanciamiento = selectedOption ? selectedOption.montoTotal : presupuesto.total;
 
@@ -717,7 +809,7 @@ const PresupuestosPage: React.FC = () => {
             </Table>
           </TableContainer>
 
-          {presupuestos.length === 0 && (
+          {filteredPresupuestos.length === 0 && (
             <Box sx={{ textAlign: "center", py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No hay presupuestos registrados
@@ -979,7 +1071,7 @@ const PresupuestosPage: React.FC = () => {
               </Box>
             )}
 
-            {/* Totals section with IVA */}
+{/* Totals section with IVA and Financing */}
             <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
                 <Typography variant="body1">
@@ -990,9 +1082,54 @@ const PresupuestosPage: React.FC = () => {
                   ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
                 <Divider sx={{ width: '200px', my: 1 }} />
-                <Typography variant="h6" fontWeight="bold">
-                  Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                <Typography variant="body1" fontWeight="medium">
+                  Subtotal con IVA: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
+                
+                {/* Show financing option if viewing an existing presupuesto */}
+                {editingPresupuesto && (() => {
+                  const selectedFinancing = getSelectedFinancingOption(editingPresupuesto);
+                  if (selectedFinancing) {
+                    return (
+                      <>
+                        <Divider sx={{ width: '200px', my: 1 }} />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-end' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Opción de financiamiento: {selectedFinancing.nombre}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {getMetodoPagoLabel(selectedFinancing.metodoPago)} - {selectedFinancing.cantidadCuotas} cuotas
+                          </Typography>
+                          {selectedFinancing.tasaInteres !== 0 && (
+                            <Typography variant="body2" color={selectedFinancing.tasaInteres < 0 ? 'success.main' : 'text.secondary'}>
+                              {selectedFinancing.tasaInteres < 0 
+                                ? `Descuento: ${Math.abs(selectedFinancing.tasaInteres)}%`
+                                : `Interés: ${selectedFinancing.tasaInteres}%`}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" color="text.secondary">
+                            Valor cuota: ${selectedFinancing.montoCuota.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        <Divider sx={{ width: '200px', my: 1 }} />
+                        <Typography variant="h6" fontWeight="bold" color="primary">
+                          Total con financiamiento: ${selectedFinancing.montoTotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+                
+                {/* If no financing option selected, show regular total */}
+                {(!editingPresupuesto || !getSelectedFinancingOption(editingPresupuesto)) && (
+                  <>
+                    <Divider sx={{ width: '200px', my: 1 }} />
+                    <Typography variant="h6" fontWeight="bold">
+                      Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </>
+                )}
               </Box>
             </Paper>
           </Box>
@@ -1141,3 +1278,4 @@ const PresupuestosPage: React.FC = () => {
 };
 
 export default PresupuestosPage;
+

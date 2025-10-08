@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Producto, CreateProductRequest } from '../../types';
+import type { Producto, ProductoCreateDTO, ProductoUpdateDTO } from '../../types';
 
 export const productApi = {
   // Get all products
@@ -40,13 +40,13 @@ export const productApi = {
   },
 
   // Create new product
-  create: async (product: CreateProductRequest): Promise<Producto> => {
+  create: async (product: ProductoCreateDTO): Promise<Producto> => {
     const response = await api.post('/api/productos', product);
     return response.data;
   },
 
   // Update product
-  update: async (id: number, product: Partial<CreateProductRequest>): Promise<Producto> => {
+  update: async (id: number, product: Partial<ProductoUpdateDTO>): Promise<Producto> => {
     const response = await api.put(`/api/productos/${id}`, product);
     return response.data;
   },

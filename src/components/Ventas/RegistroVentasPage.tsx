@@ -41,7 +41,7 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
-import { saleApi, clienteApi, usuarioApi } from '../../api/services';
+import { documentoApi, clienteApi, usuarioApi } from '../../api/services';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
 
 // Cambia el import de Grid para MUI v6
@@ -89,8 +89,8 @@ const RegistroVentasPage: React.FC = () => {
       setError(null);
       
       // Load all data in parallel
-      const [salesData, clientsData, usuariosDataRaw] = await Promise.all([
-        saleApi.getAll(),
+      const [salesData, clientsData, usuariosData] = await Promise.all([
+        documentoApi.getByTipo('FACTURA'),
         clienteApi.getAll(),
         usuarioApi.getAll(),
       ]);
@@ -102,45 +102,103 @@ const RegistroVentasPage: React.FC = () => {
 
       // Create maps for quick lookups
       const clientsMap = new Map(clientsData.map((client: Cliente) => [client.id, client]));
-      const usuariosMap = new Map(usuariosData.map((usuario: Usuario) => [usuario.id, usuario]));
+      const usuariosMap = new Map(usuariosData.content.map((usuario: Usuario) => [usuario.id, usuario]));
       
+      // Filter only invoices (FAC-), exclude order notes (NP-)
+      const facturas = salesData.filter((sale: any) => {
+        const numeroDoc = sale.numeroDocumento || sale.ventaNumero || '';
+        return numeroDoc.startsWith('FAC-');
+      });
+
       // Enrich sales data with client and usuario information
-      const enrichedSales = salesData.map((sale: any) => {
-        // Map cliente - preserve existing if available
+      const enrichedSales = facturas.map((sale: any) => {
+        // Map cliente - DocumentoComercial has clienteId and clienteNombre
         let cliente = null;
         if (sale.cliente) {
           cliente = sale.cliente;
         } else if (sale.clienteId) {
-          cliente = clientsMap.get(sale.clienteId);
+          const clienteFromMap = clientsMap.get(sale.clienteId);
+          if (clienteFromMap) {
+            cliente = clienteFromMap;
+          } else if (sale.clienteNombre) {
+            // Create a mock cliente object from clienteNombre
+            const nameParts = sale.clienteNombre.split(' ');
+            cliente = {
+              id: sale.clienteId,
+              nombre: nameParts[0] || sale.clienteNombre,
+              apellido: nameParts.slice(1).join(' ') || '',
+            } as Cliente;
+          }
         }
-        
-        // Map usuario/empleado - preserve existing if available
+
+        // Map usuario - DocumentoComercial has usuarioId and usuarioNombre
+        // Since backend Usuario doesn't have nombre/apellido, we use usuarioNombre directly
         let usuario = null;
         if (sale.usuario) {
           usuario = sale.usuario;
-        } else if (sale.empleado) {
-          usuario = sale.empleado;
-        } else if (sale.usuarioId || sale.empleadoId) {
-          usuario = usuariosMap.get(sale.usuarioId || sale.empleadoId);
+        } else if (sale.usuarioId && sale.usuarioNombre) {
+          // Create a usuario object from usuarioNombre
+          const nameParts = sale.usuarioNombre.trim().split(/\s+/);
+          usuario = {
+            id: sale.usuarioId,
+            nombre: nameParts[0] || '',
+            apellido: nameParts.slice(1).join(' ') || '',
+            username: sale.usuarioNombre,
+            email: '',
+          } as Usuario;
+        } else if (sale.usuarioId) {
+          // Try to get from map (but backend usuarios only have username/email)
+          const usuarioFromMap = usuariosMap.get(sale.usuarioId);
+          if (usuarioFromMap) {
+            usuario = usuarioFromMap;
+          }
         }
-        
-        // Preserve metodoPago from the backend - don't override with defaults unless absolutely necessary
-        const metodoPago = sale.metodoPago; // Keep the original value
-        
-        console.log(`Sale ${sale.id}: metodoPago=`, sale.metodoPago, 'preserved=', metodoPago);
-        
+
+        // Map detalles to detalleVentas for compatibility
+        // DetalleDocumento has productoNombre field
+        const detalleVentas = (sale.detalles || []).map((detalle: any) => ({
+          ...detalle,
+          producto: {
+            id: detalle.productoId,
+            nombre: detalle.productoNombre || detalle.descripcion || 'Producto desconocido',
+            descripcion: detalle.descripcion || '',
+          },
+        }));
+
+        // Map fechaEmision to fechaVenta for compatibility
+        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
+
+        // Map numeroDocumento to ventaNumero for compatibility
+        const ventaNumero = sale.numeroDocumento || sale.ventaNumero;
+
+        // Map estado
+        const estado = sale.estado || 'CONFIRMADA';
+
+        // Map observaciones to notas for compatibility
+        const notas = sale.observaciones || sale.notas;
+
+        // Preserve metodoPago from the backend
+        const metodoPago = sale.metodoPago;
+
+        console.log(`Sale ${sale.id}: usuarioNombre=`, sale.usuarioNombre, 'usuario=', usuario, 'detalles=', detalleVentas.length);
+
         return {
           ...sale,
           cliente,
-          usuario, // Add usuario field for compatibility
-          empleado: usuario, // Keep empleado field as well
+          usuario,
+          empleado: usuario, // Keep empleado field as well for compatibility
+          detalleVentas,
+          fechaVenta,
+          ventaNumero,
+          estado,
+          notas,
           metodoPago,
         };
       });
       
       setSales(enrichedSales);
       setClients(clientsData);
-      setUsuarios(usuariosData);
+      setUsuarios(usuariosData.content);
       
     } catch (err) {
       console.error('Error loading data:', err);
@@ -178,19 +236,11 @@ const RegistroVentasPage: React.FC = () => {
       setEditLoading(true);
       setError(null);
 
-      // Solo envía los campos requeridos por el backend
-      const updatedSaleData = {
-        numeroVenta: editForm.numeroVenta,
-        clienteId: parseInt(editForm.clienteId),
-        usuarioId: parseInt(editForm.usuarioId),
-        estado: editForm.estado,
-        metodoPago: editForm.metodoPago,
-        fechaVenta: editForm.fechaVenta,
-        notas: editForm.notas,
-        total: editForm.total,
-      };
-
-      const updatedSale = await saleApi.update(editingSale.id, updatedSaleData);
+      // Only update estado using the dedicated endpoint
+      const updatedSale = await documentoApi.updateEstado(
+        editingSale.id,
+        editForm.estado as any
+      );
       
       // Update the local state with enriched data
       const clientsMap = new Map(clients.map((client: Cliente) => [client.id, client]));
@@ -273,11 +323,18 @@ const RegistroVentasPage: React.FC = () => {
   };
 
   // Helper function to get usuario full name
-  const getUsuarioFullName = (usuario: Usuario | null): string => {
+  const getUsuarioFullName = (usuario: Usuario | any | null): string => {
     if (!usuario) return 'Vendedor no disponible';
-    
+
+    // Try to get nombre and apellido first
     const parts = [usuario.nombre, usuario.apellido].filter(Boolean);
-    return parts.length > 0 ? parts.join(' ') : 'Vendedor no disponible';
+    if (parts.length > 0) return parts.join(' ');
+
+    // Fall back to username or email
+    if (usuario.username) return usuario.username;
+    if (usuario.email) return usuario.email;
+
+    return 'Vendedor no disponible';
   };
 
   const filteredSales = sales.filter((sale: Venta) => {
@@ -780,71 +837,13 @@ const RegistroVentasPage: React.FC = () => {
         fullWidth
       >
         <DialogTitle>
-          Editar Venta #{editingSale?.id}
+          Cambiar Estado - Factura #{editingSale?.numeroDocumento || editingSale?.id}
         </DialogTitle>
         <DialogContent>
           {editingSale && (
             <Box sx={{ mt: 2 }}>
               <Grid container spacing={3}>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Número de Venta"
-                    value={editForm.numeroVenta}
-                    onChange={(e) => handleEditFormChange('numeroVenta', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
-                </Grid>
-                
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Venta"
-                    type="date"
-                    value={editForm.fechaVenta}
-                    onChange={(e) => handleEditFormChange('fechaVenta', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-
-                <Grid xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Cliente</InputLabel>
-                    <Select
-                      value={editForm.clienteId}
-                      label="Cliente"
-                      onChange={(e) => handleEditFormChange('clienteId', e.target.value)}
-                    >
-                      {clients.map((client: Cliente) => (
-                        <MenuItem key={client.id} value={client.id.toString()}>
-                          {getClientFullName(client)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Vendedor</InputLabel>
-                    <Select
-                      value={editForm.usuarioId}
-                      label="Vendedor"
-                      onChange={(e) => handleEditFormChange('usuarioId', e.target.value)}
-                    >
-                      {usuarios.map((usuario: Usuario) => (
-                        <MenuItem key={usuario.id} value={usuario.id.toString()}>
-                          {getUsuarioFullName(usuario)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid xs={12} md={6}>
+                <Grid item xs={12}>
                   <FormControl fullWidth size="small">
                     <InputLabel>Estado</InputLabel>
                     <Select
@@ -853,76 +852,29 @@ const RegistroVentasPage: React.FC = () => {
                       onChange={(e) => handleEditFormChange('estado', e.target.value)}
                     >
                       <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                      <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
-                      <MenuItem value="ENVIADA">Enviada</MenuItem>
-                      <MenuItem value="ENTREGADA">Entregada</MenuItem>
-                      <MenuItem value="CANCELADA">Cancelada</MenuItem>
+                      <MenuItem value="CONFIRMADA">Confirmada (reduce stock)</MenuItem>
+                      <MenuItem value="PAGADA">Pagada</MenuItem>
+                      <MenuItem value="VENCIDA">Vencida</MenuItem>
                     </Select>
                   </FormControl>
-                </Grid>
-
-                <Grid xs={12} md={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Método de Pago</InputLabel>
-                    <Select
-                      value={editForm.metodoPago}
-                      label="Método de Pago"
-                      onChange={(e) => handleEditFormChange('metodoPago', e.target.value as PaymentMethod)}
-                    >
-                      <MenuItem value="CASH">Efectivo</MenuItem>
-                      <MenuItem value="CREDIT_CARD">Tarjeta de Crédito</MenuItem>
-                      <MenuItem value="DEBIT_CARD">Tarjeta de Débito</MenuItem>
-                      <MenuItem value="BANK_TRANSFER">Transferencia</MenuItem>
-                      <MenuItem value="CHECK">Cheque</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Total"
-                    type="number"
-                    value={editForm.total}
-                    onChange={(e) => handleEditFormChange('total', parseFloat(e.target.value) || 0)}
-                    variant="outlined"
-                    size="small"
-                    InputProps={{
-                      startAdornment: <Typography variant="body2" sx={{ mr: 1 }}>$</Typography>,
-                    }}
-                  />
-                </Grid>
-
-                <Grid xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Notas"
-                    multiline
-                    rows={3}
-                    value={editForm.notas}
-                    onChange={(e) => handleEditFormChange('notas', e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    placeholder="Agregar notas adicionales sobre la venta..."
-                  />
                 </Grid>
 
                 {/* Current Sale Details Summary */}
                 <Grid xs={12}>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Resumen de la Venta
+                    Información de la Factura
                   </Typography>
                   <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                     <Grid container spacing={2}>
                       <Grid xs={6}>
                         <Typography variant="body2">
-                          <strong>Cliente Actual:</strong> {getClientFullName(editingSale.cliente || null)}
+                          <strong>Cliente:</strong> {getClientFullName(editingSale.cliente || null)}
                         </Typography>
                       </Grid>
                       <Grid xs={6}>
                         <Typography variant="body2">
-                          <strong>Vendedor Actual:</strong> {getUsuarioFullName((editingSale.usuario || editingSale.empleado) as Usuario || null)}
+                          <strong>Usuario:</strong> {getUsuarioFullName((editingSale.usuario || editingSale.empleado) as Usuario || null)}
                         </Typography>
                       </Grid>
                       <Grid xs={6}>
@@ -932,7 +884,7 @@ const RegistroVentasPage: React.FC = () => {
                       </Grid>
                       <Grid xs={6}>
                         <Typography variant="body2">
-                          <strong>Total Actual:</strong> ${(editingSale.total || 0).toLocaleString()}
+                          <strong>Total:</strong> ${(editingSale.total || 0).toLocaleString()}
                         </Typography>
                       </Grid>
                     </Grid>
@@ -971,7 +923,7 @@ const RegistroVentasPage: React.FC = () => {
             onClick={async () => {
               if (ventaToDelete) {
                 try {
-                  await saleApi.delete(ventaToDelete.id);
+                  await documentoApi.delete(ventaToDelete.id);
                   setSales(sales.filter(sale => sale.id !== ventaToDelete.id));
                   setDeleteDialogOpen(false);
                   setError(null);

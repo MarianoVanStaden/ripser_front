@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -13,6 +13,7 @@ import {
   CircularProgress,
   Avatar,
   Chip,
+  Grid,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -49,16 +50,20 @@ const CarpetaClienteSelector: React.FC = () => {
     }
   };
 
+  const filteredClientes = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return clientes;
+    return clientes.filter((c) =>
+      (c.nombre ?? '').toLowerCase().includes(q) ||
+      (c.apellido ?? '').toLowerCase().includes(q) ||
+      (c.razonSocial ?? '').toLowerCase().includes(q) ||
+      (c.email ?? '').toLowerCase().includes(q)
+    );
+  }, [clientes, searchTerm]);
+
   const handleSelectCliente = (clienteId: number) => {
     navigate(`/clientes/carpeta/${clienteId}`);
   };
-
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (cliente.apellido?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-    (cliente.razonSocial?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-    (cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
-  );
 
   if (loading) {
     return (
@@ -69,17 +74,14 @@ const CarpetaClienteSelector: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
+    <Box sx={{ px: { sm: 2, md: 3, lg: 4 }, py: { sm: 2, md: 3 }, maxWidth: '1600px', mx: 'auto' }}>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1" display="flex" alignItems="center">
-          <FolderIcon sx={{ mr: 2 }} />
+        <Typography variant="h4" component="h1" display="flex" alignItems="center" gap={1.5}>
+          <FolderIcon />
           Carpeta de Cliente
         </Typography>
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/clientes/gestion')}
-        >
+        <Button variant="contained" onClick={() => navigate('/clientes/gestion')}>
           Volver a Gestión de Clientes
         </Button>
       </Box>
@@ -91,90 +93,113 @@ const CarpetaClienteSelector: React.FC = () => {
       )}
 
       {/* Search */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, md: 2.5 },
+          mb: 3,
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.06)',
+        }}
+      >
         <TextField
           fullWidth
+          size="small"
           label="Buscar cliente"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar por nombre, apellido, razón social o email..."
           InputProps={{
             startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
+              <InputAdornment position="start" sx={{ ml: 0.5 }}>
+                <SearchIcon fontSize="small" color="action" />
               </InputAdornment>
             ),
           }}
-          placeholder="Buscar por nombre, apellido, razón social o email..."
+          sx={{
+            '& .MuiOutlinedInput-root': { borderRadius: 999 },
+          }}
         />
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1.5, display: 'block' }}>
+          {filteredClientes.length} resultado(s)
+        </Typography>
       </Paper>
 
       {/* Client Selection */}
       <Typography variant="h6" gutterBottom>
-        Seleccione un cliente para ver su carpeta:
+        Seleccione un cliente para ver su carpeta
       </Typography>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 2 }}>
+      <Grid container spacing={2.5} alignItems="stretch">
         {filteredClientes.map((cliente) => (
-          <Card key={cliente.id} elevation={2}>
-            <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
-                  {cliente.tipo === 'PERSONA_JURIDICA' ? <BusinessIcon /> : <PersonIcon />}
-                </Avatar>
-                <Box flex={1}>
-                  <Typography variant="h6" component="h3">
-                    {cliente.nombre} {cliente.apellido}
-                  </Typography>
-                  {cliente.razonSocial && (
-                    <Typography variant="body2" color="text.secondary">
-                      {cliente.razonSocial}
+          <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
+            <Card elevation={1} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ flex: 1 }}>
+                <Box display="flex" alignItems="center" mb={2} gap={2}>
+                  <Avatar sx={{ bgcolor: 'primary.main' }}>
+                    {cliente.tipo === 'PERSONA_JURIDICA' ? <BusinessIcon /> : <PersonIcon />}
+                  </Avatar>
+                  <Box minWidth={0}>
+                    <Typography variant="h6" component="h3" noWrap title={`${cliente.nombre} ${cliente.apellido ?? ''}`}>
+                      {cliente.nombre} {cliente.apellido}
                     </Typography>
-                  )}
-                  {cliente.email && (
-                    <Typography variant="body2" color="text.secondary">
-                      {cliente.email}
-                    </Typography>
-                  )}
+                    {cliente.razonSocial && (
+                      <Typography variant="body2" color="text.secondary" noWrap title={cliente.razonSocial}>
+                        {cliente.razonSocial}
+                      </Typography>
+                    )}
+                    {cliente.email && (
+                      <Typography variant="body2" color="text.secondary" noWrap title={cliente.email}>
+                        {cliente.email}
+                      </Typography>
+                    )}
+                  </Box>
                 </Box>
-              </Box>
 
-              <Box display="flex" gap={1} mb={2}>
-                <Chip
-                  label={cliente.estado}
-                  color={cliente.estado === 'ACTIVO' ? 'success' : 'default'}
-                  size="small"
-                />
-                <Chip
-                  label={cliente.tipo === 'PERSONA_JURIDICA' ? 'Empresa' : 'Particular'}
-                  variant="outlined"
-                  size="small"
-                />
-              </Box>
+                <Box display="flex" gap={1} mb={2} flexWrap="wrap">
+                  <Chip
+                    label={cliente.estado}
+                    color={cliente.estado === 'ACTIVO' ? 'success' : cliente.estado === 'MOROSO' ? 'error' : 'default'}
+                    size="small"
+                  />
+                  <Chip
+                    label={cliente.tipo === 'PERSONA_JURIDICA' ? 'Empresa' : 'Particular'}
+                    variant="outlined"
+                    size="small"
+                  />
+                </Box>
 
-              {cliente.telefono && (
-                <Typography variant="body2" color="text.secondary">
-                  Tel: {cliente.telefono}
-                </Typography>
-              )}
-            </CardContent>
-            <CardActions>
-              <Button
-                variant="contained"
-                fullWidth
-                startIcon={<FolderIcon />}
-                onClick={() => handleSelectCliente(cliente.id)}
-              >
-                Ver Carpeta
-              </Button>
-            </CardActions>
-          </Card>
+                {cliente.telefono && (
+                  <Typography variant="body2" color="text.secondary">
+                    Tel: {cliente.telefono}
+                  </Typography>
+                )}
+              </CardContent>
+
+              <CardActions sx={{ p: 2, pt: 0 }}>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  startIcon={<FolderIcon />}
+                  onClick={() => handleSelectCliente(cliente.id)}
+                >
+                  Ver Carpeta
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
         ))}
-      </Box>
+      </Grid>
 
       {filteredClientes.length === 0 && !loading && (
-        <Box textAlign="center" py={4}>
-          <Typography variant="body1" color="text.secondary">
-            {searchTerm ? 'No se encontraron clientes que coincidan con la búsqueda' : 'No hay clientes registrados'}
+        <Box textAlign="center" py={6}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {searchTerm ? 'No se encontraron clientes que coincidan' : 'No hay clientes registrados'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {searchTerm ? 'Probá con otro término de búsqueda.' : 'Cargá tu primer cliente desde Gestión de Clientes.'}
           </Typography>
         </Box>
       )}

@@ -7,8 +7,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:8080/RipserApp',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        changeOrigin: true
       }
     }
   }

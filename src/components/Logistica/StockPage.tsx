@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
   Box,
-  Button,
   Card,
   CardContent,
   Typography,
   CircularProgress,
   Alert,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   Table,
   TableBody,
   TableCell,
@@ -21,158 +14,33 @@ import {
   TableRow,
   Paper,
   Chip,
-  Autocomplete,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Tabs,
   Tab,
   Badge,
-} from "@mui/material";
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Switch,
+  FormControlLabel,
+} from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Inventory as InventoryIcon,
   Warning as WarningIcon,
   TrendingDown as TrendingDownIcon,
-  Search as SearchIcon,
-  FileDownload as ExportIcon,
-  QrCode as QrCodeIcon,
-} from "@mui/icons-material";
-import type {
-  Product,
-  Supplier,
-  Category,
-  StockMovement,
-  MovementType,
-} from "../../types";
-import {
-  productApi,
-  supplierApi,
-  categoryApi,
-  stockMovementApi,
-} from "../../api/services";
-
-// Mock data for development
-const mockProducts: Product[] = [
-  {
-    id: 1,
-    name: "Laptop HP Pavilion",
-    description: 'Laptop HP Pavilion 15.6" Intel Core i5',
-    price: 85000,
-    stock: 5,
-    categoryId: 1,
-    supplierId: 1,
-    isActive: true,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: 2,
-    name: "Mouse Logitech",
-    description: "Mouse óptico USB Logitech",
-    price: 2500,
-    stock: 2,
-    categoryId: 2,
-    supplierId: 2,
-    isActive: true,
-    createdAt: "2024-01-02T00:00:00Z",
-    updatedAt: "2024-01-20T14:15:00Z",
-  },
-  {
-    id: 3,
-    name: "Teclado Mecánico",
-    description: "Teclado mecánico RGB gaming",
-    price: 8500,
-    stock: 0,
-    categoryId: 2,
-    supplierId: 1,
-    isActive: true,
-    createdAt: "2024-01-03T00:00:00Z",
-    updatedAt: "2024-01-25T09:45:00Z",
-  },
-];
-
-const mockSuppliers: Supplier[] = [
-  {
-    id: 1,
-    name: "Tech Supplies S.A.",
-    contactPerson: "María González",
-    email: "contacto@techsupplies.com",
-    phone: "+54 11 4567-8901",
-    address: "Av. Tecnología 123, Buenos Aires",
-    paymentTerms: "30 días",
-    rating: 4.5,
-    isActive: true,
-    observations: "",
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: 2,
-    name: "Distribuidora Central",
-    contactPerson: "Carlos Rodríguez",
-    email: "ventas@distribuidoracentral.com",
-    phone: "+54 11 2345-6789",
-    address: "Calle Industrial 456, Buenos Aires",
-    paymentTerms: "15 días",
-    rating: 4.0,
-    isActive: true,
-    observations: "",
-    createdAt: "2024-01-02T00:00:00Z",
-    updatedAt: "2024-01-20T14:15:00Z",
-  },
-];
-
-const mockCategories: Category[] = [
-  {
-    id: 1,
-    name: "Computadoras",
-    description: "Equipos de computación",
-    isActive: true,
-    createdAt: "",
-    updatedAt: "",
-  },
-  {
-    id: 2,
-    name: "Periféricos",
-    description: "Accesorios y periféricos",
-    isActive: true,
-    createdAt: "",
-    updatedAt: "",
-  },
-];
-
-const mockStockMovements: StockMovement[] = [
-  {
-    id: 1,
-    productId: 1,
-    type: "ENTRY" as MovementType,
-    quantity: 10,
-    reason: "Compra a proveedor",
-    reference: "PO-2024-001",
-    employeeId: 1,
-    date: "2024-01-15T10:00:00Z",
-    notes: "Recepción de mercadería",
-    createdAt: "2024-01-15T10:00:00Z",
-    updatedAt: "2024-01-15T10:00:00Z",
-  },
-  {
-    id: 2,
-    productId: 1,
-    type: "EXIT" as MovementType,
-    quantity: 5,
-    reason: "Venta",
-    reference: "VT-2024-001",
-    employeeId: 1,
-    date: "2024-01-16T14:30:00Z",
-    notes: "Venta a cliente",
-    createdAt: "2024-01-16T14:30:00Z",
-    updatedAt: "2024-01-16T14:30:00Z",
-  },
-];
+  Edit as EditIcon,
+} from '@mui/icons-material';
+import { productApi } from '../../api/services/productApi';
+import { movimientoStockApi } from '../../api/services/movimientoStockApi';
+import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
+import type { Producto, MovimientoStock, CategoriaProducto } from '../../types';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -182,7 +50,6 @@ interface TabPanelProps {
 
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
-
   return (
     <div
       role="tabpanel"
@@ -197,42 +64,18 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const StockPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
+  const [products, setProducts] = useState<Producto[]>([]);
+  const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-
-  // Dialogs
-  const [productDialogOpen, setProductDialogOpen] = useState(false);
-  const [movementDialogOpen, setMovementDialogOpen] = useState(false);
-
-  // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
-
-  // Forms
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [productFormData, setProductFormData] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    stock: 0,
-    categoryId: "",
-    supplierId: "",
-    minStock: 5,
-  });
-
-  const [movementFormData, setMovementFormData] = useState({
-    productId: "",
-    type: "ENTRY" as MovementType,
-    quantity: 0,
-    reason: "",
-    reference: "",
-    notes: "",
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+  const [editForm, setEditForm] = useState({
+    stockMinimo: 0,
+    categoriaProductoId: 1,
+    activo: true,
   });
 
   useEffect(() => {
@@ -242,186 +85,68 @@ const StockPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      const [productsData, movementsData, categoriasData] = await Promise.all([
+        productApi.getAll(),
+        movimientoStockApi.getAll(),
+        categoriaProductoApi.getAll(),
+      ]);
 
-      // Load data from APIs - fallback to mock data if API fails
-      try {
-        const [productsData, suppliersData, categoriesData, movementsData] =
-          await Promise.all([
-            productApi.getAll(),
-            supplierApi.getAll(),
-            categoryApi.getAll(),
-            stockMovementApi.getAll(),
-          ]);
-
-        setProducts(productsData);
-        setSuppliers(suppliersData);
-        setCategories(categoriesData);
-        setStockMovements(movementsData);
-        setError(null);
-      } catch (apiError) {
-        console.warn("API failed, using mock data:", apiError);
-        // Fallback to mock data if API is not available
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setProducts(mockProducts);
-        setSuppliers(mockSuppliers);
-        setCategories(mockCategories);
-        setStockMovements(mockStockMovements);
-        setError(
-          "Conectado con datos de prueba. Verifique la conexión del backend."
-        );
-      }
+      setProducts(productsData);
+      setStockMovements(movementsData);
+      setCategorias(categoriasData);
+      setError(null);
     } catch (err) {
-      setError("Error al cargar los datos");
-      console.error("Error loading data:", err);
+      const error = err as { response?: { status?: number } };
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
+      } else {
+        setError('Error al cargar los datos');
+      }
+      console.error('Error loading data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredProducts = products.filter((product) => {
-    const productName = product.name ?? "";
-    const productDescription = product.description ?? "";
-
-    const matchesSearch =
-      productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      productDescription.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesCategory =
-      !selectedCategory || product.categoryId === selectedCategory;
-    const matchesStock =
-      stockFilter === "all" ||
-      (stockFilter === "low" && product.stock <= 5 && product.stock > 0) ||
-      (stockFilter === "out" && product.stock === 0);
-    return matchesSearch && matchesCategory && matchesStock;
-  });
-
-  const lowStockCount = products.filter(
-    (p) => p.stock <= 5 && p.stock > 0
-  ).length;
-  const outOfStockCount = products.filter((p) => p.stock === 0).length;
-
-  const handleAddProduct = () => {
-    setEditingProduct(null);
-    setProductFormData({
-      name: "",
-      description: "",
-      price: 0,
-      stock: 0,
-      categoryId: "",
-      supplierId: "",
-      minStock: 5,
+  const handleEditProduct = (product: Producto) => {
+    setSelectedProduct(product);
+    setEditForm({
+      stockMinimo: product.stockMinimo,
+      categoriaProductoId: product.categoriaProducto?.id || 1,
+      activo: product.activo,
     });
-    setProductDialogOpen(true);
+    setEditDialogOpen(true);
   };
 
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product);
-    setProductFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      stock: product.stock,
-      categoryId: product.categoryId.toString(),
-      supplierId: product.supplierId.toString(),
-      minStock: 5, // This would come from product.minStock if it existed
-    });
-    setProductDialogOpen(true);
-  };
+  const handleSaveEdit = async () => {
+    if (!selectedProduct) return;
 
-  const handleSaveProduct = async () => {
     try {
-      console.log("Saving product:", productFormData);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      setLoading(true);
+      await productApi.update(selectedProduct.id, {
+        stockMinimo: editForm.stockMinimo,
+        categoriaProductoId: editForm.categoriaProductoId,
+        activo: editForm.activo,
+      });
 
-      if (editingProduct) {
-        setProducts(
-          products.map((product) =>
-            product.id === editingProduct.id
-              ? {
-                  ...product,
-                  ...productFormData,
-                  categoryId: parseInt(productFormData.categoryId),
-                  supplierId: parseInt(productFormData.supplierId),
-                  updatedAt: new Date().toISOString(),
-                }
-              : product
-          )
-        );
-      } else {
-        const newProduct: Product = {
-          id: Math.max(...products.map((p) => p.id)) + 1,
-          ...productFormData,
-          categoryId: parseInt(productFormData.categoryId),
-          supplierId: parseInt(productFormData.supplierId),
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setProducts([...products, newProduct]);
-      }
-
-      setProductDialogOpen(false);
+      await loadData();
+      setEditDialogOpen(false);
+      setSelectedProduct(null);
     } catch (err) {
-      setError("Error al guardar el producto");
-      console.error("Error saving product:", err);
+      console.error('Error updating product:', err);
+      setError('Error al actualizar el producto');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddMovement = () => {
-    setMovementFormData({
-      productId: "",
-      type: "ENTRY",
-      quantity: 0,
-      reason: "",
-      reference: "",
-      notes: "",
-    });
-    setMovementDialogOpen(true);
-  };
+  const lowStockCount = products.filter(p => p.stockActual <= p.stockMinimo && p.stockActual > 0).length;
+  const outOfStockCount = products.filter(p => p.stockActual === 0).length;
 
-  const handleSaveMovement = async () => {
-    try {
-      console.log("Saving movement:", movementFormData);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const newMovement: StockMovement = {
-        id: Math.max(...stockMovements.map((m) => m.id)) + 1,
-        ...movementFormData,
-        productId: parseInt(movementFormData.productId),
-        employeeId: 1, // This would come from current user
-        date: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      setStockMovements([newMovement, ...stockMovements]);
-
-      // Update product stock
-      setProducts(
-        products.map((product) =>
-          product.id === parseInt(movementFormData.productId)
-            ? {
-                ...product,
-                stock:
-                  movementFormData.type === "ENTRY"
-                    ? product.stock + movementFormData.quantity
-                    : product.stock - movementFormData.quantity,
-              }
-            : product
-        )
-      );
-
-      setMovementDialogOpen(false);
-    } catch (err) {
-      setError("Error al guardar el movimiento");
-      console.error("Error saving movement:", err);
-    }
-  };
-
-  const getStockChip = (stock: number) => {
+  const getStockChip = (stock: number, stockMinimo: number) => {
     if (stock === 0) {
       return <Chip label="Sin Stock" color="error" size="small" />;
-    } else if (stock <= 5) {
+    } else if (stock <= stockMinimo) {
       return <Chip label="Stock Bajo" color="warning" size="small" />;
     } else {
       return <Chip label="Disponible" color="success" size="small" />;
@@ -453,22 +178,6 @@ const StockPage: React.FC = () => {
           <InventoryIcon />
           Gestión de Stock
         </Typography>
-        <Box display="flex" gap={2}>
-          <Button
-            variant="outlined"
-            startIcon={<ExportIcon />}
-            onClick={() => console.log("Export inventory")}
-          >
-            Exportar
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddProduct}
-          >
-            Agregar Producto
-          </Button>
-        </Box>
       </Box>
 
       {error && (
@@ -530,16 +239,10 @@ const StockPage: React.FC = () => {
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
-              <QrCodeIcon color="info" />
+              <InventoryIcon color="info" />
               <Box>
                 <Typography variant="h4">
-                  $
-                  {products
-                    .reduce(
-                      (sum, p) => sum + (p.price ?? 0) * (p.stock ?? 0),
-                      0
-                    )
-                    .toLocaleString()}
+                  ${products.reduce((sum, p) => sum + (p.precio * p.stockActual), 0).toLocaleString()}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Valor Total
@@ -558,123 +261,76 @@ const StockPage: React.FC = () => {
         >
           <Tab label="Inventario" />
           <Tab label="Movimientos" />
-          <Tab label="Reportes" />
         </Tabs>
       </Box>
 
       {/* Tab Panel 0: Inventory */}
       <TabPanel value={tabValue} index={0}>
-        {/* Filters */}
-        <Box display="flex" gap={2} mb={3} flexWrap="wrap" alignItems="center">
-          <TextField
-            label="Buscar productos"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />
-              ),
-            }}
-            sx={{ minWidth: 250 }}
-          />
-
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel>Categoría</InputLabel>
-            <Select
-              value={selectedCategory || ""}
-              onChange={(e) =>
-                setSelectedCategory((e.target.value as number) || null)
-              }
-            >
-              <MenuItem value="">Todas</MenuItem>
-              {categories.map((category) => (
-                <MenuItem key={category.id} value={category.id}>
-                  {category.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel>Stock</InputLabel>
-            <Select
-              value={stockFilter}
-              onChange={(e) =>
-                setStockFilter(e.target.value as "all" | "low" | "out")
-              }
-            >
-              <MenuItem value="all">Todos</MenuItem>
-              <MenuItem value="low">Stock Bajo</MenuItem>
-              <MenuItem value="out">Sin Stock</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-
-        {/* Products Table */}
         <Card>
           <CardContent>
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
                   <TableRow>
+                    <TableCell>Código</TableCell>
                     <TableCell>Producto</TableCell>
+                    <TableCell align="center">Stock Actual</TableCell>
+                    <TableCell align="center">Stock Mínimo</TableCell>
                     <TableCell>Categoría</TableCell>
-                    <TableCell>Proveedor</TableCell>
-                    <TableCell align="center">Stock</TableCell>
                     <TableCell>Precio</TableCell>
                     <TableCell>Estado</TableCell>
                     <TableCell align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredProducts.map((product) => {
-                    const category = categories.find(
-                      (c) => c.id === product.categoryId
-                    );
-                    const supplier = suppliers.find(
-                      (s) => s.id === product.supplierId
-                    );
-
-                    return (
-                      <TableRow key={product.id}>
-                        <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight="bold">
-                              {product.name}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {product.description}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>{category?.name || "N/A"}</TableCell>
-                        <TableCell>{supplier?.name || "N/A"}</TableCell>
-                        <TableCell align="center">
-                          <Typography variant="h6" fontWeight="bold">
-                            {product.stock}
+                  {products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>{product.codigo}</TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" fontWeight="bold">
+                            {product.nombre}
                           </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {`$${(product.price ?? 0).toLocaleString()}`}
-                        </TableCell>
-                        <TableCell>{getStockChip(product.stock)}</TableCell>
-                        <TableCell align="center">
-                          <IconButton
-                            onClick={() => handleEditProduct(product)}
-                            size="small"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton size="small">
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                          <Typography variant="caption" color="text.secondary">
+                            {product.descripcion}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="h6" fontWeight="bold">
+                          {product.stockActual}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2">
+                          {product.stockMinimo}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={product.categoriaProducto?.nombre || 'Sin categoría'}
+                          size="small"
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>${product.precio.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {getStockChip(product.stockActual, product.stockMinimo)}
+                        {!product.activo && (
+                          <Chip label="Inactivo" color="default" size="small" sx={{ ml: 1 }} />
+                        )}
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEditProduct(product)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -684,22 +340,6 @@ const StockPage: React.FC = () => {
 
       {/* Tab Panel 1: Movements */}
       <TabPanel value={tabValue} index={1}>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={3}
-        >
-          <Typography variant="h6">Movimientos de Stock</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddMovement}
-          >
-            Nuevo Movimiento
-          </Button>
-        </Box>
-
         <Card>
           <CardContent>
             <TableContainer component={Paper}>
@@ -710,47 +350,34 @@ const StockPage: React.FC = () => {
                     <TableCell>Producto</TableCell>
                     <TableCell>Tipo</TableCell>
                     <TableCell align="center">Cantidad</TableCell>
-                    <TableCell>Motivo</TableCell>
-                    <TableCell>Referencia</TableCell>
-                    <TableCell>Notas</TableCell>
+                    <TableCell>Concepto</TableCell>
+                    <TableCell>Comprobante</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {stockMovements.map((movement) => {
-                    const product = products.find(
-                      (p) => p.id === movement.productId
-                    );
+                    const product = products.find(p => p.id === movement.productoId);
 
                     return (
                       <TableRow key={movement.id}>
                         <TableCell>
-                          {
-                            movement.date
-                              ? new Date(movement.date).toLocaleString()
-                              : "N/A" // O la representación que prefieras
-                          }
+                          {new Date(movement.fecha).toLocaleString()}
                         </TableCell>
-                        <TableCell>{product?.name || "N/A"}</TableCell>
+                        <TableCell>{product?.nombre || 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
-                            label={
-                              movement.type === "ENTRY" ? "Entrada" : "Salida"
-                            }
-                            color={
-                              movement.type === "ENTRY" ? "success" : "error"
-                            }
+                            label={movement.tipo === 'ENTRADA' ? 'Entrada' : movement.tipo === 'SALIDA' ? 'Salida' : 'Ajuste'}
+                            color={movement.tipo === 'ENTRADA' ? 'success' : movement.tipo === 'SALIDA' ? 'error' : 'info'}
                             size="small"
                           />
                         </TableCell>
                         <TableCell align="center">
                           <Typography fontWeight="bold">
-                            {movement.type === "ENTRY" ? "+" : "-"}
-                            {movement.quantity}
+                            {movement.tipo === 'ENTRADA' ? '+' : '-'}{movement.cantidad}
                           </Typography>
                         </TableCell>
-                        <TableCell>{movement.reason}</TableCell>
-                        <TableCell>{movement.reference}</TableCell>
-                        <TableCell>{movement.notes}</TableCell>
+                        <TableCell>{movement.concepto}</TableCell>
+                        <TableCell>{movement.numeroComprobante}</TableCell>
                       </TableRow>
                     );
                   })}
@@ -761,253 +388,60 @@ const StockPage: React.FC = () => {
         </Card>
       </TabPanel>
 
-      {/* Tab Panel 2: Reports */}
-      <TabPanel value={tabValue} index={2}>
-        <Typography variant="h6" gutterBottom>
-          Reportes de Inventario
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Los reportes estarán disponibles próximamente.
-        </Typography>
-      </TabPanel>
-
-      {/* Product Dialog */}
-      <Dialog
-        open={productDialogOpen}
-        onClose={() => setProductDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {editingProduct ? "Editar Producto" : "Agregar Producto"}
-        </DialogTitle>
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar Producto: {selectedProduct?.nombre}</DialogTitle>
         <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
             <TextField
-              label="Nombre del Producto"
-              value={productFormData.name}
-              onChange={(e) =>
-                setProductFormData({ ...productFormData, name: e.target.value })
-              }
+              label="Stock Mínimo"
+              type="number"
+              value={editForm.stockMinimo}
+              onChange={(e) => setEditForm({ ...editForm, stockMinimo: parseInt(e.target.value) || 0 })}
               fullWidth
-              required
+              helperText="Define el umbral para 'Stock Bajo'"
             />
 
-            <TextField
-              label="Descripción"
-              value={productFormData.description}
-              onChange={(e) =>
-                setProductFormData({
-                  ...productFormData,
-                  description: e.target.value,
-                })
-              }
-              fullWidth
-              multiline
-              rows={2}
-            />
-
-            <Box display="flex" gap={2}>
-              <TextField
-                label="Precio"
-                type="number"
-                value={productFormData.price}
-                onChange={(e) =>
-                  setProductFormData({
-                    ...productFormData,
-                    price: parseFloat(e.target.value) || 0,
-                  })
-                }
-                fullWidth
-                required
-              />
-              <TextField
-                label="Stock Actual"
-                type="number"
-                value={productFormData.stock}
-                onChange={(e) =>
-                  setProductFormData({
-                    ...productFormData,
-                    stock: parseInt(e.target.value) || 0,
-                  })
-                }
-                fullWidth
-                required
-              />
-              <TextField
-                label="Stock Mínimo"
-                type="number"
-                value={productFormData.minStock}
-                onChange={(e) =>
-                  setProductFormData({
-                    ...productFormData,
-                    minStock: parseInt(e.target.value) || 0,
-                  })
-                }
-                fullWidth
-              />
-            </Box>
-
-            <Box display="flex" gap={2}>
-              <Autocomplete
-                options={categories}
-                getOptionLabel={(category) => category.name}
-                value={
-                  categories.find(
-                    (c) => c.id.toString() === productFormData.categoryId
-                  ) || null
-                }
-                onChange={(_, value) =>
-                  setProductFormData({
-                    ...productFormData,
-                    categoryId: value?.id.toString() || "",
-                  })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} label="Categoría" required fullWidth />
-                )}
-                sx={{ flex: 1 }}
-              />
-
-              <Autocomplete
-                options={suppliers}
-                getOptionLabel={(supplier) => supplier.name}
-                value={
-                  suppliers.find(
-                    (s) => s.id.toString() === productFormData.supplierId
-                  ) || null
-                }
-                onChange={(_, value) =>
-                  setProductFormData({
-                    ...productFormData,
-                    supplierId: value?.id.toString() || "",
-                  })
-                }
-                renderInput={(params) => (
-                  <TextField {...params} label="Proveedor" required fullWidth />
-                )}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setProductDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSaveProduct} variant="contained">
-            {editingProduct ? "Actualizar" : "Crear"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Movement Dialog */}
-      <Dialog
-        open={movementDialogOpen}
-        onClose={() => setMovementDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Nuevo Movimiento de Stock</DialogTitle>
-        <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <Autocomplete
-              options={products}
-              getOptionLabel={(product) =>
-                `${product.name} (Stock: ${product.stock})`
-              }
-              value={
-                products.find(
-                  (p) => p.id.toString() === movementFormData.productId
-                ) || null
-              }
-              onChange={(_, value) =>
-                setMovementFormData({
-                  ...movementFormData,
-                  productId: value?.id.toString() || "",
-                })
-              }
-              renderInput={(params) => (
-                <TextField {...params} label="Producto" required fullWidth />
-              )}
-            />
-
-            <FormControl fullWidth required>
-              <InputLabel>Tipo de Movimiento</InputLabel>
+            <FormControl fullWidth>
+              <InputLabel>Categoría</InputLabel>
               <Select
-                value={movementFormData.type}
-                onChange={(e) =>
-                  setMovementFormData({
-                    ...movementFormData,
-                    type: e.target.value as MovementType,
-                  })
-                }
+                value={editForm.categoriaProductoId}
+                label="Categoría"
+                onChange={(e) => setEditForm({ ...editForm, categoriaProductoId: e.target.value as number })}
               >
-                <MenuItem value="ENTRY">Entrada</MenuItem>
-                <MenuItem value="EXIT">Salida</MenuItem>
-                <MenuItem value="ADJUSTMENT">Ajuste</MenuItem>
-                <MenuItem value="TRANSFER">Transferencia</MenuItem>
+                {categorias.map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.nombre}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
 
-            <TextField
-              label="Cantidad"
-              type="number"
-              value={movementFormData.quantity}
-              onChange={(e) =>
-                setMovementFormData({
-                  ...movementFormData,
-                  quantity: parseInt(e.target.value) || 0,
-                })
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editForm.activo}
+                  onChange={(e) => setEditForm({ ...editForm, activo: e.target.checked })}
+                />
               }
-              fullWidth
-              required
+              label="Producto Activo"
             />
 
-            <TextField
-              label="Motivo"
-              value={movementFormData.reason}
-              onChange={(e) =>
-                setMovementFormData({
-                  ...movementFormData,
-                  reason: e.target.value,
-                })
-              }
-              fullWidth
-              required
-              placeholder="ej: Compra, Venta, Devolución, Ajuste"
-            />
-
-            <TextField
-              label="Referencia"
-              value={movementFormData.reference}
-              onChange={(e) =>
-                setMovementFormData({
-                  ...movementFormData,
-                  reference: e.target.value,
-                })
-              }
-              fullWidth
-              placeholder="ej: PO-2024-001, VT-2024-001"
-            />
-
-            <TextField
-              label="Notas"
-              value={movementFormData.notes}
-              onChange={(e) =>
-                setMovementFormData({
-                  ...movementFormData,
-                  notes: e.target.value,
-                })
-              }
-              fullWidth
-              multiline
-              rows={2}
-            />
+            <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Stock Actual: <strong>{selectedProduct?.stockActual}</strong>
+              </Typography>
+              <br />
+              <Typography variant="caption" color="text.secondary">
+                Stock se actualiza automáticamente desde Compras
+              </Typography>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setMovementDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSaveMovement} variant="contained">
-            Guardar Movimiento
+          <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSaveEdit} variant="contained" color="primary">
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>

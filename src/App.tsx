@@ -20,7 +20,6 @@ import {
 } from './components/Clientes';
 import NotasPedidoPage from './components/Ventas/NotasPedidoPage';
 import PresupuestosPage from './components/Ventas/PresupuestosPage';
-import PresupuestosFinanciamientoPage from './components/Ventas/PresupuestosFinanciamientoPage';
 import OpcionesFinanciamientoPage from './components/Ventas/OpcionesFinanciamientoPage';
 import RegistroVentasPage from './components/Ventas/RegistroVentasPage';
 import FacturacionPage from './components/Ventas/FacturacionPage';
@@ -91,14 +90,11 @@ function App() {
               <Route path="ventas/notasPedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
               <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
               {/* Financing routes (aliases to match sidebar paths) */}
-              <Route path="ventas/presupuestos-financiamiento" element={<PrivateRoute><PresupuestosFinanciamientoPage /></PrivateRoute>} />
-              <Route path="ventas/presupuestos-financiamiento/:id" element={<PrivateRoute><PresupuestosFinanciamientoPage /></PrivateRoute>} />
               <Route path="ventas/opciones-financiamiento" element={<PrivateRoute><OpcionesFinanciamientoPage /></PrivateRoute>} />
               <Route path="ventas/registro" element={<PrivateRoute><RegistroVentasPage /></PrivateRoute>} />
               <Route path="ventas/facturacion" element={<PrivateRoute><FacturacionPage /></PrivateRoute>} />
               <Route path="ventas/informes" element={<PrivateRoute><InformesVentasPage /></PrivateRoute>} />
-              <Route path="ventas/presupuestoFinanciamiento/:id" element={<PrivateRoute><PresupuestosFinanciamientoPage /></PrivateRoute>} />
-              <Route path="ventas/presupuestoFinanciamiento" element={<PrivateRoute><PresupuestosFinanciamientoPage /></PrivateRoute>} />
+             
               {/* CLIENTES Module */}
               <Route path="clientes/gestion" element={<PrivateRoute><ClientesPage /></PrivateRoute>} />
               <Route path="clientes/nuevo" element={<PrivateRoute><ClienteFormPage /></PrivateRoute>} />
