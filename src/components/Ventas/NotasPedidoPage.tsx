@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Button,
@@ -24,9 +24,6 @@ import {
   TableRow,
   Tooltip,
   Divider,
-  FormControl,
-  InputLabel,
-  Select,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -44,6 +41,7 @@ import type {
   DetalleDocumento 
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
+// Removed useAuth (unused)
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
@@ -60,17 +58,8 @@ const initialConvertForm: ConvertFormData = {
 };
 
 const NotasPedidoPage: React.FC = () => {
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.PENDIENTE);
-  const [clientFilter, setClientFilter] = useState<string>('all');
-  const [dateFromFilter, setDateFromFilter] = useState<string>('');
-  const [dateToFilter, setDateToFilter] = useState<string>('');
-
-  // Main data states
   const [notasPedido, setNotasPedido] = useState<DocumentoComercial[]>([]);
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
-  const [clientes, setClientes] = useState<{ id: number; nombre: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,26 +85,12 @@ const NotasPedidoPage: React.FC = () => {
         }),
       ]);
 
-      const notasArray = Array.isArray(notasData) ? notasData : [];
-      setNotasPedido(notasArray);
-      
+      setNotasPedido(Array.isArray(notasData) ? notasData : []);
       // Backend requires PRESUPUESTO in PENDIENTE state for conversion
       const pendientes = Array.isArray(presupuestosData)
         ? presupuestosData.filter(p => p.estado === EstadoDocumentoEnum.PENDIENTE)
         : [];
       setPresupuestos(pendientes);
-
-      // Extract unique clients from notas de pedido
-      const uniqueClients = new Map<number, { id: number; nombre: string }>();
-      notasArray.forEach((nota: DocumentoComercial) => {
-        if (nota.clienteId && nota.clienteNombre) {
-          uniqueClients.set(nota.clienteId, {
-            id: nota.clienteId,
-            nombre: nota.clienteNombre,
-          });
-        }
-      });
-      setClientes(Array.from(uniqueClients.values()));
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Error al cargar los datos");
@@ -127,24 +102,6 @@ const NotasPedidoPage: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  // Filter notas de pedido
-  const filteredNotasPedido = useMemo(() => {
-    return notasPedido.filter((nota) => {
-      const matchesSearch = searchTerm === '' ||
-        nota.numeroDocumento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        nota.clienteNombre?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = !statusFilter || nota.estado === statusFilter;
-      const matchesClient = clientFilter === 'all' || nota.clienteId?.toString() === clientFilter;
-      
-      const fecha = nota.fechaEmision ? new Date(nota.fechaEmision) : null;
-      const matchesDateFrom = !dateFromFilter || (fecha && fecha >= new Date(dateFromFilter));
-      const matchesDateTo = !dateToFilter || (fecha && fecha <= new Date(dateToFilter));
-      
-      return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
-    });
-  }, [notasPedido, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter]);
 
   const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (estado) {
@@ -171,8 +128,9 @@ const NotasPedidoPage: React.FC = () => {
       EFECTIVO: "Efectivo",
       TARJETA_CREDITO: "Tarjeta de Crédito",
       TARJETA_DEBITO: "Tarjeta de Débito",
-      TRANSFERENCIA_BANCARIA: "Transferencia Bancaria",
-      TRANSFERENCIA: "Transferencia Bancaria",
+  TRANSFERENCIA_BANCARIA: "Transferencia Bancaria",
+  // Backward-compatibility if old values slip through
+  TRANSFERENCIA: "Transferencia Bancaria",
       CHEQUE: "Cheque",
     };
     return labels[metodo] || metodo;
@@ -203,17 +161,7 @@ const NotasPedidoPage: React.FC = () => {
   const handlePresupuestoSelect = useCallback((presupuestoId: string) => {
     const presupuesto = presupuestos.find(p => p.id.toString() === presupuestoId);
     setSelectedPresupuesto(presupuesto || null);
-    
-    // If presupuesto has tipoIva defined, set it in the form
-    if (presupuesto && presupuesto.tipoIva) {
-      setConvertForm(prev => ({ 
-        ...prev, 
-        presupuestoId,
-        tipoIva: presupuesto.tipoIva as TipoIva
-      }));
-    } else {
-      setConvertForm(prev => ({ ...prev, presupuestoId }));
-    }
+    setConvertForm(prev => ({ ...prev, presupuestoId }));
   }, [presupuestos]);
 
   const handleConvertToNotaPedido = useCallback(async () => {
@@ -275,7 +223,10 @@ const NotasPedidoPage: React.FC = () => {
       fetchData();
     } catch (err: any) {
       console.error("Error converting to factura:", err);
-      const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
+      let errorMessage = "Error al convertir a factura";
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
       setError(errorMessage);
     }
   }, [fetchData]);
@@ -316,73 +267,6 @@ const NotasPedidoPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Filtros */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box display="flex" alignItems="center" gap={1} mb={2}>
-            <Typography variant="h6">Filtros</Typography>
-          </Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' }, gap: 2 }}>
-            <TextField
-              fullWidth
-              label="Buscar"
-              variant="outlined"
-              size="small"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por número, cliente..."
-            />
-            <FormControl fullWidth size="small">
-              <InputLabel>Estado</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Estado"
-                onChange={(e) => setStatusFilter(e.target.value as EstadoDocumento)}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
-                <MenuItem value={EstadoDocumentoEnum.APROBADO}>Aprobado</MenuItem>
-                <MenuItem value={EstadoDocumentoEnum.PAGADA}>Pagada</MenuItem>
-                <MenuItem value={EstadoDocumentoEnum.VENCIDA}>Vencida</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small">
-              <InputLabel>Cliente</InputLabel>
-              <Select
-                value={clientFilter}
-                label="Cliente"
-                onChange={(e) => setClientFilter(e.target.value)}
-              >
-                <MenuItem value="all">Todos</MenuItem>
-                {clientes.map((client) => (
-                  <MenuItem key={client.id} value={client.id.toString()}>
-                    {client.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              fullWidth
-              label="Desde"
-              type="date"
-              size="small"
-              value={dateFromFilter}
-              onChange={(e) => setDateFromFilter(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              fullWidth
-              label="Hasta"
-              type="date"
-              size="small"
-              value={dateToFilter}
-              onChange={(e) => setDateToFilter(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardContent>
           <TableContainer component={Paper}>
@@ -400,7 +284,7 @@ const NotasPedidoPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredNotasPedido.map((nota) => (
+                {notasPedido.map((nota) => (
                   <TableRow key={nota.id}>
                     <TableCell>{nota.numeroDocumento}</TableCell>
                     <TableCell>{nota.clienteNombre}</TableCell>
@@ -460,7 +344,7 @@ const NotasPedidoPage: React.FC = () => {
             </Table>
           </TableContainer>
 
-          {filteredNotasPedido.length === 0 && (
+          {notasPedido.length === 0 && (
             <Box sx={{ textAlign: "center", py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No hay notas de pedido registradas
@@ -525,11 +409,6 @@ const NotasPedidoPage: React.FC = () => {
                 <Typography variant="body2">
                   Total: ${selectedPresupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
-                {selectedPresupuesto.tipoIva && (
-                  <Typography variant="body2">
-                    Tipo de IVA: {getTipoIvaLabel(selectedPresupuesto.tipoIva as TipoIva)}
-                  </Typography>
-                )}
                 {selectedPresupuesto.observaciones && (
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     Observaciones: {selectedPresupuesto.observaciones}
@@ -568,8 +447,6 @@ const NotasPedidoPage: React.FC = () => {
               }))}
               margin="normal"
               required
-              disabled={selectedPresupuesto?.tipoIva != null}
-              helperText={selectedPresupuesto?.tipoIva ? "Tipo de IVA definido en el presupuesto" : "Seleccione el tipo de IVA"}
             >
               <MenuItem value="IVA_21">IVA 21%</MenuItem>
               <MenuItem value="IVA_10_5">IVA 10.5%</MenuItem>
@@ -742,4 +619,3 @@ const NotasPedidoPage: React.FC = () => {
 };
 
 export default NotasPedidoPage;
-

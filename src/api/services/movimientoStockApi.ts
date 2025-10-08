@@ -47,8 +47,7 @@ export const movimientoStockApi = {
   },
 
   // Create new movimiento
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create: async (movimiento: MovimientoStock | any): Promise<MovimientoStock> => {
+  create: async (movimiento: MovimientoStock): Promise<MovimientoStock> => {
     const response = await api.post('/api/movimientos-stock', movimiento);
     return response.data;
   },

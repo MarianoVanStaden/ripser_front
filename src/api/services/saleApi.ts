@@ -4,25 +4,25 @@ import type { Sale, CreateSaleRequest } from '../../types';
 export const saleApi = {
   // Get all sales
   getAll: async (): Promise<Sale[]> => {
-    const response = await api.get('/api//ventas');
+    const response = await api.get('/api/ventas'); // <-- updated to match backend
     return response.data;
   },
 
   // Get sale by ID
   getById: async (id: number): Promise<Sale> => {
-    const response = await api.get(`/api/ventas/${id}`);
+    const response = await api.get(`/api/ventas/${id}`); // <-- updated
     return response.data;
   },
 
   // Create new sale
   create: async (sale: CreateSaleRequest): Promise<Sale> => {
-    const response = await api.post('/api//ventas', sale);
+    const response = await api.post('/api/ventas', sale); // <-- updated
     return response.data;
   },
 
   // Update sale
   update: async (id: number, sale: Partial<CreateSaleRequest>): Promise<Sale> => {
-    const response = await api.put(`/api/ventas/${id}`, sale);
+    const response = await api.put(`/api/ventas/${id}`, sale); // <-- updated
     return response.data;
   },
 
@@ -33,7 +33,7 @@ export const saleApi = {
 
   // Get sales by client
   getByClient: async (clientId: number): Promise<Sale[]> => {
-    const response = await api.get(`/api/ventas/cliente/${clientId}`);
+    const response = await api.get(`/api/ventas/cliente/${clientId}`); // <-- updated
     return response.data;
   },
 

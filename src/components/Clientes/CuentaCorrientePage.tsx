@@ -145,19 +145,16 @@ const CuentaCorrientePage: React.FC = () => {
 
     try {
       setLoading(true);
-      // Create payload matching CreateMovimientoPayload interface
+      // El backend espera clienteId, no cliente
       const payload = {
+        ...newMovimiento,
         clienteId: selectedCliente.id,
         fecha: new Date().toISOString(),
-        tipo: newMovimiento.tipo,
-        importe: newMovimiento.importe,
-        concepto: newMovimiento.concepto,
-        numeroComprobante: newMovimiento.numeroComprobante || undefined,
       };
 
       await cuentaCorrienteApi.create(payload);
 
-      // Reset form and close dialog
+      // Reset form y cerrar diálogo
       setNewMovimiento({
         tipo: 'CREDITO',
         importe: 0,
@@ -166,19 +163,7 @@ const CuentaCorrientePage: React.FC = () => {
       });
       setOpenMovimientoDialog(false);
 
-      // Refresh both the movements AND the client data to get updated saldoActual
-      const [movimientosData, clienteActualizado] = await Promise.all([
-        cuentaCorrienteApi.getByClienteId(selectedCliente.id),
-        clienteApi.getById(selectedCliente.id)
-      ]);
-
-      setMovimientos(movimientosData);
-      setSelectedCliente(clienteActualizado);
-
-      // Also update the cliente in the clientes array
-      setClientes(prevClientes =>
-        prevClientes.map(c => c.id === clienteActualizado.id ? clienteActualizado : c)
-      );
+      await loadData();
     } catch (err) {
       setError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
       console.error('Error saving movement:', err);

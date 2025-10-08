@@ -61,7 +61,6 @@ import { compraApi} from '../../api/services/compraApi';
 import type { ProveedorDTO, CompraDTO, CreateCompraDTO } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
-import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import type { OrdenCompra, ProductoDTO} from '../../types';
 dayjs.locale('es');
 class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
@@ -124,15 +123,9 @@ const loadProveedores = async () => {
     console.log('Proveedores:', data); // Debug log
     setProveedores(data);
     setError(null);
-  } catch (err: any) {
-    if (err.response?.status === 403) {
-      setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-    } else if (err.response?.status === 401) {
-      setError('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
-    } else {
-      setError('Error al cargar los proveedores');
-    }
-    console.error('Error loading proveedores:', err);
+  } catch (err) {
+    setError('Error al cargar los proveedores');
+    console.error(err);
   } finally {
     setLoading(false);
   }
@@ -178,15 +171,9 @@ const loadCompras = async () => {
       })
     );
     setError(null);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error loading compras:', err);
-    if (err.response?.status === 403) {
-      setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-    } else if (err.response?.status === 401) {
-      setError('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
-    } else {
-      setError('Error al cargar las compras');
-    }
+    setError('Error al cargar las compras');
   } finally {
     setLoading(false);
   }
@@ -197,17 +184,11 @@ const loadProductos = async () => {
     setLoading(true);
     const data = await productApi.getAll();
     console.log('Productos response:', data); // Log the full response
-    setProductos(data || []); // productApi.getAll ya retorna data.content
+    setProductos(data.content || data); // Fallback to data if content is not present
     setError(null);
-  } catch (err: any) {
-    console.error('Error loading productos:', err);
-    if (err.response?.status === 403) {
-      setError('No tiene permisos para acceder a esta información. Por favor, inicie sesión nuevamente.');
-    } else if (err.response?.status === 401) {
-      setError('Su sesión ha expirado. Por favor, inicie sesión nuevamente.');
-    } else {
-      setError('Error al cargar los productos');
-    }
+  } catch (err) {
+    setError('Error al cargar los productos');
+    console.error(err);
   } finally {
     setLoading(false);
   }
@@ -318,88 +299,6 @@ const handleCrearOrden = async () => {
     alert('Error al crear la orden');
   }
 };
-// Function to create new products
-const createNewProduct = async (item: CompraDTO['detalles'][0]): Promise<number> => {
-  try {
-    const newProduct = await productApi.create({
-      nombre: item.nombreProductoTemporal || 'Producto sin nombre',
-      descripcion: item.descripcionProductoTemporal || item.nombreProductoTemporal || '',
-      codigo: item.codigoProductoTemporal || `PROD-${Date.now()}`,
-      precio: item.costoUnitario,
-      stockActual: 0, // Initial stock is 0, will be updated via stock movement
-      stockMinimo: 0,
-      categoriaProductoId: 1, // You might want to make this configurable
-    });
-    console.log('Created new product:', newProduct);
-    return newProduct.id;
-  } catch (error) {
-    console.error('Error creating new product:', error);
-    throw new Error(`No se pudo crear el producto: ${item.nombreProductoTemporal || 'desconocido'}`);
-  }
-};
-
-// Function to create stock movements for received items
-const createStockMovementsForReceivedItems = async (compra: CompraDTO): Promise<void> => {
-  try {
-    console.log('Creating stock movements for compra:', compra.id);
-
-    for (const detalle of compra.detalles) {
-      let productoId = detalle.productoId;
-
-      // If it's a new product, create it first
-      if (detalle.esProductoNuevo && !productoId) {
-        productoId = await createNewProduct(detalle);
-      }
-
-      if (!productoId) {
-        console.warn('Skipping stock movement - no productoId for detalle:', detalle);
-        continue;
-      }
-
-      // Get current stock to calculate stockAnterior and stockActual
-      let stockAnterior = 0;
-      let producto;
-      try {
-        producto = await productApi.getById(productoId);
-        stockAnterior = producto.stockActual || 0;
-      } catch (err) {
-        console.warn('Could not get current stock for producto:', productoId, err);
-        // If we can't get the product, skip this movement
-        continue;
-      }
-
-      const stockActual = stockAnterior + detalle.cantidad;
-
-      // Create stock movement for the product
-      // The backend expects the full producto object (ManyToOne relationship)
-      const movimiento = {
-        producto: {
-          id: productoId
-        },
-        tipo: 'ENTRADA' as const,
-        cantidad: detalle.cantidad,
-        stockAnterior: stockAnterior,
-        stockActual: stockActual,
-        concepto: 'Compra recibida',
-        numeroComprobante: compra.numero || `COMPRA-${compra.id}`,
-        fecha: new Date().toISOString(),
-      };
-
-      await movimientoStockApi.create(movimiento);
-      console.log('Stock movement created for producto:', productoId, {
-        stockAnterior,
-        cantidad: detalle.cantidad,
-        stockActual
-      });
-    }
-
-    console.log('All stock movements created successfully');
-  } catch (error) {
-    console.error('Error creating stock movements:', error);
-    throw new Error('Error al actualizar el stock de los productos');
-  }
-};
-
 const handleSaveOrden = async () => {
   try {
     setLoading(true);
@@ -425,29 +324,23 @@ const handleSaveOrden = async () => {
       return;
     }
 
-    // Check if estado is changing to RECIBIDA
-    const wasNotRecibida = isEditMode && selectedOrden?.estado !== 'RECIBIDA';
-    const isNowRecibida = newOrden.estado === 'RECIBIDA';
-    const shouldUpdateStock = isNowRecibida && (!isEditMode || wasNotRecibida);
-
     const compraPayload: CreateCompraDTO = {
       proveedorId: parseInt(newOrden.supplierId),
       fechaEntrega: newOrden.fechaEntregaEstimada.format('YYYY-MM-DDTHH:mm:ss'),
       observaciones: newOrden.observaciones,
-      estado: newOrden.estado,
+      estado: newOrden.estado, // Add estado to the payload
       detalles: newOrden.items.map((item) => ({
         productoId: item.productoId ? parseInt(item.productoId) : undefined,
-        nombreProductoTemporal: item.esProductoNuevo ? item.nombreProductoTemporal : undefined,
-        descripcionProductoTemporal: item.esProductoNuevo ? (item.descripcionProductoTemporal || item.nombreProductoTemporal) : undefined,
-        codigoProductoTemporal: item.esProductoNuevo ? item.codigoProductoTemporal : undefined,
-        esProductoNuevo: item.esProductoNuevo,
+        nombreProductoTemporal: item.nombreProductoTemporal || undefined,
+        descripcionProductoTemporal: item.descripcionProductoTemporal || item.nombreProductoTemporal || undefined,
+        codigoProductoTemporal: item.codigoProductoTemporal || undefined,
+        esProductoNuevo: !!item.nombreProductoTemporal,
         cantidad: item.cantidad,
         costoUnitario: item.precioUnitario,
       })),
     };
 
-    console.log('Compra Payload:', JSON.stringify(compraPayload, null, 2));
-    console.log('Should update stock:', shouldUpdateStock);
+    console.log('Compra Payload:', JSON.stringify(compraPayload, null, 2)); // Debug log
 
     let createdOrUpdatedCompra;
     if (isEditMode && selectedOrden?.id) {
@@ -458,14 +351,7 @@ const handleSaveOrden = async () => {
       setCompras([createdOrUpdatedCompra, ...compras]);
     }
 
-    // If estado changed to RECIBIDA, create stock movements
-    if (shouldUpdateStock) {
-      console.log('Estado changed to RECIBIDA, updating stock...');
-      await createStockMovementsForReceivedItems(createdOrUpdatedCompra);
-    }
-
     await loadCompras();
-    await loadProductos(); // Reload products to show updated stock
     setOpenOrdenDialog(false);
     setIsEditMode(false);
     setSelectedOrden(null);
@@ -473,7 +359,7 @@ const handleSaveOrden = async () => {
       supplierId: '',
       fechaEntregaEstimada: dayjs().add(15, 'day'),
       observaciones: '',
-      estado: 'PENDIENTE',
+      estado: 'PENDIENTE', // Reset estado
       items: [{
         productoId: '',
         nombreProductoTemporal: '',
@@ -486,8 +372,7 @@ const handleSaveOrden = async () => {
     });
     setError(null);
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-    setError(`Error al guardar la compra: ${errorMessage}`);
+    setError(`Error al guardar la compra: ${err.message}`);
     console.error('Error saving compra:', err);
   } finally {
     setLoading(false);
@@ -884,7 +769,7 @@ const handleDeleteCompra = async (id: number) => {
 
 
 
-
+        // TODO--CORREGIR EDICION DE ESTADO DE COMPRA
 <TextField
   fullWidth
   select
@@ -904,7 +789,7 @@ const handleDeleteCompra = async (id: number) => {
       <DatePicker
         label="Fecha de Entrega Estimada"
         value={newOrden.fechaEntregaEstimada}
-        onChange={(date) => setNewOrden({ ...newOrden, fechaEntregaEstimada: (date as Dayjs) || dayjs() })}
+        onChange={(date) => setNewOrden({ ...newOrden, fechaEntregaEstimada: date || dayjs() })}
         slotProps={{ textField: { fullWidth: true, margin: 'normal' } }}
       />
 
@@ -927,79 +812,51 @@ const handleDeleteCompra = async (id: number) => {
   freeSolo
   options={productos}
   getOptionLabel={(option) =>
-    typeof option === 'string' ? option : `${option.nombre} (Stock: ${option.stockActual})`
+    typeof option === 'string' ? option : option.nombre || ''
   }
-  getOptionKey={(option) =>
-    typeof option === 'string' ? option : option.id.toString()
-  }
-  isOptionEqualToValue={(option, value) =>
-    typeof option === 'object' && typeof value === 'object' && option.id === value.id
-  }
-  value={
-    item.productoId
-      ? productos.find((p) => p.id.toString() === item.productoId) || null
-      : null
-  }
-  inputValue={item.nombreProductoTemporal || ''}
+  value={item.nombreProductoTemporal || productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''}
   onChange={(_, newValue) => {
     const updatedItems = [...newOrden.items];
     if (typeof newValue === 'string') {
-      // User typed a new product name
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: '',
         nombreProductoTemporal: newValue,
         descripcionProductoTemporal: newValue,
         esProductoNuevo: true,
-        precioUnitario: updatedItems[index].precioUnitario || 0,
+        precioUnitario: updatedItems[index].precioUnitario || 0, // Preserve existing price
       };
     } else if (newValue && newValue.id) {
-      // User selected an existing product
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: newValue.id.toString(),
         nombreProductoTemporal: '',
         descripcionProductoTemporal: newValue.nombre,
         esProductoNuevo: false,
-        precioUnitario: newValue.precio || updatedItems[index].precioUnitario || 0,
+        precioUnitario: newValue.precio || updatedItems[index].precioUnitario || 0, // Use product price or preserve existing
       };
     } else {
-      // User cleared the selection
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: '',
         nombreProductoTemporal: '',
         descripcionProductoTemporal: '',
         esProductoNuevo: false,
-        precioUnitario: updatedItems[index].precioUnitario || 0,
+        precioUnitario: updatedItems[index].precioUnitario || 0, // Preserve existing price
       };
     }
     setNewOrden({ ...newOrden, items: updatedItems });
   }}
   onInputChange={(_, newInputValue, reason) => {
-    // Only update when user is typing, not when selecting from dropdown
     if (reason === 'input') {
-      const updatedItems = [...newOrden.items];
-      // Don't override if a product was already selected
-      if (!updatedItems[index].productoId) {
-        updatedItems[index] = {
-          ...updatedItems[index],
-          nombreProductoTemporal: newInputValue,
-          descripcionProductoTemporal: newInputValue,
-          esProductoNuevo: !!newInputValue && newInputValue.trim() !== '',
-          productoId: '',
-          precioUnitario: updatedItems[index].precioUnitario || 0,
-        };
-        setNewOrden({ ...newOrden, items: updatedItems });
-      }
-    } else if (reason === 'clear') {
       const updatedItems = [...newOrden.items];
       updatedItems[index] = {
         ...updatedItems[index],
+        nombreProductoTemporal: newInputValue,
+        descripcionProductoTemporal: newInputValue,
+        esProductoNuevo: !!newInputValue && newInputValue.trim() !== '',
         productoId: '',
-        nombreProductoTemporal: '',
-        descripcionProductoTemporal: '',
-        esProductoNuevo: false,
+        precioUnitario: updatedItems[index].precioUnitario || 0, // Preserve existing price
       };
       setNewOrden({ ...newOrden, items: updatedItems });
     }
@@ -1007,10 +864,9 @@ const handleDeleteCompra = async (id: number) => {
   renderInput={(params) => (
     <TextField
       {...params}
-      label="Producto (selecciona existente o escribe nuevo)"
+      label="Producto"
       required
       sx={{ flex: 2, minWidth: 200 }}
-      helperText={item.esProductoNuevo ? 'Producto nuevo' : item.productoId ? 'Producto existente' : ''}
     />
   )}
 />

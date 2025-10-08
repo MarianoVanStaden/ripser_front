@@ -4,48 +4,48 @@ import type { StockMovement, Warehouse, Vehicle, Trip, Delivery, CreateStockMove
 export const stockMovementApi = {
   // Get all stock movements
   getAll: async (): Promise<StockMovement[]> => {
-    const response = await api.get('/stock-movements');
+    const response = await api.get('/api/stock-movements');
     return response.data;
   },
 
   // Get stock movement by ID
   getById: async (id: number): Promise<StockMovement> => {
-    const response = await api.get(`/stock-movements/${id}`);
+    const response = await api.get(`/api/stock-movements/${id}`);
     return response.data;
   },
 
   // Create new stock movement
   create: async (movement: CreateStockMovementRequest): Promise<StockMovement> => {
-    const response = await api.post('/stock-movements', movement);
+    const response = await api.post('/api/stock-movements', movement);
     return response.data;
   },
 
   // Update stock movement
   update: async (id: number, movement: Partial<CreateStockMovementRequest>): Promise<StockMovement> => {
-    const response = await api.put(`/stock-movements/${id}`, movement);
+    const response = await api.put(`/api/stock-movements/${id}`, movement);
     return response.data;
   },
 
   // Delete stock movement
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/stock-movements/${id}`);
+    await api.delete(`/api/stock-movements/${id}`);
   },
 
   // Get movements by product
   getByProduct: async (productId: number): Promise<StockMovement[]> => {
-    const response = await api.get(`/stock-movements/product/${productId}`);
+    const response = await api.get(`/api/stock-movements/product/${productId}`);
     return response.data;
   },
 
   // Get movements by date range
   getByDateRange: async (startDate: string, endDate: string): Promise<StockMovement[]> => {
-    const response = await api.get(`/stock-movements/date-range?start=${startDate}&end=${endDate}`);
+    const response = await api.get(`/api/stock-movements/date-range?start=${startDate}&end=${endDate}`);
     return response.data;
   },
 
   // Get movements by type
   getByType: async (type: string): Promise<StockMovement[]> => {
-    const response = await api.get(`/stock-movements/type/${type}`);
+    const response = await api.get(`/api/stock-movements/type/${type}`);
     return response.data;
   }
 };
@@ -53,36 +53,36 @@ export const stockMovementApi = {
 export const warehouseApi = {
   // Get all warehouses
   getAll: async (): Promise<Warehouse[]> => {
-    const response = await api.get('/warehouses');
+    const response = await api.get('/api/warehouses');
     return response.data;
   },
 
   // Get warehouse by ID
   getById: async (id: number): Promise<Warehouse> => {
-    const response = await api.get(`/warehouses/${id}`);
+    const response = await api.get(`/api/warehouses/${id}`);
     return response.data;
   },
 
   // Create new warehouse
   create: async (warehouse: CreateWarehouseRequest): Promise<Warehouse> => {
-    const response = await api.post('/warehouses', warehouse);
+    const response = await api.post('/api/warehouses', warehouse);
     return response.data;
   },
 
   // Update warehouse
   update: async (id: number, warehouse: Partial<CreateWarehouseRequest>): Promise<Warehouse> => {
-    const response = await api.put(`/warehouses/${id}`, warehouse);
+    const response = await api.put(`/api/warehouses/${id}`, warehouse);
     return response.data;
   },
 
   // Delete warehouse
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/warehouses/${id}`);
+    await api.delete(`/api/warehouses/${id}`);
   },
 
   // Get active warehouses
   getActive: async (): Promise<Warehouse[]> => {
-    const response = await api.get('/warehouses/active');
+    const response = await api.get('/api/warehouses/active');
     return response.data;
   }
 };
@@ -90,36 +90,36 @@ export const warehouseApi = {
 export const vehicleApi = {
   // Get all vehicles
   getAll: async (): Promise<Vehicle[]> => {
-    const response = await api.get('/vehicles');
+    const response = await api.get('/api/vehicles');
     return response.data;
   },
 
   // Get vehicle by ID
   getById: async (id: number): Promise<Vehicle> => {
-    const response = await api.get(`/vehicles/${id}`);
+    const response = await api.get(`/api/vehicles/${id}`);
     return response.data;
   },
 
   // Create new vehicle
   create: async (vehicle: CreateVehicleRequest): Promise<Vehicle> => {
-    const response = await api.post('/vehicles', vehicle);
+    const response = await api.post('/api/vehicles', vehicle);
     return response.data;
   },
 
   // Update vehicle
   update: async (id: number, vehicle: Partial<CreateVehicleRequest>): Promise<Vehicle> => {
-    const response = await api.put(`/vehicles/${id}`, vehicle);
+    const response = await api.put(`/api/vehicles/${id}`, vehicle);
     return response.data;
   },
 
   // Delete vehicle
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/vehicles/${id}`);
+    await api.delete(`/api/vehicles/${id}`);
   },
 
   // Get available vehicles
   getAvailable: async (): Promise<Vehicle[]> => {
-    const response = await api.get('/vehicles/available');
+    const response = await api.get('/api/vehicles/available');
     return response.data;
   }
 };
@@ -127,42 +127,42 @@ export const vehicleApi = {
 export const tripApi = {
   // Get all trips
   getAll: async (): Promise<Trip[]> => {
-    const response = await api.get('/trips');
+    const response = await api.get('/api/trips');
     return response.data;
   },
 
   // Get trip by ID
   getById: async (id: number): Promise<Trip> => {
-    const response = await api.get(`/trips/${id}`);
+    const response = await api.get(`/api/trips/${id}`);
     return response.data;
   },
 
   // Create new trip
   create: async (trip: CreateTripRequest): Promise<Trip> => {
-    const response = await api.post('/trips', trip);
+    const response = await api.post('/api/trips', trip);
     return response.data;
   },
 
   // Update trip
   update: async (id: number, trip: Partial<CreateTripRequest>): Promise<Trip> => {
-    const response = await api.put(`/trips/${id}`, trip);
+    const response = await api.put(`/api/trips/${id}`, trip);
     return response.data;
   },
 
   // Delete trip
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/trips/${id}`);
+    await api.delete(`/api/trips/${id}`);
   },
 
   // Get trips by vehicle
   getByVehicle: async (vehicleId: number): Promise<Trip[]> => {
-    const response = await api.get(`/trips/vehicle/${vehicleId}`);
+    const response = await api.get(`/api/trips/vehicle/${vehicleId}`);
     return response.data;
   },
 
   // Get trips by date
   getByDate: async (date: string): Promise<Trip[]> => {
-    const response = await api.get(`/trips/date/${date}`);
+    const response = await api.get(`/api/trips/date/${date}`);
     return response.data;
   }
 };
@@ -170,42 +170,42 @@ export const tripApi = {
 export const deliveryApi = {
   // Get all deliveries
   getAll: async (): Promise<Delivery[]> => {
-    const response = await api.get('/deliveries');
+    const response = await api.get('/api/deliveries');
     return response.data;
   },
 
   // Get delivery by ID
   getById: async (id: number): Promise<Delivery> => {
-    const response = await api.get(`/deliveries/${id}`);
+    const response = await api.get(`/api/deliveries/${id}`);
     return response.data;
   },
 
   // Create new delivery
   create: async (delivery: CreateDeliveryRequest): Promise<Delivery> => {
-    const response = await api.post('/deliveries', delivery);
+    const response = await api.post('/api/deliveries', delivery);
     return response.data;
   },
 
   // Update delivery
   update: async (id: number, delivery: Partial<CreateDeliveryRequest>): Promise<Delivery> => {
-    const response = await api.put(`/deliveries/${id}`, delivery);
+    const response = await api.put(`/api/deliveries/${id}`, delivery);
     return response.data;
   },
 
   // Delete delivery
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/deliveries/${id}`);
+    await api.delete(`/api/deliveries/${id}`);
   },
 
   // Get deliveries by trip
   getByTrip: async (tripId: number): Promise<Delivery[]> => {
-    const response = await api.get(`/deliveries/trip/${tripId}`);
+    const response = await api.get(`/api/deliveries/trip/${tripId}`);
     return response.data;
   },
 
   // Get deliveries by status
   getByStatus: async (status: string): Promise<Delivery[]> => {
-    const response = await api.get(`/deliveries/status/${status}`);
+    const response = await api.get(`/api/deliveries/status/${status}`);
     return response.data;
   }
 };

@@ -67,12 +67,19 @@ const AgendaVisitasPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const [filterEstado, setFilterEstado] = useState<string>('');
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    clienteId: string;
+    fecha: string;
+    hora: string;
+    motivo: string;
+    estado: VisitaAgenda['estado'];
+    observaciones: string;
+  }>({
     clienteId: '',
     fecha: dayjs().format('YYYY-MM-DD'),
     hora: '09:00',
     motivo: '',
-    estado: 'PROGRAMADA' as const,
+    estado: 'PROGRAMADA',
     observaciones: '',
   });
 

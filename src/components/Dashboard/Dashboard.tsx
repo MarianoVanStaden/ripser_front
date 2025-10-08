@@ -20,7 +20,7 @@ import {
   Error as ErrorIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
-import { clientApi, productApi, documentoApi } from '../../api/services';
+import { clientApi, productApi, saleApi } from '../../api/services';
 import RecentActivity from './RecentActivity';
 import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
@@ -33,7 +33,7 @@ interface DashboardStats {
   totalOrders: number;
   totalSales: number;
   monthlySalesAmount: number;
-  monthlySalesCount: number;
+  monthlySalesCount: number; // Added to track number of sales this month
   lowStockProducts: number;
 }
 
@@ -52,40 +52,28 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle }) => (
   <Card sx={{ height: '100%' }}>
-    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+    <CardContent>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <Box
           sx={{
-            p: { xs: 1, sm: 1.25 },
+            p: 1.5,
             borderRadius: 2,
             backgroundColor: color + '20',
-            color,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            '& svg': { fontSize: { xs: 22, sm: 24, md: 26 } },
+            color: color,
+            mr: 2,
           }}
         >
           {icon}
         </Box>
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography
-            variant="h4"
-            component="div"
-            fontWeight="bold"
-            sx={{
-              fontSize: { xs: '1.4rem', sm: '1.6rem', md: '1.75rem' },
-              lineHeight: 1.2,
-              wordBreak: 'break-word',
-            }}
-          >
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="h4" component="div" fontWeight="bold">
             {value}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+          <Typography variant="body2" color="text.secondary">
             {title}
           </Typography>
           {subtitle && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+            <Typography variant="caption" color="text.secondary">
               {subtitle}
             </Typography>
           )}
@@ -127,41 +115,32 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [clients, products, allDocumentos, lowStockProducts] = await Promise.all([
+      const [clients, products, sales, lowStockProducts] = await Promise.all([
         clientApi.getAll().catch((err) => {
           throw new Error(`clientApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
         }),
         productApi.getAll(0, 100).catch((err) => {
           throw new Error(`productApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
         }),
-        documentoApi.getByTipo('FACTURA').catch((err) => {
-          throw new Error(`documentoApi.getByTipo failed: ${err.response?.status} ${err.response?.data}`);
+        saleApi.getAll().catch((err) => {
+          throw new Error(`saleApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
         }),
         productApi.getLowStock().catch((err) => {
           throw new Error(`productApi.getLowStock failed: ${err.response?.status} ${err.response?.data}`);
         }),
       ]);
-
-      // Filter only invoices (FAC-), exclude order notes (NP-)
-      const sales = allDocumentos.filter((doc: any) => {
-        const numeroDoc = doc.numeroDocumento || doc.ventaNumero || '';
-        return numeroDoc.startsWith('FAC-');
-      });
-
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const monthlySales = sales.filter((sale: any) => {
-        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
-        if (!fechaVenta) return false;
-        const saleDate = new Date(fechaVenta);
+      const currentMonth = new Date().getMonth(); // 8 (September)
+      const currentYear = new Date().getFullYear(); // 2025
+      const monthlySales = sales.filter((sale) => {
+        const saleDate = new Date(sale.fechaVenta);
         return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
       });
-      const monthlySalesAmount = monthlySales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
-      const monthlySalesCount = monthlySales.length;
+      const monthlySalesAmount = monthlySales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+      const monthlySalesCount = monthlySales.length; // Count sales for this month
       setStats({
         totalClients: clients.length,
         totalProducts: products.length,
-        totalOrders: sales.length,
+        totalOrders: sales.length, // Use sales as orders
         totalSales: sales.length,
         monthlySalesAmount,
         monthlySalesCount,
@@ -186,7 +165,7 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: { xs: 280, sm: 360, md: 400 }, px: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress />
           <Typography variant="body2" sx={{ mt: 2 }}>
@@ -198,38 +177,14 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box sx={{ px: { xs: 1, sm: 2 }, py: { xs: 1, sm: 2 } }}>
-      {/* Header responsive */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          alignItems: { xs: 'flex-start', md: 'center' },
-          justifyContent: 'space-between',
-          rowGap: 1.5,
-          mb: { xs: 2, sm: 3 },
-        }}
-      >
-        <Typography
-          variant="h4"
-          component="h1"
-          gutterBottom
-          fontWeight="bold"
-          sx={{ m: 0, fontSize: { xs: '1.6rem', sm: '1.8rem', md: '2rem' } }}
-        >
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
           Dashboard
         </Typography>
-
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 1,
-          }}
-        >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {user && (
-            <Typography variant="subtitle1" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            <Typography variant="subtitle1">
               Hola {user.nombre || user.username}
             </Typography>
           )}
@@ -238,7 +193,6 @@ const Dashboard: React.FC = () => {
             label={connectionStatus.connected ? 'Backend Connected' : 'Backend Disconnected'}
             color={connectionStatus.connected ? 'success' : 'error'}
             variant="outlined"
-            sx={{ height: 32 }}
           />
           <Button
             variant="outlined"
@@ -260,7 +214,7 @@ const Dashboard: React.FC = () => {
       </Box>
 
       {!connectionStatus.connected && (
-        <Alert severity="warning" sx={{ mb: { xs: 2, sm: 3 } }}>
+        <Alert severity="warning" sx={{ mb: 3 }}>
           <Typography variant="body2" gutterBottom>
             <strong>Backend Connection Failed:</strong> {connectionStatus.message}
           </Typography>
@@ -281,26 +235,14 @@ const Dashboard: React.FC = () => {
       )}
 
       {error && (
-        <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 } }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
 
       {stats ? (
         <>
-          {/* KPIs responsive */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                lg: 'repeat(4, 1fr)',
-              },
-              gap: { xs: 1.5, sm: 2, md: 3 },
-              mb: { xs: 2, sm: 3, md: 4 },
-            }}
-          >
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3, mb: 4 }}>
             <StatCard
               title="Total de Clientes"
               value={stats.totalClients}
@@ -329,42 +271,15 @@ const Dashboard: React.FC = () => {
             />
           </Box>
 
-          {/* Panels inferiores responsive */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                md: 'repeat(2, 1fr)',
-              },
-              gap: { xs: 1.5, sm: 2, md: 3 },
-            }}
-          >
-            <Paper
-              sx={{
-                p: { xs: 2, sm: 2.5, md: 3 },
-                minHeight: { xs: 240, sm: 280, md: 300 },
-                maxHeight: { md: 380 },
-                overflow: 'auto',
-              }}
-            >
-              <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.05rem', sm: '1.1rem' } }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 3 }}>
+            <Paper sx={{ p: 3, height: 300, overflow: 'auto' }}>
+              <Typography variant="h6" gutterBottom>
                 Recent Activity
               </Typography>
               <RecentActivity />
             </Paper>
-
-            <Paper
-              sx={{
-                p: { xs: 2, sm: 2.5, md: 3 },
-                minHeight: { xs: 240, sm: 280, md: 300 },
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                justifyContent: 'flex-start',
-              }}
-            >
-              <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.05rem', sm: '1.1rem' } }}>
+            <Paper sx={{ p: 3, height: 300, display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'flex-start' }}>
+              <Typography variant="h6" gutterBottom>
                 Quick Actions
               </Typography>
               <QuickActions />
@@ -372,11 +287,11 @@ const Dashboard: React.FC = () => {
           </Box>
         </>
       ) : (
-        <Box sx={{ textAlign: 'center', py: { xs: 5, sm: 6, md: 8 }, px: { xs: 2 } }}>
+        <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             No data available
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Start your backend server to load dashboard data
           </Typography>
           <Button

@@ -47,7 +47,7 @@ import {
   ShowChart as ShowChartIcon,
 } from '@mui/icons-material';
 // Ensure we import named APIs from the barrel; there is no default export for clienteApi
-import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
+import { saleApi, clienteApi, usuarioApi } from '../../api/services';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -86,7 +86,6 @@ const InformeVentasPage = () => {
   const [error, setError] = useState(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState(null);
-  const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
@@ -125,9 +124,9 @@ const loadData = async () => {
   try {
     setLoading(true);
     setError(null);
-
+    
     const [salesResponse, clientsResponse, usuariosResponse] = await Promise.all([
-      documentoApi.getByTipo('FACTURA'),
+      saleApi.getAll(),
       clienteApi.getAll(),
       usuarioApi.getAll(),
     ]);
@@ -140,15 +139,6 @@ const loadData = async () => {
     console.log('Sales data:', salesData);
     console.log('Clients data:', clientsData);
     console.log('Usuarios data:', usuariosData);
-
-    // Filter only invoices (FAC-), exclude order notes (NP-)
-    const facturas = salesData.filter((sale: any) => {
-      const numeroDoc = sale.numeroDocumento || sale.ventaNumero || '';
-      console.log(`Checking sale ${sale.id}: numeroDoc="${numeroDoc}", starts with FAC-? ${numeroDoc.startsWith('FAC-')}`);
-      return numeroDoc.startsWith('FAC-');
-    });
-
-    console.log(`Total sales: ${salesData.length}, Filtered facturas: ${facturas.length}`);
 
     // Debug the usuarios structure
     console.log('=== USUARIOS DEBUG ===');
@@ -209,103 +199,44 @@ const loadData = async () => {
     console.log('Usuario with ID "2":', usuariosMap.get("2"));
 
     // Enrich sales data with client and usuario information
-    const enrichedSales = facturas.map(sale => {
-      // Map cliente - DocumentoComercial has clienteId and clienteNombre
+    const enrichedSales = salesData.map(sale => {
       let cliente = null;
-      if (sale.cliente) {
-        cliente = sale.cliente;
-      } else if (sale.clienteId) {
-        const clienteFromMap = clientsMap.get(sale.clienteId);
-        if (clienteFromMap) {
-          cliente = clienteFromMap;
-        } else if (sale.clienteNombre) {
-          // Create a mock cliente object from clienteNombre
-          const nameParts = sale.clienteNombre.split(' ');
-          cliente = {
-            id: sale.clienteId,
-            nombre: nameParts[0] || sale.clienteNombre,
-            apellido: nameParts.slice(1).join(' ') || '',
-          };
-        }
-      }
-
-      // Map usuario - DocumentoComercial has usuarioId and usuarioNombre
       let usuario = null;
-      if (sale.usuario) {
-        usuario = sale.usuario;
-      } else if (sale.usuarioId && sale.usuarioNombre) {
-        // Create a usuario object from usuarioNombre
-        const nameParts = sale.usuarioNombre.trim().split(/\s+/);
-        usuario = {
-          id: sale.usuarioId,
-          nombre: nameParts[0] || '',
-          apellido: nameParts.slice(1).join(' ') || '',
-          username: sale.usuarioNombre,
-          email: '',
-        };
-      } else if (sale.usuarioId) {
-        // Try to get from map
-        const usuarioFromMap = usuariosMap.get(sale.usuarioId);
-        if (usuarioFromMap) {
-          usuario = usuarioFromMap;
-        }
+
+      // Client lookup
+      if (sale.cliente && typeof sale.cliente === 'object') {
+        cliente = sale.cliente;
+      } else if (sale.clienteId !== undefined && sale.clienteId !== null) {
+        cliente = clientsMap.get(sale.clienteId) || 
+                 clientsMap.get(String(sale.clienteId)) || 
+                 clientsMap.get(parseInt(sale.clienteId));
       }
 
-      // Map detalles to detalleVentas for compatibility
-      const detalleVentas = (sale.detalles || []).map((detalle) => ({
-        ...detalle,
-        producto: {
-          id: detalle.productoId,
-          nombre: detalle.productoNombre || detalle.descripcion || 'Producto desconocido',
-          descripcion: detalle.descripcion || '',
-        },
-      }));
-
-      // Map fechaEmision to fechaVenta for compatibility
-      const fechaVenta = sale.fechaEmision || sale.fecha_venta || sale.fechaVenta;
-
-      // Map numeroDocumento to numeroVenta for compatibility
-      const numeroVenta = sale.numeroDocumento || sale.numero_venta || sale.numeroVenta;
-
-      // Map estado
-      const estado = sale.estado || 'CONFIRMADA';
-
-      // Map observaciones to notas for compatibility
-      const notas = sale.observaciones || sale.notas;
-
-      // Preserve metodoPago from the backend
-      const metodoPago = sale.metodoPago || sale.metodo_pago;
+      // Usuario lookup
+      if (sale.usuario && typeof sale.usuario === 'object') {
+        usuario = sale.usuario;
+      } else if (sale.usuarioId !== undefined && sale.usuarioId !== null) {
+        const uid = sale.usuarioId;
+        
+        // Try different formats
+        usuario = usuariosMap.get(uid) || 
+                 usuariosMap.get(String(uid)) || 
+                 usuariosMap.get(parseInt(uid));
+        
+        console.log(`Sale ${sale.id} - Looking for usuario ${uid}: ${usuario ? 'FOUND' : 'NOT FOUND'}`);
+      }
 
       return {
         ...sale,
         cliente,
         usuario,
-        detalleVentas,
-        fechaVenta,
-        numeroVenta,
-        estado,
-        notas,
-        metodoPago,
+        metodoPago: sale.metodoPago || sale.metodo_pago || 'CASH',
       };
     });
 
     setSales(enrichedSales);
     setClients(clientsData);
     setUsuarios(usuariosData);
-
-    // Load opciones de financiamiento for each factura
-    const opcionesMap = {};
-    for (const sale of enrichedSales) {
-      try {
-        const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(sale.id);
-        if (opciones && opciones.length > 0) {
-          opcionesMap[sale.id] = opciones;
-        }
-      } catch (err) {
-        console.warn(`No se pudieron cargar las opciones de financiamiento para la factura ${sale.id}:`, err);
-      }
-    }
-    setOpcionesFinanciamiento(opcionesMap);
 
   } catch (err) {
     console.error('Error loading data:', err);
@@ -1125,55 +1056,6 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 <Alert severity="info">
                   No hay productos asociados a esta venta
                 </Alert>
-              )}
-
-              {/* Opciones de Financiamiento */}
-              {opcionesFinanciamiento[viewingSale.id] && opcionesFinanciamiento[viewingSale.id].length > 0 && (
-                <>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="subtitle2" color="text.secondary" mb={2}>
-                    Opciones de Financiamiento
-                  </Typography>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Opción</TableCell>
-                          <TableCell>Método de Pago</TableCell>
-                          <TableCell align="center">Cuotas</TableCell>
-                          <TableCell align="right">Tasa (%)</TableCell>
-                          <TableCell align="right">Monto Total</TableCell>
-                          <TableCell align="right">Monto Cuota</TableCell>
-                          <TableCell align="center">Seleccionada</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {opcionesFinanciamiento[viewingSale.id].map((opcion, index) => (
-                          <TableRow key={opcion.id || index}>
-                            <TableCell>
-                              <Typography variant="body2" fontWeight={opcion.esSeleccionada ? 'bold' : 'normal'}>
-                                {opcion.nombre}
-                              </Typography>
-                              {opcion.descripcion && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {opcion.descripcion}
-                                </Typography>
-                              )}
-                            </TableCell>
-                            <TableCell>{getPaymentMethodLabel(opcion.metodoPago)}</TableCell>
-                            <TableCell align="center">{opcion.cantidadCuotas}</TableCell>
-                            <TableCell align="right">{opcion.tasaInteres}%</TableCell>
-                            <TableCell align="right">${opcion.montoTotal?.toLocaleString()}</TableCell>
-                            <TableCell align="right">${opcion.montoCuota?.toLocaleString()}</TableCell>
-                            <TableCell align="center">
-                              {opcion.esSeleccionada && <Chip label="Sí" color="success" size="small" />}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </>
               )}
 
               <Box mt={3} display="flex" justifyContent="space-between" alignItems="center">

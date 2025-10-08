@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
+  AppBar,
   Box,
   CssBaseline,
   Toolbar,
+  Typography,
   useTheme,
   useMediaQuery,
   Fab,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import LayoutWrapper from './LayoutWrapper';
+import CommandPalette from './CommandPalette';
+import SearchIcon from '@mui/icons-material/Search';
 import ScrollToTopButton from './ScrollToTopButton';
-import CommandPalette from './CommandPalette'; // Make sure this component exists
-
-
 
 const Layout: React.FC = () => {
   const theme = useTheme();
@@ -34,21 +35,25 @@ const Layout: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <Sidebar 
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        onNavigate={handleNavigation}
-      />
-      <Box
-        component="main"
-        sx={{ flexGrow: 1, p: 3 }}
-      >
+      <Sidebar />
+      <LayoutWrapper>
         <Toolbar />
         <Outlet />
-      </Box>
+      </LayoutWrapper>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <Fab
         color="primary"

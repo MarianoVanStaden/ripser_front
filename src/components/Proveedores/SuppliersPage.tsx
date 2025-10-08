@@ -49,12 +49,6 @@ const SuppliersPage: React.FC = () => {
     provincia: '',
     codigoPostal: '',
   });
-  const [formErrors, setFormErrors] = useState<{
-    razonSocial?: string;
-    cuit?: string;
-    email?: string;
-    telefono?: string;
-  }>({});
 
   useEffect(() => {
     loadData();
@@ -82,37 +76,6 @@ const SuppliersPage: React.FC = () => {
     }
   };
 
-  const validateForm = (): boolean => {
-    const errors: typeof formErrors = {};
-
-    // Validar Razón Social
-    if (!formData.razonSocial.trim()) {
-      errors.razonSocial = 'La razón social es obligatoria';
-    }
-
-    // Validar CUIT (formato argentino: XX-XXXXXXXX-X)
-    if (!formData.cuit.trim()) {
-      errors.cuit = 'El CUIT es obligatorio';
-    } else if (!/^\d{2}-?\d{8}-?\d{1}$/.test(formData.cuit.replace(/\s/g, ''))) {
-      errors.cuit = 'Formato de CUIT inválido (ej: 20-12345678-9)';
-    }
-
-    // Validar Email
-    if (!formData.email.trim()) {
-      errors.email = 'El email es obligatorio';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Formato de email inválido';
-    }
-
-    // Validar Teléfono (opcional pero si está, debe ser válido)
-    if (formData.telefono && !/^[\d\s\-\+\(\)]{7,20}$/.test(formData.telefono)) {
-      errors.telefono = 'Formato de teléfono inválido';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   const handleAdd = () => {
     setEditingSupplier(null);
     setFormData({
@@ -125,7 +88,6 @@ const SuppliersPage: React.FC = () => {
       provincia: '',
       codigoPostal: '',
     });
-    setFormErrors({});
     setDialogOpen(true);
   };
 
@@ -141,16 +103,10 @@ const SuppliersPage: React.FC = () => {
       provincia: supplier.provincia || '',
       codigoPostal: supplier.codigoPostal || '',
     });
-    setFormErrors({});
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    // Validar antes de enviar
-    if (!validateForm()) {
-      return;
-    }
-
     try {
       setLoading(true);
       if (editingSupplier) {
@@ -333,61 +289,30 @@ const SuppliersPage: React.FC = () => {
             <TextField
               label="Razón Social"
               value={formData.razonSocial}
-              onChange={(e) => {
-                setFormData({ ...formData, razonSocial: e.target.value });
-                if (formErrors.razonSocial) {
-                  setFormErrors({ ...formErrors, razonSocial: undefined });
-                }
-              }}
+              onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
               fullWidth
               required
-              error={!!formErrors.razonSocial}
-              helperText={formErrors.razonSocial}
             />
             <TextField
               label="CUIT"
               value={formData.cuit}
-              onChange={(e) => {
-                setFormData({ ...formData, cuit: e.target.value });
-                if (formErrors.cuit) {
-                  setFormErrors({ ...formErrors, cuit: undefined });
-                }
-              }}
+              onChange={(e) => setFormData({ ...formData, cuit: e.target.value })}
               fullWidth
               required
-              error={!!formErrors.cuit}
-              helperText={formErrors.cuit}
-              placeholder="20-12345678-9"
             />
             <TextField
               label="Email"
               type="email"
               value={formData.email}
-              onChange={(e) => {
-                setFormData({ ...formData, email: e.target.value });
-                if (formErrors.email) {
-                  setFormErrors({ ...formErrors, email: undefined });
-                }
-              }}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               fullWidth
               required
-              error={!!formErrors.email}
-              helperText={formErrors.email}
-              placeholder="ejemplo@email.com"
             />
             <TextField
               label="Teléfono"
               value={formData.telefono}
-              onChange={(e) => {
-                setFormData({ ...formData, telefono: e.target.value });
-                if (formErrors.telefono) {
-                  setFormErrors({ ...formErrors, telefono: undefined });
-                }
-              }}
+              onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
               fullWidth
-              error={!!formErrors.telefono}
-              helperText={formErrors.telefono}
-              placeholder="+54 11 1234-5678"
             />
             <TextField
               label="Dirección"

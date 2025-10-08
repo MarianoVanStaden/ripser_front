@@ -35,8 +35,6 @@ export interface CreateMovimientoPayload {
   importe: number;
   concepto: string;
   numeroComprobante?: string;
-  documentoComercialId?: number;
-  opcionFinanciamientoId?: number;
 }
 
 
@@ -83,10 +81,8 @@ export interface CuentaCorriente {
   concepto: string;
   numeroComprobante?: string;
   saldo: number;
-  documentoComercialId?: number;
-  documentoComercial?: DocumentoComercial;
-  opcionFinanciamientoId?: number;
-  opcionFinanciamiento?: OpcionFinanciamientoDTO;
+  ventaId?: number;
+  venta?: any; // Reference to sale
 }
 
 // Client related enums
@@ -1583,22 +1579,6 @@ export interface VentaItem {
   total: number;
 }
 export interface MovimientoStock {
-  id?: number;
-  productoId: number;
-  producto?: Producto;
-  tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE';
-  cantidad: number;
-  stockAnterior?: number;
-  stockActual?: number;
-  concepto?: string;
-  numeroComprobante?: string;
-  fecha: string;
-  usuarioId?: number;
-  usuario?: Usuario;
-}
-
-// Legacy interface for backward compatibility
-export interface MovimientoStockLegacy {
   id: number;
   productoId: number;
   producto?: Producto;
@@ -1652,7 +1632,6 @@ export const EstadoDocumento = {
   PENDIENTE: "PENDIENTE",
   APROBADO: "APROBADO",
   RECHAZADO: "RECHAZADO",
-  CONFIRMADA: "CONFIRMADA",
   PAGADA: "PAGADA",
   VENCIDA: "VENCIDA"
 } as const;

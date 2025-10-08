@@ -32,8 +32,6 @@ import {
   Tooltip,
   Switch,
   FormControlLabel,
-  RadioGroup,
-  Radio,
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
@@ -46,15 +44,10 @@ import {
   Description as DescriptionIcon,
   CheckCircle as CheckCircleIcon,
   Edit as EditIcon,
-  AttachMoney as MoneyIcon,
-  CreditCard as CreditCardIcon,
-  AccountBalance as BankIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 // Real API services
-import { clienteApi, productApi, usuarioApi } from '../../api/services';
-import { documentoApi } from '../../api/services/documentoApi';
-import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
+import { clienteApi, productApi, usuarioApi, documentoApi } from '../../api/services';
 import { useAuth } from '../../context/AuthContext';
 import type {
   Cliente,
@@ -63,10 +56,10 @@ import type {
   DocumentoComercial,
   DetalleDocumento,
   MetodoPago,
-  OpcionFinanciamientoDTO,
 } from '../../types';
 
 // Types
+// Only include methods supported by current backend enum
 const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
   { value: 'EFECTIVO', label: 'Efectivo' },
   { value: 'CHEQUE', label: 'Cheque' },
@@ -125,6 +118,7 @@ const FacturacionPage = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('IVA_21');
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  // const [autoCalculateTotal, setAutoCalculateTotal] = useState(true);
   
   // From Nota de Pedido
   const [selectedNotaPedido, setSelectedNotaPedido] = useState<DocumentoComercial | null>(null);
@@ -137,21 +131,6 @@ const FacturacionPage = () => {
   const [selectedDocumento, setSelectedDocumento] = useState<DocumentoComercial | null>(null);
   const [newEstado, setNewEstado] = useState<DocumentoComercial['estado']>('PENDIENTE');
 
-  // Financiamiento states
-  const [financiamientoDialogOpen, setFinanciamientoDialogOpen] = useState(false);
-  const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
-  const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
-  const [loadingOpciones, setLoadingOpciones] = useState(false);
-  const [newOpcionForm, setNewOpcionForm] = useState({
-    nombre: '',
-    metodoPago: 'EFECTIVO' as MetodoPago,
-    cantidadCuotas: 1,
-    tasaInteres: 0,
-    descripcion: '',
-  });
-  const [showNewOpcionForm, setShowNewOpcionForm] = useState(false);
-  const [notaOpcionesFinanciamiento, setNotaOpcionesFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
-
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -159,41 +138,25 @@ const FacturacionPage = () => {
       const [clientsData, usuariosResponse, productsData, notasData] = await Promise.all([
         clienteApi.getAll().catch(() => []),
         usuarioApi.getAll().catch((err: any) => {
-          if (err?.response?.status === 403) return { content: [] };
-          return { content: [] };
+          if (err?.response?.status === 403) {
+            // Sin permisos para listar usuarios; seguimos con el usuario actual
+            return [];
+          }
+          return [];
         }),
         productApi.getAll().catch(() => []),
         documentoApi.getByTipo('NOTA_PEDIDO').catch(() => []),
       ]);
-
-      setClients(Array.isArray(clientsData) ? clientsData : []);
-      // Handle paginated response from usuarioApi
-      const usuariosArray = Array.isArray(usuariosResponse)
-        ? usuariosResponse
-        : (usuariosResponse?.content || []);
-      setUsuarios(usuariosArray);
-      setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
       
+  setClients(Array.isArray(clientsData) ? clientsData : []);
+  setUsuarios(Array.isArray(usuariosResponse) ? usuariosResponse : []);
+  setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
+      
+      // Filter notas de pedido that can be invoiced
       const invoiceableNotas = Array.isArray(notasData) 
         ? notasData.filter(n => n.estado === 'APROBADO' || n.estado === 'PENDIENTE')
         : [];
       setNotasPedido(invoiceableNotas);
-
-      // Load financing options for each nota
-      const opcionesMap: Record<number, OpcionFinanciamientoDTO[]> = {};
-      await Promise.all(
-        invoiceableNotas.map(async (nota) => {
-          try {
-            const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
-            if (opciones && opciones.length > 0) {
-              opcionesMap[nota.id] = opciones;
-            }
-          } catch (err) {
-            console.error(`Error loading financing options for nota ${nota.id}:`, err);
-          }
-        })
-      );
-      setNotaOpcionesFinanciamiento(opcionesMap);
       
     } catch (err: any) {
       console.error('Error loading initial data:', err);
@@ -207,12 +170,14 @@ const FacturacionPage = () => {
     loadData();
   }, []);
 
+  // Ensure current user is preselected if available
   useEffect(() => {
     if (user?.id && !selectedUsuarioId) {
       setSelectedUsuarioId(user.id);
     }
   }, [user?.id]);
 
+  // Calculate totals for manual invoice
   const subtotalVenta = useMemo(() => {
     return cart.reduce((sum, item) => {
       const itemSubtotal = item.cantidad * item.precioUnitario;
@@ -226,8 +191,11 @@ const FacturacionPage = () => {
     return subtotalVenta * ivaRate;
   }, [subtotalVenta, selectedIva]);
 
-  const totalVenta = useMemo(() => subtotalVenta + ivaAmount, [subtotalVenta, ivaAmount]);
+  const totalVenta = useMemo(() => {
+    return subtotalVenta + ivaAmount;
+  }, [subtotalVenta, ivaAmount]);
 
+  // Calculate totals for nota conversion
   const notaSubtotal = useMemo(() => {
     return notaCart.reduce((sum, item) => {
       const itemSubtotal = item.cantidad * item.precioUnitario;
@@ -238,38 +206,13 @@ const FacturacionPage = () => {
 
   const notaIvaAmount = useMemo(() => {
     if (!selectedNotaPedido) return 0;
-    const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any).tipoIva)?.rate || 0.21;
+    const ivaRate = IVA_OPTIONS.find((option) => option.value === selectedNotaPedido.tipoIva)?.rate || 0;
     return notaSubtotal * ivaRate;
   }, [notaSubtotal, selectedNotaPedido]);
 
-  const notaTotalVenta = useMemo(() => notaSubtotal + notaIvaAmount, [notaSubtotal, notaIvaAmount]);
-
-  // Helper functions for financing
-  const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
-    switch (metodoPago) {
-      case 'EFECTIVO':
-        return <MoneyIcon fontSize="small" />;
-      case 'TARJETA_CREDITO':
-        return <CreditCardIcon fontSize="small" />;
-      case 'TRANSFERENCIA_BANCARIA':
-      case 'FINANCIACION_PROPIA':
-        return <BankIcon fontSize="small" />;
-      default:
-        return <MoneyIcon fontSize="small" />;
-    }
-  };
-
-  const getMetodoPagoLabel = (metodoPago: MetodoPago | string) => {
-    switch (metodoPago) {
-      case 'EFECTIVO': return 'Efectivo';
-      case 'TARJETA_CREDITO': return 'Tarjeta de Crédito';
-      case 'TARJETA_DEBITO': return 'Tarjeta de Débito';
-      case 'TRANSFERENCIA_BANCARIA': return 'Transferencia bancaria';
-      case 'FINANCIACION_PROPIA': return 'Financiación propia';
-      case 'CHEQUE': return 'Cheque';
-      default: return String(metodoPago);
-    }
-  };
+  const notaTotalVenta = useMemo(() => {
+    return notaSubtotal + notaIvaAmount;
+  }, [notaSubtotal, notaIvaAmount]);
 
   const clearForm = () => {
     setSelectedClientId('');
@@ -290,6 +233,7 @@ const FacturacionPage = () => {
       setError('No hay productos disponibles para agregar al carrito.');
       return;
     }
+    
     const defaultProduct = products[0];
     setCart((prev) => [
       ...prev,
@@ -335,15 +279,25 @@ const FacturacionPage = () => {
   };
 
   const handleSubmitManualInvoice = async () => {
-    if (!selectedClientId) return setError('Debe seleccionar un cliente.');
-    if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
-    if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
+    if (!selectedClientId) {
+      setError('Debe seleccionar un cliente.');
+      return;
+    }
+    if (!selectedUsuarioId) {
+      setError('Debe seleccionar un usuario.');
+      return;
+    }
+    if (cart.length === 0) {
+      setError('Debe agregar al menos un producto al carrito.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
+      // 1) Crear Presupuesto mínimo
       const presupuesto = await documentoApi.createPresupuesto({
         clienteId: Number(selectedClientId),
         usuarioId: Number(selectedUsuarioId),
@@ -354,30 +308,27 @@ const FacturacionPage = () => {
           cantidad: Number(item.cantidad),
           precioUnitario: Number(item.precioUnitario),
           descuento: Number(item.descuento) || 0,
-          subtotal: Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100)),
+          subtotal: Number(
+            (item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100)
+          ),
           descripcion: item.productoNombre || undefined,
         })),
       });
 
-      // Check if financing option is selected and apply it
-      if (selectedOpcionId && opcionesFinanciamiento.length > 0) {
-        await documentoApi.selectFinanciamiento(presupuesto.id, selectedOpcionId);
-      }
-
+      // 2) Convertir a Nota de Pedido con método de pago e IVA
       const nota = await documentoApi.convertToNotaPedido({
         presupuestoId: presupuesto.id,
         metodoPago: paymentMethod,
         tipoIva: selectedIva,
       });
 
+      // 3) Convertir Nota de Pedido a Factura
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: nota.id,
       });
 
       setSuccess(`Factura creada exitosamente (Doc #${factura.numeroDocumento}).`);
       clearForm();
-      setSelectedOpcionId(null);
-      setOpcionesFinanciamiento([]);
       await loadData();
     } catch (err: any) {
       console.error('Error creando factura manual:', err);
@@ -388,7 +339,7 @@ const FacturacionPage = () => {
     }
   };
 
-  const handleOpenConvertDialog = async (nota: DocumentoComercial) => {
+  const handleOpenConvertDialog = (nota: DocumentoComercial) => {
     setSelectedNotaPedido(nota);
     setNotaCart(
       nota.detalles
@@ -403,21 +354,6 @@ const FacturacionPage = () => {
     );
     setEditingNotaItems(false);
     setConvertDialogOpen(true);
-
-    // Load financing options for the nota
-    try {
-      setLoadingOpciones(true);
-      const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
-      setOpcionesFinanciamiento(opciones);
-      const selected = opciones.find(o => o.esSeleccionada);
-      if (selected?.id) {
-        setSelectedOpcionId(selected.id);
-      }
-    } catch (err) {
-      console.error('Error loading financing options:', err);
-    } finally {
-      setLoadingOpciones(false);
-    }
   };
 
   const handleCloseConvertDialog = () => {
@@ -425,8 +361,6 @@ const FacturacionPage = () => {
     setSelectedNotaPedido(null);
     setNotaCart([]);
     setEditingNotaItems(false);
-    setSelectedOpcionId(null);
-    setOpcionesFinanciamiento([]);
   };
 
   const handleConvertNotaToFactura = async () => {
@@ -436,34 +370,23 @@ const FacturacionPage = () => {
     setError(null);
 
     try {
-      const notaId = selectedNotaPedido.id;
-      
-      // Apply selected financing option if different from current
-      if (selectedOpcionId) {
-        const currentSelected = opcionesFinanciamiento.find(o => o.esSeleccionada);
-        if (currentSelected?.id !== selectedOpcionId) {
-          await documentoApi.selectFinanciamiento(notaId, selectedOpcionId);
-        }
-      }
-
-      await documentoApi.convertToFactura({ notaPedidoId: notaId });
-      setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+  const notaId = selectedNotaPedido.id;
+  await documentoApi.convertToFactura({ notaPedidoId: notaId });
+  // Optimistically remove the converted nota from the local list so it disappears immediately
+  setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
       setSuccess(`Nota de Pedido #${selectedNotaPedido.numeroDocumento} convertida a Factura exitosamente.`);
       handleCloseConvertDialog();
-      loadData();
+  // Refresh data in the background to stay in sync with backend state
+  loadData();
     } catch (err: any) {
       console.error('Error converting to factura:', err);
-      console.error('Error response data:', err?.response?.data);
-      console.error('Error response status:', err?.response?.status);
-      console.error('Error response headers:', err?.response?.headers);
-      const errorMessage = err?.response?.data?.message || err?.message || 'Error desconocido';
-      setError(`Error al convertir a factura: ${errorMessage}`);
+        setError(`Error al convertir a factura: ${err?.message || 'Error'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenEstadoDialog = (documento: DocumentoComercial) => {
+    const handleOpenEstadoDialog = (documento: DocumentoComercial) => {
     setSelectedDocumento(documento);
     setNewEstado(documento.estado);
     setEstadoDialogOpen(true);
@@ -476,18 +399,22 @@ const FacturacionPage = () => {
     setError(null);
 
     try {
-      await documentoApi.changeEstado(selectedDocumento.id, newEstado);
+      await documentoApi.updateEstado(selectedDocumento.id, newEstado);
       setSuccess(`Estado actualizado exitosamente.`);
       setEstadoDialogOpen(false);
+      // Optimistically reflect the change in the list
       setNotasPedido((prev) => {
         const isInvoiceable = newEstado === 'APROBADO' || newEstado === 'PENDIENTE';
-        if (!isInvoiceable) return prev.filter((n) => n.id !== selectedDocumento.id);
+        if (!isInvoiceable) {
+          return prev.filter((n) => n.id !== selectedDocumento.id);
+        }
         return prev.map((n) => (n.id === selectedDocumento.id ? { ...n, estado: newEstado } : n));
       });
+      // Refresh data to stay in sync
       loadData();
     } catch (err: any) {
       console.error('Error updating estado:', err);
-      setError(`Error al actualizar el estado: ${err?.message || 'Error'}`);
+        setError(`Error al actualizar el estado: ${err?.message || 'Error'}`);
     } finally {
       setLoading(false);
     }
@@ -509,109 +436,29 @@ const FacturacionPage = () => {
     setNotaCart(newCart);
   };
 
-  const handleOpenFinanciamiento = async () => {
-    setFinanciamientoDialogOpen(true);
-    setShowNewOpcionForm(false);
-    setNewOpcionForm({
-      nombre: '',
-      metodoPago: 'EFECTIVO',
-      cantidadCuotas: 1,
-      tasaInteres: 0,
-      descripcion: '',
-    });
-
-    // Generate default financing options if none exist
-    if (opcionesFinanciamiento.length === 0) {
-      const defaultOpciones: OpcionFinanciamientoDTO[] = [
-        {
-          nombre: 'Contado',
-          metodoPago: 'EFECTIVO',
-          cantidadCuotas: 1,
-          tasaInteres: 0,
-          montoTotal: totalVenta,
-          montoCuota: totalVenta,
-          descripcion: 'Pago al contado',
-          ordenPresentacion: 1,
-        },
-        {
-          nombre: '3 Cuotas',
-          metodoPago: 'TARJETA_CREDITO',
-          cantidadCuotas: 3,
-          tasaInteres: 10,
-          montoTotal: totalVenta * 1.1,
-          montoCuota: (totalVenta * 1.1) / 3,
-          descripcion: 'Tarjeta de crédito en 3 cuotas',
-          ordenPresentacion: 2,
-        },
-        {
-          nombre: '6 Cuotas',
-          metodoPago: 'TARJETA_CREDITO',
-          cantidadCuotas: 6,
-          tasaInteres: 20,
-          montoTotal: totalVenta * 1.2,
-          montoCuota: (totalVenta * 1.2) / 6,
-          descripcion: 'Tarjeta de crédito en 6 cuotas',
-          ordenPresentacion: 3,
-        },
-      ];
-      setOpcionesFinanciamiento(defaultOpciones);
-    }
-  };
-
-  const handleAddNewOpcion = () => {
-    const { nombre, metodoPago, cantidadCuotas, tasaInteres, descripcion } = newOpcionForm;
-    
-    if (!nombre.trim()) {
-      setError('Debe ingresar un nombre para la opción');
-      return;
-    }
-
-    const montoConInteres = totalVenta * (1 + tasaInteres / 100);
-    const newOpcion: OpcionFinanciamientoDTO = {
-      nombre,
-      metodoPago,
-      cantidadCuotas,
-      tasaInteres,
-      montoTotal: montoConInteres,
-      montoCuota: montoConInteres / cantidadCuotas,
-      descripcion,
-      ordenPresentacion: opcionesFinanciamiento.length + 1,
-    };
-
-    setOpcionesFinanciamiento([...opcionesFinanciamiento, newOpcion]);
-    setShowNewOpcionForm(false);
-    setNewOpcionForm({
-      nombre: '',
-      metodoPago: 'EFECTIVO',
-      cantidadCuotas: 1,
-      tasaInteres: 0,
-      descripcion: '',
-    });
-  };
-
   const ProductsTable = ({ items, onUpdate, onRemove, editable = true }: {
     items: CartItem[] | NotaCartItem[];
     onUpdate: (index: number, field: any, value: any) => void;
     onRemove: (index: number) => void;
     editable?: boolean;
   }) => (
-    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
-      <Table stickyHeader size="small" sx={{ minWidth: 900 }}>
+    <TableContainer component={Paper} variant="outlined">
+      <Table>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ minWidth: 220 }}>Producto</TableCell>
-            <TableCell align="center" sx={{ minWidth: 120 }}>Cantidad</TableCell>
-            <TableCell align="right" sx={{ minWidth: 160 }}>Precio Unit.</TableCell>
-            <TableCell align="right" sx={{ minWidth: 120 }}>Desc. %</TableCell>
-            <TableCell align="right" sx={{ minWidth: 160 }}>Subtotal</TableCell>
-            {editable && <TableCell align="center" sx={{ minWidth: 120 }}>Acciones</TableCell>}
+            <TableCell sx={{ minWidth: 200 }}>Producto</TableCell>
+            <TableCell align="center">Cantidad</TableCell>
+            <TableCell align="right">Precio Unit.</TableCell>
+            <TableCell align="right">Desc. %</TableCell>
+            <TableCell align="right">Subtotal</TableCell>
+            {editable && <TableCell align="center">Acciones</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
           {items.map((item, index) => {
             const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
             return (
-              <TableRow key={index} hover>
+              <TableRow key={index}>
                 <TableCell>
                   {editable ? (
                     <Select
@@ -625,10 +472,10 @@ const FacturacionPage = () => {
                       ))}
                     </Select>
                   ) : (
-                    <Typography noWrap maxWidth={360}>{item.productoNombre}</Typography>
+                    <Typography>{item.productoNombre}</Typography>
                   )}
                 </TableCell>
-                <TableCell align="center">
+                <TableCell>
                   {editable ? (
                     <TextField
                       type="number"
@@ -636,13 +483,13 @@ const FacturacionPage = () => {
                       value={item.cantidad}
                       onChange={(e) => onUpdate(index, 'cantidad', e.target.value)}
                       inputProps={{ min: 1 }}
-                      sx={{ width: 90 }}
+                      sx={{ width: 80 }}
                     />
                   ) : (
                     <Typography align="center">{item.cantidad}</Typography>
                   )}
                 </TableCell>
-                <TableCell align="right">
+                <TableCell>
                   {editable ? (
                     <TextField
                       type="number"
@@ -650,13 +497,13 @@ const FacturacionPage = () => {
                       value={item.precioUnitario}
                       onChange={(e) => onUpdate(index, 'precioUnitario', e.target.value)}
                       inputProps={{ min: 0, step: 0.01 }}
-                      sx={{ width: 140 }}
+                      sx={{ width: 120 }}
                     />
                   ) : (
                     <Typography align="right">${item.precioUnitario.toFixed(2)}</Typography>
                   )}
                 </TableCell>
-                <TableCell align="right">
+                <TableCell>
                   {editable ? (
                     <TextField
                       type="number"
@@ -664,7 +511,7 @@ const FacturacionPage = () => {
                       value={item.descuento}
                       onChange={(e) => onUpdate(index, 'descuento', e.target.value)}
                       inputProps={{ min: 0, max: 100 }}
-                      sx={{ width: 100 }}
+                      sx={{ width: 80 }}
                     />
                   ) : (
                     <Typography align="right">{item.descuento}%</Typography>
@@ -700,682 +547,441 @@ const FacturacionPage = () => {
   }
 
   return (
-    <Box p={3} maxWidth="xl" mx="auto">
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+    <Box p={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1}>
           <ReceiptIcon />
           Sistema de Facturación
         </Typography>
         <Button 
           variant="outlined" 
-          startIcon={<RefreshIcon />}
+          startIcon={<RefreshIcon />} 
           onClick={loadData}
           disabled={loading}
         >
-          Recargar Datos
+          Actualizar
         </Button>
       </Box>
 
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      
-      {success && (
-        <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>
-          {success}
-        </Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>{success}</Alert>}
 
-      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
-        <Tab label="Facturación Manual" icon={<ShoppingCartIcon />} iconPosition="start" />
-        <Tab label="Desde Nota de Pedido" icon={<DescriptionIcon />} iconPosition="start" />
-      </Tabs>
+      <Paper sx={{ mb: 3 }}>
+  <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+          <Tab label="Factura Manual" icon={<EditIcon />} iconPosition="start" />
+          <Tab label="Desde Nota de Pedido" icon={<DescriptionIcon />} iconPosition="start" />
+        </Tabs>
+      </Paper>
 
-      {/* Tab 0: Manual Invoice */}
       {activeTab === 0 && (
-        <Box>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Nueva Factura Manual
-              </Typography>
-              <Divider sx={{ mb: 3 }} />
-              
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Cliente</InputLabel>
-                    <Select
-                      value={selectedClientId}
-                      onChange={(e) => setSelectedClientId(e.target.value as number)}
-                      label="Cliente"
-                    >
-                      <MenuItem value="">Seleccionar Cliente</MenuItem>
-                      {clients.map((client) => (
-                        <MenuItem key={client.id} value={client.id}>
-                          {client.nombre} - {client.cuit}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+  <Grid container spacing={3}>
+  <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" mb={2}>
+                  Nueva Factura Manual
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Número de Factura (opcional)"
+                      value={invoiceNumber}
+                      onChange={(e) => setInvoiceNumber(e.target.value)}
+                      placeholder="Se generará automáticamente si no se especifica"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Cliente</InputLabel>
+                      <Select
+        value={selectedClientId}
+                        label="Cliente"
+        onChange={(e) => setSelectedClientId(Number(e.target.value))}
+                        disabled={loading}
+                      >
+                        {clients.map((client) => (
+                          <MenuItem key={client.id} value={client.id}>
+                            {client.nombre} {client.apellido || ''}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Usuario</InputLabel>
+                      <Select
+                        value={selectedUsuarioId}
+                        label="Usuario"
+        onChange={(e) => setSelectedUsuarioId(Number(e.target.value))}
+                        disabled={loading}
+                      >
+                        {user && (
+                          <MenuItem key={`me-${user.id}`} value={user.id}>
+                            @{user.username}
+                          </MenuItem>
+                        )}
+                        {usuarios
+                          .filter((u) => (user ? u.id !== user.id : true))
+                          .map((u) => (
+                            <MenuItem key={u.id} value={u.id}>
+                              {u.nombre} {u.apellido ?? ''}
+                            </MenuItem>
+                          ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Método de Pago</InputLabel>
+                      <Select
+                        value={paymentMethod}
+                        label="Método de Pago"
+        onChange={(e) => setPaymentMethod(e.target.value as MetodoPago)}
+                      >
+                        {PAYMENT_METHODS.map((method) => (
+                          <MenuItem key={method.value} value={method.value}>
+                            {method.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Fecha de Emisión"
+                      type="date"
+                      value={invoiceDate}
+                      onChange={(e) => setInvoiceDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Fecha de Vencimiento"
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Tipo de IVA</InputLabel>
+                      <Select
+                        value={selectedIva}
+                        label="Tipo de IVA"
+        onChange={(e) => setSelectedIva(e.target.value as TipoIva)}
+                      >
+                        {IVA_OPTIONS.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Observaciones"
+                      multiline
+                      rows={3}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Notas adicionales sobre la factura..."
+                    />
+                  </Grid>
                 </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
 
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Vendedor</InputLabel>
-                    <Select
-                      value={selectedUsuarioId}
-                      onChange={(e) => setSelectedUsuarioId(e.target.value as number)}
-                      label="Vendedor"
-                    >
-                      <MenuItem value="">Seleccionar Vendedor</MenuItem>
-                      {usuarios.map((usuario) => (
-                        <MenuItem key={usuario.id} value={usuario.id}>
-                          {usuario.nombre ? `${usuario.nombre} ${usuario.apellido || ''}`.trim() : usuario.username || usuario.email}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Método de Pago</InputLabel>
-                    <Select
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value as MetodoPago)}
-                      label="Método de Pago"
-                    >
-                      {PAYMENT_METHODS.map((method) => (
-                        <MenuItem key={method.value} value={method.value}>
-                          {method.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tipo de IVA</InputLabel>
-                    <Select
-                      value={selectedIva}
-                      onChange={(e) => setSelectedIva(e.target.value as TipoIva)}
-                      label="Tipo de IVA"
-                    >
-                      {IVA_OPTIONS.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Vencimiento"
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={2}
-                    label="Observaciones"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Notas adicionales para la factura..."
-                  />
-                </Grid>
-              </Grid>
-
-              <Box mt={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                   <Typography variant="h6">Productos</Typography>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={addItemToCart}
-                    disabled={products.length === 0}
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<AddIcon />} 
+                    onClick={addItemToCart} 
+                    disabled={products.length === 0 || loading}
                   >
                     Agregar Producto
                   </Button>
                 </Box>
 
                 {cart.length > 0 ? (
-                  <ProductsTable
-                    items={cart}
-                    onUpdate={updateCartItem}
-                    onRemove={removeItemFromCart}
-                  />
-                ) : (
-                  <Paper sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography color="text.secondary">
-                      No hay productos en el carrito
-                    </Typography>
-                  </Paper>
-                )}
-              </Box>
-
-              {cart.length > 0 && (
-                <Box mt={3}>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Subtotal:
-                        </Typography>
-                        <Typography variant="h6">${subtotalVenta.toFixed(2)}</Typography>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          IVA ({IVA_OPTIONS.find(o => o.value === selectedIva)?.label}):
-                        </Typography>
-                        <Typography variant="h6">${ivaAmount.toFixed(2)}</Typography>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Total:
-                        </Typography>
-                        <Typography variant="h5" color="primary">
-                          ${totalVenta.toFixed(2)}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  </Paper>
-                </Box>
-              )}
-
-              <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
-                <Button
-                  variant="outlined"
-                  startIcon={<ClearIcon />}
-                  onClick={clearForm}
-                >
-                  Limpiar
-                </Button>
-                {cart.length > 0 && (
-                  <Button
-                    variant="outlined"
-                    onClick={handleOpenFinanciamiento}
-                  >
-                    Opciones de Financiamiento
-                  </Button>
-                )}
-                <Button
-                  variant="contained"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSubmitManualInvoice}
-                  disabled={loading || !selectedClientId || !selectedUsuarioId || cart.length === 0}
-                >
-                  Crear Factura
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
-
-      {/* Tab 1: From Nota de Pedido */}
-      {activeTab === 1 && (
-        <Box>
-          {notasPedido.length === 0 ? (
-            <Paper sx={{ p: 4, textAlign: 'center' }}>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No hay Notas de Pedido disponibles
-              </Typography>
-              <Typography color="text.secondary">
-                Las notas de pedido deben estar en estado APROBADO o PENDIENTE para poder facturarse.
-              </Typography>
-            </Paper>
-          ) : (
-            <Grid container spacing={3}>
-              {notasPedido.map((nota) => (
-                <Grid item xs={12} md={6} lg={4} key={nota.id}>
-                  <Card>
-                    <CardContent>
-                      <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
-                        <Typography variant="h6">
-                          Nota #{nota.numeroDocumento}
-                        </Typography>
-                        <Chip
-                          label={ESTADO_OPTIONS[nota.estado]?.label || nota.estado}
-                          color={ESTADO_OPTIONS[nota.estado]?.color || 'default'}
-                          size="small"
-                        />
-                      </Box>
-                      
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Cliente: {nota.clienteNombre}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Fecha: {dayjs(nota.fecha).format('DD/MM/YYYY')}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Items: {nota.detalles?.length || 0}
-                      </Typography>
-                      
-                      <Divider sx={{ my: 2 }} />
-                      
-                      <Typography variant="h6" color="primary">
-                        Total: ${nota.total?.toFixed(2) || '0.00'}
-                      </Typography>
-
-                      {notaOpcionesFinanciamiento[nota.id] && notaOpcionesFinanciamiento[nota.id].length > 0 && (
-                        <Box mt={1}>
-                          <Chip
-                            icon={<CreditCardIcon />}
-                            label={`${notaOpcionesFinanciamiento[nota.id].length} opciones de financiamiento`}
-                            size="small"
-                            color="info"
-                            variant="outlined"
-                          />
+                  <>
+                    <ProductsTable 
+                      items={cart}
+                      onUpdate={updateCartItem}
+                      onRemove={removeItemFromCart}
+                    />
+                    <Divider sx={{ my: 2 }} />
+                    <Box display="flex" justifyContent="flex-end">
+                      <Box>
+                        <Box display="flex" justifyContent="space-between" mb={1}>
+                          <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                          <Typography fontWeight="bold">${subtotalVenta.toFixed(2)}</Typography>
                         </Box>
-                      )}
-                      
-                      <Box mt={2} display="flex" gap={1}>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          fullWidth
-                          startIcon={<CheckCircleIcon />}
-                          onClick={() => handleOpenConvertDialog(nota)}
-                        >
-                          Facturar
-                        </Button>
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleOpenEstadoDialog(nota)}
-                          title="Cambiar estado"
-                        >
-                          <EditIcon />
-                        </IconButton>
+                        <Box display="flex" justifyContent="space-between" mb={1}>
+                          <Typography sx={{ mr: 4 }}>
+                            {IVA_OPTIONS.find(o => o.value === selectedIva)?.label}:
+                          </Typography>
+                          <Typography fontWeight="bold">${ivaAmount.toFixed(2)}</Typography>
+                        </Box>
+                        <Divider sx={{ my: 1 }} />
+                        <Box display="flex" justifyContent="space-between">
+                          <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
+                          <Typography variant="h5" color="primary" fontWeight="bold">
+                            ${totalVenta.toFixed(2)}
+                          </Typography>
+                        </Box>
                       </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Box>
+                    </Box>
+                  </>
+                ) : (
+                  <Box textAlign="center" py={4} sx={{ border: '1px dashed grey', borderRadius: 1 }}>
+                    <ShoppingCartIcon color="action" sx={{ fontSize: 48, mb: 1 }} />
+                    <Typography>El carrito está vacío</Typography>
+                  </Box>
+                )}
+
+                <Box display="flex" justifyContent="flex-end" gap={2} mt={3}>
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<ClearIcon />} 
+                    onClick={clearForm} 
+                    disabled={loading}
+                  >
+                    Limpiar
+                  </Button>
+                  <Button 
+                    variant="contained" 
+                    startIcon={<SaveIcon />} 
+                    onClick={handleSubmitManualInvoice} 
+                    disabled={loading || cart.length === 0}
+                  >
+                    {loading ? 'Guardando...' : 'Crear Factura'}
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       )}
 
-      {/* Convert Dialog */}
-      <Dialog open={convertDialogOpen} onClose={handleCloseConvertDialog} maxWidth="lg" fullWidth>
+  {activeTab === 1 && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" mb={2}>
+              Notas de Pedido Disponibles para Facturar
+            </Typography>
+            
+            {notasPedido.length > 0 ? (
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Número</TableCell>
+                      <TableCell>Cliente</TableCell>
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Total</TableCell>
+                      <TableCell>Estado</TableCell>
+                      <TableCell>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {notasPedido.map((nota) => (
+                      <TableRow key={nota.id}>
+                        <TableCell>{nota.numeroDocumento}</TableCell>
+                        <TableCell>{nota.clienteNombre}</TableCell>
+                        <TableCell>
+                          {new Date(nota.fechaEmision).toLocaleDateString('es-AR')}
+                        </TableCell>
+                        <TableCell>
+                          ${nota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={ESTADO_OPTIONS[nota.estado as keyof typeof ESTADO_OPTIONS]?.label || nota.estado}
+                            color={ESTADO_OPTIONS[nota.estado as keyof typeof ESTADO_OPTIONS]?.color || 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip title="Convertir a Factura">
+                            <IconButton 
+                              color="primary"
+                              // Continuación del código desde la línea 434 (después del IconButton)
+                              onClick={() => handleOpenConvertDialog(nota)}
+                              disabled={loading}
+                            >
+                              <ReceiptIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Cambiar Estado">
+                            <IconButton 
+                              color="secondary"
+                              onClick={() => handleOpenEstadoDialog(nota)}
+                              disabled={loading}
+                              sx={{ ml: 1 }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Box textAlign="center" py={4} sx={{ border: '1px dashed grey', borderRadius: 1 }}>
+                <DescriptionIcon color="action" sx={{ fontSize: 48, mb: 1 }} />
+                <Typography>No hay notas de pedido disponibles para facturar</Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Dialog for converting Nota de Pedido to Factura */}
+      <Dialog 
+        open={convertDialogOpen} 
+        onClose={handleCloseConvertDialog}
+        maxWidth="lg"
+        fullWidth
+      >
         <DialogTitle>
-          Convertir Nota de Pedido a Factura
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6">
+              Convertir a Factura - Nota #{selectedNotaPedido?.numeroDocumento}
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editingNotaItems}
+                  onChange={(e) => setEditingNotaItems(e.target.checked)}
+                />
+              }
+              label="Editar productos"
+            />
+          </Box>
         </DialogTitle>
         <DialogContent>
           {selectedNotaPedido && (
-            <>
-              <Box mb={3}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Cliente:
-                    </Typography>
-                    <Typography>{selectedNotaPedido.clienteNombre}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Número de Documento:
-                    </Typography>
-                    <Typography>#{selectedNotaPedido.numeroDocumento}</Typography>
-                  </Grid>
+            <Box>
+              <Grid container spacing={2} mb={3}>
+                <Grid item xs={12} sm={6}>
+                  <Typography><strong>Cliente:</strong> {selectedNotaPedido.clienteNombre}</Typography>
                 </Grid>
-              </Box>
+                <Grid item xs={12} sm={6}>
+                  <Typography><strong>Fecha:</strong> {new Date(selectedNotaPedido.fechaEmision).toLocaleDateString('es-AR')}</Typography>
+                </Grid>
+              </Grid>
 
-              {/* Financing Options */}
-              {loadingOpciones ? (
-                <Box display="flex" justifyContent="center" p={2}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : opcionesFinanciamiento.length > 0 && (
-                <Box mb={3}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Opciones de Financiamiento
-                  </Typography>
-                  <RadioGroup
-                    value={selectedOpcionId || ''}
-                    onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
-                  >
-                    <Grid container spacing={2}>
-                      {opcionesFinanciamiento.map((opcion) => (
-                        <Grid item xs={12} sm={6} md={4} key={opcion.id}>
-                          <Card 
-                            variant="outlined" 
-                            sx={{ 
-                              p: 1,
-                              border: selectedOpcionId === opcion.id ? '2px solid' : '1px solid',
-                              borderColor: selectedOpcionId === opcion.id ? 'primary.main' : 'divider',
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => setSelectedOpcionId(opcion.id!)}
-                          >
-                            <FormControlLabel
-                              value={opcion.id}
-                              control={<Radio />}
-                              label={
-                                <Box>
-                                  <Box display="flex" alignItems="center" gap={1}>
-                                    {getMetodoPagoIcon(opcion.metodoPago)}
-                                    <Typography variant="body2" fontWeight="bold">
-                                      {opcion.nombre}
-                                    </Typography>
-                                  </Box>
-                                  <Typography variant="caption" display="block" color="text.secondary">
-                                    {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
-                                  </Typography>
-                                  <Typography variant="body2" color="primary">
-                                    Total: ${opcion.montoTotal?.toFixed(2)}
-                                  </Typography>
-                                  {opcion.cantidadCuotas > 1 && (
-                                    <Typography variant="caption" color="text.secondary">
-                                      ${opcion.montoCuota?.toFixed(2)}/cuota
-                                    </Typography>
-                                  )}
-                                </Box>
-                              }
-                            />
-                          </Card>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </RadioGroup>
-                </Box>
-              )}
-
-              <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="subtitle1">
-                  Productos de la Nota
-                </Typography>
-                {!editingNotaItems && (
-                  <Button
-                    size="small"
-                    startIcon={<EditIcon />}
-                    onClick={() => setEditingNotaItems(true)}
-                  >
-                    Editar Items
-                  </Button>
-                )}
-              </Box>
-
-              <ProductsTable
+              <Typography variant="h6" mb={2}>Productos</Typography>
+              
+              <ProductsTable 
                 items={notaCart}
                 onUpdate={updateNotaCartItem}
-                onRemove={() => {}}
+                onRemove={(index) => setNotaCart(prev => prev.filter((_, i) => i !== index))}
                 editable={editingNotaItems}
               />
 
-              <Box mt={3}>
-                <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Subtotal:
-                      </Typography>
-                      <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        IVA:
-                      </Typography>
-                      <Typography variant="h6">${notaIvaAmount.toFixed(2)}</Typography>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Divider sx={{ my: 1 }} />
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Total:
-                      </Typography>
-                      <Typography variant="h5" color="primary">
-                        ${notaTotalVenta.toFixed(2)}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
+              <Divider sx={{ my: 2 }} />
+              <Box display="flex" justifyContent="flex-end">
+                <Box>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                    <Typography fontWeight="bold">${notaSubtotal.toFixed(2)}</Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography sx={{ mr: 4 }}>
+                      {IVA_OPTIONS.find(o => o.value === selectedNotaPedido.tipoIva)?.label || 'IVA'}:
+                    </Typography>
+                    <Typography fontWeight="bold">${notaIvaAmount.toFixed(2)}</Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
+                    <Typography variant="h5" color="primary" fontWeight="bold">
+                      ${notaTotalVenta.toFixed(2)}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseConvertDialog}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleConvertNotaToFactura}
-            disabled={loading}
-            startIcon={<CheckCircleIcon />}
-          >
-            Convertir a Factura
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Estado Dialog */}
-      <Dialog open={estadoDialogOpen} onClose={() => setEstadoDialogOpen(false)}>
-        <DialogTitle>Cambiar Estado del Documento</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>Nuevo Estado</InputLabel>
-            <Select
-              value={newEstado}
-              onChange={(e) => setNewEstado(e.target.value as DocumentoComercial['estado'])}
-              label="Nuevo Estado"
-            >
-              {Object.entries(ESTADO_OPTIONS).map(([value, config]) => (
-                <MenuItem key={value} value={value}>
-                  <Chip
-                    label={config.label}
-                    color={config.color}
-                    size="small"
-                    sx={{ mr: 1 }}
-                  />
-                  {config.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEstadoDialogOpen(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpdateEstado}
-            disabled={loading}
-          >
-            Actualizar Estado
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Financiamiento Dialog */}
-      <Dialog open={financiamientoDialogOpen} onClose={() => setFinanciamientoDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Opciones de Financiamiento
-        </DialogTitle>
-        <DialogContent>
-          <Box mb={2}>
-            <Typography variant="body2" color="text.secondary">
-              Total de la venta: <strong>${totalVenta.toFixed(2)}</strong>
-            </Typography>
-          </Box>
-
-          {!showNewOpcionForm && (
-            <Box mb={2}>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={() => setShowNewOpcionForm(true)}
-                size="small"
-              >
-                Agregar Nueva Opción
-              </Button>
             </Box>
           )}
-
-          {showNewOpcionForm && (
-            <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Nueva Opción de Financiamiento
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Nombre"
-                    value={newOpcionForm.nombre}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, nombre: e.target.value })}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Método de Pago</InputLabel>
-                    <Select
-                      value={newOpcionForm.metodoPago}
-                      onChange={(e) => setNewOpcionForm({ ...newOpcionForm, metodoPago: e.target.value as MetodoPago })}
-                      label="Método de Pago"
-                    >
-                      {PAYMENT_METHODS.map((method) => (
-                        <MenuItem key={method.value} value={method.value}>
-                          {method.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    label="Cantidad de Cuotas"
-                    value={newOpcionForm.cantidadCuotas}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, cantidadCuotas: Number(e.target.value) })}
-                    inputProps={{ min: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    label="Tasa de Interés (%)"
-                    value={newOpcionForm.tasaInteres}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, tasaInteres: Number(e.target.value) })}
-                    inputProps={{ min: 0, step: 0.1 }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Typography variant="body2" color="text.secondary">
-                    Total con interés:
-                  </Typography>
-                  <Typography variant="h6">
-                    ${(totalVenta * (1 + newOpcionForm.tasaInteres / 100)).toFixed(2)}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Descripción"
-                    value={newOpcionForm.descripcion}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, descripcion: e.target.value })}
-                    multiline
-                    rows={2}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box display="flex" gap={1} justifyContent="flex-end">
-                    <Button
-                      size="small"
-                      onClick={() => setShowNewOpcionForm(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={handleAddNewOpcion}
-                    >
-                      Agregar
-                    </Button>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Paper>
-          )}
-
-          <RadioGroup
-            value={selectedOpcionId || ''}
-            onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
-          >
-            <Grid container spacing={2}>
-              {opcionesFinanciamiento.map((opcion, index) => (
-                <Grid item xs={12} sm={6} key={index}>
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      border: selectedOpcionId === opcion.id ? '2px solid' : '1px solid',
-                      borderColor: selectedOpcionId === opcion.id ? 'primary.main' : 'divider',
-                    }}
-                    onClick={() => setSelectedOpcionId(opcion.id || index)}
-                  >
-                    <FormControlLabel
-                      value={opcion.id || index}
-                      control={<Radio />}
-                      label={
-                        <Box>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            {getMetodoPagoIcon(opcion.metodoPago)}
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {opcion.nombre}
-                            </Typography>
-                          </Box>
-                          <Typography variant="body2" color="text.secondary">
-                            {getMetodoPagoLabel(opcion.metodoPago)}
-                          </Typography>
-                          <Typography variant="body2">
-                            {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
-                          </Typography>
-                          <Divider sx={{ my: 1 }} />
-                          <Typography variant="h6" color="primary">
-                            Total: ${opcion.montoTotal.toFixed(2)}
-                          </Typography>
-                          {opcion.cantidadCuotas > 1 && (
-                            <Typography variant="body2" color="text.secondary">
-                              ${opcion.montoCuota.toFixed(2)} por cuota
-                            </Typography>
-                          )}
-                          {opcion.descripcion && (
-                            <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                              {opcion.descripcion}
-                            </Typography>
-                          )}
-                        </Box>
-                      }
-                    />
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </RadioGroup>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setFinanciamientoDialogOpen(false)}>
-            Cerrar
+          <Button onClick={handleCloseConvertDialog} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleConvertNotaToFactura} 
+            variant="contained" 
+            disabled={loading || notaCart.length === 0}
+            startIcon={<ReceiptIcon />}
+          >
+            {loading ? 'Convirtiendo...' : 'Crear Factura'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog for changing document status */}
+      <Dialog open={estadoDialogOpen} onClose={() => setEstadoDialogOpen(false)}>
+        <DialogTitle>
+          Cambiar Estado del Documento
+        </DialogTitle>
+        <DialogContent>
+          {selectedDocumento && (
+            <Box pt={1}>
+              <Typography mb={2}>
+                Documento: <strong>#{selectedDocumento.numeroDocumento}</strong>
+              </Typography>
+              <FormControl fullWidth>
+                <InputLabel>Nuevo Estado</InputLabel>
+                <Select
+                  value={newEstado}
+                  label="Nuevo Estado"
+                  onChange={(e) => setNewEstado(e.target.value)}
+                >
+                  {Object.entries(ESTADO_OPTIONS).map(([key, option]) => (
+                    <MenuItem key={key} value={key}>
+                      <Chip
+                        label={option.label}
+                        color={option.color}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      />
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEstadoDialogOpen(false)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleUpdateEstado} 
+            variant="contained" 
+            disabled={loading || !newEstado || newEstado === selectedDocumento?.estado}
+            startIcon={<CheckCircleIcon />}
+          >
+            {loading ? 'Actualizando...' : 'Actualizar Estado'}
           </Button>
         </DialogActions>
       </Dialog>
