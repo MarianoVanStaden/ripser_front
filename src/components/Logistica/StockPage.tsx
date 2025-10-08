@@ -73,6 +73,9 @@ const StockPage: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
   const [editForm, setEditForm] = useState({
+    nombre: '',
+    descripcion: '',
+    precio: 0,
     stockMinimo: 0,
     categoriaProductoId: 1,
     activo: true,
@@ -111,8 +114,11 @@ const StockPage: React.FC = () => {
   const handleEditProduct = (product: Producto) => {
     setSelectedProduct(product);
     setEditForm({
+      nombre: product.nombre,
+      descripcion: product.descripcion || '',
+      precio: product.precio,
       stockMinimo: product.stockMinimo,
-      categoriaProductoId: product.categoriaProducto?.id || 1,
+      categoriaProductoId: product.categoriaProducto?.id || product.categoriaProductoId || 1,
       activo: product.activo,
     });
     setEditDialogOpen(true);
@@ -124,6 +130,9 @@ const StockPage: React.FC = () => {
     try {
       setLoading(true);
       await productApi.update(selectedProduct.id, {
+        nombre: editForm.nombre,
+        descripcion: editForm.descripcion,
+        precio: editForm.precio,
         stockMinimo: editForm.stockMinimo,
         categoriaProductoId: editForm.categoriaProductoId,
         activo: editForm.activo,
@@ -143,8 +152,10 @@ const StockPage: React.FC = () => {
   const lowStockCount = products.filter(p => p.stockActual <= p.stockMinimo && p.stockActual > 0).length;
   const outOfStockCount = products.filter(p => p.stockActual === 0).length;
 
-  const getStockChip = (stock: number, stockMinimo: number) => {
-    if (stock === 0) {
+  const getStockChip = (stock: number, stockMinimo: number, activo: boolean) => {
+    if (!activo) {
+      return <Chip label="Inactivo" color="default" size="small" />;
+    } else if (stock === 0) {
       return <Chip label="Sin Stock" color="error" size="small" />;
     } else if (stock <= stockMinimo) {
       return <Chip label="Stock Bajo" color="warning" size="small" />;
@@ -290,17 +301,14 @@ const StockPage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={product.categoriaProducto?.nombre || 'Sin categoría'}
+                          label={product.categoriaProductoNombre || product.categoriaProducto?.nombre || 'Sin categoría'}
                           size="small"
                           variant="outlined"
                         />
                       </TableCell>
                       <TableCell>${product.precio.toLocaleString()}</TableCell>
                       <TableCell>
-                        {getStockChip(product.stockActual, product.stockMinimo)}
-                        {!product.activo && (
-                          <Chip label="Inactivo" color="default" size="small" sx={{ ml: 1 }} />
-                        )}
+                        {getStockChip(product.stockActual, product.stockMinimo, product.activo)}
                       </TableCell>
                       <TableCell align="center">
                         <IconButton
@@ -338,14 +346,12 @@ const StockPage: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {stockMovements.map((movement) => {
-                    const product = products.find(p => p.id === movement.productoId);
-
                     return (
                       <TableRow key={movement.id}>
                         <TableCell>
                           {new Date(movement.fecha).toLocaleString()}
                         </TableCell>
-                        <TableCell>{product?.nombre || 'N/A'}</TableCell>
+                        <TableCell>{movement.productoNombre || 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
                             label={movement.tipo === 'ENTRADA' ? 'Entrada' : movement.tipo === 'SALIDA' ? 'Salida' : 'Ajuste'}
@@ -375,6 +381,33 @@ const StockPage: React.FC = () => {
         <DialogTitle>Editar Producto: {selectedProduct?.nombre}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Nombre"
+              value={editForm.nombre}
+              onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
+              fullWidth
+              required
+            />
+
+            <TextField
+              label="Descripción"
+              value={editForm.descripcion}
+              onChange={(e) => setEditForm({ ...editForm, descripcion: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+            />
+
+            <TextField
+              label="Precio"
+              type="number"
+              value={editForm.precio}
+              onChange={(e) => setEditForm({ ...editForm, precio: parseFloat(e.target.value) || 0 })}
+              fullWidth
+              required
+              inputProps={{ step: '0.01', min: '0' }}
+            />
+
             <TextField
               label="Stock Mínimo"
               type="number"
@@ -410,6 +443,10 @@ const StockPage: React.FC = () => {
             />
 
             <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Código: <strong>{selectedProduct?.codigo}</strong>
+              </Typography>
+              <br />
               <Typography variant="caption" color="text.secondary">
                 Stock Actual: <strong>{selectedProduct?.stockActual}</strong>
               </Typography>

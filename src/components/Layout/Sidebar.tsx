@@ -51,25 +51,7 @@ const navigation = [
       { text: 'Evaluación', icon: <StoreIcon />, path: '/proveedores/evaluacion' },
     ],
   },
-  {
-    title: 'GARANTÍAS',
-    items: [
-      { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro' },
-      { text: 'Seguimiento Reclamos', icon: <AssignmentIcon />, path: '/garantias/reclamos' },
-      { text: 'Estado Garantías', icon: <AssignmentIcon />, path: '/garantias/estado' },
-    ],
-  },
-  {
-    title: 'RRHH',
-    items: [
-      { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
-      { text: 'Legajos', icon: <AssignmentIcon />, path: '/rrhh/legajos' },
-      { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
-      { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },
-      { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
-    ],
-  },
-  {
+    {
     title: 'LOGÍSTICA',
     items: [
       { text: 'Gestión Stock', icon: <LocalShippingIcon />, path: '/logistica/stock' },
@@ -85,6 +67,24 @@ const navigation = [
       { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
       { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
       { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
+    ],
+  },
+    {
+    title: 'GARANTÍAS',
+    items: [
+      { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro' },
+      { text: 'Seguimiento Reclamos', icon: <AssignmentIcon />, path: '/garantias/reclamos' },
+      { text: 'Estado Garantías', icon: <AssignmentIcon />, path: '/garantias/estado' },
+    ],
+  },
+    {
+    title: 'RRHH',
+    items: [
+      { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
+      { text: 'Legajos', icon: <AssignmentIcon />, path: '/rrhh/legajos' },
+      { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
+      { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },
+      { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
     ],
   },
 ];

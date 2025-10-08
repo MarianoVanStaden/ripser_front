@@ -535,10 +535,11 @@ export interface Producto {
   stockActual: number;
   stockMinimo: number;
   codigo?: string;
-  categoriaProductoId: number;
+  categoriaProducto?: CategoriaProducto;
+  categoriaProductoId?: number;
   categoriaProductoNombre?: string;
   activo: boolean;
-  fechaCreacion: string; // ISO string
+  fechaCreacion?: string; // ISO string
 }
 
 // ProductoCreateDTO interface for product creation
@@ -596,6 +597,7 @@ export interface ProductoListDTO {
   codigo?: string;
   precio: number;
   stockActual: number;
+  stockMinimo: number;
   categoriaProductoNombre?: string;
   activo: boolean;
 }
@@ -1339,31 +1341,7 @@ export interface FacturaItem {
   total: number;
   // Add other fields as required by your backend DTO
 }
-export interface Producto {
-  id: number;
-  nombre: string;
-  descripcion?: string;
-  precio: number;
-  stockActual?: number;
-  stockMinimo?: number;
-  codigo?: string;
-  categoriaProducto?: CategoriaProducto;
-  activo?: boolean;
-  fechaCreacion?: string;
-}
-export interface ProductoDTO {
-  id: number;
-  nombre: string;
-  descripcion?: string;
-  precio: number;
-  stockActual: number;
-  stockMinimo: number;
-  codigo?: string;
-  categoriaProductoId: number;
-  categoriaProductoNombre?: string;
-  activo: boolean;
-  fechaCreacion: string; // ISO string
-}
+// Duplicate removed - using the main Producto interface at line 530
 
 export interface Categoria {
   id: number;
@@ -1585,7 +1563,8 @@ export interface VentaItem {
 export interface MovimientoStock {
   id?: number;
   productoId: number;
-  producto?: Producto;
+  productoNombre?: string; // Backend returns this
+  producto?: Producto; // Optional for compatibility
   tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE';
   cantidad: number;
   stockAnterior?: number;
@@ -1594,7 +1573,8 @@ export interface MovimientoStock {
   numeroComprobante?: string;
   fecha: string;
   usuarioId?: number;
-  usuario?: Usuario;
+  usuarioNombre?: string; // Backend returns this
+  usuario?: Usuario; // Optional for compatibility
 }
 
 // Legacy interface for backward compatibility
