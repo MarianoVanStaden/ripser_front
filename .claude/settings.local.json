@@ -6,7 +6,14 @@
       "Read(//c/Java/Git-Local/Ripser-Web-Boot/**)",
       "Read(//c/Users/maria/ripser_back/**)",
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(./mvnw:*)",
+      "Bash(tasklist)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(start cmd /k:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

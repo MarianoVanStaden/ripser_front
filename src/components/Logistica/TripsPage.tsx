@@ -381,6 +381,7 @@ Opciones:
   };
 
   const getTripDeliveries = (tripId: number) => {
+    // Backend now returns both viajeId and viaje object
     return deliveries.filter(d => d.viajeId === tripId);
   };
 
