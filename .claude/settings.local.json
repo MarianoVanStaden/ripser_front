@@ -4,7 +4,9 @@
       "Bash(git checkout:*)",
       "Read(//c/Users/maria/ripser_back/src/main/java/com/ripser_back/**)",
       "Read(//c/Java/Git-Local/Ripser-Web-Boot/**)",
-      "Read(//c/Users/maria/ripser_back/**)"
+      "Read(//c/Users/maria/ripser_back/**)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

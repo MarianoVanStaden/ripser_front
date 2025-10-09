@@ -76,6 +76,14 @@ const TripsPage: React.FC = () => {
     observaciones: '',
   });
 
+  // Deliveries for current trip
+  const [tripDeliveries, setTripDeliveries] = useState<Partial<EntregaViaje>[]>([]);
+  const [newDelivery, setNewDelivery] = useState({
+    direccionEntrega: '',
+    fechaProgramada: '',
+    observaciones: '',
+  });
+
   useEffect(() => {
     loadData();
   }, []);
@@ -84,25 +92,35 @@ const TripsPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Load each resource individually to better handle errors
       let tripsData: Viaje[] = [];
       let vehiclesData: Vehiculo[] = [];
       let employeesData: Empleado[] = [];
       let deliveriesData: EntregaViaje[] = [];
+      const errors: string[] = [];
 
       try {
         tripsData = await viajeApi.getAll();
         console.log('✅ Viajes cargados:', tripsData.length, tripsData);
       } catch (err) {
         console.error('❌ Error cargando viajes:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Viajes: ${errorMsg}`);
       }
 
       try {
-        vehiclesData = await vehiculoApi.getAll();
-        console.log('✅ Vehículos cargados:', vehiclesData.length, vehiclesData);
+        const allVehicles = await vehiculoApi.getAll();
+        // Filter only available vehicles for creating trips
+        vehiclesData = allVehicles.filter(v => v.estado === 'DISPONIBLE');
+        console.log('✅ Vehículos cargados (total/disponibles):', allVehicles.length, '/', vehiclesData.length, vehiclesData);
+        if (allVehicles.length > 0 && vehiclesData.length === 0) {
+          errors.push(`⚠️ Hay ${allVehicles.length} vehículos pero ninguno está DISPONIBLE`);
+        }
       } catch (err) {
         console.error('❌ Error cargando vehículos:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Vehículos: ${errorMsg}`);
       }
 
       try {
@@ -110,6 +128,8 @@ const TripsPage: React.FC = () => {
         console.log('✅ Empleados cargados:', employeesData.length, employeesData);
       } catch (err) {
         console.error('❌ Error cargando empleados:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Empleados: ${errorMsg}`);
       }
 
       try {
@@ -117,6 +137,13 @@ const TripsPage: React.FC = () => {
         console.log('✅ Entregas cargadas:', deliveriesData.length, deliveriesData);
       } catch (err) {
         console.error('❌ Error cargando entregas:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Entregas: ${errorMsg}`);
+      }
+
+      // Show errors if any
+      if (errors.length > 0) {
+        setError(errors.join(' | '));
       }
 
       // Ensure all data is in array format
@@ -137,6 +164,22 @@ const TripsPage: React.FC = () => {
     return statusFilter === 'all' || trip.estado === statusFilter;
   });
 
+  // Helper to check if a vehicle is currently in use
+  const isVehicleInUse = (vehicleId: string): boolean => {
+    return trips.some(trip =>
+      trip.vehiculoId.toString() === vehicleId &&
+      trip.estado === 'EN_CURSO'
+    );
+  };
+
+  // Get trip that is currently using the vehicle
+  const getTripUsingVehicle = (vehicleId: string): Viaje | undefined => {
+    return trips.find(trip =>
+      trip.vehiculoId.toString() === vehicleId &&
+      trip.estado === 'EN_CURSO'
+    );
+  };
+
   const handleAdd = () => {
     setEditingTrip(null);
     setFormData({
@@ -147,10 +190,12 @@ const TripsPage: React.FC = () => {
       estado: 'PLANIFICADO',
       observaciones: '',
     });
+    setTripDeliveries([]);
+    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '' });
     setDialogOpen(true);
   };
 
-  const handleEdit = (trip: Viaje) => {
+  const handleEdit = async (trip: Viaje) => {
     setEditingTrip(trip);
     setFormData({
       fechaViaje: trip.fechaViaje.slice(0, 16),
@@ -160,6 +205,16 @@ const TripsPage: React.FC = () => {
       estado: trip.estado,
       observaciones: trip.observaciones || '',
     });
+
+    // Load existing deliveries for this trip
+    try {
+      const existingDeliveries = await entregaViajeApi.getByViaje(trip.id);
+      setTripDeliveries(existingDeliveries);
+    } catch (err) {
+      console.error('Error loading deliveries:', err);
+      setTripDeliveries([]);
+    }
+    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '' });
     setDialogOpen(true);
   };
 
@@ -179,18 +234,88 @@ const TripsPage: React.FC = () => {
         observaciones: formData.observaciones,
       };
 
+      let savedTrip;
       if (editingTrip) {
-        await viajeApi.update(editingTrip.id, viajeData);
+        savedTrip = await viajeApi.update(editingTrip.id, viajeData);
       } else {
-        await viajeApi.create(viajeData);
+        savedTrip = await viajeApi.create(viajeData);
+      }
+
+      // Save deliveries for the trip
+      if (tripDeliveries.length > 0) {
+        let successCount = 0;
+        let errorCount = 0;
+        for (const delivery of tripDeliveries) {
+          if (!delivery.id) {
+            // New delivery - send as EntregaViaje entity format
+            try {
+              const deliveryPayload = {
+                viaje: { id: savedTrip.id },
+                direccionEntrega: delivery.direccionEntrega || '',
+                fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
+                observaciones: delivery.observaciones,
+                estado: 'PENDIENTE',
+              };
+              console.log('📦 Creating delivery:', deliveryPayload);
+              const result = await entregaViajeApi.create(deliveryPayload as any);
+              console.log('✅ Delivery created:', result);
+              successCount++;
+            } catch (deliveryError) {
+              errorCount++;
+              console.error('❌ Error creating delivery:', deliveryError);
+              console.error('Delivery data:', delivery);
+              const err = deliveryError as { response?: { status?: number; data?: any } };
+              console.error('Error response:', err.response);
+            }
+          }
+        }
+        console.log(`📊 Delivery results: ${successCount} created, ${errorCount} failed`);
       }
 
       await loadData();
       setDialogOpen(false);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al guardar el viaje');
+      setTripDeliveries([]);
+
+      // Show success message if deliveries were attempted but some failed
+      const newDeliveriesCount = tripDeliveries.filter(d => !d.id).length;
+      if (newDeliveriesCount > 0) {
+        console.log(`✅ Viaje guardado. Se intentó crear ${newDeliveriesCount} entregas.`);
+      }
+    } catch (err) {
+      const error = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      let errorMessage = error.response?.data?.message || error.message || 'Error al guardar el viaje';
+
+      // Provide specific error messages
+      if (errorMessage.includes('no está disponible')) {
+        errorMessage = 'El vehículo seleccionado no está disponible. Por favor, selecciona otro vehículo o cambia el estado del vehículo a DISPONIBLE en la sección de Vehículos.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'No tienes permisos para crear viajes o entregas. Contacta al administrador para que te asigne el rol USER o ADMIN.';
+      }
+
+      setError(errorMessage);
       console.error('Error saving trip:', err);
+      console.error('Error details:', { status: error.response?.status, data: error.response?.data });
     }
+  };
+
+  const handleAddDelivery = () => {
+    if (!newDelivery.direccionEntrega) {
+      setError('Debe ingresar una dirección de entrega');
+      return;
+    }
+
+    setTripDeliveries([...tripDeliveries, {
+      direccionEntrega: newDelivery.direccionEntrega,
+      fechaProgramada: newDelivery.fechaProgramada || formData.fechaViaje,
+      observaciones: newDelivery.observaciones,
+      estado: 'PENDIENTE',
+    }]);
+
+    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '' });
+  };
+
+  const handleRemoveDelivery = (index: number) => {
+    setTripDeliveries(tripDeliveries.filter((_, i) => i !== index));
   };
 
   const handleDelete = async (id: number) => {
@@ -209,9 +334,24 @@ const TripsPage: React.FC = () => {
     try {
       await viajeApi.changeEstado(id, nuevoEstado);
       await loadData();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al cambiar el estado del viaje');
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      let errorMessage = error.response?.data?.message || error.message || 'Error al cambiar el estado del viaje';
+
+      // Provide specific error messages
+      if (errorMessage.includes('no está disponible')) {
+        const trip = trips.find(t => t.id === id);
+        errorMessage = `No se puede iniciar el viaje porque el vehículo ya está en uso por otro viaje.
+
+Opciones:
+1. Completa o cancela el viaje actual que usa este vehículo
+2. Cambia este viaje para usar otro vehículo disponible
+3. Deja este viaje en estado PLANIFICADO hasta que el vehículo esté disponible`;
+      }
+
+      setError(errorMessage);
       console.error('Error changing trip status:', err);
+      console.error('Error details:', error.response?.data);
     }
   };
 
@@ -510,22 +650,31 @@ const TripsPage: React.FC = () => {
                 sx={{ flex: 1 }}
               />
 
-              <Autocomplete
-                options={vehicles}
-                getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
-                value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
-                onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
-                renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    label="Vehículo" 
-                    required 
-                    helperText={vehicles.length === 0 ? '⚠️ No hay vehículos cargados' : `${vehicles.length} vehículos disponibles`}
-                  />
+              <Box sx={{ flex: 1 }}>
+                <Autocomplete
+                  options={vehicles}
+                  getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
+                  value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
+                  onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Vehículo"
+                      required
+                      helperText={vehicles.length === 0 ? '⚠️ No hay vehículos cargados' : `${vehicles.length} vehículos disponibles`}
+                    />
+                  )}
+                  noOptionsText="No hay vehículos disponibles"
+                />
+                {formData.vehiculoId && isVehicleInUse(formData.vehiculoId) && formData.estado === 'EN_CURSO' && (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    <Typography variant="caption">
+                      ⚠️ Este vehículo ya está en uso por el Viaje #{getTripUsingVehicle(formData.vehiculoId)?.id}.
+                      No podrás iniciar este viaje hasta que el otro viaje se complete o cancele.
+                    </Typography>
+                  </Alert>
                 )}
-                noOptionsText="No hay vehículos disponibles"
-                sx={{ flex: 1 }}
-              />
+              </Box>
             </Box>
 
             <Box display="flex" gap={2}>
@@ -561,12 +710,104 @@ const TripsPage: React.FC = () => {
               multiline
               rows={3}
             />
+
+            {/* Deliveries Section */}
+            <Box mt={2}>
+              <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
+                <LocationIcon />
+                Entregas
+              </Typography>
+
+              {/* Existing Deliveries List */}
+              {tripDeliveries.length > 0 && (
+                <List dense sx={{ mb: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                  {tripDeliveries.map((delivery, index) => (
+                    <ListItem
+                      key={index}
+                      secondaryAction={
+                        !delivery.id && (
+                          <IconButton edge="end" onClick={() => handleRemoveDelivery(index)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        )
+                      }
+                    >
+                      <ListItemText
+                        primary={delivery.direccionEntrega}
+                        secondary={
+                          <>
+                            {delivery.fechaProgramada && (
+                              <Typography variant="caption" display="block">
+                                Fecha: {new Date(delivery.fechaProgramada).toLocaleString()}
+                              </Typography>
+                            )}
+                            {delivery.observaciones && (
+                              <Typography variant="caption" display="block">
+                                {delivery.observaciones}
+                              </Typography>
+                            )}
+                            {delivery.id && (
+                              <Chip
+                                label={delivery.estado}
+                                size="small"
+                                color={delivery.estado === 'ENTREGADA' ? 'success' : 'default'}
+                                sx={{ mt: 0.5 }}
+                              />
+                            )}
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+
+              {/* Add New Delivery Form */}
+              <Box display="flex" flexDirection="column" gap={2} p={2} bgcolor="grey.50" borderRadius={1}>
+                <Typography variant="subtitle2">Agregar Entrega</Typography>
+                <TextField
+                  label="Dirección de Entrega"
+                  value={newDelivery.direccionEntrega}
+                  onChange={(e) => setNewDelivery({ ...newDelivery, direccionEntrega: e.target.value })}
+                  fullWidth
+                  size="small"
+                  placeholder="Ej: Calle 123, Ciudad"
+                />
+                <TextField
+                  label="Fecha Programada"
+                  type="datetime-local"
+                  value={newDelivery.fechaProgramada}
+                  onChange={(e) => setNewDelivery({ ...newDelivery, fechaProgramada: e.target.value })}
+                  fullWidth
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Observaciones"
+                  value={newDelivery.observaciones}
+                  onChange={(e) => setNewDelivery({ ...newDelivery, observaciones: e.target.value })}
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={2}
+                  placeholder="Notas sobre la entrega..."
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddDelivery}
+                  size="small"
+                >
+                  Agregar Entrega
+                </Button>
+              </Box>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
           <Button onClick={handleSave} variant="contained">
-            {editingTrip ? 'Actualizar' : 'Crear'}
+            {editingTrip ? 'Actualizar' : 'Crear'} {tripDeliveries.filter(d => !d.id).length > 0 && `(+${tripDeliveries.filter(d => !d.id).length} entregas)`}
           </Button>
         </DialogActions>
       </Dialog>

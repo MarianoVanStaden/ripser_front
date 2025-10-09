@@ -236,13 +236,20 @@ const FacturacionPage = () => {
     }, 0);
   }, [notaCart]);
 
+  const notaFinancingAdjustment = useMemo(() => {
+    const selectedOpcion = opcionesFinanciamiento.find(o => o.id === selectedOpcionId);
+    if (!selectedOpcion || selectedOpcion.tasaInteres === 0) return 0;
+    return notaSubtotal * (selectedOpcion.tasaInteres / 100);
+  }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento]);
+
   const notaIvaAmount = useMemo(() => {
     if (!selectedNotaPedido) return 0;
     const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any).tipoIva)?.rate || 0.21;
-    return notaSubtotal * ivaRate;
-  }, [notaSubtotal, selectedNotaPedido]);
+    const subtotalConFinanciamiento = notaSubtotal + notaFinancingAdjustment;
+    return subtotalConFinanciamiento * ivaRate;
+  }, [notaSubtotal, notaFinancingAdjustment, selectedNotaPedido]);
 
-  const notaTotalVenta = useMemo(() => notaSubtotal + notaIvaAmount, [notaSubtotal, notaIvaAmount]);
+  const notaTotalVenta = useMemo(() => notaSubtotal + notaFinancingAdjustment + notaIvaAmount, [notaSubtotal, notaFinancingAdjustment, notaIvaAmount]);
 
   // Helper functions for financing
   const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
@@ -1096,6 +1103,20 @@ const FacturacionPage = () => {
                 </Box>
               )}
 
+              {/* Display selected financing option */}
+              {selectedOpcionId && opcionesFinanciamiento.length > 0 && (
+                <Box mb={2}>
+                  <Alert severity="info" icon={<CreditCardIcon />}>
+                    <Typography variant="body2">
+                      <strong>Opción de Financiamiento Seleccionada:</strong> {opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.nombre}
+                      {opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres !== 0 && (
+                        <> ({opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres}% {(opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres || 0) > 0 ? 'recargo' : 'descuento'})</>
+                      )}
+                    </Typography>
+                  </Alert>
+                </Box>
+              )}
+
               <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
                 <Typography variant="subtitle1">
                   Productos de la Nota
@@ -1120,29 +1141,41 @@ const FacturacionPage = () => {
 
               <Box mt={3}>
                 <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Subtotal:
-                      </Typography>
-                      <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        IVA:
-                      </Typography>
-                      <Typography variant="h6">${notaIvaAmount.toFixed(2)}</Typography>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Divider sx={{ my: 1 }} />
+                  <Box display="flex" flexDirection="column" gap={2}>
+                    <Box display="flex" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Subtotal:
+                        </Typography>
+                        <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
+                      </Box>
+                      <Box textAlign="right">
+                        <Typography variant="subtitle2" color="text.secondary">
+                          IVA:
+                        </Typography>
+                        <Typography variant="h6">${notaIvaAmount.toFixed(2)}</Typography>
+                      </Box>
+                    </Box>
+                    {notaFinancingAdjustment !== 0 && (
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {notaFinancingAdjustment > 0 ? 'Recargo' : 'Descuento'} Financiamiento:
+                        </Typography>
+                        <Typography variant="h6" color={notaFinancingAdjustment > 0 ? 'error' : 'success'}>
+                          {notaFinancingAdjustment > 0 ? '+' : ''}${notaFinancingAdjustment.toFixed(2)}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Divider />
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
                       <Typography variant="subtitle2" color="text.secondary">
                         Total:
                       </Typography>
                       <Typography variant="h5" color="primary">
                         ${notaTotalVenta.toFixed(2)}
                       </Typography>
-                    </Grid>
-                  </Grid>
+                    </Box>
+                  </Box>
                 </Paper>
               </Box>
             </>

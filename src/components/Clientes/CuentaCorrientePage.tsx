@@ -280,8 +280,11 @@ const CuentaCorrientePage: React.FC = () => {
                 <AccountBalanceIcon color="primary" sx={{ mr: 1 }} />
                 <Typography variant="h6">Saldo Actual</Typography>
               </Box>
-              <Typography variant="h4" color={getSaldoTotal() >= 0 ? 'success.main' : 'error.main'}>
-                ${getSaldoTotal().toLocaleString()}
+              <Typography variant="h4" color={getSaldoTotal() > 0 ? 'error.main' : 'success.main'}>
+                ${Math.abs(getSaldoTotal()).toLocaleString()}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {getSaldoTotal() > 0 ? 'Deuda del cliente' : getSaldoTotal() < 0 ? 'A favor del cliente' : 'Sin deuda'}
               </Typography>
             </CardContent>
           </Card>

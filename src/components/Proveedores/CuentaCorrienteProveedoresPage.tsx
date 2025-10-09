@@ -191,7 +191,9 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   });
 
   const getSaldoTotal = () => {
-    // Calculate saldo from all movements: Total Debitos - Total Creditos
+    // Calculate saldo from all movements: Total Creditos (purchases/debt) - Total Debitos (payments)
+    // Positive balance = we owe the supplier
+    // Negative balance = supplier owes us (rare, but possible with returns/credits)
     const totalDebitos = movimientos
       .filter(m => m.tipo === 'DEBITO')
       .reduce((sum, m) => sum + (m.importe ?? 0), 0);
@@ -200,7 +202,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
       .filter(m => m.tipo === 'CREDITO')
       .reduce((sum, m) => sum + (m.importe ?? 0), 0);
     
-    return totalDebitos - totalCreditos;
+    return totalCreditos - totalDebitos;
   };
 
   const getTotalDebitos = () => {
@@ -264,8 +266,11 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
                 <AccountBalanceIcon color="primary" sx={{ mr: 1 }} />
                 <Typography variant="h6">Saldo Actual</Typography>
               </Box>
-              <Typography variant="h4" color={getSaldoTotal() >= 0 ? 'error.main' : 'success.main'}>
-                ${getSaldoTotal().toLocaleString()}
+              <Typography variant="h4" color={getSaldoTotal() > 0 ? 'error.main' : 'success.main'}>
+                ${Math.abs(getSaldoTotal()).toLocaleString()}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {getSaldoTotal() > 0 ? 'Deuda pendiente' : getSaldoTotal() < 0 ? 'A favor nuestro' : 'Sin deuda'}
               </Typography>
             </CardContent>
           </Card>
@@ -424,10 +429,10 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
                 value={newMovimiento.tipo}
                 onChange={(e) => setNewMovimiento({ ...newMovimiento, tipo: e.target.value as TipoMovimiento })}
                 margin="normal"
-                helperText="Débito: Pago al proveedor (-). Crédito: Compra/deuda (+)"
+                helperText="Crédito: Compra/deuda (+). Débito: Pago al proveedor (-)"
               >
-                <MenuItem value="DEBITO">Débito - Pago al proveedor (-)</MenuItem>
                 <MenuItem value="CREDITO">Crédito - Compra/Deuda (+)</MenuItem>
+                <MenuItem value="DEBITO">Débito - Pago al proveedor (-)</MenuItem>
               </TextField>
 
               <TextField
