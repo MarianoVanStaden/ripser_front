@@ -83,32 +83,51 @@ const TripsPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [tripsData, vehiclesData, employeesData, deliveriesData] = await Promise.all([
-        viajeApi.getAll(),
-        vehiculoApi.getAll(),
-        employeeApi.getAllList(),
-        entregaViajeApi.getAll()
-      ]);
+      setError(null);
+      
+      // Load each resource individually to better handle errors
+      let tripsData: Viaje[] = [];
+      let vehiclesData: Vehiculo[] = [];
+      let employeesData: Empleado[] = [];
+      let deliveriesData: EntregaViaje[] = [];
 
-      console.log('Trips Data:', tripsData);
-      console.log('Vehicles Data:', vehiclesData);
-      console.log('Employees Data:', employeesData);
-      console.log('Deliveries Data:', deliveriesData);
+      try {
+        tripsData = await viajeApi.getAll();
+        console.log('✅ Viajes cargados:', tripsData.length, tripsData);
+      } catch (err) {
+        console.error('❌ Error cargando viajes:', err);
+      }
+
+      try {
+        vehiclesData = await vehiculoApi.getAll();
+        console.log('✅ Vehículos cargados:', vehiclesData.length, vehiclesData);
+      } catch (err) {
+        console.error('❌ Error cargando vehículos:', err);
+      }
+
+      try {
+        employeesData = await employeeApi.getAllList();
+        console.log('✅ Empleados cargados:', employeesData.length, employeesData);
+      } catch (err) {
+        console.error('❌ Error cargando empleados:', err);
+      }
+
+      try {
+        deliveriesData = await entregaViajeApi.getAll();
+        console.log('✅ Entregas cargadas:', deliveriesData.length, deliveriesData);
+      } catch (err) {
+        console.error('❌ Error cargando entregas:', err);
+      }
 
       // Ensure all data is in array format
       setTrips(Array.isArray(tripsData) ? tripsData : []);
       setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
       setDrivers(Array.isArray(employeesData) ? employeesData : []);
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
-      setError(null);
+
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Error al cargar los datos');
-      console.error('Error loading data:', err);
-      // Set empty arrays on error
-      setTrips([]);
-      setVehicles([]);
-      setDrivers([]);
-      setDeliveries([]);
+      console.error('❌ Error general loading data:', err);
     } finally {
       setLoading(false);
     }
@@ -446,6 +465,24 @@ const TripsPage: React.FC = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
+          {(drivers.length === 0 || vehicles.length === 0) && (
+            <Alert severity="warning" sx={{ mt: 2, mb: 2 }}>
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                ⚠️ Faltan datos para crear un viaje
+              </Typography>
+              {drivers.length === 0 && (
+                <Typography variant="body2">
+                  • No hay empleados (conductores) cargados. Ve a RRHH → Empleados para agregar.
+                </Typography>
+              )}
+              {vehicles.length === 0 && (
+                <Typography variant="body2">
+                  • No hay vehículos cargados. Debes crear vehículos primero.
+                </Typography>
+              )}
+            </Alert>
+          )}
+          
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <TextField
               label="Destino"
@@ -462,8 +499,14 @@ const TripsPage: React.FC = () => {
                 value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
                 onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
                 renderInput={(params) => (
-                  <TextField {...params} label="Conductor" required />
+                  <TextField 
+                    {...params} 
+                    label="Conductor" 
+                    required 
+                    helperText={drivers.length === 0 ? '⚠️ No hay empleados cargados' : `${drivers.length} empleados disponibles`}
+                  />
                 )}
+                noOptionsText="No hay conductores disponibles"
                 sx={{ flex: 1 }}
               />
 
@@ -473,8 +516,14 @@ const TripsPage: React.FC = () => {
                 value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
                 onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
                 renderInput={(params) => (
-                  <TextField {...params} label="Vehículo" required />
+                  <TextField 
+                    {...params} 
+                    label="Vehículo" 
+                    required 
+                    helperText={vehicles.length === 0 ? '⚠️ No hay vehículos cargados' : `${vehicles.length} vehículos disponibles`}
+                  />
                 )}
+                noOptionsText="No hay vehículos disponibles"
                 sx={{ flex: 1 }}
               />
             </Box>
