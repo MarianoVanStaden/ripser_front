@@ -360,19 +360,29 @@ export interface Warehouse {
 
 export interface Trip {
   id: number;
-  tripNumber: string;
-  driverId: number;
+  numeroViaje?: string;
+  tripNumber?: string; // Kept for backward compatibility
+  fechaViaje: string;
+  destino: string;
+  conductorId: number;
+  driverId?: number; // Kept for backward compatibility
+  conductorNombre?: string;
   driver?: Employee;
-  vehicleId: number;
+  vehiculoId: number;
+  vehicleId?: number; // Kept for backward compatibility
+  vehiculoPatente?: string;
   vehicle?: Vehicle;
-  startDate: string;
+  estado: TripStatus;
+  status?: TripStatus; // Kept for backward compatibility
+  observaciones?: string;
+  observations?: string; // Kept for backward compatibility
+  entregas?: Delivery[];
+  deliveries?: Delivery[]; // Kept for backward compatibility
+  startDate?: string; // Kept for backward compatibility
   endDate?: string;
-  status: TripStatus;
-  deliveries: Delivery[];
-  totalDistance: number;
-  observations: string;
-  createdAt: string;
-  updatedAt: string;
+  totalDistance?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Vehicle {
@@ -887,10 +897,15 @@ export const MovementType = {
 export type MovementType = typeof MovementType[keyof typeof MovementType];
 
 export const TripStatus = {
-  PLANNED: 'PLANNED',
-  IN_PROGRESS: 'IN_PROGRESS',
-  COMPLETED: 'COMPLETED',
-  CANCELLED: 'CANCELLED'
+  PLANIFICADO: 'PLANIFICADO',
+  EN_CURSO: 'EN_CURSO',
+  COMPLETADO: 'COMPLETADO',
+  CANCELADO: 'CANCELADO',
+  // Legacy values for backward compatibility
+  PLANNED: 'PLANIFICADO',
+  IN_PROGRESS: 'EN_CURSO',
+  COMPLETED: 'COMPLETADO',
+  CANCELLED: 'CANCELADO'
 } as const;
 export type TripStatus = typeof TripStatus[keyof typeof TripStatus];
 
@@ -1059,14 +1074,22 @@ export interface CreateVehicleRequest {
 
 // Trip Create Request
 export interface CreateTripRequest {
-  tripNumber: string;
-  driverId: number;
-  vehicleId: number;
-  startDate: string;
+  fechaViaje: string;
+  destino: string;
+  conductorId: number;
+  vehiculoId: number;
+  estado: TripStatus;
+  observaciones?: string;
+  entregas?: any[]; // EntregaViajeDTO[]
+  // Legacy fields for backward compatibility
+  tripNumber?: string;
+  driverId?: number;
+  vehicleId?: number;
+  startDate?: string;
   endDate?: string;
-  status: TripStatus;
-  totalDistance: number;
-  observations: string;
+  status?: TripStatus;
+  totalDistance?: number;
+  observations?: string;
 }
 
 // Delivery Create Request
@@ -1279,11 +1302,79 @@ export interface Viaje {
   conductor?: Empleado;
   vehiculoId: number;
   vehiculo?: Vehiculo;
-  estado: string;
+  estado: EstadoViaje;
   observaciones?: string;
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type EstadoViaje = 'PLANIFICADO' | 'EN_CURSO' | 'COMPLETADO' | 'CANCELADO';
+
+export interface ViajeCreateDTO {
+  fechaViaje: string;
+  destino: string;
+  conductorId: number;
+  vehiculoId: number;
+  estado?: EstadoViaje;
+  observaciones?: string;
+}
+
+export interface VehiculoCreateDTO {
+  patente: string;
+  marca: string;
+  modelo: string;
+  año: number;
+  estado?: string;
+  capacidad?: number;
+  observaciones?: string;
+}
+
+export interface EmpleadoCreateDTO {
+  nombre: string;
+  apellido: string;
+  dni: string;
+  email?: string;
+  telefono?: string;
+  direccion?: string;
+  fechaNacimiento?: string;
+  fechaIngreso: string;
+  puestoId?: number;
+  salario: number;
+  estado?: EstadoEmpleado;
+}
+
+export interface EmpleadoUpdateDTO {
+  nombre?: string;
+  apellido?: string;
+  email?: string;
+  telefono?: string;
+  direccion?: string;
+  fechaNacimiento?: string;
+  fechaEgreso?: string;
+  puestoId?: number;
+  salario?: number;
+  estado?: EstadoEmpleado;
+}
+
+export interface EntregaViaje {
+  id: number;
+  viajeId?: number;
+  viaje?: Viaje;
+  ventaId?: number;
+  venta?: Venta;
+  ordenServicioId?: number;
+  ordenServicio?: OrdenServicio;
+  direccionEntrega: string;
+  fechaEntrega: string;
+  estado: EstadoEntrega;
+  observaciones?: string;
+  receptorNombre?: string;
+  receptorDni?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type EstadoEntrega = 'PENDIENTE' | 'EN_TRANSITO' | 'ENTREGADA' | 'NO_ENTREGADA';
 
 // UnidadMedida (Unit of Measure)
 export interface UnidadMedida {
@@ -1589,8 +1680,9 @@ export interface MovimientoStock {
   id?: number;
   productoId: number;
   productoNombre?: string; // Backend returns this
+  productoCodigo?: string; // Backend returns this
   producto?: Producto; // Optional for compatibility
-  tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE';
+  tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE' | 'RECUENTO';
   cantidad: number;
   stockAnterior?: number;
   stockActual?: number;

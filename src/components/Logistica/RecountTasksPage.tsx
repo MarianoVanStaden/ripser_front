@@ -100,14 +100,24 @@ const RecountTasksPage: React.FC = () => {
       
       // Show success message
       const difference = cantidad - (selectedTask.stockAnterior || 0);
-      const message = difference === 0
-        ? '✅ Recuento completado. No hay diferencias.'
-        : `✅ Recuento completado.\n\n` +
+      let message: string;
+
+      if (difference === 0) {
+        message = '✅ Recuento completado. No hay diferencias.';
+      } else if (difference > 0) {
+        message = `✅ Recuento completado.\n\n` +
           `Stock esperado: ${selectedTask.stockAnterior}\n` +
           `Stock real: ${cantidad}\n` +
-          `Diferencia: ${difference > 0 ? '+' : ''}${difference}\n\n` +
-          `Se ha creado automáticamente un ajuste de inventario.`;
-      
+          `Diferencia: +${difference} unidades (SOBRANTE)\n\n` +
+          `Se ha creado automáticamente un ajuste de ENTRADA.`;
+      } else {
+        message = `✅ Recuento completado.\n\n` +
+          `Stock esperado: ${selectedTask.stockAnterior}\n` +
+          `Stock real: ${cantidad}\n` +
+          `Diferencia: ${difference} unidades (FALTANTE)\n\n` +
+          `Se ha creado automáticamente un ajuste de SALIDA.`;
+      }
+
       alert(message);
       
       // Reload pending recounts
@@ -122,13 +132,23 @@ const RecountTasksPage: React.FC = () => {
   };
 
   const getProductName = (task: RecountTask): string => {
+    // Backend returns productoNombre as a flat field
+    if (task.productoNombre) {
+      return task.productoNombre;
+    }
+    // Fallback to producto object if it exists
     if (typeof task.producto === 'object' && task.producto !== null) {
       return task.producto.nombre || 'Producto sin nombre';
     }
     return 'Producto desconocido';
   };
 
-  const getProductSKU = (task: RecountTask): string => {
+  const getProductCode = (task: RecountTask): string => {
+    // Backend returns productoCodigo as a flat field
+    if (task.productoCodigo) {
+      return task.productoCodigo;
+    }
+    // Fallback to producto object if it exists
     if (typeof task.producto === 'object' && task.producto !== null) {
       return task.producto.codigo || '-';
     }
@@ -192,7 +212,7 @@ const RecountTasksPage: React.FC = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>SKU</TableCell>
+                    <TableCell>Código</TableCell>
                     <TableCell>Producto</TableCell>
                     <TableCell align="right">Stock Esperado</TableCell>
                     <TableCell>Notas</TableCell>
@@ -204,9 +224,9 @@ const RecountTasksPage: React.FC = () => {
                   {tasks.map((task) => (
                     <TableRow key={task.id} hover>
                       <TableCell>
-                        <Chip 
-                          label={getProductSKU(task)} 
-                          size="small" 
+                        <Chip
+                          label={getProductCode(task)}
+                          size="small"
                           variant="outlined"
                         />
                       </TableCell>
@@ -270,7 +290,7 @@ const RecountTasksPage: React.FC = () => {
                 <strong>Producto:</strong> {getProductName(selectedTask)}
               </Typography>
               <Typography variant="body1" gutterBottom>
-                <strong>SKU:</strong> {getProductSKU(selectedTask)}
+                <strong>Código:</strong> {getProductCode(selectedTask)}
               </Typography>
               <Typography variant="body1" gutterBottom color="primary">
                 <strong>Stock Esperado:</strong> {selectedTask.stockAnterior ?? 0}
@@ -317,13 +337,21 @@ const RecountTasksPage: React.FC = () => {
                   {parseInt(countedQuantity) === (selectedTask.stockAnterior ?? 0) ? (
                     '✅ La cantidad coincide con el stock esperado'
                   ) : (
-                    <>
-                      <strong>Diferencia detectada:</strong>{' '}
-                      {parseInt(countedQuantity) - (selectedTask.stockAnterior ?? 0) > 0 ? '+' : ''}
-                      {parseInt(countedQuantity) - (selectedTask.stockAnterior ?? 0)} unidades
-                      <br />
-                      Se creará automáticamente un ajuste de inventario.
-                    </>
+                    (() => {
+                      const diff = parseInt(countedQuantity) - (selectedTask.stockAnterior ?? 0);
+                      return (
+                        <>
+                          <strong>Diferencia detectada:</strong>{' '}
+                          {diff > 0 ? (
+                            <span style={{ color: '#2e7d32' }}>+{diff} unidades (sobrante)</span>
+                          ) : (
+                            <span style={{ color: '#d32f2f' }}>{diff} unidades (faltante)</span>
+                          )}
+                          <br />
+                          Se creará automáticamente un ajuste de inventario.
+                        </>
+                      );
+                    })()
                   )}
                 </Alert>
               )}
