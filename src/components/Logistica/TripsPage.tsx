@@ -45,7 +45,7 @@ import {
   PlayArrow as StartIcon,
   Stop as StopIcon,
 } from '@mui/icons-material';
-import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje } from '../../types';
+import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega } from '../../types';
 import { viajeApi } from '../../api/services/viajeApi';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -76,8 +76,9 @@ const TripsPage: React.FC = () => {
     observaciones: '',
   });
 
-  // Deliveries for current trip
-  const [tripDeliveries, setTripDeliveries] = useState<Partial<EntregaViaje>[]>([]);
+  // Deliveries for current trip - using a custom type for form state
+  type DeliveryFormState = Partial<EntregaViaje> & { fechaProgramada?: string };
+  const [tripDeliveries, setTripDeliveries] = useState<DeliveryFormState[]>([]);
   const [newDelivery, setNewDelivery] = useState({
     direccionEntrega: '',
     fechaProgramada: '',
@@ -152,8 +153,9 @@ const TripsPage: React.FC = () => {
       setDrivers(Array.isArray(employeesData) ? employeesData : []);
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
 
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Error al cargar los datos');
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Error al cargar los datos');
       console.error('❌ Error general loading data:', err);
     } finally {
       setLoading(false);
@@ -247,24 +249,24 @@ const TripsPage: React.FC = () => {
         let errorCount = 0;
         for (const delivery of tripDeliveries) {
           if (!delivery.id) {
-            // New delivery - send as EntregaViaje entity format
+            // New delivery - send with viajeId instead of nested viaje object
             try {
-              const deliveryPayload = {
-                viaje: { id: savedTrip.id },
+              const deliveryPayload: Partial<EntregaViaje> = {
+                viajeId: savedTrip.id,
                 direccionEntrega: delivery.direccionEntrega || '',
                 fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
-                observaciones: delivery.observaciones,
-                estado: 'PENDIENTE',
+                observaciones: delivery.observaciones || '',
+                estado: 'PENDIENTE' as EstadoEntrega,
               };
               console.log('📦 Creating delivery:', deliveryPayload);
-              const result = await entregaViajeApi.create(deliveryPayload as any);
+              const result = await entregaViajeApi.create(deliveryPayload);
               console.log('✅ Delivery created:', result);
               successCount++;
             } catch (deliveryError) {
               errorCount++;
               console.error('❌ Error creating delivery:', deliveryError);
               console.error('Delivery data:', delivery);
-              const err = deliveryError as { response?: { status?: number; data?: any } };
+              const err = deliveryError as { response?: { status?: number; data?: unknown } };
               console.error('Error response:', err.response);
             }
           }
@@ -323,8 +325,9 @@ const TripsPage: React.FC = () => {
       try {
         await viajeApi.delete(id);
         await loadData();
-      } catch (err: any) {
-        setError(err?.response?.data?.message || 'Error al eliminar el viaje');
+      } catch (err) {
+        const error = err as { response?: { data?: { message?: string } } };
+        setError(error?.response?.data?.message || 'Error al eliminar el viaje');
         console.error('Error deleting trip:', err);
       }
     }
