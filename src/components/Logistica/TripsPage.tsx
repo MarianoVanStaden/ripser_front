@@ -45,23 +45,26 @@ import {
   PlayArrow as StartIcon,
   Stop as StopIcon,
 } from '@mui/icons-material';
-import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega } from '../../types';
+import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial } from '../../types';
 import { viajeApi } from '../../api/services/viajeApi';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
+import { documentoApi } from '../../api/services/documentoApi';
 
 const TripsPage: React.FC = () => {
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
   const [drivers, setDrivers] = useState<Empleado[]>([]);
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
+  const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Viaje | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
+  const [selectedFactura, setSelectedFactura] = useState<DocumentoComercial | null>(null);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoViaje>('all');
@@ -72,18 +75,25 @@ const TripsPage: React.FC = () => {
     destino: '',
     conductorId: '',
     vehiculoId: '',
+    facturaId: '', // ID de la factura asociada
     estado: 'PLANIFICADO' as EstadoViaje,
     observaciones: '',
   });
 
   // Deliveries for current trip - using a custom type for form state
-  type DeliveryFormState = Partial<EntregaViaje> & { fechaProgramada?: string };
+  type DeliveryFormState = Partial<EntregaViaje> & {
+    fechaProgramada?: string;
+    facturaId?: number;
+    factura?: DocumentoComercial;
+  };
   const [tripDeliveries, setTripDeliveries] = useState<DeliveryFormState[]>([]);
   const [newDelivery, setNewDelivery] = useState({
     direccionEntrega: '',
     fechaProgramada: '',
     observaciones: '',
+    facturaId: '',
   });
+  const [selectedDeliveryFactura, setSelectedDeliveryFactura] = useState<DocumentoComercial | null>(null);
 
   useEffect(() => {
     loadData();
@@ -99,6 +109,7 @@ const TripsPage: React.FC = () => {
       let vehiclesData: Vehiculo[] = [];
       let employeesData: Empleado[] = [];
       let deliveriesData: EntregaViaje[] = [];
+      let facturasData: DocumentoComercial[] = [];
       const errors: string[] = [];
 
       try {
@@ -142,6 +153,15 @@ const TripsPage: React.FC = () => {
         errors.push(`❌ Entregas: ${errorMsg}`);
       }
 
+      try {
+        facturasData = await documentoApi.getByTipo('FACTURA');
+        console.log('✅ Facturas cargadas:', facturasData.length, facturasData);
+      } catch (err) {
+        console.error('❌ Error cargando facturas:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Facturas: ${errorMsg}`);
+      }
+
       // Show errors if any
       if (errors.length > 0) {
         setError(errors.join(' | '));
@@ -152,6 +172,7 @@ const TripsPage: React.FC = () => {
       setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
       setDrivers(Array.isArray(employeesData) ? employeesData : []);
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
+      setFacturas(Array.isArray(facturasData) ? facturasData : []);
 
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -184,16 +205,19 @@ const TripsPage: React.FC = () => {
 
   const handleAdd = () => {
     setEditingTrip(null);
+    setSelectedFactura(null);
+    setSelectedDeliveryFactura(null);
     setFormData({
       fechaViaje: '',
       destino: '',
       conductorId: '',
       vehiculoId: '',
+      facturaId: '',
       estado: 'PLANIFICADO',
       observaciones: '',
     });
     setTripDeliveries([]);
-    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '' });
+    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '' });
     setDialogOpen(true);
   };
 
@@ -245,33 +269,127 @@ const TripsPage: React.FC = () => {
 
       // Save deliveries for the trip
       if (tripDeliveries.length > 0) {
+        const newDeliveriesCount = tripDeliveries.filter(d => !d.id).length;
+        console.log(`📦 Intentando crear ${newDeliveriesCount} entregas para el viaje #${savedTrip.id}`);
+        console.log('📦 Entregas a crear:', tripDeliveries.filter(d => !d.id));
+        console.log('🔑 Token actual:', localStorage.getItem('auth_token')?.substring(0, 20) + '...');
+
         let successCount = 0;
         let errorCount = 0;
-        for (const delivery of tripDeliveries) {
+        const errors: Array<{ index: number; error: any }> = [];
+
+        for (let i = 0; i < tripDeliveries.length; i++) {
+          const delivery = tripDeliveries[i];
           if (!delivery.id) {
+            const currentIndex = successCount + errorCount + 1;
+            
+            // ✅ VALIDACIÓN: Verificar que la factura existe antes de crear la entrega
+            if (!delivery.facturaId) {
+              console.error(`❌ [${currentIndex}/${newDeliveriesCount}] Error: No se especificó facturaId para la entrega`);
+              console.log('   Delivery data:', delivery);
+              errorCount++;
+              errorDetails.push({
+                index: currentIndex,
+                facturaId: delivery.facturaId,
+                error: 'facturaId es requerido',
+                timestamp: new Date().toISOString()
+              });
+              continue; // Saltar esta entrega
+            }
+            
             // New delivery - send with viajeId instead of nested viaje object
             try {
               const deliveryPayload: Partial<EntregaViaje> = {
                 viajeId: savedTrip.id,
+                ventaId: delivery.facturaId, // ventaId en el backend corresponde al documentoComercialId
                 direccionEntrega: delivery.direccionEntrega || '',
                 fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
                 observaciones: delivery.observaciones || '',
                 estado: 'PENDIENTE' as EstadoEntrega,
               };
-              console.log('📦 Creating delivery:', deliveryPayload);
+              
+              console.log(`\n📦 [${currentIndex}/${newDeliveriesCount}] Creando entrega:`);
+              console.log('   Payload:', JSON.stringify(deliveryPayload, null, 2));
+              console.log('   Timestamp:', new Date().toISOString());
+              
               const result = await entregaViajeApi.create(deliveryPayload);
-              console.log('✅ Delivery created:', result);
+              
+              console.log(`✅ [${currentIndex}/${newDeliveriesCount}] Entrega creada exitosamente!`);
+              console.log('   ID creado:', result.id);
+              console.log('   Response completo:', result);
               successCount++;
-            } catch (deliveryError) {
+
+              // Agregar un pequeño delay entre entregas para evitar rate limiting o problemas de concurrencia
+              if (currentIndex < newDeliveriesCount) {
+                console.log(`⏳ Esperando 500ms antes de crear la siguiente entrega...`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+            } catch (deliveryError: any) {
               errorCount++;
-              console.error('❌ Error creating delivery:', deliveryError);
-              console.error('Delivery data:', delivery);
-              const err = deliveryError as { response?: { status?: number; data?: unknown } };
-              console.error('Error response:', err.response);
+              console.error(`\n❌ [${currentIndex}/${newDeliveriesCount}] ERROR al crear entrega:`);
+              console.error('   Status:', deliveryError.response?.status);
+              console.error('   Status Text:', deliveryError.response?.statusText);
+              console.error('   Error Data:', deliveryError.response?.data);
+              console.error('   Error Message:', deliveryError.message);
+              console.error('   Headers:', deliveryError.response?.headers);
+              console.error('   Delivery data que falló:', delivery);
+              console.error('   Payload que se envió:', {
+                viajeId: savedTrip.id,
+                ventaId: delivery.facturaId,
+                direccionEntrega: delivery.direccionEntrega,
+              });
+
+              // Guardar el error para análisis posterior
+              errors.push({ index: currentIndex, error: deliveryError });
+
+              // Si es 403, verificar token
+              if (deliveryError.response?.status === 403) {
+                console.error('   🔐 Error 403 - Verificando autenticación:');
+                console.error('   Token presente:', !!localStorage.getItem('auth_token'));
+                console.error('   Token value:', localStorage.getItem('auth_token')?.substring(0, 30) + '...');
+                console.error('   Refresh token presente:', !!localStorage.getItem('auth_refresh_token'));
+              }
+
+              // También agregar delay si falla, para evitar más errores 403
+              if (currentIndex < newDeliveriesCount) {
+                console.log(`⏳ Esperando 500ms antes de intentar la siguiente entrega...`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
             }
           }
         }
-        console.log(`📊 Delivery results: ${successCount} created, ${errorCount} failed`);
+        
+        console.log(`\n📊 ========== RESULTADO FINAL ==========`);
+        console.log(`   ✅ Entregas creadas exitosamente: ${successCount}`);
+        console.log(`   ❌ Entregas fallidas: ${errorCount}`);
+        console.log(`   📈 Tasa de éxito: ${Math.round((successCount / newDeliveriesCount) * 100)}%`);
+        
+        if (errors.length > 0) {
+          console.log(`\n⚠️ ANÁLISIS DE ERRORES:`);
+          errors.forEach(({ index, error }) => {
+            console.log(`   [${index}] Status ${error.response?.status}: ${error.response?.data?.message || error.message}`);
+          });
+          
+          // Detectar patrones
+          const has403 = errors.some(e => e.response?.status === 403);
+          const allSameError = errors.every(e => e.response?.status === errors[0].error.response?.status);
+          
+          if (has403) {
+            console.warn(`\n🔐 PROBLEMA DE AUTENTICACIÓN DETECTADO:`);
+            console.warn(`   - ${errors.filter(e => e.response?.status === 403).length} entregas fallaron con 403 Forbidden`);
+            console.warn(`   - Posibles causas:`);
+            console.warn(`     1. El backend invalida el token después de la primera petición POST`);
+            console.warn(`     2. Hay rate limiting en el backend`);
+            console.warn(`     3. El rol/permiso solo permite crear 1 entrega a la vez`);
+            console.warn(`     4. Hay algún CSRF token que no se está enviando correctamente`);
+          }
+          
+          if (allSameError) {
+            console.warn(`\n📊 Todas las entregas fallaron con el mismo error (${errors[0].error.response?.status})`);
+            console.warn(`   Esto sugiere un problema sistemático, no aleatorio.`);
+          }
+        }
+        console.log(`=====================================\n`);
       }
 
       await loadData();
@@ -311,9 +429,12 @@ const TripsPage: React.FC = () => {
       fechaProgramada: newDelivery.fechaProgramada || formData.fechaViaje,
       observaciones: newDelivery.observaciones,
       estado: 'PENDIENTE',
+      facturaId: newDelivery.facturaId ? parseInt(newDelivery.facturaId) : undefined,
+      factura: selectedDeliveryFactura || undefined,
     }]);
 
-    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '' });
+    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '' });
+    setSelectedDeliveryFactura(null);
   };
 
   const handleRemoveDelivery = (index: number) => {
@@ -383,6 +504,19 @@ Opciones:
   const getTripDeliveries = (tripId: number) => {
     // Backend now returns both viajeId and viaje object
     return deliveries.filter(d => d.viajeId === tripId);
+  };
+
+  // Obtener todas las facturas asociadas a un viaje a través de sus entregas
+  const getFacturasByTrip = (tripId: number): DocumentoComercial[] => {
+    const tripDeliveries = getTripDeliveries(tripId);
+    const facturaIds = tripDeliveries
+      .map(d => d.ventaId)
+      .filter((id): id is number => id !== undefined && id !== null);
+
+    const uniqueFacturaIds = [...new Set(facturaIds)];
+    return uniqueFacturaIds
+      .map(id => facturas.find(f => f.id === id))
+      .filter((f): f is DocumentoComercial => f !== undefined);
   };
 
   if (loading) {
@@ -513,6 +647,7 @@ Opciones:
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
+                  <TableCell>Factura/Cliente</TableCell>
                   <TableCell>Conductor</TableCell>
                   <TableCell>Vehículo</TableCell>
                   <TableCell>Destino</TableCell>
@@ -525,6 +660,7 @@ Opciones:
               <TableBody>
                 {filteredTrips.map((trip) => {
                   const tripDeliveries = getTripDeliveries(trip.id);
+                  const facturas = getFacturasByTrip(trip.id);
 
                   return (
                     <TableRow key={trip.id}>
@@ -532,6 +668,34 @@ Opciones:
                         <Typography variant="body2" fontWeight="bold">
                           #{trip.id}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {facturas.length > 0 ? (
+                          <Box>
+                            {facturas.map((factura, idx) => (
+                              <Box key={factura.id} mb={idx < facturas.length - 1 ? 1 : 0}>
+                                <Typography variant="body2" fontWeight="bold" color="primary.main">
+                                  📄 {factura.numeroDocumento}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {factura.clienteNombre} - ${factura.total.toLocaleString()}
+                                </Typography>
+                              </Box>
+                            ))}
+                            {facturas.length > 1 && (
+                              <Chip
+                                label={`${facturas.length} facturas`}
+                                size="small"
+                                color="primary"
+                                sx={{ mt: 0.5 }}
+                              />
+                            )}
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            Sin facturas
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
@@ -634,6 +798,7 @@ Opciones:
               onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
               fullWidth
               required
+              helperText="Ingresa el destino principal del viaje. Puedes agregar entregas con diferentes facturas abajo."
             />
 
             <Box display="flex" gap={2}>
@@ -737,9 +902,26 @@ Opciones:
                       }
                     >
                       <ListItemText
-                        primary={delivery.direccionEntrega}
+                        primary={
+                          <Box>
+                            <Typography variant="body2">{delivery.direccionEntrega}</Typography>
+                            {delivery.factura && (
+                              <Chip
+                                label={`📄 ${delivery.factura.numeroDocumento}`}
+                                size="small"
+                                color="primary"
+                                sx={{ mt: 0.5 }}
+                              />
+                            )}
+                          </Box>
+                        }
                         secondary={
                           <>
+                            {delivery.factura && (
+                              <Typography variant="caption" display="block" color="primary.main">
+                                Cliente: {delivery.factura.clienteNombre} | Total: ${delivery.factura.total.toLocaleString()}
+                              </Typography>
+                            )}
                             {delivery.fechaProgramada && (
                               <Typography variant="caption" display="block">
                                 Fecha: {new Date(delivery.fechaProgramada).toLocaleString()}
@@ -769,6 +951,65 @@ Opciones:
               {/* Add New Delivery Form */}
               <Box display="flex" flexDirection="column" gap={2} p={2} bgcolor="grey.50" borderRadius={1}>
                 <Typography variant="subtitle2">Agregar Entrega</Typography>
+
+                {/* Selector de Factura para la entrega */}
+                <Autocomplete
+                  options={facturas}
+                  getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
+                  value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
+                  onChange={(_, value) => {
+                    setSelectedDeliveryFactura(value);
+                    setNewDelivery({
+                      ...newDelivery,
+                      facturaId: value?.id.toString() || '',
+                      direccionEntrega: value ? `${value.clienteNombre} - Ver detalles de factura` : newDelivery.direccionEntrega
+                    });
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Factura (Opcional)"
+                      size="small"
+                      helperText="Selecciona una factura para ver productos y cliente"
+                    />
+                  )}
+                  renderOption={(props, factura) => (
+                    <li {...props}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">
+                          {factura.numeroDocumento} - {factura.clienteNombre}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          ${factura.total.toLocaleString()} | {factura.detalles.length} productos
+                        </Typography>
+                      </Box>
+                    </li>
+                  )}
+                  size="small"
+                />
+
+                {/* Mostrar detalles de la factura seleccionada */}
+                {selectedDeliveryFactura && (
+                  <Card sx={{ bgcolor: 'info.lighter', p: 1 }}>
+                    <Typography variant="caption" fontWeight="bold" display="block" gutterBottom>
+                      📦 Productos de {selectedDeliveryFactura.numeroDocumento}:
+                    </Typography>
+                    <List dense>
+                      {selectedDeliveryFactura.detalles.map((detalle, idx) => (
+                        <ListItem key={idx} sx={{ py: 0, px: 1 }}>
+                          <ListItemText
+                            primary={
+                              <Typography variant="caption">
+                                • {detalle.productoNombre} x{detalle.cantidad}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Card>
+                )}
+
                 <TextField
                   label="Dirección de Entrega"
                   value={newDelivery.direccionEntrega}
@@ -832,6 +1073,46 @@ Opciones:
         <DialogContent>
           {selectedTrip && (
             <Box>
+              {/* Mostrar información de todas las facturas asociadas */}
+              {getFacturasByTrip(selectedTrip.id).length > 0 && (
+                <Box mb={3}>
+                  <Typography variant="h6" gutterBottom>
+                    📄 Facturas Asociadas ({getFacturasByTrip(selectedTrip.id).length})
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {getFacturasByTrip(selectedTrip.id).map((factura) => (
+                      <Grid item xs={12} md={6} key={factura.id}>
+                        <Card sx={{ bgcolor: 'primary.lighter', border: '1px solid', borderColor: 'primary.main' }}>
+                          <CardContent>
+                            <Typography variant="subtitle1" gutterBottom color="primary.dark" fontWeight="bold">
+                              {factura.numeroDocumento}
+                            </Typography>
+                            <Box display="flex" flexDirection="column" gap={0.5}>
+                              <Typography variant="body2"><strong>Cliente:</strong> {factura.clienteNombre}</Typography>
+                              <Typography variant="body2"><strong>Total:</strong> ${factura.total.toLocaleString()}</Typography>
+                              <Typography variant="body2"><strong>Estado:</strong> {factura.estado}</Typography>
+                            </Box>
+                            <Box mt={1}>
+                              <Typography variant="caption" fontWeight="bold" display="block">Productos:</Typography>
+                              {factura.detalles.slice(0, 3).map((detalle, idx) => (
+                                <Typography key={idx} variant="caption" display="block">
+                                  • {detalle.productoNombre} x{detalle.cantidad}
+                                </Typography>
+                              ))}
+                              {factura.detalles.length > 3 && (
+                                <Typography variant="caption" color="text.secondary">
+                                  ... y {factura.detalles.length - 3} más
+                                </Typography>
+                              )}
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <Card>
@@ -849,9 +1130,12 @@ Opciones:
                         <Typography variant="body2">
                           <strong>Destino:</strong> {selectedTrip.destino}
                         </Typography>
-                        <Typography variant="body2">
-                          <strong>Estado:</strong> {getStatusChip(selectedTrip.estado)}
-                        </Typography>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Typography variant="body2">
+                            <strong>Estado:</strong>
+                          </Typography>
+                          {getStatusChip(selectedTrip.estado)}
+                        </Box>
                         <Typography variant="body2">
                           <strong>Fecha:</strong> {new Date(selectedTrip.fechaViaje).toLocaleString()}
                         </Typography>

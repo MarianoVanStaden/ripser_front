@@ -47,156 +47,11 @@ import {
   Print as PrintIcon,
   Map as MapIcon,
 } from '@mui/icons-material';
-import type { Delivery, Trip, Client, Order, DeliveryStatus } from '../../types';
-
-// Mock data for development
-const mockClients: Client[] = [
-  {
-    id: 1,
-    firstName: 'Juan',
-    lastName: 'Pérez',
-    email: 'juan.perez@email.com',
-    phone: '+54 11 1234-5678',
-    address: 'Av. Corrientes 1234, Buenos Aires',
-    city: 'Buenos Aires',
-    birthDate: '1985-03-15',
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-15T10:30:00Z',
-  },
-  {
-    id: 2,
-    firstName: 'María',
-    lastName: 'González',
-    email: 'maria.gonzalez@email.com',
-    phone: '+54 11 8765-4321',
-    address: 'Av. Santa Fe 5678, Buenos Aires',
-    city: 'Buenos Aires',
-    birthDate: '1990-07-22',
-    isActive: true,
-    createdAt: '2024-01-02T00:00:00Z',
-    updatedAt: '2024-01-20T14:15:00Z',
-  },
-];
-
-const mockOrders: Order[] = [
-  {
-    id: 1,
-    orderNumber: 'ORD-2024-001',
-    clientId: 1,
-    employeeId: 1,
-    orderDate: '2024-01-20T00:00:00Z',
-    status: 'CONFIRMED',
-    total: 150000,
-    discount: 0,
-    tax: 31500,
-    totalWithTax: 181500,
-    deliveryDate: '2024-01-25T00:00:00Z',
-    observations: '',
-    createdAt: '2024-01-20T00:00:00Z',
-    updatedAt: '2024-01-25T10:30:00Z',
-  },
-  {
-    id: 2,
-    orderNumber: 'ORD-2024-002',
-    clientId: 2,
-    employeeId: 1,
-    orderDate: '2024-01-22T00:00:00Z',
-    status: 'PENDING',
-    total: 85000,
-    discount: 5000,
-    tax: 16800,
-    totalWithTax: 96800,
-    deliveryDate: '2024-01-28T00:00:00Z',
-    observations: '',
-    createdAt: '2024-01-22T00:00:00Z',
-    updatedAt: '2024-01-22T14:15:00Z',
-  },
-];
-
-const mockTrips: Trip[] = [
-  {
-    id: 1,
-    tripNumber: 'TRIP-2024-001',
-    driverId: 1,
-    vehicleId: 1,
-    startDate: '2024-01-25T08:00:00Z',
-    endDate: '2024-01-25T18:00:00Z',
-    status: 'COMPLETED',
-    deliveries: [],
-    totalDistance: 150,
-    observations: '',
-    createdAt: '2024-01-25T07:00:00Z',
-    updatedAt: '2024-01-25T18:30:00Z',
-  },
-  {
-    id: 2,
-    tripNumber: 'TRIP-2024-002',
-    driverId: 2,
-    vehicleId: 2,
-    startDate: '2024-01-26T09:00:00Z',
-    status: 'IN_PROGRESS',
-    deliveries: [],
-    totalDistance: 0,
-    observations: '',
-    createdAt: '2024-01-26T08:00:00Z',
-    updatedAt: '2024-01-26T09:00:00Z',
-  },
-];
-
-const mockDeliveries: Delivery[] = [
-  {
-    id: 1,
-    tripId: 1,
-    orderId: 1,
-    clientId: 1,
-    address: 'Av. Corrientes 1234, Buenos Aires',
-    scheduledDate: '2024-01-25T10:00:00Z',
-    deliveredDate: '2024-01-25T10:30:00Z',
-    status: 'DELIVERED',
-    observations: 'Entregado sin problemas. Cliente satisfecho.',
-    signature: 'Juan Pérez',
-    createdAt: '2024-01-25T07:00:00Z',
-    updatedAt: '2024-01-25T10:30:00Z',
-  },
-  {
-    id: 2,
-    tripId: 2,
-    orderId: 2,
-    clientId: 2,
-    address: 'Av. Santa Fe 5678, Buenos Aires',
-    scheduledDate: '2024-01-26T11:00:00Z',
-    status: 'IN_TRANSIT',
-    observations: 'En camino al destino',
-    createdAt: '2024-01-26T08:00:00Z',
-    updatedAt: '2024-01-26T09:00:00Z',
-  },
-  {
-    id: 3,
-    orderId: null,
-    clientId: 1,
-    address: 'Av. Rivadavia 9999, Buenos Aires',
-    scheduledDate: '2024-01-27T14:00:00Z',
-    status: 'PENDING',
-    observations: 'Pendiente de asignación a viaje',
-    createdAt: '2024-01-26T16:00:00Z',
-    updatedAt: '2024-01-26T16:00:00Z',
-  },
-  {
-    id: 4,
-    tripId: 1,
-    orderId: null,
-    clientId: 2,
-    address: 'Av. Libertador 1111, Buenos Aires',
-    scheduledDate: '2024-01-25T15:00:00Z',
-    deliveredDate: '2024-01-25T15:45:00Z',
-    status: 'DELIVERED',
-    observations: 'Entrega realizada. Documentos firmados.',
-    signature: 'María González',
-    createdAt: '2024-01-25T07:00:00Z',
-    updatedAt: '2024-01-25T15:45:00Z',
-  },
-];
+import type { EntregaViaje, Viaje, Cliente, Venta, EstadoEntrega } from '../../types';
+import { entregaViajeApi } from '../../api/services/entregaViajeApi';
+import { clienteApi } from '../../api/services/clienteApi';
+import { ventaApi } from '../../api/services/ventaApi';
+import { viajeApi } from '../../api/services/viajeApi';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -225,33 +80,32 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const DeliveriesPage: React.FC = () => {
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
+  const [clients, setClients] = useState<Cliente[]>([]);
+  const [ventas, setVentas] = useState<Venta[]>([]);
+  const [trips, setTrips] = useState<Viaje[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [editingDelivery, setEditingDelivery] = useState<Delivery | null>(null);
-  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [editingDelivery, setEditingDelivery] = useState<EntregaViaje | null>(null);
+  const [selectedDelivery, setSelectedDelivery] = useState<EntregaViaje | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  
+
   // Filters
-  const [statusFilter, setStatusFilter] = useState<'all' | DeliveryStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | EstadoEntrega>('all');
   const [dateFilter, setDateFilter] = useState('');
-  
+
   // Form data
   const [formData, setFormData] = useState({
-    tripId: '',
-    orderId: '',
-    clientId: '',
-    address: '',
-    scheduledDate: '',
-    deliveredDate: '',
-    status: 'PENDING' as DeliveryStatus,
-    observations: '',
-    signature: '',
+    viajeId: '',
+    ventaId: '',
+    direccionEntrega: '',
+    fechaEntrega: '',
+    estado: 'PENDIENTE' as EstadoEntrega,
+    observaciones: '',
+    receptorNombre: '',
+    receptorDni: '',
   });
 
   useEffect(() => {
@@ -261,111 +115,142 @@ const DeliveriesPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      // Replace with actual API calls
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setDeliveries(mockDeliveries);
-      setClients(mockClients);
-      setOrders(mockOrders);
-      setTrips(mockTrips);
       setError(null);
+
+      // Load each resource individually to better handle errors
+      let deliveriesData: EntregaViaje[] = [];
+      let clientsData: Cliente[] = [];
+      let ventasData: Venta[] = [];
+      let tripsData: Viaje[] = [];
+      const errors: string[] = [];
+
+      try {
+        deliveriesData = await entregaViajeApi.getAll();
+        console.log('✅ Entregas cargadas:', deliveriesData.length, deliveriesData);
+      } catch (err) {
+        console.error('❌ Error cargando entregas:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Entregas: ${errorMsg}`);
+      }
+
+      try {
+        clientsData = await clienteApi.getAll();
+        console.log('✅ Clientes cargados:', clientsData.length, clientsData);
+      } catch (err) {
+        console.error('❌ Error cargando clientes:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Clientes: ${errorMsg}`);
+      }
+
+      try {
+        ventasData = await ventaApi.getAll();
+        console.log('✅ Ventas cargadas:', ventasData.length, ventasData);
+      } catch (err) {
+        console.error('❌ Error cargando ventas:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Ventas: ${errorMsg}`);
+      }
+
+      try {
+        tripsData = await viajeApi.getAll();
+        console.log('✅ Viajes cargados:', tripsData.length, tripsData);
+      } catch (err) {
+        console.error('❌ Error cargando viajes:', err);
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Viajes: ${errorMsg}`);
+      }
+
+      // Show errors if any
+      if (errors.length > 0) {
+        setError(errors.join(' | '));
+      }
+
+      // Ensure all data is in array format
+      setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
+      setClients(Array.isArray(clientsData) ? clientsData : []);
+      setVentas(Array.isArray(ventasData) ? ventasData : []);
+      setTrips(Array.isArray(tripsData) ? tripsData : []);
+
     } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Error al cargar los datos');
+      console.error('❌ Error general loading data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredDeliveries = deliveries.filter(delivery => {
-    const matchesStatus = statusFilter === 'all' || delivery.status === statusFilter;
-    const matchesDate = !dateFilter || 
-      new Date(delivery.scheduledDate).toDateString() === new Date(dateFilter).toDateString();
+    const matchesStatus = statusFilter === 'all' || delivery.estado === statusFilter;
+    const matchesDate = !dateFilter ||
+      new Date(delivery.fechaEntrega).toDateString() === new Date(dateFilter).toDateString();
     return matchesStatus && matchesDate;
   });
 
-  const pendingDeliveries = deliveries.filter(d => d.status === 'PENDING');
-  const inTransitDeliveries = deliveries.filter(d => d.status === 'IN_TRANSIT');
-  const deliveredCount = deliveries.filter(d => d.status === 'DELIVERED').length;
-  const unassignedDeliveries = deliveries.filter(d => !d.tripId);
+  const pendingDeliveries = deliveries.filter(d => d.estado === 'PENDIENTE');
+  const inTransitDeliveries = deliveries.filter(d => d.estado === 'EN_TRANSITO');
+  const deliveredCount = deliveries.filter(d => d.estado === 'ENTREGADA').length;
+  const unassignedDeliveries = deliveries.filter(d => !d.viajeId);
 
   const handleAdd = () => {
     setEditingDelivery(null);
     setFormData({
-      tripId: '',
-      orderId: '',
-      clientId: '',
-      address: '',
-      scheduledDate: '',
-      deliveredDate: '',
-      status: 'PENDING',
-      observations: '',
-      signature: '',
+      viajeId: '',
+      ventaId: '',
+      direccionEntrega: '',
+      fechaEntrega: '',
+      estado: 'PENDIENTE',
+      observaciones: '',
+      receptorNombre: '',
+      receptorDni: '',
     });
     setDialogOpen(true);
   };
 
-  const handleEdit = (delivery: Delivery) => {
+  const handleEdit = (delivery: EntregaViaje) => {
     setEditingDelivery(delivery);
-    const client = clients.find(c => c.id === delivery.clientId);
     setFormData({
-      tripId: delivery.tripId?.toString() || '',
-      orderId: delivery.orderId?.toString() || '',
-      clientId: delivery.clientId.toString(),
-      address: delivery.address,
-      scheduledDate: delivery.scheduledDate.slice(0, 16),
-      deliveredDate: delivery.deliveredDate ? delivery.deliveredDate.slice(0, 16) : '',
-      status: delivery.status,
-      observations: delivery.observations,
-      signature: delivery.signature || '',
+      viajeId: delivery.viajeId?.toString() || '',
+      ventaId: delivery.ventaId?.toString() || '',
+      direccionEntrega: delivery.direccionEntrega,
+      fechaEntrega: delivery.fechaEntrega.slice(0, 16),
+      estado: delivery.estado,
+      observaciones: delivery.observaciones || '',
+      receptorNombre: delivery.receptorNombre || '',
+      receptorDni: delivery.receptorDni || '',
     });
     setDialogOpen(true);
   };
 
-  const handleViewDetails = (delivery: Delivery) => {
+  const handleViewDetails = (delivery: EntregaViaje) => {
     setSelectedDelivery(delivery);
     setDetailsDialogOpen(true);
   };
 
   const handleSave = async () => {
     try {
-      console.log('Saving delivery:', formData);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      const entregaData: Partial<EntregaViaje> = {
+        viajeId: formData.viajeId ? parseInt(formData.viajeId) : undefined,
+        ventaId: formData.ventaId ? parseInt(formData.ventaId) : undefined,
+        direccionEntrega: formData.direccionEntrega,
+        fechaEntrega: new Date(formData.fechaEntrega).toISOString(),
+        estado: formData.estado,
+        observaciones: formData.observaciones,
+        receptorNombre: formData.receptorNombre || undefined,
+        receptorDni: formData.receptorDni || undefined,
+      };
+
       if (editingDelivery) {
-        // Update existing delivery
-        setDeliveries(deliveries.map(delivery => 
-          delivery.id === editingDelivery.id 
-            ? { 
-                ...delivery, 
-                ...formData,
-                tripId: formData.tripId ? parseInt(formData.tripId) : undefined,
-                orderId: formData.orderId ? parseInt(formData.orderId) : undefined,
-                clientId: parseInt(formData.clientId),
-                scheduledDate: new Date(formData.scheduledDate).toISOString(),
-                deliveredDate: formData.deliveredDate ? new Date(formData.deliveredDate).toISOString() : undefined,
-                updatedAt: new Date().toISOString() 
-              }
-            : delivery
-        ));
+        await entregaViajeApi.update(editingDelivery.id, entregaData);
       } else {
-        // Add new delivery
-        const newDelivery: Delivery = {
-          id: Math.max(...deliveries.map(d => d.id)) + 1,
-          ...formData,
-          tripId: formData.tripId ? parseInt(formData.tripId) : undefined,
-          orderId: formData.orderId ? parseInt(formData.orderId) : undefined,
-          clientId: parseInt(formData.clientId),
-          scheduledDate: new Date(formData.scheduledDate).toISOString(),
-          deliveredDate: formData.deliveredDate ? new Date(formData.deliveredDate).toISOString() : undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setDeliveries([...deliveries, newDelivery]);
+        await entregaViajeApi.create(entregaData);
       }
-      
+
+      await loadData();
       setDialogOpen(false);
     } catch (err) {
-      setError('Error al guardar la entrega');
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Error al guardar la entrega');
       console.error('Error saving delivery:', err);
     }
   };
@@ -373,63 +258,58 @@ const DeliveriesPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Está seguro de que desea eliminar esta entrega?')) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setDeliveries(deliveries.filter(delivery => delivery.id !== id));
+        await entregaViajeApi.delete(id);
+        await loadData();
       } catch (err) {
-        setError('Error al eliminar la entrega');
+        const error = err as { response?: { data?: { message?: string } } };
+        setError(error?.response?.data?.message || 'Error al eliminar la entrega');
         console.error('Error deleting delivery:', err);
       }
     }
   };
 
-  const handleMarkAsDelivered = async (id: number) => {
+  const handleMarkAsDelivered = async (id: number, receptorNombre?: string, receptorDni?: string) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setDeliveries(deliveries.map(delivery => 
-        delivery.id === id 
-          ? { 
-              ...delivery, 
-              status: 'DELIVERED',
-              deliveredDate: new Date().toISOString(),
-              updatedAt: new Date().toISOString() 
-            }
-          : delivery
-      ));
+      // Prompt for receptor info if not provided
+      const nombre = receptorNombre || window.prompt('Nombre del receptor:') || 'Sin nombre';
+      const dni = receptorDni || window.prompt('DNI del receptor:') || '';
+
+      await entregaViajeApi.marcarComoEntregada(id, nombre, dni);
+      await loadData();
     } catch (err) {
-      setError('Error al marcar como entregado');
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Error al marcar como entregado');
       console.error('Error marking as delivered:', err);
     }
   };
 
-  const getStatusChip = (status: DeliveryStatus) => {
+  const getStatusChip = (estado: EstadoEntrega) => {
     const statusConfig = {
-      PENDING: { label: 'Pendiente', color: 'warning' as const },
-      ASSIGNED: { label: 'Asignado', color: 'info' as const },
-      IN_TRANSIT: { label: 'En Tránsito', color: 'primary' as const },
-      DELIVERED: { label: 'Entregado', color: 'success' as const },
-      FAILED: { label: 'Fallido', color: 'error' as const },
-      RETURNED: { label: 'Devuelto', color: 'default' as const },
+      PENDIENTE: { label: 'Pendiente', color: 'warning' as const },
+      EN_TRANSITO: { label: 'En Tránsito', color: 'primary' as const },
+      ENTREGADA: { label: 'Entregada', color: 'success' as const },
+      NO_ENTREGADA: { label: 'No Entregada', color: 'error' as const },
     };
-    
-    const config = statusConfig[status];
+
+    const config = statusConfig[estado];
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
-  const getClientName = (clientId: number) => {
-    const client = clients.find(c => c.id === clientId);
-    return client ? `${client.firstName} ${client.lastName}` : 'N/A';
+  const getClientName = (venta?: Venta) => {
+    if (!venta?.cliente) return 'N/A';
+    return `${venta.cliente.nombre} ${venta.cliente.apellido}`;
   };
 
-  const getOrderNumber = (orderId: number | null | undefined) => {
-    if (!orderId) return 'Sin orden';
-    const order = orders.find(o => o.id === orderId);
-    return order?.orderNumber || 'N/A';
+  const getVentaNumero = (ventaId: number | null | undefined) => {
+    if (!ventaId) return 'Sin venta';
+    const venta = ventas.find(v => v.id === ventaId);
+    return venta ? `Venta #${venta.id}` : 'N/A';
   };
 
-  const getTripNumber = (tripId: number | null | undefined) => {
-    if (!tripId) return 'Sin asignar';
-    const trip = trips.find(t => t.id === tripId);
-    return trip?.tripNumber || 'N/A';
+  const getTripNumber = (viajeId: number | null | undefined) => {
+    if (!viajeId) return 'Sin asignar';
+    const trip = trips.find(t => t.id === viajeId);
+    return trip ? `Viaje #${trip.id}` : 'N/A';
   };
 
   if (loading) {
@@ -552,15 +432,13 @@ const DeliveriesPage: React.FC = () => {
             <InputLabel>Estado</InputLabel>
             <Select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | DeliveryStatus)}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | EstadoEntrega)}
             >
               <MenuItem value="all">Todos</MenuItem>
-              <MenuItem value="PENDING">Pendientes</MenuItem>
-              <MenuItem value="ASSIGNED">Asignados</MenuItem>
-              <MenuItem value="IN_TRANSIT">En Tránsito</MenuItem>
-              <MenuItem value="DELIVERED">Entregados</MenuItem>
-              <MenuItem value="FAILED">Fallidos</MenuItem>
-              <MenuItem value="RETURNED">Devueltos</MenuItem>
+              <MenuItem value="PENDIENTE">Pendientes</MenuItem>
+              <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
+              <MenuItem value="ENTREGADA">Entregadas</MenuItem>
+              <MenuItem value="NO_ENTREGADA">No Entregadas</MenuItem>
             </Select>
           </FormControl>
           
@@ -596,40 +474,40 @@ const DeliveriesPage: React.FC = () => {
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
                           <ClientIcon sx={{ fontSize: 16 }} />
-                          {getClientName(delivery.clientId)}
+                          {getClientName(delivery.venta)}
                         </Box>
                       </TableCell>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
                           <OrderIcon sx={{ fontSize: 16 }} />
-                          {getOrderNumber(delivery.orderId)}
+                          {getVentaNumero(delivery.ventaId)}
                         </Box>
                       </TableCell>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
                           <LocationIcon sx={{ fontSize: 16 }} />
                           <Typography variant="body2" sx={{ maxWidth: 200 }} noWrap>
-                            {delivery.address}
+                            {delivery.direccionEntrega}
                           </Typography>
                         </Box>
                       </TableCell>
                       <TableCell>
-                        {new Date(delivery.scheduledDate).toLocaleString()}
+                        {new Date(delivery.fechaEntrega).toLocaleString()}
                       </TableCell>
-                      <TableCell>{getTripNumber(delivery.tripId)}</TableCell>
-                      <TableCell>{getStatusChip(delivery.status)}</TableCell>
+                      <TableCell>{getTripNumber(delivery.viajeId)}</TableCell>
+                      <TableCell>{getStatusChip(delivery.estado)}</TableCell>
                       <TableCell align="center">
-                        <IconButton 
-                          onClick={() => handleViewDetails(delivery)} 
+                        <IconButton
+                          onClick={() => handleViewDetails(delivery)}
                           size="small"
                           title="Ver detalles"
                         >
                           <ViewIcon />
                         </IconButton>
-                        
-                        {delivery.status === 'IN_TRANSIT' && (
-                          <IconButton 
-                            onClick={() => handleMarkAsDelivered(delivery.id)} 
+
+                        {delivery.estado === 'EN_TRANSITO' && (
+                          <IconButton
+                            onClick={() => handleMarkAsDelivered(delivery.id)}
                             size="small"
                             title="Marcar como entregado"
                             color="success"
@@ -637,12 +515,12 @@ const DeliveriesPage: React.FC = () => {
                             <CheckIcon />
                           </IconButton>
                         )}
-                        
+
                         <IconButton onClick={() => handleEdit(delivery)} size="small">
                           <EditIcon />
                         </IconButton>
-                        
-                        {delivery.status === 'PENDING' && (
+
+                        {delivery.estado === 'PENDIENTE' && (
                           <IconButton onClick={() => handleDelete(delivery.id)} size="small">
                             <DeleteIcon />
                           </IconButton>
@@ -678,10 +556,10 @@ const DeliveriesPage: React.FC = () => {
                 <TableBody>
                   {pendingDeliveries.map((delivery) => (
                     <TableRow key={delivery.id}>
-                      <TableCell>{getClientName(delivery.clientId)}</TableCell>
-                      <TableCell>{getOrderNumber(delivery.orderId)}</TableCell>
-                      <TableCell>{delivery.address}</TableCell>
-                      <TableCell>{new Date(delivery.scheduledDate).toLocaleString()}</TableCell>
+                      <TableCell>{getClientName(delivery.venta)}</TableCell>
+                      <TableCell>{getVentaNumero(delivery.ventaId)}</TableCell>
+                      <TableCell>{delivery.direccionEntrega}</TableCell>
+                      <TableCell>{new Date(delivery.fechaEntrega).toLocaleString()}</TableCell>
                       <TableCell align="center">
                         <Button
                           size="small"
@@ -721,10 +599,10 @@ const DeliveriesPage: React.FC = () => {
                 <TableBody>
                   {inTransitDeliveries.map((delivery) => (
                     <TableRow key={delivery.id}>
-                      <TableCell>{getClientName(delivery.clientId)}</TableCell>
-                      <TableCell>{getTripNumber(delivery.tripId)}</TableCell>
-                      <TableCell>{delivery.address}</TableCell>
-                      <TableCell>{new Date(delivery.scheduledDate).toLocaleString()}</TableCell>
+                      <TableCell>{getClientName(delivery.venta)}</TableCell>
+                      <TableCell>{getTripNumber(delivery.viajeId)}</TableCell>
+                      <TableCell>{delivery.direccionEntrega}</TableCell>
+                      <TableCell>{new Date(delivery.fechaEntrega).toLocaleString()}</TableCell>
                       <TableCell align="center">
                         <Button
                           size="small"
@@ -756,111 +634,87 @@ const DeliveriesPage: React.FC = () => {
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <Box display="flex" gap={2}>
               <Autocomplete
-                options={clients}
-                getOptionLabel={(client) => `${client.firstName} ${client.lastName}`}
-                value={clients.find(c => c.id.toString() === formData.clientId) || null}
-                onChange={(_, value) => {
-                  setFormData({ 
-                    ...formData, 
-                    clientId: value?.id.toString() || '',
-                    address: value?.address || formData.address
-                  });
-                }}
+                options={ventas}
+                getOptionLabel={(venta) => `Venta #${venta.id} - ${venta.cliente?.nombre || 'Sin cliente'} ${venta.cliente?.apellido || ''}`}
+                value={ventas.find(v => v.id.toString() === formData.ventaId) || null}
+                onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
                 renderInput={(params) => (
-                  <TextField {...params} label="Cliente" required />
+                  <TextField {...params} label="Venta (Opcional)" />
                 )}
                 sx={{ flex: 1 }}
               />
-              
-              <Autocomplete
-                options={orders}
-                getOptionLabel={(order) => order.orderNumber}
-                value={orders.find(o => o.id.toString() === formData.orderId) || null}
-                onChange={(_, value) => setFormData({ ...formData, orderId: value?.id.toString() || '' })}
-                renderInput={(params) => (
-                  <TextField {...params} label="Orden (Opcional)" />
-                )}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-            
-            <TextField
-              label="Dirección de Entrega"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              fullWidth
-              required
-              multiline
-              rows={2}
-            />
-            
-            <Box display="flex" gap={2}>
-              <TextField
-                label="Fecha Programada"
-                type="datetime-local"
-                value={formData.scheduledDate}
-                onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
-                fullWidth
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-              
-              <TextField
-                label="Fecha de Entrega"
-                type="datetime-local"
-                value={formData.deliveredDate}
-                onChange={(e) => setFormData({ ...formData, deliveredDate: e.target.value })}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                disabled={formData.status !== 'DELIVERED'}
-              />
-            </Box>
-            
-            <Box display="flex" gap={2}>
+
               <Autocomplete
                 options={trips}
-                getOptionLabel={(trip) => trip.tripNumber}
-                value={trips.find(t => t.id.toString() === formData.tripId) || null}
-                onChange={(_, value) => setFormData({ ...formData, tripId: value?.id.toString() || '' })}
+                getOptionLabel={(trip) => `Viaje #${trip.id} - ${trip.destino}`}
+                value={trips.find(t => t.id.toString() === formData.viajeId) || null}
+                onChange={(_, value) => setFormData({ ...formData, viajeId: value?.id.toString() || '' })}
                 renderInput={(params) => (
                   <TextField {...params} label="Viaje (Opcional)" />
                 )}
                 sx={{ flex: 1 }}
               />
-              
-              <FormControl sx={{ flex: 1 }}>
-                <InputLabel>Estado</InputLabel>
-                <Select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as DeliveryStatus })}
-                >
-                  <MenuItem value="PENDING">Pendiente</MenuItem>
-                  <MenuItem value="ASSIGNED">Asignado</MenuItem>
-                  <MenuItem value="IN_TRANSIT">En Tránsito</MenuItem>
-                  <MenuItem value="DELIVERED">Entregado</MenuItem>
-                  <MenuItem value="FAILED">Fallido</MenuItem>
-                  <MenuItem value="RETURNED">Devuelto</MenuItem>
-                </Select>
-              </FormControl>
             </Box>
-            
+
+            <TextField
+              label="Dirección de Entrega"
+              value={formData.direccionEntrega}
+              onChange={(e) => setFormData({ ...formData, direccionEntrega: e.target.value })}
+              fullWidth
+              required
+              multiline
+              rows={2}
+            />
+
+            <TextField
+              label="Fecha de Entrega"
+              type="datetime-local"
+              value={formData.fechaEntrega}
+              onChange={(e) => setFormData({ ...formData, fechaEntrega: e.target.value })}
+              fullWidth
+              required
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Estado</InputLabel>
+              <Select
+                value={formData.estado}
+                onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoEntrega })}
+              >
+                <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
+                <MenuItem value="ENTREGADA">Entregada</MenuItem>
+                <MenuItem value="NO_ENTREGADA">No Entregada</MenuItem>
+              </Select>
+            </FormControl>
+
             <TextField
               label="Observaciones"
-              value={formData.observations}
-              onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
+              value={formData.observaciones}
+              onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
               fullWidth
               multiline
               rows={3}
             />
-            
-            {formData.status === 'DELIVERED' && (
-              <TextField
-                label="Firma/Recibido por"
-                value={formData.signature}
-                onChange={(e) => setFormData({ ...formData, signature: e.target.value })}
-                fullWidth
-                placeholder="Nombre de quien recibió"
-              />
+
+            {formData.estado === 'ENTREGADA' && (
+              <>
+                <TextField
+                  label="Nombre del Receptor"
+                  value={formData.receptorNombre}
+                  onChange={(e) => setFormData({ ...formData, receptorNombre: e.target.value })}
+                  fullWidth
+                  placeholder="Nombre de quien recibió"
+                />
+                <TextField
+                  label="DNI del Receptor"
+                  value={formData.receptorDni}
+                  onChange={(e) => setFormData({ ...formData, receptorDni: e.target.value })}
+                  fullWidth
+                  placeholder="DNI de quien recibió"
+                />
+              </>
             )}
           </Box>
         </DialogContent>
@@ -897,28 +751,28 @@ const DeliveriesPage: React.FC = () => {
                       </Typography>
                       <Box display="flex" flexDirection="column" gap={1}>
                         <Typography variant="body2">
-                          <strong>Cliente:</strong> {getClientName(selectedDelivery.clientId)}
+                          <strong>Cliente:</strong> {getClientName(selectedDelivery.venta)}
                         </Typography>
                         <Typography variant="body2">
-                          <strong>Orden:</strong> {getOrderNumber(selectedDelivery.orderId)}
+                          <strong>Venta:</strong> {getVentaNumero(selectedDelivery.ventaId)}
                         </Typography>
                         <Typography variant="body2">
-                          <strong>Viaje:</strong> {getTripNumber(selectedDelivery.tripId)}
+                          <strong>Viaje:</strong> {getTripNumber(selectedDelivery.viajeId)}
                         </Typography>
                         <Typography variant="body2">
-                          <strong>Estado:</strong> {getStatusChip(selectedDelivery.status)}
+                          <strong>Estado:</strong> {getStatusChip(selectedDelivery.estado)}
                         </Typography>
                         <Typography variant="body2">
-                          <strong>Fecha Programada:</strong> {new Date(selectedDelivery.scheduledDate).toLocaleString()}
+                          <strong>Fecha de Entrega:</strong> {new Date(selectedDelivery.fechaEntrega).toLocaleString()}
                         </Typography>
-                        {selectedDelivery.deliveredDate && (
+                        {selectedDelivery.receptorNombre && (
                           <Typography variant="body2">
-                            <strong>Fecha de Entrega:</strong> {new Date(selectedDelivery.deliveredDate).toLocaleString()}
+                            <strong>Recibido por:</strong> {selectedDelivery.receptorNombre}
                           </Typography>
                         )}
-                        {selectedDelivery.signature && (
+                        {selectedDelivery.receptorDni && (
                           <Typography variant="body2">
-                            <strong>Recibido por:</strong> {selectedDelivery.signature}
+                            <strong>DNI Receptor:</strong> {selectedDelivery.receptorDni}
                           </Typography>
                         )}
                       </Box>
@@ -935,13 +789,13 @@ const DeliveriesPage: React.FC = () => {
                       <Box display="flex" alignItems="start" gap={1} mb={2}>
                         <LocationIcon sx={{ fontSize: 20, mt: 0.5 }} />
                         <Typography variant="body2">
-                          {selectedDelivery.address}
+                          {selectedDelivery.direccionEntrega}
                         </Typography>
                       </Box>
                       <Button
                         variant="outlined"
                         startIcon={<MapIcon />}
-                        onClick={() => window.open(`https://maps.google.com?q=${encodeURIComponent(selectedDelivery.address)}`, '_blank')}
+                        onClick={() => window.open(`https://maps.google.com?q=${encodeURIComponent(selectedDelivery.direccionEntrega)}`, '_blank')}
                         fullWidth
                       >
                         Ver en Google Maps
@@ -951,14 +805,14 @@ const DeliveriesPage: React.FC = () => {
                 </Grid>
               </Grid>
               
-              {selectedDelivery.observations && (
+              {selectedDelivery.observaciones && (
                 <Card sx={{ mt: 2 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
                       Observaciones
                     </Typography>
                     <Typography variant="body2">
-                      {selectedDelivery.observations}
+                      {selectedDelivery.observaciones}
                     </Typography>
                   </CardContent>
                 </Card>
