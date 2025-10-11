@@ -65,10 +65,10 @@ const navigation = [
   {
     title: 'TALLER',
     items: [
-      { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
       { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
-      { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
       { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
+      { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
+            { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
     ],
   },
     {
@@ -112,7 +112,17 @@ const Sidebar: React.FC = () => {
         {navigation.map((section, idx) => (
           <React.Fragment key={section.title}>
             {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-            <ListSubheader sx={{ bgcolor: 'inherit', color: '#00B8A9', fontWeight: 700, fontSize: 13, pl: 2, py: 1 }}>
+            <ListSubheader 
+              sx={{ 
+                bgcolor: 'inherit', 
+                color: '#00B8A9', 
+                fontWeight: 700, 
+                fontSize: 13, 
+                pl: 2, 
+                py: 1,
+                position: 'relative' // Fix para evitar superposición
+              }}
+            >
               {section.title}
             </ListSubheader>
             {section.items.map(item => (

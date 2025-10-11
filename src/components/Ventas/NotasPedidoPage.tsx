@@ -62,7 +62,7 @@ const initialConvertForm: ConvertFormData = {
 const NotasPedidoPage: React.FC = () => {
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.PENDIENTE);
+  const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.APROBADO);
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');

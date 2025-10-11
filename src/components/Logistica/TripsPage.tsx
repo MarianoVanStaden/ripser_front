@@ -114,9 +114,7 @@ const TripsPage: React.FC = () => {
 
       try {
         tripsData = await viajeApi.getAll();
-        console.log('✅ Viajes cargados:', tripsData.length, tripsData);
       } catch (err) {
-        console.error('❌ Error cargando viajes:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`❌ Viajes: ${errorMsg}`);
       }
@@ -125,39 +123,33 @@ const TripsPage: React.FC = () => {
         const allVehicles = await vehiculoApi.getAll();
         // Filter only available vehicles for creating trips
         vehiclesData = allVehicles.filter(v => v.estado === 'DISPONIBLE');
-        console.log('✅ Vehículos cargados (total/disponibles):', allVehicles.length, '/', vehiclesData.length, vehiclesData);
         if (allVehicles.length > 0 && vehiclesData.length === 0) {
           errors.push(`⚠️ Hay ${allVehicles.length} vehículos pero ninguno está DISPONIBLE`);
         }
       } catch (err) {
-        console.error('❌ Error cargando vehículos:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`❌ Vehículos: ${errorMsg}`);
       }
 
       try {
         employeesData = await employeeApi.getAllList();
-        console.log('✅ Empleados cargados:', employeesData.length, employeesData);
       } catch (err) {
-        console.error('❌ Error cargando empleados:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`❌ Empleados: ${errorMsg}`);
       }
 
       try {
         deliveriesData = await entregaViajeApi.getAll();
-        console.log('✅ Entregas cargadas:', deliveriesData.length, deliveriesData);
       } catch (err) {
-        console.error('❌ Error cargando entregas:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`❌ Entregas: ${errorMsg}`);
       }
 
       try {
         facturasData = await documentoApi.getByTipo('FACTURA');
-        console.log('✅ Facturas cargadas:', facturasData.length, facturasData);
+        // Filtrar solo facturas (FAC-), excluir notas de pedido (NP-)
+        facturasData = facturasData.filter(f => f.numeroDocumento?.startsWith('FAC-'));
       } catch (err) {
-        console.error('❌ Error cargando facturas:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`❌ Facturas: ${errorMsg}`);
       }
@@ -269,143 +261,43 @@ const TripsPage: React.FC = () => {
 
       // Save deliveries for the trip
       if (tripDeliveries.length > 0) {
-        const newDeliveriesCount = tripDeliveries.filter(d => !d.id).length;
-        console.log(`📦 Intentando crear ${newDeliveriesCount} entregas para el viaje #${savedTrip.id}`);
-        console.log('📦 Entregas a crear:', tripDeliveries.filter(d => !d.id));
-        console.log('🔑 Token actual:', localStorage.getItem('auth_token')?.substring(0, 20) + '...');
-
-        let successCount = 0;
-        let errorCount = 0;
-        const errors: Array<{ index: number; error: any }> = [];
-
         for (let i = 0; i < tripDeliveries.length; i++) {
           const delivery = tripDeliveries[i];
           if (!delivery.id) {
-            const currentIndex = successCount + errorCount + 1;
-            
-            // ✅ VALIDACIÓN: Verificar que la factura existe antes de crear la entrega
+            // Skip if no facturaId
             if (!delivery.facturaId) {
-              console.error(`❌ [${currentIndex}/${newDeliveriesCount}] Error: No se especificó facturaId para la entrega`);
-              console.log('   Delivery data:', delivery);
-              errorCount++;
-              errorDetails.push({
-                index: currentIndex,
-                facturaId: delivery.facturaId,
-                error: 'facturaId es requerido',
-                timestamp: new Date().toISOString()
-              });
-              continue; // Saltar esta entrega
+              continue;
             }
             
-            // New delivery - send with viajeId instead of nested viaje object
             try {
-              const deliveryPayload: Partial<EntregaViaje> = {
+              const deliveryPayload: any = {
                 viajeId: savedTrip.id,
-                ventaId: delivery.facturaId, // ventaId en el backend corresponde al documentoComercialId
+                documentoComercialId: delivery.facturaId,
                 direccionEntrega: delivery.direccionEntrega || '',
                 fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
                 observaciones: delivery.observaciones || '',
                 estado: 'PENDIENTE' as EstadoEntrega,
               };
               
-              console.log(`\n📦 [${currentIndex}/${newDeliveriesCount}] Creando entrega:`);
-              console.log('   Payload:', JSON.stringify(deliveryPayload, null, 2));
-              console.log('   Timestamp:', new Date().toISOString());
+              await entregaViajeApi.create(deliveryPayload);
               
-              const result = await entregaViajeApi.create(deliveryPayload);
-              
-              console.log(`✅ [${currentIndex}/${newDeliveriesCount}] Entrega creada exitosamente!`);
-              console.log('   ID creado:', result.id);
-              console.log('   Response completo:', result);
-              successCount++;
-
-              // Agregar un pequeño delay entre entregas para evitar rate limiting o problemas de concurrencia
-              if (currentIndex < newDeliveriesCount) {
-                console.log(`⏳ Esperando 500ms antes de crear la siguiente entrega...`);
-                await new Promise(resolve => setTimeout(resolve, 500));
-              }
+              // Small delay between deliveries
+              await new Promise(resolve => setTimeout(resolve, 500));
             } catch (deliveryError: any) {
-              errorCount++;
-              console.error(`\n❌ [${currentIndex}/${newDeliveriesCount}] ERROR al crear entrega:`);
-              console.error('   Status:', deliveryError.response?.status);
-              console.error('   Status Text:', deliveryError.response?.statusText);
-              console.error('   Error Data:', deliveryError.response?.data);
-              console.error('   Error Message:', deliveryError.message);
-              console.error('   Headers:', deliveryError.response?.headers);
-              console.error('   Delivery data que falló:', delivery);
-              console.error('   Payload que se envió:', {
-                viajeId: savedTrip.id,
-                ventaId: delivery.facturaId,
-                direccionEntrega: delivery.direccionEntrega,
-              });
-
-              // Guardar el error para análisis posterior
-              errors.push({ index: currentIndex, error: deliveryError });
-
-              // Si es 403, verificar token
-              if (deliveryError.response?.status === 403) {
-                console.error('   🔐 Error 403 - Verificando autenticación:');
-                console.error('   Token presente:', !!localStorage.getItem('auth_token'));
-                console.error('   Token value:', localStorage.getItem('auth_token')?.substring(0, 30) + '...');
-                console.error('   Refresh token presente:', !!localStorage.getItem('auth_refresh_token'));
-              }
-
-              // También agregar delay si falla, para evitar más errores 403
-              if (currentIndex < newDeliveriesCount) {
-                console.log(`⏳ Esperando 500ms antes de intentar la siguiente entrega...`);
-                await new Promise(resolve => setTimeout(resolve, 500));
-              }
+              // Continue with next delivery even if this one fails
+              await new Promise(resolve => setTimeout(resolve, 500));
             }
           }
         }
-        
-        console.log(`\n📊 ========== RESULTADO FINAL ==========`);
-        console.log(`   ✅ Entregas creadas exitosamente: ${successCount}`);
-        console.log(`   ❌ Entregas fallidas: ${errorCount}`);
-        console.log(`   📈 Tasa de éxito: ${Math.round((successCount / newDeliveriesCount) * 100)}%`);
-        
-        if (errors.length > 0) {
-          console.log(`\n⚠️ ANÁLISIS DE ERRORES:`);
-          errors.forEach(({ index, error }) => {
-            console.log(`   [${index}] Status ${error.response?.status}: ${error.response?.data?.message || error.message}`);
-          });
-          
-          // Detectar patrones
-          const has403 = errors.some(e => e.response?.status === 403);
-          const allSameError = errors.every(e => e.response?.status === errors[0].error.response?.status);
-          
-          if (has403) {
-            console.warn(`\n🔐 PROBLEMA DE AUTENTICACIÓN DETECTADO:`);
-            console.warn(`   - ${errors.filter(e => e.response?.status === 403).length} entregas fallaron con 403 Forbidden`);
-            console.warn(`   - Posibles causas:`);
-            console.warn(`     1. El backend invalida el token después de la primera petición POST`);
-            console.warn(`     2. Hay rate limiting en el backend`);
-            console.warn(`     3. El rol/permiso solo permite crear 1 entrega a la vez`);
-            console.warn(`     4. Hay algún CSRF token que no se está enviando correctamente`);
-          }
-          
-          if (allSameError) {
-            console.warn(`\n📊 Todas las entregas fallaron con el mismo error (${errors[0].error.response?.status})`);
-            console.warn(`   Esto sugiere un problema sistemático, no aleatorio.`);
-          }
-        }
-        console.log(`=====================================\n`);
       }
 
       await loadData();
       setDialogOpen(false);
       setTripDeliveries([]);
-
-      // Show success message if deliveries were attempted but some failed
-      const newDeliveriesCount = tripDeliveries.filter(d => !d.id).length;
-      if (newDeliveriesCount > 0) {
-        console.log(`✅ Viaje guardado. Se intentó crear ${newDeliveriesCount} entregas.`);
-      }
     } catch (err) {
       const error = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
       let errorMessage = error.response?.data?.message || error.message || 'Error al guardar el viaje';
 
-      // Provide specific error messages
       if (errorMessage.includes('no está disponible')) {
         errorMessage = 'El vehículo seleccionado no está disponible. Por favor, selecciona otro vehículo o cambia el estado del vehículo a DISPONIBLE en la sección de Vehículos.';
       } else if (error.response?.status === 403) {
@@ -413,8 +305,6 @@ const TripsPage: React.FC = () => {
       }
 
       setError(errorMessage);
-      console.error('Error saving trip:', err);
-      console.error('Error details:', { status: error.response?.status, data: error.response?.data });
     }
   };
 
@@ -509,14 +399,44 @@ Opciones:
   // Obtener todas las facturas asociadas a un viaje a través de sus entregas
   const getFacturasByTrip = (tripId: number): DocumentoComercial[] => {
     const tripDeliveries = getTripDeliveries(tripId);
+    
+    // Intentar obtener el ID de la factura/documento desde diferentes fuentes
     const facturaIds = tripDeliveries
-      .map(d => d.ventaId)
+      .map(d => {
+        // Opción 1: documentoComercialId (si el backend devuelve solo el ID)
+        // @ts-ignore
+        if (d.documentoComercialId) return d.documentoComercialId;
+        
+        // Opción 2: documentoComercial.id (si el backend devuelve el objeto completo)
+        // @ts-ignore
+        if (d.documentoComercial?.id) return d.documentoComercial.id;
+        
+        // Opción 3: ventaId (para compatibilidad con versiones antiguas del backend)
+        if (d.ventaId) return d.ventaId;
+        
+        // Opción 4: venta.id (si el backend devuelve el objeto venta completo)
+        if (d.venta?.id) return d.venta.id;
+        
+        return undefined;
+      })
       .filter((id): id is number => id !== undefined && id !== null);
 
     const uniqueFacturaIds = [...new Set(facturaIds)];
-    return uniqueFacturaIds
+    const foundFacturas = uniqueFacturaIds
       .map(id => facturas.find(f => f.id === id))
       .filter((f): f is DocumentoComercial => f !== undefined);
+    
+    return foundFacturas;
+  };
+
+  // Obtener todos los clientes únicos de un viaje (de las facturas del viaje)
+  const getClientesByTrip = (tripId: number): string[] => {
+    const tripFacturas = getFacturasByTrip(tripId);
+    const clienteNombres = tripFacturas
+      .map(f => f.clienteNombre)
+      .filter((nombre): nombre is string => nombre !== undefined && nombre !== null && nombre.trim() !== '');
+
+    return [...new Set(clienteNombres)];
   };
 
   if (loading) {
@@ -647,7 +567,8 @@ Opciones:
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
-                  <TableCell>Factura/Cliente</TableCell>
+                  <TableCell>Clientes</TableCell>
+                  <TableCell>Facturas</TableCell>
                   <TableCell>Conductor</TableCell>
                   <TableCell>Vehículo</TableCell>
                   <TableCell>Destino</TableCell>
@@ -661,6 +582,7 @@ Opciones:
                 {filteredTrips.map((trip) => {
                   const tripDeliveries = getTripDeliveries(trip.id);
                   const facturas = getFacturasByTrip(trip.id);
+                  const clientes = getClientesByTrip(trip.id);
 
                   return (
                     <TableRow key={trip.id}>
@@ -670,15 +592,40 @@ Opciones:
                         </Typography>
                       </TableCell>
                       <TableCell>
+                        {clientes.length > 0 ? (
+                          <Box>
+                            {clientes.map((clienteNombre, idx) => (
+                              <Box key={idx} mb={idx < clientes.length - 1 ? 0.5 : 0}>
+                                <Typography variant="body2">
+                                  👤 {clienteNombre}
+                                </Typography>
+                              </Box>
+                            ))}
+                            {clientes.length > 1 && (
+                              <Chip
+                                label={`${clientes.length} clientes`}
+                                size="small"
+                                color="default"
+                                sx={{ mt: 0.5 }}
+                              />
+                            )}
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            Sin clientes
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {facturas.length > 0 ? (
                           <Box>
                             {facturas.map((factura, idx) => (
-                              <Box key={factura.id} mb={idx < facturas.length - 1 ? 1 : 0}>
+                              <Box key={factura.id} mb={idx < facturas.length - 1 ? 0.5 : 0}>
                                 <Typography variant="body2" fontWeight="bold" color="primary.main">
                                   📄 {factura.numeroDocumento}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  {factura.clienteNombre} - ${factura.total.toLocaleString()}
+                                  ${factura.total.toLocaleString()}
                                 </Typography>
                               </Box>
                             ))}

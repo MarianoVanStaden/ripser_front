@@ -751,7 +751,7 @@ export interface TareaServicio {
   horasReales: number;
   estado: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA';
   empleadoId?: number;
-  empleado?: Employee;
+  empleado?: Empleado;
   fechaInicio?: string;
   fechaFin?: string;
   observaciones?: string;
@@ -759,15 +759,24 @@ export interface TareaServicio {
 
 export interface OrdenServicio {
   id: number;
-  numero: string;
+  numeroOrden: string;
   clienteId: number;
   cliente?: Cliente;
+  clienteNombre?: string; // Nombre del cliente desde el backend DTO
   fechaCreacion: string;
-  estado: 'ABIERTA' | 'EN_PROCESO' | 'CERRADA';
-  descripcion: string;
+  fechaEstimada?: string;
+  fechaFinalizacion?: string;
+  estado: 'PENDIENTE' | 'EN_PROCESO' | 'FINALIZADA' | 'CANCELADA';
+  descripcionTrabajo: string;
+  observaciones?: string;
+  costoManoObra: number;
+  costoMateriales: number;
+  total: number;
+  responsableId?: number;
+  responsable?: Empleado;
+  responsableNombre?: string; // Nombre del responsable desde el backend DTO
   materiales: MaterialUtilizado[];
   tareas: TareaServicio[];
-  observaciones?: string;
 }
 
 export interface CategoriaProducto {
@@ -1360,8 +1369,10 @@ export interface EntregaViaje {
   id: number;
   viajeId?: number;
   viaje?: Viaje;
-  ventaId?: number;
+  ventaId?: number; // Deprecated - usar documentoComercialId
   venta?: Venta;
+  documentoComercialId?: number; // Nuevo campo - ID del documento comercial
+  documentoComercial?: any; // Objeto completo del documento (si el backend lo popula)
   ordenServicioId?: number;
   ordenServicio?: OrdenServicio;
   direccionEntrega: string;
