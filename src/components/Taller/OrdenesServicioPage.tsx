@@ -1,20 +1,20 @@
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Card, 
-  CardContent, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Paper, 
-  Chip, 
-  Button, 
-  Dialog, 
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  Button,
+  Dialog,
   Stack,
   CircularProgress,
   Alert,
@@ -67,7 +67,6 @@ const OrdenesServicioPage: React.FC = () => {
     descripcionTrabajo: string;
     observaciones: string;
     fechaEstimada: string;
-    costoManoObra: string;
     estado: 'PENDIENTE' | 'EN_PROCESO' | 'FINALIZADA' | 'CANCELADA';
   }>({
     clienteId: '',
@@ -75,7 +74,6 @@ const OrdenesServicioPage: React.FC = () => {
     descripcionTrabajo: '',
     observaciones: '',
     fechaEstimada: '',
-    costoManoObra: '0',
     estado: 'PENDIENTE'
   });
 
@@ -127,7 +125,6 @@ const OrdenesServicioPage: React.FC = () => {
         descripcionTrabajo: orden.descripcionTrabajo,
         observaciones: orden.observaciones || '',
         fechaEstimada: orden.fechaEstimada ? orden.fechaEstimada.split('T')[0] : '',
-        costoManoObra: orden.costoManoObra.toString(),
         estado: orden.estado
       });
     } else {
@@ -138,7 +135,6 @@ const OrdenesServicioPage: React.FC = () => {
         descripcionTrabajo: '',
         observaciones: '',
         fechaEstimada: '',
-        costoManoObra: '0',
         estado: 'PENDIENTE'
       });
     }
@@ -154,7 +150,6 @@ const OrdenesServicioPage: React.FC = () => {
       descripcionTrabajo: '',
       observaciones: '',
       fechaEstimada: '',
-      costoManoObra: '0',
       estado: 'PENDIENTE'
     });
   };
@@ -166,12 +161,9 @@ const OrdenesServicioPage: React.FC = () => {
         responsableId: formData.responsableId ? parseInt(formData.responsableId) : undefined,
         descripcionTrabajo: formData.descripcionTrabajo,
         observaciones: formData.observaciones,
-        costoManoObra: parseFloat(formData.costoManoObra) || 0,
-        costoMateriales: 0,
-        total: parseFloat(formData.costoManoObra) || 0,
         estado: formData.estado,
-        materiales: [], // Agregar array vacío
-        tareas: [] // Agregar array vacío
+        materiales: [], // Los materiales se agregan después
+        tareas: [] // Las tareas se agregan después
       };
 
       // Solo agregar fechaEstimada si tiene valor y es futura
@@ -180,7 +172,7 @@ const OrdenesServicioPage: React.FC = () => {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(0, 0, 0, 0);
-        
+
         // Solo enviar si la fecha es al menos mañana
         if (selectedDate >= tomorrow) {
           ordenData.fechaEstimada = selectedDate.toISOString();
@@ -438,52 +430,57 @@ const OrdenesServicioPage: React.FC = () => {
       </Card>
       
       {/* Dialog de Detalles */}
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth>
         {selected && (
-          <Box p={3}>
-            <Typography variant="h5" mb={3} fontWeight="bold">
-              Detalle de Orden {selected.numeroOrden}
-            </Typography>
-            
+          <>
+            <DialogTitle sx={{ pb: 1 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="h5" fontWeight="bold">
+                    Orden {selected.numeroOrden}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" mt={0.5}>
+                    Creada el {new Date(selected.fechaCreacion).toLocaleDateString('es-AR', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </Typography>
+                </Box>
+                <Chip
+                  label={selected.estado}
+                  color={getEstadoColor(selected.estado)}
+                  size="medium"
+                  sx={{ fontWeight: 'bold', fontSize: '0.9rem', px: 2 }}
+                />
+              </Box>
+            </DialogTitle>
+            <DialogContent>
             {/* @ts-ignore - MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md */}
-            <Grid container spacing={3}>
+            <Grid container spacing={3} sx={{ mt: 0.5 }}>
               {/* Información General */}
               {/* @ts-ignore */}
               <Grid item xs={12} md={6}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" color="primary" gutterBottom>
-                      Información General
+                <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
+                      📋 Información General
                     </Typography>
-                    <Stack spacing={1.5}>
+                    <Stack spacing={2.5}>
                       <Box>
-                        <Typography variant="caption" color="textSecondary">Cliente</Typography>
-                        <Typography variant="body1" fontWeight="500">{getClientName(selected)}</Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="textSecondary">Estado</Typography>
-                        <Box mt={0.5}>
-                          <Chip 
-                            label={selected.estado} 
-                            color={getEstadoColor(selected.estado)}
-                            size="small"
-                          />
-                        </Box>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" color="textSecondary">Fecha Creación</Typography>
-                        <Typography variant="body1">
-                          {new Date(selected.fechaCreacion).toLocaleDateString('es-AR', {
-                            day: '2-digit',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
+                        <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase" letterSpacing={0.5}>
+                          Cliente
+                        </Typography>
+                        <Typography variant="body1" fontWeight="500" sx={{ mt: 0.5 }}>
+                          {getClientName(selected)}
                         </Typography>
                       </Box>
                       {selected.fechaEstimada && (
                         <Box>
-                          <Typography variant="caption" color="textSecondary">Fecha Estimada</Typography>
-                          <Typography variant="body1">
+                          <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase" letterSpacing={0.5}>
+                            Fecha Estimada
+                          </Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>
                             {new Date(selected.fechaEstimada).toLocaleDateString('es-AR', {
                               day: '2-digit',
                               month: 'long',
@@ -494,8 +491,10 @@ const OrdenesServicioPage: React.FC = () => {
                       )}
                       {selected.fechaFinalizacion && (
                         <Box>
-                          <Typography variant="caption" color="textSecondary">Fecha Finalización</Typography>
-                          <Typography variant="body1">
+                          <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase" letterSpacing={0.5}>
+                            Fecha Finalización
+                          </Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>
                             {new Date(selected.fechaFinalizacion).toLocaleDateString('es-AR', {
                               day: '2-digit',
                               month: 'long',
@@ -506,8 +505,10 @@ const OrdenesServicioPage: React.FC = () => {
                       )}
                       {selected.responsable && (
                         <Box>
-                          <Typography variant="caption" color="textSecondary">Responsable</Typography>
-                          <Typography variant="body1">
+                          <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase" letterSpacing={0.5}>
+                            Responsable
+                          </Typography>
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>
                             {selected.responsable.nombre} {selected.responsable.apellido}
                           </Typography>
                         </Box>
@@ -520,31 +521,52 @@ const OrdenesServicioPage: React.FC = () => {
               {/* Costos */}
               {/* @ts-ignore */}
               <Grid item xs={12} md={6}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" color="primary" gutterBottom>
-                      Costos
+                <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
+                      💰 Costos
                     </Typography>
-                    <Stack spacing={1.5}>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2" color="textSecondary">Mano de Obra:</Typography>
-                        <Typography variant="body1" fontWeight="500">
-                          ${selected.costoManoObra.toLocaleString()}
+                    <Stack spacing={2.5}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" color="textSecondary" fontWeight="600" textTransform="uppercase" letterSpacing={0.5}>
+                          Mano de Obra
+                        </Typography>
+                        <Typography variant="body1" fontWeight="600">
+                          ${(selected.costoManoObra || 0).toLocaleString('es-AR')}
                         </Typography>
                       </Box>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2" color="textSecondary">Materiales:</Typography>
-                        <Typography variant="body1" fontWeight="500">
-                          ${selected.costoMateriales.toLocaleString()}
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" color="textSecondary" fontWeight="600" textTransform="uppercase" letterSpacing={0.5}>
+                          Materiales
+                        </Typography>
+                        <Typography variant="body1" fontWeight="600">
+                          ${(selected.costoMateriales || 0).toLocaleString('es-AR')}
                         </Typography>
                       </Box>
-                      <Box display="flex" justifyContent="space-between" pt={1} borderTop="1px solid #e0e0e0">
-                        <Typography variant="h6" color="primary">Total:</Typography>
-                        <Typography variant="h6" color="primary" fontWeight="bold">
-                          ${selected.total.toLocaleString()}
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        pt={2}
+                        mt={1}
+                        borderTop="2px solid"
+                        borderColor="primary.main"
+                      >
+                        <Typography variant="h6" color="primary" fontWeight="700">
+                          Total
+                        </Typography>
+                        <Typography variant="h5" color="primary" fontWeight="700">
+                          ${(selected.total || 0).toLocaleString('es-AR')}
                         </Typography>
                       </Box>
                     </Stack>
+                    {selected.materiales && selected.materiales.length === 0 && selected.tareas && selected.tareas.length === 0 && (
+                      <Alert severity="warning" sx={{ mt: 2 }}>
+                        <Typography variant="caption">
+                          No se han agregado materiales ni tareas. Los costos se calcularán automáticamente al agregarlos.
+                        </Typography>
+                      </Alert>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
@@ -552,22 +574,42 @@ const OrdenesServicioPage: React.FC = () => {
               {/* Descripción del Trabajo */}
               {/* @ts-ignore */}
               <Grid item xs={12}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" color="primary" gutterBottom>
-                      Descripción del Trabajo
+                <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
+                      📝 Descripción del Trabajo
                     </Typography>
-                    <Typography variant="body1" paragraph>
-                      {selected.descripcionTrabajo}
-                    </Typography>
+                    <Box
+                      sx={{
+                        bgcolor: 'grey.50',
+                        p: 2,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'grey.200'
+                      }}
+                    >
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line', lineHeight: 1.7 }}>
+                        {selected.descripcionTrabajo}
+                      </Typography>
+                    </Box>
                     {selected.observaciones && (
                       <>
-                        <Typography variant="h6" color="primary" gutterBottom mt={2}>
-                          Observaciones
+                        <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mt: 3, mb: 2 }}>
+                          💬 Observaciones
                         </Typography>
-                        <Typography variant="body1">
-                          {selected.observaciones}
-                        </Typography>
+                        <Box
+                          sx={{
+                            bgcolor: 'info.50',
+                            p: 2,
+                            borderRadius: 1,
+                            border: '1px solid',
+                            borderColor: 'info.200'
+                          }}
+                        >
+                          <Typography variant="body1" sx={{ whiteSpace: 'pre-line', lineHeight: 1.7 }}>
+                            {selected.observaciones}
+                          </Typography>
+                        </Box>
                       </>
                     )}
                   </CardContent>
@@ -578,31 +620,31 @@ const OrdenesServicioPage: React.FC = () => {
               {selected.materiales && selected.materiales.length > 0 && (
                 // @ts-ignore
                 <Grid item xs={12}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" color="primary" gutterBottom>
-                        Materiales Utilizados
+                  <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
+                        🔧 Materiales Utilizados
                       </Typography>
-                      <TableContainer>
+                      <TableContainer sx={{ borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
                         <Table size="small">
                           <TableHead>
-                            <TableRow>
-                              <TableCell>Producto</TableCell>
-                              <TableCell align="center">Cantidad</TableCell>
-                              <TableCell align="right">Precio Unit.</TableCell>
-                              <TableCell align="right">Subtotal</TableCell>
+                            <TableRow sx={{ bgcolor: 'primary.50' }}>
+                              <TableCell sx={{ fontWeight: 600 }}>Producto</TableCell>
+                              <TableCell align="center" sx={{ fontWeight: 600 }}>Cantidad</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 600 }}>Precio Unit.</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 600 }}>Subtotal</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             {selected.materiales.map((material, idx) => (
-                              <TableRow key={idx}>
+                              <TableRow key={idx} hover>
                                 <TableCell>
                                   {material.productoTerminado?.nombre || `Producto #${material.productoTerminadoId}`}
                                 </TableCell>
-                                <TableCell align="center">{material.cantidad}</TableCell>
-                                <TableCell align="right">${material.precioUnitario?.toLocaleString() || 0}</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 500 }}>
-                                  ${material.subtotal.toLocaleString()}
+                                <TableCell align="center" sx={{ fontWeight: 500 }}>{material.cantidad}</TableCell>
+                                <TableCell align="right">${material.precioUnitario?.toLocaleString('es-AR') || 0}</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                  ${material.subtotal.toLocaleString('es-AR')}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -618,34 +660,42 @@ const OrdenesServicioPage: React.FC = () => {
               {selected.tareas && selected.tareas.length > 0 && (
                 // @ts-ignore
                 <Grid item xs={12}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" color="primary" gutterBottom>
-                        Tareas Asignadas
+                  <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
+                        ✅ Tareas Asignadas
                       </Typography>
-                      <Stack spacing={1.5}>
+                      <Stack spacing={2}>
                         {selected.tareas.map((tarea, idx) => (
-                          <Box 
-                            key={idx} 
-                            p={2} 
-                            bgcolor={tarea.estado === 'COMPLETADA' ? '#e8f5e9' : '#fff3e0'}
-                            borderRadius={1}
-                            border="1px solid"
-                            borderColor={tarea.estado === 'COMPLETADA' ? '#4caf50' : '#ff9800'}
+                          <Box
+                            key={idx}
+                            sx={{
+                              p: 2.5,
+                              bgcolor: tarea.estado === 'COMPLETADA' ? 'success.50' : 'warning.50',
+                              borderRadius: 2,
+                              border: '2px solid',
+                              borderColor: tarea.estado === 'COMPLETADA' ? 'success.main' : 'warning.main',
+                              transition: 'all 0.2s',
+                              '&:hover': {
+                                transform: 'translateY(-2px)',
+                                boxShadow: 2
+                              }
+                            }}
                           >
-                            <Box display="flex" justifyContent="space-between" alignItems="center">
-                              <Typography variant="body1" fontWeight="500">
+                            <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
+                              <Typography variant="body1" fontWeight="600" sx={{ flex: 1 }}>
                                 {tarea.descripcion}
                               </Typography>
-                              <Chip 
-                                label={tarea.estado} 
+                              <Chip
+                                label={tarea.estado}
                                 size="small"
                                 color={tarea.estado === 'COMPLETADA' ? 'success' : 'warning'}
+                                sx={{ fontWeight: 600 }}
                               />
                             </Box>
                             {tarea.empleado && (
-                              <Typography variant="caption" color="textSecondary" mt={1} display="block">
-                                Asignado a: {tarea.empleado.nombre} {tarea.empleado.apellido}
+                              <Typography variant="caption" color="textSecondary" fontWeight="500" mt={1.5} display="block">
+                                👤 Asignado a: {tarea.empleado.nombre} {tarea.empleado.apellido}
                               </Typography>
                             )}
                           </Box>
@@ -656,14 +706,15 @@ const OrdenesServicioPage: React.FC = () => {
                 </Grid>
               )}
             </Grid>
-
-            <Box display="flex" justifyContent="flex-end" gap={2} mt={3}>
-              <Button variant="outlined" onClick={() => setOpen(false)}>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2, pt: 2 }}>
+              <Button variant="outlined" onClick={() => setOpen(false)} size="large">
                 Cerrar
               </Button>
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 color="primary"
+                size="large"
                 onClick={() => {
                   setOpen(false);
                   handleOpenForm(selected);
@@ -671,129 +722,193 @@ const OrdenesServicioPage: React.FC = () => {
               >
                 Editar Orden
               </Button>
-            </Box>
-          </Box>
+            </DialogActions>
+          </>
         )}
       </Dialog>
 
       {/* Dialog de Formulario Crear/Editar */}
-      <Dialog open={formOpen} onClose={handleCloseForm} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingOrden ? 'Editar Orden de Servicio' : 'Nueva Orden de Servicio'}
+      <Dialog
+        open={formOpen}
+        onClose={handleCloseForm}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            bgcolor: 'primary.main',
+            color: 'white',
+            py: 2.5
+          }}
+        >
+          <Typography variant="h5" fontWeight="600">
+            {editingOrden ? '✏️ Editar Orden de Servicio' : '➕ Nueva Orden de Servicio'}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.9 }}>
+            {editingOrden ? 'Modifique los campos necesarios' : 'Complete los datos de la nueva orden'}
+          </Typography>
         </DialogTitle>
-        <DialogContent>
-          <Box mt={2}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  options={clientes}
-                  getOptionLabel={(cliente) => 
-                    cliente.nombre + 
-                    (cliente.apellido ? ' ' + cliente.apellido : '') +
-                    (cliente.razonSocial ? ' - ' + cliente.razonSocial : '')
-                  }
-                  value={clientes.find(c => c.id.toString() === formData.clienteId) || null}
-                  onChange={(_, value) => 
-                    setFormData({ ...formData, clienteId: value?.id.toString() || '' })
-                  }
-                  renderInput={(params) => (
-                    <TextField {...params} label="Cliente" required />
-                  )}
-                />
-              </Grid>
 
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  options={empleados}
-                  getOptionLabel={(empleado) => `${empleado.nombre} ${empleado.apellido}`}
-                  value={empleados.find(e => e.id.toString() === formData.responsableId) || null}
-                  onChange={(_, value) => 
-                    setFormData({ ...formData, responsableId: value?.id.toString() || '' })
-                  }
-                  renderInput={(params) => (
-                    <TextField {...params} label="Responsable (Opcional)" />
-                  )}
-                />
-              </Grid>
+        <DialogContent sx={{ p: 0 }}>
+          <Box sx={{ p: 3 }}>
+            <Stack spacing={3}>
+              {/* Cliente y Responsable */}
+              <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+                <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom sx={{ mb: 2 }}>
+                  👤 INFORMACIÓN DEL CLIENTE
+                </Typography>
+                <Stack spacing={2}>
+                  <Autocomplete
+                    options={clientes}
+                    getOptionLabel={(cliente) =>
+                      `${cliente.nombre}${cliente.apellido ? ' ' + cliente.apellido : ''}${cliente.razonSocial ? ' - ' + cliente.razonSocial : ''}`
+                    }
+                    value={clientes.find(c => c.id.toString() === formData.clienteId) || null}
+                    onChange={(_, value) =>
+                      setFormData({ ...formData, clienteId: value?.id.toString() || '' })
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Cliente *"
+                        required
+                        placeholder="Seleccione un cliente"
+                      />
+                    )}
+                  />
 
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Descripción del Trabajo"
-                  multiline
-                  rows={3}
-                  value={formData.descripcionTrabajo}
-                  onChange={(e) => setFormData({ ...formData, descripcionTrabajo: e.target.value })}
-                  required
-                />
-              </Grid>
+                  <Autocomplete
+                    options={empleados}
+                    getOptionLabel={(empleado) => `${empleado.nombre} ${empleado.apellido}`}
+                    value={empleados.find(e => e.id.toString() === formData.responsableId) || null}
+                    onChange={(_, value) =>
+                      setFormData({ ...formData, responsableId: value?.id.toString() || '' })
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Responsable"
+                        placeholder="Seleccione un responsable (opcional)"
+                      />
+                    )}
+                  />
+                </Stack>
+              </Paper>
 
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Observaciones"
-                  multiline
-                  rows={2}
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Fecha Estimada de Finalización"
-                  value={formData.fechaEstimada}
-                  onChange={(e) => setFormData({ ...formData, fechaEstimada: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Costo Mano de Obra"
-                  value={formData.costoManoObra}
-                  onChange={(e) => setFormData({ ...formData, costoManoObra: e.target.value })}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                />
-              </Grid>
-
-              {editingOrden && (
-                // @ts-ignore
-                <Grid item xs={12} md={6}>
+              {/* Descripción del Trabajo */}
+              <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+                <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom sx={{ mb: 2 }}>
+                  📝 DESCRIPCIÓN DEL TRABAJO
+                </Typography>
+                <Stack spacing={2}>
                   <TextField
                     fullWidth
-                    select
-                    label="Estado"
-                    value={formData.estado}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      estado: e.target.value as typeof formData.estado
-                    })}
-                  >
-                    <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                    <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
-                    <MenuItem value="FINALIZADA">Finalizada</MenuItem>
-                    <MenuItem value="CANCELADA">Cancelada</MenuItem>
-                  </TextField>
+                    label="Descripción del Trabajo *"
+                    multiline
+                    rows={4}
+                    value={formData.descripcionTrabajo}
+                    onChange={(e) => setFormData({ ...formData, descripcionTrabajo: e.target.value })}
+                    required
+                    placeholder="Describa el trabajo a realizar de forma detallada..."
+                    sx={{ bgcolor: 'white' }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Observaciones"
+                    multiline
+                    rows={2}
+                    value={formData.observaciones}
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                    placeholder="Notas adicionales, requerimientos especiales..."
+                    sx={{ bgcolor: 'white' }}
+                  />
+                </Stack>
+              </Paper>
+
+              {/* Fechas y Estado */}
+              <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+                <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom sx={{ mb: 2 }}>
+                  📅 FECHAS Y ESTADO
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={editingOrden ? 6 : 12}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Fecha Estimada de Finalización"
+                      value={formData.fechaEstimada}
+                      onChange={(e) => setFormData({ ...formData, fechaEstimada: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      helperText="Opcional - Fecha estimada para completar el trabajo"
+                      sx={{ bgcolor: 'white' }}
+                    />
+                  </Grid>
+
+                  {editingOrden && (
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        select
+                        label="Estado"
+                        value={formData.estado}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          estado: e.target.value as typeof formData.estado
+                        })}
+                        sx={{ bgcolor: 'white' }}
+                      >
+                        <MenuItem value="PENDIENTE">⏳ Pendiente</MenuItem>
+                        <MenuItem value="EN_PROCESO">🔧 En Proceso</MenuItem>
+                        <MenuItem value="FINALIZADA">✅ Finalizada</MenuItem>
+                        <MenuItem value="CANCELADA">❌ Cancelada</MenuItem>
+                      </TextField>
+                    </Grid>
+                  )}
                 </Grid>
-              )}
-            </Grid>
+              </Paper>
+
+              {/* Nota informativa */}
+              <Alert
+                severity="info"
+                icon={<Box component="span" sx={{ fontSize: '1.2rem' }}>💡</Box>}
+                sx={{ borderRadius: 2 }}
+              >
+                <Typography variant="body2" fontWeight="600" gutterBottom>
+                  <strong>Importante: Flujo de Trabajo</strong>
+                </Typography>
+                <Typography variant="body2" component="div">
+                  1. Crear la orden de servicio con los datos básicos<br />
+                  2. Agregar materiales en <strong>"Control de Materiales"</strong><br />
+                  3. Asignar tareas a empleados en <strong>"Asignación de Tareas"</strong><br />
+                  4. Los costos se calculan automáticamente según materiales y tareas<br />
+                  5. Ver el resumen completo en <strong>"Trabajos Realizados"</strong>
+                </Typography>
+              </Alert>
+            </Stack>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseForm}>Cancelar</Button>
-          <Button 
-            onClick={handleSaveOrden} 
-            variant="contained"
-            disabled={!formData.clienteId || !formData.descripcionTrabajo}
+
+        <DialogActions sx={{ px: 3, py: 2.5, bgcolor: 'grey.100', borderTop: '1px solid', borderColor: 'grey.300' }}>
+          <Button
+            onClick={handleCloseForm}
+            size="large"
+            variant="outlined"
+            sx={{ minWidth: 120 }}
           >
-            {editingOrden ? 'Guardar Cambios' : 'Crear Orden'}
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveOrden}
+            variant="contained"
+            size="large"
+            disabled={!formData.clienteId || !formData.descripcionTrabajo}
+            sx={{ minWidth: 160 }}
+          >
+            {editingOrden ? '💾 Guardar Cambios' : '➕ Crear Orden'}
           </Button>
         </DialogActions>
       </Dialog>

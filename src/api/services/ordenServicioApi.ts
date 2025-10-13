@@ -68,7 +68,7 @@ export const ordenServicioApi = {
   // Cambiar estado de orden
   cambiarEstado: async (id: number, nuevoEstado: string): Promise<OrdenServicio> => {
     const response = await api.patch(`/api/ordenes-servicio/${id}/estado`, null, {
-      params: { nuevoEstado }
+      params: { estado: nuevoEstado }
     });
     return response.data;
   }

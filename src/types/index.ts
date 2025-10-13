@@ -738,6 +738,7 @@ export interface MaterialUtilizado {
   ordenServicioId: number;
   productoTerminadoId: number;
   productoTerminado?: ProductoTerminado;
+  productoNombre?: string; // Nombre del producto desde el backend DTO
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
