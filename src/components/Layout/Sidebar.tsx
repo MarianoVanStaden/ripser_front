@@ -9,6 +9,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { Link, useLocation } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -69,7 +70,7 @@ const navigation = [
       { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
       { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
       { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
-      
+      { text: 'Configuración', icon: <SettingsIcon />, path: '/taller/configuracion' },
     ],
   },
     {

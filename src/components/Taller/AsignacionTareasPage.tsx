@@ -53,6 +53,11 @@ const AsignacionTareasPage: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingTarea, setEditingTarea] = useState<TareaServicio | null>(null);
 
+  // Estados para modal de completar tarea
+  const [completarDialogOpen, setCompletarDialogOpen] = useState(false);
+  const [tareaToComplete, setTareaToComplete] = useState<TareaServicio | null>(null);
+  const [horasRealesInput, setHorasRealesInput] = useState<string>('');
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
@@ -236,23 +241,37 @@ const AsignacionTareasPage: React.FC = () => {
     }
   };
 
-  const handleCompletarTarea = async (id: number) => {
-    const horasReales = window.prompt('Ingrese las horas reales trabajadas:');
-    if (horasReales === null) return; // Usuario canceló
+  const handleCompletarTarea = (tarea: TareaServicio) => {
+    setTareaToComplete(tarea);
+    setHorasRealesInput(tarea.horasEstimadas?.toString() || '1');
+    setCompletarDialogOpen(true);
+  };
+
+  const handleConfirmCompletar = async () => {
+    if (!tareaToComplete) return;
 
     try {
-      const horas = parseInt(horasReales);
+      const horas = parseInt(horasRealesInput);
       if (isNaN(horas) || horas < 0) {
         setError('Por favor ingrese un número válido de horas');
         return;
       }
-      await tareaServicioApi.completar(id, horas);
+      await tareaServicioApi.completar(tareaToComplete.id, horas);
       await loadTareas();
+      setCompletarDialogOpen(false);
+      setTareaToComplete(null);
+      setHorasRealesInput('');
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al completar la tarea');
       console.error('Error completing tarea:', err);
     }
+  };
+
+  const handleCancelCompletar = () => {
+    setCompletarDialogOpen(false);
+    setTareaToComplete(null);
+    setHorasRealesInput('');
   };
 
   const getOrdenInfo = (tarea: TareaServicio) => {
@@ -501,7 +520,7 @@ const AsignacionTareasPage: React.FC = () => {
                             <Tooltip title="Completar Tarea">
                               <IconButton
                                 size="small"
-                                onClick={() => handleCompletarTarea(tarea.id)}
+                                onClick={() => handleCompletarTarea(tarea)}
                                 color="success"
                               >
                                 <CheckCircleIcon />
@@ -734,6 +753,184 @@ const AsignacionTareasPage: React.FC = () => {
             sx={{ minWidth: 160 }}
           >
             {editingTarea ? '💾 Guardar Cambios' : '➕ Crear Tarea'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para Completar Tarea con Horas Reales */}
+      <Dialog
+        open={completarDialogOpen}
+        onClose={handleCancelCompletar}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            bgcolor: 'success.main',
+            color: 'white',
+            py: 3,
+            textAlign: 'center'
+          }}
+        >
+          <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
+            <CheckCircleIcon sx={{ fontSize: 56, opacity: 0.9 }} />
+            <Typography variant="h5" fontWeight="700">
+              Completar Tarea
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.95, mt: 0.5 }}>
+              Registre las horas reales trabajadas
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 4, pb: 3 }}>
+          {tareaToComplete && (
+            <Stack spacing={3}>
+              {/* Información de la Tarea */}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  bgcolor: 'grey.50',
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'grey.200'
+                }}
+              >
+                <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase" display="block" mb={1}>
+                  Tarea a Completar
+                </Typography>
+                <Typography variant="body1" fontWeight="600" gutterBottom>
+                  {tareaToComplete.descripcion}
+                </Typography>
+                <Typography variant="caption" color="textSecondary" display="block" mt={1}>
+                  Orden: {getOrdenInfo(tareaToComplete)}
+                </Typography>
+              </Paper>
+
+              {/* Comparación de Horas */}
+              <Box>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        bgcolor: 'info.50',
+                        borderRadius: 2,
+                        border: '2px solid',
+                        borderColor: 'info.main',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <AccessTimeIcon sx={{ fontSize: 32, color: 'info.main', mb: 1 }} />
+                      <Typography variant="caption" color="textSecondary" fontWeight="600" display="block">
+                        Horas Estimadas
+                      </Typography>
+                      <Typography variant="h4" fontWeight="700" color="info.main">
+                        {tareaToComplete.horasEstimadas}h
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        bgcolor: 'success.50',
+                        borderRadius: 2,
+                        border: '2px solid',
+                        borderColor: 'success.main',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <CheckCircleIcon sx={{ fontSize: 32, color: 'success.main', mb: 1 }} />
+                      <Typography variant="caption" color="textSecondary" fontWeight="600" display="block">
+                        Horas Reales
+                      </Typography>
+                      <Typography variant="h4" fontWeight="700" color="success.main">
+                        {horasRealesInput || '0'}h
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* Input de Horas Reales */}
+              <TextField
+                fullWidth
+                type="number"
+                label="Horas Reales Trabajadas"
+                value={horasRealesInput}
+                onChange={(e) => setHorasRealesInput(e.target.value)}
+                autoFocus
+                required
+                inputProps={{ min: 0, step: 0.5 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <AccessTimeIcon color="success" />
+                    </InputAdornment>
+                  ),
+                }}
+                helperText="Ingrese las horas efectivamente trabajadas en esta tarea"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& input': {
+                      fontSize: '1.25rem',
+                      fontWeight: 600,
+                      color: 'success.main'
+                    }
+                  }
+                }}
+              />
+
+              {/* Alerta informativa */}
+              {parseInt(horasRealesInput) > tareaToComplete.horasEstimadas && (
+                <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                  <Typography variant="body2">
+                    Las horas reales <strong>({horasRealesInput}h)</strong> superan las estimadas <strong>({tareaToComplete.horasEstimadas}h)</strong>.
+                    Esto afectará el cálculo del costo de mano de obra.
+                  </Typography>
+                </Alert>
+              )}
+
+              {parseInt(horasRealesInput) <= tareaToComplete.horasEstimadas && parseInt(horasRealesInput) > 0 && (
+                <Alert severity="success" sx={{ borderRadius: 2 }}>
+                  <Typography variant="body2">
+                    ¡Excelente! La tarea se completó dentro del tiempo estimado.
+                  </Typography>
+                </Alert>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2.5, bgcolor: 'grey.50', gap: 1 }}>
+          <Button
+            onClick={handleCancelCompletar}
+            size="large"
+            variant="outlined"
+            sx={{ minWidth: 120 }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmCompletar}
+            variant="contained"
+            size="large"
+            color="success"
+            disabled={!horasRealesInput || parseInt(horasRealesInput) < 0}
+            startIcon={<CheckCircleIcon />}
+            sx={{ minWidth: 180 }}
+          >
+            Completar Tarea
           </Button>
         </DialogActions>
       </Dialog>

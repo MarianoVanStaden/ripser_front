@@ -46,6 +46,7 @@ import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
 import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
 import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
+import ConfiguracionTallerPage from './components/Taller/ConfiguracionTallerPage';
 import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -137,6 +138,7 @@ function App() {
               <Route path="taller/ordenes" element={<PrivateRoute><OrdenesServicioPage /></PrivateRoute>} />
               <Route path="taller/materiales" element={<PrivateRoute><ControlMaterialesPage /></PrivateRoute>} />
               <Route path="taller/tareas" element={<PrivateRoute><AsignacionTareasPage /></PrivateRoute>} />
+              <Route path="taller/configuracion" element={<PrivateRoute><ConfiguracionTallerPage /></PrivateRoute>} />
             </Route>
           </Routes>
         </Router>
