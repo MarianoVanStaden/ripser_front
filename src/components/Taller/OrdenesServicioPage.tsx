@@ -639,7 +639,7 @@ const OrdenesServicioPage: React.FC = () => {
                             {selected.materiales.map((material, idx) => (
                               <TableRow key={idx} hover>
                                 <TableCell>
-                                  {material.productoTerminado?.nombre || `Producto #${material.productoTerminadoId}`}
+                                  {material.productoNombre || material.productoTerminado?.nombre || `Producto #${material.productoId || material.productoTerminadoId}`}
                                 </TableCell>
                                 <TableCell align="center" sx={{ fontWeight: 500 }}>{material.cantidad}</TableCell>
                                 <TableCell align="right">${material.precioUnitario?.toLocaleString('es-AR') || 0}</TableCell>

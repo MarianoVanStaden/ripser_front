@@ -66,9 +66,10 @@ const navigation = [
     title: 'TALLER',
     items: [
       { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
+      { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
       { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
       { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
-            { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
+      
     ],
   },
     {

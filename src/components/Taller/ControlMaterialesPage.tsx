@@ -111,10 +111,12 @@ const ControlMaterialesPage: React.FC = () => {
 
   const handleOpenForm = (material?: MaterialUtilizado) => {
     if (material) {
+      console.log('Opening form for material:', material);
+      console.log('productoId:', material.productoId);
       setEditingMaterial(material);
       setFormData({
         ordenServicioId: material.ordenServicioId?.toString() || '',
-        productoId: material.productoTerminadoId?.toString() || '',
+        productoId: (material.productoId || material.productoTerminadoId)?.toString() || '',
         cantidad: material.cantidad.toString(),
         precioUnitario: material.precioUnitario.toString()
       });
@@ -142,7 +144,46 @@ const ControlMaterialesPage: React.FC = () => {
   };
 
   const handleSaveMaterial = async () => {
-    // Validar que los campos requeridos no estén vacíos
+    // En modo edición, usar los IDs del material existente
+    // En modo creación, validar que estén seleccionados
+    if (editingMaterial) {
+      // Modo edición: usar los IDs del material original
+      const materialData: any = {
+        id: editingMaterial.id,
+        ordenServicioId: editingMaterial.ordenServicioId,
+        productoId: editingMaterial.productoId || editingMaterial.productoTerminadoId, // El backend usa 'productoId'
+        cantidad: parseInt(formData.cantidad) || 1,
+        precioUnitario: parseFloat(formData.precioUnitario) || 0
+      };
+      
+      console.log('Updating material with data:', materialData);
+      console.log('editingMaterial:', editingMaterial);
+
+      try {
+        await materialUtilizadoApi.update(editingMaterial.id, materialData);
+        await loadMateriales();
+        handleCloseForm();
+        setError(null);
+      } catch (err: any) {
+        let errorMsg = 'Error al actualizar el material';
+        if (err.response?.status === 400) {
+          const errors = err.response?.data;
+          if (typeof errors === 'object' && errors !== null) {
+            const errorMessages = Object.values(errors).join(', ');
+            errorMsg = `Error de validación: ${errorMessages}`;
+          } else if (typeof errors === 'string') {
+            errorMsg = errors;
+          }
+        } else if (err.response?.data?.message) {
+          errorMsg = err.response.data.message;
+        }
+        console.error('Error al actualizar material:', err);
+        setError(errorMsg);
+      }
+      return;
+    }
+
+    // Modo creación: validar que estén seleccionados orden y producto
     if (!formData.ordenServicioId || !formData.productoId) {
       setError('Por favor seleccione una Orden de Servicio y un Producto');
       return;
@@ -157,12 +198,7 @@ const ControlMaterialesPage: React.FC = () => {
     };
 
     try {
-      if (editingMaterial) {
-        materialData.id = editingMaterial.id;
-        await materialUtilizadoApi.update(editingMaterial.id, materialData);
-      } else {
-        await materialUtilizadoApi.create(materialData);
-      }
+      await materialUtilizadoApi.create(materialData);
 
       await loadMateriales();
       handleCloseForm();
@@ -220,7 +256,8 @@ const ControlMaterialesPage: React.FC = () => {
       return material.productoNombre;
     }
     // Fallback a objeto productoTerminado completo
-    return material.productoTerminado?.nombre || `Producto #${material.productoTerminadoId}`;
+    const productoId = material.productoId || material.productoTerminadoId;
+    return material.productoTerminado?.nombre || `Producto #${productoId}`;
   };
 
   const filteredMateriales = materiales.filter(m => {
@@ -408,43 +445,69 @@ const ControlMaterialesPage: React.FC = () => {
                   📋 INFORMACIÓN DEL MATERIAL
                 </Typography>
                 <Stack spacing={2}>
-                  <Autocomplete
-                    options={ordenes}
-                    getOptionLabel={(option) => `${option.numeroOrden} - ${option.clienteNombre || 'Sin cliente'} (${option.estado})`}
-                    value={ordenes.find(o => o.id.toString() === formData.ordenServicioId) || null}
-                    onChange={(_, value) =>
-                      setFormData({ ...formData, ordenServicioId: value?.id.toString() || '' })
-                    }
-                    disabled={!!editingMaterial} // Deshabilitar al editar
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Orden de Servicio *"
-                        required
-                        placeholder="Seleccione una orden"
-                        helperText={editingMaterial ? "No se puede cambiar la orden al editar" : ""}
-                      />
-                    )}
-                  />
+                  {editingMaterial ? (
+                    // Mostrar TextField de solo lectura al editar
+                    <TextField
+                      fullWidth
+                      label="Orden de Servicio"
+                      value={getOrdenInfo(editingMaterial)}
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                      disabled
+                      helperText="No se puede cambiar la orden al editar"
+                    />
+                  ) : (
+                    // Mostrar Autocomplete al crear
+                    <Autocomplete
+                      options={ordenes}
+                      getOptionLabel={(option) => `${option.numeroOrden} - ${option.clienteNombre || 'Sin cliente'} (${option.estado})`}
+                      value={ordenes.find(o => o.id.toString() === formData.ordenServicioId) || null}
+                      onChange={(_, value) =>
+                        setFormData({ ...formData, ordenServicioId: value?.id.toString() || '' })
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Orden de Servicio *"
+                          required
+                          placeholder="Seleccione una orden"
+                        />
+                      )}
+                    />
+                  )}
 
-                  <Autocomplete
-                    options={productos}
-                    getOptionLabel={(option) => `${option.nombre} - $${option.precio} (Stock: ${option.stockActual})`}
-                    value={productos.find(p => p.id.toString() === formData.productoId) || null}
-                    onChange={(_, value) =>
-                      setFormData({ ...formData, productoId: value?.id.toString() || '' })
-                    }
-                    disabled={!!editingMaterial} // Deshabilitar al editar
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Producto *"
-                        required
-                        placeholder="Seleccione un producto"
-                        helperText={editingMaterial ? "No se puede cambiar el producto al editar" : ""}
-                      />
-                    )}
-                  />
+                  {editingMaterial ? (
+                    // Mostrar TextField de solo lectura al editar
+                    <TextField
+                      fullWidth
+                      label="Producto"
+                      value={getProductoNombre(editingMaterial)}
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                      disabled
+                      helperText="No se puede cambiar el producto al editar"
+                    />
+                  ) : (
+                    // Mostrar Autocomplete al crear
+                    <Autocomplete
+                      options={productos}
+                      getOptionLabel={(option) => `${option.nombre} - $${option.precio} (Stock: ${option.stockActual})`}
+                      value={productos.find(p => p.id.toString() === formData.productoId) || null}
+                      onChange={(_, value) =>
+                        setFormData({ ...formData, productoId: value?.id.toString() || '' })
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Producto *"
+                          required
+                          placeholder="Seleccione un producto"
+                        />
+                      )}
+                    />
+                  )}
 
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
@@ -499,7 +562,11 @@ const ControlMaterialesPage: React.FC = () => {
             onClick={handleSaveMaterial}
             variant="contained"
             size="large"
-            disabled={!formData.ordenServicioId || !formData.productoId || !formData.cantidad || !formData.precioUnitario}
+            disabled={
+              editingMaterial 
+                ? (!formData.cantidad || !formData.precioUnitario)
+                : (!formData.ordenServicioId || !formData.productoId || !formData.cantidad || !formData.precioUnitario)
+            }
             sx={{ minWidth: 160 }}
           >
             {editingMaterial ? '💾 Guardar' : '➕ Agregar'}

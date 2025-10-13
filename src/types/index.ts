@@ -736,7 +736,8 @@ export interface ProductoTerminado {
 export interface MaterialUtilizado {
   id: number;
   ordenServicioId: number;
-  productoTerminadoId: number;
+  productoId: number; // El backend usa 'productoId'
+  productoTerminadoId?: number; // Alias para compatibilidad
   productoTerminado?: ProductoTerminado;
   productoNombre?: string; // Nombre del producto desde el backend DTO
   cantidad: number;
