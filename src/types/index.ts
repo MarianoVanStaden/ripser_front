@@ -1,5 +1,4 @@
-// --- Garantía (Warranty) Aliases for Frontend Consistency ---
-export type Garantia = Warranty;
+// Warranty related type alias for better readability
 export type ReclamoGarantia = WarrantyClaim;
 // Core Business Entities
 // Client entity interface (extended to match backend)
@@ -213,6 +212,38 @@ export interface DetallePresupuesto {
   precioUnitario: number;
   subtotal: number;
 }
+
+// Garantía entity and related types
+export interface Garantia {
+  // 1. Flexible ID to handle both number and string IDs from backend
+    id: number | string; 
+    
+    // 2. Properties for display in the UI
+    clienteNombre: string; 
+    productoNombre: string;
+    fechaVenta: string;
+    estado: string;
+    observaciones: string;
+
+    // 3. Properties for creating/updating a warranty
+    clientId: number | undefined;
+    productId: number | undefined;
+    saleId?: number | undefined;
+
+    // 4. Original properties from the Warranty DTO (needed for the Adapter)
+    startDate: string;
+    endDate: string;
+    status: WarrantyStatus; 
+    type: WarrantyType;
+    description: string; 
+    warrantyNumber: string;
+    claims: WarrantyClaim[];
+    createdAt: string;
+    updatedAt: string;
+    tipoIva?: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+}
+
+
 
 // Warranty entity
 export interface Warranty {
