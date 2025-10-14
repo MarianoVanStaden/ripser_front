@@ -27,6 +27,7 @@ import type { Legajo, Empleado } from '../../types';
 const LegajosPage: React.FC = () => {
   const [legajos, setLegajos] = useState<Legajo[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [empleadosSinLegajo, setEmpleadosSinLegajo] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -66,13 +67,48 @@ const LegajosPage: React.FC = () => {
         legajoApi.getAll(),
         employeeApi.getAllList()
       ]);
-      setLegajos(Array.isArray(legajosData) ? legajosData : []);
+      
+      console.log('Legajos raw data:', legajosData);
+      console.log('Empleados data:', empleadosData);
+      
+      // Mapear los legajos para incluir el objeto empleado completo
+      const legajosConEmpleado = Array.isArray(legajosData) 
+        ? legajosData.map((legajo: any) => {
+            const empleado = empleadosData.find((e: any) => e.id === legajo.empleadoId);
+            return {
+              ...legajo,
+              empleado: empleado || {
+                id: legajo.empleadoId,
+                nombre: legajo.empleadoNombre || '',
+                apellido: legajo.empleadoApellido || '',
+                dni: legajo.empleadoDni || ''
+              }
+            };
+          })
+        : [];
+      
+      console.log('Legajos mapped:', legajosConEmpleado);
+      
+      // Calcular empleados sin legajo asignado
+      const empleadosConLegajoIds = new Set(
+        legajosConEmpleado.map(leg => leg.empleado?.id).filter(Boolean)
+      );
+      const empleadosDisponibles = Array.isArray(empleadosData)
+        ? empleadosData.filter(emp => !empleadosConLegajoIds.has(emp.id))
+        : [];
+      
+      console.log('Empleados con legajo (IDs):', Array.from(empleadosConLegajoIds));
+      console.log('Empleados sin legajo:', empleadosDisponibles);
+      
+      setLegajos(legajosConEmpleado);
       setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
+      setEmpleadosSinLegajo(empleadosDisponibles);
     } catch (err) {
       setError('Error al cargar los datos');
       console.error('Error loading data:', err);
       setLegajos([]);
       setEmpleados([]);
+      setEmpleadosSinLegajo([]);
     } finally {
       setLoading(false);
     }
@@ -142,16 +178,24 @@ const LegajosPage: React.FC = () => {
         return;
       }
 
+      const empleadoIdParsed = parseInt(formData.empleadoId);
+      if (isNaN(empleadoIdParsed) || empleadoIdParsed <= 0) {
+        setError('ID de empleado inválido');
+        return;
+      }
+
       const legajoData = {
-        empleadoId: parseInt(formData.empleadoId),
+        empleadoId: empleadoIdParsed,
         numeroLegajo: formData.numeroLegajo,
         fechaAlta: formData.fechaAlta,
         fechaBaja: formData.fechaBaja || null,
         motivoBaja: formData.motivoBaja || null,
         documentacion: formData.documentacion || null,
         observaciones: formData.observaciones || null,
-        activo: formData.activo
+        activo: formData.activo !== undefined ? formData.activo : true
       };
+
+      console.log('Sending legajo data:', legajoData);
 
       if (editingLegajo) {
         await legajoApi.update(editingLegajo.id, legajoData);
@@ -659,14 +703,28 @@ const LegajosPage: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Autocomplete
-                options={empleados}
+                options={editingLegajo ? empleados : empleadosSinLegajo}
                 getOptionLabel={(empleado) => getEmpleadoNombre(empleado)}
                 value={empleados.find(e => e.id.toString() === formData.empleadoId) || null}
                 onChange={(_, newValue) => handleFormChange('empleadoId', newValue?.id.toString() || '')}
                 renderInput={(params) => (
-                  <TextField {...params} label="Empleado *" required />
+                  <TextField 
+                    {...params} 
+                    label="Empleado *" 
+                    required 
+                    helperText={!editingLegajo && empleadosSinLegajo.length === 0 
+                      ? "Todos los empleados ya tienen legajo asignado" 
+                      : !editingLegajo 
+                        ? "Solo se muestran empleados sin legajo" 
+                        : undefined
+                    }
+                  />
                 )}
                 disabled={!!editingLegajo}
+                noOptionsText={!editingLegajo 
+                  ? "No hay empleados disponibles (todos tienen legajo)" 
+                  : "No hay empleados"
+                }
               />
             </Grid>
             <Grid item xs={12} md={6}>

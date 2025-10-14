@@ -1,69 +1,68 @@
-import api from '../config';
-import type { Garantia } from '../../types';
+import api from '../api';
 
+// ==================== TYPES ====================
+export interface GarantiaDTO {
+  id: number;
+  producto: {
+    id: number;
+    nombre: string;
+  };
+  venta: {
+    id: number;
+    numeroComprobante?: string;
+  };
+  numeroSerie: string;
+  fechaCompra: string; // LocalDate
+  fechaVencimiento: string; // LocalDate
+  estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
+  observaciones?: string;
+}
+
+export interface GarantiaCreateDTO {
+  productoId: number;
+  ventaId: number;
+  numeroSerie: string;
+  fechaCompra: string;
+  fechaVencimiento: string;
+  estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
+  observaciones?: string;
+}
+
+// ==================== GARANTIAS API ====================
 export const garantiaApi = {
-  // Get all garantias
-  getAll: async (): Promise<Garantia[]> => {
+  // GET /api/garantias
+  findAll: async (): Promise<GarantiaDTO[]> => {
     const response = await api.get('/api/garantias');
     return response.data;
   },
 
-  // Get garantia by ID
-  getById: async (id: number): Promise<Garantia> => {
+  // GET /api/garantias/{id}
+  findById: async (id: number): Promise<GarantiaDTO> => {
     const response = await api.get(`/api/garantias/${id}`);
     return response.data;
   },
 
-  // Get garantias by producto
-  getByProducto: async (productoId: number): Promise<Garantia[]> => {
+  // POST /api/garantias
+  create: async (data: GarantiaCreateDTO): Promise<GarantiaDTO> => {
+    const response = await api.post('/api/garantias', data);
+    return response.data;
+  },
+
+  // PUT /api/garantias/{id}/anular
+  anular: async (id: number): Promise<GarantiaDTO> => {
+    const response = await api.put(`/api/garantias/${id}/anular`);
+    return response.data;
+  },
+
+  // GET /api/garantias/producto/{productoId}
+  findByProductoId: async (productoId: number): Promise<GarantiaDTO[]> => {
     const response = await api.get(`/api/garantias/producto/${productoId}`);
     return response.data;
   },
 
-  // Get garantias by venta
-  getByVenta: async (ventaId: number): Promise<Garantia[]> => {
+  // GET /api/garantias/venta/{ventaId}
+  findByVentaId: async (ventaId: number): Promise<GarantiaDTO[]> => {
     const response = await api.get(`/api/garantias/venta/${ventaId}`);
     return response.data;
   },
-
-  // Get garantias by estado
-  getByEstado: async (estado: string): Promise<Garantia[]> => {
-    const response = await api.get(`/api/garantias/estado/${estado}`);
-    return response.data;
-  },
-
-  // Get garantia by numero de serie
-  getByNumeroSerie: async (numeroSerie: string): Promise<Garantia> => {
-    const response = await api.get(`/api/garantias/numero-serie/${numeroSerie}`);
-    return response.data;
-  },
-
-  // Get garantias vencidas
-  getVencidas: async (): Promise<Garantia[]> => {
-    const response = await api.get('/api/garantias/vencidas');
-    return response.data;
-  },
-
-  // Get garantias por vencer (fechaLimite as yyyy-MM-dd)
-  getPorVencer: async (fechaLimite: string): Promise<Garantia[]> => {
-    const response = await api.get('/api/garantias/por-vencer', { params: { fechaLimite } });
-    return response.data;
-  },
-
-  // Create new garantia
-  create: async (garantia: Garantia): Promise<Garantia> => {
-    const response = await api.post('/api/garantias', garantia);
-    return response.data;
-  },
-
-  // Update garantia
-  update: async (id: number, garantia: Garantia): Promise<Garantia> => {
-    const response = await api.put(`/api/garantias/${id}`, garantia);
-    return response.data;
-  },
-
-  // Delete garantia
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/garantias/${id}`);
-  }
 };

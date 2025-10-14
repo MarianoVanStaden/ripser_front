@@ -49,6 +49,7 @@ import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
 import ConfiguracionTallerPage from './components/Taller/ConfiguracionTallerPage';
 import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
 
+
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '24px', textAlign: 'center' }}>
     <h2>{title}</h2>

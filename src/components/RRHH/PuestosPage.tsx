@@ -73,6 +73,8 @@ const PuestosPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await puestoApi.getAll();
+      console.log('Puestos raw data:', data);
+      console.log('Primer puesto:', data[0]);
       setPuestos(Array.isArray(data) ? data : []);
     } catch (err) {
       setError('Error al cargar los puestos');
@@ -141,8 +143,10 @@ const PuestosPage: React.FC = () => {
         return;
       }
 
-      if (!formData.salarioBase || parseFloat(formData.salarioBase) <= 0) {
-        setError('El salario base debe ser mayor a 0');
+      // Validación removida: ahora permite salario 0 o vacío
+      const salarioBase = formData.salarioBase ? parseFloat(formData.salarioBase) : 0;
+      if (salarioBase < 0) {
+        setError('El salario base no puede ser negativo');
         return;
       }
 
@@ -150,7 +154,7 @@ const PuestosPage: React.FC = () => {
         nombre: formData.nombre.trim(),
         descripcion: formData.descripcion.trim() || null,
         departamento: formData.departamento.trim() || null,
-        salarioBase: parseFloat(formData.salarioBase)
+        salarioBase: salarioBase
       };
 
       if (editingPuesto) {
@@ -387,9 +391,12 @@ const PuestosPage: React.FC = () => {
                             variant="outlined"
                           />
                         ) : (
-                          <Typography variant="body2" color="textSecondary">
-                            -
-                          </Typography>
+                          <Chip
+                            label="Sin Asignar"
+                            size="small"
+                            color="default"
+                            variant="outlined"
+                          />
                         )}
                       </TableCell>
                       <TableCell>
@@ -464,7 +471,7 @@ const PuestosPage: React.FC = () => {
                     {selected.departamento ? (
                       <Chip label={selected.departamento} size="small" color="primary" />
                     ) : (
-                      '-'
+                      <Chip label="Sin Asignar" size="small" color="default" />
                     )}
                   </Typography>
                 </Box>
@@ -549,12 +556,12 @@ const PuestosPage: React.FC = () => {
               type="number"
               value={formData.salarioBase}
               onChange={handleFormChange}
-              required
               fullWidth
               InputProps={{
                 startAdornment: <InputAdornment position="start">$</InputAdornment>,
               }}
               placeholder="0.00"
+              helperText="Opcional: Deja en 0 si no aplica"
             />
           </Stack>
         </DialogContent>

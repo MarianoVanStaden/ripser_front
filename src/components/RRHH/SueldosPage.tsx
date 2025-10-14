@@ -69,7 +69,29 @@ const SueldosPage: React.FC = () => {
         sueldoApi.getAll(),
         employeeApi.getAllList()
       ]);
-      setSueldos(Array.isArray(sueldosData) ? sueldosData : []);
+      
+      console.log('Sueldos raw data:', sueldosData);
+      console.log('Empleados data:', empleadosData);
+      
+      // Mapear los sueldos para incluir el objeto empleado completo
+      const sueldosConEmpleado = Array.isArray(sueldosData) 
+        ? sueldosData.map((sueldo: any) => {
+            const empleado = empleadosData.find((e: any) => e.id === sueldo.empleadoId);
+            return {
+              ...sueldo,
+              empleado: empleado || {
+                id: sueldo.empleadoId,
+                nombre: sueldo.empleadoNombre || '',
+                apellido: sueldo.empleadoApellido || '',
+                dni: sueldo.empleadoDni || ''
+              }
+            };
+          })
+        : [];
+      
+      console.log('Sueldos mapped:', sueldosConEmpleado);
+      
+      setSueldos(sueldosConEmpleado);
       setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
     } catch (err) {
       setError('Error al cargar los datos');
@@ -162,10 +184,16 @@ const SueldosPage: React.FC = () => {
         return;
       }
 
+      const empleadoIdParsed = parseInt(formData.empleadoId);
+      if (isNaN(empleadoIdParsed) || empleadoIdParsed <= 0) {
+        setError('ID de empleado inválido');
+        return;
+      }
+
       const { totalBruto, totalDescuentos, sueldoNeto } = calcularTotales();
 
       const sueldoData = {
-        empleadoId: parseInt(formData.empleadoId),
+        empleadoId: empleadoIdParsed,
         periodo: formData.periodo,
         sueldoBasico: parseFloat(formData.sueldoBasico),
         bonificaciones: parseFloat(formData.bonificaciones) || 0,

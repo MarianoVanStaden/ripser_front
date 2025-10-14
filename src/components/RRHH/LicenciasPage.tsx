@@ -94,7 +94,25 @@ const LicenciasPage: React.FC = () => {
         licenciaApi.getAll(),
         employeeApi.getAllList()
       ]);
-      setLicencias(Array.isArray(licenciasData) ? licenciasData : []);
+      
+      console.log('Licencias raw data:', licenciasData);
+      console.log('Empleados data:', empleadosData);
+      
+      // Mapear empleadoId a objeto empleado completo
+      const empleadoFallback = { id: 0, nombre: 'Desconocido', apellido: '', puesto: '', email: '' };
+      const licenciasConEmpleado = Array.isArray(licenciasData)
+        ? licenciasData.map((licencia: any) => {
+            const empleado = empleadosData.find((e: any) => e.id === licencia.empleadoId);
+            return {
+              ...licencia,
+              empleado: empleado || licencia.empleado || empleadoFallback
+            };
+          })
+        : [];
+      
+      console.log('Licencias with empleado:', licenciasConEmpleado);
+      
+      setLicencias(licenciasConEmpleado);
       setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
     } catch (err) {
       setError('Error al cargar los datos');
@@ -106,7 +124,8 @@ const LicenciasPage: React.FC = () => {
     }
   };
 
-  const getEmpleadoNombre = (empleado: Empleado) => {
+  const getEmpleadoNombre = (empleado: Empleado | undefined) => {
+    if (!empleado) return 'Desconocido';
     return `${empleado.nombre} ${empleado.apellido}`;
   };
 
@@ -159,6 +178,8 @@ const LicenciasPage: React.FC = () => {
   };
 
   const filteredLicencias = licencias.filter(l => {
+    if (!l.empleado) return false; // Safety check
+    
     const matchesEmpleado = !empleadoFilter || l.empleado.id === empleadoFilter.id;
     const matchesTipo = tipoFilter === 'TODOS' || l.tipo === tipoFilter;
     const matchesEstado = estadoFilter === 'TODOS' || l.estado === estadoFilter;
@@ -174,7 +195,7 @@ const LicenciasPage: React.FC = () => {
     if (licencia) {
       setEditingLicencia(licencia);
       setFormData({
-        empleadoId: licencia.empleado.id.toString(),
+        empleadoId: licencia.empleado?.id?.toString() || '',
         tipo: licencia.tipo,
         fechaInicio: licencia.fechaInicio,
         fechaFin: licencia.fechaFin,
@@ -241,6 +262,12 @@ const LicenciasPage: React.FC = () => {
         return;
       }
 
+      const empleadoIdParsed = parseInt(formData.empleadoId);
+      if (isNaN(empleadoIdParsed) || empleadoIdParsed <= 0) {
+        setError('ID de empleado inválido');
+        return;
+      }
+
       if (!formData.tipo) {
         setError('Debe seleccionar un tipo de licencia');
         return;
@@ -258,7 +285,7 @@ const LicenciasPage: React.FC = () => {
       }
 
       const licenciaData: any = {
-        empleadoId: parseInt(formData.empleadoId),
+        empleadoId: empleadoIdParsed,
         tipo: formData.tipo,
         fechaInicio: formData.fechaInicio,
         fechaFin: formData.fechaFin,
@@ -267,6 +294,8 @@ const LicenciasPage: React.FC = () => {
         goceHaber: formData.goceHaber,
         estado: formData.estado
       };
+
+      console.log('💾 Sending licencia to backend:', licenciaData);
 
       if (editingLicencia) {
         await licenciaApi.update(editingLicencia.id, { ...licenciaData, id: editingLicencia.id });

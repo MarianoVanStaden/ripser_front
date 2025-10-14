@@ -91,7 +91,30 @@ const CapacitacionesPage: React.FC = () => {
         capacitacionApi.getAll(),
         employeeApi.getAllList()
       ]);
-      setCapacitaciones(Array.isArray(capacitacionesData) ? capacitacionesData : []);
+      
+      console.log('Capacitaciones raw data:', capacitacionesData);
+      console.log('Empleados data:', empleadosData);
+      
+      // Mapear las capacitaciones para incluir el objeto empleado completo
+      const capacitacionesConEmpleado = Array.isArray(capacitacionesData)
+        ? capacitacionesData.map((capacitacion: any) => {
+            // Buscar el empleado en el array
+            const empleado = empleadosData.find((e: any) => e.id === capacitacion.empleado?.id);
+            return {
+              ...capacitacion,
+              empleado: empleado || capacitacion.empleado || {
+                id: capacitacion.empleadoId || capacitacion.empleado?.id,
+                nombre: capacitacion.empleadoNombre || capacitacion.empleado?.nombre || '',
+                apellido: capacitacion.empleadoApellido || capacitacion.empleado?.apellido || '',
+                dni: capacitacion.empleadoDni || capacitacion.empleado?.dni || ''
+              }
+            };
+          })
+        : [];
+      
+      console.log('Capacitaciones mapped:', capacitacionesConEmpleado);
+      
+      setCapacitaciones(capacitacionesConEmpleado);
       setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
     } catch (err) {
       setError('Error al cargar los datos');
@@ -180,7 +203,7 @@ const CapacitacionesPage: React.FC = () => {
     try {
       setError(null);
 
-      if (!formData.empleadoId) {
+      if (!formData.empleadoId || formData.empleadoId === '') {
         setError('Debe seleccionar un empleado');
         return;
       }
@@ -201,8 +224,14 @@ const CapacitacionesPage: React.FC = () => {
         return;
       }
 
+      const empleadoIdParsed = parseInt(formData.empleadoId);
+      if (isNaN(empleadoIdParsed) || empleadoIdParsed <= 0) {
+        setError('ID de empleado inválido');
+        return;
+      }
+
       const capacitacionData: any = {
-        empleadoId: parseInt(formData.empleadoId),
+        empleadoId: empleadoIdParsed,
         nombre: formData.nombre.trim(),
         descripcion: formData.descripcion.trim() || null,
         institucion: formData.institucion.trim() || null,
