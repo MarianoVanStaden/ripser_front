@@ -103,7 +103,7 @@ const PuestosPage: React.FC = () => {
         nombre: puesto.nombre,
         descripcion: puesto.descripcion || '',
         departamento: puesto.departamento || '',
-        salarioBase: puesto.salarioBase.toString()
+        salarioBase: (puesto.salarioBase || 0).toString()
       });
     } else {
       setEditingPuesto(null);
@@ -273,7 +273,7 @@ const PuestosPage: React.FC = () => {
                 <Box>
                   <Typography variant="h4" fontWeight="bold" color="info.main">
                     ${filteredPuestos.length > 0 
-                      ? Math.round(filteredPuestos.reduce((sum, p) => sum + p.salarioBase, 0) / filteredPuestos.length).toLocaleString('es-AR')
+                      ? Math.round(filteredPuestos.reduce((sum, p) => sum + (p.salarioBase || 0), 0) / filteredPuestos.length).toLocaleString('es-AR')
                       : 0}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
@@ -293,7 +293,7 @@ const PuestosPage: React.FC = () => {
                 <Box>
                   <Typography variant="h4" fontWeight="bold" color="warning.main">
                     ${filteredPuestos.length > 0
-                      ? Math.max(...filteredPuestos.map(p => p.salarioBase)).toLocaleString('es-AR')
+                      ? Math.max(...filteredPuestos.map(p => p.salarioBase || 0)).toLocaleString('es-AR')
                       : 0}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
@@ -399,7 +399,7 @@ const PuestosPage: React.FC = () => {
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" fontWeight="600" color="success.main">
-                          ${puesto.salarioBase.toLocaleString('es-AR')}
+                          ${(puesto.salarioBase || 0).toLocaleString('es-AR')}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
@@ -485,7 +485,7 @@ const PuestosPage: React.FC = () => {
                     Salario Base
                   </Typography>
                   <Typography variant="h4" color="success.main" fontWeight="bold" sx={{ mt: 1 }}>
-                    ${selected.salarioBase.toLocaleString('es-AR')}
+                    ${(selected.salarioBase || 0).toLocaleString('es-AR')}
                   </Typography>
                 </Box>
               </Stack>

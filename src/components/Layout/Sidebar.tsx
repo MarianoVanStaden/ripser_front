@@ -89,6 +89,8 @@ const navigation = [
       { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
       { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },
       { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
+      { text: 'Puestos', icon: <AssignmentIcon />, path: '/rrhh/puestos' },
+      { text: 'Licencias', icon: <AssignmentIcon />, path: '/rrhh/licencias' },
     ],
   },
 ];

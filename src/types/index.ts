@@ -1224,6 +1224,36 @@ export interface Capacitacion {
   certificado: boolean;
   costo: number;
 }
+
+export interface Sueldo {
+  id: number;
+  empleado: Empleado;
+  periodo: string; // YYYY-MM format
+  sueldoBasico: number;
+  bonificaciones: number;
+  horasExtras: number;
+  comisiones: number;
+  totalBruto: number;
+  descuentosLegales: number;
+  descuentosOtros: number;
+  totalDescuentos: number;
+  sueldoNeto: number;
+  fechaPago?: string;
+  observaciones?: string;
+}
+
+export interface Legajo {
+  id: number;
+  empleado: Empleado;
+  numeroLegajo: string;
+  fechaAlta: string;
+  fechaBaja?: string;
+  motivoBaja?: string;
+  documentacion?: string; // JSON string with document references
+  observaciones?: string;
+  activo: boolean;
+}
+
 export interface Usuario {
   id: number;
   username: string;
