@@ -1,15 +1,17 @@
-import api from '../config';
-import type { Producto, CreateProductRequest } from '../../types';
+import api from "../config";
+import type { Producto, CreateProductRequest } from "../../types";
 
 export const productApi = {
   // Get all products
 
   getAll: async (page: number = 0, size: number = 10): Promise<Producto[]> => {
     try {
-      const response = await api.get('/api/productos', { params: { page, size } });
+      const response = await api.get("/api/productos", {
+        params: { page, size },
+      });
       return response.data.content; // Handle Spring Page object
     } catch (error: any) {
-      console.error('Error fetching products:', {
+      console.error("Error fetching products:", {
         status: error.response?.status,
         message: error.response?.data,
         url: error.config?.url,
@@ -19,10 +21,10 @@ export const productApi = {
   },
   getLowStock: async (): Promise<Producto[]> => {
     try {
-      const response = await api.get('/api/productos/bajo-stock');
+      const response = await api.get("/api/productos/bajo-stock");
       return response.data;
     } catch (error: any) {
-      console.error('Error fetching low stock products:', {
+      console.error("Error fetching low stock products:", {
         status: error.response?.status,
         message: error.response?.data,
         url: error.config?.url,
@@ -30,7 +32,7 @@ export const productApi = {
       throw error;
     }
 
-  // ... other methods
+    // ... other methods
   },
 
   // Get product by ID
@@ -41,12 +43,15 @@ export const productApi = {
 
   // Create new product
   create: async (product: CreateProductRequest): Promise<Producto> => {
-    const response = await api.post('/api/productos', product);
+    const response = await api.post("/api/productos", product);
     return response.data;
   },
 
   // Update product
-  update: async (id: number, product: Partial<CreateProductRequest>): Promise<Producto> => {
+  update: async (
+    id: number,
+    product: Partial<CreateProductRequest>
+  ): Promise<Producto> => {
     const response = await api.put(`/api/productos/${id}`, product);
     return response.data;
   },
@@ -62,5 +67,10 @@ export const productApi = {
     return response.data;
   },
 
-
+  search: async (term: string): Promise<Producto[]> => {
+    const response = await api.get<Producto[]>(`/api/productos/search`, {
+      params: { nombre: term },
+    });
+    return response.data;
+  },
 };

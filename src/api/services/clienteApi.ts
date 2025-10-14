@@ -1,10 +1,12 @@
-import api from '../config';
-import type { Cliente } from '../../types';
+import api from "../config";
+import type { Cliente } from "../../types";
 
-const BASE_PATH = '/api/clientes';
+const BASE_PATH = "/api/clientes";
 
 // A payload type for creating/updating that makes most fields optional
-type ClientePayload = Partial<Omit<Cliente, 'id' | 'fechaAlta' | 'fechaActualizacion'>>;
+type ClientePayload = Partial<
+  Omit<Cliente, "id" | "fechaAlta" | "fechaActualizacion">
+>;
 
 export const clienteApi = {
   // Get all clients
@@ -38,8 +40,9 @@ export const clienteApi = {
 
   // Search clients
   search: async (term: string): Promise<Cliente[]> => {
-    // Assuming a search endpoint exists on the backend
-    const response = await api.get<Cliente[]>(`${BASE_PATH}/search`, { params: { q: term } });
+    const response = await api.get<Cliente[]>(`${BASE_PATH}/search`, {
+      params: { nombre: term },
+    });
     return response.data;
   },
 };
