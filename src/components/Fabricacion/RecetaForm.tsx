@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Stack, Alert,
-  Snackbar, CircularProgress, Card, CardContent, IconButton, Autocomplete,
+  Snackbar, CircularProgress, Card, CardContent, IconButton,
 } from '@mui/material';
 import { ArrowBack, Save, Add, Delete } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -192,9 +192,26 @@ const RecetaForm: React.FC = () => {
   };
 
   const updateDetalle = (index: number, field: keyof DetalleRecetaCreateDTO, value: any) => {
-    const updated = [...detalles];
-    updated[index] = { ...updated[index], [field]: value };
-    setDetalles(updated);
+    setDetalles((prev) => {
+      const newDetalles = [...prev];
+      const detalle = newDetalles[index];
+
+      // Update the field
+      if (field === 'productoId') detalle.productoId = Number(value) || 0;
+      else if (field === 'cantidad') detalle.cantidad = Number(value) || 0;
+      else if (field === 'costoUnitario') detalle.costoUnitario = Number(value) || 0;
+      else if (field === 'observaciones') detalle.observaciones = value as string;
+
+      // Auto-update cost when product changes
+      if (field === 'productoId' && value) {
+        const producto = productos.find((p) => p.id === Number(value));
+        if (producto) {
+          detalle.costoUnitario = producto.precio || 0;
+        }
+      }
+
+      return newDetalles;
+    });
   };
 
   if (loading && isEdit) {
@@ -294,36 +311,27 @@ const RecetaForm: React.FC = () => {
               </Button>
             </Box>
             {detalles.map((detalle, index) => {
-              const selectedProducto = productos.find(p => p.id === detalle.productoId);
               return (
-                <Card key={index} sx={{ mb: 2, border: detalle.productoId === 0 ? '2px solid #f44336' : 'none' }}>
+                <Card key={index} sx={{ mb: 2, border: !detalle.productoId || detalle.productoId === 0 ? '2px solid #f44336' : 'none' }}>
                   <CardContent>
                     <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Autocomplete
-                        options={productos}
-                        value={selectedProducto || null}
-                        getOptionLabel={(option) => `${option.nombre} (${option.codigo})`}
-                        isOptionEqualToValue={(option, value) => option.id === value.id}
-                        onChange={(_, newValue) => {
-                          if (newValue) {
-                            updateDetalle(index, 'productoId', newValue.id);
-                            updateDetalle(index, 'costoUnitario', newValue.precio);
-                          } else {
-                            updateDetalle(index, 'productoId', 0);
-                            updateDetalle(index, 'costoUnitario', 0);
-                          }
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Producto *"
-                            required
-                            error={detalle.productoId === 0}
-                            helperText={detalle.productoId === 0 ? 'Debe seleccionar un producto' : ''}
-                          />
-                        )}
+                      <TextField
+                        select
+                        label="Producto *"
+                        value={detalle.productoId || ''}
+                        onChange={(e) => updateDetalle(index, 'productoId', e.target.value)}
+                        error={!detalle.productoId || detalle.productoId === 0}
+                        helperText={!detalle.productoId || detalle.productoId === 0 ? 'Debe seleccionar un producto' : ''}
                         sx={{ flex: 2 }}
-                      />
+                        fullWidth
+                      >
+                        <MenuItem value="">Seleccionar producto</MenuItem>
+                        {productos.map((producto) => (
+                          <MenuItem key={producto.id} value={producto.id}>
+                            {producto.nombre} ({producto.codigo}) - ${producto.precio?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          </MenuItem>
+                        ))}
+                      </TextField>
                       <TextField
                         label="Cantidad *"
                         type="number"
