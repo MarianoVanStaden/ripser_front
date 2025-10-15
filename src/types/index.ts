@@ -1910,3 +1910,138 @@ export interface OpcionFinanciamientoDTO {
   ordenPresentacion?: number;
   esSeleccionada?: boolean;
 }
+
+export interface DetalleRecetaDTO {
+  id: number;
+  productoId: number;
+  productoNombre: string;
+  productoCodigo: string;
+  cantidad: number;
+  costoUnitario: number;
+  subtotal: number;
+  observaciones?: string;
+}
+
+export interface DetalleRecetaCreateDTO {
+  productoId: number;
+  cantidad: number;
+  costoUnitario?: number;
+  observaciones?: string;
+}
+
+export interface RecetaFabricacionDTO {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  tipoEquipo: TipoEquipo;
+  modelo?: string;
+  medida?: string;
+  observaciones?: string;
+  activo: boolean;
+  fechaCreacion: string;
+  detalles: DetalleRecetaDTO[];
+}
+
+export type RecetaFabricacionListDTO = {
+  id: number;
+  codigo: string;
+  nombre: string;
+  tipoEquipo: TipoEquipo;
+  modelo?: string;
+  medida?: string;
+  activo: boolean;
+  fechaCreacion: string;
+  cantidadDetalles: number;
+};
+
+export interface RecetaFabricacionCreateDTO {
+  codigo?: string;
+  nombre: string;
+  descripcion?: string;
+  tipoEquipo: TipoEquipo;
+  modelo?: string;
+  medida?: string;
+  observaciones?: string;
+  detalles?: DetalleRecetaCreateDTO[];
+}
+
+export interface RecetaFabricacionUpdateDTO {
+  nombre?: string;
+  descripcion?: string;
+  tipoEquipo?: TipoEquipo;
+  modelo?: string;
+  medida?: string;
+  observaciones?: string;
+  activo?: boolean;
+}
+
+export type TipoEquipo = 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
+export interface EquipoFabricadoDTO {
+  id: number;
+  recetaId?: number;
+  recetaNombre?: string;
+  recetaCodigo?: string;
+  tipo: TipoEquipo;
+  modelo: string;
+  equipo?: string;
+  medida?: string;
+  color?: string;
+  observaciones?: string;
+  fechaCreacion: string;
+  numeroHeladera: string;
+  cantidad: number;
+  asignado: boolean;
+  estado: EstadoFabricacion;
+  fechaFinalizacion?: string;
+  responsableId?: number;
+  responsableNombre?: string;
+  clienteId?: number;
+  clienteNombre?: string;
+}
+
+export interface EquipoFabricadoListDTO {
+  id: number;
+  tipo: TipoEquipo;
+  modelo: string;
+  numeroHeladera: string;
+  color?: string;
+  cantidad: number;
+  asignado: boolean;
+  estado: EstadoFabricacion;
+  fechaCreacion: string;
+  fechaFinalizacion?: string;
+  responsableNombre?: string;
+  clienteNombre?: string;
+}
+
+export interface EquipoFabricadoCreateDTO {
+  recetaId?: number;
+  tipo: TipoEquipo;
+  modelo: string;
+  equipo?: string;
+  medida?: string;
+  color?: string;
+  observaciones?: string;
+  numeroHeladera: string;
+  cantidad: number;
+  estado?: EstadoFabricacion;
+  responsableId?: number;
+  clienteId?: number;
+}
+
+export interface EquipoFabricadoUpdateDTO {
+  recetaId?: number;
+  tipo?: TipoEquipo;
+  modelo?: string;
+  equipo?: string;
+  medida?: string;
+  color?: string;
+  observaciones?: string;
+  cantidad?: number;
+  asignado?: boolean;
+  estado?: EstadoFabricacion;
+  responsableId?: number;
+  clienteId?: number;
+}
+export type EstadoFabricacion = 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';

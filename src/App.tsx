@@ -48,6 +48,15 @@ import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
 import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
 import ConfiguracionTallerPage from './components/Taller/ConfiguracionTallerPage';
 import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
+import {
+  RecetasList,
+  RecetaDetail,
+  RecetaForm,
+  EquiposList,
+  EquipoDetail,
+  EquipoForm,
+  DashboardFabricacion
+} from './components/Fabricacion';
 
 
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -140,6 +149,16 @@ function App() {
               <Route path="taller/materiales" element={<PrivateRoute><ControlMaterialesPage /></PrivateRoute>} />
               <Route path="taller/tareas" element={<PrivateRoute><AsignacionTareasPage /></PrivateRoute>} />
               <Route path="taller/configuracion" element={<PrivateRoute><ConfiguracionTallerPage /></PrivateRoute>} />
+              {/* FABRICACIÓN Module */}
+              <Route path="fabricacion/dashboard" element={<PrivateRoute><DashboardFabricacion /></PrivateRoute>} />
+              <Route path="fabricacion/recetas" element={<PrivateRoute><RecetasList /></PrivateRoute>} />
+              <Route path="fabricacion/recetas/:id" element={<PrivateRoute><RecetaDetail /></PrivateRoute>} />
+              <Route path="fabricacion/recetas/nueva" element={<PrivateRoute><RecetaForm /></PrivateRoute>} />
+              <Route path="fabricacion/recetas/editar/:id" element={<PrivateRoute><RecetaForm /></PrivateRoute>} />
+              <Route path="fabricacion/equipos" element={<PrivateRoute><EquiposList /></PrivateRoute>} />
+              <Route path="fabricacion/equipos/:id" element={<PrivateRoute><EquipoDetail /></PrivateRoute>} />
+              <Route path="fabricacion/equipos/nuevo" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
+              <Route path="fabricacion/equipos/editar/:id" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
             </Route>
           </Routes>
         </Router>

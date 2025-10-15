@@ -14,7 +14,10 @@
       "Bash(taskkill:*)",
       "Bash(start cmd /k:*)",
       "Bash(timeout:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(dir C:Usersmariaripser_backsrcmainjavacomripser_back)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev)"
     ],
     "deny": [],
     "ask": []

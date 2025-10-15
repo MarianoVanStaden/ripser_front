@@ -10,6 +10,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import SettingsIcon from '@mui/icons-material/Settings';
+import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import { Link, useLocation } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -71,6 +72,14 @@ const navigation = [
       { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
       { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/taller/configuracion' },
+    ],
+  },
+  {
+    title: 'FABRICACIÓN',
+    items: [
+      { text: 'Dashboard', icon: <PrecisionManufacturingIcon />, path: '/fabricacion/dashboard' },
+      { text: 'Recetas de Fabricación', icon: <AssignmentIcon />, path: '/fabricacion/recetas' },
+      { text: 'Equipos Fabricados', icon: <CategoryIcon />, path: '/fabricacion/equipos' },
     ],
   },
     {
