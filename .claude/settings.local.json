@@ -17,7 +17,8 @@
       "Bash(curl:*)",
       "Bash(dir C:Usersmariaripser_backsrcmainjavacomripser_back)",
       "Bash(npm install:*)",
-      "Bash(npm run dev)"
+      "Bash(npm run dev)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

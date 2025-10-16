@@ -14,6 +14,8 @@ import {
 } from '../../api/services/equipoFabricadoApi';
 import api from '../../api/config';
 import type { EquipoFabricadoDTO } from '../../types';
+import { employeeApi } from '../../api/services/employeeApi';
+
 
 const EquipoDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -54,10 +56,15 @@ const EquipoDetail: React.FC = () => {
     }
   };
 
-  const loadClientes = async () => {
+const loadClientes = async () => {
     try {
-      const response = await api.get('/api/clientes');
-      setClientes(response.data.content || []);
+      await api.get('/api/clientes', { params: { page: 0, size: 10000 } })
+      .then(response => {
+        if (typeof response.data === 'string') {
+          throw new Error('API returned HTML instead of JSON. Check if the backend endpoint exists.');
+        }
+        setClientes(response.data.content || response.data || []);
+      });
     } catch (error) {
       console.error('Error loading clientes:', error);
     }

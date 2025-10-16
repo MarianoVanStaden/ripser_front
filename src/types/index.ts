@@ -1725,7 +1725,7 @@ export interface MovimientoStock {
   productoNombre?: string; // Backend returns this
   productoCodigo?: string; // Backend returns this
   producto?: Producto; // Optional for compatibility
-  tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE' | 'RECUENTO';
+  tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE' | 'RECUENTO' | 'SALIDA_FABRICACION' | 'REINGRESO_CANCELACION_FABRICACION';
   cantidad: number;
   stockAnterior?: number;
   stockActual?: number;
@@ -1735,6 +1735,8 @@ export interface MovimientoStock {
   usuarioId?: number;
   usuarioNombre?: string; // Backend returns this
   usuario?: Usuario; // Optional for compatibility
+  equipoFabricadoId?: number;
+  equipoFabricadoNumero?: string;
 }
 
 // Legacy interface for backward compatibility
@@ -2045,3 +2047,10 @@ export interface EquipoFabricadoUpdateDTO {
   clienteId?: number;
 }
 export type EstadoFabricacion = 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
+
+// Validación de stock para fabricación
+export interface ValidacionStockDTO {
+  stockSuficiente: boolean;
+  productosInsuficientes?: string[];
+  mensaje: string;
+}

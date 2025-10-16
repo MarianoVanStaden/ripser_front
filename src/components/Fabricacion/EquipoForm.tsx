@@ -11,6 +11,7 @@ import * as yup from 'yup';
 import {
   equipoFabricadoApi,
 } from '../../api/services/equipoFabricadoApi';
+import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import api from '../../api/config';
 import type {
   TipoEquipo,
@@ -18,6 +19,9 @@ import type {
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
 } from '../../types';
+import { employeeApi } from '../../api/services/employeeApi';
+import { clienteApi } from '../../api/services/clienteApi';
+
 
 const schema = yup.object().shape({
   tipo: yup.string().required('El tipo es obligatorio'),
@@ -65,12 +69,17 @@ const EquipoForm: React.FC = () => {
   });
 
   useEffect(() => {
-    loadRecetas();
-    loadEmpleados();
-    loadClientes();
-    if (isEdit && id) {
-      loadEquipo(Number(id));
-    }
+    const loadData = async () => {
+      await Promise.all([
+        loadRecetas(),
+        loadEmpleados(),
+        loadClientes(),
+      ]);
+      if (isEdit && id) {
+        await loadEquipo(Number(id));
+      }
+    };
+    loadData();
   }, [id, isEdit]);
 
   const loadRecetas = async () => {
@@ -84,8 +93,10 @@ const EquipoForm: React.FC = () => {
 
   const loadEmpleados = async () => {
     try {
-      const response = await api.get('/api/rrhh/empleados');
-      setEmpleados(response.data.content || []);
+      await employeeApi.getAllList().catch(() => []);
+      const empleadosData = await employeeApi.getAllList();
+      console.log('Loaded empleados:', empleadosData);
+      setEmpleados(empleadosData);
     } catch (error) {
       console.error('Error loading empleados:', error);
     }
@@ -93,8 +104,10 @@ const EquipoForm: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const response = await api.get('/api/clientes');
-      setClientes(response.data.content || []);
+      await clienteApi.getAll().catch(() => []);
+      const clientesData = await clienteApi.getAll();
+      console.log('Loaded clientes:', clientesData);
+      setClientes(clientesData);
     } catch (error) {
       console.error('Error loading clientes:', error);
     }
@@ -104,6 +117,10 @@ const EquipoForm: React.FC = () => {
     try {
       setLoading(true);
       const data = await equipoFabricadoApi.findById(equipoId);
+      console.log('Loaded equipo data:', data);
+      console.log('Available empleados:', empleados);
+      console.log('Available clientes:', clientes);
+
       reset({
         tipo: data.tipo,
         modelo: data.modelo,
@@ -118,15 +135,18 @@ const EquipoForm: React.FC = () => {
 
       if (data.recetaId) {
         const receta = recetas.find(r => r.id === data.recetaId);
-        setSelectedReceta(receta);
+        console.log('Found receta:', receta);
+        setSelectedReceta(receta || null);
       }
       if (data.responsableId) {
         const empleado = empleados.find(e => e.id === data.responsableId);
-        setSelectedResponsable(empleado);
+        console.log('Looking for responsable ID:', data.responsableId, 'Found:', empleado);
+        setSelectedResponsable(empleado || null);
       }
       if (data.clienteId) {
         const cliente = clientes.find(c => c.id === data.clienteId);
-        setSelectedCliente(cliente);
+        console.log('Looking for cliente ID:', data.clienteId, 'Found:', cliente);
+        setSelectedCliente(cliente || null);
       }
     } catch (error) {
       console.error('Error loading equipo:', error);
@@ -322,7 +342,12 @@ const EquipoForm: React.FC = () => {
 
             <Autocomplete
               options={empleados}
-              getOptionLabel={(option) => option.nombre || ''}
+              getOptionLabel={(option) =>
+                option.nombre && option.apellido
+                  ? `${option.nombre} ${option.apellido}`
+                  : option.nombre || ''
+              }
+              isOptionEqualToValue={(option, value) => option.id === value.id}
               value={selectedResponsable}
               onChange={(_, newValue) => setSelectedResponsable(newValue)}
               renderInput={(params) => <TextField {...params} label="Responsable" />}
@@ -331,6 +356,7 @@ const EquipoForm: React.FC = () => {
             <Autocomplete
               options={clientes}
               getOptionLabel={(option) => option.nombre || ''}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
               value={selectedCliente}
               onChange={(_, newValue) => setSelectedCliente(newValue)}
               renderInput={(params) => <TextField {...params} label="Cliente (opcional)" />}

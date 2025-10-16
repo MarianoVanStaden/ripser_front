@@ -84,9 +84,17 @@ const EquiposList: React.FC = () => {
   const loadClientes = async () => {
     try {
       const response = await api.get('/api/clientes');
-      setClientes(response.data.content || []);
+      const clientesData = response.data.content || response.data || [];
+      console.log('EquiposList - Loaded clientes:', clientesData);
+      console.log('EquiposList - Response structure:', response.data);
+      setClientes(clientesData);
     } catch (error) {
       console.error('Error loading clientes:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al cargar los clientes',
+        severity: 'error',
+      });
     }
   };
 
@@ -437,20 +445,40 @@ const EquiposList: React.FC = () => {
           setAssignDialog({ open: false, equipoId: null });
           setSelectedCliente(null);
         }}
+        onTransitionEnter={() => {
+          console.log('Assign dialog opened. Available clientes:', clientes);
+          console.log('Clientes count:', clientes.length);
+        }}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle>Asignar Cliente</DialogTitle>
         <DialogContent>
-          <Autocomplete
-            options={clientes}
-            getOptionLabel={(option) => option.nombre || ''}
-            value={selectedCliente}
-            onChange={(_, newValue) => setSelectedCliente(newValue)}
-            renderInput={(params) => (
-              <TextField {...params} label="Cliente *" required sx={{ mt: 2 }} />
+          <Box sx={{ pt: 2 }}>
+            {clientes.length === 0 ? (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                No hay clientes disponibles. Por favor, verifique la conexión con la API.
+              </Alert>
+            ) : (
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                {clientes.length} cliente(s) disponible(s)
+              </Typography>
             )}
-          />
+            <Autocomplete
+              options={clientes}
+              getOptionLabel={(option) => option.nombre || ''}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              value={selectedCliente}
+              onChange={(_, newValue) => {
+                console.log('Selected cliente:', newValue);
+                setSelectedCliente(newValue);
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Cliente *" required />
+              )}
+              noOptionsText="No hay clientes disponibles"
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button
@@ -461,7 +489,11 @@ const EquiposList: React.FC = () => {
           >
             Cancelar
           </Button>
-          <Button variant="contained" onClick={handleAsignar}>
+          <Button
+            variant="contained"
+            onClick={handleAsignar}
+            disabled={!selectedCliente}
+          >
             Asignar
           </Button>
         </DialogActions>

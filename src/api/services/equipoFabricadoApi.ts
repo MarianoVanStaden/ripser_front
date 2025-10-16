@@ -7,6 +7,7 @@ import type {
   EquipoFabricadoCreateDTO,
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
+  ValidacionStockDTO,
 } from '../../types';
 
 
@@ -111,6 +112,22 @@ export const equipoFabricadoApi = {
   cancelarFabricacion: async (equipoId: number) => {
     const response = await api.patch<EquipoFabricadoDTO>(
       `/api/equipos-fabricados/${equipoId}/cancelar`
+    );
+    return response.data;
+  },
+
+  // Validación de stock
+  validarStock: async (equipo: EquipoFabricadoCreateDTO): Promise<ValidacionStockDTO> => {
+    const response = await api.post<ValidacionStockDTO>(
+      '/api/equipos-fabricados/validar-stock',
+      equipo
+    );
+    return response.data;
+  },
+
+  validarStockEquipoExistente: async (equipoId: number): Promise<ValidacionStockDTO> => {
+    const response = await api.get<ValidacionStockDTO>(
+      `/api/equipos-fabricados/${equipoId}/validar-stock`
     );
     return response.data;
   },
