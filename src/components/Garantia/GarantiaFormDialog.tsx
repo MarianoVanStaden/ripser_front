@@ -23,14 +23,14 @@ import { productApi } from "../../api/services/productApi";
 interface GarantiaFormDialogProps {
   open: boolean;
   garantia: Garantia | null;
-  onClose: () => void; // Importante: onSave es asíncrono, debería ser Promise<void>
+  onClose: () => void;
   onSave: (garantia: Garantia) => Promise<void>;
 }
 
 const estados = [
-  { value: "VIGENTE", label: "Vigente" }, // Usar valores ENUM del backend
+  { value: "VIGENTE", label: "Vigente" },
   { value: "VENCIDA", label: "Vencida" },
-  { value: "EN_PROCESO", label: "En Proceso" }, // Añadí un estado de proceso
+  { value: "EN_PROCESO", label: "En Proceso" },
 ];
 
 // Valores por defecto/iniciales para una Garantía nueva
@@ -40,20 +40,19 @@ const initialFormState: Garantia = {
   clienteNombre: "",
   productoNombre: "",
   fechaVenta: "",
-  estado: "VIGENTE", // Usamos el valor ENUM del backend
+  estado: "VIGENTE",
   observaciones: "",
 
-  // Claves foráneas (necesarias para la API)
+  // Claves foráneas (saleId eliminado)
   clientId: undefined,
   productId: undefined,
-  saleId: undefined, // Opcional
 
-  // Otros campos del DTO (necesarios para el tipado Garantia)
+  // Otros campos del DTO
   warrantyNumber: "",
   startDate: "",
   endDate: "",
   status: "VIGENTE" as WarrantyStatus,
-  type: "MANUFACTURER", // Valor por defecto
+  type: "MANUFACTURER",
   description: "",
   claims: [],
   createdAt: "",
@@ -68,43 +67,42 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
   onSave,
 }) => {
   const [form, setForm] = useState<Garantia>(initialFormState);
-  const [isSaving, setIsSaving] = useState(false); // Estado para deshabilitar el botón
+  const [isSaving, setIsSaving] = useState(false);
   const [clienteOptions, setClienteOptions] = useState<Cliente[]>([]);
-  const [productoOptions, setProductoOptions] = useState<ProductoListDTO[]>([]); // Usamos ProductoListDTO
+  const [productoOptions, setProductoOptions] = useState<ProductoListDTO[]>([]);
   const [clienteInput, setClienteInput] = useState("");
-  const [productoInput, setProductoInput] = useState(""); // --- CORRECCIÓN CRÍTICA: Mapeo Defensivo y Completo ---
+  const [productoInput, setProductoInput] = useState("");
 
   const debouncedClienteSearch = useCallback(
     debounce(async (searchTerm: string) => {
-      if (searchTerm.length > 2) {
+      // Solo busca si hay más de 2 caracteres o si el campo está limpio
+      if (searchTerm.length > 2 || searchTerm.length === 0) {
         try {
           const data = await clienteApi.search(searchTerm);
-          setClienteOptions(data);
+          setClienteOptions(prevOptions => data || []); // Asegura que sea un array
         } catch (error) {
           console.error("Error buscando clientes:", error);
+          setClienteOptions([]);
         }
-      } else if (searchTerm.length === 0) {
-        setClienteOptions([]);
       }
     }, 500),
     []
   );
 
-  // Búsqueda de Productos
   const debouncedProductoSearch = useCallback(
     debounce(async (searchTerm: string) => {
-      if (searchTerm.length > 2) {
+      // Solo busca si hay más de 2 caracteres o si el campo está limpio
+      if (searchTerm.length > 2 || searchTerm.length === 0) {
         try {
-          // Nota: Asumimos que productApi.search devuelve ProductoListDTO[]
           const data = (await productApi.search(
             searchTerm
           )) as ProductoListDTO[];
-          setProductoOptions(data);
+          // USAR FORMA FUNCIONAL para garantizar la estabilidad del estado
+          setProductoOptions(prevOptions => data || []);
         } catch (error) {
           console.error("Error buscando productos:", error);
+          setProductoOptions([]);
         }
-      } else if (searchTerm.length === 0) {
-        setProductoOptions([]);
       }
     }, 500),
     []
@@ -119,28 +117,39 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     debouncedProductoSearch(productoInput);
   }, [productoInput, debouncedProductoSearch]);
 
+  // Manejo de Edición/Carga Inicial
   useEffect(() => {
-    // 1. Si estamos en modo edición (hay objeto garantia)
+    
     if (garantia) {
+      // Si estamos editando, precargar las opciones con los datos del registro actual
+      if (garantia.clientId && !clienteOptions.some(c => c.id === garantia.clientId)) {
+        clienteApi.getById(garantia.clientId)
+          .then(clienteData => setClienteOptions(prev => [...prev.filter(c => c.id !== clienteData.id), clienteData]))
+          .catch(e => console.error("No se pudo cargar el cliente para edición", e));
+      }
+      if (garantia.productId && !productoOptions.some(p => p.id === garantia.productId)) {
+        productApi.getById(garantia.productId)
+          .then(productoData => {
+            // Normalizar el producto a ProductoListDTO (asegurar stockActual presente)
+            const normalized = {
+              ...productoData,
+              stockActual: (productoData as any).stockActual ?? (productoData as any).stock ?? 0,
+            } as ProductoListDTO;
+            setProductoOptions(prev => [...prev.filter(p => p.id !== normalized.id), normalized]);
+          })
+          .catch(e => console.error("No se pudo cargar el producto para edición", e));
+      }
+      
       setForm({
-        // Esparce todos los campos existentes
         ...garantia,
-
-        // Mapeo defensivo de los campos que pueden ser null/undefined en la BD
-        id: garantia.id || "", // Asegura que el ID sea string si es necesario para el input
+        id: garantia.id || "",
         clienteNombre: garantia.clienteNombre || "",
         productoNombre: garantia.productoNombre || "",
         fechaVenta: garantia.fechaVenta || "",
         observaciones: garantia.observaciones || "",
-
-        // Mapeo de ENUMS (asegura el fallback y mayúsculas)
         estado: garantia.estado?.toUpperCase() || "VIGENTE",
-
-        // Asegura que las claves foráneas sean numbers (o 0 si son requeridas y están ausentes)
         clientId: garantia.clientId || undefined,
         productId: garantia.productId || undefined,
-
-        // Asegura que todos los demás campos del DTO tengan un valor por si la BD omite algo
         warrantyNumber: garantia.warrantyNumber || "",
         startDate: garantia.startDate || "",
         endDate: garantia.endDate || "",
@@ -154,25 +163,22 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
       setClienteInput(garantia.clienteNombre || "");
       setProductoInput(garantia.productoNombre || "");
     } else {
-      // 2. Modo nueva garantía: restablece al estado inicial
       setForm(initialFormState);
       setClienteInput("");
       setProductoInput("");
     }
-    // Dependencia en 'garantia' y 'open' para resetear al cerrar/abrir.
-  }, [garantia, open]);
+  }, [garantia]); // open eliminado de las dependencias para evitar doble ejecución
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     let newForm = { ...form, [name]: value };
 
-    // Mapeo DTO: Asegura que los campos en inglés necesarios para el backend se actualicen
+    // Mapeo DTO
     if (name === "fechaVenta") {
       newForm = { ...newForm, startDate: value };
     }
     if (name === "estado") {
-      // Asegura que el status del DTO también se actualice con el ENUM
       newForm = { ...newForm, status: value.toUpperCase() as any };
     }
     if (name === "observaciones") {
@@ -183,10 +189,10 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
   };
 
   const handleSave = async () => {
-    // 1. Validación básica (debes implementar más validaciones)
-    if (!form.clientId || !form.productId || !form.saleId || !form.fechaVenta) {
+    // Validación sin saleId
+    if (!form.clientId || !form.productId || !form.fechaVenta) {
       alert(
-        "Faltan datos obligatorios: Cliente, Producto, ID de Venta y Fecha de Venta."
+        "Faltan datos obligatorios: Cliente, Producto y Fecha de Venta."
       );
       return;
     }
@@ -195,28 +201,34 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     try {
       await onSave(form);
     } catch (e) {
-      // El error ya fue manejado en GarantiasPage, aquí solo restauramos el estado
+      // Manejo de error
     } finally {
       setIsSaving(false);
     }
   };
 
-    const findClienteById = (id: number | undefined) => clienteOptions.find(c => c.id === id) || null;
-    const findProductoById = (id: number | undefined) => productoOptions.find(p => p.id === id) || null;
+  // FUNCIONES DE BÚSQUEDA DEFENSIVAS (CORRECCIÓN CLAVE CONTRA EL ERROR UNDEFINED)
+  const findClienteById = (id: number | undefined) => {
+    // Si no hay ID o si las opciones no se han cargado (están vacías), devuelve null
+    if (!id || clienteOptions.length === 0) return null;
+    return clienteOptions.find(c => c.id === id) || null;
+  };
+
+  const findProductoById = (id: number | undefined) => {
+    // Si no hay ID o si las opciones no se han cargado (están vacías), devuelve null
+    if (!id || productoOptions.length === 0) return null;
+    return productoOptions.find(p => p.id === id) || null;
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-           {" "}
       <DialogTitle>
         {form.id ? "Editar Garantía" : "Nueva Garantía"}
       </DialogTitle>
-           {" "}
       <DialogContent>
-               {" "}
         <Stack spacing={2} mt={1}>
-                   {" "}
-          {/* En un escenario real, 'Cliente' y 'Producto' serían ComboBox de búsqueda */}
-                   {" "}
+          
+          {/* Autocomplete Cliente */}
           <Autocomplete
             options={clienteOptions}
             getOptionLabel={(cliente) =>
@@ -240,6 +252,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
                   : "",
               }));
             }}
+            // Usa las funciones defensivas
             value={findClienteById(form.clientId)}
             renderInput={(params) => (
               <TextField
@@ -251,7 +264,8 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
               />
             )}
           />
-                   {" "}
+
+          {/* Autocomplete Producto */}
           <Autocomplete
             options={productoOptions}
             getOptionLabel={(producto) =>
@@ -269,6 +283,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
                 productoNombre: selectedProducto ? selectedProducto.nombre : "",
               }));
             }}
+            // Usa las funciones defensivas
             value={findProductoById(form.productId)}
             renderInput={(params) => (
               <TextField
@@ -280,21 +295,22 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
               />
             )}
           />
-                   {" "}
+
+          {/* CAMPO FECHA DE VENTA REINTRODUCIDO */}
           <TextField
-            label="ID Venta"
-            name="saleId"
-            type="number"
-            value={form.saleId || ""}
-            onChange={handleChange}
-            fullWidth
-            required
-            error={!form.saleId && !isSaving}
-            helperText={
-              !form.saleId ? "Introduzca el ID de la Venta existente" : ""
-            }
+              label="Fecha de Venta"
+              name="fechaVenta"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={form.fechaVenta || ''}
+              onChange={handleChange}
+              fullWidth
+              required
+              error={!form.fechaVenta && !isSaving}
+              helperText={!form.fechaVenta ? "Introduzca la fecha de la venta" : ""}
           />
-                   {" "}
+          
+          {/* Select de Estado (con chequeo defensivo de mapeo) */}
           <TextField
             select
             label="Estado"
@@ -303,15 +319,14 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             onChange={handleChange}
             fullWidth
           >
-                       {" "}
-            {estados.map((option) => (
+            {(estados || []).map((option) => (
               <MenuItem key={option.value} value={option.value}>
                 {option.label}
               </MenuItem>
             ))}
-                     {" "}
           </TextField>
-                   {" "}
+
+          {/* Campo de Observaciones */}
           <TextField
             label="Observaciones"
             name="observaciones"
@@ -321,23 +336,16 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             multiline
             rows={3}
           />
-                 {" "}
         </Stack>
-             {" "}
       </DialogContent>
-           {" "}
       <DialogActions>
-               {" "}
         <Button onClick={onClose} disabled={isSaving}>
           Cancelar
         </Button>
-               {" "}
         <Button variant="contained" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Guardando..." : "Guardar"}
+          {form.id ? (isSaving ? "Guardando..." : "Guardar Cambios") : (isSaving ? "Guardando..." : "Crear Garantía")}
         </Button>
-             {" "}
       </DialogActions>
-         {" "}
     </Dialog>
   );
 };
