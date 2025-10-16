@@ -30,6 +30,7 @@ import type { Garantia, Warranty, WarrantyClaim } from "../../types"; // Importa
 import { mockClientes, mockProductos } from "../../api/services/mockData";
 import GarantiaFormDialog from "./GarantiaFormDialog";
 import GarantiaDetailPage from "./GarantiaDetailPage";
+import dayjs from "dayjs";
 
 // Declaración de tipado más precisa para la lista de garantías (usando 'Garantia' redefinida)
 type GarantiaList = Garantia[];
@@ -141,45 +142,54 @@ const GarantiasPage: React.FC = () => {
     });
   }, [garantias, search]);
 
+  const toBackendDto = (g: Garantia) => {
+    const fechaCompra = g.fechaVenta || g.startDate || null;
+    const fechaVencimiento =
+      g.endDate ||
+      (fechaCompra ? dayjs(fechaCompra).add(1, "year").format("YYYY-MM-DD") : null);
+
+    return {
+      productoId: g.productId, // Long
+      ventaId: g.saleId, // Long (obligatorio según backend)
+      numeroSerie: g.warrantyNumber || undefined,
+      fechaCompra: fechaCompra,
+      fechaVencimiento: fechaVencimiento,
+      estado: (g.estado || g.status || "VIGENTE").toUpperCase(), // EstadoGarantia enum
+      observaciones: g.observaciones || g.description || undefined,
+    };
+  };
+
   // --- 2. LÓGICA DE GUARDADO CON PERSISTENCIA ---
   const handleSave = async (garantia: Garantia) => {
     try {
       let savedGarantia;
       const isEditing = !!garantia.id;
 
-      // CONVERSIÓN CRUCIAL: Asegura que el ID se envíe como 'number' para el PUT de Java
-      const idToCall =
-        isEditing && typeof garantia.id === "string"
-          ? parseInt(garantia.id, 10)
-          : (garantia.id as number);
+      const payload = toBackendDto(garantia);
 
       if (isEditing) {
-        // LLAMADA PUT: Actualización genérica
-        savedGarantia = await garantiaApiWithFallback.update(
-          idToCall,
-          garantia
-        );
+        const idToCall =
+          typeof garantia.id === "string"
+            ? parseInt(garantia.id, 10)
+            : (garantia.id as number);
+        savedGarantia = await garantiaApiWithFallback.update(idToCall, payload);
       } else {
-        // LLAMADA POST: Creación
-        savedGarantia = await garantiaApiWithFallback.create(garantia);
+        savedGarantia = await garantiaApiWithFallback.create(payload);
       }
 
-      // Adaptamos la respuesta del backend para que tenga los campos del formulario
       const adaptedSavedGarantia = adaptGarantiaForForm(savedGarantia);
-
-      // Actualizar el estado local (usando el ID real de la BD)
       setGarantias(
         (gs) =>
           isEditing
-            ? gs.map((g) =>
-                g.id === adaptedSavedGarantia.id ? adaptedSavedGarantia : g
-              )
-            : [adaptedSavedGarantia, ...gs] // Añade el nuevo al principio
+            ? gs.map((g) => (g.id === adaptedSavedGarantia.id ? adaptedSavedGarantia : g))
+            : [adaptedSavedGarantia, ...gs]
       );
       setFormOpen(false);
     } catch (error) {
       console.error("Error al guardar garantía:", error);
-      alert("Hubo un error al guardar la garantía. Revisa la consola.");
+      // Mostrar mensaje más detallado si el backend envía validaciones
+      const serverMsg = (error as any)?.response?.data || (error as any)?.message || "Error desconocido";
+      alert(`Hubo un error al guardar la garantía: ${JSON.stringify(serverMsg)}`);
     }
   };
 

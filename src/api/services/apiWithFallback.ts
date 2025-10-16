@@ -2,6 +2,7 @@ import * as realClienteApi from './clienteApi';
 import * as realContactoClienteApi from './contactoClienteApi';
 import * as realCuentaCorrienteApi from './cuentaCorrienteApi';
 import * as realSupplierApi from './supplierApi';
+import { garantiaApi } from './garantiaApi';
 import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi, mockGarantias, mockReclamosGarantia } from './mockData';
 
 let backendAvailable: boolean | null = null;
@@ -91,13 +92,6 @@ export const contactoClienteApiWithFallback = {
     return isBackendAvailable 
       ? realContactoClienteApi.contactoClienteApi.update(id, contacto) 
       : mockContactoClienteApi.update(id, contacto);
-  },
-
-  delete: async (id: number) => {
-    const isBackendAvailable = await testBackendConnection();
-    return isBackendAvailable 
-      ? realContactoClienteApi.contactoClienteApi.delete(id) 
-      : mockContactoClienteApi.delete(id);
   }
 };
 
@@ -156,33 +150,56 @@ export const supplierApiWithFallback = {
   }
 };
 
-// Wrapper for garantia API
+/**
+ * Wrapper that uses mock fallback only for safe GET operations.
+ * For create/update/delete we DO NOT fallback — we propagate the error so UI knows.
+ */
 export const garantiaApiWithFallback = {
-  getAll: async () => {
-    // TODO: Replace with real API check when backend is ready
-    return mockGarantias;
-  },
-  getById: async (id: number) => {
-    return mockGarantias.find(g => g.id === id) || null;
-  },
-  create: async (garantia: any) => {
-    // Simulate creation
-    const newGarantia = { ...garantia, id: Date.now() };
-    mockGarantias.push(newGarantia);
-    return newGarantia;
-  },
-  update: async (id: number, garantia: any) => {
-    const idx = mockGarantias.findIndex(g => g.id === id);
-    if (idx !== -1) {
-      mockGarantias[idx] = { ...mockGarantias[idx], ...garantia };
-      return mockGarantias[idx];
+  getAll: async (): Promise<any[]> => {
+    try {
+      return await garantiaApi.getAll();
+    } catch (err) {
+      console.warn('garantiaApi.getAll failed, using mock fallback', err);
+      return mockGarantias;
     }
-    return null;
   },
+
+  getById: async (id: number) => {
+    try {
+      return await garantiaApi.getById(id);
+    } catch (err) {
+      console.warn('garantiaApi.getById failed, no fallback for single-get', err);
+      throw err;
+    }
+  },
+
+  // NO FALLBACK for create/update/delete — propagate error
+  create: async (payload: any) => {
+    try {
+      return await garantiaApi.create(payload);
+    } catch (err) {
+      console.error('garantiaApi.create failed — propagating error (no fallback)', err);
+      throw err;
+    }
+  },
+
+  update: async (id: number, payload: any) => {
+    try {
+      return await garantiaApi.update(id, payload);
+    } catch (err) {
+      console.error('garantiaApi.update failed — propagating error (no fallback)', err);
+      throw err;
+    }
+  },
+
   delete: async (id: number) => {
-    const idx = mockGarantias.findIndex(g => g.id === id);
-    if (idx !== -1) mockGarantias.splice(idx, 1);
-  },
+    try {
+      return await garantiaApi.delete(id);
+    } catch (err) {
+      console.error('garantiaApi.delete failed — propagating error (no fallback)', err);
+      throw err;
+    }
+  }
 };
 
 // Reset backend availability check (useful for testing)

@@ -47,5 +47,16 @@ export const saleApi = {
   getTotalPeriodo: async (fechaInicio: string, fechaFin: string): Promise<number> => {
     const response = await api.get(`/api/ventas/total-periodo?fechaInicio=${encodeURIComponent(fechaInicio)}&fechaFin=${encodeURIComponent(fechaFin)}`);
     return response.data;
+  },
+
+  // Search sales (used by GarantiaFormDialog Autocomplete)
+  search: async (term: string): Promise<Sale[]> => {
+    try {
+      const response = await api.get<Sale[]>('/api/ventas/search', { params: { q: term } });
+      return response.data;
+    } catch (err: any) {
+      console.warn('saleApi.search failed', { term, err });
+      throw err;
+    }
   }
 };
