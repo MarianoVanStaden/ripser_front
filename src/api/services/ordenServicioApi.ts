@@ -5,9 +5,7 @@ export const ordenServicioApi = {
   // Get all ordenes de servicio
   getAll: async (): Promise<OrdenServicio[]> => {
     const response = await api.get('/api/ordenes-servicio');
-    // Backend returns paginated response: { content: [], totalPages, totalElements, ... }
-    // Extract the content array from the paginated response
-    return response.data.content || response.data;
+    return response.data;
   },
 
   // Get orden by ID
@@ -68,7 +66,7 @@ export const ordenServicioApi = {
   // Cambiar estado de orden
   cambiarEstado: async (id: number, nuevoEstado: string): Promise<OrdenServicio> => {
     const response = await api.patch(`/api/ordenes-servicio/${id}/estado`, null, {
-      params: { estado: nuevoEstado }
+      params: { nuevoEstado }
     });
     return response.data;
   }

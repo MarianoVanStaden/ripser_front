@@ -1,44 +1,15 @@
+import api from '../config';
 import type { Garantia } from '../../types';
-import api from '../api';
 
-// ==================== TYPES ====================
-export interface GarantiaDTO {
-  id: number;
-  producto: {
-    id: number;
-    nombre: string;
-  };
-  venta: {
-    id: number;
-    numeroComprobante?: string;
-  };
-  numeroSerie: string;
-  fechaCompra: string; // LocalDate
-  fechaVencimiento: string; // LocalDate
-  estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
-  observaciones?: string;
-}
-
-export interface GarantiaCreateDTO {
-  productoId: number;
-  ventaId: number;
-  numeroSerie: string;
-  fechaCompra: string;
-  fechaVencimiento: string;
-  estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
-  observaciones?: string;
-}
-
-// ==================== GARANTIAS API ====================
 export const garantiaApi = {
-  // GET /api/garantias
-  findAll: async (): Promise<GarantiaDTO[]> => {
+  // Get all garantias
+  getAll: async (): Promise<Garantia[]> => {
     const response = await api.get('/api/garantias');
     return response.data;
   },
 
-  // GET /api/garantias/{id}
-  findById: async (id: number): Promise<GarantiaDTO> => {
+  // Get garantia by ID
+  getById: async (id: number): Promise<Garantia> => {
     const response = await api.get(`/api/garantias/${id}`);
     return response.data;
   },

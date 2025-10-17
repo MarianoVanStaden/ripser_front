@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Viaje, ViajeCreateDTO } from '../../types';
+import type { Viaje } from '../../types';
 
 export const viajeApi = {
   // Get all viajes
@@ -15,13 +15,13 @@ export const viajeApi = {
   },
 
   // Create new viaje
-  create: async (viaje: ViajeCreateDTO): Promise<Viaje> => {
+  create: async (viaje: Viaje): Promise<Viaje> => {
     const response = await api.post('/api/viajes', viaje);
     return response.data;
   },
 
   // Update viaje
-  update: async (id: number, viaje: ViajeCreateDTO): Promise<Viaje> => {
+  update: async (id: number, viaje: Viaje): Promise<Viaje> => {
     const response = await api.put(`/api/viajes/${id}`, viaje);
     return response.data;
   },
@@ -43,10 +43,42 @@ export const viajeApi = {
     return response.data;
   },
 
-  // Change viaje estado
-  changeEstado: async (id: number, estado: string): Promise<Viaje> => {
-    const response = await api.patch(`/api/viajes/${id}/estado`, null, {
-      params: { estado }
+  // Get viajes by estado
+  getByEstado: async (estado: string): Promise<Viaje[]> => {
+    const response = await api.get(`/api/viajes/estado/${estado}`);
+    return response.data;
+  },
+
+  // Get viajes by fecha
+  getByFecha: async (fechaInicio: string, fechaFin: string): Promise<Viaje[]> => {
+    const response = await api.get('/api/viajes/por-fecha', {
+      params: { fechaInicio, fechaFin }
+    });
+    return response.data;
+  },
+
+  // Get viajes programados
+  getProgramados: async (): Promise<Viaje[]> => {
+    const response = await api.get('/api/viajes/programados');
+    return response.data;
+  },
+
+  // Iniciar viaje
+  iniciar: async (id: number): Promise<Viaje> => {
+    const response = await api.patch(`/api/viajes/${id}/iniciar`);
+    return response.data;
+  },
+
+  // Completar viaje
+  completar: async (id: number): Promise<Viaje> => {
+    const response = await api.patch(`/api/viajes/${id}/completar`);
+    return response.data;
+  },
+
+  // Cancelar viaje
+  cancelar: async (id: number, motivo?: string): Promise<Viaje> => {
+    const response = await api.patch(`/api/viajes/${id}/cancelar`, null, {
+      params: motivo ? { motivo } : undefined
     });
     return response.data;
   }

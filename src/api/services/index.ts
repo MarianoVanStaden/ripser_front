@@ -17,7 +17,3 @@ export {
   deliveryApi,
 } from "./stockApi";
 export { usuarioApi } from "./usuarioApi";
-export { default as opcionFinanciamientoApi } from "./opcionFinanciamientoApi";
-export { movimientoStockApi } from "./movimientoStockApi";
-export { sueldoApi } from "./sueldoApi";
-export { legajoApi } from "./legajoApi";

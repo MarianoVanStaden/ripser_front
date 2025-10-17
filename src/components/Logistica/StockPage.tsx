@@ -204,15 +204,35 @@ const StockPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
-  const [editForm, setEditForm] = useState({
-    nombre: '',
-    descripcion: '',
-    precio: 0,
-    stockMinimo: 0,
-    categoriaProductoId: 1,
-    activo: true,
+
+  // Dialogs
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [movementDialogOpen, setMovementDialogOpen] = useState(false);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
+
+  // Forms
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productFormData, setProductFormData] = useState({
+    name: "",
+    description: "",
+    price: 0,
+    stock: 0,
+    categoryId: "",
+    supplierId: "",
+    minStock: 5,
+  });
+
+  const [movementFormData, setMovementFormData] = useState({
+    productId: "",
+    type: "ENTRY" as MovementType,
+    quantity: 0,
+    reason: "",
+    reference: "",
+    notes: "",
   });
 
   useEffect(() => {
@@ -250,42 +270,6 @@ const StockPage: React.FC = () => {
           "Conectado con datos de prueba. Verifique la conexión del backend."
         );
       }
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditProduct = (product: Producto) => {
-    setSelectedProduct(product);
-    setEditForm({
-      nombre: product.nombre,
-      descripcion: product.descripcion || '',
-      precio: product.precio,
-      stockMinimo: product.stockMinimo,
-      categoriaProductoId: product.categoriaProducto?.id || product.categoriaProductoId || 1,
-      activo: product.activo,
-    });
-    setEditDialogOpen(true);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!selectedProduct) return;
-
-    try {
-      setLoading(true);
-      await productApi.update(selectedProduct.id, {
-        nombre: editForm.nombre,
-        descripcion: editForm.descripcion,
-        precio: editForm.precio,
-        stockMinimo: editForm.stockMinimo,
-        categoriaProductoId: editForm.categoriaProductoId,
-        activo: editForm.activo,
-      });
-
-      await loadData();
-      setEditDialogOpen(false);
-      setSelectedProduct(null);
     } catch (err) {
       setError("Error al cargar los datos");
       console.error("Error loading data:", err);
@@ -298,10 +282,144 @@ const StockPage: React.FC = () => {
     const productName = product.name ?? "";
     const productDescription = product.description ?? "";
 
-  const getStockChip = (stock: number, stockMinimo: number, activo: boolean) => {
-    if (!activo) {
-      return <Chip label="Inactivo" color="default" size="small" />;
-    } else if (stock === 0) {
+    const matchesSearch =
+      productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      productDescription.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory =
+      !selectedCategory || product.categoryId === selectedCategory;
+    const matchesStock =
+      stockFilter === "all" ||
+      (stockFilter === "low" && product.stock <= 5 && product.stock > 0) ||
+      (stockFilter === "out" && product.stock === 0);
+    return matchesSearch && matchesCategory && matchesStock;
+  });
+
+  const lowStockCount = products.filter(
+    (p) => p.stock <= 5 && p.stock > 0
+  ).length;
+  const outOfStockCount = products.filter((p) => p.stock === 0).length;
+
+  const handleAddProduct = () => {
+    setEditingProduct(null);
+    setProductFormData({
+      name: "",
+      description: "",
+      price: 0,
+      stock: 0,
+      categoryId: "",
+      supplierId: "",
+      minStock: 5,
+    });
+    setProductDialogOpen(true);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductFormData({
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      stock: product.stock,
+      categoryId: product.categoryId.toString(),
+      supplierId: product.supplierId.toString(),
+      minStock: 5, // This would come from product.minStock if it existed
+    });
+    setProductDialogOpen(true);
+  };
+
+  const handleSaveProduct = async () => {
+    try {
+      console.log("Saving product:", productFormData);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      if (editingProduct) {
+        setProducts(
+          products.map((product) =>
+            product.id === editingProduct.id
+              ? {
+                  ...product,
+                  ...productFormData,
+                  categoryId: parseInt(productFormData.categoryId),
+                  supplierId: parseInt(productFormData.supplierId),
+                  updatedAt: new Date().toISOString(),
+                }
+              : product
+          )
+        );
+      } else {
+        const newProduct: Product = {
+          id: Math.max(...products.map((p) => p.id)) + 1,
+          ...productFormData,
+          categoryId: parseInt(productFormData.categoryId),
+          supplierId: parseInt(productFormData.supplierId),
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setProducts([...products, newProduct]);
+      }
+
+      setProductDialogOpen(false);
+    } catch (err) {
+      setError("Error al guardar el producto");
+      console.error("Error saving product:", err);
+    }
+  };
+
+  const handleAddMovement = () => {
+    setMovementFormData({
+      productId: "",
+      type: "ENTRY",
+      quantity: 0,
+      reason: "",
+      reference: "",
+      notes: "",
+    });
+    setMovementDialogOpen(true);
+  };
+
+  const handleSaveMovement = async () => {
+    try {
+      console.log("Saving movement:", movementFormData);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const newMovement: StockMovement = {
+        id: Math.max(...stockMovements.map((m) => m.id)) + 1,
+        ...movementFormData,
+        productId: parseInt(movementFormData.productId),
+        employeeId: 1, // This would come from current user
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setStockMovements([newMovement, ...stockMovements]);
+
+      // Update product stock
+      setProducts(
+        products.map((product) =>
+          product.id === parseInt(movementFormData.productId)
+            ? {
+                ...product,
+                stock:
+                  movementFormData.type === "ENTRY"
+                    ? product.stock + movementFormData.quantity
+                    : product.stock - movementFormData.quantity,
+              }
+            : product
+        )
+      );
+
+      setMovementDialogOpen(false);
+    } catch (err) {
+      setError("Error al guardar el movimiento");
+      console.error("Error saving movement:", err);
+    }
+  };
+
+  const getStockChip = (stock: number) => {
+    if (stock === 0) {
       return <Chip label="Sin Stock" color="error" size="small" />;
     } else if (stock <= 5) {
       return <Chip label="Stock Bajo" color="warning" size="small" />;
@@ -509,88 +627,28 @@ const StockPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>{product.codigo}</TableCell>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight="bold">
-                            {product.nombre}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {product.descripcion}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="h6" fontWeight="bold">
-                          {product.stockActual}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2">
-                          {product.stockMinimo}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={product.categoriaProductoNombre || product.categoriaProducto?.nombre || 'Sin categoría'}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>${product.precio.toLocaleString()}</TableCell>
-                      <TableCell>
-                        {getStockChip(product.stockActual, product.stockMinimo, product.activo)}
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleEditProduct(product)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      </TabPanel>
+                  {filteredProducts.map((product) => {
+                    const category = categories.find(
+                      (c) => c.id === product.categoryId
+                    );
+                    const supplier = suppliers.find(
+                      (s) => s.id === product.supplierId
+                    );
 
-      {/* Tab Panel 1: Movements */}
-      <TabPanel value={tabValue} index={1}>
-        <Card>
-          <CardContent>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Producto</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell align="center">Cantidad</TableCell>
-                    <TableCell>Concepto</TableCell>
-                    <TableCell>Comprobante</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {stockMovements.map((movement) => {
                     return (
                       <TableRow key={product.id}>
                         <TableCell>
-                          {new Date(movement.fecha).toLocaleString()}
-                        </TableCell>
-                        <TableCell>{movement.productoNombre || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={movement.tipo === 'ENTRADA' ? 'Entrada' : movement.tipo === 'SALIDA' ? 'Salida' : 'Ajuste'}
-                            color={movement.tipo === 'ENTRADA' ? 'success' : movement.tipo === 'SALIDA' ? 'error' : 'info'}
-                            size="small"
-                          />
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {product.name}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {product.description}
+                            </Typography>
+                          </Box>
                         </TableCell>
                         <TableCell>{category?.name || "N/A"}</TableCell>
                         <TableCell>{supplier?.name || "N/A"}</TableCell>
@@ -726,79 +784,110 @@ const StockPage: React.FC = () => {
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <TextField
-              label="Nombre"
-              value={editForm.nombre}
-              onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
+              label="Nombre del Producto"
+              value={productFormData.name}
+              onChange={(e) =>
+                setProductFormData({ ...productFormData, name: e.target.value })
+              }
               fullWidth
               required
             />
 
             <TextField
               label="Descripción"
-              value={editForm.descripcion}
-              onChange={(e) => setEditForm({ ...editForm, descripcion: e.target.value })}
+              value={productFormData.description}
+              onChange={(e) =>
+                setProductFormData({
+                  ...productFormData,
+                  description: e.target.value,
+                })
+              }
               fullWidth
               multiline
               rows={2}
             />
 
-            <TextField
-              label="Precio"
-              type="number"
-              value={editForm.precio}
-              onChange={(e) => setEditForm({ ...editForm, precio: parseFloat(e.target.value) || 0 })}
-              fullWidth
-              required
-              inputProps={{ step: '0.01', min: '0' }}
-            />
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Precio"
+                type="number"
+                value={productFormData.price}
+                onChange={(e) =>
+                  setProductFormData({
+                    ...productFormData,
+                    price: parseFloat(e.target.value) || 0,
+                  })
+                }
+                fullWidth
+                required
+              />
+              <TextField
+                label="Stock Actual"
+                type="number"
+                value={productFormData.stock}
+                onChange={(e) =>
+                  setProductFormData({
+                    ...productFormData,
+                    stock: parseInt(e.target.value) || 0,
+                  })
+                }
+                fullWidth
+                required
+              />
+              <TextField
+                label="Stock Mínimo"
+                type="number"
+                value={productFormData.minStock}
+                onChange={(e) =>
+                  setProductFormData({
+                    ...productFormData,
+                    minStock: parseInt(e.target.value) || 0,
+                  })
+                }
+                fullWidth
+              />
+            </Box>
 
-            <TextField
-              label="Stock Mínimo"
-              type="number"
-              value={editForm.stockMinimo}
-              onChange={(e) => setEditForm({ ...editForm, stockMinimo: parseInt(e.target.value) || 0 })}
-              fullWidth
-              helperText="Define el umbral para 'Stock Bajo'"
-            />
+            <Box display="flex" gap={2}>
+              <Autocomplete
+                options={categories}
+                getOptionLabel={(category) => category.name}
+                value={
+                  categories.find(
+                    (c) => c.id.toString() === productFormData.categoryId
+                  ) || null
+                }
+                onChange={(_, value) =>
+                  setProductFormData({
+                    ...productFormData,
+                    categoryId: value?.id.toString() || "",
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="Categoría" required fullWidth />
+                )}
+                sx={{ flex: 1 }}
+              />
 
-            <FormControl fullWidth>
-              <InputLabel>Categoría</InputLabel>
-              <Select
-                value={editForm.categoriaProductoId}
-                label="Categoría"
-                onChange={(e) => setEditForm({ ...editForm, categoriaProductoId: e.target.value as number })}
-              >
-                {categorias.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={editForm.activo}
-                  onChange={(e) => setEditForm({ ...editForm, activo: e.target.checked })}
-                />
-              }
-              fullWidth
-              required
-            />
-
-            <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                Código: <strong>{selectedProduct?.codigo}</strong>
-              </Typography>
-              <br />
-              <Typography variant="caption" color="text.secondary">
-                Stock Actual: <strong>{selectedProduct?.stockActual}</strong>
-              </Typography>
-              <br />
-              <Typography variant="caption" color="text.secondary">
-                Stock se actualiza automáticamente desde Compras
-              </Typography>
+              <Autocomplete
+                options={suppliers}
+                getOptionLabel={(supplier) => supplier.name}
+                value={
+                  suppliers.find(
+                    (s) => s.id.toString() === productFormData.supplierId
+                  ) || null
+                }
+                onChange={(_, value) =>
+                  setProductFormData({
+                    ...productFormData,
+                    supplierId: value?.id.toString() || "",
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="Proveedor" required fullWidth />
+                )}
+                sx={{ flex: 1 }}
+              />
             </Box>
           </Box>
         </DialogContent>

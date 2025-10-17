@@ -10,7 +10,6 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import SettingsIcon from '@mui/icons-material/Settings';
-import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import { Link, useLocation } from 'react-router-dom';
 import EventIcon from '@mui/icons-material/Event';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -52,41 +51,12 @@ const navigation = [
     items: [
       { text: 'Gestión Proveedores', icon: <StoreIcon />, path: '/proveedores/gestion' },
       { text: 'Compras/Pedidos', icon: <StoreIcon />, path: '/proveedores/compras' },
-      { text: 'Cuenta Corriente', icon: <StoreIcon />, path: '/proveedores/cuenta-corriente' },
       { text: 'Contactos', icon: <StoreIcon />, path: '/proveedores/contactos' },
       { text: 'Historial Compras', icon: <StoreIcon />, path: '/proveedores/historial' },
       { text: 'Evaluación', icon: <StoreIcon />, path: '/proveedores/evaluacion' },
     ],
   },
-    {
-    title: 'LOGÍSTICA',
-    items: [
-      { text: 'Gestión Stock', icon: <LocalShippingIcon />, path: '/logistica/stock' },
-      { text: 'Inventario', icon: <LocalShippingIcon />, path: '/logistica/inventario' },
-      { text: 'Tareas de Recuento', icon: <LocalShippingIcon />, path: '/logistica/recuentos' },
-      { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },
-      { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/entregas' },
-    ],
-  },
   {
-    title: 'TALLER',
-    items: [
-      { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
-      { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
-      { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
-      { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
-      { text: 'Configuración', icon: <SettingsIcon />, path: '/taller/configuracion' },
-    ],
-  },
-  {
-    title: 'FABRICACIÓN',
-    items: [
-      { text: 'Dashboard', icon: <PrecisionManufacturingIcon />, path: '/fabricacion/dashboard' },
-      { text: 'Recetas de Fabricación', icon: <AssignmentIcon />, path: '/fabricacion/recetas' },
-      { text: 'Equipos Fabricados', icon: <CategoryIcon />, path: '/fabricacion/equipos' },
-    ],
-  },
-    {
     title: 'GARANTÍAS',
     items: [
       { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro' },
@@ -94,7 +64,7 @@ const navigation = [
       { text: 'Estado Garantías', icon: <AssignmentIcon />, path: '/garantias/estado' },
     ],
   },
-    {
+  {
     title: 'RRHH',
     items: [
       { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
@@ -102,8 +72,24 @@ const navigation = [
       { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
       { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },
       { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
-      { text: 'Puestos', icon: <AssignmentIcon />, path: '/rrhh/puestos' },
-      { text: 'Licencias', icon: <AssignmentIcon />, path: '/rrhh/licencias' },
+    ],
+  },
+  {
+    title: 'LOGÍSTICA',
+    items: [
+      { text: 'Gestión Stock', icon: <LocalShippingIcon />, path: '/logistica/stock' },
+      { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },
+      { text: 'Inventario', icon: <LocalShippingIcon />, path: '/logistica/inventario' },
+      { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/entregas' },
+    ],
+  },
+  {
+    title: 'TALLER',
+    items: [
+      { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
+      { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
+      { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
+      { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
     ],
   },
   {
@@ -143,17 +129,7 @@ const Sidebar: React.FC = () => {
         {navigation.map((section, idx) => (
           <React.Fragment key={section.title}>
             {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-            <ListSubheader 
-              sx={{ 
-                bgcolor: 'inherit', 
-                color: '#00B8A9', 
-                fontWeight: 700, 
-                fontSize: 13, 
-                pl: 2, 
-                py: 1,
-                position: 'relative' // Fix para evitar superposición
-              }}
-            >
+            <ListSubheader sx={{ bgcolor: 'inherit', color: '#00B8A9', fontWeight: 700, fontSize: 13, pl: 2, py: 1 }}>
               {section.title}
             </ListSubheader>
             {section.items.map(item => (

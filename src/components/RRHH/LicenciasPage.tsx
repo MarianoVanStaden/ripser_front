@@ -1,844 +1,127 @@
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Button,
-  Dialog,
-  Stack,
-  TextField,
-  CircularProgress,
-  Alert,
-  IconButton,
-  Tooltip,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  InputAdornment,
-  Grid,
-  Chip,
-  Autocomplete,
-  MenuItem,
-  FormControlLabel,
-  Switch
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Refresh as RefreshIcon,
-  Search as SearchIcon,
-  CheckCircle as ApproveIcon,
-  Cancel as RejectIcon,
-  Pending as PendingIcon,
-  BeachAccess as VacationIcon,
-  LocalHospital as SickIcon,
-  Person as PersonIcon,
-  CalendarToday as CalendarIcon,
-  AttachMoney as MoneyIcon
-} from '@mui/icons-material';
-import { licenciaApi } from '../../api/services/licenciaApi';
-import { employeeApi } from '../../api/services/employeeApi';
-import type { Licencia, Empleado, TipoLicencia, EstadoLicencia } from '../../types';
-import dayjs from 'dayjs';
+import React, { useState } from 'react';
+import { Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Dialog, Stack, TextField, MenuItem } from '@mui/material';
+import { mockLicencias, mockEmpleados } from '../../api/services/mockData';
 
 const LicenciasPage: React.FC = () => {
-  const [licencias, setLicencias] = useState<Licencia[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Licencia | null>(null);
-  const [openDetail, setOpenDetail] = useState(false);
-  const [openForm, setOpenForm] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [openApproval, setOpenApproval] = useState(false);
-  const [approvalAction, setApprovalAction] = useState<'APROBADA' | 'RECHAZADA'>('APROBADA');
-  const [editingLicencia, setEditingLicencia] = useState<Licencia | null>(null);
-  
-  // Filtros
-  const [searchTerm, setSearchTerm] = useState('');
-  const [empleadoFilter, setEmpleadoFilter] = useState<Empleado | null>(null);
-  const [tipoFilter, setTipoFilter] = useState<string>('TODOS');
-  const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
-
-  // Form state
-  const [formData, setFormData] = useState({
-    empleadoId: '',
-    tipo: '' as TipoLicencia | '',
-    fechaInicio: dayjs().format('YYYY-MM-DD'),
-    fechaFin: dayjs().add(1, 'day').format('YYYY-MM-DD'),
-    dias: '1',
-    motivo: '',
-    goceHaber: true,
-    estado: 'SOLICITADA' as EstadoLicencia
-  });
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [licenciasData, empleadosData] = await Promise.all([
-        licenciaApi.getAll(),
-        employeeApi.getAllList()
-      ]);
-      
-      console.log('Licencias raw data:', licenciasData);
-      console.log('Empleados data:', empleadosData);
-      
-      // Mapear empleadoId a objeto empleado completo
-      const empleadoFallback = { id: 0, nombre: 'Desconocido', apellido: '', puesto: '', email: '' };
-      const licenciasConEmpleado = Array.isArray(licenciasData)
-        ? licenciasData.map((licencia: any) => {
-            const empleado = empleadosData.find((e: any) => e.id === licencia.empleadoId);
-            return {
-              ...licencia,
-              empleado: empleado || licencia.empleado || empleadoFallback
-            };
-          })
-        : [];
-      
-      console.log('Licencias with empleado:', licenciasConEmpleado);
-      
-      setLicencias(licenciasConEmpleado);
-      setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
-    } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
-      setLicencias([]);
-      setEmpleados([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getEmpleadoNombre = (empleado: Empleado | undefined) => {
-    if (!empleado) return 'Desconocido';
-    return `${empleado.nombre} ${empleado.apellido}`;
-  };
-
-  const getTipoIcon = (tipo: TipoLicencia) => {
-    switch (tipo) {
-      case 'VACACIONES':
-        return <VacationIcon />;
-      case 'ENFERMEDAD':
-        return <SickIcon />;
-      case 'MATERNIDAD':
-      case 'PERSONAL':
-        return <PersonIcon />;
-      default:
-        return <CalendarIcon />;
-    }
-  };
-
-  const getTipoColor = (tipo: TipoLicencia): "primary" | "error" | "warning" | "info" => {
-    switch (tipo) {
-      case 'VACACIONES':
-        return 'primary';
-      case 'ENFERMEDAD':
-        return 'error';
-      case 'MATERNIDAD':
-        return 'warning';
-      case 'PERSONAL':
-        return 'info';
-      default:
-        return 'primary';
-    }
-  };
-
-  const getEstadoColor = (estado: EstadoLicencia): "warning" | "success" | "error" => {
-    switch (estado) {
-      case 'SOLICITADA':
-        return 'warning';
-      case 'APROBADA':
-        return 'success';
-      case 'RECHAZADA':
-        return 'error';
-      default:
-        return 'warning';
-    }
-  };
-
-  const calcularDias = (fechaInicio: string, fechaFin: string): number => {
-    const inicio = dayjs(fechaInicio);
-    const fin = dayjs(fechaFin);
-    return fin.diff(inicio, 'day') + 1;
-  };
-
-  const filteredLicencias = licencias.filter(l => {
-    if (!l.empleado) return false; // Safety check
-    
-    const matchesEmpleado = !empleadoFilter || l.empleado.id === empleadoFilter.id;
-    const matchesTipo = tipoFilter === 'TODOS' || l.tipo === tipoFilter;
-    const matchesEstado = estadoFilter === 'TODOS' || l.estado === estadoFilter;
-    
-    const matchesSearch = !searchTerm ||
-      getEmpleadoNombre(l.empleado).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.motivo?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchesEmpleado && matchesTipo && matchesEstado && matchesSearch;
-  });
-
-  const handleOpenForm = (licencia?: Licencia) => {
-    if (licencia) {
-      setEditingLicencia(licencia);
-      setFormData({
-        empleadoId: licencia.empleado?.id?.toString() || '',
-        tipo: licencia.tipo,
-        fechaInicio: licencia.fechaInicio,
-        fechaFin: licencia.fechaFin,
-        dias: licencia.dias.toString(),
-        motivo: licencia.motivo || '',
-        goceHaber: licencia.goceHaber,
-        estado: licencia.estado
-      });
-    } else {
-      setEditingLicencia(null);
-      setFormData({
-        empleadoId: '',
-        tipo: '' as TipoLicencia | '',
-        fechaInicio: dayjs().format('YYYY-MM-DD'),
-        fechaFin: dayjs().add(1, 'day').format('YYYY-MM-DD'),
-        dias: '1',
-        motivo: '',
-        goceHaber: true,
-        estado: 'SOLICITADA'
-      });
-    }
-    setOpenForm(true);
-  };
-
-  const handleCloseForm = () => {
-    setOpenForm(false);
-    setEditingLicencia(null);
-    setFormData({
-      empleadoId: '',
-      tipo: '' as TipoLicencia | '',
-      fechaInicio: dayjs().format('YYYY-MM-DD'),
-      fechaFin: dayjs().add(1, 'day').format('YYYY-MM-DD'),
-      dias: '1',
-      motivo: '',
-      goceHaber: true,
-      estado: 'SOLICITADA'
-    });
-  };
+  const [licencias, setLicencias] = useState<any[]>(mockLicencias);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<any>({ empleadoId: '', tipo: '', fechaInicio: '', fechaFin: '', dias: '', motivo: '', goceHaber: false, estado: 'SOLICITADA' });
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-      const newData = { ...prev, [name]: value };
-      
-      // Auto-calcular días cuando cambian las fechas
-      if (name === 'fechaInicio' || name === 'fechaFin') {
-        const inicio = name === 'fechaInicio' ? value : prev.fechaInicio;
-        const fin = name === 'fechaFin' ? value : prev.fechaFin;
-        if (inicio && fin) {
-          newData.dias = calcularDias(inicio, fin).toString();
-        }
-      }
-      
-      return newData;
-    });
+    const { name, value, type, checked } = e.target;
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   };
 
-  const handleSaveLicencia = async () => {
-    try {
-      setError(null);
-
-      if (!formData.empleadoId) {
-        setError('Debe seleccionar un empleado');
-        return;
-      }
-
-      const empleadoIdParsed = parseInt(formData.empleadoId);
-      if (isNaN(empleadoIdParsed) || empleadoIdParsed <= 0) {
-        setError('ID de empleado inválido');
-        return;
-      }
-
-      if (!formData.tipo) {
-        setError('Debe seleccionar un tipo de licencia');
-        return;
-      }
-
-      if (!formData.fechaInicio || !formData.fechaFin) {
-        setError('Las fechas son obligatorias');
-        return;
-      }
-
-      const dias = parseInt(formData.dias) || 0;
-      if (dias <= 0) {
-        setError('Los días deben ser mayor a 0');
-        return;
-      }
-
-      const licenciaData: any = {
-        empleadoId: empleadoIdParsed,
-        tipo: formData.tipo,
-        fechaInicio: formData.fechaInicio,
-        fechaFin: formData.fechaFin,
-        dias: dias,
-        motivo: formData.motivo.trim() || null,
-        goceHaber: formData.goceHaber,
-        estado: formData.estado
-      };
-
-      console.log('💾 Sending licencia to backend:', licenciaData);
-
-      if (editingLicencia) {
-        await licenciaApi.update(editingLicencia.id, { ...licenciaData, id: editingLicencia.id });
-      } else {
-        await licenciaApi.create(licenciaData);
-      }
-
-      await loadData();
-      handleCloseForm();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar la licencia');
-      console.error('Error saving licencia:', err);
-    }
+  const handleFormSubmit = () => {
+    const empleado = mockEmpleados.find(e => e.id === Number(form.empleadoId));
+    const nuevo = {
+      id: licencias.length + 1,
+      empleado,
+      tipo: form.tipo,
+      fechaInicio: form.fechaInicio,
+      fechaFin: form.fechaFin,
+      dias: Number(form.dias),
+      motivo: form.motivo,
+      goceHaber: form.goceHaber,
+      estado: form.estado,
+    };
+    setLicencias([...licencias, nuevo]);
+    setFormOpen(false);
+    setForm({ empleadoId: '', tipo: '', fechaInicio: '', fechaFin: '', dias: '', motivo: '', goceHaber: false, estado: 'SOLICITADA' });
   };
-
-  const handleDeleteLicencia = async () => {
-    if (!selected) return;
-    
-    try {
-      setError(null);
-      await licenciaApi.delete(selected.id);
-      await loadData();
-      setOpenDelete(false);
-      setSelected(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al eliminar la licencia');
-      console.error('Error deleting licencia:', err);
-      setOpenDelete(false);
-    }
-  };
-
-  const handleOpenApproval = (licencia: Licencia, action: 'APROBADA' | 'RECHAZADA') => {
-    setSelected(licencia);
-    setApprovalAction(action);
-    setOpenApproval(true);
-  };
-
-  const handleApprovalAction = async () => {
-    if (!selected) return;
-    
-    try {
-      setError(null);
-      await licenciaApi.update(selected.id, {
-        ...selected,
-        estado: approvalAction
-      });
-      await loadData();
-      setOpenApproval(false);
-      setSelected(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al actualizar el estado de la licencia');
-      console.error('Error updating licencia status:', err);
-      setOpenApproval(false);
-    }
-  };
-
-  const handleViewDetails = (licencia: Licencia) => {
-    setSelected(licencia);
-    setOpenDetail(true);
-  };
-
-  const handleOpenDelete = (licencia: Licencia) => {
-    setSelected(licencia);
-    setOpenDelete(true);
-  };
-
-  // Estadísticas
-  const totalSolicitadas = licencias.filter(l => l.estado === 'SOLICITADA').length;
-  const totalAprobadas = licencias.filter(l => l.estado === 'APROBADA').length;
-  const totalRechazadas = licencias.filter(l => l.estado === 'RECHAZADA').length;
-  const totalDiasLicencia = filteredLicencias.reduce((sum, l) => sum + l.dias, 0);
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Gestión de Licencias</Typography>
-        <Stack direction="row" spacing={2}>
-          <Tooltip title="Recargar">
-            <IconButton onClick={loadData} color="primary">
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenForm()}
-          >
-            Nueva Licencia
-          </Button>
-        </Stack>
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Estadísticas Rápidas */}
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <PendingIcon sx={{ fontSize: 40, color: 'warning.main' }} />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold" color="warning.main">
-                    {totalSolicitadas}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Solicitadas
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <ApproveIcon sx={{ fontSize: 40, color: 'success.main' }} />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold" color="success.main">
-                    {totalAprobadas}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Aprobadas
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <RejectIcon sx={{ fontSize: 40, color: 'error.main' }} />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold" color="error.main">
-                    {totalRechazadas}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Rechazadas
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <CalendarIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold" color="primary.main">
-                    {totalDiasLicencia}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Días Totales
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
+      <Typography variant="h4" mb={3}>Licencias</Typography>
+      <Button variant="contained" sx={{ mb: 2 }} onClick={() => setFormOpen(true)}>Registrar Licencia</Button>
       <Card>
         <CardContent>
-          <Box mb={2}>
-            <Grid container spacing={2}>
-              {/* Búsqueda */}
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  label="Buscar"
-                  placeholder="Empleado, motivo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-
-              {/* Filtro por Empleado */}
-              <Grid item xs={12} md={3}>
-                <Autocomplete
-                  options={empleados}
-                  getOptionLabel={(option) => getEmpleadoNombre(option)}
-                  value={empleadoFilter}
-                  onChange={(_, newValue) => setEmpleadoFilter(newValue)}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Empleado" size="small" />
-                  )}
-                  size="small"
-                />
-              </Grid>
-
-              {/* Filtro por Tipo */}
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Tipo"
-                  value={tipoFilter}
-                  onChange={(e) => setTipoFilter(e.target.value)}
-                  size="small"
-                >
-                  <MenuItem value="TODOS">Todos</MenuItem>
-                  <MenuItem value="VACACIONES">Vacaciones</MenuItem>
-                  <MenuItem value="ENFERMEDAD">Enfermedad</MenuItem>
-                  <MenuItem value="PERSONAL">Personal</MenuItem>
-                  <MenuItem value="MATERNIDAD">Maternidad</MenuItem>
-                </TextField>
-              </Grid>
-
-              {/* Filtro por Estado */}
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Estado"
-                  value={estadoFilter}
-                  onChange={(e) => setEstadoFilter(e.target.value)}
-                  size="small"
-                >
-                  <MenuItem value="TODOS">Todos</MenuItem>
-                  <MenuItem value="SOLICITADA">Solicitadas</MenuItem>
-                  <MenuItem value="APROBADA">Aprobadas</MenuItem>
-                  <MenuItem value="RECHAZADA">Rechazadas</MenuItem>
-                </TextField>
-              </Grid>
-            </Grid>
-          </Box>
-
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
                   <TableCell>Empleado</TableCell>
                   <TableCell>Tipo</TableCell>
-                  <TableCell>Período</TableCell>
-                  <TableCell align="center">Días</TableCell>
-                  <TableCell align="center">Goce Haber</TableCell>
+                  <TableCell>Fecha Inicio</TableCell>
+                  <TableCell>Fecha Fin</TableCell>
+                  <TableCell>Días</TableCell>
                   <TableCell>Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredLicencias.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <Typography variant="body2" color="textSecondary">
-                        No hay licencias registradas
-                      </Typography>
+                {licencias.map(l => (
+                  <TableRow key={l.id} hover>
+                    <TableCell>{l.empleado?.nombre} {l.empleado?.apellido}</TableCell>
+                    <TableCell>{l.tipo}</TableCell>
+                    <TableCell>{l.fechaInicio}</TableCell>
+                    <TableCell>{l.fechaFin}</TableCell>
+                    <TableCell>{l.dias}</TableCell>
+                    <TableCell>{l.estado}</TableCell>
+                    <TableCell>
+                      <Button size="small" variant="outlined" onClick={() => { setSelected(l); setOpen(true); }}>Ver Detalle</Button>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredLicencias.map(licencia => (
-                    <TableRow key={licencia.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="600">
-                          {getEmpleadoNombre(licencia.empleado)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          icon={getTipoIcon(licencia.tipo)}
-                          label={licencia.tipo}
-                          size="small"
-                          color={getTipoColor(licencia.tipo)}
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {dayjs(licencia.fechaInicio).format('DD/MM/YYYY')} - {dayjs(licencia.fechaFin).format('DD/MM/YYYY')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={`${licencia.dias} días`}
-                          size="small"
-                          color="primary"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        {licencia.goceHaber ? (
-                          <Chip icon={<MoneyIcon />} label="Sí" size="small" color="success" variant="outlined" />
-                        ) : (
-                          <Chip label="No" size="small" color="default" variant="outlined" />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={licencia.estado}
-                          size="small"
-                          color={getEstadoColor(licencia.estado)}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={0.5} justifyContent="center">
-                          {licencia.estado === 'SOLICITADA' && (
-                            <>
-                              <Tooltip title="Aprobar">
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  onClick={() => handleOpenApproval(licencia, 'APROBADA')}
-                                >
-                                  <ApproveIcon />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Rechazar">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleOpenApproval(licencia, 'RECHAZADA')}
-                                >
-                                  <RejectIcon />
-                                </IconButton>
-                              </Tooltip>
-                            </>
-                          )}
-                          <Tooltip title="Editar">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleOpenForm(licencia)}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Eliminar">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleOpenDelete(licencia)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
         </CardContent>
       </Card>
-
-      {/* Dialog de Formulario */}
-      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingLicencia ? 'Editar Licencia' : 'Nueva Licencia'}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 2 }}>
-            <Autocomplete
-              options={empleados}
-              getOptionLabel={(option) => getEmpleadoNombre(option)}
-              value={empleados.find(e => e.id.toString() === formData.empleadoId) || null}
-              onChange={(_, newValue) => {
-                setFormData(prev => ({
-                  ...prev,
-                  empleadoId: newValue ? newValue.id.toString() : ''
-                }));
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Empleado" required />
-              )}
-              disabled={!!editingLicencia}
-            />
-            <TextField
-              select
-              label="Tipo de Licencia"
-              name="tipo"
-              value={formData.tipo}
-              onChange={handleFormChange}
-              required
-              fullWidth
-            >
-              <MenuItem value="VACACIONES">Vacaciones</MenuItem>
-              <MenuItem value="ENFERMEDAD">Enfermedad</MenuItem>
-              <MenuItem value="PERSONAL">Personal</MenuItem>
-              <MenuItem value="MATERNIDAD">Maternidad</MenuItem>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+        {selected && (
+          <Box p={3}>
+            <Typography variant="h6" mb={2}>Detalle de Licencia</Typography>
+            <Stack spacing={1} mb={2}>
+              <Typography><b>Empleado:</b> {selected.empleado?.nombre} {selected.empleado?.apellido}</Typography>
+              <Typography><b>Tipo:</b> {selected.tipo}</Typography>
+              <Typography><b>Fecha Inicio:</b> {selected.fechaInicio}</Typography>
+              <Typography><b>Fecha Fin:</b> {selected.fechaFin}</Typography>
+              <Typography><b>Días:</b> {selected.dias}</Typography>
+              <Typography><b>Motivo:</b> {selected.motivo}</Typography>
+              <Typography><b>Goce de Haber:</b> {selected.goceHaber ? 'Sí' : 'No'}</Typography>
+              <Typography><b>Estado:</b> {selected.estado}</Typography>
+            </Stack>
+            <Button onClick={() => setOpen(false)} variant="outlined">Cerrar</Button>
+          </Box>
+        )}
+      </Dialog>
+      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="xs" fullWidth>
+        <Box p={3} component="form" onSubmit={e => { e.preventDefault(); handleFormSubmit(); }}>
+          <Typography variant="h6" mb={2}>Registrar Licencia</Typography>
+          <Stack spacing={2} mb={2}>
+            <TextField select label="Empleado" name="empleadoId" value={form.empleadoId} onChange={handleFormChange} required>
+              {mockEmpleados.map(e => (
+                <MenuItem key={e.id} value={e.id}>{e.nombre} {e.apellido}</MenuItem>
+              ))}
             </TextField>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  label="Fecha Inicio"
-                  name="fechaInicio"
-                  type="date"
-                  value={formData.fechaInicio}
-                  onChange={handleFormChange}
-                  required
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  label="Fecha Fin"
-                  name="fechaFin"
-                  type="date"
-                  value={formData.fechaFin}
-                  onChange={handleFormChange}
-                  required
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-            </Grid>
-            <TextField
-              label="Días"
-              name="dias"
-              type="number"
-              value={formData.dias}
-              onChange={handleFormChange}
-              required
-              fullWidth
-              inputProps={{ min: 1 }}
-              helperText="Se calcula automáticamente según las fechas"
-            />
-            <TextField
-              label="Motivo"
-              name="motivo"
-              value={formData.motivo}
-              onChange={handleFormChange}
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Descripción o razón de la licencia..."
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.goceHaber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, goceHaber: e.target.checked }))}
-                  color="success"
-                />
-              }
-              label="Con Goce de Haber"
-            />
-            <TextField
-              select
-              label="Estado"
-              name="estado"
-              value={formData.estado}
-              onChange={handleFormChange}
-              required
-              fullWidth
-            >
-              <MenuItem value="SOLICITADA">Solicitada</MenuItem>
-              <MenuItem value="APROBADA">Aprobada</MenuItem>
-              <MenuItem value="RECHAZADA">Rechazada</MenuItem>
+            <TextField select label="Tipo" name="tipo" value={form.tipo} onChange={handleFormChange} required>
+              <MenuItem value="VACACIONES">VACACIONES</MenuItem>
+              <MenuItem value="ENFERMEDAD">ENFERMEDAD</MenuItem>
+              <MenuItem value="PERSONAL">PERSONAL</MenuItem>
+              <MenuItem value="MATERNIDAD">MATERNIDAD</MenuItem>
+            </TextField>
+            <TextField label="Fecha Inicio" name="fechaInicio" type="date" value={form.fechaInicio} onChange={handleFormChange} InputLabelProps={{ shrink: true }} required />
+            <TextField label="Fecha Fin" name="fechaFin" type="date" value={form.fechaFin} onChange={handleFormChange} InputLabelProps={{ shrink: true }} required />
+            <TextField label="Días" name="dias" type="number" value={form.dias} onChange={handleFormChange} required />
+            <TextField label="Motivo" name="motivo" value={form.motivo} onChange={handleFormChange} />
+            <TextField select label="Goce de Haber" name="goceHaber" value={form.goceHaber ? 'true' : 'false'} onChange={e => setForm({ ...form, goceHaber: e.target.value === 'true' })} required>
+              <MenuItem value="true">Sí</MenuItem>
+              <MenuItem value="false">No</MenuItem>
+            </TextField>
+            <TextField select label="Estado" name="estado" value={form.estado} onChange={handleFormChange} required>
+              <MenuItem value="SOLICITADA">SOLICITADA</MenuItem>
+              <MenuItem value="APROBADA">APROBADA</MenuItem>
+              <MenuItem value="RECHAZADA">RECHAZADA</MenuItem>
             </TextField>
           </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button variant="outlined" onClick={handleCloseForm}>
-            Cancelar
-          </Button>
-          <Button variant="contained" onClick={handleSaveLicencia}>
-            {editingLicencia ? 'Guardar Cambios' : 'Crear Licencia'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog de Aprobación/Rechazo */}
-      <Dialog open={openApproval} onClose={() => setOpenApproval(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>
-          {approvalAction === 'APROBADA' ? 'Aprobar Licencia' : 'Rechazar Licencia'}
-        </DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Está seguro que desea <strong>{approvalAction === 'APROBADA' ? 'aprobar' : 'rechazar'}</strong> la licencia de{' '}
-            <strong>{selected && getEmpleadoNombre(selected.empleado)}</strong>?
-          </Typography>
-          {selected && (
-            <Box mt={2} p={2} bgcolor="grey.100" borderRadius={1}>
-              <Typography variant="body2"><strong>Tipo:</strong> {selected.tipo}</Typography>
-              <Typography variant="body2"><strong>Período:</strong> {dayjs(selected.fechaInicio).format('DD/MM/YYYY')} - {dayjs(selected.fechaFin).format('DD/MM/YYYY')}</Typography>
-              <Typography variant="body2"><strong>Días:</strong> {selected.dias}</Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button variant="outlined" onClick={() => setOpenApproval(false)}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            color={approvalAction === 'APROBADA' ? 'success' : 'error'}
-            onClick={handleApprovalAction}
-          >
-            {approvalAction === 'APROBADA' ? 'Aprobar' : 'Rechazar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog de Confirmación de Eliminación */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Está seguro que desea eliminar la licencia de{' '}
-            <strong>{selected && getEmpleadoNombre(selected.empleado)}</strong>?
-          </Typography>
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            Esta acción no se puede deshacer.
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="outlined" onClick={() => setOpenDelete(false)}>
-            Cancelar
-          </Button>
-          <Button variant="contained" color="error" onClick={handleDeleteLicencia}>
-            Eliminar
-          </Button>
-        </DialogActions>
+          <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Button onClick={() => setFormOpen(false)} variant="outlined">Cancelar</Button>
+            <Button type="submit" variant="contained">Guardar</Button>
+          </Stack>
+        </Box>
       </Dialog>
     </Box>
   );

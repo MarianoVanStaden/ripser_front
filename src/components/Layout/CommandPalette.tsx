@@ -46,7 +46,6 @@ const COMMANDS: CommandOption[] = [
   { label: 'Registro Ventas', icon: <ShoppingCartIcon />, path: '/ventas/registro', category: 'Ventas' },
   { label: 'Compras y Pedidos', icon: <StoreIcon />, path: '/proveedores/compras', category: 'Proveedores' },
   { label: 'Inventario', icon: <InventoryIcon />, path: '/logistica/inventario', category: 'Logística' },
-  { label: 'Tareas de Recuento', icon: <AssignmentIcon />, path: '/logistica/recuentos', category: 'Logística' },
   { label: 'Órdenes de Servicio', icon: <WorkIcon />, path: '/taller/ordenes', category: 'Taller' },
   { label: 'Entregas y Viajes', icon: <LocalShippingIcon />, path: '/logistica/trips', category: 'Logística' },
   { label: 'Empleados', icon: <GroupIcon />, path: '/rrhh/empleados', category: 'RRHH' },

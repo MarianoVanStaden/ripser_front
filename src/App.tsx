@@ -28,37 +28,24 @@ import InformesVentasPage from './components/Ventas/InformesVentasPage';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
-import {
-  SuppliersPage,
-  ComprasPedidosPage,
-  ContactosCondicionesPage,
-  HistorialComprasPage,
-  EvaluacionDesempenoPage
+import { 
+  SuppliersPage, 
+  ComprasPedidosPage, 
+  ContactosCondicionesPage, 
+  HistorialComprasPage, 
+  EvaluacionDesempenoPage 
 } from './components/Proveedores';
-import CuentaCorrienteProveedoresPage from './components/Proveedores/CuentaCorrienteProveedoresPage';
 import GarantiasPage from './components/Garantia/GarantiasPage';
 import ReclamosGarantiaPage from './components/Garantia/ReclamosGarantiaPage';
 import StockPage from './components/Logistica/StockPage';
 import InventoryPage from './components/Logistica/InventoryPage';
-import RecountTasksPage from './components/Logistica/RecountTasksPage';
 import TripsPage from './components/Logistica/TripsPage';
 import DeliveriesPage from './components/Logistica/DeliveriesPage';
 import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
 import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
 import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
-import ConfiguracionTallerPage from './components/Taller/ConfiguracionTallerPage';
 import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
-import {
-  RecetasList,
-  RecetaDetail,
-  RecetaForm,
-  EquiposList,
-  EquipoDetail,
-  EquipoForm,
-  DashboardFabricacion
-} from './components/Fabricacion';
-
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div style={{ padding: '24px', textAlign: 'center' }}>
@@ -125,7 +112,6 @@ function App() {
               {/* PROVEEDORES Module */}
               <Route path="proveedores/gestion" element={<PrivateRoute><SuppliersPage /></PrivateRoute>} />
               <Route path="proveedores/compras" element={<PrivateRoute><ComprasPedidosPage /></PrivateRoute>} />
-              <Route path="proveedores/cuenta-corriente" element={<PrivateRoute><CuentaCorrienteProveedoresPage /></PrivateRoute>} />
               <Route path="proveedores/contactos" element={<PrivateRoute><ContactosCondicionesPage /></PrivateRoute>} />
               <Route path="proveedores/historial" element={<PrivateRoute><HistorialComprasPage /></PrivateRoute>} />
               <Route path="proveedores/evaluacion" element={<PrivateRoute><EvaluacionDesempenoPage /></PrivateRoute>} />
@@ -145,24 +131,12 @@ function App() {
               <Route path="logistica/stock" element={<PrivateRoute><StockPage /></PrivateRoute>} />
               <Route path="logistica/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
               <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
-              <Route path="logistica/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
               <Route path="logistica/entregas" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
               {/* TALLER Module */}
               <Route path="taller/trabajos" element={<PrivateRoute><TrabajosRealizadosPage /></PrivateRoute>} />
               <Route path="taller/ordenes" element={<PrivateRoute><OrdenesServicioPage /></PrivateRoute>} />
               <Route path="taller/materiales" element={<PrivateRoute><ControlMaterialesPage /></PrivateRoute>} />
               <Route path="taller/tareas" element={<PrivateRoute><AsignacionTareasPage /></PrivateRoute>} />
-              <Route path="taller/configuracion" element={<PrivateRoute><ConfiguracionTallerPage /></PrivateRoute>} />
-              {/* FABRICACIÓN Module */}
-              <Route path="fabricacion/dashboard" element={<PrivateRoute><DashboardFabricacion /></PrivateRoute>} />
-              <Route path="fabricacion/recetas" element={<PrivateRoute><RecetasList /></PrivateRoute>} />
-              <Route path="fabricacion/recetas/:id" element={<PrivateRoute><RecetaDetail /></PrivateRoute>} />
-              <Route path="fabricacion/recetas/nueva" element={<PrivateRoute><RecetaForm /></PrivateRoute>} />
-              <Route path="fabricacion/recetas/editar/:id" element={<PrivateRoute><RecetaForm /></PrivateRoute>} />
-              <Route path="fabricacion/equipos" element={<PrivateRoute><EquiposList /></PrivateRoute>} />
-              <Route path="fabricacion/equipos/:id" element={<PrivateRoute><EquipoDetail /></PrivateRoute>} />
-              <Route path="fabricacion/equipos/nuevo" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
-              <Route path="fabricacion/equipos/editar/:id" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
             </Route>
           </Routes>
         </Router>

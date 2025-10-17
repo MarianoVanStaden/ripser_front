@@ -387,29 +387,19 @@ export interface Warehouse {
 
 export interface Trip {
   id: number;
-  numeroViaje?: string;
-  tripNumber?: string; // Kept for backward compatibility
-  fechaViaje: string;
-  destino: string;
-  conductorId: number;
-  driverId?: number; // Kept for backward compatibility
-  conductorNombre?: string;
+  tripNumber: string;
+  driverId: number;
   driver?: Employee;
-  vehiculoId: number;
-  vehicleId?: number; // Kept for backward compatibility
-  vehiculoPatente?: string;
+  vehicleId: number;
   vehicle?: Vehicle;
-  estado: TripStatus;
-  status?: TripStatus; // Kept for backward compatibility
-  observaciones?: string;
-  observations?: string; // Kept for backward compatibility
-  entregas?: Delivery[];
-  deliveries?: Delivery[]; // Kept for backward compatibility
-  startDate?: string; // Kept for backward compatibility
+  startDate: string;
   endDate?: string;
-  totalDistance?: number;
-  createdAt?: string;
-  updatedAt?: string;
+  status: TripStatus;
+  deliveries: Delivery[];
+  totalDistance: number;
+  observations: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Vehicle {
@@ -572,11 +562,10 @@ export interface Producto {
   stockActual: number;
   stockMinimo: number;
   codigo?: string;
-  categoriaProducto?: CategoriaProducto;
-  categoriaProductoId?: number;
+  categoriaProductoId: number;
   categoriaProductoNombre?: string;
   activo: boolean;
-  fechaCreacion?: string; // ISO string
+  fechaCreacion: string; // ISO string
 }
 
 // ProductoCreateDTO interface for product creation
@@ -634,7 +623,6 @@ export interface ProductoListDTO {
   codigo?: string;
   precio: number;
   stockActual: number;
-  stockMinimo: number;
   categoriaProductoNombre?: string;
   activo: boolean;
 }
@@ -763,10 +751,8 @@ export interface ProductoTerminado {
 export interface MaterialUtilizado {
   id: number;
   ordenServicioId: number;
-  productoId: number; // El backend usa 'productoId'
-  productoTerminadoId?: number; // Alias para compatibilidad
+  productoTerminadoId: number;
   productoTerminado?: ProductoTerminado;
-  productoNombre?: string; // Nombre del producto desde el backend DTO
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -780,7 +766,7 @@ export interface TareaServicio {
   horasReales: number;
   estado: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA';
   empleadoId?: number;
-  empleado?: Empleado;
+  empleado?: Employee;
   fechaInicio?: string;
   fechaFin?: string;
   observaciones?: string;
@@ -788,24 +774,15 @@ export interface TareaServicio {
 
 export interface OrdenServicio {
   id: number;
-  numeroOrden: string;
+  numero: string;
   clienteId: number;
   cliente?: Cliente;
-  clienteNombre?: string; // Nombre del cliente desde el backend DTO
   fechaCreacion: string;
-  fechaEstimada?: string;
-  fechaFinalizacion?: string;
-  estado: 'PENDIENTE' | 'EN_PROCESO' | 'FINALIZADA' | 'CANCELADA';
-  descripcionTrabajo: string;
-  observaciones?: string;
-  costoManoObra: number;
-  costoMateriales: number;
-  total: number;
-  responsableId?: number;
-  responsable?: Empleado;
-  responsableNombre?: string; // Nombre del responsable desde el backend DTO
+  estado: 'ABIERTA' | 'EN_PROCESO' | 'CERRADA';
+  descripcion: string;
   materiales: MaterialUtilizado[];
   tareas: TareaServicio[];
+  observaciones?: string;
 }
 
 export interface CategoriaProducto {
@@ -935,15 +912,10 @@ export const MovementType = {
 export type MovementType = typeof MovementType[keyof typeof MovementType];
 
 export const TripStatus = {
-  PLANIFICADO: 'PLANIFICADO',
-  EN_CURSO: 'EN_CURSO',
-  COMPLETADO: 'COMPLETADO',
-  CANCELADO: 'CANCELADO',
-  // Legacy values for backward compatibility
-  PLANNED: 'PLANIFICADO',
-  IN_PROGRESS: 'EN_CURSO',
-  COMPLETED: 'COMPLETADO',
-  CANCELLED: 'CANCELADO'
+  PLANNED: 'PLANNED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED'
 } as const;
 export type TripStatus = typeof TripStatus[keyof typeof TripStatus];
 
@@ -1112,22 +1084,14 @@ export interface CreateVehicleRequest {
 
 // Trip Create Request
 export interface CreateTripRequest {
-  fechaViaje: string;
-  destino: string;
-  conductorId: number;
-  vehiculoId: number;
-  estado: TripStatus;
-  observaciones?: string;
-  entregas?: any[]; // EntregaViajeDTO[]
-  // Legacy fields for backward compatibility
-  tripNumber?: string;
-  driverId?: number;
-  vehicleId?: number;
-  startDate?: string;
+  tripNumber: string;
+  driverId: number;
+  vehicleId: number;
+  startDate: string;
   endDate?: string;
-  status?: TripStatus;
-  totalDistance?: number;
-  observations?: string;
+  status: TripStatus;
+  totalDistance: number;
+  observations: string;
 }
 
 // Delivery Create Request
@@ -1251,36 +1215,6 @@ export interface Capacitacion {
   certificado: boolean;
   costo: number;
 }
-
-export interface Sueldo {
-  id: number;
-  empleado: Empleado;
-  periodo: string; // YYYY-MM format
-  sueldoBasico: number;
-  bonificaciones: number;
-  horasExtras: number;
-  comisiones: number;
-  totalBruto: number;
-  descuentosLegales: number;
-  descuentosOtros: number;
-  totalDescuentos: number;
-  sueldoNeto: number;
-  fechaPago?: string;
-  observaciones?: string;
-}
-
-export interface Legajo {
-  id: number;
-  empleado: Empleado;
-  numeroLegajo: string;
-  fechaAlta: string;
-  fechaBaja?: string;
-  motivoBaja?: string;
-  documentacion?: string; // JSON string with document references
-  observaciones?: string;
-  activo: boolean;
-}
-
 export interface Usuario {
   id: number;
   username: string;
@@ -1370,81 +1304,11 @@ export interface Viaje {
   conductor?: Empleado;
   vehiculoId: number;
   vehiculo?: Vehiculo;
-  estado: EstadoViaje;
+  estado: string;
   observaciones?: string;
   createdAt?: string;
   updatedAt?: string;
 }
-
-export type EstadoViaje = 'PLANIFICADO' | 'EN_CURSO' | 'COMPLETADO' | 'CANCELADO';
-
-export interface ViajeCreateDTO {
-  fechaViaje: string;
-  destino: string;
-  conductorId: number;
-  vehiculoId: number;
-  estado?: EstadoViaje;
-  observaciones?: string;
-}
-
-export interface VehiculoCreateDTO {
-  patente: string;
-  marca: string;
-  modelo: string;
-  año: number;
-  estado?: string;
-  capacidad?: number;
-  observaciones?: string;
-}
-
-export interface EmpleadoCreateDTO {
-  nombre: string;
-  apellido: string;
-  dni: string;
-  email?: string;
-  telefono?: string;
-  direccion?: string;
-  fechaNacimiento?: string;
-  fechaIngreso: string;
-  puestoId?: number;
-  salario: number;
-  estado?: EstadoEmpleado;
-}
-
-export interface EmpleadoUpdateDTO {
-  nombre?: string;
-  apellido?: string;
-  email?: string;
-  telefono?: string;
-  direccion?: string;
-  fechaNacimiento?: string;
-  fechaEgreso?: string;
-  puestoId?: number;
-  salario?: number;
-  estado?: EstadoEmpleado;
-}
-
-export interface EntregaViaje {
-  id: number;
-  viajeId?: number;
-  viaje?: Viaje;
-  ventaId?: number; // Deprecated - usar documentoComercialId
-  venta?: Venta;
-  documentoComercialId?: number; // Nuevo campo - ID del documento comercial
-  documentoComercial?: any; // Objeto completo del documento (si el backend lo popula)
-  ordenServicioId?: number;
-  ordenServicio?: OrdenServicio;
-  direccionEntrega: string;
-  fechaEntrega: string;
-  estado: EstadoEntrega;
-  observaciones?: string;
-  receptorNombre?: string;
-  receptorDni?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export type EstadoEntrega = 'PENDIENTE' | 'EN_TRANSITO' | 'ENTREGADA' | 'NO_ENTREGADA';
 
 // UnidadMedida (Unit of Measure)
 export interface UnidadMedida {
@@ -1502,7 +1366,31 @@ export interface FacturaItem {
   total: number;
   // Add other fields as required by your backend DTO
 }
-// Duplicate removed - using the main Producto interface at line 530
+export interface Producto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual?: number;
+  stockMinimo?: number;
+  codigo?: string;
+  categoriaProducto?: CategoriaProducto;
+  activo?: boolean;
+  fechaCreacion?: string;
+}
+export interface ProductoDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  stockActual: number;
+  stockMinimo: number;
+  codigo?: string;
+  categoriaProductoId: number;
+  categoriaProductoNombre?: string;
+  activo: boolean;
+  fechaCreacion: string; // ISO string
+}
 
 export interface Categoria {
   id: number;
@@ -1544,32 +1432,7 @@ export interface Proveedor {
   direccion?: string;
   estado: string;
   observaciones?: string;
-  saldoActual?: number;
 }
-
-export interface CuentaCorrienteProveedor {
-  id: number;
-  proveedorId: number;
-  proveedorNombre?: string;
-  fecha: string; // ISO string
-  tipo: TipoMovimiento;
-  importe: number;
-  concepto: string;
-  numeroComprobante?: string;
-  saldo: number;
-  compraId?: number;
-}
-
-export interface CreateMovimientoProveedorPayload {
-  proveedorId: number;
-  fecha?: string;
-  tipo: TipoMovimiento;
-  importe: number;
-  concepto: string;
-  numeroComprobante?: string;
-  compraId?: number;
-}
-
 export interface ProductoTerminado {
   id: number;
   nombre: string;
@@ -1747,27 +1610,6 @@ export interface VentaItem {
   total: number;
 }
 export interface MovimientoStock {
-  id?: number;
-  productoId: number;
-  productoNombre?: string; // Backend returns this
-  productoCodigo?: string; // Backend returns this
-  producto?: Producto; // Optional for compatibility
-  tipo: 'ENTRADA' | 'SALIDA' | 'AJUSTE' | 'RECUENTO' | 'SALIDA_FABRICACION' | 'REINGRESO_CANCELACION_FABRICACION';
-  cantidad: number;
-  stockAnterior?: number;
-  stockActual?: number;
-  concepto?: string;
-  numeroComprobante?: string;
-  fecha: string;
-  usuarioId?: number;
-  usuarioNombre?: string; // Backend returns this
-  usuario?: Usuario; // Optional for compatibility
-  equipoFabricadoId?: number;
-  equipoFabricadoNumero?: string;
-}
-
-// Legacy interface for backward compatibility
-export interface MovimientoStockLegacy {
   id: number;
   productoId: number;
   producto?: Producto;
@@ -1937,146 +1779,4 @@ export interface OpcionFinanciamientoDTO {
   descripcion?: string;
   ordenPresentacion?: number;
   esSeleccionada?: boolean;
-}
-
-export interface DetalleRecetaDTO {
-  id: number;
-  productoId: number;
-  productoNombre: string;
-  productoCodigo: string;
-  cantidad: number;
-  costoUnitario: number;
-  subtotal: number;
-  observaciones?: string;
-}
-
-export interface DetalleRecetaCreateDTO {
-  productoId: number;
-  cantidad: number;
-  costoUnitario?: number;
-  observaciones?: string;
-}
-
-export interface RecetaFabricacionDTO {
-  id: number;
-  codigo: string;
-  nombre: string;
-  descripcion?: string;
-  tipoEquipo: TipoEquipo;
-  modelo?: string;
-  medida?: string;
-  observaciones?: string;
-  activo: boolean;
-  fechaCreacion: string;
-  detalles: DetalleRecetaDTO[];
-}
-
-export type RecetaFabricacionListDTO = {
-  id: number;
-  codigo: string;
-  nombre: string;
-  tipoEquipo: TipoEquipo;
-  modelo?: string;
-  medida?: string;
-  activo: boolean;
-  fechaCreacion: string;
-  cantidadDetalles: number;
-};
-
-export interface RecetaFabricacionCreateDTO {
-  codigo?: string;
-  nombre: string;
-  descripcion?: string;
-  tipoEquipo: TipoEquipo;
-  modelo?: string;
-  medida?: string;
-  observaciones?: string;
-  detalles?: DetalleRecetaCreateDTO[];
-}
-
-export interface RecetaFabricacionUpdateDTO {
-  nombre?: string;
-  descripcion?: string;
-  tipoEquipo?: TipoEquipo;
-  modelo?: string;
-  medida?: string;
-  observaciones?: string;
-  activo?: boolean;
-}
-
-export type TipoEquipo = 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
-export interface EquipoFabricadoDTO {
-  id: number;
-  recetaId?: number;
-  recetaNombre?: string;
-  recetaCodigo?: string;
-  tipo: TipoEquipo;
-  modelo: string;
-  equipo?: string;
-  medida?: string;
-  color?: string;
-  observaciones?: string;
-  fechaCreacion: string;
-  numeroHeladera: string;
-  cantidad: number;
-  asignado: boolean;
-  estado: EstadoFabricacion;
-  fechaFinalizacion?: string;
-  responsableId?: number;
-  responsableNombre?: string;
-  clienteId?: number;
-  clienteNombre?: string;
-}
-
-export interface EquipoFabricadoListDTO {
-  id: number;
-  tipo: TipoEquipo;
-  modelo: string;
-  numeroHeladera: string;
-  color?: string;
-  cantidad: number;
-  asignado: boolean;
-  estado: EstadoFabricacion;
-  fechaCreacion: string;
-  fechaFinalizacion?: string;
-  responsableNombre?: string;
-  clienteNombre?: string;
-}
-
-export interface EquipoFabricadoCreateDTO {
-  recetaId?: number;
-  tipo: TipoEquipo;
-  modelo: string;
-  equipo?: string;
-  medida?: string;
-  color?: string;
-  observaciones?: string;
-  numeroHeladera: string;
-  cantidad: number;
-  estado?: EstadoFabricacion;
-  responsableId?: number;
-  clienteId?: number;
-}
-
-export interface EquipoFabricadoUpdateDTO {
-  recetaId?: number;
-  tipo?: TipoEquipo;
-  modelo?: string;
-  equipo?: string;
-  medida?: string;
-  color?: string;
-  observaciones?: string;
-  cantidad?: number;
-  asignado?: boolean;
-  estado?: EstadoFabricacion;
-  responsableId?: number;
-  clienteId?: number;
-}
-export type EstadoFabricacion = 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
-
-// Validación de stock para fabricación
-export interface ValidacionStockDTO {
-  stockSuficiente: boolean;
-  productosInsuficientes?: string[];
-  mensaje: string;
 }

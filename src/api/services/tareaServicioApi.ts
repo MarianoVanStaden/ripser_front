@@ -5,9 +5,7 @@ export const tareaServicioApi = {
   // Get all tareas
   getAll: async (): Promise<TareaServicio[]> => {
     const response = await api.get('/api/tareas-servicio');
-    // Backend returns paginated response: { content: [], totalPages, totalElements, ... }
-    // Extract the content array from the paginated response
-    return response.data.content || response.data;
+    return response.data;
   },
 
   // Get tarea by ID

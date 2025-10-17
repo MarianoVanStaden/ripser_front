@@ -5,9 +5,7 @@ export const materialUtilizadoApi = {
   // Get all materiales utilizados
   getAll: async (): Promise<MaterialUtilizado[]> => {
     const response = await api.get('/api/materiales-utilizados');
-    // Backend returns paginated response: { content: [], totalPages, totalElements, ... }
-    // Extract the content array from the paginated response
-    return response.data.content || response.data;
+    return response.data;
   },
 
   // Get material by ID
