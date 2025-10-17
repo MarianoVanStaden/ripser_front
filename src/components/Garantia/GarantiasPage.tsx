@@ -104,6 +104,7 @@ const GarantiasPage: React.FC = () => {
   );
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedGarantia, setSelectedGarantia] = useState<GarantiaDTO | null>(null);
 
   // --- 1. CARGA INICIAL DESDE EL BACKEND ---
   useEffect(() => {
@@ -193,6 +194,36 @@ const GarantiasPage: React.FC = () => {
     }
   };
 
+  // Get status color
+  const getStatusColor = (estado: string) => {
+    switch (estado) {
+      case 'VIGENTE':
+        return 'success';
+      case 'VENCIDA':
+        return 'error';
+      case 'ANULADA':
+        return 'default';
+      default:
+        return 'warning';
+    }
+  };
+
+  // Calculate statistics
+  const stats = {
+    total: garantias.length,
+    vigentes: garantias.filter(g => g.estado === 'VIGENTE').length,
+    vencidas: garantias.filter(g => g.estado === 'VENCIDA').length,
+    anuladas: garantias.filter(g => g.estado === 'ANULADA').length,
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box p={3}>
       <Typography variant="h4" mb={3}>
@@ -225,15 +256,19 @@ const GarantiasPage: React.FC = () => {
           </Stack>
         </CardContent>
       </Card>
+
+      {/* Table */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Cliente</TableCell>
-              <TableCell>Producto</TableCell>
-              <TableCell>Fecha Venta</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Acciones</TableCell>
+              <TableCell><strong>N° Serie</strong></TableCell>
+              <TableCell><strong>Producto</strong></TableCell>
+              <TableCell><strong>N° Venta</strong></TableCell>
+              <TableCell align="center"><strong>Fecha Compra</strong></TableCell>
+              <TableCell align="center"><strong>Fecha Vencimiento</strong></TableCell>
+              <TableCell align="center"><strong>Estado</strong></TableCell>
+              <TableCell align="center"><strong>Acciones</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -289,6 +324,8 @@ const GarantiasPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Dialogs */}
       <GarantiaFormDialog
         open={formOpen}
         garantia={selectedGarantia}
@@ -306,6 +343,10 @@ const GarantiasPage: React.FC = () => {
           <GarantiaDetailPage
             garantia={selectedGarantia as any} // Ya fue adaptado al hacer clic en 'Ver Detalle'
             onBack={() => setDetailOpen(false)}
+            onAnular={() => {
+              handleAnular(selectedGarantia.id);
+              setDetailOpen(false);
+            }}
           />
         )}
       </Dialog>

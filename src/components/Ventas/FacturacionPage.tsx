@@ -204,15 +204,47 @@ const FacturacionPage = () => {
     }, 0);
   }, [notaCart]);
 
+  const notaFinancingAdjustment = useMemo(() => {
+    const selectedOpcion = opcionesFinanciamiento.find(o => o.id === selectedOpcionId);
+    if (!selectedOpcion || selectedOpcion.tasaInteres === 0) return 0;
+    return notaSubtotal * (selectedOpcion.tasaInteres / 100);
+  }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento]);
+
   const notaIvaAmount = useMemo(() => {
     if (!selectedNotaPedido) return 0;
-    const ivaRate = IVA_OPTIONS.find((option) => option.value === selectedNotaPedido.tipoIva)?.rate || 0;
-    return notaSubtotal * ivaRate;
-  }, [notaSubtotal, selectedNotaPedido]);
+    const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any).tipoIva)?.rate || 0.21;
+    const subtotalConFinanciamiento = notaSubtotal + notaFinancingAdjustment;
+    return subtotalConFinanciamiento * ivaRate;
+  }, [notaSubtotal, notaFinancingAdjustment, selectedNotaPedido]);
 
-  const notaTotalVenta = useMemo(() => {
-    return notaSubtotal + notaIvaAmount;
-  }, [notaSubtotal, notaIvaAmount]);
+  const notaTotalVenta = useMemo(() => notaSubtotal + notaFinancingAdjustment + notaIvaAmount, [notaSubtotal, notaFinancingAdjustment, notaIvaAmount]);
+
+  // Helper functions for financing
+  const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
+    switch (metodoPago) {
+      case 'EFECTIVO':
+        return <MoneyIcon fontSize="small" />;
+      case 'TARJETA_CREDITO':
+        return <CreditCardIcon fontSize="small" />;
+      case 'TRANSFERENCIA_BANCARIA':
+      case 'FINANCIACION_PROPIA':
+        return <BankIcon fontSize="small" />;
+      default:
+        return <MoneyIcon fontSize="small" />;
+    }
+  };
+
+  const getMetodoPagoLabel = (metodoPago: MetodoPago | string) => {
+    switch (metodoPago) {
+      case 'EFECTIVO': return 'Efectivo';
+      case 'TARJETA_CREDITO': return 'Tarjeta de Crédito';
+      case 'TARJETA_DEBITO': return 'Tarjeta de Débito';
+      case 'TRANSFERENCIA_BANCARIA': return 'Transferencia bancaria';
+      case 'FINANCIACION_PROPIA': return 'Financiación propia';
+      case 'CHEQUE': return 'Cheque';
+      default: return String(metodoPago);
+    }
+  };
 
   const clearForm = () => {
     setSelectedClientId('');
@@ -888,36 +920,140 @@ const FacturacionPage = () => {
                 </Grid>
               </Grid>
 
-              <Typography variant="h6" mb={2}>Productos</Typography>
-              
-              <ProductsTable 
+              {/* Financing Options */}
+              {loadingOpciones ? (
+                <Box display="flex" justifyContent="center" p={2}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : opcionesFinanciamiento.length > 0 && (
+                <Box mb={3}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Opciones de Financiamiento
+                  </Typography>
+                  <RadioGroup
+                    value={selectedOpcionId || ''}
+                    onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
+                  >
+                    <Grid container spacing={2}>
+                      {opcionesFinanciamiento.map((opcion) => (
+                        <Grid item xs={12} sm={6} md={4} key={opcion.id}>
+                          <Card 
+                            variant="outlined" 
+                            sx={{ 
+                              p: 1,
+                              border: selectedOpcionId === opcion.id ? '2px solid' : '1px solid',
+                              borderColor: selectedOpcionId === opcion.id ? 'primary.main' : 'divider',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => setSelectedOpcionId(opcion.id!)}
+                          >
+                            <FormControlLabel
+                              value={opcion.id}
+                              control={<Radio />}
+                              label={
+                                <Box>
+                                  <Box display="flex" alignItems="center" gap={1}>
+                                    {getMetodoPagoIcon(opcion.metodoPago)}
+                                    <Typography variant="body2" fontWeight="bold">
+                                      {opcion.nombre}
+                                    </Typography>
+                                  </Box>
+                                  <Typography variant="caption" display="block" color="text.secondary">
+                                    {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
+                                  </Typography>
+                                  <Typography variant="body2" color="primary">
+                                    Total: ${opcion.montoTotal?.toFixed(2)}
+                                  </Typography>
+                                  {opcion.cantidadCuotas > 1 && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      ${opcion.montoCuota?.toFixed(2)}/cuota
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </RadioGroup>
+                </Box>
+              )}
+
+              {/* Display selected financing option */}
+              {selectedOpcionId && opcionesFinanciamiento.length > 0 && (
+                <Box mb={2}>
+                  <Alert severity="info" icon={<CreditCardIcon />}>
+                    <Typography variant="body2">
+                      <strong>Opción de Financiamiento Seleccionada:</strong> {opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.nombre}
+                      {opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres !== 0 && (
+                        <> ({opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres}% {(opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres || 0) > 0 ? 'recargo' : 'descuento'})</>
+                      )}
+                    </Typography>
+                  </Alert>
+                </Box>
+              )}
+
+              <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle1">
+                  Productos de la Nota
+                </Typography>
+                {!editingNotaItems && (
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon />}
+                    onClick={() => setEditingNotaItems(true)}
+                  >
+                    Editar Items
+                  </Button>
+                )}
+              </Box>
+
+              <ProductsTable
                 items={notaCart}
                 onUpdate={updateNotaCartItem}
                 onRemove={(index) => setNotaCart(prev => prev.filter((_, i) => i !== index))}
                 editable={editingNotaItems}
               />
 
-              <Divider sx={{ my: 2 }} />
-              <Box display="flex" justifyContent="flex-end">
-                <Box>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
-                    <Typography fontWeight="bold">${notaSubtotal.toFixed(2)}</Typography>
+              <Box mt={3}>
+                <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                  <Box display="flex" flexDirection="column" gap={2}>
+                    <Box display="flex" justifyContent="space-between">
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Subtotal:
+                        </Typography>
+                        <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
+                      </Box>
+                      <Box textAlign="right">
+                        <Typography variant="subtitle2" color="text.secondary">
+                          IVA:
+                        </Typography>
+                        <Typography variant="h6">${notaIvaAmount.toFixed(2)}</Typography>
+                      </Box>
+                    </Box>
+                    {notaFinancingAdjustment !== 0 && (
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {notaFinancingAdjustment > 0 ? 'Recargo' : 'Descuento'} Financiamiento:
+                        </Typography>
+                        <Typography variant="h6" color={notaFinancingAdjustment > 0 ? 'error' : 'success'}>
+                          {notaFinancingAdjustment > 0 ? '+' : ''}${notaFinancingAdjustment.toFixed(2)}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Divider />
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Total:
+                      </Typography>
+                      <Typography variant="h5" color="primary">
+                        ${notaTotalVenta.toFixed(2)}
+                      </Typography>
+                    </Box>
                   </Box>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography sx={{ mr: 4 }}>
-                      {IVA_OPTIONS.find(o => o.value === selectedNotaPedido.tipoIva)?.label || 'IVA'}:
-                    </Typography>
-                    <Typography fontWeight="bold">${notaIvaAmount.toFixed(2)}</Typography>
-                  </Box>
-                  <Divider sx={{ my: 1 }} />
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
-                    <Typography variant="h5" color="primary" fontWeight="bold">
-                      ${notaTotalVenta.toFixed(2)}
-                    </Typography>
-                  </Box>
-                </Box>
+                </Paper>
               </Box>
             </Box>
           )}

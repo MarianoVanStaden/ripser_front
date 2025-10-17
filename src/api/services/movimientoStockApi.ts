@@ -1,6 +1,22 @@
 import api from '../config';
 import type { MovimientoStock } from '../../types';
 
+// Recount request/response types
+export interface RecuentoRequest {
+  categoriaId?: number | null;
+  notas?: string;
+  usuarioId?: number;
+}
+
+export interface RecuentoResponse {
+  recuentoId: number;
+  totalProductos: number;
+  categoriaSeleccionada: string;
+  notas?: string;
+  fechaInicio: string;
+  movimientos: MovimientoStock[];
+}
+
 export const movimientoStockApi = {
   // Get all movimientos
   getAll: async (): Promise<MovimientoStock[]> => {
@@ -61,5 +77,34 @@ export const movimientoStockApi = {
   // Delete movimiento
   delete: async (id: number): Promise<void> => {
     await api.delete(`/api/movimientos-stock/${id}`);
+  },
+
+  // Recount operations
+  /**
+   * Inicia un recuento de inventario
+   */
+  iniciarRecuento: async (request: RecuentoRequest): Promise<RecuentoResponse> => {
+    const response = await api.post<RecuentoResponse>('/api/movimientos-stock/iniciar-recuento', request);
+    return response.data;
+  },
+
+  /**
+   * Completa un item de recuento
+   */
+  completarRecuento: async (movimientoId: number, cantidadReal: number): Promise<MovimientoStock> => {
+    const response = await api.put<MovimientoStock>(
+      `/api/movimientos-stock/completar-recuento/${movimientoId}`,
+      null,
+      { params: { cantidadReal } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Obtiene recuentos pendientes
+   */
+  getRecuentosPendientes: async (): Promise<MovimientoStock[]> => {
+    const response = await api.get<MovimientoStock[]>('/api/movimientos-stock/recuentos-pendientes');
+    return response.data;
   }
 };

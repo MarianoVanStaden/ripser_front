@@ -1,65 +1,80 @@
-import api from '../config';
-import type { ReclamoGarantia } from '../../types';
+import api from '../api';
 
+// ==================== TYPES ====================
+export interface ReclamoGarantiaDTO {
+  id: number;
+  garantia: {
+    id: number;
+    numeroSerie: string;
+    producto?: {
+      id: number;
+      nombre: string;
+    };
+  };
+  numeroReclamo: string;
+  fechaReclamo: string; // LocalDateTime
+  descripcionProblema: string;
+  tipoSolucion?: 'REPARACION_LOCAL' | 'REPARACION_REMOTA' | 'REEMPLAZO';
+  estado: 'PENDIENTE' | 'EN_PROCESO' | 'RESUELTO' | 'RECHAZADO';
+  solucionAplicada?: string;
+  fechaResolucion?: string; // LocalDateTime
+  costoSolucion?: number; // BigDecimal
+  tecnico?: {
+    id: number;
+    nombre: string;
+    apellido: string;
+  };
+}
+
+export interface ReclamoGarantiaCreateDTO {
+  garantiaId: number;
+  descripcionProblema: string;
+  tipoSolucion?: 'REPARACION_LOCAL' | 'REPARACION_REMOTA' | 'REEMPLAZO';
+}
+
+export interface ReclamoGarantiaUpdateDTO {
+  descripcionProblema?: string;
+  tipoSolucion?: 'REPARACION_LOCAL' | 'REPARACION_REMOTA' | 'REEMPLAZO';
+  estado?: 'PENDIENTE' | 'EN_PROCESO' | 'RESUELTO' | 'RECHAZADO';
+  solucionAplicada?: string;
+  costoSolucion?: number;
+  tecnicoId?: number;
+}
+
+// ==================== RECLAMOS API ====================
 export const reclamoGarantiaApi = {
-  // Get all reclamos
-  getAll: async (): Promise<ReclamoGarantia[]> => {
+  // GET /api/reclamos-garantia
+  findAll: async (): Promise<ReclamoGarantiaDTO[]> => {
     const response = await api.get('/api/reclamos-garantia');
     return response.data;
   },
 
-  // Get reclamo by ID
-  getById: async (id: number): Promise<ReclamoGarantia> => {
+  // GET /api/reclamos-garantia/{id}
+  findById: async (id: number): Promise<ReclamoGarantiaDTO> => {
     const response = await api.get(`/api/reclamos-garantia/${id}`);
     return response.data;
   },
 
-  // Get reclamos by garantia
-  getByGarantia: async (garantiaId: number): Promise<ReclamoGarantia[]> => {
+  // POST /api/reclamos-garantia
+  create: async (data: ReclamoGarantiaCreateDTO): Promise<ReclamoGarantiaDTO> => {
+    const response = await api.post('/api/reclamos-garantia', data);
+    return response.data;
+  },
+
+  // PUT /api/reclamos-garantia/{id}
+  update: async (id: number, data: ReclamoGarantiaUpdateDTO): Promise<ReclamoGarantiaDTO> => {
+    const response = await api.put(`/api/reclamos-garantia/${id}`, data);
+    return response.data;
+  },
+
+  // DELETE /api/reclamos-garantia/{id}
+  deleteById: async (id: number): Promise<void> => {
+    await api.delete(`/api/reclamos-garantia/${id}`);
+  },
+
+  // GET /api/reclamos-garantia/garantia/{garantiaId}
+  findByGarantiaId: async (garantiaId: number): Promise<ReclamoGarantiaDTO[]> => {
     const response = await api.get(`/api/reclamos-garantia/garantia/${garantiaId}`);
     return response.data;
   },
-
-  // Get reclamos by estado
-  getByEstado: async (estado: string): Promise<ReclamoGarantia[]> => {
-    const response = await api.get(`/api/reclamos-garantia/estado/${estado}`);
-    return response.data;
-  },
-
-  // Get reclamos by tecnico
-  getByTecnico: async (tecnicoId: number): Promise<ReclamoGarantia[]> => {
-    const response = await api.get(`/api/reclamos-garantia/tecnico/${tecnicoId}`);
-    return response.data;
-  },
-
-  // Get reclamos by tipo solucion
-  getByTipoSolucion: async (tipoSolucion: string): Promise<ReclamoGarantia[]> => {
-    const response = await api.get(`/api/reclamos-garantia/tipo-solucion/${tipoSolucion}`);
-    return response.data;
-  },
-
-  // Get reclamos by periodo
-  getByPeriodo: async (fechaInicio: string, fechaFin: string): Promise<ReclamoGarantia[]> => {
-    const response = await api.get('/api/reclamos-garantia/periodo', {
-      params: { fechaInicio, fechaFin }
-    });
-    return response.data;
-  },
-
-  // Create new reclamo
-  create: async (reclamo: ReclamoGarantia): Promise<ReclamoGarantia> => {
-    const response = await api.post('/api/reclamos-garantia', reclamo);
-    return response.data;
-  },
-
-  // Update reclamo
-  update: async (id: number, reclamo: ReclamoGarantia): Promise<ReclamoGarantia> => {
-    const response = await api.put(`/api/reclamos-garantia/${id}`, reclamo);
-    return response.data;
-  },
-
-  // Delete reclamo
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/reclamos-garantia/${id}`);
-  }
 };

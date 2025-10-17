@@ -90,36 +90,36 @@ export const warehouseApi = {
 export const vehicleApi = {
   // Get all vehicles
   getAll: async (): Promise<Vehicle[]> => {
-    const response = await api.get('/api/vehicles');
+    const response = await api.get('/vehiculos');
     return response.data;
   },
 
   // Get vehicle by ID
   getById: async (id: number): Promise<Vehicle> => {
-    const response = await api.get(`/api/vehicles/${id}`);
+    const response = await api.get(`/vehiculos/${id}`);
     return response.data;
   },
 
   // Create new vehicle
   create: async (vehicle: CreateVehicleRequest): Promise<Vehicle> => {
-    const response = await api.post('/api/vehicles', vehicle);
+    const response = await api.post('/vehiculos', vehicle);
     return response.data;
   },
 
   // Update vehicle
   update: async (id: number, vehicle: Partial<CreateVehicleRequest>): Promise<Vehicle> => {
-    const response = await api.put(`/api/vehicles/${id}`, vehicle);
+    const response = await api.put(`/vehiculos/${id}`, vehicle);
     return response.data;
   },
 
   // Delete vehicle
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/vehicles/${id}`);
+    await api.delete(`/vehiculos/${id}`);
   },
 
-  // Get available vehicles
-  getAvailable: async (): Promise<Vehicle[]> => {
-    const response = await api.get('/api/vehicles/available');
+  // Get vehicles by estado
+  getByEstado: async (estado: string): Promise<Vehicle[]> => {
+    const response = await api.get(`/vehiculos/estado/${estado}`);
     return response.data;
   }
 };
@@ -127,42 +127,48 @@ export const vehicleApi = {
 export const tripApi = {
   // Get all trips
   getAll: async (): Promise<Trip[]> => {
-    const response = await api.get('/api/trips');
+    const response = await api.get('/viajes');
     return response.data;
   },
 
   // Get trip by ID
   getById: async (id: number): Promise<Trip> => {
-    const response = await api.get(`/api/trips/${id}`);
+    const response = await api.get(`/viajes/${id}`);
     return response.data;
   },
 
   // Create new trip
   create: async (trip: CreateTripRequest): Promise<Trip> => {
-    const response = await api.post('/api/trips', trip);
+    const response = await api.post('/viajes', trip);
     return response.data;
   },
 
   // Update trip
   update: async (id: number, trip: Partial<CreateTripRequest>): Promise<Trip> => {
-    const response = await api.put(`/api/trips/${id}`, trip);
+    const response = await api.put(`/viajes/${id}`, trip);
     return response.data;
   },
 
   // Delete trip
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/api/trips/${id}`);
+    await api.delete(`/viajes/${id}`);
   },
 
-  // Get trips by vehicle
-  getByVehicle: async (vehicleId: number): Promise<Trip[]> => {
-    const response = await api.get(`/api/trips/vehicle/${vehicleId}`);
+  // Get trips by driver (conductor)
+  getByDriver: async (conductorId: number): Promise<Trip[]> => {
+    const response = await api.get(`/viajes/conductor/${conductorId}`);
     return response.data;
   },
 
-  // Get trips by date
-  getByDate: async (date: string): Promise<Trip[]> => {
-    const response = await api.get(`/api/trips/date/${date}`);
+  // Get trips by vehicle (vehiculo)
+  getByVehicle: async (vehiculoId: number): Promise<Trip[]> => {
+    const response = await api.get(`/viajes/vehiculo/${vehiculoId}`);
+    return response.data;
+  },
+
+  // Update trip status (estado)
+  updateStatus: async (id: number, estado: string): Promise<Trip> => {
+    const response = await api.patch(`/viajes/${id}/estado?estado=${estado}`);
     return response.data;
   }
 };

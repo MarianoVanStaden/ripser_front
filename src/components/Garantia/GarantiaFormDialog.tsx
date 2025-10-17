@@ -24,7 +24,6 @@ import { saleApi } from "../../api/services/saleApi"; // agregar import
 
 interface GarantiaFormDialogProps {
   open: boolean;
-  garantia: Garantia | null;
   onClose: () => void;
   onSave: (garantia: Garantia) => Promise<void>;
 }
@@ -374,6 +373,12 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
         {form.id ? "Editar Garantía" : "Nueva Garantía"}
       </DialogTitle>
       <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
         <Stack spacing={2} mt={1}>
           {/* Autocomplete Cliente */}
           <Autocomplete
@@ -508,11 +513,12 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
 
           {/* Select de Estado (con chequeo defensivo de mapeo) */}
           <TextField
-            select
-            label="Estado"
-            name="estado"
-            value={form.estado}
+            label="Fecha de Vencimiento *"
+            name="fechaVencimiento"
+            type="date"
+            value={form.fechaVencimiento}
             onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
             fullWidth
           >
             {(estados || []).map((option) => (
@@ -531,6 +537,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             fullWidth
             multiline
             rows={3}
+            placeholder="Ingrese observaciones adicionales..."
           />
 
           {/* INPUT PARA VENTA (ventaId) */}

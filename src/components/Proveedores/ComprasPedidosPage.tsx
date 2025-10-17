@@ -814,7 +814,22 @@ const handleDeleteCompra = async (id: number) => {
   getOptionLabel={(option) =>
     typeof option === 'string' ? option : option.nombre || ''
   }
-  value={item.nombreProductoTemporal || productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''}
+  getOptionKey={(option) =>
+    typeof option === 'string' ? option : option.id.toString()
+  }
+  isOptionEqualToValue={(option, value) =>
+    typeof option === 'object' && typeof value === 'object' && option.id === value.id
+  }
+  value={
+    item.productoId
+      ? productos.find((p) => p.id.toString() === item.productoId) || null
+      : null
+  }
+  inputValue={
+    item.productoId
+      ? productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''
+      : item.nombreProductoTemporal || ''
+  }
   onChange={(_, newValue) => {
     const updatedItems = [...newOrden.items];
     if (typeof newValue === 'string') {
@@ -830,7 +845,7 @@ const handleDeleteCompra = async (id: number) => {
       updatedItems[index] = {
         ...updatedItems[index],
         productoId: newValue.id.toString(),
-        nombreProductoTemporal: '',
+        nombreProductoTemporal: newValue.nombre,
         descripcionProductoTemporal: newValue.nombre,
         esProductoNuevo: false,
         precioUnitario: newValue.precio || updatedItems[index].precioUnitario || 0, // Use product price or preserve existing

@@ -188,8 +188,18 @@ const CuentaCorrientePage: React.FC = () => {
   });
 
   const getSaldoTotal = () => {
-    // Use the saldoActual from the selected client object for the most up-to-date balance
-    return selectedCliente?.saldoActual ?? 0;
+    // Calculate saldo from all movements: Total Debitos - Total Creditos
+    // DEBITO = Cliente debe dinero (aumenta deuda)
+    // CREDITO = Cliente paga (disminuye deuda)
+    const totalDebitos = movimientos
+      .filter(m => m.tipo === 'DEBITO')
+      .reduce((sum, m) => sum + m.importe, 0);
+    
+    const totalCreditos = movimientos
+      .filter(m => m.tipo === 'CREDITO')
+      .reduce((sum, m) => sum + m.importe, 0);
+    
+    return totalDebitos - totalCreditos;
   };
 
   const getTotalDebitos = () => {
@@ -253,8 +263,11 @@ const CuentaCorrientePage: React.FC = () => {
                 <AccountBalanceIcon color="primary" sx={{ mr: 1 }} />
                 <Typography variant="h6">Saldo Actual</Typography>
               </Box>
-              <Typography variant="h4" color={getSaldoTotal() >= 0 ? 'success.main' : 'error.main'}>
-                ${getSaldoTotal().toLocaleString()}
+              <Typography variant="h4" color={getSaldoTotal() > 0 ? 'error.main' : 'success.main'}>
+                ${Math.abs(getSaldoTotal()).toLocaleString()}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {getSaldoTotal() > 0 ? 'Deuda del cliente' : getSaldoTotal() < 0 ? 'A favor del cliente' : 'Sin deuda'}
               </Typography>
             </CardContent>
           </Card>
@@ -413,9 +426,10 @@ const CuentaCorrientePage: React.FC = () => {
                 value={newMovimiento.tipo}
                 onChange={(e) => setNewMovimiento({ ...newMovimiento, tipo: e.target.value as TipoMovimiento })}
                 margin="normal"
+                helperText="Débito: Cliente debe (ej: venta). Crédito: Cliente paga (ej: pago recibido)"
               >
-                <MenuItem value="DEBITO">Débito (+)</MenuItem>
-                <MenuItem value="CREDITO">Crédito (-)</MenuItem>
+                <MenuItem value="DEBITO">Débito - Cliente debe (+)</MenuItem>
+                <MenuItem value="CREDITO">Crédito - Cliente paga (-)</MenuItem>
               </TextField>
 
               <TextField
