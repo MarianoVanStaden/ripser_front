@@ -22,6 +22,7 @@ import {
   Chip,
   IconButton,
   InputAdornment,
+  Snackbar,
 } from '@mui/material';
 import {
   Check as CheckIcon,
@@ -40,7 +41,14 @@ const RecountTasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<RecountTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [resultMessage, setResultMessage] = useState<{ title: string; content: string; severity: 'success' | 'warning' | 'error' }>({
+    title: '',
+    content: '',
+    severity: 'success'
+  });
   const [selectedTask, setSelectedTask] = useState<RecountTask | null>(null);
   const [countedQuantity, setCountedQuantity] = useState<string>('');
 
@@ -74,7 +82,7 @@ const RecountTasksPage: React.FC = () => {
 
   const handleCompleteRecount = async () => {
     if (!selectedTask || !countedQuantity) {
-      alert('Por favor ingresa la cantidad contada');
+      setError('Por favor ingresa la cantidad contada');
       return;
     }
 
@@ -83,46 +91,51 @@ const RecountTasksPage: React.FC = () => {
       setError(null);
 
       const cantidad = parseInt(countedQuantity);
-      
+
       if (isNaN(cantidad) || cantidad < 0) {
-        alert('Por favor ingresa una cantidad válida (número entero positivo)');
+        setError('Por favor ingresa una cantidad válida (número entero positivo)');
+        setLoading(false);
         return;
       }
 
       console.log(`Completing recount for task ${selectedTask.id} with quantity ${cantidad}`);
-      
+
       // Call backend API to complete the recount
       await movimientoStockApi.completarRecuento(selectedTask.id!, cantidad);
-      
+
       setCompleteDialogOpen(false);
-      setSelectedTask(null);
-      setCountedQuantity('');
-      
-      // Show success message
+
+      // Show success message with details
       const difference = cantidad - (selectedTask.stockAnterior || 0);
-      let message: string;
+      const productName = getProductName(selectedTask);
 
       if (difference === 0) {
-        message = '✅ Recuento completado. No hay diferencias.';
+        setResultMessage({
+          title: 'Recuento Completado',
+          content: `El producto "${productName}" tiene el stock correcto. No se detectaron diferencias.`,
+          severity: 'success'
+        });
       } else if (difference > 0) {
-        message = `✅ Recuento completado.\n\n` +
-          `Stock esperado: ${selectedTask.stockAnterior}\n` +
-          `Stock real: ${cantidad}\n` +
-          `Diferencia: +${difference} unidades (SOBRANTE)\n\n` +
-          `Se ha creado automáticamente un ajuste de ENTRADA.`;
+        setResultMessage({
+          title: 'Recuento Completado - Sobrante Detectado',
+          content: `Producto: ${productName}\n\nStock esperado: ${selectedTask.stockAnterior}\nStock real: ${cantidad}\nDiferencia: +${difference} unidades (SOBRANTE)\n\nSe ha creado automáticamente un ajuste de inventario tipo ENTRADA.`,
+          severity: 'warning'
+        });
       } else {
-        message = `✅ Recuento completado.\n\n` +
-          `Stock esperado: ${selectedTask.stockAnterior}\n` +
-          `Stock real: ${cantidad}\n` +
-          `Diferencia: ${difference} unidades (FALTANTE)\n\n` +
-          `Se ha creado automáticamente un ajuste de SALIDA.`;
+        setResultMessage({
+          title: 'Recuento Completado - Faltante Detectado',
+          content: `Producto: ${productName}\n\nStock esperado: ${selectedTask.stockAnterior}\nStock real: ${cantidad}\nDiferencia: ${difference} unidades (FALTANTE)\n\nSe ha creado automáticamente un ajuste de inventario tipo SALIDA.`,
+          severity: 'warning'
+        });
       }
 
-      alert(message);
-      
+      setResultDialogOpen(true);
+      setSelectedTask(null);
+      setCountedQuantity('');
+
       // Reload pending recounts
       await loadPendingRecounts();
-      
+
     } catch (err) {
       setError('Error al completar el recuento');
       console.error('Error completing recount:', err);
@@ -182,6 +195,12 @@ const RecountTasksPage: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
+          {success}
         </Alert>
       )}
 
@@ -368,6 +387,33 @@ const RecountTasksPage: React.FC = () => {
             disabled={!countedQuantity || loading}
           >
             {loading ? <CircularProgress size={24} /> : 'Completar Recuento'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Result Dialog */}
+      <Dialog
+        open={resultDialogOpen}
+        onClose={() => setResultDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {resultMessage.title}
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity={resultMessage.severity} sx={{ mt: 1 }}>
+            {resultMessage.content.split('\n').map((line, index) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < resultMessage.content.split('\n').length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResultDialogOpen(false)} variant="contained">
+            Entendido
           </Button>
         </DialogActions>
       </Dialog>

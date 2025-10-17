@@ -354,14 +354,43 @@ const StockPage: React.FC = () => {
                         <TableCell>{movement.productoNombre || 'N/A'}</TableCell>
                         <TableCell>
                           <Chip
-                            label={movement.tipo === 'ENTRADA' ? 'Entrada' : movement.tipo === 'SALIDA' ? 'Salida' : 'Ajuste'}
-                            color={movement.tipo === 'ENTRADA' ? 'success' : movement.tipo === 'SALIDA' ? 'error' : 'info'}
+                            label={
+                              movement.tipo === 'ENTRADA' ? 'Entrada' :
+                              movement.tipo === 'SALIDA' ? 'Salida' :
+                              movement.tipo === 'SALIDA_FABRICACION' ? 'Salida Fab.' :
+                              movement.tipo === 'REINGRESO_CANCELACION_FABRICACION' ? 'Reingreso' :
+                              movement.tipo === 'RECUENTO' ? 'Recuento' :
+                              'Ajuste'
+                            }
+                            color={
+                              movement.tipo === 'ENTRADA' || movement.tipo === 'REINGRESO_CANCELACION_FABRICACION' ? 'success' :
+                              movement.tipo === 'SALIDA' || movement.tipo === 'SALIDA_FABRICACION' ? 'error' :
+                              'info'
+                            }
                             size="small"
                           />
                         </TableCell>
                         <TableCell align="center">
-                          <Typography fontWeight="bold">
-                            {movement.tipo === 'ENTRADA' ? '+' : '-'}{movement.cantidad}
+                          <Typography
+                            fontWeight="bold"
+                            color={
+                              movement.tipo === 'ENTRADA' ||
+                              movement.tipo === 'REINGRESO_CANCELACION_FABRICACION' ||
+                              (movement.tipo === 'AJUSTE' && movement.cantidad > 0)
+                                ? 'success.main'
+                                : movement.tipo === 'SALIDA' ||
+                                  movement.tipo === 'SALIDA_FABRICACION' ||
+                                  (movement.tipo === 'AJUSTE' && movement.cantidad < 0)
+                                ? 'error.main'
+                                : 'text.primary'
+                            }
+                          >
+                            {movement.tipo === 'AJUSTE'
+                              ? (movement.cantidad >= 0 ? '+' : '') + movement.cantidad
+                              : movement.tipo === 'ENTRADA' || movement.tipo === 'REINGRESO_CANCELACION_FABRICACION'
+                              ? '+' + Math.abs(movement.cantidad)
+                              : '-' + Math.abs(movement.cantidad)
+                            }
                           </Typography>
                         </TableCell>
                         <TableCell>{movement.concepto}</TableCell>

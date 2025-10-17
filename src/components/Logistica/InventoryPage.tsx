@@ -44,7 +44,12 @@ const InventoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [recountDialogOpen, setRecountDialogOpen] = useState(false);
-  
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<{ title: string; content: string }>({
+    title: '',
+    content: ''
+  });
+
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [adjustmentFilter, setAdjustmentFilter] = useState<'all' | 'pending' | 'approved'>('all');
@@ -243,17 +248,14 @@ const InventoryPage: React.FC = () => {
       console.log('Recount initiated:', response);
       
       setRecountDialogOpen(false);
-      
+
       // Show detailed success message
-      alert(
-        `✅ Recuento iniciado exitosamente\n\n` +
-        `• Total de productos: ${response.totalProductos}\n` +
-        `• Categoría: ${response.categoriaSeleccionada}\n` +
-        `• Fecha: ${new Date(response.fechaInicio).toLocaleString()}\n\n` +
-        `Los movimientos de recuento han sido creados. ` +
-        `Dirígete a la página de "Tareas de Recuento" para completar el conteo físico.`
-      );
-      
+      setSuccessMessage({
+        title: 'Recuento Iniciado Exitosamente',
+        content: `• Total de productos: ${response.totalProductos}\n• Categoría: ${response.categoriaSeleccionada}\n• Fecha: ${new Date(response.fechaInicio).toLocaleString()}\n\nLos movimientos de recuento han sido creados. Dirígete a la página de "Tareas de Recuento" para completar el conteo físico.`
+      });
+      setSuccessDialogOpen(true);
+
       // Reload data to show new recount movements
       await loadData();
       
@@ -667,6 +669,33 @@ const InventoryPage: React.FC = () => {
           <Button onClick={() => setRecountDialogOpen(false)}>Cancelar</Button>
           <Button onClick={handleSaveRecount} variant="contained">
             Iniciar Recuento
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success Result Dialog */}
+      <Dialog
+        open={successDialogOpen}
+        onClose={() => setSuccessDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {successMessage.title}
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="success" sx={{ mt: 1 }}>
+            {successMessage.content.split('\n').map((line, index) => (
+              <React.Fragment key={index}>
+                {line}
+                {index < successMessage.content.split('\n').length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSuccessDialogOpen(false)} variant="contained">
+            Entendido
           </Button>
         </DialogActions>
       </Dialog>

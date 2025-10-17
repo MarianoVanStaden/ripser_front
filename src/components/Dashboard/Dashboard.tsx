@@ -349,7 +349,7 @@ const Dashboard: React.FC = () => {
               }}
             >
               <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.05rem', sm: '1.1rem' } }}>
-                Recent Activity
+                Actividad Reciente
               </Typography>
               <RecentActivity />
             </Paper>
@@ -365,7 +365,7 @@ const Dashboard: React.FC = () => {
               }}
             >
               <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.05rem', sm: '1.1rem' } }}>
-                Quick Actions
+                Acciones Rapidas
               </Typography>
               <QuickActions />
             </Paper>

@@ -103,18 +103,35 @@ const ClienteFormPage: React.FC = () => {
       setError('El nombre es obligatorio');
       return;
     }
+    if (formData.tipo === 'PERSONA_FISICA' && !formData.apellido.trim()) {
+      setError('El apellido es obligatorio para personas físicas');
+      return;
+    }
     if (formData.tipo === 'PERSONA_JURIDICA' && !formData.razonSocial.trim()) {
       setError('La razón social es obligatoria para personas jurídicas');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('El email es obligatorio');
       return;
     }
 
     try {
       setLoading(true);
+
+      // Prepare data for submission
+      const submitData = { ...formData };
+
+      // For PERSONA_JURIDICA, ensure apellido is empty or set a default if needed
+      if (submitData.tipo === 'PERSONA_JURIDICA' && !submitData.apellido) {
+        submitData.apellido = '';
+      }
+
       if (isEdit && id) {
-        await clienteApi.update(Number(id), formData);
+        await clienteApi.update(Number(id), submitData);
         setSuccess('Cliente actualizado exitosamente');
       } else {
-        await clienteApi.create(formData);
+        await clienteApi.create(submitData);
         setSuccess('Cliente creado exitosamente');
         setFormData({
           nombre: '',
@@ -133,8 +150,19 @@ const ClienteFormPage: React.FC = () => {
           calificacion: 0,
         });
       }
-    } catch {
-      setError('Error al guardar el cliente');
+    } catch (err: any) {
+      // Display backend validation errors if available
+      if (err?.response?.data) {
+        const errorData = err.response.data;
+        if (typeof errorData === 'object') {
+          const errorMessages = Object.values(errorData).join(', ');
+          setError(errorMessages || 'Error al guardar el cliente');
+        } else {
+          setError(errorData || 'Error al guardar el cliente');
+        }
+      } else {
+        setError('Error al guardar el cliente');
+      }
     } finally {
       setLoading(false);
     }
@@ -211,6 +239,7 @@ const ClienteFormPage: React.FC = () => {
                     value={formData.nombre}
                     onChange={handleFormChange}
                     name="nombre"
+                    required
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -221,6 +250,7 @@ const ClienteFormPage: React.FC = () => {
                     value={formData.apellido}
                     onChange={handleFormChange}
                     name="apellido"
+                    required
                   />
                 </Grid>
               </>
@@ -234,6 +264,7 @@ const ClienteFormPage: React.FC = () => {
                     value={formData.razonSocial}
                     onChange={handleFormChange}
                     name="razonSocial"
+                    required
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -244,6 +275,7 @@ const ClienteFormPage: React.FC = () => {
                     value={formData.nombre}
                     onChange={handleFormChange}
                     name="nombre"
+                    required
                   />
                 </Grid>
               </>
@@ -272,6 +304,7 @@ const ClienteFormPage: React.FC = () => {
                 value={formData.email}
                 onChange={handleFormChange}
                 name="email"
+                required
               />
             </Grid>
             <Grid item xs={12} md={6}>
