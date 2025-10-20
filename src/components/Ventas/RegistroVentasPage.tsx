@@ -384,13 +384,13 @@ const RegistroVentasPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <ReceiptIcon />
           Registro de Ventas
         </Typography>
-        <Box display="flex" gap={1}>
+        <Box display="flex" gap={1} flexWrap="wrap">
           <Button
             variant="outlined"
             startIcon={<GetAppIcon />}
@@ -416,9 +416,9 @@ const RegistroVentasPage: React.FC = () => {
 
       {/* Summary Cards */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <AttachMoneyIcon color="primary" />
                 <Box>
@@ -431,9 +431,9 @@ const RegistroVentasPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <ShoppingCartIcon color="success" />
                 <Box>
@@ -446,9 +446,9 @@ const RegistroVentasPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <TrendingUpIcon color="warning" />
                 <Box>
@@ -573,19 +573,19 @@ const RegistroVentasPage: React.FC = () => {
 
       {/* Sales Table */}
       <Card>
-        <CardContent>
-          <TableContainer>
-            <Table>
+        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Vendedor</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Total</TableCell>
-                  <TableCell>Método de Pago</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>ID</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Fecha</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Vendedor</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Total</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Método de Pago</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 180 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

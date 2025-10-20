@@ -110,6 +110,7 @@ export interface CreateClienteRequest {
   tipo: TipoCliente;
   estado: EstadoCliente;
   limiteCredito: number;
+  calificacion?: number;
 }
 
 // Create Contact Request

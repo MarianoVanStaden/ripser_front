@@ -624,8 +624,8 @@ const PresupuestosPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Presupuestos
         </Typography>
@@ -719,20 +719,20 @@ const PresupuestosPage: React.FC = () => {
       </Card>
 
       <Card>
-        <CardContent>
-          <TableContainer component={Paper}>
-            <Table aria-label="Tabla de presupuestos">
+        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table aria-label="Tabla de presupuestos" sx={{ minWidth: { xs: 800, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell width="100px">Número</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell width="120px">Fecha</TableCell>
-                  <TableCell width="100px">Estado</TableCell>
-                  <TableCell width="120px" align="right">Subtotal</TableCell>
-                  <TableCell width="120px" align="right">IVA</TableCell>
-                  <TableCell width="120px" align="right">Total</TableCell>
-                  <TableCell width="200px">Financiamiento</TableCell>
-                  <TableCell width="150px">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Número</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Fecha</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell sx={{ minWidth: 120 }} align="right">Subtotal</TableCell>
+                  <TableCell sx={{ minWidth: 120 }} align="right">IVA</TableCell>
+                  <TableCell sx={{ minWidth: 120 }} align="right">Total</TableCell>
+                  <TableCell sx={{ minWidth: 160 }}>Financiamiento</TableCell>
+                  <TableCell sx={{ minWidth: 200 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -837,14 +837,21 @@ const PresupuestosPage: React.FC = () => {
         onClose={handleCloseDialog}
         maxWidth="lg"
         fullWidth
+        fullScreen={false}
         aria-labelledby="presupuesto-dialog-title"
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
       >
         <DialogTitle id="presupuesto-dialog-title">
           {editingPresupuesto ? (readOnly ? "Ver Presupuesto" : "Editar Presupuesto") : "Nuevo Presupuesto"}
         </DialogTitle>
-        <DialogContent sx={{ minHeight: "500px" }}>
+        <DialogContent sx={{ minHeight: { xs: "auto", sm: "500px" } }}>
           <Box sx={{ pt: 2 }}>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(auto-fit, minmax(300px, 1fr))" }, gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(auto-fit, minmax(280px, 1fr))" }, gap: 2 }}>
               <TextField
                 fullWidth
                 select
@@ -966,16 +973,16 @@ const PresupuestosPage: React.FC = () => {
               </Alert>
             )}
 
-            <TableContainer component={Paper} sx={{ mb: 2 }}>
-              <Table size="small" aria-label="Tabla de detalles del presupuesto">
+            <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto' }}>
+              <Table size="small" aria-label="Tabla de detalles del presupuesto" sx={{ minWidth: { xs: 600, sm: 'auto' } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell width="200px">Producto</TableCell>
-                    <TableCell>Descripción</TableCell>
-                    <TableCell width="100px">Cantidad</TableCell>
-                    <TableCell width="120px">Precio Unit.</TableCell>
-                    <TableCell width="120px">Subtotal</TableCell>
-                    {!readOnly && !editingPresupuesto && <TableCell width="60px">Acciones</TableCell>}
+                    <TableCell sx={{ minWidth: 200 }}>Producto</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Cantidad</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Precio Unit.</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Subtotal</TableCell>
+                    {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 80 }}>Acciones</TableCell>}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1209,6 +1216,12 @@ const PresupuestosPage: React.FC = () => {
         onClose={() => setFinanciamientoDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
       >
         <DialogTitle>
           <Typography variant="h6">Opciones de Financiamiento</Typography>
@@ -1232,15 +1245,15 @@ const PresupuestosPage: React.FC = () => {
               {opcionesFinanciamiento.map((opcion) => (
                 <Box key={opcion.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
                   <FormControlLabel value={opcion.id} control={<Radio />} label={
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                         {getMetodoPagoIcon(opcion.metodoPago)}
                         <Typography variant="subtitle1">{opcion.nombre}</Typography>
                         {opcion.tasaInteres < 0 && (
                           <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
                         )}
                       </Box>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 1 }}>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
                         <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
                         <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
                         <Typography variant="body2">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>

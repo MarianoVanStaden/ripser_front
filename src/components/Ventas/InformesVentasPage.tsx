@@ -661,13 +661,13 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <BarChartIcon />
           Informe de Ventas
         </Typography>
-        <Box display="flex" gap={1}>
+        <Box display="flex" gap={1} flexWrap="wrap">
           <Button
             variant="outlined"
             startIcon={<GetAppIcon />}
@@ -756,9 +756,9 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
       </Card>
 
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <AttachMoneyIcon color="primary" />
                 <Box>
@@ -771,9 +771,9 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <ShoppingCartIcon color="success" />
                 <Box>
@@ -786,9 +786,9 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <TrendingUpIcon color="warning" />
                 <Box>
@@ -921,14 +921,14 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
             {chartType === 'pie' && <Pie data={chartData} options={chartOptions} />}
             {chartType === 'line' && <Line data={chartData} options={chartOptions} />}
           </Box>
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>{groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}</TableCell>
-                  <TableCell align="right">Cantidad de Ventas</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell align="right">Porcentaje</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>{groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 120 }}>Cantidad de Ventas</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 120 }}>Total</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 100 }}>Porcentaje</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -955,22 +955,22 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
       </Card>
 
       <Card>
-        <CardContent>
+        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
           <Typography variant="h6" gutterBottom>
             Detalle de Ventas ({filteredSales.length})
           </Typography>
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Vendedor</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Total</TableCell>
-                  <TableCell>Método de Pago</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 80 }}>ID</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Fecha</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Vendedor</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Total</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Método de Pago</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 100 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

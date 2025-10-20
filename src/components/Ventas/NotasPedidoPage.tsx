@@ -289,8 +289,8 @@ const NotasPedidoPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Notas de Pedido
         </Typography>
@@ -384,19 +384,19 @@ const NotasPedidoPage: React.FC = () => {
       </Card>
 
       <Card>
-        <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
+        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Número</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Fecha Emisión</TableCell>
-                  <TableCell>Fecha Vencimiento</TableCell>
-                  <TableCell>Método de Pago</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Número</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Fecha Emisión</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Fecha Vencimiento</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Método de Pago</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 120 }}>Total</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -487,6 +487,12 @@ const NotasPedidoPage: React.FC = () => {
         onClose={handleCloseConvertDialog}
         maxWidth="md"
         fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
       >
         <DialogTitle>Convertir Presupuesto a Nota de Pedido</DialogTitle>
         <DialogContent>
@@ -598,6 +604,12 @@ const NotasPedidoPage: React.FC = () => {
         onClose={handleCloseViewDialog}
         maxWidth="md"
         fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
       >
         <DialogTitle>
           Nota de Pedido {selectedNota?.numeroDocumento}
@@ -605,7 +617,7 @@ const NotasPedidoPage: React.FC = () => {
         <DialogContent>
           {selectedNota && (
             <Box sx={{ pt: 2 }}>
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mb: 3 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, mb: 3 }}>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">
                     Cliente
@@ -678,15 +690,15 @@ const NotasPedidoPage: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Detalles
               </Typography>
-              <TableContainer component={Paper}>
-                <Table size="small">
+              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Producto</TableCell>
-                      <TableCell>Descripción</TableCell>
-                      <TableCell align="center">Cantidad</TableCell>
-                      <TableCell align="right">Precio Unit.</TableCell>
-                      <TableCell align="right">Subtotal</TableCell>
+                      <TableCell sx={{ minWidth: 120 }}>Producto</TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 80 }}>Cantidad</TableCell>
+                      <TableCell align="right" sx={{ minWidth: 100 }}>Precio Unit.</TableCell>
+                      <TableCell align="right" sx={{ minWidth: 100 }}>Subtotal</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>

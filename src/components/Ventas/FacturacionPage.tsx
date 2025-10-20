@@ -602,16 +602,16 @@ const FacturacionPage = () => {
     onRemove: (index: number) => void;
     editable?: boolean;
   }) => (
-    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
-      <Table stickyHeader size="small" sx={{ minWidth: 900 }}>
+    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto', width: '100%', maxWidth: '100%' }}>
+      <Table stickyHeader size="small" sx={{ minWidth: { xs: 700, md: 900 }, width: '100%' }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ minWidth: 220 }}>Producto</TableCell>
-            <TableCell align="center" sx={{ minWidth: 120 }}>Cantidad</TableCell>
-            <TableCell align="right" sx={{ minWidth: 160 }}>Precio Unit.</TableCell>
-            <TableCell align="right" sx={{ minWidth: 120 }}>Desc. %</TableCell>
-            <TableCell align="right" sx={{ minWidth: 160 }}>Subtotal</TableCell>
-            {editable && <TableCell align="center" sx={{ minWidth: 120 }}>Acciones</TableCell>}
+            <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto</TableCell>
+            <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Cantidad</TableCell>
+            <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Precio Unit.</TableCell>
+            <TableCell align="right" sx={{ minWidth: { xs: 90, md: 120 } }}>Desc. %</TableCell>
+            <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Subtotal</TableCell>
+            {editable && <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Acciones</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -707,14 +707,14 @@ const FacturacionPage = () => {
   }
 
   return (
-    <Box p={3} maxWidth="xl" mx="auto">
+    <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', maxWidth: '100%', mx: 0 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <ReceiptIcon />
           Sistema de Facturación
         </Typography>
-        <Button 
-          variant="outlined" 
+        <Button
+          variant="outlined"
           startIcon={<RefreshIcon />}
           onClick={loadData}
           disabled={loading}
@@ -742,15 +742,15 @@ const FacturacionPage = () => {
 
       {/* Tab 0: Manual Invoice */}
       {activeTab === 0 && (
-        <Box>
-          <Card>
-            <CardContent>
+        <Box sx={{ width: '100%', maxWidth: '100%' }}>
+          <Card sx={{ width: '100%' }}>
+            <CardContent sx={{ width: '100%', boxSizing: 'border-box' }}>
               <Typography variant="h6" gutterBottom>
                 Nueva Factura Manual
               </Typography>
               <Divider sx={{ mb: 3 }} />
-              
-              <Grid container spacing={3}>
+
+              <Grid container spacing={3} sx={{ width: '100%' }}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth required>
                     <InputLabel>Cliente</InputLabel>
@@ -845,7 +845,7 @@ const FacturacionPage = () => {
                 </Grid>
               </Grid>
 
-              <Box mt={3}>
+              <Box mt={3} sx={{ width: '100%' }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                   <Typography variant="h6">Productos</Typography>
                   <Button
@@ -865,7 +865,7 @@ const FacturacionPage = () => {
                     onRemove={removeItemFromCart}
                   />
                 ) : (
-                  <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Paper sx={{ p: 3, textAlign: 'center', width: '100%' }}>
                     <Typography color="text.secondary">
                       No hay productos en el carrito
                     </Typography>
@@ -874,9 +874,9 @@ const FacturacionPage = () => {
               </Box>
 
               {cart.length > 0 && (
-                <Box mt={3}>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                    <Grid container spacing={2}>
+                <Box mt={3} sx={{ width: '100%' }}>
+                  <Paper sx={{ p: 2, bgcolor: 'grey.50', width: '100%' }}>
+                    <Grid container spacing={2} sx={{ width: '100%' }}>
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">
                           Subtotal:
@@ -903,7 +903,7 @@ const FacturacionPage = () => {
                 </Box>
               )}
 
-              <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
+              <Box mt={3} display="flex" justifyContent="flex-end" gap={2} sx={{ width: '100%' }}>
                 <Button
                   variant="outlined"
                   startIcon={<ClearIcon />}
@@ -935,7 +935,7 @@ const FacturacionPage = () => {
 
       {/* Tab 1: From Nota de Pedido */}
       {activeTab === 1 && (
-        <Box>
+        <Box sx={{ width: '100%', maxWidth: '100%' }}>
           {notasPedido.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -948,7 +948,7 @@ const FacturacionPage = () => {
           ) : (
             <Grid container spacing={3}>
               {notasPedido.map((nota) => (
-                <Grid item xs={12} md={6} lg={4} key={nota.id}>
+                <Grid item xs={12} sm={6} md={6} lg={4} xl={3} key={nota.id}>
                   <Card>
                     <CardContent>
                       <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
@@ -1019,7 +1019,18 @@ const FacturacionPage = () => {
       )}
 
       {/* Convert Dialog */}
-      <Dialog open={convertDialogOpen} onClose={handleCloseConvertDialog} maxWidth="lg" fullWidth>
+      <Dialog
+        open={convertDialogOpen}
+        onClose={handleCloseConvertDialog}
+        maxWidth="lg"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
+      >
         <DialogTitle>
           Convertir Nota de Pedido a Factura
         </DialogTitle>
@@ -1028,7 +1039,7 @@ const FacturacionPage = () => {
             <>
               <Box mb={3}>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
+                  <Grid item xs={12} sm={6} md={6}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Cliente:
                     </Typography>

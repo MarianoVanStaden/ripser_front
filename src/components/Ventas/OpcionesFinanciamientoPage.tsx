@@ -387,13 +387,13 @@ const OpcionesFinanciamientoPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <PaymentIcon />
           Opciones de Financiamiento
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
@@ -485,19 +485,19 @@ const OpcionesFinanciamientoPage: React.FC = () => {
             Configure las opciones de financiamiento que se mostrarán a los clientes en los presupuestos y facturas.
           </Typography>
 
-          <TableContainer component={Paper} variant="outlined">
-            <Table>
+          <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Nombre</TableCell>
-                  <TableCell>Método de Pago</TableCell>
-                  <TableCell align="center">Cuotas</TableCell>
-                  <TableCell align="right">Tasa (%)</TableCell>
-                  <TableCell align="right">Monto Total</TableCell>
-                  <TableCell align="right">Monto/Cuota</TableCell>
-                  <TableCell align="center">Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 80 }}>Orden</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Nombre</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Método de Pago</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 80 }}>Cuotas</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 100 }}>Tasa (%)</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 120 }}>Monto Total</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 120 }}>Monto/Cuota</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 120 }}>Estado</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 120 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -589,7 +589,18 @@ const OpcionesFinanciamientoPage: React.FC = () => {
       </Card>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
+      >
         <DialogTitle>
           {editingOpcion ? 'Editar Opción de Financiamiento' : 'Nueva Opción de Financiamiento'}
         </DialogTitle>

@@ -272,10 +272,21 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="lg"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
+      >
         <DialogTitle>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="h5">Gestionar Opciones de Financiamiento</Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+            <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>Gestionar Opciones de Financiamiento</Typography>
             <Typography variant="body1" color="text.secondary">
               Monto base: {formatCurrency(montoBase)}
             </Typography>
@@ -311,17 +322,17 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 </Button>
               </Box>
 
-              <TableContainer component={Paper}>
-                <Table>
+              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Método</TableCell>
-                      <TableCell align="center">Cuotas</TableCell>
-                      <TableCell align="center">Interés (%)</TableCell>
-                      <TableCell align="right">Valor Cuota</TableCell>
-                      <TableCell align="right">Total</TableCell>
-                      <TableCell align="center">Acciones</TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>Nombre</TableCell>
+                      <TableCell sx={{ minWidth: 120 }}>Método</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 80 }}>Cuotas</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 100 }}>Interés (%)</TableCell>
+                      <TableCell align="right" sx={{ minWidth: 120 }}>Valor Cuota</TableCell>
+                      <TableCell align="right" sx={{ minWidth: 120 }}>Total</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 120 }}>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -406,7 +417,18 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
       </Dialog>
 
       {/* Dialog para crear/editar opción */}
-      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 }
+          }
+        }}
+      >
         <DialogTitle>
           {editingOpcion ? "Editar" : "Nueva"} Opción de Financiamiento
         </DialogTitle>
