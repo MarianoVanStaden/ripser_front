@@ -10,19 +10,19 @@ interface GarantiaFormDialogProps {
   open: boolean;
   onClose: () => void;
   onSave: () => void;
-  productos: any[];
+  equipos: any[];
   ventas: any[];
 }
 
-const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({ 
-  open, 
-  onClose, 
+const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
+  open,
+  onClose,
   onSave,
-  productos,
+  equipos,
   ventas
 }) => {
   const [form, setForm] = useState<GarantiaCreateDTO>({
-    productoId: 0,
+    equipoFabricadoId: 0,
     ventaId: 0,
     numeroSerie: '',
     fechaCompra: dayjs().format('YYYY-MM-DD'),
@@ -30,8 +30,8 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     estado: 'VIGENTE',
     observaciones: '',
   });
-  
-  const [selectedProducto, setSelectedProducto] = useState<any>(null);
+
+  const [selectedEquipo, setSelectedEquipo] = useState<any>(null);
   const [selectedVenta, setSelectedVenta] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     if (!open) {
       // Reset form when dialog closes
       setForm({
-        productoId: 0,
+        equipoFabricadoId: 0,
         ventaId: 0,
         numeroSerie: '',
         fechaCompra: dayjs().format('YYYY-MM-DD'),
@@ -48,7 +48,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
         estado: 'VIGENTE',
         observaciones: '',
       });
-      setSelectedProducto(null);
+      setSelectedEquipo(null);
       setSelectedVenta(null);
       setError(null);
     }
@@ -60,8 +60,8 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
 
   const handleSave = async () => {
     // Validation
-    if (!selectedProducto) {
-      setError('Debe seleccionar un producto');
+    if (!selectedEquipo) {
+      setError('Debe seleccionar un equipo fabricado');
       return;
     }
     if (!selectedVenta) {
@@ -84,7 +84,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
       setError('Debe seleccionar un estado');
       return;
     }
-    
+
     if (dayjs(form.fechaVencimiento).isBefore(dayjs(form.fechaCompra))) {
       setError('La fecha de vencimiento debe ser posterior a la fecha de compra');
       return;
@@ -93,13 +93,13 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       const dataToSend: GarantiaCreateDTO = {
         ...form,
-        productoId: selectedProducto.id,
+        equipoFabricadoId: selectedEquipo.id,
         ventaId: selectedVenta.id,
       };
-      
+
       await garantiaApi.create(dataToSend);
       onSave();
     } catch (err: any) {
@@ -122,12 +122,24 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
         
         <Stack spacing={2} mt={1}>
           <Autocomplete
-            options={Array.isArray(productos) ? productos : []}
-            getOptionLabel={(option) => option?.nombre || ''}
-            value={selectedProducto}
-            onChange={(_, newValue) => setSelectedProducto(newValue)}
+            options={Array.isArray(equipos) ? equipos : []}
+            getOptionLabel={(option) => {
+              if (!option) return '';
+              return `${option.modelo} - ${option.numeroHeladera}${option.tipo ? ` (${option.tipo})` : ''}`;
+            }}
+            value={selectedEquipo}
+            onChange={(_, newValue) => {
+              setSelectedEquipo(newValue);
+              // Auto-fill numero de serie with numeroHeladera
+              if (newValue && newValue.numeroHeladera) {
+                setForm(prev => ({
+                  ...prev,
+                  numeroSerie: newValue.numeroHeladera
+                }));
+              }
+            }}
             renderInput={(params) => (
-              <TextField {...params} label="Producto *" required />
+              <TextField {...params} label="Equipo Fabricado *" required />
             )}
             isOptionEqualToValue={(option, value) => option?.id === value?.id}
           />

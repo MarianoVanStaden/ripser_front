@@ -16,22 +16,22 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { garantiaApi, type GarantiaDTO } from '../../api/services/garantiaApi';
-import { productApi } from '../../api/services/productApi';
+import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import { documentoApi } from '../../api/documentoApi';
 import GarantiaFormDialog from './GarantiaFormDialog';
 import GarantiaDetailPage from './GarantiaDetailPage';
 
 const GarantiasPage: React.FC = () => {
   const [garantias, setGarantias] = useState<GarantiaDTO[]>([]);
-  const [productos, setProductos] = useState<any[]>([]);
+  const [equipos, setEquipos] = useState<any[]>([]);
   const [facturas, setFacturas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
-  const [productoFilter, setProductoFilter] = useState<any>(null);
+  const [equipoFilter, setEquipoFilter] = useState<any>(null);
   
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
@@ -47,14 +47,14 @@ const GarantiasPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Load data with error handling for each request
-      const [garantiasData, productosData, facturasData] = await Promise.allSettled([
+      const [garantiasData, equiposData, facturasData] = await Promise.allSettled([
         garantiaApi.findAll(),
-        productApi.getAll(),
+        equipoFabricadoApi.findAll(0, 1000), // Load all equipos
         documentoApi.getByTipo('FACTURA')
       ]);
-      
+
       // Handle garantias
       if (garantiasData.status === 'fulfilled') {
         setGarantias(Array.isArray(garantiasData.value) ? garantiasData.value : []);
@@ -62,14 +62,15 @@ const GarantiasPage: React.FC = () => {
         console.error('Error loading garantias:', garantiasData.reason);
         setError('Error al cargar las garantías: ' + (garantiasData.reason?.response?.data?.message || garantiasData.reason?.message || 'Error desconocido'));
       }
-      
-      // Handle productos
-      if (productosData.status === 'fulfilled') {
-        setProductos(Array.isArray(productosData.value) ? productosData.value : []);
+
+      // Handle equipos fabricados
+      if (equiposData.status === 'fulfilled') {
+        const equiposContent = equiposData.value?.content || equiposData.value || [];
+        setEquipos(Array.isArray(equiposContent) ? equiposContent : []);
       } else {
-        console.error('Error loading productos:', productosData.reason);
+        console.error('Error loading equipos:', equiposData.reason);
       }
-      
+
       // Handle facturas
       if (facturasData.status === 'fulfilled') {
         setFacturas(Array.isArray(facturasData.value) ? facturasData.value : []);
@@ -98,15 +99,14 @@ const GarantiasPage: React.FC = () => {
 
   // Filter garantias
   const filteredGarantias = garantias.filter(g => {
-    const matchSearch = search === '' || 
-      g.producto.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      g.numeroSerie.toLowerCase().includes(search.toLowerCase()) ||
-      g.venta.numeroComprobante?.toLowerCase().includes(search.toLowerCase());
-    
+    const matchSearch = search === '' ||
+      g.equipoFabricadoModelo.toLowerCase().includes(search.toLowerCase()) ||
+      g.numeroSerie.toLowerCase().includes(search.toLowerCase());
+
     const matchEstado = estadoFilter === 'TODOS' || g.estado === estadoFilter;
-    const matchProducto = !productoFilter || g.producto.id === productoFilter.id;
-    
-    return matchSearch && matchEstado && matchProducto;
+    const matchEquipo = !equipoFilter || g.equipoFabricadoId === equipoFilter.id;
+
+    return matchSearch && matchEstado && matchEquipo;
   });
 
   // Get status color
@@ -233,7 +233,7 @@ const GarantiasPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Buscar por producto, serie o venta"
+                label="Buscar por modelo, serie"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 InputProps={{
@@ -245,7 +245,7 @@ const GarantiasPage: React.FC = () => {
                 }}
               />
             </Grid>
-            
+
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
@@ -264,11 +264,11 @@ const GarantiasPage: React.FC = () => {
 
             <Grid item xs={12} md={3}>
               <Autocomplete
-                options={productos}
-                getOptionLabel={(option) => option.nombre}
-                value={productoFilter}
-                onChange={(_, newValue) => setProductoFilter(newValue)}
-                renderInput={(params) => <TextField {...params} label="Producto" />}
+                options={equipos}
+                getOptionLabel={(option) => `${option.modelo} - ${option.numeroHeladera}`}
+                value={equipoFilter}
+                onChange={(_, newValue) => setEquipoFilter(newValue)}
+                renderInput={(params) => <TextField {...params} label="Equipo" />}
               />
             </Grid>
 
@@ -288,37 +288,37 @@ const GarantiasPage: React.FC = () => {
           </Grid>
 
           {/* Active Filters */}
-          {(estadoFilter !== 'TODOS' || productoFilter || search) && (
+          {(estadoFilter !== 'TODOS' || equipoFilter || search) && (
             <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
               {search && (
-                <Chip 
-                  label={`Búsqueda: "${search}"`} 
-                  onDelete={() => setSearch('')} 
+                <Chip
+                  label={`Búsqueda: "${search}"`}
+                  onDelete={() => setSearch('')}
                   size="small"
                 />
               )}
               {estadoFilter !== 'TODOS' && (
-                <Chip 
-                  label={`Estado: ${estadoFilter}`} 
-                  onDelete={() => setEstadoFilter('TODOS')} 
+                <Chip
+                  label={`Estado: ${estadoFilter}`}
+                  onDelete={() => setEstadoFilter('TODOS')}
                   size="small"
                   color="primary"
                 />
               )}
-              {productoFilter && (
-                <Chip 
-                  label={`Producto: ${productoFilter.nombre}`} 
-                  onDelete={() => setProductoFilter(null)} 
+              {equipoFilter && (
+                <Chip
+                  label={`Equipo: ${equipoFilter.modelo}`}
+                  onDelete={() => setEquipoFilter(null)}
                   size="small"
                   color="secondary"
                 />
               )}
-              <Button 
-                size="small" 
+              <Button
+                size="small"
                 onClick={() => {
                   setSearch('');
                   setEstadoFilter('TODOS');
-                  setProductoFilter(null);
+                  setEquipoFilter(null);
                 }}
               >
                 Limpiar Filtros
@@ -334,7 +334,7 @@ const GarantiasPage: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell><strong>N° Serie</strong></TableCell>
-              <TableCell><strong>Producto</strong></TableCell>
+              <TableCell><strong>Modelo de Equipo</strong></TableCell>
               <TableCell><strong>N° Venta</strong></TableCell>
               <TableCell align="center"><strong>Fecha Compra</strong></TableCell>
               <TableCell align="center"><strong>Fecha Vencimiento</strong></TableCell>
@@ -359,9 +359,9 @@ const GarantiasPage: React.FC = () => {
                       {garantia.numeroSerie}
                     </Typography>
                   </TableCell>
-                  <TableCell>{garantia.producto?.nombre || 'Sin producto'}</TableCell>
+                  <TableCell>{garantia.equipoFabricadoModelo || 'Sin equipo'}</TableCell>
                   <TableCell>
-                    {garantia.venta?.numeroComprobante || `#${garantia.venta?.id || ''}`}
+                    {garantia.ventaId ? `#${garantia.ventaId}` : '-'}
                   </TableCell>
                   <TableCell align="center">
                     {dayjs(garantia.fechaCompra).format('DD/MM/YYYY')}
@@ -434,7 +434,7 @@ const GarantiasPage: React.FC = () => {
           setSelectedGarantia(null);
           loadData();
         }}
-        productos={productos}
+        equipos={equipos}
         ventas={facturas}
       />
 

@@ -144,19 +144,19 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                   
                   <Box>
                     <Typography variant="caption" color="textSecondary">
-                      Producto
+                      Modelo de Equipo
                     </Typography>
                     <Typography variant="body1" fontWeight="500">
-                      {garantia.producto?.nombre || 'Sin producto'}
+                      {garantia.equipoFabricadoModelo || 'Sin equipo'}
                     </Typography>
                   </Box>
-                  
+
                   <Box>
                     <Typography variant="caption" color="textSecondary">
                       Número de Venta
                     </Typography>
                     <Typography variant="body1" fontWeight="500">
-                      {garantia.venta?.numeroComprobante || `#${garantia.venta?.id || ''}`}
+                      {garantia.ventaId ? `#${garantia.ventaId}` : '-'}
                     </Typography>
                   </Box>
                   
@@ -375,6 +375,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
         open={reclamoFormOpen}
         garantiaId={garantia.id}
         reclamo={selectedReclamo}
+        garantias={[garantia]}
         onClose={() => {
           setReclamoFormOpen(false);
           setSelectedReclamo(null);

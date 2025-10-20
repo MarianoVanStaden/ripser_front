@@ -6,10 +6,8 @@ export interface ReclamoGarantiaDTO {
   garantia: {
     id: number;
     numeroSerie: string;
-    producto?: {
-      id: number;
-      nombre: string;
-    };
+    equipoFabricadoId?: number;
+    equipoFabricadoModelo?: string;
   };
   numeroReclamo: string;
   fechaReclamo: string; // LocalDateTime

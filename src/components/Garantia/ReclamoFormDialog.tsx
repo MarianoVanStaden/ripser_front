@@ -1,30 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, 
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
   MenuItem, Stack, Alert, CircularProgress, Autocomplete, InputAdornment
 } from '@mui/material';
-import { 
-  reclamoGarantiaApi, 
+import {
+  reclamoGarantiaApi,
   type ReclamoGarantiaDTO,
   type ReclamoGarantiaCreateDTO,
   type ReclamoGarantiaUpdateDTO
 } from '../../api/services/reclamoGarantiaApi';
 import { employeeApi } from '../../api/services/employeeApi';
+import { garantiaApi, type GarantiaDTO } from '../../api/services/garantiaApi';
 
 interface ReclamoFormDialogProps {
   open: boolean;
-  garantiaId: number;
+  garantiaId?: number;
   reclamo: ReclamoGarantiaDTO | null;
   onClose: () => void;
   onSave: () => void;
+  garantias?: GarantiaDTO[];
 }
 
-const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({ 
-  open, 
+const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
+  open,
   garantiaId,
   reclamo,
-  onClose, 
-  onSave
+  onClose,
+  onSave,
+  garantias = []
 }) => {
   const [form, setForm] = useState({
     descripcionProblema: '',
@@ -34,16 +37,17 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
     costoSolucion: '',
     tecnicoId: 0,
   });
-  
+
   const [empleados, setEmpleados] = useState<any[]>([]);
   const [selectedTecnico, setSelectedTecnico] = useState<any>(null);
+  const [selectedGarantia, setSelectedGarantia] = useState<GarantiaDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       loadEmpleados();
-      
+
       if (reclamo) {
         setForm({
           descripcionProblema: reclamo.descripcionProblema,
@@ -54,11 +58,19 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
           tecnicoId: reclamo.tecnico?.id || 0,
         });
         setSelectedTecnico(reclamo.tecnico || null);
+        // Set selected garantia from the reclamo
+        const garantia = garantias.find(g => g.id === reclamo.garantia.id);
+        setSelectedGarantia(garantia || null);
       } else {
         resetForm();
+        // If garantiaId is provided, find and select that garantia
+        if (garantiaId) {
+          const garantia = garantias.find(g => g.id === garantiaId);
+          setSelectedGarantia(garantia || null);
+        }
       }
     }
-  }, [open, reclamo]);
+  }, [open, reclamo, garantiaId, garantias]);
 
   const loadEmpleados = async () => {
     try {
@@ -79,6 +91,7 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
       tecnicoId: 0,
     });
     setSelectedTecnico(null);
+    setSelectedGarantia(null);
     setError(null);
   };
 
@@ -93,10 +106,15 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
       return;
     }
 
+    if (!reclamo && !selectedGarantia) {
+      setError('Debe seleccionar una garantía');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      
+
       if (reclamo) {
         // Update existing reclamo
         const updateData: ReclamoGarantiaUpdateDTO = {
@@ -107,19 +125,19 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
           costoSolucion: form.costoSolucion ? parseFloat(form.costoSolucion) : undefined,
           tecnicoId: selectedTecnico?.id || undefined,
         };
-        
+
         await reclamoGarantiaApi.update(reclamo.id, updateData);
       } else {
         // Create new reclamo
         const createData: ReclamoGarantiaCreateDTO = {
-          garantiaId: garantiaId,
+          garantiaId: selectedGarantia!.id,
           descripcionProblema: form.descripcionProblema,
           tipoSolucion: form.tipoSolucion || undefined,
         };
-        
+
         await reclamoGarantiaApi.create(createData);
       }
-      
+
       onSave();
     } catch (err: any) {
       console.error('Error saving reclamo:', err);
@@ -142,6 +160,21 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
         )}
         
         <Stack spacing={2} mt={1}>
+          {!reclamo && (
+            <Autocomplete
+              options={garantias}
+              getOptionLabel={(option) =>
+                `${option.numeroSerie} - ${option.equipoFabricadoModelo || 'Sin modelo'}`
+              }
+              value={selectedGarantia}
+              onChange={(_, newValue) => setSelectedGarantia(newValue)}
+              renderInput={(params) => (
+                <TextField {...params} label="Garantía *" required />
+              )}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+            />
+          )}
+
           <TextField
             label="Descripción del Problema *"
             name="descripcionProblema"

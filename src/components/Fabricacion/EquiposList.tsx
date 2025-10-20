@@ -51,8 +51,11 @@ const EquiposList: React.FC = () => {
 
   useEffect(() => {
     loadEquipos();
+  }, [page, pageSize, tipoFilter, estadoFilter]);
+
+  useEffect(() => {
     loadClientes();
-  }, [page, pageSize]);
+  }, []);
 
   const loadEquipos = async () => {
     try {
@@ -410,9 +413,6 @@ const EquiposList: React.FC = () => {
             <MenuItem value="COMPLETADO">Completado</MenuItem>
             <MenuItem value="CANCELADO">Cancelado</MenuItem>
           </TextField>
-          <Button variant="outlined" onClick={loadEquipos}>
-            Aplicar Filtros
-          </Button>
         </Stack>
 
         <Box sx={{ height: 600, width: '100%' }}>

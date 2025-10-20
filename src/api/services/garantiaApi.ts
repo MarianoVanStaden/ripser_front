@@ -3,23 +3,19 @@ import api from '../api';
 // ==================== TYPES ====================
 export interface GarantiaDTO {
   id: number;
-  producto: {
-    id: number;
-    nombre: string;
-  };
-  venta: {
-    id: number;
-    numeroComprobante?: string;
-  };
+  equipoFabricadoId: number;
+  equipoFabricadoModelo: string;
+  ventaId: number;
   numeroSerie: string;
   fechaCompra: string; // LocalDate
   fechaVencimiento: string; // LocalDate
   estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
   observaciones?: string;
+  reclamos?: any[];
 }
 
 export interface GarantiaCreateDTO {
-  productoId: number;
+  equipoFabricadoId: number;
   ventaId: number;
   numeroSerie: string;
   fechaCompra: string;
@@ -54,9 +50,9 @@ export const garantiaApi = {
     return response.data;
   },
 
-  // GET /api/garantias/producto/{productoId}
-  findByProductoId: async (productoId: number): Promise<GarantiaDTO[]> => {
-    const response = await api.get(`/api/garantias/producto/${productoId}`);
+  // GET /api/garantias/equipo-fabricado/{equipoFabricadoId}
+  findByEquipoFabricadoId: async (equipoFabricadoId: number): Promise<GarantiaDTO[]> => {
+    const response = await api.get(`/api/garantias/equipo-fabricado/${equipoFabricadoId}`);
     return response.data;
   },
 

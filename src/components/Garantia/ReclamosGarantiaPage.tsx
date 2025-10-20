@@ -64,15 +64,15 @@ const ReclamosGarantiaPage: React.FC = () => {
 
   // Filter reclamos
   const filteredReclamos = reclamos.filter(r => {
-    const matchSearch = search === '' || 
+    const matchSearch = search === '' ||
       r.numeroReclamo.toLowerCase().includes(search.toLowerCase()) ||
       r.descripcionProblema.toLowerCase().includes(search.toLowerCase()) ||
       r.garantia.numeroSerie.toLowerCase().includes(search.toLowerCase()) ||
-      r.garantia.producto?.nombre.toLowerCase().includes(search.toLowerCase());
-    
+      (r.garantia.equipoFabricadoModelo?.toLowerCase().includes(search.toLowerCase()) || false);
+
     const matchEstado = estadoFilter === 'TODOS' || r.estado === estadoFilter;
     const matchGarantia = !garantiaFilter || r.garantia.id === garantiaFilter.id;
-    
+
     return matchSearch && matchEstado && matchGarantia;
   });
 
@@ -110,9 +110,21 @@ const ReclamosGarantiaPage: React.FC = () => {
 
   return (
     <Box p={3}>
-      <Typography variant="h4" mb={3} fontWeight="bold">
-        Reclamos de Garantía
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" fontWeight="bold">
+          Reclamos de Garantía
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setSelectedReclamo(null);
+            setFormOpen(true);
+          }}
+        >
+          Nuevo Reclamo
+        </Button>
+      </Stack>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -202,7 +214,7 @@ const ReclamosGarantiaPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Buscar por número, problema o producto"
+                label="Buscar por número, problema o modelo de equipo"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 InputProps={{
@@ -235,8 +247,8 @@ const ReclamosGarantiaPage: React.FC = () => {
             <Grid item xs={12} md={3}>
               <Autocomplete
                 options={garantias}
-                getOptionLabel={(option) => 
-                  `${option.numeroSerie} - ${option.producto.nombre}`
+                getOptionLabel={(option) =>
+                  `${option.numeroSerie} - ${option.equipoFabricadoModelo || 'Sin modelo'}`
                 }
                 value={garantiaFilter}
                 onChange={(_, newValue) => setGarantiaFilter(newValue)}
@@ -298,7 +310,7 @@ const ReclamosGarantiaPage: React.FC = () => {
               <TableCell><strong>N° Reclamo</strong></TableCell>
               <TableCell><strong>Fecha</strong></TableCell>
               <TableCell><strong>Garantía</strong></TableCell>
-              <TableCell><strong>Producto</strong></TableCell>
+              <TableCell><strong>Modelo de Equipo</strong></TableCell>
               <TableCell><strong>Problema</strong></TableCell>
               <TableCell><strong>Tipo Solución</strong></TableCell>
               <TableCell align="center"><strong>Estado</strong></TableCell>
@@ -337,7 +349,7 @@ const ReclamosGarantiaPage: React.FC = () => {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {reclamo.garantia.producto?.nombre || '-'}
+                    {reclamo.garantia.equipoFabricadoModelo || '-'}
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" noWrap sx={{ maxWidth: 250 }}>
@@ -381,22 +393,21 @@ const ReclamosGarantiaPage: React.FC = () => {
       </TableContainer>
 
       {/* Reclamo Dialog */}
-      {selectedReclamo && (
-        <ReclamoFormDialog
-          open={formOpen}
-          garantiaId={selectedReclamo.garantia.id}
-          reclamo={selectedReclamo}
-          onClose={() => {
-            setFormOpen(false);
-            setSelectedReclamo(null);
-          }}
-          onSave={() => {
-            setFormOpen(false);
-            setSelectedReclamo(null);
-            loadData();
-          }}
-        />
-      )}
+      <ReclamoFormDialog
+        open={formOpen}
+        garantiaId={selectedReclamo?.garantia.id}
+        reclamo={selectedReclamo}
+        garantias={garantias}
+        onClose={() => {
+          setFormOpen(false);
+          setSelectedReclamo(null);
+        }}
+        onSave={() => {
+          setFormOpen(false);
+          setSelectedReclamo(null);
+          loadData();
+        }}
+      />
     </Box>
   );
 };
