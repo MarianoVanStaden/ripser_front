@@ -18,7 +18,8 @@
       "Bash(dir C:Usersmariaripser_backsrcmainjavacomripser_back)",
       "Bash(npm install:*)",
       "Bash(npm run dev)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(cmd //c \"taskkill /PID 23344 /F\")"
     ],
     "deny": [],
     "ask": []

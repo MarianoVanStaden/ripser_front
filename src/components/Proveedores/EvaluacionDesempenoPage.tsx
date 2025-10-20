@@ -29,89 +29,76 @@ import {
   Alert,
   Divider,
   Stack,
+  CircularProgress,
+  Grid,
+  
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   StarRate as StarRateIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
+  
+  TrendingUp,
+  TrendingDown,
 } from '@mui/icons-material';
 import { supplierApiWithFallback } from '../../api/services/apiWithFallback';
-import type { Supplier } from '../../types';
+import evaluacionProveedorApi, { CriterioEvaluacion } from '../../api/services/evaluacionProveedorApi';
+import type {
+  EvaluacionProveedorDTO,
+  EvaluacionCreateDTO,
+  EstadisticasEvaluacionDTO,
+} from '../../api/services/evaluacionProveedorApi';
+import type { ProveedorDTO } from '../../types';
 
-interface SupplierEvaluation {
-  id: string;
-  supplierId: string;
-  evaluationDate: string;
-  evaluatedBy: string;
-  qualityRating: number;
-  deliveryRating: number;
-  communicationRating: number;
-  pricingRating: number;
-  serviceRating: number;
-  overallRating: number;
-  strengths: string[];
-  improvements: string[];
-  comments: string;
-}
 
 const EvaluacionDesempenoPage = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
+  const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
   const [tabValue, setTabValue] = useState(0);
-  const [evaluations, setEvaluations] = useState<SupplierEvaluation[]>([]);
+  const [evaluaciones, setEvaluaciones] = useState<EvaluacionProveedorDTO[]>([]);
+  const [estadisticas, setEstadisticas] = useState<EstadisticasEvaluacionDTO | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [currentEvaluation, setCurrentEvaluation] = useState<SupplierEvaluation | null>(null);
+  const [formData, setFormData] = useState<EvaluacionCreateDTO>({
+    proveedorId: 0,
+    calificacion: 0,
+    comentario: '',
+    criterio: CriterioEvaluacion.CALIDAD,
+    evaluadoPor: '',
+  });
+  const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Mock data
-  const mockEvaluations: SupplierEvaluation[] = [
-    {
-      id: '1',
-      supplierId: '1',
-      evaluationDate: '2024-01-15',
-      evaluatedBy: 'Ana García',
-      qualityRating: 4.5,
-      deliveryRating: 4.0,
-      communicationRating: 4.2,
-      pricingRating: 3.8,
-      serviceRating: 4.3,
-      overallRating: 4.1,
-      strengths: ['Productos de alta calidad', 'Comunicación efectiva'],
-      improvements: ['Mejorar precios competitivos'],
-      comments: 'Proveedor confiable con productos de calidad consistente.',
-    },
-    {
-      id: '2',
-      supplierId: '2',
-      evaluationDate: '2024-01-20',
-      evaluatedBy: 'Carlos Ruiz',
-      qualityRating: 3.5,
-      deliveryRating: 3.2,
-      communicationRating: 3.8,
-      pricingRating: 4.5,
-      serviceRating: 3.6,
-      overallRating: 3.7,
-      strengths: ['Precios competitivos'],
-      improvements: ['Mejorar calidad del producto'],
-      comments: 'Buen proveedor para productos básicos.',
+  // Helper to get evaluations for the selected supplier (typed)
+  const getSupplierEvaluations = (supplierId: number | ''): EvaluacionProveedorDTO[] => {
+    if (!supplierId) return [];
+    // Ensure evaluaciones is always an array
+    if (!Array.isArray(evaluaciones)) {
+      console.error('evaluaciones is not an array:', evaluaciones);
+      return [];
     }
-  ];
+    return evaluaciones.filter((e) => e.proveedorId === Number(supplierId));
+  };
 
   useEffect(() => {
     loadSuppliers();
-    setEvaluations(mockEvaluations);
   }, []);
+
+  useEffect(() => {
+    if (selectedSupplier) {
+      loadEvaluaciones();
+      loadEstadisticas();
+    }
+  }, [selectedSupplier]);
 
   const loadSuppliers = async () => {
     try {
       setLoading(true);
       const data = await supplierApiWithFallback.getAll();
-      setSuppliers(data);
+      console.log('Proveedores cargados:', data);
+      // API returns ProveedorDTO[]
+      setSuppliers(data as ProveedorDTO[]);
       if (data.length > 0) {
-        setSelectedSupplier(data[0].id?.toString() || '1');
+        setSelectedSupplier(data[0].id || '');
       }
     } catch (error) {
       console.error('Error loading suppliers:', error);
@@ -120,59 +107,79 @@ const EvaluacionDesempenoPage = () => {
     }
   };
 
-  const getSupplierEvaluations = (supplierId: string) => {
-    return evaluations.filter(evaluation => evaluation.supplierId === supplierId);
+  const loadEvaluaciones = async () => {
+    if (!selectedSupplier) return;
+    
+    try {
+      setLoading(true);
+      const data = await evaluacionProveedorApi.obtenerPorProveedor(Number(selectedSupplier));
+      console.log('Evaluaciones cargadas:', data);
+      // Ensure data is an array
+      setEvaluaciones(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error loading evaluaciones:', error);
+      setEvaluaciones([]);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const loadEstadisticas = async () => {
+    if (!selectedSupplier) return;
+    
+    try {
+      const data = await evaluacionProveedorApi.obtenerEstadisticas(Number(selectedSupplier));
+      setEstadisticas(data);
+    } catch (error) {
+      console.error('Error loading estadísticas:', error);
+      // Si no hay evaluaciones, las estadísticas pueden fallar
+      setEstadisticas(null);
+    }
+  };
+
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
   const handleNewEvaluation = () => {
-    setCurrentEvaluation({
-      id: '',
-      supplierId: selectedSupplier,
-      evaluationDate: new Date().toISOString().split('T')[0],
-      evaluatedBy: '',
-      qualityRating: 0,
-      deliveryRating: 0,
-      communicationRating: 0,
-      pricingRating: 0,
-      serviceRating: 0,
-      overallRating: 0,
-      strengths: [],
-      improvements: [],
-      comments: '',
+    setFormData({
+      proveedorId: Number(selectedSupplier),
+      calificacion: 0,
+      comentario: '',
+      criterio: CriterioEvaluacion.CALIDAD,
+      evaluadoPor: '',
     });
+    setEditingId(null);
     setDialogOpen(true);
   };
 
-  const handleSaveEvaluation = () => {
-    if (currentEvaluation) {
-      const overallRating = (
-        currentEvaluation.qualityRating +
-        currentEvaluation.deliveryRating +
-        currentEvaluation.communicationRating +
-        currentEvaluation.pricingRating +
-        currentEvaluation.serviceRating
-      ) / 5;
-
-      const updatedEvaluation = {
-        ...currentEvaluation,
-        overallRating,
-        id: currentEvaluation.id || Date.now().toString(),
-      };
-
-      if (currentEvaluation.id) {
-        setEvaluations(prev => prev.map(evaluation => 
-          evaluation.id === currentEvaluation.id ? updatedEvaluation : evaluation
-        ));
-      } else {
-        setEvaluations(prev => [...prev, updatedEvaluation]);
+  const handleSaveEvaluation = async () => {
+    try {
+      if (editingId) {
+        // La API no tiene endpoint de actualización, así que eliminamos y creamos
+        await evaluacionProveedorApi.eliminar(editingId);
       }
+      
+      await evaluacionProveedorApi.crear(formData);
+      
+      // Recargar evaluaciones y estadísticas
+      await loadEvaluaciones();
+      await loadEstadisticas();
+      
+      setDialogOpen(false);
+      setFormData({
+        proveedorId: Number(selectedSupplier),
+        calificacion: 0,
+        comentario: '',
+        criterio: CriterioEvaluacion.CALIDAD,
+        evaluadoPor: '',
+      });
+      setEditingId(null);
+    } catch (error) {
+      console.error('Error saving evaluation:', error);
+      alert('Error al guardar la evaluación');
     }
-    setDialogOpen(false);
-    setCurrentEvaluation(null);
   };
 
   const getRatingColor = (rating: number) => {
@@ -181,28 +188,36 @@ const EvaluacionDesempenoPage = () => {
     return 'error';
   };
 
-  const getRatingIcon = (rating: number) => {
-    if (rating >= 4) return <CheckCircleIcon color="success" />;
-    if (rating >= 3) return <WarningIcon color="warning" />;
-    return <ErrorIcon color="error" />;
-  };
 
   const renderOverviewTab = () => {
-    const supplierEvals = getSupplierEvaluations(selectedSupplier);
-    if (supplierEvals.length === 0) {
+    const supplierName = suppliers.find(s => s.id === selectedSupplier)?.razonSocial || 'este proveedor';
+    
+    if (loading) {
       return (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          No hay evaluaciones disponibles para este proveedor.
-        </Alert>
+        <Box display="flex" justifyContent="center" p={4}>
+          <CircularProgress />
+        </Box>
       );
     }
 
-    const avgRating = supplierEvals.reduce((sum, evaluation) => sum + evaluation.overallRating, 0) / supplierEvals.length;
+    if (evaluaciones.length === 0) {
+      return (
+        <Box>
+          <Alert severity="info" sx={{ mt: 2 }}>
+            No hay evaluaciones disponibles para <strong>{supplierName}</strong>.
+            <Button onClick={handleNewEvaluation} sx={{ ml: 1 }}>
+              Crear primera evaluación
+            </Button>
+          </Alert>
+        </Box>
+      );
+    }
 
     return (
       <Box>
-        <Box display="flex" flexWrap="wrap" gap={3}>
-          <Box sx={{ minWidth: 250, flex: '1 1 300px' }}>
+        <Grid container spacing={3}>
+          {/* Calificación General */}
+          <Grid item xs={12} md={6} lg={4}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" mb={2}>
@@ -211,54 +226,82 @@ const EvaluacionDesempenoPage = () => {
                 </Box>
                 <Box display="flex" alignItems="center" gap={2}>
                   <Typography variant="h3" color="primary">
-                    {avgRating.toFixed(1)}
+                    {estadisticas?.calificacionGeneral?.toFixed(2) || '0.00'}
                   </Typography>
-                  <Rating value={avgRating} precision={0.1} readOnly />
+                  <Rating value={estadisticas?.calificacionGeneral || 0} precision={0.1} readOnly max={5} />
                 </Box>
                 <Typography variant="body2" color="text.secondary" mt={1}>
-                  Basado en {supplierEvals.length} evaluación{supplierEvals.length !== 1 ? 'es' : ''}
+                  Basado en {estadisticas?.totalEvaluaciones || 0} evaluación{estadisticas?.totalEvaluaciones !== 1 ? 'es' : ''}
                 </Typography>
               </CardContent>
             </Card>
-          </Box>
+          </Grid>
 
-          <Box sx={{ minWidth: 400, flex: '2 1 500px' }}>
+          {/* Calificaciones por Criterio */}
+          <Grid item xs={12} md={6} lg={8}>
             <Card>
               <CardContent>
-                <Typography variant="h6" mb={2}>Métricas de Desempeño</Typography>
+                <Typography variant="h6" mb={2}>Métricas por Criterio</Typography>
                 <Stack spacing={2}>
-                  {supplierEvals.length > 0 && (
-                    [
-                      { label: 'Calidad', value: avgRating },
-                      { label: 'Entrega', value: avgRating },
-                      { label: 'Comunicación', value: avgRating },
-                      { label: 'Precios', value: avgRating },
-                      { label: 'Servicio', value: avgRating }
-                    ].map((metric) => (
-                      <Box key={metric.label}>
-                        <Box display="flex" justifyContent="space-between" mb={1}>
-                          <Typography variant="body2">{metric.label}</Typography>
-                          <Typography variant="body2" fontWeight="bold">
-                            {metric.value.toFixed(1)}/5
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={(metric.value / 5) * 100}
-                          color={getRatingColor(metric.value) as any}
-                          sx={{ height: 8, borderRadius: 1 }}
-                        />
+                  {estadisticas?.calificacionesPorCriterio && Object.entries(estadisticas.calificacionesPorCriterio).map(([criterio, calificacion]) => (
+                    <Box key={criterio}>
+                      <Box display="flex" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2">{criterio}</Typography>
+                        <Typography variant="body2" fontWeight="bold">
+                          {calificacion.toFixed(2)}/5.00
+                        </Typography>
                       </Box>
-                    ))
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={(calificacion / 5) * 100} 
+                        color={getRatingColor(calificacion)}
+                      />
+                    </Box>
+                  ))}
+                  {(!estadisticas?.calificacionesPorCriterio || Object.keys(estadisticas.calificacionesPorCriterio).length === 0) && (
+                    <Typography variant="body2" color="text.secondary" textAlign="center">
+                      No hay datos disponibles
+                    </Typography>
                   )}
                 </Stack>
               </CardContent>
             </Card>
-          </Box>
-        </Box>
+          </Grid>
+
+          {/* Rango de Calificaciones */}
+          <Grid item xs={12} md={6} lg={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" mb={2}>Rango de Calificaciones</Typography>
+                <Stack spacing={2}>
+                  <Box>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <TrendingUp color="success" />
+                      <Typography variant="body2">Máxima</Typography>
+                    </Box>
+                    <Typography variant="h5" color="success.main">
+                      {estadisticas?.calificacionMaxima?.toFixed(2) || '0.00'}
+                    </Typography>
+                  </Box>
+                  <Divider />
+                  <Box>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <TrendingDown color="error" />
+                      <Typography variant="body2">Mínima</Typography>
+                    </Box>
+                    <Typography variant="h5" color="error.main">
+                      {estadisticas?.calificacionMinima?.toFixed(2) || '0.00'}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </Box>
     );
   };
+                        
 
   const renderEvaluationsTab = () => {
     const supplierEvals = getSupplierEvaluations(selectedSupplier);
@@ -282,44 +325,36 @@ const EvaluacionDesempenoPage = () => {
               <TableRow>
                 <TableCell>Fecha</TableCell>
                 <TableCell>Evaluado por</TableCell>
-                <TableCell>Calidad</TableCell>
-                <TableCell>Entrega</TableCell>
-                <TableCell>General</TableCell>
+                <TableCell>Calificación</TableCell>
+                <TableCell>Criterio</TableCell>
+                <TableCell>Comentario</TableCell>
                 <TableCell>Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {supplierEvals.map((evaluation) => (
                 <TableRow key={evaluation.id}>
-                  <TableCell>
-                    {new Date(evaluation.evaluationDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>{evaluation.evaluatedBy}</TableCell>
-                  <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      {getRatingIcon(evaluation.qualityRating)}
-                      {evaluation.qualityRating.toFixed(1)}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      {getRatingIcon(evaluation.deliveryRating)}
-                      {evaluation.deliveryRating.toFixed(1)}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      {getRatingIcon(evaluation.overallRating)}
-                      <Typography fontWeight="bold">
-                        {evaluation.overallRating.toFixed(1)}
-                      </Typography>
-                    </Box>
-                  </TableCell>
+                    <TableCell>
+                      {new Date(evaluation.fechaEvaluacion).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>{evaluation.evaluadoPor}</TableCell>
+                    <TableCell>{evaluation.calificacion.toFixed(2)}</TableCell>
+                    <TableCell>{evaluation.criterio}</TableCell>
+                    <TableCell>
+                      <Typography fontWeight="bold">{evaluation.comentario || '-'}</Typography>
+                    </TableCell>
                   <TableCell>
                     <IconButton
                       size="small"
                       onClick={() => {
-                        setCurrentEvaluation(evaluation);
+                        setFormData({
+                          proveedorId: evaluation.proveedorId,
+                          calificacion: evaluation.calificacion,
+                          comentario: evaluation.comentario || '',
+                          criterio: evaluation.criterio,
+                          evaluadoPor: evaluation.evaluadoPor,
+                        });
+                        setEditingId(evaluation.id);
                         setDialogOpen(true);
                       }}
                     >
@@ -333,12 +368,14 @@ const EvaluacionDesempenoPage = () => {
         </TableContainer>
 
         {supplierEvals.length === 0 && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            No hay evaluaciones disponibles para este proveedor. 
-            <Button onClick={handleNewEvaluation} sx={{ ml: 1 }}>
-              Crear primera evaluación
-            </Button>
-          </Alert>
+          <Box>
+            <Alert severity="info" sx={{ mt: 2 }}>
+              No hay evaluaciones disponibles para este proveedor. 
+              <Button onClick={handleNewEvaluation} sx={{ ml: 1 }}>
+                Crear primera evaluación
+              </Button>
+            </Alert>
+          </Box>
         )}
       </Box>
     );
@@ -348,9 +385,9 @@ const EvaluacionDesempenoPage = () => {
     const supplierEvals = getSupplierEvaluations(selectedSupplier);
     
     const historyData = supplierEvals.map((evaluation, index) => ({
-      period: new Date(evaluation.evaluationDate).toLocaleDateString(),
-      overall: evaluation.overallRating,
-      trend: index > 0 ? evaluation.overallRating - supplierEvals[index - 1].overallRating : 0
+      period: new Date(evaluation.fechaEvaluacion).toLocaleDateString(),
+      overall: evaluation.calificacion,
+      trend: index > 0 ? evaluation.calificacion - supplierEvals[index - 1].calificacion : 0
     }));
 
     return (
@@ -421,25 +458,46 @@ const EvaluacionDesempenoPage = () => {
     <Box p={3}>
       <Typography variant="h4" mb={3}>Evaluación de Desempeño de Proveedores</Typography>
 
+      <Alert severity="success" sx={{ mb: 3 }}>
+        <Typography variant="body2">
+          <strong>✓ Módulo conectado al backend</strong> - Las evaluaciones se almacenan en la base de datos del servidor.
+        </Typography>
+      </Alert>
+
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
             <Box sx={{ minWidth: 300, flex: '1 1 auto' }}>
               <FormControl fullWidth>
-                <InputLabel>Seleccionar Proveedor</InputLabel>
+                <InputLabel id="supplier-select-label">Seleccionar Proveedor</InputLabel>
                 <Select
+                  labelId="supplier-select-label"
                   value={selectedSupplier}
-                  onChange={(e) => setSelectedSupplier(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value as string | number;
+                    setSelectedSupplier(val === '' ? '' : Number(val));
+                  }}
                   label="Seleccionar Proveedor"
                 >
-                  {suppliers.map((supplier) => (
-                    <MenuItem key={supplier.id} value={supplier.id?.toString() || ''}>
-                      {supplier.name}
+                  {suppliers.length === 0 ? (
+                    <MenuItem value="" disabled>
+                      No hay proveedores disponibles
                     </MenuItem>
-                  ))}
+                  ) : (
+                    suppliers.map((supplier) => (
+                      <MenuItem key={supplier.id} value={supplier.id || ''}>
+                        {supplier.razonSocial || 'Sin nombre'}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Box>
+            {suppliers.length > 0 && (
+              <Typography variant="body2" color="text.secondary">
+                Proveedor seleccionado: {suppliers.find(s => s.id === selectedSupplier)?.razonSocial || 'N/A'}
+              </Typography>
+            )}
           </Box>
         </CardContent>
       </Card>
@@ -462,85 +520,82 @@ const EvaluacionDesempenoPage = () => {
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          {currentEvaluation?.id ? 'Editar Evaluación' : 'Nueva Evaluación'}
+          {editingId ? 'Editar Evaluación' : 'Nueva Evaluación'}
         </DialogTitle>
         <DialogContent>
-          {currentEvaluation && (
-            <Box>
-              <Box display="flex" flexWrap="wrap" gap={2} sx={{ mt: 1 }}>
-                <Box sx={{ minWidth: 250, flex: '1 1 auto' }}>
-                  <TextField
-                    fullWidth
-                    label="Evaluado por"
-                    value={currentEvaluation.evaluatedBy}
-                    onChange={(e) => setCurrentEvaluation({
-                      ...currentEvaluation,
-                      evaluatedBy: e.target.value
-                    })}
-                  />
-                </Box>
-                <Box sx={{ minWidth: 250, flex: '1 1 auto' }}>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    label="Fecha de Evaluación"
-                    value={currentEvaluation.evaluationDate}
-                    onChange={(e) => setCurrentEvaluation({
-                      ...currentEvaluation,
-                      evaluationDate: e.target.value
-                    })}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Box>
-              </Box>
+          <Box sx={{ mt: 2 }}>
+            <Stack spacing={3}>
+              <TextField
+                fullWidth
+                label="Evaluado por"
+                value={formData.evaluadoPor}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  evaluadoPor: e.target.value
+                })}
+                required
+              />
 
-              <Typography variant="h6" mt={2} mb={2}>Calificaciones</Typography>
-              
-              <Box display="flex" flexWrap="wrap" gap={2}>
-                {[
-                  { key: 'qualityRating', label: 'Calidad' },
-                  { key: 'deliveryRating', label: 'Entrega' },
-                  { key: 'communicationRating', label: 'Comunicación' },
-                  { key: 'pricingRating', label: 'Precios' },
-                  { key: 'serviceRating', label: 'Servicio' }
-                ].map((field) => (
-                  <Box key={field.key} sx={{ minWidth: 200, flex: '1 1 auto' }}>
-                    <Box>
-                      <Typography variant="body2" mb={1}>{field.label}</Typography>
-                      <Rating
-                        value={currentEvaluation[field.key as keyof SupplierEvaluation] as number}
-                        onChange={(_event, newValue) => {
-                          setCurrentEvaluation({
-                            ...currentEvaluation,
-                            [field.key]: newValue || 0
-                          });
-                        }}
-                        precision={0.5}
-                      />
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-
-              <Box sx={{ mt: 2 }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  label="Comentarios"
-                  value={currentEvaluation.comments}
-                  onChange={(e) => setCurrentEvaluation({
-                    ...currentEvaluation,
-                    comments: e.target.value
+              <FormControl fullWidth required>
+                <InputLabel>Criterio</InputLabel>
+                <Select
+                  value={formData.criterio}
+                  label="Criterio"
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    criterio: e.target.value as CriterioEvaluacion
                   })}
+                >
+                  <MenuItem value={CriterioEvaluacion.CALIDAD}>Calidad</MenuItem>
+                  <MenuItem value={CriterioEvaluacion.PUNTUALIDAD}>Puntualidad</MenuItem>
+                  <MenuItem value={CriterioEvaluacion.PRECIO}>Precio</MenuItem>
+                  <MenuItem value={CriterioEvaluacion.SERVICIO}>Servicio</MenuItem>
+                  <MenuItem value={CriterioEvaluacion.COMUNICACION}>Comunicación</MenuItem>
+                  <MenuItem value={CriterioEvaluacion.FLEXIBILIDAD}>Flexibilidad</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box>
+                <Typography variant="body2" mb={1}>
+                  Calificación (0-5): {formData.calificacion.toFixed(1)}
+                </Typography>
+                <Rating
+                  value={formData.calificacion}
+                  onChange={(_event, newValue) => {
+                    setFormData({
+                      ...formData,
+                      calificacion: newValue || 0
+                    });
+                  }}
+                  precision={0.5}
+                  max={5}
+                  size="large"
                 />
               </Box>
-            </Box>
-          )}
+
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Comentario (opcional)"
+                value={formData.comentario}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  comentario: e.target.value
+                })}
+                inputProps={{ maxLength: 1000 }}
+                helperText={`${formData.comentario?.length || 0}/1000 caracteres`}
+              />
+            </Stack>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSaveEvaluation}>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveEvaluation}
+            disabled={!formData.evaluadoPor || formData.calificacion === 0}
+          >
             Guardar
           </Button>
         </DialogActions>
