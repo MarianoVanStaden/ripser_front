@@ -18,6 +18,7 @@ export {
 } from "./stockApi";
 export { usuarioApi } from "./usuarioApi";
 export { default as opcionFinanciamientoApi } from "./opcionFinanciamientoApi";
+export { default as opcionFinanciamientoTemplateApi } from "./opcionFinanciamientoTemplateApi";
 export { movimientoStockApi } from "./movimientoStockApi";
 export { categoriaProductoApi } from "./categoriaProductoApi";
 export { sueldoApi } from "./sueldoApi";

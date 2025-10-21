@@ -21,6 +21,7 @@ import {
 import NotasPedidoPage from './components/Ventas/NotasPedidoPage';
 import PresupuestosPage from './components/Ventas/PresupuestosPage';
 import OpcionesFinanciamientoPage from './components/Ventas/OpcionesFinanciamientoPage';
+import ConfiguracionFinanciamiento from './components/Ventas/ConfiguracionFinanciamiento';
 import RegistroVentasPage from './components/Ventas/RegistroVentasPage';
 import FacturacionPage from './components/Ventas/FacturacionPage';
 import InformesVentasPage from './components/Ventas/InformesVentasPage';
@@ -105,6 +106,7 @@ function App() {
               <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
               {/* Financing routes (aliases to match sidebar paths) */}
               <Route path="ventas/opciones-financiamiento" element={<PrivateRoute><OpcionesFinanciamientoPage /></PrivateRoute>} />
+              <Route path="ventas/configuracion-financiamiento" element={<PrivateRoute><ConfiguracionFinanciamiento /></PrivateRoute>} />
               <Route path="ventas/registro" element={<PrivateRoute><RegistroVentasPage /></PrivateRoute>} />
               <Route path="ventas/facturacion" element={<PrivateRoute><FacturacionPage /></PrivateRoute>} />
               <Route path="ventas/informes" element={<PrivateRoute><InformesVentasPage /></PrivateRoute>} />

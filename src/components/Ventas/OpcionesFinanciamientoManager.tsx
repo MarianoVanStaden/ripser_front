@@ -176,56 +176,42 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
     setFormOpen(false);
   };
 
-  const handleGenerarOpcionesAutomaticas = () => {
-    const opcionesAutomaticas: OpcionFinanciamientoDTO[] = [
-      {
-        nombre: "Contado - 10% descuento",
-        metodoPago: "EFECTIVO",
-        cantidadCuotas: 1,
-        tasaInteres: -10,
-        descripcion: "Descuento especial por pago al contado",
-        ordenPresentacion: 1,
-        ...calcularMontos(1, -10),
-      },
-      {
-        nombre: "3 cuotas sin interés",
-        metodoPago: "TARJETA_CREDITO",
-        cantidadCuotas: 3,
-        tasaInteres: 0,
-        descripcion: "Con tarjetas seleccionadas",
-        ordenPresentacion: 2,
-        ...calcularMontos(3, 0),
-      },
-      {
-        nombre: "6 cuotas - 15% interés",
-        metodoPago: "TARJETA_CREDITO",
-        cantidadCuotas: 6,
-        tasaInteres: 15,
-        descripcion: "Financiación con tarjeta",
-        ordenPresentacion: 3,
-        ...calcularMontos(6, 15),
-      },
-      {
-        nombre: "12 cuotas - 30% interés",
-        metodoPago: "FINANCIACION_PROPIA",
-        cantidadCuotas: 12,
-        tasaInteres: 30,
-        descripcion: "Financiación directa con la empresa",
-        ordenPresentacion: 4,
-        ...calcularMontos(12, 30),
-      },
-      {
-        nombre: "18 cuotas - 45% interés",
-        metodoPago: "FINANCIACION_PROPIA",
-        cantidadCuotas: 18,
-        tasaInteres: 45,
-        descripcion: "Plan extendido de financiación",
-        ordenPresentacion: 5,
-        ...calcularMontos(18, 45),
-      },
-    ];
+  const handleGenerarOpcionesAutomaticas = async () => {
+    try {
+      // Importar el API de templates
+      const { opcionFinanciamientoTemplateApi } = await import('../../api/services');
 
-    setOpciones(opcionesAutomaticas);
+      // Obtener templates activas del backend
+      const templates = await opcionFinanciamientoTemplateApi.obtenerActivas();
+
+      // Convertir templates a opciones con montos calculados
+      const opcionesAutomaticas: OpcionFinanciamientoDTO[] = templates.map(template => ({
+        nombre: template.nombre,
+        metodoPago: template.metodoPago,
+        cantidadCuotas: template.cantidadCuotas,
+        tasaInteres: template.tasaInteres,
+        descripcion: template.descripcion || '',
+        ordenPresentacion: template.ordenPresentacion,
+        ...calcularMontos(template.cantidadCuotas, template.tasaInteres),
+      }));
+
+      setOpciones(opcionesAutomaticas);
+
+      if (opcionesAutomaticas.length === 0) {
+        setSnackbar({
+          open: true,
+          message: 'No hay plantillas activas configuradas. Configure plantillas en Configuración de Financiamiento.',
+          severity: 'warning'
+        });
+      }
+    } catch (error) {
+      console.error('Error al cargar plantillas:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al cargar las plantillas de financiamiento',
+        severity: 'error'
+      });
+    }
   };
 
   const handleSaveToBackend = async () => {

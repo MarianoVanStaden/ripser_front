@@ -279,7 +279,7 @@ const RecetasList: React.FC = () => {
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h5" fontWeight="600">
-            Recetas de Fabricación
+            Estructura de Producción
           </Typography>
           <Button
             variant="contained"
