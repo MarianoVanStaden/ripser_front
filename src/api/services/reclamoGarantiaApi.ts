@@ -3,12 +3,9 @@ import api from '../api';
 // ==================== TYPES ====================
 export interface ReclamoGarantiaDTO {
   id: number;
-  garantia: {
-    id: number;
-    numeroSerie: string;
-    equipoFabricadoId?: number;
-    equipoFabricadoModelo?: string;
-  };
+  garantiaId: number;
+  garantiaNumeroSerie: string;
+  garantiaEquipoModelo?: string;
   numeroReclamo: string;
   fechaReclamo: string; // LocalDateTime
   descripcionProblema: string;
@@ -17,11 +14,9 @@ export interface ReclamoGarantiaDTO {
   solucionAplicada?: string;
   fechaResolucion?: string; // LocalDateTime
   costoSolucion?: number; // BigDecimal
-  tecnico?: {
-    id: number;
-    nombre: string;
-    apellido: string;
-  };
+  tecnicoId?: number;
+  tecnicoNombre?: string;
+  tecnicoApellido?: string;
 }
 
 export interface ReclamoGarantiaCreateDTO {

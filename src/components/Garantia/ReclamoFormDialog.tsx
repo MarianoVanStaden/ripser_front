@@ -55,11 +55,15 @@ const ReclamoFormDialog: React.FC<ReclamoFormDialogProps> = ({
           estado: reclamo.estado,
           solucionAplicada: reclamo.solucionAplicada || '',
           costoSolucion: reclamo.costoSolucion?.toString() || '',
-          tecnicoId: reclamo.tecnico?.id || 0,
+          tecnicoId: reclamo.tecnicoId || 0,
         });
-        setSelectedTecnico(reclamo.tecnico || null);
+        // Set selected tecnico if exists
+        if (reclamo.tecnicoId) {
+          const tecnico = empleados.find(e => e.id === reclamo.tecnicoId);
+          setSelectedTecnico(tecnico || null);
+        }
         // Set selected garantia from the reclamo
-        const garantia = garantias.find(g => g.id === reclamo.garantia.id);
+        const garantia = garantias.find(g => g.id === reclamo.garantiaId);
         setSelectedGarantia(garantia || null);
       } else {
         resetForm();

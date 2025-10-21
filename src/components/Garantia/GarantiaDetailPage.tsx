@@ -335,8 +335,8 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                               {reclamo.tipoSolucion?.replace('_', ' ') || '-'}
                             </TableCell>
                             <TableCell align="center">
-                              <Chip 
-                                label={reclamo.estado.replace('_', ' ')} 
+                              <Chip
+                                label={reclamo.estado?.replace('_', ' ') || 'SIN ESTADO'}
                                 color={getReclamoEstadoColor(reclamo.estado)}
                                 size="small"
                                 sx={{ fontWeight: 600 }}

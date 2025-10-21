@@ -67,11 +67,11 @@ const ReclamosGarantiaPage: React.FC = () => {
     const matchSearch = search === '' ||
       r.numeroReclamo.toLowerCase().includes(search.toLowerCase()) ||
       r.descripcionProblema.toLowerCase().includes(search.toLowerCase()) ||
-      r.garantia.numeroSerie.toLowerCase().includes(search.toLowerCase()) ||
-      (r.garantia.equipoFabricadoModelo?.toLowerCase().includes(search.toLowerCase()) || false);
+      r.garantiaNumeroSerie.toLowerCase().includes(search.toLowerCase()) ||
+      (r.garantiaEquipoModelo?.toLowerCase().includes(search.toLowerCase()) || false);
 
     const matchEstado = estadoFilter === 'TODOS' || r.estado === estadoFilter;
-    const matchGarantia = !garantiaFilter || r.garantia.id === garantiaFilter.id;
+    const matchGarantia = !garantiaFilter || r.garantiaId === garantiaFilter.id;
 
     return matchSearch && matchEstado && matchGarantia;
   });
@@ -345,11 +345,11 @@ const ReclamosGarantiaPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {reclamo.garantia.numeroSerie}
+                      {reclamo.garantiaNumeroSerie}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {reclamo.garantia.equipoFabricadoModelo || '-'}
+                    {reclamo.garantiaEquipoModelo || '-'}
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" noWrap sx={{ maxWidth: 250 }}>
@@ -360,16 +360,16 @@ const ReclamosGarantiaPage: React.FC = () => {
                     {reclamo.tipoSolucion?.replace('_', ' ') || '-'}
                   </TableCell>
                   <TableCell align="center">
-                    <Chip 
-                      label={reclamo.estado.replace('_', ' ')} 
+                    <Chip
+                      label={reclamo.estado?.replace('_', ' ') || 'SIN ESTADO'}
                       color={getEstadoColor(reclamo.estado)}
                       size="small"
                       sx={{ fontWeight: 600, minWidth: 100 }}
                     />
                   </TableCell>
                   <TableCell>
-                    {reclamo.tecnico 
-                      ? `${reclamo.tecnico.nombre} ${reclamo.tecnico.apellido}` 
+                    {reclamo.tecnicoNombre && reclamo.tecnicoApellido
+                      ? `${reclamo.tecnicoNombre} ${reclamo.tecnicoApellido}`
                       : '-'}
                   </TableCell>
                   <TableCell align="center">
@@ -395,7 +395,7 @@ const ReclamosGarantiaPage: React.FC = () => {
       {/* Reclamo Dialog */}
       <ReclamoFormDialog
         open={formOpen}
-        garantiaId={selectedReclamo?.garantia.id}
+        garantiaId={selectedReclamo?.garantiaId}
         reclamo={selectedReclamo}
         garantias={garantias}
         onClose={() => {

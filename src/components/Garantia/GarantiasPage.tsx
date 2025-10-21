@@ -131,6 +131,11 @@ const GarantiasPage: React.FC = () => {
     anuladas: garantias.filter(g => g.estado === 'ANULADA').length,
   };
 
+  // Filter equipos that already have a guarantee
+  const availableEquipos = equipos.filter(equipo =>
+    !garantias.some(garantia => garantia.equipoFabricadoId === equipo.id)
+  );
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -434,7 +439,7 @@ const GarantiasPage: React.FC = () => {
           setSelectedGarantia(null);
           loadData();
         }}
-        equipos={equipos}
+        equipos={availableEquipos}
         ventas={facturas}
       />
 
