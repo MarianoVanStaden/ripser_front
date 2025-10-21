@@ -37,6 +37,7 @@ import {
 import CuentaCorrienteProveedoresPage from './components/Proveedores/CuentaCorrienteProveedoresPage';
 import GarantiasPage from './components/Garantia/GarantiasPage';
 import ReclamosGarantiaPage from './components/Garantia/ReclamosGarantiaPage';
+import GarantiaReportPage from './components/Garantia/GarantiaReportPage';
 import StockPage from './components/Logistica/StockPage';
 import InventoryPage from './components/Logistica/InventoryPage';
 import RecountTasksPage from './components/Logistica/RecountTasksPage';
@@ -128,7 +129,7 @@ function App() {
               {/* GARANTÍAS Module */}
               <Route path="garantias/registro" element={<PrivateRoute><GarantiasPage /></PrivateRoute>} />
               <Route path="garantias/reclamos" element={<PrivateRoute><ReclamosGarantiaPage /></PrivateRoute>} />
-              <Route path="garantias/estado" element={<PrivateRoute><GarantiasPage /></PrivateRoute>} />
+              <Route path="garantias/reporte" element={<PrivateRoute><GarantiaReportPage /></PrivateRoute>} />
               {/* RRHH Module */}
               <Route path="rrhh/empleados" element={<PrivateRoute><EmpleadosPage /></PrivateRoute>} />
               <Route path="rrhh/puestos" element={<PrivateRoute><PuestosPage /></PrivateRoute>} />

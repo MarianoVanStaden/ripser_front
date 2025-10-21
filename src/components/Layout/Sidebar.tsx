@@ -11,6 +11,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { Link, useLocation } from 'react-router-dom';
 
 const drawerWidth = 240;
@@ -87,7 +88,7 @@ const navigation = [
     items: [
       { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro' },
       { text: 'Seguimiento Reclamos', icon: <AssignmentIcon />, path: '/garantias/reclamos' },
-      { text: 'Estado Garantías', icon: <AssignmentIcon />, path: '/garantias/estado' },
+      { text: 'Reporte de Garantías', icon: <BarChartIcon />, path: '/garantias/reporte' },
     ],
   },
     {
