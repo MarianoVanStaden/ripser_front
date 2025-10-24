@@ -20,7 +20,9 @@
       "Bash(npm run dev)",
       "Bash(dir:*)",
       "Bash(cmd //c \"taskkill /PID 23344 /F\")",
-      "Bash(cmd //c \"taskkill /PID 14348 /F\")"
+      "Bash(cmd //c \"taskkill /PID 14348 /F\")",
+      "Bash(.mvnw help:evaluate:*)",
+      "Bash(.mvnw clean package:*)"
     ],
     "deny": [],
     "ask": []

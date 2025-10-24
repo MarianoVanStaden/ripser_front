@@ -96,6 +96,7 @@ const navigation = [
     title: 'RRHH',
     items: [
       { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
+      { text: 'Usuarios del Sistema', icon: <PeopleIcon />, path: '/rrhh/usuarios' },
       { text: 'Legajos', icon: <AssignmentIcon />, path: '/rrhh/legajos' },
       { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
       { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },

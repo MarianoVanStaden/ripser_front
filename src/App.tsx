@@ -49,7 +49,7 @@ import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
 import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
 import ConfiguracionTallerPage from './components/Taller/ConfiguracionTallerPage';
-import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
+import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage, UsuariosPage } from './components/RRHH';
 import {
   RecetasList,
   RecetaDetail,
@@ -134,6 +134,7 @@ function App() {
               <Route path="garantias/reporte" element={<PrivateRoute><GarantiaReportPage /></PrivateRoute>} />
               {/* RRHH Module */}
               <Route path="rrhh/empleados" element={<PrivateRoute><EmpleadosPage /></PrivateRoute>} />
+              <Route path="rrhh/usuarios" element={<PrivateRoute><UsuariosPage /></PrivateRoute>} />
               <Route path="rrhh/puestos" element={<PrivateRoute><PuestosPage /></PrivateRoute>} />
               <Route path="rrhh/asistencia" element={<PrivateRoute><AsistenciasPage /></PrivateRoute>} />
               <Route path="rrhh/licencias" element={<PrivateRoute><LicenciasPage /></PrivateRoute>} />
