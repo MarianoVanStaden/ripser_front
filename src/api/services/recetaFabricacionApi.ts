@@ -87,4 +87,10 @@ export const recetaFabricacionApi = {
     );
     return response.data;
   },
+
+  // Get recetas available for sale
+  findDisponiblesParaVenta: async () => {
+    const response = await api.get<RecetaFabricacionDTO[]>('/api/recetas-fabricacion/disponibles-venta');
+    return response.data;
+  },
 };

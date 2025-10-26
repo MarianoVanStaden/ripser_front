@@ -748,13 +748,13 @@ const RegistroVentasPage: React.FC = () => {
               {viewingSale.detalleVentas && viewingSale.detalleVentas.length > 0 ? (
                 <>
                   <Typography variant="subtitle2" color="text.secondary" mb={2}>
-                    Productos ({viewingSale.detalleVentas.length} artículos)
+                    Items ({viewingSale.detalleVentas.length} artículos)
                   </Typography>
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell>Producto</TableCell>
+                          <TableCell>Item</TableCell>
                           <TableCell align="center">Cantidad</TableCell>
                           <TableCell align="right">Precio Unit.</TableCell>
                           <TableCell align="right">Descuento</TableCell>
@@ -766,7 +766,7 @@ const RegistroVentasPage: React.FC = () => {
                           <TableRow key={item.id || index}>
                             <TableCell>
                               <Typography variant="body2">
-                                {item.producto?.nombre || 'Producto no disponible'}
+                                {item.producto?.nombre || 'Item no disponible'}
                               </Typography>
                               {item.producto?.descripcion && (
                                 <Typography variant="caption" color="text.secondary">

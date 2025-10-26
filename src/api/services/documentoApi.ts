@@ -6,8 +6,8 @@ import type {
   MetodoPago,
   DetalleDocumentoDTO,
   OpcionFinanciamiento,
-  CreateOpcionFinanciamientoDTO
-  
+  CreateOpcionFinanciamientoDTO,
+  ConvertToFacturaDTO
 } from '../../types';
 
 // Narrow DTO for creating presupuesto in current backend
@@ -107,7 +107,7 @@ export const documentoApi = {
     return response.data;
   },
   // Convert nota de pedido to factura
-  convertToFactura: async (dto: { notaPedidoId: number; descuento?: number }): Promise<DocumentoComercial> => {
+  convertToFactura: async (dto: ConvertToFacturaDTO): Promise<DocumentoComercial> => {
     const response = await api.post<DocumentoComercial>('/api/documentos/factura', dto);
     return response.data;
   },

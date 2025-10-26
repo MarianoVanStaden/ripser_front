@@ -55,6 +55,8 @@ import dayjs from 'dayjs';
 import { clienteApi, productApi, usuarioApi } from '../../api/services';
 import { documentoApi } from '../../api/services/documentoApi';
 import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
+import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
+import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import { useAuth } from '../../context/AuthContext';
 import type {
   Cliente,
@@ -64,6 +66,8 @@ import type {
   DetalleDocumento,
   MetodoPago,
   OpcionFinanciamientoDTO,
+  RecetaFabricacionDTO,
+  TipoItemDocumento,
 } from '../../types';
 
 // Types
@@ -92,15 +96,36 @@ const ESTADO_OPTIONS: Record<string, { label: string; color: 'default' | 'primar
 };
 
 type CartItem = {
-  productoId: number;
-  productoNombre: string;
   cantidad: number;
   precioUnitario: number;
   descuento: number;
   precioManualmenteModificado?: boolean;
+  tipoItem: TipoItemDocumento;
+  // PRODUCTO fields (optional when tipoItem is EQUIPO)
+  productoId?: number;
+  productoNombre?: string;
+  // EQUIPO fields (optional when tipoItem is PRODUCTO)
+  recetaId?: number;
+  recetaNombre?: string;
+  recetaModelo?: string;
+  recetaTipo?: string;
 };
 
-type NotaCartItem = Omit<CartItem, 'precioManualmenteModificado'>;
+type NotaCartItem = {
+  cantidad: number;
+  precioUnitario: number;
+  descuento: number;
+  tipoItem?: 'PRODUCTO' | 'EQUIPO';
+  // PRODUCTO fields (optional when tipoItem is EQUIPO)
+  productoId?: number;
+  productoNombre?: string;
+  // EQUIPO fields (optional when tipoItem is PRODUCTO)
+  recetaId?: number;
+  recetaNombre?: string;
+  recetaModelo?: string;
+  recetaTipo?: string;
+  descripcionEquipo?: string;
+};
 
 const FacturacionPage = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -113,6 +138,7 @@ const FacturacionPage = () => {
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [products, setProducts] = useState<Producto[]>([]);
+  const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [notasPedido, setNotasPedido] = useState<DocumentoComercial[]>([]);
   
   // Manual invoice form
@@ -141,6 +167,7 @@ const FacturacionPage = () => {
   const [financiamientoDialogOpen, setFinanciamientoDialogOpen] = useState(false);
   const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
+  const [plantillasFinanciamiento, setPlantillasFinanciamiento] = useState<OpcionFinanciamientoTemplateDTO[]>([]);
   const [loadingOpciones, setLoadingOpciones] = useState(false);
   const [newOpcionForm, setNewOpcionForm] = useState({
     nombre: '',
@@ -156,14 +183,16 @@ const FacturacionPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [clientsData, usuariosResponse, productsData, notasData] = await Promise.all([
+      const [clientsData, usuariosResponse, productsData, recetasData, notasData, plantillasData] = await Promise.all([
         clienteApi.getAll().catch(() => []),
         usuarioApi.getAll().catch((err: any) => {
           if (err?.response?.status === 403) return { content: [] };
           return { content: [] };
         }),
         productApi.getAll().catch(() => []),
+        recetaFabricacionApi.findDisponiblesParaVenta().catch(() => []),
         documentoApi.getByTipo('NOTA_PEDIDO').catch(() => []),
+        opcionFinanciamientoTemplateApi.obtenerActivas().catch(() => []),
       ]);
 
       setClients(Array.isArray(clientsData) ? clientsData : []);
@@ -173,6 +202,7 @@ const FacturacionPage = () => {
         : (usuariosResponse?.content || []);
       setUsuarios(usuariosArray);
       setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
+      setRecetas(Array.isArray(recetasData) ? recetasData : []);
       
       const invoiceableNotas = Array.isArray(notasData) 
         ? notasData.filter(n => n.estado === 'APROBADO' || n.estado === 'PENDIENTE')
@@ -237,7 +267,7 @@ const FacturacionPage = () => {
   }, [notaCart]);
 
   const notaFinancingAdjustment = useMemo(() => {
-    const selectedOpcion = opcionesFinanciamiento.find(o => o.id === selectedOpcionId);
+    const selectedOpcion = opcionesFinanciamiento[selectedOpcionId];
     if (!selectedOpcion || selectedOpcion.tasaInteres === 0) return 0;
     return notaSubtotal * (selectedOpcion.tasaInteres / 100);
   }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento]);
@@ -293,35 +323,95 @@ const FacturacionPage = () => {
   };
 
   const addItemToCart = () => {
-    if (products.length === 0) {
-      setError('No hay productos disponibles para agregar al carrito.');
+    if (products.length === 0 && recetas.length === 0) {
+      setError('No hay productos ni equipos disponibles para agregar.');
       return;
     }
-    const defaultProduct = products[0];
-    setCart((prev) => [
-      ...prev,
-      {
-        productoId: defaultProduct.id,
-        productoNombre: defaultProduct.nombre || 'Producto sin nombre',
-        cantidad: 1,
-        precioUnitario: defaultProduct.precio || 0,
-        descuento: 0,
-        precioManualmenteModificado: false,
-      },
-    ]);
+
+    // Add PRODUCTO by default if available, otherwise EQUIPO
+    if (products.length > 0) {
+      const defaultProduct = products[0];
+      setCart((prev) => [
+        ...prev,
+        {
+          tipoItem: 'PRODUCTO',
+          productoId: defaultProduct.id,
+          productoNombre: defaultProduct.nombre || 'Producto sin nombre',
+          cantidad: 1,
+          precioUnitario: defaultProduct.precio || 0,
+          descuento: 0,
+          precioManualmenteModificado: false,
+        },
+      ]);
+    } else if (recetas.length > 0) {
+      const defaultReceta = recetas[0];
+      setCart((prev) => [
+        ...prev,
+        {
+          tipoItem: 'EQUIPO',
+          recetaId: defaultReceta.id,
+          recetaNombre: defaultReceta.nombre,
+          recetaModelo: defaultReceta.modelo,
+          recetaTipo: defaultReceta.tipoEquipo,
+          cantidad: 1,
+          precioUnitario: defaultReceta.precioVenta || 0,
+          descuento: 0,
+          precioManualmenteModificado: false,
+        },
+      ]);
+    }
   };
 
-  const updateCartItem = (index: number, field: 'productoId'|'cantidad'|'precioUnitario'|'descuento', value: any) => {
+  const updateCartItem = (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento', value: any) => {
     const newCart = [...cart];
     const item = { ...newCart[index] };
 
-    if (field === 'productoId') {
+    if (field === 'tipoItem') {
+      // Switch between PRODUCTO and EQUIPO
+      const newTipoItem = value as TipoItemDocumento;
+      item.tipoItem = newTipoItem;
+
+      // Reset item-specific fields and set default
+      if (newTipoItem === 'PRODUCTO' && products.length > 0) {
+        const defaultProduct = products[0];
+        item.productoId = defaultProduct.id;
+        item.productoNombre = defaultProduct.nombre;
+        item.precioUnitario = defaultProduct.precio || 0;
+        // Clear equipo fields
+        delete item.recetaId;
+        delete item.recetaNombre;
+        delete item.recetaModelo;
+        delete item.recetaTipo;
+      } else if (newTipoItem === 'EQUIPO' && recetas.length > 0) {
+        const defaultReceta = recetas[0];
+        item.recetaId = defaultReceta.id;
+        item.recetaNombre = defaultReceta.nombre;
+        item.recetaModelo = defaultReceta.modelo;
+        item.recetaTipo = defaultReceta.tipoEquipo;
+        item.precioUnitario = defaultReceta.precioVenta || 0;
+        // Clear producto fields
+        delete item.productoId;
+        delete item.productoNombre;
+      }
+      item.precioManualmenteModificado = false;
+    } else if (field === 'productoId') {
       const product = products.find((p) => p && p.id === Number(value));
       if (product) {
         item.productoId = product.id;
         item.productoNombre = product.nombre || 'Producto sin nombre';
         if (!item.precioManualmenteModificado) {
           item.precioUnitario = product.precio || 0;
+        }
+      }
+    } else if (field === 'recetaId') {
+      const receta = recetas.find((r) => r.id === Number(value));
+      if (receta) {
+        item.recetaId = receta.id;
+        item.recetaNombre = receta.nombre;
+        item.recetaModelo = receta.modelo;
+        item.recetaTipo = receta.tipoEquipo;
+        if (!item.precioManualmenteModificado) {
+          item.precioUnitario = receta.precioVenta || 0;
         }
       }
     } else if (field === 'cantidad') {
@@ -356,14 +446,33 @@ const FacturacionPage = () => {
         usuarioId: Number(selectedUsuarioId),
         tipoIva: selectedIva,
         observaciones: notes || undefined,
-        detalles: cart.map((item) => ({
-          productoId: Number(item.productoId),
-          cantidad: Number(item.cantidad),
-          precioUnitario: Number(item.precioUnitario),
-          descuento: Number(item.descuento) || 0,
-          subtotal: Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100)),
-          descripcion: item.productoNombre || undefined,
-        })),
+        detalles: cart.map((item) => {
+          const subtotal = Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100));
+
+          // Base detalle with common fields
+          const detalle: any = {
+            tipoItem: item.tipoItem || 'PRODUCTO',
+            cantidad: Number(item.cantidad),
+            precioUnitario: Number(item.precioUnitario),
+            descuento: Number(item.descuento) || 0,
+            subtotal: subtotal,
+          };
+
+          // Add type-specific fields
+          if (item.tipoItem === 'EQUIPO') {
+            detalle.recetaId = Number(item.recetaId);
+            const equipoDesc = item.recetaNombre
+              ? `${item.recetaNombre}${item.recetaModelo ? ` - ${item.recetaModelo}` : ''}`
+              : undefined;
+            detalle.descripcionEquipo = equipoDesc;
+            detalle.descripcion = equipoDesc; // Also set general descripcion for reports
+          } else {
+            detalle.productoId = Number(item.productoId);
+            detalle.descripcion = item.productoNombre || undefined;
+          }
+
+          return detalle;
+        }),
       });
 
       // Check if financing option is selected and apply it
@@ -400,11 +509,21 @@ const FacturacionPage = () => {
     setNotaCart(
       nota.detalles
         ? (nota.detalles as DetalleDocumento[]).map((d) => ({
-            productoId: d.productoId,
-            productoNombre: d.productoNombre,
+            // Common fields
             cantidad: d.cantidad,
             precioUnitario: d.precioUnitario,
             descuento: d.descuento || 0,
+            // Type indicator
+            tipoItem: d.tipoItem || 'PRODUCTO',
+            // PRODUCTO fields
+            productoId: d.productoId,
+            productoNombre: d.productoNombre,
+            // EQUIPO fields
+            recetaId: d.recetaId,
+            recetaNombre: d.recetaNombre,
+            recetaModelo: d.recetaModelo,
+            recetaTipo: d.recetaTipo,
+            descripcionEquipo: d.descripcionEquipo,
           }))
         : []
     );
@@ -606,7 +725,8 @@ const FacturacionPage = () => {
       <Table stickyHeader size="small" sx={{ minWidth: { xs: 700, md: 900 }, width: '100%' }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto</TableCell>
+            {editable && <TableCell sx={{ minWidth: { xs: 100, md: 120 } }}>Tipo</TableCell>}
+            <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto/Equipo</TableCell>
             <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Cantidad</TableCell>
             <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Precio Unit.</TableCell>
             <TableCell align="right" sx={{ minWidth: { xs: 90, md: 120 } }}>Desc. %</TableCell>
@@ -617,22 +737,55 @@ const FacturacionPage = () => {
         <TableBody>
           {items.map((item, index) => {
             const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
+            const itemAny = item as any; // Type assertion for optional fields
             return (
               <TableRow key={index} hover>
-                <TableCell>
-                  {editable ? (
+                {editable && (
+                  <TableCell>
                     <Select
                       fullWidth
                       size="small"
-                      value={item.productoId}
-                      onChange={(e) => onUpdate(index, 'productoId', e.target.value)}
+                      value={itemAny.tipoItem || 'PRODUCTO'}
+                      onChange={(e) => onUpdate(index, 'tipoItem', e.target.value)}
                     >
-                      {products.filter(p => p && p.id).map((p) => (
-                        <MenuItem key={p.id} value={p.id}>{p.nombre || 'Producto sin nombre'}</MenuItem>
-                      ))}
+                      <MenuItem value="PRODUCTO">Producto</MenuItem>
+                      <MenuItem value="EQUIPO">Equipo</MenuItem>
                     </Select>
+                  </TableCell>
+                )}
+                <TableCell>
+                  {editable ? (
+                    itemAny.tipoItem === 'EQUIPO' ? (
+                      <Select
+                        fullWidth
+                        size="small"
+                        value={itemAny.recetaId || ''}
+                        onChange={(e) => onUpdate(index, 'recetaId', e.target.value)}
+                      >
+                        {recetas.map((r) => (
+                          <MenuItem key={r.id} value={r.id}>
+                            {r.nombre} - {r.modelo} ({r.tipoEquipo})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Select
+                        fullWidth
+                        size="small"
+                        value={itemAny.productoId || ''}
+                        onChange={(e) => onUpdate(index, 'productoId', e.target.value)}
+                      >
+                        {products.filter(p => p && p.id).map((p) => (
+                          <MenuItem key={p.id} value={p.id}>{p.nombre || 'Producto sin nombre'}</MenuItem>
+                        ))}
+                      </Select>
+                    )
                   ) : (
-                    <Typography noWrap maxWidth={360}>{item.productoNombre}</Typography>
+                    <Typography noWrap maxWidth={360}>
+                      {itemAny.tipoItem === 'EQUIPO'
+                        ? `${itemAny.recetaNombre || ''} ${itemAny.recetaModelo ? `- ${itemAny.recetaModelo}` : ''}`
+                        : item.productoNombre}
+                    </Typography>
                   )}
                 </TableCell>
                 <TableCell align="center">
@@ -847,14 +1000,14 @@ const FacturacionPage = () => {
 
               <Box mt={3} sx={{ width: '100%' }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">Productos</Typography>
+                  <Typography variant="h6">Items</Typography>
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={addItemToCart}
                     disabled={products.length === 0}
                   >
-                    Agregar Producto
+                    Agregar Item
                   </Button>
                 </Box>
 
@@ -1069,20 +1222,20 @@ const FacturacionPage = () => {
                     onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
                   >
                     <Grid container spacing={2}>
-                      {opcionesFinanciamiento.map((opcion) => (
-                        <Grid item xs={12} sm={6} md={4} key={opcion.id}>
+                      {opcionesFinanciamiento.map((opcion, index) => (
+                        <Grid item xs={12} sm={6} md={4} key={index}>
                           <Card 
                             variant="outlined" 
                             sx={{ 
                               p: 1,
-                              border: selectedOpcionId === opcion.id ? '2px solid' : '1px solid',
-                              borderColor: selectedOpcionId === opcion.id ? 'primary.main' : 'divider',
+                              border: selectedOpcionId === index ? '2px solid' : '1px solid',
+                              borderColor: selectedOpcionId === index ? 'primary.main' : 'divider',
                               cursor: 'pointer'
                             }}
-                            onClick={() => setSelectedOpcionId(opcion.id!)}
+                            onClick={() => setSelectedOpcionId(index)}
                           >
                             <FormControlLabel
-                              value={opcion.id}
+                              value={index}
                               control={<Radio />}
                               label={
                                 <Box>
@@ -1119,9 +1272,9 @@ const FacturacionPage = () => {
                 <Box mb={2}>
                   <Alert severity="info" icon={<CreditCardIcon />}>
                     <Typography variant="body2">
-                      <strong>Opción de Financiamiento Seleccionada:</strong> {opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.nombre}
-                      {opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres !== 0 && (
-                        <> ({opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres}% {(opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres || 0) > 0 ? 'recargo' : 'descuento'})</>
+                      <strong>Opción de Financiamiento Seleccionada:</strong> {opcionesFinanciamiento[selectedOpcionId]?.nombre}
+                      {opcionesFinanciamiento[selectedOpcionId]?.tasaInteres !== 0 && (
+                        <> ({opcionesFinanciamiento[selectedOpcionId]?.tasaInteres}% {(opcionesFinanciamiento[selectedOpcionId]?.tasaInteres || 0) > 0 ? 'recargo' : 'descuento'})</>
                       )}
                     </Typography>
                   </Alert>
@@ -1130,7 +1283,7 @@ const FacturacionPage = () => {
 
               <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
                 <Typography variant="subtitle1">
-                  Productos de la Nota
+                  Items de la Nota
                 </Typography>
                 {!editingNotaItems && (
                   <Button

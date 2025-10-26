@@ -131,4 +131,12 @@ export const equipoFabricadoApi = {
     );
     return response.data;
   },
+
+  // Get equipos available for sale by receta
+  findDisponiblesParaVentaByReceta: async (recetaId: number): Promise<EquipoFabricadoDTO[]> => {
+    const response = await api.get<EquipoFabricadoDTO[]>(
+      `/api/equipos-fabricados/disponibles-venta/receta/${recetaId}`
+    );
+    return response.data;
+  },
 };

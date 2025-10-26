@@ -37,13 +37,14 @@ import {
   CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import { documentoApi } from "../../api/services";
-import type { 
-  DocumentoComercial, 
+import type {
+  DocumentoComercial,
   EstadoDocumento,
   MetodoPago,
-  DetalleDocumento 
+  DetalleDocumento
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
+import AsignarEquiposDialog from "./AsignarEquiposDialog";
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
@@ -79,6 +80,8 @@ const NotasPedidoPage: React.FC = () => {
   const [selectedNota, setSelectedNota] = useState<DocumentoComercial | null>(null);
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<DocumentoComercial | null>(null);
   const [convertForm, setConvertForm] = useState<ConvertFormData>(initialConvertForm);
+  const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
+  const [notaForAsignacion, setNotaForAsignacion] = useState<DocumentoComercial | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -264,21 +267,65 @@ const NotasPedidoPage: React.FC = () => {
   }, []);
 
   const handleConvertToFactura = useCallback(async (notaId: number) => {
-    if (!window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
+    // Find the nota
+    const nota = notasPedido.find(n => n.id === notaId);
+    if (!nota) {
+      setError("Nota de pedido no encontrada");
       return;
     }
 
+    // Check if there are EQUIPO items in the detalles
+    const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
+
+    if (detallesEquipo.length > 0) {
+      // Open AsignarEquiposDialog
+      setNotaForAsignacion(nota);
+      setAsignarEquiposDialogOpen(true);
+    } else {
+      // No equipos, proceed directly with conversion
+      if (!window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
+        return;
+      }
+
+      try {
+        setError(null);
+        await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        // Refresh data after conversion
+        fetchData();
+      } catch (err: any) {
+        console.error("Error converting to factura:", err);
+        const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
+        setError(errorMessage);
+      }
+    }
+  }, [notasPedido, fetchData]);
+
+  const handleConfirmAsignacion = useCallback(async (asignaciones: { [detalleId: number]: number[] }) => {
+    if (!notaForAsignacion) return;
+
     try {
       setError(null);
-      await documentoApi.convertToFactura({ notaPedidoId: notaId });
+      setAsignarEquiposDialogOpen(false);
+
+      await documentoApi.convertToFactura({
+        notaPedidoId: notaForAsignacion.id,
+        equiposAsignaciones: asignaciones,
+      });
+
+      setNotaForAsignacion(null);
       // Refresh data after conversion
       fetchData();
     } catch (err: any) {
-      console.error("Error converting to factura:", err);
+      console.error("Error converting to factura with equipos:", err);
       const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
       setError(errorMessage);
     }
-  }, [fetchData]);
+  }, [notaForAsignacion, fetchData]);
+
+  const handleCloseAsignarEquiposDialog = useCallback(() => {
+    setAsignarEquiposDialogOpen(false);
+    setNotaForAsignacion(null);
+  }, []);
 
   if (loading) {
     return (
@@ -694,7 +741,7 @@ const NotasPedidoPage: React.FC = () => {
                 <Table size="small" sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ minWidth: 120 }}>Producto</TableCell>
+                      <TableCell sx={{ minWidth: 120 }}>Producto/Equipo</TableCell>
                       <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
                       <TableCell align="center" sx={{ minWidth: 80 }}>Cantidad</TableCell>
                       <TableCell align="right" sx={{ minWidth: 100 }}>Precio Unit.</TableCell>
@@ -704,7 +751,11 @@ const NotasPedidoPage: React.FC = () => {
                   <TableBody>
                     {selectedNota.detalles?.map((detalle: DetalleDocumento, index: number) => (
                       <TableRow key={index}>
-                        <TableCell>{detalle.productoNombre || "-"}</TableCell>
+                        <TableCell>
+                          {detalle.tipoItem === 'EQUIPO'
+                            ? `${detalle.recetaNombre || ''} ${detalle.recetaModelo ? `- ${detalle.recetaModelo}` : ''}`
+                            : detalle.productoNombre || "-"}
+                        </TableCell>
                         <TableCell>{detalle.descripcion}</TableCell>
                         <TableCell align="center">{detalle.cantidad}</TableCell>
                         <TableCell align="right">
@@ -749,6 +800,16 @@ const NotasPedidoPage: React.FC = () => {
           <Button onClick={handleCloseViewDialog}>Cerrar</Button>
         </DialogActions>
       </Dialog>
+
+      {/* AsignarEquiposDialog for Factura conversion */}
+      {notaForAsignacion && (
+        <AsignarEquiposDialog
+          open={asignarEquiposDialogOpen}
+          onClose={handleCloseAsignarEquiposDialog}
+          onConfirm={handleConfirmAsignacion}
+          detallesEquipo={notaForAsignacion.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
+        />
+      )}
     </Box>
   );
 };

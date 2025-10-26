@@ -22,7 +22,12 @@
       "Bash(cmd //c \"taskkill /PID 23344 /F\")",
       "Bash(cmd //c \"taskkill /PID 14348 /F\")",
       "Bash(.mvnw help:evaluate:*)",
-      "Bash(.mvnw clean package:*)"
+      "Bash(.mvnw clean package:*)",
+      "Bash(cat:*)",
+      "Bash(cmd //c \"FOR /F \"\"tokens=2\"\" %i IN (''''tasklist ^| findstr java'''') DO taskkill /PID %i /F\")",
+      "Bash(cmd //c \"taskkill /PID 10404 /F && taskkill /PID 3604 /F\")",
+      "Bash(\"C:/Program Files/MySQL/MySQL Server 9.1/bin/mysql.exe\" -h localhost -P 3306 -u santiago -pjaime637 -e \"DESCRIBE ripser_back.detalle_documentos;\")",
+      "Bash(\"C:/Program Files/MySQL/MySQL Server 9.1/bin/mysql.exe\" -h localhost -P 3306 -u santiago -pjaime637 -e \"SHOW CREATE TABLE ripser_back.detalle_documentos\\G\")"
     ],
     "deny": [],
     "ask": []

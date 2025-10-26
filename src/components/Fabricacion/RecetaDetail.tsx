@@ -284,6 +284,28 @@ const RecetaDetail: React.FC = () => {
                   </Typography>
                   <Typography variant="body1">{receta.medida || 'N/A'}</Typography>
                 </Box>
+                <Box>
+                  <Typography variant="caption" color="textSecondary">
+                    Precio de Venta
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600" color="primary">
+                    {receta.precioVenta
+                      ? `$${receta.precioVenta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                      : 'No configurado'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="textSecondary">
+                    Disponible para Venta
+                  </Typography>
+                  <Typography variant="body1">
+                    <Chip
+                      label={receta.disponibleParaVenta ? 'Sí' : 'No'}
+                      color={receta.disponibleParaVenta ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </Typography>
+                </Box>
               </Stack>
             </CardContent>
           </Card>

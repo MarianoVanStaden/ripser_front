@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Stack, Alert,
   Snackbar, CircularProgress, Card, CardContent, IconButton,
+  FormControlLabel, Checkbox,
 } from '@mui/material';
 import { ArrowBack, Save, Add, Delete } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -26,6 +27,8 @@ const schema = yup.object().shape({
   modelo: yup.string(),
   medida: yup.string(),
   observaciones: yup.string(),
+  precioVenta: yup.number().nullable().min(0, 'El precio debe ser mayor o igual a 0'),
+  disponibleParaVenta: yup.boolean(),
 });
 
 interface Producto {
@@ -58,6 +61,8 @@ const RecetaForm: React.FC = () => {
       modelo: '',
       medida: '',
       observaciones: '',
+      precioVenta: undefined as number | undefined,
+      disponibleParaVenta: true,
     },
   });
 
@@ -88,6 +93,8 @@ const RecetaForm: React.FC = () => {
         modelo: data.modelo || '',
         medida: data.medida || '',
         observaciones: data.observaciones || '',
+        precioVenta: data.precioVenta,
+        disponibleParaVenta: data.disponibleParaVenta ?? true,
       });
       setDetalles(
         data.detalles.map((d) => ({
@@ -120,6 +127,8 @@ const RecetaForm: React.FC = () => {
           modelo: data.modelo,
           medida: data.medida,
           observaciones: data.observaciones,
+          precioVenta: data.precioVenta,
+          disponibleParaVenta: data.disponibleParaVenta,
         };
         await recetaFabricacionApi.update(Number(id), updateData);
         setSnackbar({
@@ -158,6 +167,8 @@ const RecetaForm: React.FC = () => {
           modelo: data.modelo,
           medida: data.medida,
           observaciones: data.observaciones,
+          precioVenta: data.precioVenta,
+          disponibleParaVenta: data.disponibleParaVenta,
           detalles,
         };
         await recetaFabricacionApi.create(createData);
@@ -297,6 +308,38 @@ const RecetaForm: React.FC = () => {
               control={control}
               render={({ field }) => (
                 <TextField {...field} label="Observaciones" multiline rows={2} fullWidth />
+              )}
+            />
+            <Controller
+              name="precioVenta"
+              control={control}
+              render={({ field: { value, onChange, ...field } }) => (
+                <TextField
+                  {...field}
+                  value={value || ''}
+                  onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
+                  label="Precio de Venta"
+                  type="number"
+                  error={!!errors.precioVenta}
+                  helperText={errors.precioVenta?.message || 'Precio de venta del equipo fabricado'}
+                  InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                  fullWidth
+                />
+              )}
+            />
+            <Controller
+              name="disponibleParaVenta"
+              control={control}
+              render={({ field: { value, onChange } }) => (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={value || false}
+                      onChange={(e) => onChange(e.target.checked)}
+                    />
+                  }
+                  label="Disponible para Venta"
+                />
               )}
             />
           </Stack>

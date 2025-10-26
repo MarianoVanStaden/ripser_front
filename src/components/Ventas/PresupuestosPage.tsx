@@ -46,7 +46,8 @@ import {
 import { clienteApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO } from "../../types";
+import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 
@@ -70,7 +71,11 @@ const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinancia
 
 interface DetalleForm {
   id?: number;
-  productoId: string;
+  tipoItem: TipoItemDocumento;
+  // For PRODUCTO type
+  productoId?: string;
+  // For EQUIPO type
+  recetaId?: string;
   descripcion: string;
   cantidad: number;
   precioUnitario: number;
@@ -96,7 +101,9 @@ const initialFormData: FormData = {
 };
 
 const initialDetalle: DetalleForm = {
+  tipoItem: 'PRODUCTO',
   productoId: "",
+  recetaId: "",
   descripcion: "",
   cantidad: 1,
   precioUnitario: 0,
@@ -132,6 +139,7 @@ const PresupuestosPage: React.FC = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +205,7 @@ const PresupuestosPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [clientesData, usuariosData, presupuestosData, productosData] = await Promise.all([
+      const [clientesData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
         clienteApi.getAll().catch((err) => {
           console.error("Error fetching clientes:", err);
           setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
@@ -223,11 +231,18 @@ const PresupuestosPage: React.FC = () => {
           setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
           return [];
         }),
+        recetaFabricacionApi.findDisponiblesParaVenta().catch((err) => {
+          console.error("Error fetching recetas:", err);
+          setError("Error al cargar recetas de equipos: " + (err.response?.data?.message || err.message));
+          return [];
+        }),
       ]);
 
-      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData });
+      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData, recetasData });
+      console.log("Recetas disponibles para venta:", recetasData); // Debug: Check loaded recetas
       setClientes(Array.isArray(clientesData) ? clientesData : []);
       setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
+      setRecetas(Array.isArray(recetasData) ? recetasData : []);
 
       const presupuestosArray = Array.isArray(presupuestosData)
         ? presupuestosData.map((presupuesto) => {
@@ -384,10 +399,25 @@ const PresupuestosPage: React.FC = () => {
       const newDetalles = [...prev];
       const detalle = newDetalles[index];
 
-      if (field === "productoId") detalle.productoId = value as string;
-      else if (field === "descripcion") detalle.descripcion = value as string;
-      else if (field === "cantidad") detalle.cantidad = Number(value) || 0;
-      else if (field === "precioUnitario") detalle.precioUnitario = Number(value) || 0;
+      if (field === "tipoItem") {
+        detalle.tipoItem = value as TipoItemDocumento;
+        // Reset item-specific fields when switching type
+        detalle.productoId = "";
+        detalle.recetaId = "";
+        detalle.descripcion = "";
+        detalle.precioUnitario = 0;
+        detalle.subtotal = 0;
+      } else if (field === "productoId") {
+        detalle.productoId = value as string;
+      } else if (field === "recetaId") {
+        detalle.recetaId = value as string;
+      } else if (field === "descripcion") {
+        detalle.descripcion = value as string;
+      } else if (field === "cantidad") {
+        detalle.cantidad = Number(value) || 0;
+      } else if (field === "precioUnitario") {
+        detalle.precioUnitario = Number(value) || 0;
+      }
 
       if (field === "cantidad" || field === "precioUnitario") {
         detalle.subtotal = detalle.cantidad * detalle.precioUnitario;
@@ -402,10 +432,21 @@ const PresupuestosPage: React.FC = () => {
         }
       }
 
+      if (field === "recetaId" && value) {
+        const receta = recetas.find((r) => r.id === Number(value));
+        console.log('Selected receta:', receta); // Debug: Check receta data
+        if (receta) {
+          detalle.descripcion = `${receta.nombre} - ${receta.modelo || ''} (${receta.tipoEquipo})`;
+          detalle.precioUnitario = receta.precioVenta || 0;
+          detalle.subtotal = detalle.cantidad * (receta.precioVenta || 0);
+          console.log('Set precioUnitario to:', detalle.precioUnitario); // Debug: Check price
+        }
+      }
+
       return newDetalles;
     });
     setHasUnsavedChanges(true);
-  }, [readOnly, productos]);
+  }, [readOnly, productos, recetas]);
 
   const removeDetalle = useCallback((index: number) => {
     if (readOnly) return;
@@ -430,7 +471,9 @@ const PresupuestosPage: React.FC = () => {
         Array.isArray(presupuesto.detalles)
           ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
               id: detalle.id,
+              tipoItem: detalle.tipoItem,
               productoId: detalle.productoId?.toString() || "",
+              recetaId: detalle.recetaId?.toString() || "",
               descripcion: detalle.descripcion || "",
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
@@ -489,12 +532,22 @@ const PresupuestosPage: React.FC = () => {
       usuarioId: Number(formData.usuarioId) || (user?.id ?? 0),
       observaciones: formData.observaciones,
       tipoIva: formData.tipoIva,
-      detalles: detalles.map((d) => ({
-        productoId: Number(d.productoId),
-        cantidad: d.cantidad,
-        precioUnitario: d.precioUnitario,
-        descripcion: d.descripcion,
-      })),
+      detalles: detalles.map((d) => {
+        const baseDetalle: any = {
+          tipoItem: d.tipoItem,
+          cantidad: d.cantidad,
+          precioUnitario: d.precioUnitario,
+          descripcion: d.descripcion,
+        };
+
+        if (d.tipoItem === 'PRODUCTO') {
+          baseDetalle.productoId = Number(d.productoId);
+        } else if (d.tipoItem === 'EQUIPO') {
+          baseDetalle.recetaId = Number(d.recetaId);
+        }
+
+        return baseDetalle;
+      }),
     };
 
     try {
@@ -507,9 +560,16 @@ const PresupuestosPage: React.FC = () => {
         return;
       }
       for (const detalle of detalles) {
-        if (!detalle.productoId || isNaN(Number(detalle.productoId)) || Number(detalle.productoId) <= 0) {
-          setError("Todos los detalles deben tener un producto válido");
-          return;
+        if (detalle.tipoItem === 'PRODUCTO') {
+          if (!detalle.productoId || isNaN(Number(detalle.productoId)) || Number(detalle.productoId) <= 0) {
+            setError("Todos los detalles de tipo PRODUCTO deben tener un producto válido");
+            return;
+          }
+        } else if (detalle.tipoItem === 'EQUIPO') {
+          if (!detalle.recetaId || isNaN(Number(detalle.recetaId)) || Number(detalle.recetaId) <= 0) {
+            setError("Todos los detalles de tipo EQUIPO deben tener una receta válida");
+            return;
+          }
         }
         if (!detalle.descripcion.trim()) {
           setError("Todos los detalles deben tener una descripción");
@@ -646,9 +706,9 @@ const PresupuestosPage: React.FC = () => {
         </Alert>
       )}
 
-      {productos.length === 0 && (
+      {productos.length === 0 && recetas.length === 0 && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          No hay productos disponibles. Contacte al administrador para configurar productos.
+          No hay productos ni equipos disponibles para la venta. Contacte al administrador.
         </Alert>
       )}
 
@@ -967,17 +1027,28 @@ const PresupuestosPage: React.FC = () => {
               Detalles del Presupuesto
             </Typography>
 
-            {productos.length === 0 && (
+            {productos.length === 0 && recetas.length === 0 && (
               <Alert severity="warning" sx={{ mb: 2 }}>
-                No hay productos disponibles. Contacte al administrador para configurar el catálogo de productos.
+                No hay productos ni equipos disponibles para la venta. Contacte al administrador.
+              </Alert>
+            )}
+            {productos.length === 0 && recetas.length > 0 && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Solo equipos disponibles. No hay productos en el catálogo.
+              </Alert>
+            )}
+            {productos.length > 0 && recetas.length === 0 && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Solo productos disponibles. No hay equipos configurados para la venta.
               </Alert>
             )}
 
             <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto' }}>
-              <Table size="small" aria-label="Tabla de detalles del presupuesto" sx={{ minWidth: { xs: 600, sm: 'auto' } }}>
+              <Table size="small" aria-label="Tabla de detalles del presupuesto" sx={{ minWidth: { xs: 700, sm: 'auto' } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ minWidth: 200 }}>Producto</TableCell>
+                    {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 120 }}>Tipo</TableCell>}
+                    <TableCell sx={{ minWidth: 220 }}>Producto/Equipo</TableCell>
                     <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Cantidad</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Precio Unit.</TableCell>
@@ -989,27 +1060,65 @@ const PresupuestosPage: React.FC = () => {
                   {detalles.length > 0 ? (
                     detalles.map((detalle, index) => (
                       <TableRow key={index}>
+                        {!readOnly && !editingPresupuesto && (
+                          <TableCell>
+                            <TextField
+                              select
+                              size="small"
+                              fullWidth
+                              value={detalle.tipoItem}
+                              onChange={(e) => updateDetalle(index, "tipoItem", e.target.value)}
+                              disabled={readOnly || !!editingPresupuesto}
+                            >
+                              <MenuItem value="PRODUCTO">Producto</MenuItem>
+                              <MenuItem value="EQUIPO">Equipo</MenuItem>
+                            </TextField>
+                          </TableCell>
+                        )}
                         <TableCell>
-                          <TextField
-                            select
-                            size="small"
-                            fullWidth
-                            value={detalle.productoId}
-                            onChange={(e) => updateDetalle(index, "productoId", e.target.value)}
-                            disabled={readOnly || !!editingPresupuesto}
-                            error={!detalle.productoId && hasUnsavedChanges}
-                          >
-                            <MenuItem value="">Sin producto</MenuItem>
-                            {productos.length === 0 ? (
-                              <MenuItem disabled>No hay productos disponibles</MenuItem>
-                            ) : (
-                              productos.map((producto) => (
-                                <MenuItem key={producto.id} value={producto.id.toString()}>
-                                  {producto.nombre} - ${producto.precio?.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                                </MenuItem>
-                              ))
-                            )}
-                          </TextField>
+                          {detalle.tipoItem === 'PRODUCTO' ? (
+                            <TextField
+                              select
+                              size="small"
+                              fullWidth
+                              value={detalle.productoId || ""}
+                              onChange={(e) => updateDetalle(index, "productoId", e.target.value)}
+                              disabled={readOnly || !!editingPresupuesto}
+                              error={!detalle.productoId && hasUnsavedChanges}
+                            >
+                              <MenuItem value="">Seleccionar producto</MenuItem>
+                              {productos.length === 0 ? (
+                                <MenuItem disabled>No hay productos disponibles</MenuItem>
+                              ) : (
+                                productos.map((producto) => (
+                                  <MenuItem key={producto.id} value={producto.id.toString()}>
+                                    {producto.nombre} - ${producto.precio?.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </TextField>
+                          ) : (
+                            <TextField
+                              select
+                              size="small"
+                              fullWidth
+                              value={detalle.recetaId || ""}
+                              onChange={(e) => updateDetalle(index, "recetaId", e.target.value)}
+                              disabled={readOnly || !!editingPresupuesto}
+                              error={!detalle.recetaId && hasUnsavedChanges}
+                            >
+                              <MenuItem value="">Seleccionar equipo</MenuItem>
+                              {recetas.length === 0 ? (
+                                <MenuItem disabled>No hay equipos disponibles</MenuItem>
+                              ) : (
+                                recetas.map((receta) => (
+                                  <MenuItem key={receta.id} value={receta.id.toString()}>
+                                    {receta.nombre} - {receta.modelo} ({receta.tipoEquipo}) - ${receta.precioVenta?.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </TextField>
+                          )}
                         </TableCell>
                         <TableCell>
                           <TextField
@@ -1061,7 +1170,7 @@ const PresupuestosPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={readOnly || editingPresupuesto ? 5 : 6} align="center">
+                      <TableCell colSpan={readOnly || editingPresupuesto ? 5 : 7} align="center">
                         No hay detalles para este presupuesto.
                       </TableCell>
                     </TableRow>
@@ -1072,9 +1181,19 @@ const PresupuestosPage: React.FC = () => {
 
             {!readOnly && !editingPresupuesto && (
               <Box sx={{ mb: 2 }}>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={addDetalle} disabled={productos.length === 0}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addDetalle}
+                  disabled={productos.length === 0 && recetas.length === 0}
+                >
                   Agregar Detalle
                 </Button>
+                {productos.length === 0 && recetas.length === 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                    No hay productos ni equipos disponibles
+                  </Typography>
+                )}
               </Box>
             )}
 

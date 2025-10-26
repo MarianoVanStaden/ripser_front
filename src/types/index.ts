@@ -1791,6 +1791,8 @@ export interface RecetaItem {
   instrucciones?: string;
 }
 
+export type TipoItemDocumento = 'PRODUCTO' | 'EQUIPO';
+
 export const EstadoDocumento = {
   PENDIENTE: "PENDIENTE",
   APROBADO: "APROBADO",
@@ -1875,23 +1877,53 @@ export interface OpcionFinanciamiento {
 export interface DetalleDocumento {
   id: number;
   documentoComercialId: number;
-  productoId: number;
-  productoNombre: string; // For display purposes
+  tipoItem: TipoItemDocumento;
+
+  // For PRODUCTO type
+  productoId?: number;
+  productoNombre?: string; // For display purposes
+
+  // For EQUIPO type
+  recetaId?: number;
+  recetaNombre?: string;
+  recetaModelo?: string;
+  recetaTipo?: string;
+  descripcionEquipo?: string;
+
   cantidad: number;
   precioUnitario: number;
   descuento?: number;
   subtotal: number;
   descripcion?: string; // Optional description for the item
+
+  // For EQUIPO items in Factura - list of assigned equipos
+  equiposFabricadosIds?: number[];
+  equiposNumerosHeladera?: string[];
 }
 export interface DetalleDocumentoDTO {
   id?: number; // Opcional al crear
-  productoId: number;
+  tipoItem?: TipoItemDocumento; // Defaults to PRODUCTO if not specified
+
+  // For PRODUCTO type
+  productoId?: number;
   productoNombre?: string;
+
+  // For EQUIPO type
+  recetaId?: number;
+  recetaNombre?: string;
+  recetaModelo?: string;
+  recetaTipo?: string;
+  descripcionEquipo?: string;
+
   cantidad: number;
   precioUnitario: number;
   descuento?: number;
   subtotal?: number;
   descripcion?: string;
+
+  // For EQUIPO items in Factura - list of assigned equipos
+  equiposFabricadosIds?: number[];
+  equiposNumerosHeladera?: string[];
 }
 
 export interface CreatePresupuestoRequest {
@@ -1899,6 +1931,12 @@ export interface CreatePresupuestoRequest {
   usuarioId: number;
   detalles: DetalleDocumentoDTO[];
   observaciones?: string;
+}
+
+export interface ConvertToFacturaDTO {
+  notaPedidoId: number;
+  descuento?: number;
+  equiposAsignaciones?: { [detalleId: number]: number[] }; // Map of DetalleDocumento ID to List of EquipoFabricado IDs
 }
 
 export interface OpcionFinanciamientoDTO {
@@ -1941,6 +1979,8 @@ export interface RecetaFabricacionDTO {
   modelo?: string;
   medida?: string;
   observaciones?: string;
+  precioVenta?: number;
+  disponibleParaVenta?: boolean;
   activo: boolean;
   fechaCreacion: string;
   detalles: DetalleRecetaDTO[];
@@ -1966,6 +2006,8 @@ export interface RecetaFabricacionCreateDTO {
   modelo?: string;
   medida?: string;
   observaciones?: string;
+  precioVenta?: number;
+  disponibleParaVenta?: boolean;
   detalles?: DetalleRecetaCreateDTO[];
 }
 
@@ -1976,6 +2018,8 @@ export interface RecetaFabricacionUpdateDTO {
   modelo?: string;
   medida?: string;
   observaciones?: string;
+  precioVenta?: number;
+  disponibleParaVenta?: boolean;
   activo?: boolean;
 }
 
