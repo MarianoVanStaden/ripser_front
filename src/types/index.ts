@@ -2084,7 +2084,7 @@ export interface EquipoFabricadoCreateDTO {
   medida?: string;
   color?: string;
   observaciones?: string;
-  numeroHeladera: string;
+  numeroHeladera: string; // Required - use 'AUTO' for auto-generation
   cantidad: number;
   estado?: EstadoFabricacion;
   responsableId?: number;

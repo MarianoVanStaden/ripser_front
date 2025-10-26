@@ -12,7 +12,6 @@ import {
   equipoFabricadoApi,
 } from '../../api/services/equipoFabricadoApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
-import api from '../../api/config';
 import type {
   TipoEquipo,
   EquipoFabricadoCreateDTO,
@@ -26,7 +25,11 @@ import { clienteApi } from '../../api/services/clienteApi';
 const schema = yup.object().shape({
   tipo: yup.string().required('El tipo es obligatorio'),
   modelo: yup.string().required('El modelo es obligatorio'),
-  numeroHeladera: yup.string().required('El número de heladera es obligatorio'),
+  numeroHeladera: yup.string().when('$isEdit', {
+    is: true,
+    then: (schema) => schema.required('El número de heladera es obligatorio'),
+    otherwise: (schema) => schema.notRequired(),
+  }),
   cantidad: yup.number().min(1, 'La cantidad debe ser al menos 1').required('La cantidad es obligatoria'),
   equipo: yup.string(),
   medida: yup.string(),
@@ -54,7 +57,7 @@ const EquipoForm: React.FC = () => {
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
 
-  const { control, handleSubmit, formState: { errors }, reset } = useForm({
+  const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       tipo: '' as TipoEquipo,
@@ -66,6 +69,7 @@ const EquipoForm: React.FC = () => {
       cantidad: 1,
       observaciones: '',
     },
+    context: { isEdit },
   });
 
   useEffect(() => {
@@ -81,6 +85,16 @@ const EquipoForm: React.FC = () => {
     };
     loadData();
   }, [id, isEdit]);
+
+  // Auto-fill form fields when recipe is selected
+  useEffect(() => {
+    if (selectedReceta && !isEdit) {
+      setValue('tipo', selectedReceta.tipoEquipo);
+      setValue('equipo', selectedReceta.nombre || '');
+      setValue('modelo', selectedReceta.modelo || '');
+      setValue('medida', selectedReceta.medida || '');
+    }
+  }, [selectedReceta, isEdit, setValue]);
 
   const loadRecetas = async () => {
     try {
@@ -190,27 +204,64 @@ const EquipoForm: React.FC = () => {
           equipo: data.equipo,
           medida: data.medida,
           color: data.color,
-          numeroHeladera: data.numeroHeladera,
           cantidad: data.cantidad,
           observaciones: data.observaciones,
           estado,
+          numeroHeladera: 'AUTO', // Placeholder - backend debe reemplazarlo
           recetaId: selectedReceta?.id,
           responsableId: selectedResponsable?.id,
           clienteId: selectedCliente?.id,
         };
-        await equipoFabricadoApi.create(createData);
+        
+        // Log para debug - ver qué se está enviando
+        console.log('📦 CreateData being sent:', JSON.stringify(createData, null, 2));
+        
+        const createdEquipo = await equipoFabricadoApi.create(createData);
+        console.log('✅ Equipo created successfully:', createdEquipo);
+        
+        const message = data.cantidad > 1
+          ? `Se crearon ${data.cantidad} equipos correctamente`
+          : 'Equipo creado correctamente';
         setSnackbar({
           open: true,
-          message: 'Equipo creado correctamente',
+          message,
           severity: 'success',
         });
       }
       setTimeout(() => navigate('/fabricacion/equipos'), 1500);
     } catch (error: any) {
       console.error('Error saving equipo:', error);
+      console.error('Error response data:', error.response?.data);
+      
+      // Extraer mensaje de error del backend
+      let errorMessage = 'Error al guardar el equipo';
+      
+      if (error.response?.data) {
+        // Error de validación de stock (409 Conflict)
+        if (error.response.status === 409 && error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+        // Error de número duplicado o validación (400 Bad Request)
+        else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+        // Error de validación de campos
+        else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else {
+          // Si es un objeto de validación (e.g., {numeroHeladera: 'mensaje', campo2: 'mensaje'})
+          const errors = Object.entries(error.response.data)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join(', ');
+          if (errors) errorMessage = errors;
+        }
+      }
+      
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || 'Error al guardar el equipo',
+        message: errorMessage,
         severity: 'error',
       });
     } finally {
@@ -285,20 +336,22 @@ const EquipoForm: React.FC = () => {
               )}
             />
 
-            <Controller
-              name="numeroHeladera"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Número de Heladera *"
-                  error={!!errors.numeroHeladera}
-                  helperText={errors.numeroHeladera?.message}
-                  fullWidth
-                  disabled={isEdit}
-                />
-              )}
-            />
+            {isEdit && (
+              <Controller
+                name="numeroHeladera"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Número de Heladera"
+                    error={!!errors.numeroHeladera}
+                    helperText={errors.numeroHeladera?.message}
+                    fullWidth
+                    disabled
+                  />
+                )}
+              />
+            )}
 
             <Controller
               name="equipo"
@@ -329,10 +382,10 @@ const EquipoForm: React.FC = () => {
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Cantidad *"
+                    label={isEdit ? "Cantidad *" : "Cantidad de Unidades a Crear *"}
                     type="number"
                     error={!!errors.cantidad}
-                    helperText={errors.cantidad?.message}
+                    helperText={isEdit ? errors.cantidad?.message : errors.cantidad?.message || "Se creará un registro individual por cada unidad"}
                     InputProps={{ inputProps: { min: 1 } }}
                     fullWidth
                   />
@@ -403,11 +456,19 @@ const EquipoForm: React.FC = () => {
 
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={snackbar.severity === 'error' ? 8000 : 4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ 
+            whiteSpace: 'pre-line', // Permite saltos de línea
+            maxWidth: '600px',
+            width: '100%'
+          }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

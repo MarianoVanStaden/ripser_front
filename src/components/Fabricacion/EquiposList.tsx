@@ -9,7 +9,7 @@ import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
   equipoFabricadoApi,
@@ -20,10 +20,11 @@ import api from '../../api/config';
 
 const EquiposList: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50); // Increased to 50 to see more equipos
   const [totalElements, setTotalElements] = useState(0);
 
   // Filtros
@@ -49,9 +50,10 @@ const EquiposList: React.FC = () => {
   const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
 
+  // Reload equipos when navigating back to this page
   useEffect(() => {
     loadEquipos();
-  }, [page, pageSize, tipoFilter, estadoFilter]);
+  }, [page, pageSize, tipoFilter, estadoFilter, location.key]);
 
   useEffect(() => {
     loadClientes();
@@ -60,16 +62,26 @@ const EquiposList: React.FC = () => {
   const loadEquipos = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Loading equipos - Page:', page, 'PageSize:', pageSize);
       const response = await equipoFabricadoApi.findAll(page, pageSize);
+      console.log('📥 API Response:', response);
+      console.log('📊 Total elements in DB:', response.totalElements);
+      console.log('📄 Total pages:', response.totalPages);
+      console.log('🔢 Current page content:', response.content?.length, 'items');
+      
       let filtered = response.content || [];
 
       if (tipoFilter) {
+        console.log('🔍 Filtering by tipo:', tipoFilter);
         filtered = filtered.filter((e: EquipoFabricadoListDTO) => e.tipo === tipoFilter);
       }
       if (estadoFilter) {
+        console.log('🔍 Filtering by estado:', estadoFilter);
         filtered = filtered.filter((e: EquipoFabricadoListDTO) => e.estado === estadoFilter);
       }
 
+      console.log('📋 Filtered equipos:', filtered.length, 'items');
+      console.log('📋 First 3 equipos:', filtered.slice(0, 3));
       setEquipos(filtered);
       setTotalElements(response.totalElements || filtered.length);
     } catch (error) {
@@ -374,15 +386,26 @@ const EquiposList: React.FC = () => {
       <Paper elevation={2} sx={{ p: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h5" fontWeight="600">
-            Equipos Fabricados
+            Equipos Fabricados ({totalElements} total)
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => navigate('/fabricacion/equipos/nuevo')}
-          >
-            Nuevo Equipo
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                console.log('🔄 Manual refresh triggered');
+                loadEquipos();
+              }}
+            >
+              Actualizar
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => navigate('/fabricacion/equipos/nuevo')}
+            >
+              Nuevo Equipo
+            </Button>
+          </Stack>
         </Box>
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
@@ -430,9 +453,6 @@ const EquiposList: React.FC = () => {
             disableSelectionOnClick
             localeText={{
               noRowsLabel: 'No hay equipos disponibles',
-              MuiTablePagination: {
-                labelRowsPerPage: 'Filas por página:',
-              },
             }}
           />
         </Box>
