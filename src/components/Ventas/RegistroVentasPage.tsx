@@ -27,6 +27,7 @@ import {
   InputLabel,
   Select,
   Divider,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -69,6 +70,10 @@ const RegistroVentasPage: React.FC = () => {
   });
   const [editLoading, setEditLoading] = useState(false);
   
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -99,7 +104,9 @@ const RegistroVentasPage: React.FC = () => {
       
       // Create maps for quick lookups
       const clientsMap = new Map(clientsData.map((client: Cliente) => [client.id, client]));
-      const usuariosMap = new Map(usuariosData.content.map((usuario: Usuario) => [usuario.id, usuario]));
+      // Handle usuarios response - it might be paginated or direct array
+      const usuariosArray = Array.isArray(usuariosData) ? usuariosData : (usuariosData as any).content || [];
+      const usuariosMap = new Map(usuariosArray.map((usuario: Usuario) => [usuario.id, usuario]));
       
       // Filter only invoices (FAC-), exclude order notes (NP-)
       const facturas = salesData.filter((sale: any) => {
@@ -193,9 +200,16 @@ const RegistroVentasPage: React.FC = () => {
         };
       });
       
-      setSales(enrichedSales);
+      // Sort sales in reverse order (most recent first)
+      const sortedSales = enrichedSales.sort((a, b) => {
+        const dateA = new Date(a.fechaVenta || a.fechaEmision || 0).getTime();
+        const dateB = new Date(b.fechaVenta || b.fechaEmision || 0).getTime();
+        return dateB - dateA; // Descending order
+      });
+      
+      setSales(sortedSales);
       setClients(clientsData);
-      setUsuarios(usuariosData.content);
+      setUsuarios(usuariosArray);
       
     } catch (err) {
       console.error('Error loading data:', err);
@@ -247,7 +261,7 @@ const RegistroVentasPage: React.FC = () => {
         ...updatedSale,
         cliente: clientsMap.get(parseInt(editForm.clienteId)) || null,
         usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || null,
-      };
+      } as unknown as Venta;
 
       setSales(prevSales => 
         prevSales.map(sale => 
@@ -374,6 +388,21 @@ const RegistroVentasPage: React.FC = () => {
   };
 
   const { totalRevenue, totalTransactions, averageOrderValue } = calculateTotals();
+
+  // Paginate filtered sales
+  const paginatedSales = filteredSales.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // Reset to first page when changing rows per page
+  };
 
   if (loading) {
     return (
@@ -589,7 +618,7 @@ const RegistroVentasPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredSales.map((sale: Venta) => (
+                {paginatedSales.map((sale: Venta) => (
                   <TableRow key={sale.id}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
@@ -677,7 +706,7 @@ const RegistroVentasPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredSales.length === 0 && (
+                {paginatedSales.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography color="text.secondary">
@@ -689,6 +718,20 @@ const RegistroVentasPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          
+          <TablePagination
+            component="div"
+            count={filteredSales.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => 
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </CardContent>
       </Card>
 
@@ -849,7 +892,7 @@ const RegistroVentasPage: React.FC = () => {
         fullWidth
       >
         <DialogTitle>
-          Cambiar Estado - Factura #{editingSale?.numeroDocumento || editingSale?.id}
+          Cambiar Estado - Factura #{(editingSale as any)?.numeroDocumento || editingSale?.id}
         </DialogTitle>
         <DialogContent>
           {editingSale && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -27,6 +27,7 @@ import {
   InputLabel,
   Select,
   Divider,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -96,6 +97,8 @@ const InformeVentasPage = () => {
   const [reportType, setReportType] = useState('summary');
   const [groupBy, setGroupBy] = useState('Día');
   const [chartType, setChartType] = useState('bar');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -289,7 +292,14 @@ const loadData = async () => {
       };
     });
 
-    setSales(enrichedSales);
+    // Sort by date descending (most recent first)
+    const sortedSales = enrichedSales.sort((a, b) => {
+      const dateA = new Date(a.fechaVenta || a.fecha_venta || 0).getTime();
+      const dateB = new Date(b.fechaVenta || b.fecha_venta || 0).getTime();
+      return dateB - dateA;
+    });
+
+    setSales(sortedSales);
     setClients(clientsData);
     setUsuarios(usuariosData);
 
@@ -541,6 +551,20 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
     return matchesSearch && matchesStatus && matchesPaymentMethod &&
            matchesClient && matchesDateFrom && matchesDateTo;
   });
+
+  // Paginated sales
+  const paginatedSales = useMemo(() => {
+    return filteredSales.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [filteredSales, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -974,7 +998,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredSales.map(sale => (
+                {paginatedSales.map(sale => (
                   <TableRow key={sale.id}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
@@ -1039,6 +1063,17 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            component="div"
+            count={filteredSales.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          />
         </CardContent>
       </Card>
 

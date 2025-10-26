@@ -27,6 +27,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  TablePagination,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -69,6 +70,10 @@ const NotasPedidoPage: React.FC = () => {
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
 
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   // Main data states
   const [notasPedido, setNotasPedido] = useState<DocumentoComercial[]>([]);
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
@@ -103,7 +108,15 @@ const NotasPedidoPage: React.FC = () => {
       ]);
 
       const notasArray = Array.isArray(notasData) ? notasData : [];
-      setNotasPedido(notasArray);
+      
+      // Sort notas in reverse order (most recent first)
+      const sortedNotas = notasArray.sort((a, b) => {
+        const dateA = new Date(a.fechaEmision || 0).getTime();
+        const dateB = new Date(b.fechaEmision || 0).getTime();
+        return dateB - dateA; // Descending order
+      });
+      
+      setNotasPedido(sortedNotas);
       
       // Backend requires PRESUPUESTO in PENDIENTE state for conversion
       const pendientes = Array.isArray(presupuestosData)
@@ -151,6 +164,23 @@ const NotasPedidoPage: React.FC = () => {
       return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
     });
   }, [notasPedido, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter]);
+
+  // Paginate filtered notas
+  const paginatedNotasPedido = useMemo(() => {
+    return filteredNotasPedido.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
+  }, [filteredNotasPedido, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (estado) {
@@ -452,7 +482,7 @@ const NotasPedidoPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredNotasPedido.map((nota) => (
+                {paginatedNotasPedido.map((nota) => (
                   <TableRow key={nota.id}>
                     <TableCell>{nota.numeroDocumento}</TableCell>
                     <TableCell>{nota.clienteNombre}</TableCell>
@@ -511,6 +541,20 @@ const NotasPedidoPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={filteredNotasPedido.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => 
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
 
           {filteredNotasPedido.length === 0 && (
             <Box sx={{ textAlign: "center", py: 8 }}>

@@ -31,6 +31,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  TablePagination,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -134,6 +135,10 @@ const PresupuestosPage: React.FC = () => {
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
+  
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   
   // Main data states
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
@@ -259,7 +264,14 @@ const PresupuestosPage: React.FC = () => {
           })
         : [];
 
-      setPresupuestos(presupuestosArray);
+      // Sort presupuestos in reverse order (most recent first)
+      const sortedPresupuestos = presupuestosArray.sort((a, b) => {
+        const dateA = new Date(a.fechaEmision || 0).getTime();
+        const dateB = new Date(b.fechaEmision || 0).getTime();
+        return dateB - dateA; // Descending order
+      });
+
+      setPresupuestos(sortedPresupuestos);
       setProductos(Array.isArray(productosData) ? productosData : []);
 
       const embeddedFinanciamientoMap: Record<number, OpcionFinanciamientoDTO[]> = {};
@@ -302,6 +314,23 @@ const PresupuestosPage: React.FC = () => {
       return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
     });
   }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, clientes]);
+
+  // Paginate filtered presupuestos
+  const paginatedPresupuestos = useMemo(() => {
+    return filteredPresupuestos.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
+  }, [filteredPresupuestos, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
     switch (estado) {
@@ -806,7 +835,7 @@ const PresupuestosPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredPresupuestos.map((presupuesto) => {
+                {paginatedPresupuestos.map((presupuesto) => {
                   const selectedOption = getSelectedFinancingOption(presupuesto);
                   const totalConFinanciamiento = selectedOption ? selectedOption.montoTotal : presupuesto.total;
 
@@ -878,6 +907,20 @@ const PresupuestosPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={filteredPresupuestos.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => 
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
 
           {filteredPresupuestos.length === 0 && (
             <Box sx={{ textAlign: "center", py: 8 }}>
