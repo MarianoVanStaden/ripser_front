@@ -27,7 +27,10 @@
       "Bash(cmd //c \"FOR /F \"\"tokens=2\"\" %i IN (''''tasklist ^| findstr java'''') DO taskkill /PID %i /F\")",
       "Bash(cmd //c \"taskkill /PID 10404 /F && taskkill /PID 3604 /F\")",
       "Bash(\"C:/Program Files/MySQL/MySQL Server 9.1/bin/mysql.exe\" -h localhost -P 3306 -u santiago -pjaime637 -e \"DESCRIBE ripser_back.detalle_documentos;\")",
-      "Bash(\"C:/Program Files/MySQL/MySQL Server 9.1/bin/mysql.exe\" -h localhost -P 3306 -u santiago -pjaime637 -e \"SHOW CREATE TABLE ripser_back.detalle_documentos\\G\")"
+      "Bash(\"C:/Program Files/MySQL/MySQL Server 9.1/bin/mysql.exe\" -h localhost -P 3306 -u santiago -pjaime637 -e \"SHOW CREATE TABLE ripser_back.detalle_documentos\\G\")",
+      "Bash(sed:*)",
+      "Bash(cmd /c \"FOR /F \"tokens=2\" %i IN (''tasklist ^| findstr java'') DO taskkill /PID %i /F\")",
+      "Bash(\"C:/Program Files/MySQL/MySQL Server 9.1/bin/mysql.exe\" -h localhost -P 3306 -u santiago -pjaime637 -e \"ALTER TABLE ripser_back.garantias MODIFY COLUMN venta_id BIGINT NULL;\")"
     ],
     "deny": [],
     "ask": []

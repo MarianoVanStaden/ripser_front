@@ -60,6 +60,7 @@ const navigation = [
     title: 'LOGÍSTICA',
     items: [
       { text: 'Gestión Stock', icon: <LocalShippingIcon />, path: '/logistica/stock' },
+      { text: 'Stock de Equipos', icon: <LocalShippingIcon />, path: '/logistica/stock-equipos' },
       { text: 'Inventario', icon: <LocalShippingIcon />, path: '/logistica/inventario' },
       { text: 'Tareas de Recuento', icon: <LocalShippingIcon />, path: '/logistica/recuentos' },
       { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },

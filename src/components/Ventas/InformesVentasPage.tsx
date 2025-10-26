@@ -1103,9 +1103,22 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                         {viewingSale.detalleVentas.map((item, index) => (
                           <TableRow key={item.id || index}>
                             <TableCell>
-                              <Typography variant="body2">
-                                {item.producto?.nombre || 'Producto no disponible'}
-                              </Typography>
+                              {item.tipoItem === 'EQUIPO' ? (
+                                <>
+                                  <Typography variant="body2">
+                                    {item.recetaNombre || item.descripcionEquipo || 'Equipo'}
+                                  </Typography>
+                                  {item.equiposNumerosHeladera && item.equiposNumerosHeladera.length > 0 && (
+                                    <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
+                                      Equipos: {item.equiposNumerosHeladera.join(', ')}
+                                    </Typography>
+                                  )}
+                                </>
+                              ) : (
+                                <Typography variant="body2">
+                                  {item.producto?.nombre || item.productoNombre || 'Producto no disponible'}
+                                </Typography>
+                              )}
                             </TableCell>
                             <TableCell align="center">{item.cantidad}</TableCell>
                             <TableCell align="right">${item.precioUnitario?.toFixed(2) || '0.00'}</TableCell>

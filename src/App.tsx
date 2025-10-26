@@ -40,6 +40,7 @@ import GarantiasPage from './components/Garantia/GarantiasPage';
 import ReclamosGarantiaPage from './components/Garantia/ReclamosGarantiaPage';
 import GarantiaReportPage from './components/Garantia/GarantiaReportPage';
 import StockPage from './components/Logistica/StockPage';
+import StockEquiposPage from './components/Logistica/StockEquiposPage';
 import InventoryPage from './components/Logistica/InventoryPage';
 import RecountTasksPage from './components/Logistica/RecountTasksPage';
 import TripsPage from './components/Logistica/TripsPage';
@@ -143,6 +144,7 @@ function App() {
               <Route path="rrhh/legajos" element={<PrivateRoute><LegajosPage /></PrivateRoute>} />
               {/* LOGÍSTICA Module */}
               <Route path="logistica/stock" element={<PrivateRoute><StockPage /></PrivateRoute>} />
+              <Route path="logistica/stock-equipos" element={<PrivateRoute><StockEquiposPage /></PrivateRoute>} />
               <Route path="logistica/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
               <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
               <Route path="logistica/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />

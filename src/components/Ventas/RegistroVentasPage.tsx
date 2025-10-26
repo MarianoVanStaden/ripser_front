@@ -765,13 +765,28 @@ const RegistroVentasPage: React.FC = () => {
                         {viewingSale.detalleVentas.map((item: DetalleVenta, index: number) => (
                           <TableRow key={item.id || index}>
                             <TableCell>
-                              <Typography variant="body2">
-                                {item.producto?.nombre || 'Item no disponible'}
-                              </Typography>
-                              {item.producto?.descripcion && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {item.producto.descripcion}
-                                </Typography>
+                              {item.tipoItem === 'EQUIPO' ? (
+                                <>
+                                  <Typography variant="body2">
+                                    {item.recetaNombre || item.descripcionEquipo || 'Equipo'}
+                                  </Typography>
+                                  {item.equiposNumerosHeladera && item.equiposNumerosHeladera.length > 0 && (
+                                    <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
+                                      Equipos: {item.equiposNumerosHeladera.join(', ')}
+                                    </Typography>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <Typography variant="body2">
+                                    {item.producto?.nombre || item.productoNombre || 'Item no disponible'}
+                                  </Typography>
+                                  {item.producto?.descripcion && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {item.producto.descripcion}
+                                    </Typography>
+                                  )}
+                                </>
                               )}
                             </TableCell>
                             <TableCell align="center">{item.cantidad}</TableCell>

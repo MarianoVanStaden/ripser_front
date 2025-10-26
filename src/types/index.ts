@@ -1271,10 +1271,24 @@ export interface Usuario {
 // Venta (Sale)
 export interface DetalleVenta {
   id: number;
-  ventaId: number;
+  ventaId?: number;
+
+  // Type of item (PRODUCTO or EQUIPO)
+  tipoItem?: TipoItemDocumento;
+
+  // For PRODUCTO type
   productoId?: number;
   productoNombre?: string; // Add product name for display
   producto?: Producto; // Add product info for display
+
+  // For EQUIPO type
+  recetaId?: number;
+  recetaNombre?: string;
+  descripcionEquipo?: string;
+
+  // For EQUIPO items - list of assigned equipment numbers
+  equiposNumerosHeladera?: string[];
+
   cantidad: number;
   precioUnitario: number;
   descuento?: number;

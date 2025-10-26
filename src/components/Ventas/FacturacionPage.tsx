@@ -58,6 +58,7 @@ import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi'
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import SuccessDialog from "../common/SuccessDialog";
+import AsignarEquiposDialog from "./AsignarEquiposDialog";
 import { useAuth } from '../../context/AuthContext';
 import type {
   Cliente,
@@ -180,6 +181,9 @@ const FacturacionPage = () => {
   const [showNewOpcionForm, setShowNewOpcionForm] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
+  const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
+  const [notaParaAsignacion, setNotaParaAsignacion] = useState<DocumentoComercial | null>(null);
+  const [isManualInvoice, setIsManualInvoice] = useState(false);
   const [notaOpcionesFinanciamiento, setNotaOpcionesFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
 
   const loadData = async () => {
@@ -504,23 +508,81 @@ const FacturacionPage = () => {
         tipoIva: selectedIva,
       });
 
-      const factura = await documentoApi.convertToFactura({
-        notaPedidoId: nota.id,
-      });
 
-      setCreatedFactura(factura);
-      setSuccessDialogOpen(true);
-      clearForm();
-      setSelectedOpcionId(null);
-      setOpcionesFinanciamiento([]);
-      await loadData();
+      // Check if there are EQUIPO items in the nota
+      const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
+
+      if (detallesEquipo.length > 0) {
+        // Open AsignarEquiposDialog for equipment assignment
+        setNotaParaAsignacion(nota);
+        setIsManualInvoice(true);
+        setAsignarEquiposDialogOpen(true);
+        setLoading(false);
+      } else {
+        // No equipos, proceed directly with factura creation
+        const factura = await documentoApi.convertToFactura({
+          notaPedidoId: nota.id,
+        });
+
+        setCreatedFactura(factura);
+        setSuccessDialogOpen(true);
+        clearForm();
+        setSelectedOpcionId(null);
+        setOpcionesFinanciamiento([]);
+        await loadData();
+        setLoading(false);
+      }
     } catch (err: any) {
       console.error('Error creando factura manual:', err);
       const msg = err?.response?.data?.message || err?.message || 'Error desconocido';
       setError(`No se pudo crear la factura: ${msg}`);
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmEquiposAsignacion = async (asignaciones: { [detalleId: number]: number[] }) => {
+    if (!notaParaAsignacion) return;
+
+    setLoading(true);
+    setError(null);
+    setAsignarEquiposDialogOpen(false);
+
+    try {
+      const factura = await documentoApi.convertToFactura({
+        notaPedidoId: notaParaAsignacion.id,
+        equiposAsignaciones: asignaciones,
+      });
+
+      setNotaParaAsignacion(null);
+      setCreatedFactura(factura);
+      setSuccessDialogOpen(true);
+
+      if (isManualInvoice) {
+        // Clear manual invoice form
+        clearForm();
+        setSelectedOpcionId(null);
+        setOpcionesFinanciamiento([]);
+        setIsManualInvoice(false);
+      } else {
+        // Remove nota from list (facturacion desde nota)
+        setNotasPedido((prev) => prev.filter((n) => n.id !== notaParaAsignacion.id));
+        handleCloseConvertDialog();
+      }
+
+      await loadData();
+    } catch (err: any) {
+      console.error('Error converting to factura with equipos:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Error desconocido';
+      setError(`Error al convertir a factura: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseAsignarEquiposDialog = () => {
+    setAsignarEquiposDialogOpen(false);
+    setNotaParaAsignacion(null);
+    setIsManualInvoice(false);
   };
 
   const handleOpenConvertDialog = async (nota: DocumentoComercial) => {
@@ -591,12 +653,25 @@ const FacturacionPage = () => {
         }
       }
 
-      const factura = await documentoApi.convertToFactura({ notaPedidoId: notaId });
-      setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
-      handleCloseConvertDialog();
-      setCreatedFactura(factura);
-      setSuccessDialogOpen(true);
-      loadData();
+      // Check if there are EQUIPO items in the nota
+      const detallesEquipo = selectedNotaPedido.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
+
+      if (detallesEquipo.length > 0) {
+        // Open AsignarEquiposDialog for equipment assignment
+        setNotaParaAsignacion(selectedNotaPedido);
+        setIsManualInvoice(false);
+        setAsignarEquiposDialogOpen(true);
+        setLoading(false);
+      } else {
+        // No equipos, proceed directly with factura creation
+        const factura = await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+        handleCloseConvertDialog();
+        setCreatedFactura(factura);
+        setSuccessDialogOpen(true);
+        loadData();
+        setLoading(false);
+      }
     } catch (err: any) {
       console.error('Error converting to factura:', err);
       console.error('Error response data:', err?.response?.data);
@@ -604,7 +679,6 @@ const FacturacionPage = () => {
       console.error('Error response headers:', err?.response?.headers);
       const errorMessage = err?.response?.data?.message || err?.message || 'Error desconocido';
       setError(`Error al convertir a factura: ${errorMessage}`);
-    } finally {
       setLoading(false);
     }
   };
@@ -1612,6 +1686,14 @@ const FacturacionPage = () => {
             variant: 'outlined',
           },
         ]}
+      />
+
+      {/* Asignar Equipos Dialog */}
+      <AsignarEquiposDialog
+        open={asignarEquiposDialogOpen}
+        onClose={handleCloseAsignarEquiposDialog}
+        onConfirm={handleConfirmEquiposAsignacion}
+        detallesEquipo={notaParaAsignacion?.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
       />
     </Box>
   );
