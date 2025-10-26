@@ -57,6 +57,7 @@ import { documentoApi } from '../../api/services/documentoApi';
 import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
+import SuccessDialog from "../common/SuccessDialog";
 import { useAuth } from '../../context/AuthContext';
 import type {
   Cliente,
@@ -177,6 +178,8 @@ const FacturacionPage = () => {
     descripcion: '',
   });
   const [showNewOpcionForm, setShowNewOpcionForm] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
   const [notaOpcionesFinanciamiento, setNotaOpcionesFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
 
   const loadData = async () => {
@@ -203,6 +206,7 @@ const FacturacionPage = () => {
       setUsuarios(usuariosArray);
       setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
       setRecetas(Array.isArray(recetasData) ? recetasData : []);
+      setPlantillasFinanciamiento(Array.isArray(plantillasData) ? plantillasData : []);
       
       const invoiceableNotas = Array.isArray(notasData) 
         ? notasData.filter(n => n.estado === 'APROBADO' || n.estado === 'PENDIENTE')
@@ -475,9 +479,23 @@ const FacturacionPage = () => {
         }),
       });
 
-      // Check if financing option is selected and apply it
-      if (selectedOpcionId && opcionesFinanciamiento.length > 0) {
-        await documentoApi.selectFinanciamiento(presupuesto.id, selectedOpcionId);
+      // If user selected a financing option, load generated options and select it
+      if (selectedOpcionId !== null && typeof selectedOpcionId === 'number') {
+        // Load the auto-generated financing options
+        const generatedOpciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
+        
+        // Find the option that matches the selected template index
+        const selectedTemplate = plantillasFinanciamiento[selectedOpcionId];
+        if (selectedTemplate && generatedOpciones.length > 0) {
+          const matchingOpcion = generatedOpciones.find(o => 
+            o.nombre === selectedTemplate.nombre && 
+            o.cantidadCuotas === selectedTemplate.cantidadCuotas
+          );
+          
+          if (matchingOpcion?.id) {
+            await documentoApi.selectFinanciamiento(presupuesto.id, matchingOpcion.id);
+          }
+        }
       }
 
       const nota = await documentoApi.convertToNotaPedido({
@@ -490,7 +508,8 @@ const FacturacionPage = () => {
         notaPedidoId: nota.id,
       });
 
-      setSuccess(`Factura creada exitosamente (Doc #${factura.numeroDocumento}).`);
+      setCreatedFactura(factura);
+      setSuccessDialogOpen(true);
       clearForm();
       setSelectedOpcionId(null);
       setOpcionesFinanciamiento([]);
@@ -572,10 +591,11 @@ const FacturacionPage = () => {
         }
       }
 
-      await documentoApi.convertToFactura({ notaPedidoId: notaId });
+      const factura = await documentoApi.convertToFactura({ notaPedidoId: notaId });
       setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
-      setSuccess(`Nota de Pedido #${selectedNotaPedido.numeroDocumento} convertida a Factura exitosamente.`);
       handleCloseConvertDialog();
+      setCreatedFactura(factura);
+      setSuccessDialogOpen(true);
       loadData();
     } catch (err: any) {
       console.error('Error converting to factura:', err);
@@ -646,42 +666,25 @@ const FacturacionPage = () => {
       descripcion: '',
     });
 
-    // Generate default financing options if none exist
-    if (opcionesFinanciamiento.length === 0) {
-      const defaultOpciones: OpcionFinanciamientoDTO[] = [
-        {
-          nombre: 'Contado',
-          metodoPago: 'EFECTIVO',
-          cantidadCuotas: 1,
-          tasaInteres: 0,
-          montoTotal: totalVenta,
-          montoCuota: totalVenta,
-          descripcion: 'Pago al contado',
-          ordenPresentacion: 1,
-        },
-        {
-          nombre: '3 Cuotas',
-          metodoPago: 'TARJETA_CREDITO',
-          cantidadCuotas: 3,
-          tasaInteres: 10,
-          montoTotal: totalVenta * 1.1,
-          montoCuota: (totalVenta * 1.1) / 3,
-          descripcion: 'Tarjeta de crédito en 3 cuotas',
-          ordenPresentacion: 2,
-        },
-        {
-          nombre: '6 Cuotas',
-          metodoPago: 'TARJETA_CREDITO',
-          cantidadCuotas: 6,
-          tasaInteres: 20,
-          montoTotal: totalVenta * 1.2,
-          montoCuota: (totalVenta * 1.2) / 6,
-          descripcion: 'Tarjeta de crédito en 6 cuotas',
-          ordenPresentacion: 3,
-        },
-      ];
-      setOpcionesFinanciamiento(defaultOpciones);
-    }
+    // Convert templates to financing options with calculated amounts
+    const opcionesCalculadas: OpcionFinanciamientoDTO[] = plantillasFinanciamiento.map((template) => {
+      const tasaDecimal = template.tasaInteres / 100;
+      const montoTotal = totalVenta * (1 + tasaDecimal);
+      const montoCuota = montoTotal / template.cantidadCuotas;
+      
+      return {
+        nombre: template.nombre,
+        metodoPago: template.metodoPago,
+        cantidadCuotas: template.cantidadCuotas,
+        tasaInteres: template.tasaInteres,
+        montoTotal: montoTotal,
+        montoCuota: montoCuota,
+        descripcion: template.descripcion,
+        ordenPresentacion: template.ordenPresentacion,
+      };
+    });
+    
+    setOpcionesFinanciamiento(opcionesCalculadas);
   };
 
   const handleAddNewOpcion = () => {
@@ -1571,11 +1574,45 @@ const FacturacionPage = () => {
           </RadioGroup>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setFinanciamientoDialogOpen(false)}>
-            Cerrar
+          <Button onClick={() => setFinanciamientoDialogOpen(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => setFinanciamientoDialogOpen(false)}
+            variant="contained"
+            disabled={selectedOpcionId === null}
+          >
+            Confirmar Selección
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        open={successDialogOpen}
+        onClose={() => {
+          setSuccessDialogOpen(false);
+          setCreatedFactura(null);
+        }}
+        title="¡Factura Creada Exitosamente!"
+        message="La factura ha sido generada correctamente"
+        details={createdFactura ? [
+          { label: 'Número de Documento', value: createdFactura.numeroDocumento },
+          { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
+          { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+        ] : []}
+        actions={[
+          {
+            label: 'Nueva Factura',
+            onClick: () => {
+              clearForm();
+              setActiveTab(0);
+            },
+            icon: <AddIcon />,
+            variant: 'outlined',
+          },
+        ]}
+      />
     </Box>
   );
 };

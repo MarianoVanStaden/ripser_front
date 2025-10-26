@@ -44,6 +44,7 @@ import type {
   DetalleDocumento
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
+import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
@@ -82,6 +83,8 @@ const NotasPedidoPage: React.FC = () => {
   const [convertForm, setConvertForm] = useState<ConvertFormData>(initialConvertForm);
   const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
   const [notaForAsignacion, setNotaForAsignacion] = useState<DocumentoComercial | null>(null);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdNota, setCreatedNota] = useState<DocumentoComercial | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -242,6 +245,8 @@ const NotasPedidoPage: React.FC = () => {
       setPresupuestos(prev => prev.filter(p => p.id !== Number(convertForm.presupuestoId)));
       
       handleCloseConvertDialog();
+      setCreatedNota(nuevaNota);
+      setSuccessDialogOpen(true);
     } catch (err: any) {
       console.error("Error converting to nota de pedido:", err);
       let errorMessage = "Error al convertir el presupuesto";
@@ -810,6 +815,22 @@ const NotasPedidoPage: React.FC = () => {
           detallesEquipo={notaForAsignacion.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
         />
       )}
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        open={successDialogOpen}
+        onClose={() => {
+          setSuccessDialogOpen(false);
+          setCreatedNota(null);
+        }}
+        title="¡Nota de Pedido Creada Exitosamente!"
+        message="La nota de pedido ha sido generada correctamente"
+        details={createdNota ? [
+          { label: 'Número de Documento', value: createdNota.numeroDocumento },
+          { label: 'Cliente', value: createdNota.clienteNombre || '-' },
+          { label: 'Total', value: `$${createdNota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+        ] : []}
+      />
     </Box>
   );
 };

@@ -50,6 +50,7 @@ import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
+import SuccessDialog from "../common/SuccessDialog";
 
 const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string }>): OpcionFinanciamientoDTO[] => {
   if (!Array.isArray(opciones)) return [];
@@ -162,6 +163,8 @@ const PresupuestosPage: React.FC = () => {
   const [loadingOpciones, setLoadingOpciones] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
   const [presupuestosFinanciamiento, setPresupuestosFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdPresupuesto, setCreatedPresupuesto] = useState<DocumentoComercial | null>(null);
 
   // Function to fetch financing options for all presupuestos
   const fetchFinanciamientoOptions = useCallback(async (presupuestosList: DocumentoComercial[]) => {
@@ -602,11 +605,18 @@ const PresupuestosPage: React.FC = () => {
       setConfirmDialogOpen(false);
       setConfirmDialogAction(null);
       handleConfirmClose();
-      setSnackbar({ 
-        open: true, 
-        message: editingPresupuesto ? 'Presupuesto actualizado exitosamente' : 'Presupuesto creado exitosamente', 
-        severity: 'success' 
-      });
+
+      // Show success modal for new presupuestos, snackbar for updates
+      if (editingPresupuesto) {
+        setSnackbar({
+          open: true,
+          message: 'Presupuesto actualizado exitosamente',
+          severity: 'success'
+        });
+      } else {
+        setCreatedPresupuesto(savedPresupuesto);
+        setSuccessDialogOpen(true);
+      }
     } catch (err: unknown) {
       console.error("Error saving presupuesto:", err);
       let errorMessage = "Error al guardar el presupuesto";
@@ -1405,6 +1415,30 @@ const PresupuestosPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        open={successDialogOpen}
+        onClose={() => {
+          setSuccessDialogOpen(false);
+          setCreatedPresupuesto(null);
+        }}
+        title="¡Presupuesto Creado Exitosamente!"
+        message="El presupuesto ha sido generado correctamente"
+        details={createdPresupuesto ? [
+          { label: 'Número de Documento', value: createdPresupuesto.numeroDocumento },
+          { label: 'Cliente', value: createdPresupuesto.clienteNombre || '-' },
+          { label: 'Total', value: `$${createdPresupuesto.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+        ] : []}
+        actions={[
+          {
+            label: 'Crear Otro',
+            onClick: () => handleOpenDialog(),
+            icon: <AddIcon />,
+            variant: 'outlined',
+          },
+        ]}
+      />
     </Box>
   );
 };
