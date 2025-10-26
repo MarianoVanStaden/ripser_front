@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Stack, Alert,
-  Snackbar, CircularProgress, IconButton, Autocomplete,
+  Snackbar, CircularProgress, IconButton, Autocomplete, Dialog, DialogTitle,
+  DialogContent, DialogActions,
 } from '@mui/material';
-import { ArrowBack, Save } from '@mui/icons-material';
+import { ArrowBack, Save, CheckCircle } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -20,6 +21,8 @@ import type {
 } from '../../types';
 import { employeeApi } from '../../api/services/employeeApi';
 import { clienteApi } from '../../api/services/clienteApi';
+import StockErrorDialog, { type ProductoInsuficiente } from '../common/StockErrorDialog';
+import EquipoSuccessDialog, { type EquipoCreado } from '../common/EquipoSuccessDialog';
 
 
 const schema = yup.object().shape({
@@ -56,6 +59,20 @@ const EquipoForm: React.FC = () => {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+
+  const [stockErrorDialogOpen, setStockErrorDialogOpen] = useState(false);
+  const [productosInsuficientes, setProductosInsuficientes] = useState<ProductoInsuficiente[]>([]);
+  const [cantidadEquiposIntentados, setCantidadEquiposIntentados] = useState(1);
+
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [equiposCreados, setEquiposCreados] = useState<EquipoCreado[]>([]);
+
+  const [editSuccessDialogOpen, setEditSuccessDialogOpen] = useState(false);
+  const [equipoEditado, setEquipoEditado] = useState<{
+    numeroHeladera: string;
+    tipo: string;
+    modelo: string;
+  } | null>(null);
 
   const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -191,12 +208,18 @@ const EquipoForm: React.FC = () => {
           responsableId: selectedResponsable?.id,
           clienteId: selectedCliente?.id,
         };
-        await equipoFabricadoApi.update(Number(id), updateData);
-        setSnackbar({
-          open: true,
-          message: 'Equipo actualizado correctamente',
-          severity: 'success',
+        
+        const response = await equipoFabricadoApi.update(Number(id), updateData);
+        console.log('✅ Equipo updated successfully:', response);
+        
+        // Guardar info del equipo editado para el modal
+        setEquipoEditado({
+          numeroHeladera: data.numeroHeladera,
+          tipo: data.tipo,
+          modelo: data.modelo,
         });
+        
+        setEditSuccessDialogOpen(true);
       } else {
         const createData: EquipoFabricadoCreateDTO = {
           tipo: data.tipo,
@@ -215,55 +238,95 @@ const EquipoForm: React.FC = () => {
         
         // Log para debug - ver qué se está enviando
         console.log('📦 CreateData being sent:', JSON.stringify(createData, null, 2));
-        
-        const createdEquipo = await equipoFabricadoApi.create(createData);
-        console.log('✅ Equipo created successfully:', createdEquipo);
-        
-        const message = data.cantidad > 1
-          ? `Se crearon ${data.cantidad} equipos correctamente`
-          : 'Equipo creado correctamente';
-        setSnackbar({
-          open: true,
-          message,
-          severity: 'success',
-        });
+
+        const response = await equipoFabricadoApi.createBatch(createData);
+        console.log('✅ Equipos created successfully:', response);
+
+        // Mapear la respuesta al formato del modal
+        const equiposParaModal: EquipoCreado[] = response.equipos.map(equipo => ({
+          numeroHeladera: equipo.numeroHeladera,
+          tipo: equipo.tipo,
+          modelo: equipo.modelo,
+        }));
+
+        setEquiposCreados(equiposParaModal);
+        setSuccessDialogOpen(true);
       }
-      setTimeout(() => navigate('/fabricacion/equipos'), 1500);
+      // Don't navigate automatically anymore - let the success modal handle it
     } catch (error: any) {
       console.error('Error saving equipo:', error);
       console.error('Error response data:', error.response?.data);
-      
+
       // Extraer mensaje de error del backend
       let errorMessage = 'Error al guardar el equipo';
-      
+      let isStockError = false;
+
       if (error.response?.data) {
+        const responseData = error.response.data;
+        const message = responseData.message || responseData;
+
+        // Detectar error de stock insuficiente
+        if (typeof message === 'string' && message.includes('Stock insuficiente para los siguientes productos')) {
+          isStockError = true;
+
+          // Parsear los productos insuficientes del mensaje
+          const productosParseados: ProductoInsuficiente[] = [];
+          const lineas = message.split('\n');
+
+          for (const linea of lineas) {
+            // Formato: "Producto: Nombre (Código: CODIGO) - Necesario: X, Disponible: Y, Faltante: Z"
+            const match = linea.match(/Producto:\s*(.+?)\s*\(Código:\s*(.+?)\)\s*-\s*Necesario:\s*(\d+),\s*Disponible:\s*(\d+),\s*Faltante:\s*(\d+)/);
+
+            if (match) {
+              productosParseados.push({
+                nombre: match[1].trim(),
+                codigo: match[2].trim(),
+                necesario: parseInt(match[3]),
+                disponible: parseInt(match[4]),
+                faltante: parseInt(match[5]),
+              });
+            }
+          }
+
+          if (productosParseados.length > 0) {
+            setProductosInsuficientes(productosParseados);
+            setCantidadEquiposIntentados(data.cantidad);
+            setStockErrorDialogOpen(true);
+          } else {
+            // Fallback si no se pudo parsear
+            errorMessage = message;
+          }
+        }
         // Error de validación de stock (409 Conflict)
-        if (error.response.status === 409 && error.response.data.message) {
-          errorMessage = error.response.data.message;
+        else if (error.response.status === 409 && responseData.message) {
+          errorMessage = responseData.message;
         }
         // Error de número duplicado o validación (400 Bad Request)
-        else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
+        else if (responseData.message) {
+          errorMessage = responseData.message;
         }
         // Error de validación de campos
-        else if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
+        else if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
         } else {
           // Si es un objeto de validación (e.g., {numeroHeladera: 'mensaje', campo2: 'mensaje'})
-          const errors = Object.entries(error.response.data)
+          const errors = Object.entries(responseData)
             .map(([field, msg]) => `${field}: ${msg}`)
             .join(', ');
           if (errors) errorMessage = errors;
         }
       }
-      
-      setSnackbar({
-        open: true,
-        message: errorMessage,
-        severity: 'error',
-      });
+
+      // Solo mostrar snackbar si no es error de stock (el modal se encarga de eso)
+      if (!isStockError) {
+        setSnackbar({
+          open: true,
+          message: errorMessage,
+          severity: 'error',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -460,10 +523,10 @@ const EquipoForm: React.FC = () => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ 
+          sx={{
             whiteSpace: 'pre-line', // Permite saltos de línea
             maxWidth: '600px',
             width: '100%'
@@ -472,6 +535,90 @@ const EquipoForm: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <StockErrorDialog
+        open={stockErrorDialogOpen}
+        onClose={() => setStockErrorDialogOpen(false)}
+        productosInsuficientes={productosInsuficientes}
+        cantidadEquipos={cantidadEquiposIntentados}
+      />
+
+      <EquipoSuccessDialog
+        open={successDialogOpen}
+        onClose={() => setSuccessDialogOpen(false)}
+        equiposCreados={equiposCreados}
+        onNuevoEquipo={() => {
+          setSuccessDialogOpen(false);
+          reset();
+          setSelectedReceta(null);
+          setSelectedResponsable(null);
+          setSelectedCliente(null);
+          setEstado('EN_PROCESO');
+        }}
+        onVerEquipos={() => navigate('/fabricacion/equipos')}
+      />
+
+      {/* Edit Success Dialog */}
+      <Dialog
+        open={editSuccessDialogOpen}
+        onClose={() => setEditSuccessDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'success.main', color: 'white' }}>
+          <CheckCircle />
+          Equipo Actualizado
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Alert severity="success" sx={{ mb: 2 }}>
+            El equipo ha sido actualizado correctamente.
+          </Alert>
+          
+          {equipoEditado && (
+            <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                Datos actualizados:
+              </Typography>
+              <Stack spacing={1}>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">
+                    Número:
+                  </Typography>
+                  <Typography variant="body2" fontWeight="500">
+                    {equipoEditado.numeroHeladera}
+                  </Typography>
+                </Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">
+                    Tipo:
+                  </Typography>
+                  <Typography variant="body2" fontWeight="500">
+                    {equipoEditado.tipo}
+                  </Typography>
+                </Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2" color="text.secondary">
+                    Modelo:
+                  </Typography>
+                  <Typography variant="body2" fontWeight="500">
+                    {equipoEditado.modelo}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, gap: 1 }}>
+          <Button
+            onClick={() => navigate('/fabricacion/equipos')}
+            variant="contained"
+            color="success"
+            fullWidth
+          >
+            Ver Equipos
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

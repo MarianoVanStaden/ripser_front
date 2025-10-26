@@ -2107,6 +2107,13 @@ export interface EquipoFabricadoUpdateDTO {
 }
 export type EstadoFabricacion = 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
 
+// Response for batch equipment creation
+export interface EquipoCreationResponseDTO {
+  cantidadCreada: number;
+  equipos: EquipoFabricadoDTO[];
+  mensaje: string;
+}
+
 // Validación de stock para fabricación
 export interface ValidacionStockDTO {
   stockSuficiente: boolean;

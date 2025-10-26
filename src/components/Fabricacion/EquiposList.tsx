@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Chip, IconButton,
   Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
-  DialogContentText, DialogActions, Stack, CircularProgress, Autocomplete,
+  DialogContentText, DialogActions, Stack, Autocomplete,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
@@ -40,7 +40,20 @@ const EquiposList: React.FC = () => {
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     equipoId: number | null;
-  }>({ open: false, equipoId: null });
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipoId: null, equipo: null });
+
+  const [cancelDialog, setCancelDialog] = useState<{
+    open: boolean;
+    equipoId: number | null;
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipoId: null, equipo: null });
+
+  const [completarDialog, setCompletarDialog] = useState<{
+    open: boolean;
+    equipoId: number | null;
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipoId: null, equipo: null });
 
   const [assignDialog, setAssignDialog] = useState<{
     open: boolean;
@@ -113,14 +126,17 @@ const EquiposList: React.FC = () => {
     }
   };
 
-  const handleCompletar = async (id: number) => {
+  const handleCompletar = async () => {
+    if (!completarDialog.equipoId) return;
+
     try {
-      await equipoFabricadoApi.completarFabricacion(id);
+      await equipoFabricadoApi.completarFabricacion(completarDialog.equipoId);
       setSnackbar({
         open: true,
         message: 'Equipo completado correctamente',
         severity: 'success',
       });
+      setCompletarDialog({ open: false, equipoId: null, equipo: null });
       loadEquipos();
     } catch (error) {
       setSnackbar({
@@ -131,14 +147,17 @@ const EquiposList: React.FC = () => {
     }
   };
 
-  const handleCancelar = async (id: number) => {
+  const handleCancelar = async () => {
+    if (!cancelDialog.equipoId) return;
+
     try {
-      await equipoFabricadoApi.cancelarFabricacion(id);
+      await equipoFabricadoApi.cancelarFabricacion(cancelDialog.equipoId);
       setSnackbar({
         open: true,
         message: 'Equipo cancelado correctamente',
         severity: 'success',
       });
+      setCancelDialog({ open: false, equipoId: null, equipo: null });
       loadEquipos();
     } catch (error) {
       setSnackbar({
@@ -199,7 +218,7 @@ const EquiposList: React.FC = () => {
         message: 'Equipo eliminado correctamente',
         severity: 'success',
       });
-      setDeleteDialog({ open: false, equipoId: null });
+      setDeleteDialog({ open: false, equipoId: null, equipo: null });
       loadEquipos();
     } catch (error) {
       setSnackbar({
@@ -328,7 +347,11 @@ const EquiposList: React.FC = () => {
               <IconButton
                 size="small"
                 color="success"
-                onClick={() => handleCompletar(params.row.id)}
+                onClick={() => setCompletarDialog({ 
+                  open: true, 
+                  equipoId: params.row.id,
+                  equipo: params.row 
+                })}
               >
                 <CheckCircle fontSize="small" />
               </IconButton>
@@ -339,7 +362,11 @@ const EquiposList: React.FC = () => {
               <IconButton
                 size="small"
                 color="warning"
-                onClick={() => handleCancelar(params.row.id)}
+                onClick={() => setCancelDialog({ 
+                  open: true, 
+                  equipoId: params.row.id,
+                  equipo: params.row 
+                })}
               >
                 <Cancel fontSize="small" />
               </IconButton>
@@ -371,7 +398,11 @@ const EquiposList: React.FC = () => {
             <IconButton
               size="small"
               color="error"
-              onClick={() => setDeleteDialog({ open: true, equipoId: params.row.id })}
+              onClick={() => setDeleteDialog({ 
+                open: true, 
+                equipoId: params.row.id,
+                equipo: params.row 
+              })}
             >
               <Delete fontSize="small" />
             </IconButton>
@@ -445,12 +476,13 @@ const EquiposList: React.FC = () => {
             loading={loading}
             paginationMode="server"
             rowCount={totalElements}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-            rowsPerPageOptions={[5, 10, 20, 50]}
-            disableSelectionOnClick
+            paginationModel={{ page, pageSize }}
+            onPaginationModelChange={(model) => {
+              setPage(model.page);
+              setPageSize(model.pageSize);
+            }}
+            pageSizeOptions={[5, 10, 20, 50]}
+            disableRowSelectionOnClick
             localeText={{
               noRowsLabel: 'No hay equipos disponibles',
             }}
@@ -519,22 +551,149 @@ const EquiposList: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Completar Dialog */}
+      <Dialog
+        open={completarDialog.open}
+        onClose={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CheckCircle color="success" />
+          Completar Fabricación
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            ¿Desea marcar este equipo como completado?
+          </DialogContentText>
+          {completarDialog.equipo && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Equipo a completar:
+              </Typography>
+              <Typography variant="body2">
+                <strong>Número:</strong> {completarDialog.equipo.numeroHeladera}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Tipo:</strong> {completarDialog.equipo.tipo}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Modelo:</strong> {completarDialog.equipo.modelo}
+              </Typography>
+              {completarDialog.equipo.responsableNombre && (
+                <Typography variant="body2">
+                  <strong>Responsable:</strong> {completarDialog.equipo.responsableNombre}
+                </Typography>
+              )}
+            </Alert>
+          )}
+          <Typography variant="caption" color="text.secondary">
+            Al completar, el equipo estará disponible para asignación o venta.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })}>
+            Cancelar
+          </Button>
+          <Button onClick={handleCompletar} color="success" variant="contained" startIcon={<CheckCircle />}>
+            Completar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cancelar Dialog */}
+      <Dialog
+        open={cancelDialog.open}
+        onClose={() => setCancelDialog({ open: false, equipoId: null, equipo: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Cancel color="warning" />
+          Cancelar Fabricación
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            ¿Está seguro de que desea cancelar la fabricación de este equipo?
+          </DialogContentText>
+          {cancelDialog.equipo && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Equipo a cancelar:
+              </Typography>
+              <Typography variant="body2">
+                <strong>Número:</strong> {cancelDialog.equipo.numeroHeladera}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Tipo:</strong> {cancelDialog.equipo.tipo}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Modelo:</strong> {cancelDialog.equipo.modelo}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Estado actual:</strong> {cancelDialog.equipo.estado.replace('_', ' ')}
+              </Typography>
+            </Alert>
+          )}
+          <Alert severity="error">
+            <Typography variant="body2">
+              <strong>Advertencia:</strong> Esta acción marcará el equipo como cancelado. 
+              Los materiales utilizados no se devolverán al stock automáticamente.
+            </Typography>
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelDialog({ open: false, equipoId: null, equipo: null })}>
+            No Cancelar
+          </Button>
+          <Button onClick={handleCancelar} color="warning" variant="contained" startIcon={<Cancel />}>
+            Sí, Cancelar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Delete Dialog */}
       <Dialog
         open={deleteDialog.open}
-        onClose={() => setDeleteDialog({ open: false, equipoId: null })}
+        onClose={() => setDeleteDialog({ open: false, equipoId: null, equipo: null })}
+        maxWidth="sm"
+        fullWidth
       >
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Delete color="error" />
+          Confirmar Eliminación
+        </DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            ¿Está seguro de que desea eliminar este equipo?
+          <DialogContentText sx={{ mb: 2 }}>
+            ¿Está seguro de que desea eliminar este equipo? Esta acción no se puede deshacer.
           </DialogContentText>
+          {deleteDialog.equipo && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Equipo a eliminar:
+              </Typography>
+              <Typography variant="body2">
+                <strong>Número:</strong> {deleteDialog.equipo.numeroHeladera}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Tipo:</strong> {deleteDialog.equipo.tipo}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Modelo:</strong> {deleteDialog.equipo.modelo}
+              </Typography>
+              {deleteDialog.equipo.clienteNombre && (
+                <Typography variant="body2">
+                  <strong>Cliente:</strong> {deleteDialog.equipo.clienteNombre}
+                </Typography>
+              )}
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, equipoId: null })}>
+          <Button onClick={() => setDeleteDialog({ open: false, equipoId: null, equipo: null })}>
             Cancelar
           </Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
+          <Button onClick={handleDelete} color="error" variant="contained" startIcon={<Delete />}>
             Eliminar
           </Button>
         </DialogActions>

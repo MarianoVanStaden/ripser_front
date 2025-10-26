@@ -8,6 +8,7 @@ import type {
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
   ValidacionStockDTO,
+  EquipoCreationResponseDTO,
 } from '../../types';
 
 
@@ -32,6 +33,11 @@ export const equipoFabricadoApi = {
 
   create: async (equipo: EquipoFabricadoCreateDTO) => {
     const response = await api.post<EquipoFabricadoDTO>('/api/equipos-fabricados', equipo);
+    return response.data;
+  },
+
+  createBatch: async (equipo: EquipoFabricadoCreateDTO) => {
+    const response = await api.post<EquipoCreationResponseDTO>('/api/equipos-fabricados/batch', equipo);
     return response.data;
   },
 

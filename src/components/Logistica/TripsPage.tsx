@@ -45,12 +45,13 @@ import {
   PlayArrow as StartIcon,
   Stop as StopIcon,
 } from '@mui/icons-material';
-import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial } from '../../types';
+import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente } from '../../types';
 import { viajeApi } from '../../api/services/viajeApi';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { documentoApi } from '../../api/services/documentoApi';
+import { clienteApi } from '../../api/services/clienteApi';
 
 const TripsPage: React.FC = () => {
   const [trips, setTrips] = useState<Viaje[]>([]);
@@ -58,6 +59,7 @@ const TripsPage: React.FC = () => {
   const [drivers, setDrivers] = useState<Empleado[]>([]);
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -110,6 +112,7 @@ const TripsPage: React.FC = () => {
       let employeesData: Empleado[] = [];
       let deliveriesData: EntregaViaje[] = [];
       let facturasData: DocumentoComercial[] = [];
+      let clientesData: Cliente[] = [];
       const errors: string[] = [];
 
       try {
@@ -154,6 +157,13 @@ const TripsPage: React.FC = () => {
         errors.push(`❌ Facturas: ${errorMsg}`);
       }
 
+      try {
+        clientesData = await clienteApi.getAll();
+      } catch (err) {
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`❌ Clientes: ${errorMsg}`);
+      }
+
       // Show errors if any
       if (errors.length > 0) {
         setError(errors.join(' | '));
@@ -165,6 +175,7 @@ const TripsPage: React.FC = () => {
       setDrivers(Array.isArray(employeesData) ? employeesData : []);
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
       setFacturas(Array.isArray(facturasData) ? facturasData : []);
+      setClientes(Array.isArray(clientesData) ? clientesData : []);
 
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -906,10 +917,27 @@ Opciones:
                   value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
                   onChange={(_, value) => {
                     setSelectedDeliveryFactura(value);
+
+                    // Construir la dirección del cliente
+                    let direccion = '';
+                    if (value) {
+                      // Buscar el cliente correspondiente
+                      const cliente = clientes.find(c => c.id === value.clienteId);
+                      if (cliente) {
+                        const partes = [];
+                        if (cliente.direccion) partes.push(cliente.direccion);
+                        if (cliente.ciudad) partes.push(cliente.ciudad);
+                        direccion = partes.join(', ') || value.clienteNombre || '';
+                      } else {
+                        // Fallback si no se encuentra el cliente
+                        direccion = value.clienteNombre || '';
+                      }
+                    }
+
                     setNewDelivery({
                       ...newDelivery,
                       facturaId: value?.id.toString() || '',
-                      direccionEntrega: value ? `${value.clienteNombre} - Ver detalles de factura` : newDelivery.direccionEntrega
+                      direccionEntrega: direccion
                     });
                   }}
                   renderInput={(params) => (
@@ -927,7 +955,7 @@ Opciones:
                           {factura.numeroDocumento} - {factura.clienteNombre}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          ${factura.total.toLocaleString()} | {factura.detalles.length} productos
+                          ${factura.total.toLocaleString()} | {factura.detalles.length} items
                         </Typography>
                       </Box>
                     </li>
@@ -939,16 +967,25 @@ Opciones:
                 {selectedDeliveryFactura && (
                   <Card sx={{ bgcolor: 'info.lighter', p: 1 }}>
                     <Typography variant="caption" fontWeight="bold" display="block" gutterBottom>
-                      📦 Productos de {selectedDeliveryFactura.numeroDocumento}:
+                      📦 Items de {selectedDeliveryFactura.numeroDocumento}:
                     </Typography>
                     <List dense>
                       {selectedDeliveryFactura.detalles.map((detalle, idx) => (
                         <ListItem key={idx} sx={{ py: 0, px: 1 }}>
                           <ListItemText
                             primary={
-                              <Typography variant="caption">
-                                • {detalle.productoNombre} x{detalle.cantidad}
-                              </Typography>
+                              <Box>
+                                <Typography variant="caption">
+                                  • {detalle.tipoItem === 'EQUIPO'
+                                      ? (detalle.recetaNombre || detalle.descripcionEquipo || 'Equipo')
+                                      : (detalle.productoNombre || 'Producto')} x{detalle.cantidad}
+                                </Typography>
+                                {detalle.tipoItem === 'EQUIPO' && detalle.equiposNumerosHeladera && detalle.equiposNumerosHeladera.length > 0 && (
+                                  <Typography variant="caption" color="primary" sx={{ display: 'block', ml: 1 }}>
+                                    Equipos: {detalle.equiposNumerosHeladera.join(', ')}
+                                  </Typography>
+                                )}
+                              </Box>
                             }
                           />
                         </ListItem>
@@ -1040,11 +1077,20 @@ Opciones:
                               <Typography variant="body2"><strong>Estado:</strong> {factura.estado}</Typography>
                             </Box>
                             <Box mt={1}>
-                              <Typography variant="caption" fontWeight="bold" display="block">Productos:</Typography>
+                              <Typography variant="caption" fontWeight="bold" display="block">Items:</Typography>
                               {factura.detalles.slice(0, 3).map((detalle, idx) => (
-                                <Typography key={idx} variant="caption" display="block">
-                                  • {detalle.productoNombre} x{detalle.cantidad}
-                                </Typography>
+                                <Box key={idx}>
+                                  <Typography variant="caption" display="block">
+                                    • {detalle.tipoItem === 'EQUIPO'
+                                        ? (detalle.recetaNombre || detalle.descripcionEquipo || 'Equipo')
+                                        : (detalle.productoNombre || 'Producto')} x{detalle.cantidad}
+                                  </Typography>
+                                  {detalle.tipoItem === 'EQUIPO' && detalle.equiposNumerosHeladera && detalle.equiposNumerosHeladera.length > 0 && (
+                                    <Typography variant="caption" color="primary" display="block" sx={{ ml: 1 }}>
+                                      Equipos: {detalle.equiposNumerosHeladera.join(', ')}
+                                    </Typography>
+                                  )}
+                                </Box>
                               ))}
                               {factura.detalles.length > 3 && (
                                 <Typography variant="caption" color="text.secondary">
