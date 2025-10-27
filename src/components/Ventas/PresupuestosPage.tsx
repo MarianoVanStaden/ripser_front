@@ -52,6 +52,7 @@ import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, D
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import SuccessDialog from "../common/SuccessDialog";
+import { generarPresupuestoPDF } from "../../services/pdfService";
 
 const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string }>): OpcionFinanciamientoDTO[] => {
   if (!Array.isArray(opciones)) return [];
@@ -714,6 +715,58 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [selectedPresupuesto, selectedOpcionId, opcionesFinanciamiento]);
 
+  // Handler para exportar presupuesto a PDF
+  const handleExportarPDF = useCallback(async (presupuesto: DocumentoComercial) => {
+    try {
+      // Obtener el cliente completo
+      const cliente = clientes.find(c => c.id === presupuesto.clienteId);
+      if (!cliente) {
+        setSnackbar({
+          open: true,
+          message: 'No se pudo encontrar la información del cliente',
+          severity: 'error'
+        });
+        return;
+      }
+
+      // Obtener las opciones de financiamiento del presupuesto
+      const opcionesCache = presupuestosFinanciamiento[presupuesto.id];
+      let opciones: OpcionFinanciamientoDTO[] = [];
+
+      if (opcionesCache) {
+        opciones = opcionesCache;
+      } else {
+        // Cargar opciones si no están en caché
+        try {
+          opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
+        } catch (e) {
+          console.warn('No se pudieron cargar opciones de financiamiento:', e);
+          // Continuar sin opciones de financiamiento
+        }
+      }
+
+      // Generar el PDF
+      generarPresupuestoPDF({
+        presupuesto,
+        cliente,
+        opcionesFinanciamiento: opciones
+      });
+
+      setSnackbar({
+        open: true,
+        message: 'PDF generado exitosamente',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al generar el PDF',
+        severity: 'error'
+      });
+    }
+  }, [clientes, presupuestosFinanciamiento]);
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
@@ -890,8 +943,13 @@ const PresupuestosPage: React.FC = () => {
                             <MoneyIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Imprimir">
-                          <IconButton size="small" color="success" aria-label={`Imprimir presupuesto ${presupuesto.numeroDocumento}`}>
+                        <Tooltip title="Exportar PDF">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => handleExportarPDF(presupuesto)}
+                            aria-label={`Exportar PDF presupuesto ${presupuesto.numeroDocumento}`}
+                          >
                             <PrintIcon />
                           </IconButton>
                         </Tooltip>
