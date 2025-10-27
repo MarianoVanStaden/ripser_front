@@ -37,16 +37,19 @@ import {
   Receipt as ReceiptIcon,
   CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
-import { documentoApi } from "../../api/services";
+import { documentoApi, clienteApi, opcionFinanciamientoApi } from "../../api/services";
 import type {
   DocumentoComercial,
   EstadoDocumento,
   MetodoPago,
-  DetalleDocumento
+  DetalleDocumento,
+  Cliente,
+  OpcionFinanciamientoDTO
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
+import { generarNotaPedidoPDF } from "../../services/pdfService";
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
@@ -335,6 +338,59 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, [notasPedido, fetchData]);
 
+  // Handler para exportar nota de pedido a PDF
+  const handleExportarPDF = useCallback(async (nota: DocumentoComercial) => {
+    try {
+      console.log('Iniciando generación de PDF para nota de pedido:', nota);
+      console.log('opcionFinanciamientoSeleccionadaId:', nota.opcionFinanciamientoSeleccionadaId);
+
+      // Obtener el cliente completo
+      const cliente = await clienteApi.getById(nota.clienteId);
+      console.log('Cliente encontrado:', cliente);
+
+      // Obtener la opción de financiamiento seleccionada si existe
+      let opcionSeleccionada: OpcionFinanciamientoDTO | undefined;
+
+      // Intentar obtener por ID si existe
+      if (nota.opcionFinanciamientoSeleccionadaId) {
+        try {
+          opcionSeleccionada = await opcionFinanciamientoApi.obtenerPorId(nota.opcionFinanciamientoSeleccionadaId);
+          console.log('Opción de financiamiento obtenida por ID:', opcionSeleccionada);
+        } catch (e) {
+          console.warn('No se pudo cargar la opción de financiamiento por ID:', e);
+        }
+      }
+
+      // Si no se obtuvo por ID, intentar obtener todas las opciones del documento y buscar la seleccionada
+      if (!opcionSeleccionada) {
+        try {
+          console.log('Intentando obtener opciones de financiamiento por documento ID:', nota.id);
+          const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
+          console.log('Opciones encontradas:', opciones);
+          opcionSeleccionada = opciones.find(o => o.esSeleccionada);
+          console.log('Opción seleccionada encontrada:', opcionSeleccionada);
+        } catch (e) {
+          console.warn('No se pudieron cargar las opciones de financiamiento del documento:', e);
+        }
+      }
+
+      console.log('Generando PDF con opción de financiamiento:', opcionSeleccionada);
+
+      // Generar el PDF
+      generarNotaPedidoPDF({
+        documento: nota,
+        cliente,
+        opcionSeleccionada
+      });
+
+      console.log('PDF generado exitosamente');
+    } catch (error) {
+      console.error('Error detallado al generar PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setError(`Error al generar el PDF de la nota de pedido: ${errorMessage}`);
+    }
+  }, []);
+
   const handleConfirmAsignacion = useCallback(async (asignaciones: { [detalleId: number]: number[] }) => {
     if (!notaForAsignacion) return;
 
@@ -525,8 +581,12 @@ const NotasPedidoPage: React.FC = () => {
                           <ReceiptIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Imprimir">
-                        <IconButton size="small" color="info">
+                      <Tooltip title="Exportar PDF">
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() => handleExportarPDF(nota)}
+                        >
                           <PrintIcon />
                         </IconButton>
                       </Tooltip>

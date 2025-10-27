@@ -43,8 +43,9 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
-import { documentoApi, clienteApi, usuarioApi } from '../../api/services';
-import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta } from '../../types';
+import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
+import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
+import { generarVentaPDF } from '../../services/pdfService';
 
 const RegistroVentasPage: React.FC = () => {
   const [sales, setSales] = useState<Venta[]>([]);
@@ -404,6 +405,86 @@ const RegistroVentasPage: React.FC = () => {
     setPage(0); // Reset to first page when changing rows per page
   };
 
+  // Handler para exportar venta a PDF
+  const handleExportarPDF = async (venta: Venta): Promise<void> => {
+    try {
+      console.log('Iniciando generación de PDF para venta:', venta);
+
+      // Obtener el cliente completo
+      const cliente = clients.find(c => c.id === venta.clienteId);
+      if (!cliente) {
+        console.error('Cliente no encontrado:', venta.clienteId);
+        setError('No se pudo encontrar la información del cliente');
+        return;
+      }
+
+      console.log('Cliente encontrado:', cliente);
+
+      // Obtener el nombre del cliente correctamente
+      const nombreCliente = venta.cliente
+        ? (venta.cliente.razonSocial || `${venta.cliente.nombre || ''} ${venta.cliente.apellido || ''}`.trim())
+        : (cliente.razonSocial || `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim());
+
+      console.log('Nombre del cliente:', nombreCliente);
+      console.log('Detalles de venta:', venta.detalleVentas);
+
+      // Convertir Venta a DocumentoComercial para el PDF
+      const documento: DocumentoComercial = {
+        id: venta.id,
+        numeroDocumento: venta.ventaNumero || venta.numeroVenta || `V-${venta.id}`,
+        tipoDocumento: 'FACTURA',
+        clienteId: venta.clienteId,
+        clienteNombre: nombreCliente || 'Cliente',
+        usuarioId: venta.empleadoId || 0,
+        usuarioNombre: venta.empleado ? `${venta.empleado.nombre || ''} ${venta.empleado.apellido || ''}`.trim() : '',
+        fechaEmision: venta.fechaVenta,
+        fechaVencimiento: venta.fechaVenta,
+        subtotal: venta.subtotal || 0,
+        iva: venta.impuesto || 0,
+        total: venta.total,
+        tipoIva: 'IVA_21',
+        estado: 'CONFIRMADA' as any,
+        metodoPago: (venta.metodoPago || 'EFECTIVO') as any,
+        detalles: (venta.detalleVentas || []).map(detalle => ({
+          id: detalle.id,
+          tipoItem: (detalle.tipoItem || 'PRODUCTO') as any,
+          productoId: detalle.productoId,
+          recetaId: detalle.recetaId,
+          descripcion: detalle.productoNombre || detalle.producto?.nombre || detalle.descripcionEquipo || `Producto ${detalle.productoId || detalle.recetaId || ''}`,
+          cantidad: detalle.cantidad,
+          precioUnitario: detalle.precioUnitario,
+          subtotal: detalle.subtotal,
+        })),
+        opcionesFinanciamiento: [],
+      };
+
+      console.log('Documento preparado:', documento);
+
+      // Obtener la opción de financiamiento seleccionada si existe
+      let opcionSeleccionada: OpcionFinanciamientoDTO | undefined;
+      try {
+        const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(venta.id);
+        opcionSeleccionada = opciones.find(o => o.esSeleccionada);
+        console.log('Opción de financiamiento:', opcionSeleccionada);
+      } catch (e) {
+        console.warn('No se pudo cargar la opción de financiamiento:', e);
+      }
+
+      // Generar el PDF
+      console.log('Llamando a generarVentaPDF...');
+      generarVentaPDF({
+        documento,
+        cliente,
+        opcionSeleccionada
+      });
+      console.log('PDF generado exitosamente');
+    } catch (error) {
+      console.error('Error detallado al generar PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setError(`Error al generar el PDF de la venta: ${errorMessage}`);
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -687,8 +768,9 @@ const RegistroVentasPage: React.FC = () => {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => alert('Función de impresión en desarrollo')}
-                        title="Imprimir"
+                        onClick={() => handleExportarPDF(sale)}
+                        title="Exportar PDF"
+                        color="info"
                       >
                         <PrintIcon />
                       </IconButton>
