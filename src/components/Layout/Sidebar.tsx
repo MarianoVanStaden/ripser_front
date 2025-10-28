@@ -13,18 +13,32 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { Link, useLocation } from 'react-router-dom';
+import { usePermisos } from '../../hooks/usePermisos';
+import type { Modulo } from '../../types';
 
 const drawerWidth = 240;
 
-const navigation = [
+interface NavigationSection {
+  title: string;
+  modulo: Modulo;
+  items: Array<{
+    text: string;
+    icon: React.ReactNode;
+    path: string;
+  }>;
+}
+
+const navigation: NavigationSection[] = [
   {
     title: 'PRINCIPAL',
+    modulo: 'DASHBOARD',
     items: [
       { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
     ],
   },
   {
     title: 'VENTAS',
+    modulo: 'VENTAS',
     items: [
       { text: 'Presupuestos', icon: <AssignmentIcon />, path: '/ventas/presupuestos' },
       { text: 'Notas de Pedido', icon: <AssignmentIcon />, path: '/ventas/notasPedido' },
@@ -37,6 +51,7 @@ const navigation = [
   },
   {
     title: 'CLIENTES',
+    modulo: 'CLIENTES',
     items: [
       { text: 'Gestión Clientes', icon: <PeopleIcon />, path: '/clientes/gestion' },
       { text: 'Carpeta Cliente', icon: <PeopleIcon />, path: '/clientes/carpeta' },
@@ -47,6 +62,7 @@ const navigation = [
   },
   {
     title: 'PROVEEDORES',
+    modulo: 'PROVEEDORES',
     items: [
       { text: 'Gestión Proveedores', icon: <StoreIcon />, path: '/proveedores/gestion' },
       { text: 'Compras/Pedidos', icon: <StoreIcon />, path: '/proveedores/compras' },
@@ -56,8 +72,9 @@ const navigation = [
       { text: 'Evaluación', icon: <StoreIcon />, path: '/proveedores/evaluacion' },
     ],
   },
-    {
+  {
     title: 'LOGÍSTICA',
+    modulo: 'LOGISTICA',
     items: [
       { text: 'Gestión Stock', icon: <LocalShippingIcon />, path: '/logistica/stock' },
       { text: 'Stock de Equipos', icon: <LocalShippingIcon />, path: '/logistica/stock-equipos' },
@@ -69,6 +86,7 @@ const navigation = [
   },
   {
     title: 'TALLER',
+    modulo: 'TALLER',
     items: [
       { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
       { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
@@ -79,22 +97,25 @@ const navigation = [
   },
   {
     title: 'PRODUCCIÓN',
+    modulo: 'PRODUCCION',
     items: [
       { text: 'Tablero de Producción', icon: <PrecisionManufacturingIcon />, path: '/fabricacion/dashboard' },
       { text: 'Estructura de Producción', icon: <AssignmentIcon />, path: '/fabricacion/recetas' },
       { text: 'Equipos Fabricados', icon: <CategoryIcon />, path: '/fabricacion/equipos' },
     ],
   },
-    {
+  {
     title: 'GARANTÍAS',
+    modulo: 'GARANTIAS',
     items: [
       { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro' },
       { text: 'Seguimiento Reclamos', icon: <AssignmentIcon />, path: '/garantias/reclamos' },
       { text: 'Reporte de Garantías', icon: <BarChartIcon />, path: '/garantias/reporte' },
     ],
   },
-    {
+  {
     title: 'RRHH',
+    modulo: 'RRHH',
     items: [
       { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
       { text: 'Usuarios del Sistema', icon: <PeopleIcon />, path: '/rrhh/usuarios' },
@@ -110,6 +131,11 @@ const navigation = [
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
+  const { tienePermiso } = usePermisos();
+
+  // Filtrar las secciones según los permisos del usuario
+  const seccionesFiltradas = navigation.filter((section) => tienePermiso(section.modulo));
+
   return (
     <Drawer
       variant="permanent"
@@ -126,18 +152,18 @@ const Sidebar: React.FC = () => {
       </Toolbar>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
       <List>
-        {navigation.map((section, idx) => (
+        {seccionesFiltradas.map((section, idx) => (
           <React.Fragment key={section.title}>
             {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-            <ListSubheader 
-              sx={{ 
-                bgcolor: 'inherit', 
-                color: '#00B8A9', 
-                fontWeight: 700, 
-                fontSize: 13, 
-                pl: 2, 
+            <ListSubheader
+              sx={{
+                bgcolor: 'inherit',
+                color: '#00B8A9',
+                fontWeight: 700,
+                fontSize: 13,
+                pl: 2,
                 py: 1,
-                position: 'relative' // Fix para evitar superposición
+                position: 'relative'
               }}
             >
               {section.title}

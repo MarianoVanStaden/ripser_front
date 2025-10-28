@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { TipoRol } from "../types";
 
 const BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/RipserApp/api/auth";
 
@@ -16,6 +17,7 @@ export interface LoginResponse {
   id?: number;
   username?: string;
   email?: string;
+  roles?: TipoRol[];
 }
 
 export interface RefreshResponse {

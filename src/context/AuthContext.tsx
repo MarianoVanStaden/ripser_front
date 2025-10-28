@@ -2,11 +2,15 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../api/authApi";
 import axios from "axios";
 import { setAuthToken } from "../api/config";
+import type { TipoRol } from "../types";
+
+export type { TipoRol } from "../types";
 
 export interface AuthUser {
   id: number;
   username: string;
   email?: string;
+  roles?: TipoRol[];
 }
 
 interface AuthContextType {
@@ -53,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: res.id || 0,
         username: res.username || usernameOrEmail,
         email: res.email || "",
+        roles: res.roles || [],
       };
   const access = res.accessToken || (res as any).token; // support alternate field name
   if (!access) throw new Error('No access token en la respuesta');

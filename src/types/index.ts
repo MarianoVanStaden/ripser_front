@@ -2120,3 +2120,17 @@ export interface ValidacionStockDTO {
   productosInsuficientes?: string[];
   mensaje: string;
 }
+
+// --- Sistema de Roles y Permisos ---
+export type TipoRol = 'ADMIN' | 'USER' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USUARIO';
+
+export type Modulo =
+  | 'DASHBOARD'
+  | 'VENTAS'
+  | 'CLIENTES'
+  | 'PROVEEDORES'
+  | 'LOGISTICA'
+  | 'TALLER'
+  | 'PRODUCCION'
+  | 'GARANTIAS'
+  | 'RRHH';
