@@ -27,6 +27,7 @@ import {
 import { garantiaApiWithFallback } from "../../api/services/apiWithFallback";
 import type { Garantia, Warranty, WarrantyClaim } from "../../types"; // Importamos Garantia y Warranty/Claim para referencia
 // Mantenemos los mocks solo para los Helpers, aunque idealmente deberías cargarlos de la API
+import { ventaApi } from "../../api/services/ventaApi";
 import { mockClientes, mockProductos } from "../../api/services/mockData";
 import GarantiaFormDialog from "./GarantiaFormDialog";
 import GarantiaDetailPage from "./GarantiaDetailPage";
@@ -64,37 +65,6 @@ const getStatusColor = (g: any) => {
   return "warning";
 };
 
-// --- FUNCIÓN ADAPTADORA CLAVE PARA EDICIÓN Y COMPATIBILIDAD ---
-// Convierte el DTO del backend (Warranty) a la estructura que espera el formulario (Garantia)
-const adaptGarantiaForForm = (g: any): Garantia => {
-  // Esto es crucial para que los datos del backend (g.status) se carguen en el campo del formulario (g.estado)
-  // y para que los helpers de nombre (si todavía los usas) funcionen.
-  return {
-    // Campos de la nueva interfaz Garantia (Español/Flexible ID)
-    id: g.id || "",
-    clienteNombre: g.clienteNombre || getClientName(g.clientId) || "",
-    productoNombre: g.productoNombre || getProductName(g.productId) || "",
-    fechaVenta: g.fechaVenta || g.startDate || "",
-    estado: g.estado || g.status || "VIGENTE",
-    observaciones: g.observaciones || g.description || "",
-
-    // Campos originales del DTO Warranty (Inglés) que también incluimos
-    clientId: g.clientId,
-    productId: g.productId,
-    warrantyNumber: g.warrantyNumber || "",
-    startDate: g.startDate || g.fechaVenta || "",
-    endDate: g.endDate || "",
-    status: g.status || g.estado || "VIGENTE",
-    type: g.type || "MANUFACTURER",
-    description: g.description || "",
-    claims: g.claims || [],
-    createdAt: g.createdAt || "",
-    updatedAt: g.updatedAt || "",
-    tipoIva: g.tipoIva,
-    saleId: g.saleId,
-  };
-};
-
 const GarantiasPage: React.FC = () => {
   const [garantias, setGarantias] = useState<GarantiaList>([]);
   const [isLoading, setIsLoading] = useState(true); // Control de carga
@@ -105,16 +75,40 @@ const GarantiasPage: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // --- FUNCIÓN ADAPTADORA CLAVE PARA EDICIÓN Y COMPATIBILIDAD ---
+  // Convierte el DTO del backend (Warranty) a la estructura que espera el formulario (Garantia)
+  const adaptGarantiaForForm = (g: any): Garantia => {
+    const adapted: any = {
+      id: g.id || "",
+      clienteNombre: g.clienteNombre || "-",
+      clienteApellido: g.clienteApellido || "",
+      productoNombre: g.productoNombre || "-",
+      fechaVenta: g.fechaVenta || g.fechaCompra || "",
+      estado: g.estado || "VIGENTE",
+      observaciones: g.observaciones || "",
+      productId: g.productoId,
+      saleId: g.ventaId,
+      warrantyNumber: g.numeroSerie || "",
+      startDate: g.fechaCompra,
+      endDate: g.fechaVencimiento,
+      status: g.estado,
+      description: g.observaciones,
+      claims: g.reclamos || [],
+      createdAt: "",
+      updatedAt: "",
+    };
+    return adapted as Garantia;
+  };
+
   // --- 1. CARGA INICIAL DESDE EL BACKEND ---
   useEffect(() => {
     const fetchGarantias = async () => {
       setIsLoading(true);
       try {
         const data = await garantiaApiWithFallback.getAll();
-        // Mapeamos los datos del backend usando el adaptador para asegurar
-        // que la lista inicial tenga los campos clienteNombre/productoNombre.
-        // Si tu backend ya devuelve esos campos, puedes usar solo setGarantias(data).
-        setGarantias(data.map(adaptGarantiaForForm));
+        // Mapeamos los datos del backend usando el adaptador asíncrono
+        const adaptedData = await Promise.all(data.map(adaptGarantiaForForm));
+        setGarantias(adaptedData);
       } catch (error) {
         console.error("Error al cargar garantías:", error);
       } finally {
@@ -144,19 +138,62 @@ const GarantiasPage: React.FC = () => {
 
   const toBackendDto = (g: Garantia) => {
     const fechaCompra = g.fechaVenta || g.startDate || null;
-    const fechaVencimiento =
-      g.endDate ||
-      (fechaCompra ? dayjs(fechaCompra).add(1, "year").format("YYYY-MM-DD") : null);
 
-    return {
-      productoId: g.productId, // Long
-      ventaId: g.saleId, // Long (obligatorio según backend)
+    // Asegurar que fechaVencimiento sea SIEMPRE futura
+    let fechaVencimiento: string;
+
+    if (g.endDate) {
+      // Si el usuario especificó una fecha de vencimiento
+      const vencimiento = dayjs(g.endDate);
+      if (vencimiento.isAfter(dayjs(), "day")) {
+        // Si es futura, usarla
+        fechaVencimiento = g.endDate;
+      } else {
+        // Si es pasada o hoy, usar mañana
+        fechaVencimiento = dayjs().add(1, "day").format("YYYY-MM-DD");
+      }
+    } else if (fechaCompra) {
+      // Calcular 1 año desde la compra
+      const vencimientoCalculado = dayjs(fechaCompra).add(1, "year");
+
+      // Verificar si esa fecha calculada es futura
+      if (vencimientoCalculado.isAfter(dayjs(), "day")) {
+        fechaVencimiento = vencimientoCalculado.format("YYYY-MM-DD");
+      } else {
+        // Si la compra fue hace más de 1 año, usar 1 año desde HOY
+        fechaVencimiento = dayjs().add(1, "year").format("YYYY-MM-DD");
+      }
+    } else {
+      // Si no hay ninguna fecha, usar 1 año desde hoy
+      fechaVencimiento = dayjs().add(1, "year").format("YYYY-MM-DD");
+    }
+
+    const payload = {
+      productoId: g.productId,
+      ventaId: g.saleId,
       numeroSerie: g.warrantyNumber || undefined,
       fechaCompra: fechaCompra,
       fechaVencimiento: fechaVencimiento,
-      estado: (g.estado || g.status || "VIGENTE").toUpperCase(), // EstadoGarantia enum
+      estado: (g.estado || g.status || "VIGENTE").toUpperCase(),
       observaciones: g.observaciones || g.description || undefined,
     };
+
+    // 🔍 DEBUG: Ver qué se está enviando
+    console.log("🔍 toBackendDto - Datos originales:", {
+      fechaVenta: g.fechaVenta,
+      startDate: g.startDate,
+      endDate: g.endDate,
+      saleId: g.saleId,
+    });
+    console.log("📤 toBackendDto - Payload generado:", payload);
+    console.log("📅 Fecha hoy:", dayjs().format("YYYY-MM-DD"));
+    console.log("📅 Fecha vencimiento calculada:", fechaVencimiento);
+    console.log(
+      "✅ Es futura?",
+      dayjs(fechaVencimiento).isAfter(dayjs(), "day")
+    );
+
+    return payload;
   };
 
   // --- 2. LÓGICA DE GUARDADO CON PERSISTENCIA ---
@@ -165,7 +202,11 @@ const GarantiasPage: React.FC = () => {
       let savedGarantia;
       const isEditing = !!garantia.id;
 
+      console.log("💾 handleSave - Garantia recibida:", garantia);
+
       const payload = toBackendDto(garantia);
+
+      console.log("📦 handleSave - Payload final a enviar:", payload);
 
       if (isEditing) {
         const idToCall =
@@ -177,19 +218,35 @@ const GarantiasPage: React.FC = () => {
         savedGarantia = await garantiaApiWithFallback.create(payload);
       }
 
-      const adaptedSavedGarantia = adaptGarantiaForForm(savedGarantia);
-      setGarantias(
-        (gs) =>
-          isEditing
-            ? gs.map((g) => (g.id === adaptedSavedGarantia.id ? adaptedSavedGarantia : g))
-            : [adaptedSavedGarantia, ...gs]
+      console.log("✅ Garantía guardada exitosamente:", savedGarantia);
+
+      // Adaptar la garantía guardada de forma asíncrona
+      const adaptedSavedGarantia = await adaptGarantiaForForm(savedGarantia);
+
+      setGarantias((gs) =>
+        isEditing
+          ? gs.map((g) =>
+              g.id === adaptedSavedGarantia.id ? adaptedSavedGarantia : g
+            )
+          : [adaptedSavedGarantia, ...gs]
       );
       setFormOpen(false);
     } catch (error) {
-      console.error("Error al guardar garantía:", error);
+      console.error("❌ Error al guardar garantía:", error);
+      console.error("❌ Detalles del error:", {
+        status: (error as any)?.response?.status,
+        data: (error as any)?.response?.data,
+        message: (error as any)?.message,
+      });
+
       // Mostrar mensaje más detallado si el backend envía validaciones
-      const serverMsg = (error as any)?.response?.data || (error as any)?.message || "Error desconocido";
-      alert(`Hubo un error al guardar la garantía: ${JSON.stringify(serverMsg)}`);
+      const serverMsg =
+        (error as any)?.response?.data ||
+        (error as any)?.message ||
+        "Error desconocido";
+      alert(
+        `Hubo un error al guardar la garantía: ${JSON.stringify(serverMsg)}`
+      );
     }
   };
 
@@ -252,7 +309,12 @@ const GarantiasPage: React.FC = () => {
             ) : (
               filteredGarantias.map((g) => (
                 <TableRow key={g.id} hover>
-                  <TableCell>{g.clienteNombre || "-"}</TableCell>
+                  <TableCell>
+                    {" "}
+                    {`${g.clienteNombre || ""} ${
+                      g.clienteApellido || ""
+                    }`.trim() || "-"}
+                  </TableCell>
                   <TableCell>{g.productoNombre || "-"}</TableCell>
                   <TableCell>{formatDate(g.fechaVenta)}</TableCell>
                   <TableCell>
@@ -274,9 +336,10 @@ const GarantiasPage: React.FC = () => {
                     </Button>
                     <IconButton
                       size="small"
-                      onClick={() => {
-                        // CLAVE: Usamos el adaptador al abrir la edición
-                        setSelectedGarantia(adaptGarantiaForForm(g));
+                      onClick={async () => {
+                        // CLAVE: Usamos el adaptador async al abrir la edición
+                        const adapted = await adaptGarantiaForForm(g);
+                        setSelectedGarantia(adapted);
                         setFormOpen(true);
                       }}
                     >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -16,11 +16,12 @@ import type {
   Cliente,
   ProductoListDTO,
   Producto,
+  VentaSearchDTO, // Importar VentaSearchDTO
 } from "../../types";
 import { debounce } from "lodash";
 import { clienteApi } from "../../api/services/clienteApi";
 import { productApi } from "../../api/services/productApi";
-import { saleApi } from "../../api/services/saleApi"; // agregar import
+import { ventaApi } from "../../api/services/ventaApi"; // Usamos ventaApi (como lo llamas en el backend)
 
 interface GarantiaFormDialogProps {
   open: boolean;
@@ -35,20 +36,17 @@ const estados = [
   { value: "EN_PROCESO", label: "En Proceso" },
 ];
 
-// Valores por defecto/iniciales para una Garantía nueva
 const initialFormState: Garantia = {
-  // Campos del formulario
   id: "",
   clienteNombre: "",
+  clienteApellido: "",
   productoNombre: "",
   fechaVenta: "",
   estado: "VIGENTE",
   observaciones: "",
-  // Claves foráneas (saleId añadido)
   clientId: undefined,
   productId: undefined,
-  saleId: undefined, // <-- nuevo
-  // Otros campos del DTO
+  saleId: undefined, // <-- ventaId
   warrantyNumber: "",
   startDate: "",
   endDate: "",
@@ -73,24 +71,19 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
   const [productoOptions, setProductoOptions] = useState<
     (ProductoListDTO | Producto)[]
   >([]);
-  const [ventaOptions, setVentaOptions] = useState<any[]>([]); // añadir estado para ventas
-  const [clienteInput, setClienteInput] = useState("");
-  const [productoInput, setProductoInput] = useState("");
-  const [ventaInput, setVentaInput] = useState("");
-  const lastClienteSearch = useRef<string>("");
-  const lastProductoSearch = useRef<string>("");
-  const lastVentaSearch = useRef<string>(""); // nueva referencia para ventas
+  const [ventaOptions, setVentaOptions] = useState<VentaSearchDTO[]>([]); // Tipado correcto
 
+
+  // ELIMINADOS: clienteInput, productoInput, ventaInput y las referencias useRef
+
+
+  // 1. DEBOUNCER: Cliente
   const debouncedClienteSearch = useCallback(
     debounce(async (searchTerm: string) => {
-      // Evitar llamadas repetidas con el mismo término
-      if (searchTerm === lastClienteSearch.current) return;
-      // Solo busca si hay más de 2 caracteres o si el campo está limpio
       if (searchTerm.length > 2 || searchTerm.length === 0) {
         try {
           const data = await clienteApi.search(searchTerm);
-          setClienteOptions(() => data || []); // Reemplaza en vez de mezclar
-          lastClienteSearch.current = searchTerm;
+          setClienteOptions(data || []);
         } catch (error) {
           console.error("Error buscando clientes:", error);
           setClienteOptions([]);
@@ -100,14 +93,13 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     []
   );
 
+  // 2. DEBOUNCER: Producto
   const debouncedProductoSearch = useCallback(
     debounce(async (searchTerm: string) => {
-      if (searchTerm === lastProductoSearch.current) return;
       if (searchTerm.length > 2 || searchTerm.length === 0) {
         try {
           const data = (await productApi.search(searchTerm)) as ProductoListDTO[];
-          setProductoOptions(() => data || []);
-          lastProductoSearch.current = searchTerm;
+          setProductoOptions(data || []);
         } catch (error) {
           console.error("Error buscando productos:", error);
           setProductoOptions([]);
@@ -117,204 +109,153 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     []
   );
 
-  // debounced search (añadir similar a cliente/producto)
+  // 3. DEBOUNCER: Venta
   const debouncedVentaSearch = useCallback(
-    debounce(async (term: string) => {
-      if (term === lastVentaSearch.current) return;
-      if (term.length > 1 || term.length === 0) {
+    debounce(async (searchTerm: string) => {
+      // Usamos VentaSearchDTO
+      if (searchTerm.length > 2 || searchTerm.length === 0) {
         try {
-          const data = await saleApi.search(term); // o saleApi.getByCliente(...)
+          const data = await ventaApi.search(searchTerm);
           setVentaOptions(data || []);
-          lastVentaSearch.current = term;
-        } catch (err) {
-          console.error("Error buscando ventas:", err);
+        } catch (error) {
+          console.error("Error buscando ventas:", error);
           setVentaOptions([]);
         }
       }
-    }, 400),
+    }, 500),
     []
   );
 
-  // Cancelar debounced al desmontar para evitar llamadas rezagadas
+  // Cancelar debounced al desmontar
   useEffect(() => {
     return () => {
       debouncedClienteSearch.cancel();
       debouncedProductoSearch.cancel();
-      debouncedVentaSearch.cancel(); // cancelar también para ventas
+      debouncedVentaSearch.cancel();
     };
   }, [debouncedClienteSearch, debouncedProductoSearch, debouncedVentaSearch]);
 
-  // Disparadores de búsqueda
+  // --- CARGA INICIAL CONTROLADA (Lógica Unificada) ---
   useEffect(() => {
-    debouncedClienteSearch(clienteInput);
-  }, [clienteInput, debouncedClienteSearch]);
+    const loadInitialOptions = async () => {
+      try {
+        // Carga inicial de Opciones
+        const initialClientes = await clienteApi.search("");
+        setClienteOptions(initialClientes || []);
 
-  useEffect(() => {
-    debouncedProductoSearch(productoInput);
-  }, [productoInput, debouncedProductoSearch]);
+        const initialProductos = await productApi.search("");
+        setProductoOptions(initialProductos || []);
 
-  useEffect(() => {
-    debouncedVentaSearch(ventaInput);
-  }, [ventaInput, debouncedVentaSearch]);
+        const initialVentas = await ventaApi.search(""); // Carga inicial de Venta
+        setVentaOptions(initialVentas || []);
+      } catch (error) {
+        console.error("Error cargando opciones iniciales:", error);
+        setClienteOptions([]);
+        setProductoOptions([]);
+        setVentaOptions([]);
+      }
+    };
 
-  // Manejo de Edición/Carga Inicial
+    if (open) {
+      loadInitialOptions();
+      // Reinicia el formulario si no hay garantía (modo Creación)
+      if (!garantia) {
+        setForm(initialFormState);
+      }
+    }
+
+    // Limpiar al cerrar
+    if (!open) {
+      setClienteOptions([]);
+      setProductoOptions([]);
+      setVentaOptions([]);
+      setForm(initialFormState); // Asegura que el estado esté limpio al cerrar
+    }
+  }, [open, garantia]);
+
+
+  // --- MANEJO DE EDICIÓN Y PRECARGA (Solo cuando garantía cambia) ---
   useEffect(() => {
     if (garantia) {
-      // Si estamos editando, precargar las opciones con los datos del registro actual
-      if (
-        garantia.clientId &&
-        !clienteOptions.some((c) => c.id === garantia.clientId)
-      ) {
-        clienteApi
-          .getById(garantia.clientId)
-          .then((clienteData) =>
-            setClienteOptions((prev) => [
-              ...prev.filter((c) => c.id !== clienteData.id),
-              clienteData,
-            ])
-          )
-          .catch((e) =>
-            console.error("No se pudo cargar el cliente para edición", e)
-          );
-      }
-      if (
-        garantia.productId &&
-        !productoOptions.some((p) => p.id === garantia.productId)
-      ) {
-        productApi
-          .getById(garantia.productId)
-          .then((productoData) => {
-            // Normalizar el producto a ProductoListDTO (asegurar stockActual presente)
-            const normalized = {
-              ...productoData,
-              stockActual:
-                (productoData as any).stockActual ??
-                (productoData as any).stock ??
-                0,
-            } as ProductoListDTO;
-            setProductoOptions((prev) => [
-              ...prev.filter((p) => p.id !== normalized.id),
-              normalized,
-            ]);
-          })
-          .catch((e) =>
-            console.error("No se pudo cargar el producto para edición", e)
-          );
-      }
-
       setForm({
         ...garantia,
-        id: garantia.id || "",
-        clienteNombre: garantia.clienteNombre || "",
-        productoNombre: garantia.productoNombre || "",
-        fechaVenta: garantia.fechaVenta || "",
-        observaciones: garantia.observaciones || "",
-        estado: garantia.estado?.toUpperCase() || "VIGENTE",
+        // Asegura que los IDs se mapeen correctamente
         clientId: garantia.clientId || undefined,
         productId: garantia.productId || undefined,
         saleId: garantia.saleId || undefined,
+        // El resto de mapeos que tenías...
+        id: garantia.id || "",
+        fechaVenta: garantia.fechaVenta || "",
+        observaciones: garantia.observaciones || "",
+        estado: garantia.estado?.toUpperCase() || "VIGENTE",
         warrantyNumber: garantia.warrantyNumber || "",
         startDate: garantia.startDate || "",
         endDate: garantia.endDate || "",
         status: (garantia.status?.toUpperCase() as WarrantyStatus) || "VIGENTE",
-        type: garantia.type || "MANUFACTURER",
         description: garantia.description || "",
-        claims: garantia.claims || [],
-        createdAt: garantia.createdAt || "",
-        updatedAt: garantia.updatedAt || "",
       });
-      setClienteInput(garantia.clienteNombre || "");
-      setProductoInput(garantia.productoNombre || "");
-    } else {
-      setForm(initialFormState);
-      setClienteInput("");
-      setProductoInput("");
-    }
-  }, [garantia]); // open eliminado de las dependencias para evitar doble ejecución
 
-  useEffect(() => {
-    // Solo se ejecuta si el diálogo está abierto Y estamos en modo edición (garantia existe)
-    if (open && garantia && garantia.id) {
-      // Carga Asíncrona del Cliente (solo si el cliente no está YA en las opciones)
-      if (
-        garantia.clientId &&
-        !clienteOptions.some((c) => c.id === garantia.clientId)
-      ) {
-        clienteApi
-          .getById(garantia.clientId)
-          .then((clienteData) => {
-            // Carga el cliente y lo añade a las opciones para que el Autocomplete lo encuentre
-            setClienteOptions((prev) => [
-              ...prev.filter((c) => c.id !== clienteData.id),
-              clienteData,
-            ]);
-          })
-          .catch((e) =>
-            console.error("Error al precargar cliente para edición:", e)
-          );
-      }
+      // Carga asíncrona de las entidades seleccionadas (Cliente, Producto, Venta)
+      // para asegurar que estén en 'Options' para el Autocomplete
+      const loadSelectedEntities = async () => {
+        // 1. Cliente
+        if (garantia.clientId && !clienteOptions.some(c => c.id === garantia.clientId)) {
+            try {
+                const clienteData = await clienteApi.getById(garantia.clientId);
+                setClienteOptions(prev => [...prev.filter(c => c.id !== clienteData.id), clienteData]);
+            } catch (e) { console.error("Error precargando cliente:", e); }
+        }
 
-      // Carga Asíncrona del Producto (solo si el producto no está YA en las opciones)
-      if (
-        garantia.productId &&
-        !productoOptions.some((p) => p.id === garantia.productId)
-      ) {
-        productApi
-          .getById(garantia.productId)
-          .then((productoData) => {
-            // Carga el producto y lo añade a las opciones
-            setProductoOptions((prev) => [
-              ...prev.filter((p) => p.id !== productoData.id),
-              productoData,
-            ]);
-          })
-          .catch((e) =>
-            console.error("Error al precargar producto para edición:", e)
-          );
-      }
-    }
-  }, [garantia, open, clienteOptions.length, productoOptions.length]);
-
-  // --- NUEVO HOOK PARA CARGA INICIAL CONTROLADA ---
-  useEffect(() => {
-    // Solo se ejecuta una vez al abrir el diálogo
-    if (open) {
-      const loadInitialOptions = async () => {
-        try {
-          // 1. Cargar una lista base de clientes
-          const initialClientes = await clienteApi.search("");
-          setClienteOptions(initialClientes || []);
-
-          // 2. Cargar una lista base de productos
-          const initialProductos = await productApi.search("");
-          setProductoOptions(initialProductos || []);
-        } catch (error) {
-          console.error("Error cargando opciones iniciales:", error);
-          setClienteOptions([]);
-          setProductoOptions([]);
+        // 2. Producto
+        if (garantia.productId && !productoOptions.some(p => p.id === garantia.productId)) {
+            try {
+                const productoData = await productApi.getById(garantia.productId);
+                setProductoOptions(prev => [...prev.filter(p => p.id !== productoData.id), productoData]);
+            } catch (e) { console.error("Error precargando producto:", e); }
+        }
+        
+        // 3. Venta (Nuevo)
+        if (garantia.saleId && !ventaOptions.some(v => v.id === garantia.saleId)) {
+            try {
+                // Necesitas una forma de obtener el VentaSearchDTO por ID, si no existe un endpoint directo:
+                // Hacemos un GET de la venta completa y la mapeamos al DTO ligero.
+                const ventaCompleta = await ventaApi.getById(garantia.saleId);
+                const ventaSearch: VentaSearchDTO = {
+                    id: ventaCompleta.id,
+                    numeroVenta: ventaCompleta.numeroVenta || '',
+                    clienteNombreCompleto: `${ventaCompleta.cliente?.nombre || ''} ${ventaCompleta.cliente?.apellido || ''}`.trim() || '',
+                    productosResumen: ventaCompleta.detalleVentas?.map(d => d.productoNombre).join(', ') || ''
+                };
+                setVentaOptions(prev => [...prev.filter(v => v.id !== ventaSearch.id), ventaSearch]);
+            } catch (e) { console.error("Error precargando venta:", e); }
         }
       };
 
-      loadInitialOptions();
+      loadSelectedEntities();
     }
+  }, [garantia, clienteOptions.length, productoOptions.length, ventaOptions.length]); // Dependencias para reintentar la carga si las opciones no están listas
 
-    // Al cerrar el diálogo, limpiar las opciones para la próxima vez
-    if (!open) {
-      setClienteOptions([]);
-      setProductoOptions([]);
-    }
-  }, [open]); // Depende solo de 'open' para cargarse y limpiarse
-  // ----------------------------------------------------
 
+  // --- HELPERS PARA AUTOCMPLETE (Defensivos) ---
+  const findClienteById = (id: number | undefined) => {
+    if (!id) return null;
+    return clienteOptions.find((c) => c.id === id) || null;
+  };
+
+  const findProductoById = (id: number | undefined) => {
+    if (!id) return null;
+    return productoOptions.find((p) => p.id === id) || null;
+  };
+  
+  const findVentaById = (id: number | undefined) => {
+    if (!id) return null;
+    return ventaOptions.find((v) => v.id === id) || null;
+  };
+
+
+  // --- HANDLERS ---
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    // Si es saleId convertir a number o undefined
-    if (name === "saleId") {
-      setForm(prev => ({ ...prev, [name]: value === "" ? undefined : parseInt(value, 10) }));
-      return;
-    }
-
     let newForm = { ...form, [name]: value };
 
     // Mapeo DTO
@@ -340,34 +281,19 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
 
     setIsSaving(true);
     try {
-      console.log('GarantiaFormDialog: saving payload', form);
-      await onSave(form); // onSave debe propagar error si API falla
-      // sólo cerrar si onSave tuvo éxito
+      // Simplemente pasa el form, GarantiasPage.tsx se encarga del mapeo a DTO
+      await onSave(form); 
       onClose();
     } catch (e: any) {
-      console.error('Error al guardar garantía (UI):', e);
-      const serverMsg =
-        e?.response?.data?.message || e?.response?.data || e?.message || 'Error desconocido';
-      alert(`No se pudo guardar la garantía: ${serverMsg}`);
-      // No hacer fallback local ni cerrar dialog — forzar corrección
+      console.error('Error al guardar garantía:', e);
+      const errorMsg = e?.response?.data ? JSON.stringify(e.response.data) : e?.message || 'Error desconocido';
+      alert(`No se pudo guardar la garantía: ${errorMsg}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // FUNCIONES DE BÚSQUEDA DEFENSIVAS (CORRECCIÓN CLAVE CONTRA EL ERROR UNDEFINED)
-  const findClienteById = (id: number | undefined) => {
-    // Si no hay ID o si las opciones no se han cargado (están vacías), devuelve null
-    if (!id || clienteOptions.length === 0) return null;
-    return clienteOptions.find((c) => c.id === id) || null;
-  };
-
-  const findProductoById = (id: number | undefined) => {
-    // Si no hay ID o si las opciones no se han cargado (están vacías), devuelve null
-    if (!id || productoOptions.length === 0) return null;
-    return productoOptions.find((p) => p.id === id) || null;
-  };
-
+  // --- RENDER ---
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
@@ -375,23 +301,119 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          {/* Autocomplete Cliente */}
+
+          {/* Autocomplete Venta (Nuevo y Limpio) */}
+         <Autocomplete
+            options={ventaOptions}
+            getOptionLabel={(v) =>
+              `Venta #${v.numeroVenta} - Cliente: ${v.clienteNombreCompleto} - Prod: ${v.productosResumen}`
+            }
+            isOptionEqualToValue={(option, value) => option?.id === value?.id}
+            filterOptions={(x) => x}
+            
+            // Disparador directo de la búsqueda DEBOUNCED
+            onInputChange={(_e, newInputValue, reason) => {
+              if (reason === 'input') {
+                debouncedVentaSearch(newInputValue);
+              }
+            }}
+
+             value={findVentaById(form.saleId)}
+            onChange={async (_e, selectedVenta) => {
+              if (selectedVenta) {
+                try {
+                  // Cargar la venta completa para obtener todos los datos
+                  const ventaCompleta = await ventaApi.getById(selectedVenta.id);
+                  
+                  console.log('🔄 Auto-completando desde venta:', ventaCompleta);
+                  
+                  // Obtener el primer producto de la venta
+                  const primerDetalle = ventaCompleta.detalleVentas?.[0];
+                  
+                  setForm((prev) => ({
+                    ...prev,
+                    saleId: selectedVenta.id,
+                    // Auto-completar cliente
+                    clientId: ventaCompleta.clienteId,
+                    clienteNombre: ventaCompleta.cliente 
+                      ? `${ventaCompleta.cliente.nombre} ${ventaCompleta.cliente.apellido || ''}`.trim()
+                      : '',
+                    // Auto-completar fecha
+                    fechaVenta: ventaCompleta.fechaVenta?.split('T')[0] || '',
+                    startDate: ventaCompleta.fechaVenta?.split('T')[0] || '',
+                    // Auto-completar producto (primer producto de la venta)
+                    productId: primerDetalle?.productoId,
+                    productoNombre: primerDetalle?.productoNombre || '',
+                  }));
+                  
+                  // Asegurar que el cliente esté en las opciones del autocomplete
+                  if (ventaCompleta.cliente && !clienteOptions.some(c => c.id === ventaCompleta.clienteId)) {
+                    setClienteOptions(prev => [...prev, ventaCompleta.cliente!]);
+                  }
+                  
+                  // Asegurar que el producto esté en las opciones del autocomplete
+                  if (primerDetalle?.productoId && !productoOptions.some(p => p.id === primerDetalle.productoId)) {
+                    // Crear un objeto compatible con ProductoListDTO
+                    const productoParaAutocomplete = {
+                      id: primerDetalle.productoId,
+                      nombre: primerDetalle.productoNombre || '',
+                      codigo: '', // No tenemos el código en el detalle
+                      precio: primerDetalle.precioUnitario,
+                      stockActual: 0, // No lo conocemos desde el detalle
+                      categoriaProductoNombre: '',
+                      activo: true,
+                    };
+                    setProductoOptions(prev => [...prev, productoParaAutocomplete]);
+                  }
+                  
+                } catch (error) {
+                  console.error("Error cargando venta:", error);
+                  alert("Error al cargar los datos de la venta");
+                }
+              } else {
+                // Si deselecciona la venta, limpiar campos
+                setForm((prev) => ({
+                  ...prev,
+                  saleId: undefined,
+                  clientId: undefined,
+                  clienteNombre: '',
+                  productId: undefined,
+                  productoNombre: '',
+                  fechaVenta: '',
+                  startDate: '',
+                }));
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Buscar Venta"
+                required
+                error={!form.saleId && !isSaving}
+                helperText={!form.saleId ? "Seleccione una venta" : ""}
+              />
+            )}
+          />
+          
+          {/* Autocomplete Cliente (Limpio) */}
           <Autocomplete
+           disabled={!!form.saleId}
             options={clienteOptions}
             getOptionLabel={(cliente) =>
               `${cliente.nombre} ${cliente.apellido || ""} - ${
                 cliente.cuit || ""
               }`
             }
-            filterOptions={(x) => x} // <-- importante: evitar filtrado local
             isOptionEqualToValue={(option, value) => option?.id === value?.id}
-            inputValue={clienteInput}
+            filterOptions={(x) => x} 
+            
+            // Disparador directo de la búsqueda DEBOUNCED
             onInputChange={(event, newInputValue, reason) => {
-              // Sólo actualizar input si proviene del usuario (typing or clear)
-              if (reason === "input" || reason === "clear") {
-                setClienteInput(newInputValue);
+              if (reason === 'input') {
+                debouncedClienteSearch(newInputValue);
               }
             }}
+            
             onChange={(event, selectedCliente) => {
               setForm((prevForm) => ({
                 ...prevForm,
@@ -402,11 +424,6 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
                     }`
                   : "",
               }));
-              setClienteInput(
-                selectedCliente ? `${selectedCliente.nombre} ${selectedCliente.apellido || ""}` : ""
-              );
-              // guardar el término para evitar re-búsqueda inmediata
-              lastClienteSearch.current = selectedCliente ? `${selectedCliente.nombre} ${selectedCliente.apellido || ""}` : '';
             }}
             value={findClienteById(form.clientId)}
             renderInput={(params) => (
@@ -420,28 +437,29 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             )}
           />
 
-          {/* Autocomplete Producto */}
+          {/* Autocomplete Producto (Limpio) */}
           <Autocomplete
+          disabled={!!form.saleId}
             options={productoOptions}
             getOptionLabel={(producto) =>
               `${producto.nombre} - ${producto.codigo || ""}`
             }
-            filterOptions={(x) => x}
             isOptionEqualToValue={(option, value) => option?.id === value?.id}
-            inputValue={productoInput}
+            filterOptions={(x) => x} 
+            
+            // Disparador directo de la búsqueda DEBOUNCED
             onInputChange={(event, newInputValue, reason) => {
-              if (reason === "input" || reason === "clear") {
-                setProductoInput(newInputValue);
+              if (reason === 'input') {
+                debouncedProductoSearch(newInputValue);
               }
             }}
+
             onChange={(event, selectedProducto) => {
               setForm((prevForm) => ({
                 ...prevForm,
                 productId: selectedProducto ? selectedProducto.id : undefined,
                 productoNombre: selectedProducto ? selectedProducto.nombre : "",
               }));
-              setProductoInput(selectedProducto ? selectedProducto.nombre : "");
-              lastProductoSearch.current = selectedProducto ? selectedProducto.nombre : "";
             }}
             value={findProductoById(form.productId)}
             renderInput={(params) => (
@@ -455,58 +473,23 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             )}
           />
 
-          {/* Autocomplete Venta (nuevo) */}
-          <Autocomplete
-            options={ventaOptions}
-            getOptionLabel={(v) =>
-              v.numeroVenta ? `${v.numeroVenta} — ${v.clienteNombre || v.clientName || ''}` : `Venta #${v.id}`
-            }
-            filterOptions={(x) => x}
-            isOptionEqualToValue={(opt, val) => opt?.id === val?.id}
-            inputValue={ventaInput}
-            onInputChange={(_e, newVal, reason) => {
-              if (reason === "input" || reason === "clear") setVentaInput(newVal);
-            }}
-            value={ventaOptions.find((s) => s.id === form.saleId) || null}
-            onChange={(_e, selected) => {
-              setForm((prev) => ({
-                ...prev,
-                saleId: selected ? selected.id : undefined,
-                // opcional: precargar cliente/producto en el form
-                clientId: selected?.clientId ?? prev.clientId,
-                productId: selected?.productId ?? prev.productId,
-              }));
-              setVentaInput(selected ? (selected.numeroVenta?.toString() ?? `Venta ${selected.id}`) : "");
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Buscar Venta (asociar)"
-                required
-                error={!form.saleId && !isSaving}
-                helperText={!form.saleId ? "Seleccione la venta asociada" : ""}
-                fullWidth
-              />
-            )}
-          />
-
-          {/* CAMPO FECHA DE VENTA REINTRODUCIDO */}
+          
+          {/* CAMPO FECHA DE VENTA */}
           <TextField
-            label="Fecha de Venta"
-            name="fechaVenta"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            value={form.fechaVenta || ""}
-            onChange={handleChange}
-            fullWidth
-            required
-            error={!form.fechaVenta && !isSaving}
-            helperText={
-              !form.fechaVenta ? "Introduzca la fecha de la venta" : ""
-            }
+          disabled={!!form.saleId}
+              label="Fecha de Venta"
+              name="fechaVenta"
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              value={form.fechaVenta || ''}
+              onChange={handleChange}
+              fullWidth
+              required
+              error={!form.fechaVenta && !isSaving}
+              helperText={!form.fechaVenta ? "Introduzca la fecha de la venta" : ""}
           />
-
-          {/* Select de Estado (con chequeo defensivo de mapeo) */}
+          
+          {/* Select de Estado */}
           <TextField
             select
             label="Estado"
@@ -532,19 +515,18 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             multiline
             rows={3}
           />
-
-          {/* INPUT PARA VENTA (ventaId) */}
-          <TextField
-            label="ID Venta (ventaId)"
-            name="saleId"
-            type="number"
-            value={form.saleId ?? ""}
+          
+          {/* Campo Número de Serie (Añadir al final si el DTO lo requiere) */}
+          {/* <TextField
+            label="Número de Serie"
+            name="numeroSerie"
+            value={form.warrantyNumber}
             onChange={handleChange}
             fullWidth
-            required
-            error={!form.saleId && !isSaving}
-            helperText={!form.saleId ? "ID de la venta asociado (obligatorio)" : ""}
-          />
+          /> */}
+        
+        {/* ELIMINADO: TextField de ID Venta que era redundante */}
+
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -552,13 +534,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
           Cancelar
         </Button>
         <Button variant="contained" onClick={handleSave} disabled={isSaving}>
-          {form.id
-            ? isSaving
-              ? "Guardando..."
-              : "Guardar Cambios"
-            : isSaving
-            ? "Guardando..."
-            : "Crear Garantía"}
+          {form.id ? (isSaving ? "Guardando..." : "Guardar Cambios") : (isSaving ? "Guardando..." : "Crear Garantía")}
         </Button>
       </DialogActions>
     </Dialog>
