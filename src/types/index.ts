@@ -220,6 +220,7 @@ export interface Garantia {
     
     // 2. Properties for display in the UI
     clienteNombre: string; 
+    clienteApellido: string;
     productoNombre: string;
     fechaVenta: string;
     estado: string;
@@ -1281,6 +1282,15 @@ export interface CreateVentaDTO {
     descuento?: number;
   }>;
 }
+
+// Nuevo DTO para la respuesta de la búsqueda libre de Ventas (Autocomplete)
+export interface VentaSearchDTO {
+    id: number;
+    numeroVenta: string;
+    clienteNombreCompleto: string;
+    productosResumen: string; // Resumen de los productos vendidos
+}
+
 // Vehiculo (Vehicle)
 export interface Vehiculo {
   id: number;
