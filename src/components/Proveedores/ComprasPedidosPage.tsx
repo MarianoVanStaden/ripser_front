@@ -33,6 +33,7 @@ import {
   ListItemText,
   ListItemAvatar,
   Divider,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -94,6 +95,10 @@ const ComprasPedidosPage: React.FC = () => {
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedOrden, setSelectedOrden] = useState<OrdenCompra | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
 const [newOrden, setNewOrden] = useState({
   supplierId: '',
@@ -544,27 +549,49 @@ const handleItemChange = (index: number, field: string, value: any) => {
     }
   };
 
-const filteredOrdenes = ordenes.filter((orden) => {
-  const matchesSearch =
-    orden.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (orden.proveedor?.razonSocial.toLowerCase()?.includes(searchTerm.toLowerCase()) || false);
+const filteredOrdenes = ordenes
+  .filter((orden) => {
+    const matchesSearch =
+      orden.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (orden.proveedor?.razonSocial.toLowerCase()?.includes(searchTerm.toLowerCase()) || false);
 
-  const matchesEstado = !estadoFilter || orden.estado === estadoFilter;
+    const matchesEstado = !estadoFilter || orden.estado === estadoFilter;
 
-  const ordenSupplierId = orden.supplierId ? orden.supplierId.toString() : '';
-  const matchesSupplier = !supplierFilter || ordenSupplierId === supplierFilter;
+    const ordenSupplierId = orden.supplierId ? orden.supplierId.toString() : '';
+    const matchesSupplier = !supplierFilter || ordenSupplierId === supplierFilter;
 
-  const fechaOrden = dayjs(orden.fechaCreacion);
-  const matchesFecha =
-    (!fechaDesde || fechaOrden.isAfter(fechaDesde.subtract(1, 'day'))) &&
-    (!fechaHasta || fechaOrden.isBefore(fechaHasta.add(1, 'day')));
+    const fechaOrden = dayjs(orden.fechaCreacion);
+    const matchesFecha =
+      (!fechaDesde || fechaOrden.isAfter(fechaDesde.subtract(1, 'day'))) &&
+      (!fechaHasta || fechaOrden.isBefore(fechaHasta.add(1, 'day')));
 
-  if (!matchesSupplier && supplierFilter) {
-    console.log(`Supplier mismatch: orden.supplierId=${ordenSupplierId}, supplierFilter=${supplierFilter}`);
-  }
+    if (!matchesSupplier && supplierFilter) {
+      console.log(`Supplier mismatch: orden.supplierId=${ordenSupplierId}, supplierFilter=${supplierFilter}`);
+    }
 
-  return matchesSearch && matchesEstado && matchesSupplier && matchesFecha;
-});
+    return matchesSearch && matchesEstado && matchesSupplier && matchesFecha;
+  })
+  .sort((a, b) => {
+    // Ordenar por fecha de creación descendente (más reciente primero)
+    const fechaA = dayjs(a.fechaCreacion);
+    const fechaB = dayjs(b.fechaCreacion);
+    return fechaB.diff(fechaA);
+  });
+
+// Paginate filtered ordenes
+const paginatedOrdenes = filteredOrdenes.slice(
+  page * rowsPerPage,
+  page * rowsPerPage + rowsPerPage
+);
+
+const handleChangePage = (_event: unknown, newPage: number) => {
+  setPage(newPage);
+};
+
+const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  setRowsPerPage(parseInt(event.target.value, 10));
+  setPage(0);
+};
   const getTotalAmount = () => {
     return filteredOrdenes.reduce((sum, orden) => sum + orden.total, 0);
   };
@@ -780,7 +807,7 @@ const handleDeleteCompra = async (id: number) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredOrdenes.map((orden) => (
+              {paginatedOrdenes.map((orden) => (
                 <TableRow key={orden.id}>
                   <TableCell>
                     <Typography variant="subtitle2">
@@ -846,6 +873,19 @@ const handleDeleteCompra = async (id: number) => {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={filteredOrdenes.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </TableContainer>
 
         {filteredOrdenes.length === 0 && (

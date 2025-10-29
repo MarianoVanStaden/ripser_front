@@ -454,7 +454,8 @@ const RegistroVentasPage: React.FC = () => {
           cantidad: detalle.cantidad,
           precioUnitario: detalle.precioUnitario,
           subtotal: detalle.subtotal,
-        })),
+          equiposNumerosHeladera: detalle.equiposNumerosHeladera,
+        } as any)),
         opcionesFinanciamiento: [],
       };
 

@@ -29,6 +29,7 @@ import {
   Tabs,
   Tab,
   Badge,
+  TablePagination,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -47,10 +48,10 @@ import {
   Print as PrintIcon,
   Map as MapIcon,
 } from '@mui/icons-material';
-import type { EntregaViaje, Viaje, Cliente, Venta, EstadoEntrega } from '../../types';
+import type { EntregaViaje, Viaje, Cliente, Venta, EstadoEntrega, DocumentoComercial } from '../../types';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { clienteApi } from '../../api/services/clienteApi';
-import { ventaApi } from '../../api/services/ventaApi';
+import { documentoApi } from '../../api/services/documentoApi';
 import { viajeApi } from '../../api/services/viajeApi';
 
 interface TabPanelProps {
@@ -82,7 +83,7 @@ function TabPanel(props: TabPanelProps) {
 const DeliveriesPage: React.FC = () => {
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
-  const [ventas, setVentas] = useState<Venta[]>([]);
+  const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +96,10 @@ const DeliveriesPage: React.FC = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoEntrega>('all');
   const [dateFilter, setDateFilter] = useState('');
+
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -120,7 +125,7 @@ const DeliveriesPage: React.FC = () => {
       // Load each resource individually to better handle errors
       let deliveriesData: EntregaViaje[] = [];
       let clientsData: Cliente[] = [];
-      let ventasData: Venta[] = [];
+      let facturasData: DocumentoComercial[] = [];
       let tripsData: Viaje[] = [];
       const errors: string[] = [];
 
@@ -143,12 +148,15 @@ const DeliveriesPage: React.FC = () => {
       }
 
       try {
-        ventasData = await ventaApi.getAll();
-        console.log('✅ Ventas cargadas:', ventasData.length, ventasData);
+        facturasData = await documentoApi.getByTipo('FACTURA');
+        // Filtrar solo facturas (FAC-), excluir notas de pedido (NP-)
+        facturasData = facturasData.filter(f => f.numeroDocumento?.startsWith('FAC-'));
+        console.log('✅ Facturas cargadas:', facturasData.length);
+        console.log('📊 Muestra de facturas:', facturasData.slice(0, 2));
       } catch (err) {
-        console.error('❌ Error cargando ventas:', err);
+        console.error('❌ Error cargando facturas:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Ventas: ${errorMsg}`);
+        errors.push(`❌ Facturas: ${errorMsg}`);
       }
 
       try {
@@ -165,10 +173,16 @@ const DeliveriesPage: React.FC = () => {
         setError(errors.join(' | '));
       }
 
-      // Ensure all data is in array format
+      console.log('✅ Datos cargados:');
+      console.log('   - Entregas:', deliveriesData.length);
+      console.log('   - Facturas:', facturasData.length);
+      console.log('   - Clientes:', clientsData.length);
+      console.log('   - Viajes:', tripsData.length);
+
+      // Ensure all data is in array format - NO enriquecer aquí, usar funciones auxiliares
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
-      setVentas(Array.isArray(ventasData) ? ventasData : []);
+      setFacturas(Array.isArray(facturasData) ? facturasData : []);
       setTrips(Array.isArray(tripsData) ? tripsData : []);
 
     } catch (err) {
@@ -180,12 +194,34 @@ const DeliveriesPage: React.FC = () => {
     }
   };
 
-  const filteredDeliveries = deliveries.filter(delivery => {
-    const matchesStatus = statusFilter === 'all' || delivery.estado === statusFilter;
-    const matchesDate = !dateFilter ||
-      new Date(delivery.fechaEntrega).toDateString() === new Date(dateFilter).toDateString();
-    return matchesStatus && matchesDate;
-  });
+  const filteredDeliveries = deliveries
+    .filter(delivery => {
+      const matchesStatus = statusFilter === 'all' || delivery.estado === statusFilter;
+      const matchesDate = !dateFilter ||
+        new Date(delivery.fechaEntrega).toDateString() === new Date(dateFilter).toDateString();
+      return matchesStatus && matchesDate;
+    })
+    .sort((a, b) => {
+      // Ordenar por fecha de entrega descendente (más reciente primero)
+      const fechaA = new Date(a.fechaEntrega).getTime();
+      const fechaB = new Date(b.fechaEntrega).getTime();
+      return fechaB - fechaA;
+    });
+
+  // Paginate filtered deliveries
+  const paginatedDeliveries = filteredDeliveries.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const pendingDeliveries = deliveries.filter(d => d.estado === 'PENDIENTE');
   const inTransitDeliveries = deliveries.filter(d => d.estado === 'EN_TRANSITO');
@@ -295,15 +331,67 @@ const DeliveriesPage: React.FC = () => {
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
-  const getClientName = (venta?: Venta) => {
-    if (!venta?.cliente) return 'N/A';
-    return `${venta.cliente.nombre} ${venta.cliente.apellido}`;
+  // Obtener factura por delivery - Mismo patrón que TripsPage
+  const getFacturaByDelivery = (delivery: EntregaViaje): DocumentoComercial | undefined => {
+    // Intentar obtener el ID de la factura/documento desde diferentes fuentes
+    let facturaId: number | undefined;
+
+    // Opción 1: documentoComercialId (si el backend devuelve solo el ID)
+    // @ts-ignore
+    if (delivery.documentoComercialId) {
+      // @ts-ignore
+      facturaId = delivery.documentoComercialId;
+    }
+    // Opción 2: documentoComercial.id (si el backend devuelve el objeto completo)
+    // @ts-ignore
+    else if (delivery.documentoComercial?.id) {
+      // @ts-ignore
+      facturaId = delivery.documentoComercial.id;
+    }
+    // Opción 3: ventaId (para compatibilidad con versiones antiguas del backend)
+    else if (delivery.ventaId) {
+      facturaId = delivery.ventaId;
+    }
+    // Opción 4: venta.id (si el backend devuelve el objeto venta completo)
+    else if (delivery.venta?.id) {
+      facturaId = delivery.venta.id;
+    }
+
+    if (!facturaId) return undefined;
+
+    return facturas.find(f => f.id === facturaId);
   };
 
-  const getVentaNumero = (ventaId: number | null | undefined) => {
-    if (!ventaId) return 'Sin venta';
-    const venta = ventas.find(v => v.id === ventaId);
-    return venta ? `Venta #${venta.id}` : 'N/A';
+  // Obtener nombre del cliente por delivery - Mismo patrón que TripsPage
+  const getClientName = (delivery: EntregaViaje): string => {
+    const factura = getFacturaByDelivery(delivery);
+
+    if (!factura) return 'Sin Factura';
+
+    // Primero intentar con clienteNombre de la factura
+    if (factura.clienteNombre && factura.clienteNombre.trim()) {
+      return factura.clienteNombre;
+    }
+
+    // Si no, buscar el cliente completo
+    const cliente = clients.find(c => c.id === factura.clienteId);
+    if (cliente) {
+      // If it's a business (persona jurídica), prioritize razón social
+      if (cliente.razonSocial && cliente.razonSocial.trim()) {
+        return cliente.razonSocial;
+      }
+      // Otherwise, use name and lastname
+      const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
+      return parts.length > 0 ? parts.join(' ') : 'Cliente sin nombre';
+    }
+
+    return 'Cliente no disponible';
+  };
+
+  // Obtener número de factura por delivery
+  const getVentaNumero = (delivery: EntregaViaje): string => {
+    const factura = getFacturaByDelivery(delivery);
+    return factura ? (factura.numeroDocumento || `FAC-${factura.id}`) : 'Sin Factura';
   };
 
   const getTripNumber = (viajeId: number | null | undefined) => {
@@ -469,18 +557,18 @@ const DeliveriesPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredDeliveries.map((delivery) => (
+                  {paginatedDeliveries.map((delivery) => (
                     <TableRow key={delivery.id}>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
                           <ClientIcon sx={{ fontSize: 16 }} />
-                          {getClientName(delivery.venta)}
+                          {getClientName(delivery)}
                         </Box>
                       </TableCell>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
                           <OrderIcon sx={{ fontSize: 16 }} />
-                          {getVentaNumero(delivery.ventaId)}
+                          {getVentaNumero(delivery)}
                         </Box>
                       </TableCell>
                       <TableCell>
@@ -530,6 +618,19 @@ const DeliveriesPage: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                component="div"
+                count={filteredDeliveries.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[5, 10, 25, 50, 100]}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) =>
+                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+              />
             </TableContainer>
           </CardContent>
         </Card>
@@ -556,8 +657,8 @@ const DeliveriesPage: React.FC = () => {
                 <TableBody>
                   {pendingDeliveries.map((delivery) => (
                     <TableRow key={delivery.id}>
-                      <TableCell>{getClientName(delivery.venta)}</TableCell>
-                      <TableCell>{getVentaNumero(delivery.ventaId)}</TableCell>
+                      <TableCell>{getClientName(delivery)}</TableCell>
+                      <TableCell>{getVentaNumero(delivery)}</TableCell>
                       <TableCell>{delivery.direccionEntrega}</TableCell>
                       <TableCell>{new Date(delivery.fechaEntrega).toLocaleString()}</TableCell>
                       <TableCell align="center">
@@ -599,7 +700,7 @@ const DeliveriesPage: React.FC = () => {
                 <TableBody>
                   {inTransitDeliveries.map((delivery) => (
                     <TableRow key={delivery.id}>
-                      <TableCell>{getClientName(delivery.venta)}</TableCell>
+                      <TableCell>{getClientName(delivery)}</TableCell>
                       <TableCell>{getTripNumber(delivery.viajeId)}</TableCell>
                       <TableCell>{delivery.direccionEntrega}</TableCell>
                       <TableCell>{new Date(delivery.fechaEntrega).toLocaleString()}</TableCell>
@@ -634,12 +735,12 @@ const DeliveriesPage: React.FC = () => {
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
             <Box display="flex" gap={2}>
               <Autocomplete
-                options={ventas}
-                getOptionLabel={(venta) => `Venta #${venta.id} - ${venta.cliente?.nombre || 'Sin cliente'} ${venta.cliente?.apellido || ''}`}
-                value={ventas.find(v => v.id.toString() === formData.ventaId) || null}
+                options={facturas}
+                getOptionLabel={(factura) => `${factura.numeroDocumento || `FAC-${factura.id}`} - ${factura.clienteNombre || 'Sin cliente'}`}
+                value={facturas.find(f => f.id.toString() === formData.ventaId) || null}
                 onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
                 renderInput={(params) => (
-                  <TextField {...params} label="Venta (Opcional)" />
+                  <TextField {...params} label="Factura (Opcional)" />
                 )}
                 sx={{ flex: 1 }}
               />
@@ -751,10 +852,10 @@ const DeliveriesPage: React.FC = () => {
                       </Typography>
                       <Box display="flex" flexDirection="column" gap={1}>
                         <Typography variant="body2">
-                          <strong>Cliente:</strong> {getClientName(selectedDelivery.venta)}
+                          <strong>Cliente:</strong> {getClientName(selectedDelivery)}
                         </Typography>
                         <Typography variant="body2">
-                          <strong>Venta:</strong> {getVentaNumero(selectedDelivery.ventaId)}
+                          <strong>Factura:</strong> {getVentaNumero(selectedDelivery)}
                         </Typography>
                         <Typography variant="body2">
                           <strong>Viaje:</strong> {getTripNumber(selectedDelivery.viajeId)}

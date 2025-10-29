@@ -195,14 +195,23 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
   // ===== TABLA DE PRODUCTOS =====
   // Agregar filas vacías hasta completar 10 filas (como en el original)
   const maxRows = 10;
-  const productosData: any[] = presupuesto.detalles.map(detalle => [
-    { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
-    { content: detalle.descripcion || '', styles: { halign: 'left', fontStyle: 'bold' } },
-    { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
-    { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
-    { content: '$0', styles: { halign: 'right' } },
-    { content: formatCurrency(detalle.subtotal), styles: { halign: 'right' } }
-  ]);
+  const productosData: any[] = presupuesto.detalles.map(detalle => {
+    // Construir la descripción con el número de heladera si existe
+    let descripcionCompleta = detalle.descripcion || '';
+    const detalleConEquipos = detalle as any;
+    if (detalleConEquipos.equiposNumerosHeladera && detalleConEquipos.equiposNumerosHeladera.length > 0) {
+      descripcionCompleta += `\nN° Heladera: ${detalleConEquipos.equiposNumerosHeladera.join(', ')}`;
+    }
+
+    return [
+      { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
+      { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' } },
+      { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
+      { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
+      { content: '$0', styles: { halign: 'right' } },
+      { content: formatCurrency(detalle.subtotal), styles: { halign: 'right' } }
+    ];
+  });
 
   // Rellenar con filas vacías si hay menos de 10 productos
   while (productosData.length < maxRows) {
@@ -691,14 +700,23 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
   // ===== TABLA DE PRODUCTOS =====
   const maxRows = 10;
-  const productosData: any[] = documento.detalles.map(detalle => [
-    { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
-    { content: detalle.descripcion || '', styles: { halign: 'left', fontStyle: 'bold' } },
-    { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
-    { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
-    { content: '$0', styles: { halign: 'right' } },
-    { content: formatCurrency(detalle.subtotal), styles: { halign: 'right' } }
-  ]);
+  const productosData: any[] = documento.detalles.map(detalle => {
+    // Construir la descripción con el número de heladera si existe
+    let descripcionCompleta = detalle.descripcion || '';
+    const detalleConEquipos = detalle as any;
+    if (detalleConEquipos.equiposNumerosHeladera && detalleConEquipos.equiposNumerosHeladera.length > 0) {
+      descripcionCompleta += `\nN° Heladera: ${detalleConEquipos.equiposNumerosHeladera.join(', ')}`;
+    }
+
+    return [
+      { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
+      { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' } },
+      { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
+      { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
+      { content: '$0', styles: { halign: 'right' } },
+      { content: formatCurrency(detalle.subtotal), styles: { halign: 'right' } }
+    ];
+  });
 
   // Rellenar con filas vacías
   while (productosData.length < maxRows) {

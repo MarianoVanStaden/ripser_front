@@ -63,7 +63,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
   const [openMovimientoDialog, setOpenMovimientoDialog] = useState(false);
   const [newMovimiento, setNewMovimiento] = useState({
-    tipo: 'CREDITO' as TipoMovimiento,
+    tipo: 'DEBITO' as TipoMovimiento,
     importe: 0,
     concepto: '',
     numeroComprobante: ''
@@ -148,7 +148,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
       await cuentaCorrienteProveedorApi.create(payload);
 
       setNewMovimiento({
-        tipo: 'CREDITO',
+        tipo: 'DEBITO',
         importe: 0,
         concepto: '',
         numeroComprobante: ''
@@ -191,18 +191,20 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   });
 
   const getSaldoTotal = () => {
-    // Calculate saldo from all movements: Total Creditos (purchases/debt) - Total Debitos (payments)
+    // Calculate saldo from all movements:
+    // DEBITO = Compra/deuda (increases what we owe)
+    // CREDITO = Payment to supplier (decreases what we owe)
     // Positive balance = we owe the supplier
     // Negative balance = supplier owes us (rare, but possible with returns/credits)
     const totalDebitos = movimientos
       .filter(m => m.tipo === 'DEBITO')
       .reduce((sum, m) => sum + (m.importe ?? 0), 0);
-    
+
     const totalCreditos = movimientos
       .filter(m => m.tipo === 'CREDITO')
       .reduce((sum, m) => sum + (m.importe ?? 0), 0);
-    
-    return totalCreditos - totalDebitos;
+
+    return totalDebitos - totalCreditos;
   };
 
   const getTotalDebitos = () => {
@@ -429,10 +431,10 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
                 value={newMovimiento.tipo}
                 onChange={(e) => setNewMovimiento({ ...newMovimiento, tipo: e.target.value as TipoMovimiento })}
                 margin="normal"
-                helperText="Crédito: Compra/deuda (+). Débito: Pago al proveedor (-)"
+                helperText="Débito: Compra/deuda (+). Crédito: Pago al proveedor (-)"
               >
-                <MenuItem value="CREDITO">Crédito - Compra/Deuda (+)</MenuItem>
-                <MenuItem value="DEBITO">Débito - Pago al proveedor (-)</MenuItem>
+                <MenuItem value="DEBITO">Débito - Compra/Deuda (+)</MenuItem>
+                <MenuItem value="CREDITO">Crédito - Pago al proveedor (-)</MenuItem>
               </TextField>
 
               <TextField

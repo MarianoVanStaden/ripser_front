@@ -29,6 +29,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  TablePagination,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -70,6 +71,10 @@ const TripsPage: React.FC = () => {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoViaje>('all');
+
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -186,9 +191,31 @@ const TripsPage: React.FC = () => {
     }
   };
 
-  const filteredTrips = trips.filter(trip => {
-    return statusFilter === 'all' || trip.estado === statusFilter;
-  });
+  const filteredTrips = trips
+    .filter(trip => {
+      return statusFilter === 'all' || trip.estado === statusFilter;
+    })
+    .sort((a, b) => {
+      // Ordenar por fecha de viaje descendente (más reciente primero)
+      const fechaA = new Date(a.fechaViaje).getTime();
+      const fechaB = new Date(b.fechaViaje).getTime();
+      return fechaB - fechaA;
+    });
+
+  // Paginate filtered trips
+  const paginatedTrips = filteredTrips.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   // Helper to check if a vehicle is currently in use
   const isVehicleInUse = (vehicleId: string): boolean => {
@@ -590,7 +617,7 @@ Opciones:
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredTrips.map((trip) => {
+                {paginatedTrips.map((trip) => {
                   const tripDeliveries = getTripDeliveries(trip.id);
                   const facturas = getFacturasByTrip(trip.id);
                   const clientes = getClientesByTrip(trip.id);
@@ -718,6 +745,19 @@ Opciones:
                 })}
               </TableBody>
             </Table>
+            <TablePagination
+              component="div"
+              count={filteredTrips.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+            />
           </TableContainer>
         </CardContent>
       </Card>
