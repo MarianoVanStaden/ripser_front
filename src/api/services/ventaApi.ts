@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Venta } from '../../types';
+import type { Venta, VentaSearchDTO } from '../../types';
 
 export const ventaApi = {
   // Get all ventas
@@ -44,5 +44,18 @@ export const ventaApi = {
   update: async (id: number, venta: Venta): Promise<Venta> => {
     const response = await api.put(`/api/ventas/${id}`, venta);
     return response.data;
-  }
+  },
+  search: async (query: string): Promise<VentaSearchDTO[]> => {
+        try {
+            const response = await api.get(`/api/ventas/search`, {
+                params: { q: query }
+            });
+            // La API debe devolver un array de VentaSearchDTO
+            return response.data || []; 
+        } catch (error) {
+            console.error("Error buscando ventas:", error);
+            // Devolver un array vacío en caso de error para evitar que el Autocomplete falle
+            return [];
+        }
+    },
 };
