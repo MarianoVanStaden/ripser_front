@@ -1432,7 +1432,7 @@ export interface EntregaViaje {
   updatedAt?: string;
 }
 
-export type EstadoEntrega = 'PENDIENTE' | 'EN_TRANSITO' | 'ENTREGADA' | 'NO_ENTREGADA';
+export type EstadoEntrega = 'PENDIENTE' | 'ENTREGADA' | 'NO_ENTREGADA';
 
 // UnidadMedida (Unit of Measure)
 export interface UnidadMedida {

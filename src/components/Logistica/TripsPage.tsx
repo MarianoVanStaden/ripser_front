@@ -196,10 +196,8 @@ const TripsPage: React.FC = () => {
       return statusFilter === 'all' || trip.estado === statusFilter;
     })
     .sort((a, b) => {
-      // Ordenar por fecha de viaje descendente (más reciente primero)
-      const fechaA = new Date(a.fechaViaje).getTime();
-      const fechaB = new Date(b.fechaViaje).getTime();
-      return fechaB - fechaA;
+      // Ordenar por ID de viaje descendente (último viaje primero)
+      return b.id - a.id;
     });
 
   // Paginate filtered trips

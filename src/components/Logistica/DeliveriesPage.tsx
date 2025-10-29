@@ -202,10 +202,8 @@ const DeliveriesPage: React.FC = () => {
       return matchesStatus && matchesDate;
     })
     .sort((a, b) => {
-      // Ordenar por fecha de entrega descendente (más reciente primero)
-      const fechaA = new Date(a.fechaEntrega).getTime();
-      const fechaB = new Date(b.fechaEntrega).getTime();
-      return fechaB - fechaA;
+      // Ordenar por ID de entrega descendente (última entrega primero)
+      return b.id - a.id;
     });
 
   // Paginate filtered deliveries
@@ -224,7 +222,6 @@ const DeliveriesPage: React.FC = () => {
   };
 
   const pendingDeliveries = deliveries.filter(d => d.estado === 'PENDIENTE');
-  const inTransitDeliveries = deliveries.filter(d => d.estado === 'EN_TRANSITO');
   const deliveredCount = deliveries.filter(d => d.estado === 'ENTREGADA').length;
   const unassignedDeliveries = deliveries.filter(d => !d.viajeId);
 
@@ -322,7 +319,6 @@ const DeliveriesPage: React.FC = () => {
   const getStatusChip = (estado: EstadoEntrega) => {
     const statusConfig = {
       PENDIENTE: { label: 'Pendiente', color: 'warning' as const },
-      EN_TRANSITO: { label: 'En Tránsito', color: 'primary' as const },
       ENTREGADA: { label: 'Entregada', color: 'success' as const },
       NO_ENTREGADA: { label: 'No Entregada', color: 'error' as const },
     };
@@ -449,24 +445,6 @@ const DeliveriesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <Badge badgeContent={inTransitDeliveries.length} color="primary">
-                  <RouteIcon color="primary" />
-                </Badge>
-                <Box>
-                  <Typography variant="h4">{inTransitDeliveries.length}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    En Tránsito
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
           <Card>
@@ -508,7 +486,6 @@ const DeliveriesPage: React.FC = () => {
         <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
           <Tab label="Todas las Entregas" />
           <Tab label="Pendientes" />
-          <Tab label="En Tránsito" />
         </Tabs>
       </Box>
 
@@ -524,7 +501,6 @@ const DeliveriesPage: React.FC = () => {
             >
               <MenuItem value="all">Todos</MenuItem>
               <MenuItem value="PENDIENTE">Pendientes</MenuItem>
-              <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
               <MenuItem value="ENTREGADA">Entregadas</MenuItem>
               <MenuItem value="NO_ENTREGADA">No Entregadas</MenuItem>
             </Select>
@@ -592,17 +568,6 @@ const DeliveriesPage: React.FC = () => {
                         >
                           <ViewIcon />
                         </IconButton>
-
-                        {delivery.estado === 'EN_TRANSITO' && (
-                          <IconButton
-                            onClick={() => handleMarkAsDelivered(delivery.id)}
-                            size="small"
-                            title="Marcar como entregado"
-                            color="success"
-                          >
-                            <CheckIcon />
-                          </IconButton>
-                        )}
 
                         <IconButton onClick={() => handleEdit(delivery)} size="small">
                           <EditIcon />
@@ -679,50 +644,6 @@ const DeliveriesPage: React.FC = () => {
         </Card>
       </TabPanel>
 
-      {/* Tab Panel 2: In Transit Deliveries */}
-      <TabPanel value={tabValue} index={2}>
-        <Typography variant="h6" gutterBottom>
-          Entregas en Tránsito
-        </Typography>
-        <Card>
-          <CardContent>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Cliente</TableCell>
-                    <TableCell>Viaje</TableCell>
-                    <TableCell>Dirección</TableCell>
-                    <TableCell>Fecha Programada</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {inTransitDeliveries.map((delivery) => (
-                    <TableRow key={delivery.id}>
-                      <TableCell>{getClientName(delivery)}</TableCell>
-                      <TableCell>{getTripNumber(delivery.viajeId)}</TableCell>
-                      <TableCell>{delivery.direccionEntrega}</TableCell>
-                      <TableCell>{new Date(delivery.fechaEntrega).toLocaleString()}</TableCell>
-                      <TableCell align="center">
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="success"
-                          onClick={() => handleMarkAsDelivered(delivery.id)}
-                        >
-                          Marcar Entregado
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      </TabPanel>
-
       {/* Delivery Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
@@ -784,7 +705,6 @@ const DeliveriesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoEntrega })}
               >
                 <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
                 <MenuItem value="ENTREGADA">Entregada</MenuItem>
                 <MenuItem value="NO_ENTREGADA">No Entregada</MenuItem>
               </Select>
