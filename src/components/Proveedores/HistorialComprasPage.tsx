@@ -54,9 +54,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { supplierApiWithFallback as supplierApi } from '../../api/services/apiWithFallback';
+import { proveedorApi } from '../../api/services/proveedorApi';
 import { compraApi } from '../../api/services/compraApi';
-import type { Supplier, CompraDTO } from '../../types';
+import type { ProveedorDTO, CompraDTO } from '../../types';
 
 dayjs.locale('es');
 
@@ -64,7 +64,7 @@ interface CompraHistorial {
   id: number;
   numero: string;
   supplierId: number;
-  supplier?: Supplier;
+  supplier?: ProveedorDTO;
   fecha: string;
   total: number;
   estado: string;
@@ -85,7 +85,7 @@ interface EstadisticasCompra {
   totalCompras: number;
   montoTotal: number;
   promedioMensual: number;
-  proveedorTop: Supplier | null;
+  proveedorTop: ProveedorDTO | null;
   categoriaTop: string;
   tendencia: 'subiendo' | 'bajando' | 'estable';
 }
@@ -112,7 +112,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const HistorialComprasPage: React.FC = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
   const [compras, setCompras] = useState<CompraHistorial[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasCompra | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,7 +134,7 @@ const HistorialComprasPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const suppliersData = await supplierApi.getAll();
+      const suppliersData = await proveedorApi.getAll();
       setSuppliers(suppliersData);
 
       // Get compras from API
@@ -172,7 +172,7 @@ const HistorialComprasPage: React.FC = () => {
     }
   };
 
-  const calculateEstadisticas = (comprasData: CompraHistorial[], suppliersData: Supplier[]) => {
+  const calculateEstadisticas = (comprasData: CompraHistorial[], suppliersData: ProveedorDTO[]) => {
     const totalCompras = comprasData.length;
     const montoTotal = comprasData.reduce((sum, compra) => sum + compra.total, 0);
     const promedioMensual = montoTotal / 6; // Assuming 6 months of data
@@ -220,7 +220,7 @@ const HistorialComprasPage: React.FC = () => {
   const filteredCompras = compras.filter(compra => {
     const matchesSearch =
       compra.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (compra.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
+      (compra.supplier?.razonSocial?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
 
     const matchesSupplier = !supplierFilter || compra.supplierId.toString() === supplierFilter;
     const matchesEstado = !estadoFilter || compra.estado === estadoFilter;
@@ -244,7 +244,7 @@ const HistorialComprasPage: React.FC = () => {
   const getTopSuppliersByAmount = () => {
     const supplierTotals = filteredCompras.reduce((acc, compra) => {
       const supplierId = compra.supplierId;
-      const supplierName = compra.supplier?.name || 'Sin nombre';
+      const supplierName = compra.supplier?.razonSocial || 'Sin nombre';
       if (!acc[supplierId]) {
         acc[supplierId] = { name: supplierName, total: 0, compras: 0 };
       }
@@ -389,7 +389,7 @@ const HistorialComprasPage: React.FC = () => {
                   <MenuItem value="">Todos</MenuItem>
                   {suppliers.map((supplier) => (
                     <MenuItem key={supplier.id} value={supplier.id.toString()}>
-                      {supplier.name}
+                      {supplier.razonSocial}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -451,7 +451,7 @@ const HistorialComprasPage: React.FC = () => {
                             <BusinessIcon />
                           </Avatar>
                           <Typography variant="body2">
-                            {compra.supplier?.name}
+                            {compra.supplier?.razonSocial || 'Sin nombre'}
                           </Typography>
                         </Box>
                       </TableCell>
@@ -548,10 +548,10 @@ const HistorialComprasPage: React.FC = () => {
                           </Avatar>
                           <Box>
                             <Typography variant="h6">
-                              {estadisticas.proveedorTop.name}
+                              {estadisticas.proveedorTop.razonSocial}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              {estadisticas.proveedorTop.contactPerson}
+                              {estadisticas.proveedorTop.email}
                             </Typography>
                           </Box>
                         </Box>
@@ -649,7 +649,7 @@ const HistorialComprasPage: React.FC = () => {
                   <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                     <Box>
                       <Typography variant="body2" color="text.secondary">Proveedor</Typography>
-                      <Typography variant="body1">{selectedCompra.supplier?.name}</Typography>
+                      <Typography variant="body1">{selectedCompra.supplier?.razonSocial || 'Sin nombre'}</Typography>
                     </Box>
                     <Box>
                       <Typography variant="body2" color="text.secondary">Estado</Typography>

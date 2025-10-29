@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -27,6 +27,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   MenuItem,
+  TablePagination,
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -100,6 +101,14 @@ const CarpetaClientePage: React.FC = () => {
   const [openUploadDialog, setOpenUploadDialog] = useState(false);
   const [openNotaDialog, setOpenNotaDialog] = useState(false);
   const [newNota, setNewNota] = useState({ titulo: '', contenido: '', importante: false });
+  
+  // Paginación para documentos
+  const [pageDocumentos, setPageDocumentos] = useState(0);
+  const [rowsPerPageDocumentos, setRowsPerPageDocumentos] = useState(6);
+  
+  // Paginación para notas
+  const [pageNotas, setPageNotas] = useState(0);
+  const [rowsPerPageNotas, setRowsPerPageNotas] = useState(5);
 
   // Mock data for documents and notes
   const mockDocumentos: DocumentoCliente[] = [
@@ -204,6 +213,54 @@ const CarpetaClientePage: React.FC = () => {
     setNotas([nuevaNota, ...notas]);
     setNewNota({ titulo: '', contenido: '', importante: false });
     setOpenNotaDialog(false);
+  };
+
+  // Ordenar documentos alfabéticamente por nombre
+  const sortedDocumentos = useMemo(() => {
+    return [...documentos].sort((a, b) => {
+      const nombreA = a.nombre?.toLowerCase() || '';
+      const nombreB = b.nombre?.toLowerCase() || '';
+      return nombreA.localeCompare(nombreB);
+    });
+  }, [documentos]);
+
+  // Paginación de documentos
+  const paginatedDocumentos = useMemo(() => {
+    const startIndex = pageDocumentos * rowsPerPageDocumentos;
+    return sortedDocumentos.slice(startIndex, startIndex + rowsPerPageDocumentos);
+  }, [sortedDocumentos, pageDocumentos, rowsPerPageDocumentos]);
+
+  const handleChangePageDocumentos = (_event: unknown, newPage: number) => {
+    setPageDocumentos(newPage);
+  };
+
+  const handleChangeRowsPerPageDocumentos = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPageDocumentos(parseInt(event.target.value, 10));
+    setPageDocumentos(0);
+  };
+
+  // Ordenar notas alfabéticamente por título
+  const sortedNotas = useMemo(() => {
+    return [...notas].sort((a, b) => {
+      const tituloA = a.titulo?.toLowerCase() || '';
+      const tituloB = b.titulo?.toLowerCase() || '';
+      return tituloA.localeCompare(tituloB);
+    });
+  }, [notas]);
+
+  // Paginación de notas
+  const paginatedNotas = useMemo(() => {
+    const startIndex = pageNotas * rowsPerPageNotas;
+    return sortedNotas.slice(startIndex, startIndex + rowsPerPageNotas);
+  }, [sortedNotas, pageNotas, rowsPerPageNotas]);
+
+  const handleChangePageNotas = (_event: unknown, newPage: number) => {
+    setPageNotas(newPage);
+  };
+
+  const handleChangeRowsPerPageNotas = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPageNotas(parseInt(event.target.value, 10));
+    setPageNotas(0);
   };
 
   const getDocumentIcon = (tipo: string) => {
@@ -365,7 +422,7 @@ const CarpetaClientePage: React.FC = () => {
                     <ListItem>
                       <ListItemText 
                         primary="Límite de Crédito"
-                        secondary={`$${cliente.limiteCredito.toLocaleString()}`}
+                        secondary={`$${(cliente.limiteCredito ?? 0).toLocaleString()}`}
                       />
                     </ListItem>
                     <ListItem>
@@ -412,7 +469,7 @@ const CarpetaClientePage: React.FC = () => {
         <TabPanel value={tabValue} index={1}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
             <Typography variant="h6">
-              Documentos del Cliente
+              Documentos del Cliente ({sortedDocumentos.length})
             </Typography>
             <Button
               variant="contained"
@@ -424,7 +481,7 @@ const CarpetaClientePage: React.FC = () => {
           </Box>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2 }}>
-            {documentos.map((doc) => (
+            {paginatedDocumentos.map((doc) => (
               <Card key={doc.id}>
                 <CardContent>
                   <Box display="flex" alignItems="center" mb={2}>
@@ -461,13 +518,30 @@ const CarpetaClientePage: React.FC = () => {
               </Card>
             ))}
           </Box>
+
+          {/* Paginación de Documentos */}
+          {sortedDocumentos.length > 0 && (
+            <Box display="flex" justifyContent="center" mt={3}>
+              <TablePagination
+                component="div"
+                count={sortedDocumentos.length}
+                page={pageDocumentos}
+                onPageChange={handleChangePageDocumentos}
+                rowsPerPage={rowsPerPageDocumentos}
+                onRowsPerPageChange={handleChangeRowsPerPageDocumentos}
+                rowsPerPageOptions={[3, 6, 12, 24]}
+                labelRowsPerPage="Documentos por página:"
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+              />
+            </Box>
+          )}
         </TabPanel>
 
         {/* Tab 3: Notes */}
         <TabPanel value={tabValue} index={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
             <Typography variant="h6">
-              Notas y Observaciones
+              Notas y Observaciones ({sortedNotas.length})
             </Typography>
             <Button
               variant="contained"
@@ -479,7 +553,7 @@ const CarpetaClientePage: React.FC = () => {
           </Box>
 
           <Box>
-            {notas.map((nota) => (
+            {paginatedNotas.map((nota) => (
               <Accordion key={nota.id}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Box display="flex" alignItems="center" width="100%">
@@ -511,6 +585,23 @@ const CarpetaClientePage: React.FC = () => {
               </Accordion>
             ))}
           </Box>
+
+          {/* Paginación de Notas */}
+          {sortedNotas.length > 0 && (
+            <Box display="flex" justifyContent="center" mt={3}>
+              <TablePagination
+                component="div"
+                count={sortedNotas.length}
+                page={pageNotas}
+                onPageChange={handleChangePageNotas}
+                rowsPerPage={rowsPerPageNotas}
+                onRowsPerPageChange={handleChangeRowsPerPageNotas}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                labelRowsPerPage="Notas por página:"
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+              />
+            </Box>
+          )}
         </TabPanel>
       </Paper>
 

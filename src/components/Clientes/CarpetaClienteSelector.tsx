@@ -14,6 +14,7 @@ import {
   Avatar,
   Chip,
   Grid,
+  TablePagination,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -31,6 +32,8 @@ const CarpetaClienteSelector: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
 
   useEffect(() => {
     loadClientes();
@@ -60,6 +63,30 @@ const CarpetaClienteSelector: React.FC = () => {
       (c.email ?? '').toLowerCase().includes(q)
     );
   }, [clientes, searchTerm]);
+
+  // Ordenar alfabéticamente por nombre
+  const sortedClientes = useMemo(() => {
+    return [...filteredClientes].sort((a, b) => {
+      const nombreA = `${a.nombre ?? ''} ${a.apellido ?? ''}`.toLowerCase();
+      const nombreB = `${b.nombre ?? ''} ${b.apellido ?? ''}`.toLowerCase();
+      return nombreA.localeCompare(nombreB);
+    });
+  }, [filteredClientes]);
+
+  // Paginación
+  const paginatedClientes = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return sortedClientes.slice(startIndex, startIndex + rowsPerPage);
+  }, [sortedClientes, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const handleSelectCliente = (clienteId: number) => {
     navigate(`/clientes/carpeta/${clienteId}`);
@@ -123,7 +150,7 @@ const CarpetaClienteSelector: React.FC = () => {
           }}
         />
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1.5, display: 'block' }}>
-          {filteredClientes.length} resultado(s)
+          {sortedClientes.length} resultado(s)
         </Typography>
       </Paper>
 
@@ -133,7 +160,7 @@ const CarpetaClienteSelector: React.FC = () => {
       </Typography>
 
       <Grid container spacing={2.5} alignItems="stretch">
-        {filteredClientes.map((cliente) => (
+        {paginatedClientes.map((cliente) => (
           <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
             <Card elevation={1} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flex: 1 }}>
@@ -192,6 +219,23 @@ const CarpetaClienteSelector: React.FC = () => {
           </Grid>
         ))}
       </Grid>
+
+      {/* Paginación */}
+      {sortedClientes.length > 0 && (
+        <Box display="flex" justifyContent="center" mt={4}>
+          <TablePagination
+            component="div"
+            count={sortedClientes.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[6, 12, 24, 48, 100]}
+            labelRowsPerPage="Clientes por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          />
+        </Box>
+      )}
 
       {filteredClientes.length === 0 && !loading && (
         <Box textAlign="center" py={6}>

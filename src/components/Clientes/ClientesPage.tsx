@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -20,6 +20,7 @@ import {
   Tooltip,
   CircularProgress,
   Rating,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -47,6 +48,8 @@ const ClientesPage: React.FC = () => {
   const [estadoFilter, setEstadoFilter] = useState<EstadoCliente | ''>('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
 
   useEffect(() => {
     loadClientes();
@@ -86,6 +89,7 @@ const ClientesPage: React.FC = () => {
     setSearchTerm('');
     setTipoFilter('');
     setEstadoFilter('');
+    setPage(0);
     loadClientes();
   };
 
@@ -94,6 +98,30 @@ const ClientesPage: React.FC = () => {
     const matchesEstado = !estadoFilter || cliente.estado === estadoFilter;
     return matchesTipo && matchesEstado;
   });
+
+  // Ordenar alfabéticamente por nombre
+  const sortedClientes = useMemo(() => {
+    return [...filteredClientes].sort((a, b) => {
+      const nombreA = a.nombre?.toLowerCase() || '';
+      const nombreB = b.nombre?.toLowerCase() || '';
+      return nombreA.localeCompare(nombreB);
+    });
+  }, [filteredClientes]);
+
+  // Paginación
+  const paginatedClientes = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return sortedClientes.slice(startIndex, startIndex + rowsPerPage);
+  }, [sortedClientes, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const getEstadoColor = (estado: EstadoCliente) => {
     switch (estado) {
@@ -300,13 +328,13 @@ const ClientesPage: React.FC = () => {
       {/* Resumen */}
       <Box mb={2}>
         <Typography variant="body2" color="text.secondary">
-          {loading ? 'Cargando...' : `${filteredClientes.length} cliente(s) encontrado(s)`}
+          {loading ? 'Cargando...' : `${sortedClientes.length} cliente(s) encontrado(s)`}
         </Typography>
       </Box>
 
       {/* Grid de Cards */}
       <Grid container spacing={2}>
-        {filteredClientes.map((cliente) => (
+        {paginatedClientes.map((cliente) => (
           <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
             <Card>
               <CardContent>
@@ -386,6 +414,23 @@ const ClientesPage: React.FC = () => {
           </Grid>
         ))}
       </Grid>
+
+      {/* Paginación */}
+      {sortedClientes.length > 0 && (
+        <Box display="flex" justifyContent="center" mt={3}>
+          <TablePagination
+            component="div"
+            count={sortedClientes.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[6, 12, 24, 48, 100]}
+            labelRowsPerPage="Clientes por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          />
+        </Box>
+      )}
 
       {filteredClientes.length === 0 && !loading && (
         <Box textAlign="center" py={4}>
