@@ -92,11 +92,12 @@ const InformeVentasPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
+  const [vendedorFilter, setVendedorFilter] = useState('all');
   const [dateFromFilter, setDateFromFilter] = useState(null);
   const [dateToFilter, setDateToFilter] = useState(null);
   const [reportType, setReportType] = useState('summary');
-  const [groupBy, setGroupBy] = useState('Día');
-  const [chartType, setChartType] = useState('bar');
+  const [groupBy, setGroupBy] = useState('Método de Pago');
+  const [chartType, setChartType] = useState('pie');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -130,7 +131,14 @@ const loadData = async () => {
     setError(null);
 
     const [salesResponse, clientsResponse, usuariosResponse] = await Promise.all([
-      documentoApi.getByTipo('FACTURA'),
+      documentoApi.getByTipo('FACTURA').catch(err => {
+        console.error('Error loading facturas:', err);
+        // If 500 error, show helpful message
+        if (err.response?.status === 500) {
+          throw new Error('Error en el servidor: Posible problema de integridad de datos. Contacte al administrador.');
+        }
+        throw err;
+      }),
       clienteApi.getAll(),
       usuarioApi.getAll(),
     ]);
@@ -319,7 +327,7 @@ const loadData = async () => {
 
   } catch (err) {
     console.error('Error loading data:', err);
-    setError('Error al cargar los datos. Verifique la conexión con el servidor.');
+    setError(err.message || 'Error al cargar los datos. Verifique la conexión con el servidor.');
   } finally {
     setLoading(false);
   }
@@ -519,7 +527,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
   const filteredSales = sales.filter(sale => {
     const clientName = getClientFullName(sale.cliente);
     const usuarioName = getUsuarioFullName(sale.usuario);
-    
+
     const matchesSearch =
       searchTerm === '' ||
       (sale.numeroVenta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -528,28 +536,32 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
        usuarioName.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
-    const matchesPaymentMethod = paymentMethodFilter === 'all' || 
-      sale.metodoPago === paymentMethodFilter || 
+    const matchesPaymentMethod = paymentMethodFilter === 'all' ||
+      sale.metodoPago === paymentMethodFilter ||
       sale.metodo_pago === paymentMethodFilter;
-    
-    const matchesClient = clientFilter === 'all' || 
+
+    const matchesClient = clientFilter === 'all' ||
       (sale.cliente?.id?.toString() === clientFilter) ||
       (sale.clienteId?.toString() === clientFilter) ||
       (sale.cliente_id?.toString() === clientFilter);
-    
+
+    const matchesVendedor = vendedorFilter === 'all' ||
+      (sale.usuario?.id?.toString() === vendedorFilter) ||
+      (sale.usuarioId?.toString() === vendedorFilter);
+
     const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta);
     if (!saleDate) return false;
-    
+
     const toDateEndOfDay = dateToFilter ? new Date(dateToFilter) : null;
     if (toDateEndOfDay) {
       toDateEndOfDay.setHours(23, 59, 59, 999);
     }
-    
+
     const matchesDateFrom = !dateFromFilter || saleDate >= dateFromFilter;
     const matchesDateTo = !toDateEndOfDay || saleDate <= toDateEndOfDay;
-    
+
     return matchesSearch && matchesStatus && matchesPaymentMethod &&
-           matchesClient && matchesDateFrom && matchesDateTo;
+           matchesClient && matchesVendedor && matchesDateFrom && matchesDateTo;
   });
 
   // Paginated sales
@@ -571,6 +583,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
     setStatusFilter('all');
     setPaymentMethodFilter('all');
     setClientFilter('all');
+    setVendedorFilter('all');
     setDateFromFilter(null);
     setDateToFilter(null);
   };
@@ -629,18 +642,19 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
   const salesReport = generateSalesReport();
 
   // Prepare chart data
+  const chartColors = [
+    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+    '#FF99E6', '#4169E1', '#FFD700', '#32CD32', '#FF4500', '#9932CC',
+  ];
+
   const chartData = {
     labels: Object.keys(salesReport),
     datasets: [
       {
         label: 'Total Ventas ($)',
         data: Object.values(salesReport).map(item => item.total),
-        backgroundColor: chartType === 'pie' ? [
-          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-        ] : 'rgba(75, 192, 192, 0.6)',
-        borderColor: chartType === 'pie' ? [
-          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-        ] : 'rgba(75, 192, 192, 1)',
+        backgroundColor: chartType === 'pie' ? chartColors : 'rgba(75, 192, 192, 0.6)',
+        borderColor: chartType === 'pie' ? chartColors.map(c => c) : 'rgba(75, 192, 192, 1)',
         borderWidth: 1,
         fill: chartType === 'line' ? false : true,
       },
@@ -652,11 +666,50 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top',
+        position: 'right',
+        labels: {
+          padding: 15,
+          font: {
+            size: 12,
+          },
+          generateLabels: chartType === 'pie' ? (chart) => {
+            const data = chart.data;
+            if (data.labels.length && data.datasets.length) {
+              const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+              return data.labels.map((label, i) => {
+                const value = data.datasets[0].data[i];
+                const percentage = ((value / total) * 100).toFixed(1);
+                return {
+                  text: `${label}: ${percentage}%`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  hidden: false,
+                  index: i,
+                };
+              });
+            }
+            return [];
+          } : undefined,
+        },
       },
       title: {
         display: true,
-        text: `Ventas por ${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}`,
+        text: `Ventas por ${groupBy}`,
+        font: {
+          size: 16,
+          weight: 'bold',
+        },
+        padding: 20,
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const label = context.label || '';
+            const value = context.parsed || context.parsed.y || 0;
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${label}: $${value.toLocaleString()} (${percentage}%)`;
+          },
+        },
       },
     },
     scales: chartType !== 'pie' ? {
@@ -666,11 +719,16 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
           display: true,
           text: 'Total ($)',
         },
+        ticks: {
+          callback: function(value) {
+            return '$' + value.toLocaleString();
+          },
+        },
       },
       x: {
         title: {
           display: true,
-          text: groupBy.charAt(0).toUpperCase() + groupBy.slice(1),
+          text: groupBy,
         },
       },
     } : {},
@@ -715,12 +773,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
         </Alert>
       )}
 
-      {/* Debug Information - Remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Debug: {filteredSales.length} ventas cargadas, {clients.length} clientes, {usuarios.length} usuarios
-        </Alert>
-      )}
+
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -834,7 +887,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
             <Typography variant="h6">Filtros</Typography>
           </Box>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} sm={6} md={3}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -848,7 +901,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Estado</InputLabel>
                 <Select
@@ -865,7 +918,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
@@ -877,15 +930,14 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                   <MenuItem value="EFECTIVO">Efectivo</MenuItem>
                   <MenuItem value="CHEQUE">Cheque</MenuItem>
                   <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
-                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem> 
+                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
                   <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
                   <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
                   <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
-                                   
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Cliente</InputLabel>
                 <Select
@@ -902,7 +954,24 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Vendedor</InputLabel>
+                <Select
+                  value={vendedorFilter}
+                  label="Vendedor"
+                  onChange={(e) => setVendedorFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  {usuarios.map(usuario => (
+                    <MenuItem key={usuario.id} value={usuario.id.toString()}>
+                      {getUsuarioFullName(usuario)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} lg={3}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
                   label="Desde"
@@ -912,7 +981,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 />
               </LocalizationProvider>
             </Grid>
-            <Grid item xs={12} md={1.5}>
+            <Grid item xs={12} sm={6} lg={3}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
                   label="Hasta"

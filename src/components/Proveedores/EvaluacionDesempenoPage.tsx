@@ -31,7 +31,7 @@ import {
   Stack,
   CircularProgress,
   Grid,
-  
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -67,6 +67,11 @@ const EvaluacionDesempenoPage = () => {
     evaluadoPor: '',
   });
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Helper to get evaluations for the selected supplier (typed)
   const getSupplierEvaluations = (supplierId: number | ''): EvaluacionProveedorDTO[] => {
@@ -114,11 +119,37 @@ const EvaluacionDesempenoPage = () => {
       setLoading(true);
       const data = await evaluacionProveedorApi.obtenerPorProveedor(Number(selectedSupplier));
       console.log('Evaluaciones cargadas:', data);
-      // Ensure data is an array
-      setEvaluaciones(Array.isArray(data) ? data : []);
+      
+      // Validate data is array and check for duplicates
+      if (!Array.isArray(data)) {
+        console.error('Expected array but got:', typeof data);
+        setEvaluaciones([]);
+        return;
+      }
+
+      // Check for duplicate IDs
+      const ids = data.map(e => e.id);
+      const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+      
+      if (duplicates.length > 0) {
+        console.warn('⚠️ Duplicate evaluation IDs found:', duplicates);
+        // Remove duplicates, keeping the most recent
+        const uniqueData = data.filter((item, index, self) =>
+          index === self.findIndex(t => t.id === item.id)
+        );
+        setEvaluaciones(uniqueData);
+      } else {
+        setEvaluaciones(data);
+      }
+      
     } catch (error) {
       console.error('Error loading evaluaciones:', error);
       setEvaluaciones([]);
+      setSnackbar({
+        open: true,
+        message: 'Error al cargar las evaluaciones',
+        severity: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -301,305 +332,170 @@ const EvaluacionDesempenoPage = () => {
       </Box>
     );
   };
-                        
 
-  const renderEvaluationsTab = () => {
-    const supplierEvals = getSupplierEvaluations(selectedSupplier);
+  return (
+    <Box p={3}>
+      <Typography variant="h4" gutterBottom>
+        Evaluación de Desempeño Proveedor
+      </Typography>
 
-    return (
-      <Box>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h6">Evaluaciones del Proveedor</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleNewEvaluation}
-          >
-            Nueva Evaluación
-          </Button>
-        </Box>
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel id="supplier-select-label">Seleccionar Proveedor</InputLabel>
+        <Select
+          labelId="supplier-select-label"
+          value={selectedSupplier}
+          onChange={(e) => setSelectedSupplier(e.target.value)}
+          disabled={loading}
+        >
+          {suppliers.map((supplier) => (
+            <MenuItem key={supplier.id} value={supplier.id}>
+              {supplier.razonSocial}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Fecha</TableCell>
-                <TableCell>Evaluado por</TableCell>
-                <TableCell>Calificación</TableCell>
-                <TableCell>Criterio</TableCell>
-                <TableCell>Comentario</TableCell>
-                <TableCell>Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {supplierEvals.map((evaluation) => (
-                <TableRow key={evaluation.id}>
-                    <TableCell>
-                      {new Date(evaluation.fechaEvaluacion).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>{evaluation.evaluadoPor}</TableCell>
-                    <TableCell>{evaluation.calificacion.toFixed(2)}</TableCell>
-                    <TableCell>{evaluation.criterio}</TableCell>
-                    <TableCell>
-                      <Typography fontWeight="bold">{evaluation.comentario || '-'}</Typography>
-                    </TableCell>
-                  <TableCell>
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        setFormData({
-                          proveedorId: evaluation.proveedorId,
-                          calificacion: evaluation.calificacion,
-                          comentario: evaluation.comentario || '',
-                          criterio: evaluation.criterio,
-                          evaluadoPor: evaluation.evaluadoPor,
-                        });
-                        setEditingId(evaluation.id);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
+        <Tab label="Resumen" />
+        <Tab label="Detalles" />
+      </Tabs>
 
-        {supplierEvals.length === 0 && (
-          <Box>
-            <Alert severity="info" sx={{ mt: 2 }}>
-              No hay evaluaciones disponibles para este proveedor. 
-              <Button onClick={handleNewEvaluation} sx={{ ml: 1 }}>
-                Crear primera evaluación
-              </Button>
-            </Alert>
-          </Box>
-        )}
-      </Box>
-    );
-  };
+      {tabValue === 0 && renderOverviewTab()}
 
-  const renderHistoryTab = () => {
-    const supplierEvals = getSupplierEvaluations(selectedSupplier);
-    
-    const historyData = supplierEvals.map((evaluation, index) => ({
-      period: new Date(evaluation.fechaEvaluacion).toLocaleDateString(),
-      overall: evaluation.calificacion,
-      trend: index > 0 ? evaluation.calificacion - supplierEvals[index - 1].calificacion : 0
-    }));
-
-    return (
-      <Box>
-        <Typography variant="h6" mb={3}>Historial de Desempeño</Typography>
-        
-        {historyData.length === 0 ? (
-          <Alert severity="info">
-            No hay datos históricos disponibles para este proveedor.
-          </Alert>
-        ) : (
-          <Card>
-            <CardContent>
-              <Typography variant="h6" mb={2}>Tendencia de Calificaciones</Typography>
-              <TableContainer>
-                <Table size="small">
+      {/* Detalles Tab - Tabla de Evaluaciones */}
+      {tabValue === 1 && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Detalles de Evaluaciones
+            </Typography>
+            {loading ? (
+              <Box display="flex" justifyContent="center" py={2}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <TableContainer component={Paper}>
+                <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Período</TableCell>
-                      <TableCell align="center">Calificación</TableCell>
-                      <TableCell align="center">Tendencia</TableCell>
+                      <TableCell>Proveedor</TableCell>
+                      <TableCell>Criterio</TableCell>
+                      <TableCell>Calificación</TableCell>
+                      <TableCell>Comentario</TableCell>
+                      <TableCell>Evaluado Por</TableCell>
+                      <TableCell>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {historyData.map((data, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{data.period}</TableCell>
-                        <TableCell align="center">
-                          <Typography fontWeight="bold" color={getRatingColor(data.overall) + '.main'}>
-                            {data.overall.toFixed(1)}
-                          </Typography>
+                    {getSupplierEvaluations(selectedSupplier).map((evaluacion) => (
+                      <TableRow key={evaluacion.id}>
+                        <TableCell>{evaluacion.proveedor.razonSocial}</TableCell>
+                        <TableCell>{evaluacion.criterio}</TableCell>
+                        <TableCell>
+                          <Rating value={evaluacion.calificacion} precision={0.1} readOnly max={5} />
                         </TableCell>
-                        <TableCell align="center">
-                          {data.trend !== 0 && (
-                            <Box display="flex" alignItems="center" justifyContent="center">
-                              {data.trend > 0 ? '↗️' : '↘️'}
-                              <Typography 
-                                variant="body2" 
-                                color={data.trend > 0 ? 'success.main' : 'error.main'}
-                                ml={0.5}
-                              >
-                                {Math.abs(data.trend).toFixed(1)}
-                              </Typography>
-                            </Box>
-                          )}
+                        <TableCell>{evaluacion.comentario}</TableCell>
+                        <TableCell>{evaluacion.evaluadoPor}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            color="primary"
+                            onClick={() => {
+                              setEditingId(evaluacion.id);
+                              setFormData({
+                                proveedorId: evaluacion.proveedorId,
+                                calificacion: evaluacion.calificacion,
+                                comentario: evaluacion.comentario,
+                                criterio: evaluacion.criterio,
+                                evaluadoPor: evaluacion.evaluadoPor,
+                              });
+                              setDialogOpen(true);
+                            }}
+                          >
+                            <EditIcon />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
-            </CardContent>
-          </Card>
-        )}
-      </Box>
-    );
-  };
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <Typography>Cargando...</Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box p={3}>
-      <Typography variant="h4" mb={3}>Evaluación de Desempeño de Proveedores</Typography>
-
-      <Alert severity="success" sx={{ mb: 3 }}>
-        <Typography variant="body2">
-          <strong>✓ Módulo conectado al backend</strong> - Las evaluaciones se almacenan en la base de datos del servidor.
-        </Typography>
-      </Alert>
-
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
-            <Box sx={{ minWidth: 300, flex: '1 1 auto' }}>
-              <FormControl fullWidth>
-                <InputLabel id="supplier-select-label">Seleccionar Proveedor</InputLabel>
-                <Select
-                  labelId="supplier-select-label"
-                  value={selectedSupplier}
-                  onChange={(e) => {
-                    const val = e.target.value as string | number;
-                    setSelectedSupplier(val === '' ? '' : Number(val));
-                  }}
-                  label="Seleccionar Proveedor"
-                >
-                  {suppliers.length === 0 ? (
-                    <MenuItem value="" disabled>
-                      No hay proveedores disponibles
-                    </MenuItem>
-                  ) : (
-                    suppliers.map((supplier) => (
-                      <MenuItem key={supplier.id} value={supplier.id || ''}>
-                        {supplier.razonSocial || 'Sin nombre'}
-                      </MenuItem>
-                    ))
-                  )}
-                </Select>
-              </FormControl>
-            </Box>
-            {suppliers.length > 0 && (
-              <Typography variant="body2" color="text.secondary">
-                Proveedor seleccionado: {suppliers.find(s => s.id === selectedSupplier)?.razonSocial || 'N/A'}
-              </Typography>
             )}
-          </Box>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardContent>
-          <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 3 }}>
-            <Tab label="Resumen" />
-            <Tab label="Evaluaciones" />
-            <Tab label="Historial" />
-          </Tabs>
-
-          <Divider sx={{ mb: 3 }} />
-
-          {tabValue === 0 && renderOverviewTab()}
-          {tabValue === 1 && renderEvaluationsTab()}
-          {tabValue === 2 && renderHistoryTab()}
-        </CardContent>
-      </Card>
-
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      {/* Dialogo para Nueva Evaluación */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>
           {editingId ? 'Editar Evaluación' : 'Nueva Evaluación'}
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Stack spacing={3}>
-              <TextField
-                fullWidth
-                label="Evaluado por"
-                value={formData.evaluadoPor}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  evaluadoPor: e.target.value
-                })}
-                required
-              />
-
-              <FormControl fullWidth required>
-                <InputLabel>Criterio</InputLabel>
-                <Select
-                  value={formData.criterio}
-                  label="Criterio"
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    criterio: e.target.value as CriterioEvaluacion
-                  })}
-                >
-                  <MenuItem value={CriterioEvaluacion.CALIDAD}>Calidad</MenuItem>
-                  <MenuItem value={CriterioEvaluacion.PUNTUALIDAD}>Puntualidad</MenuItem>
-                  <MenuItem value={CriterioEvaluacion.PRECIO}>Precio</MenuItem>
-                  <MenuItem value={CriterioEvaluacion.SERVICIO}>Servicio</MenuItem>
-                  <MenuItem value={CriterioEvaluacion.COMUNICACION}>Comunicación</MenuItem>
-                  <MenuItem value={CriterioEvaluacion.FLEXIBILIDAD}>Flexibilidad</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Box>
-                <Typography variant="body2" mb={1}>
-                  Calificación (0-5): {formData.calificacion.toFixed(1)}
-                </Typography>
-                <Rating
-                  value={formData.calificacion}
-                  onChange={(_event, newValue) => {
-                    setFormData({
-                      ...formData,
-                      calificacion: newValue || 0
-                    });
-                  }}
-                  precision={0.5}
-                  max={5}
-                  size="large"
-                />
-              </Box>
-
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Comentario (opcional)"
-                value={formData.comentario}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  comentario: e.target.value
-                })}
-                inputProps={{ maxLength: 1000 }}
-                helperText={`${formData.comentario?.length || 0}/1000 caracteres`}
-              />
-            </Stack>
-          </Box>
+          <Stack spacing={2}>
+            <TextField
+              label="Proveedor"
+              value={suppliers.find(s => s.id === selectedSupplier)?.razonSocial || ''}
+              InputProps={{ readOnly: true }}
+            />
+            <FormControl fullWidth>
+              <InputLabel id="criterio-select-label">Criterio</InputLabel>
+              <Select
+                labelId="criterio-select-label"
+                value={formData.criterio}
+                onChange={(e) => setFormData({ ...formData, criterio: e.target.value as CriterioEvaluacion })}
+              >
+                {Object.values(CriterioEvaluacion).map((criterio) => (
+                  <MenuItem key={criterio} value={criterio}>
+                    {criterio}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Calificación"
+              type="number"
+              value={formData.calificacion}
+              onChange={(e) => setFormData({ ...formData, calificacion: Number(e.target.value) })}
+              inputProps={{ min: 0, max: 5, step: 0.1 }}
+            />
+            <TextField
+              label="Comentario"
+              value={formData.comentario}
+              onChange={(e) => setFormData({ ...formData, comentario: e.target.value })}
+              multiline
+              rows={4}
+            />
+            <TextField
+              label="Evaluado Por"
+              value={formData.evaluadoPor}
+              onChange={(e) => setFormData({ ...formData, evaluadoPor: e.target.value })}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button 
-            variant="contained" 
-            onClick={handleSaveEvaluation}
-            disabled={!formData.evaluadoPor || formData.calificacion === 0}
-          >
-            Guardar
+          <Button onClick={() => setDialogOpen(false)} color="secondary">
+            Cancelar
+          </Button>
+          <Button onClick={handleSaveEvaluation} color="primary">
+            {editingId ? 'Actualizar' : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add Snackbar at the end of the component */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

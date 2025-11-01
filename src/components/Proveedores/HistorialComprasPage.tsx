@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -33,6 +33,7 @@ import {
   ListItemSecondaryAction,
   Divider,
   LinearProgress,
+  TablePagination,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -126,6 +127,10 @@ const HistorialComprasPage: React.FC = () => {
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [selectedCompra, setSelectedCompra] = useState<CompraHistorial | null>(null);
 
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -217,21 +222,40 @@ const HistorialComprasPage: React.FC = () => {
     }
   };
 
-  const filteredCompras = compras.filter(compra => {
-    const matchesSearch =
-      compra.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (compra.supplier?.razonSocial?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
+  const filteredCompras = useMemo(() => {
+    return compras.filter(compra => {
+      const matchesSearch =
+        compra.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (compra.supplier?.razonSocial?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
 
-    const matchesSupplier = !supplierFilter || compra.supplierId.toString() === supplierFilter;
-    const matchesEstado = !estadoFilter || compra.estado === estadoFilter;
+      const matchesSupplier = !supplierFilter || compra.supplierId.toString() === supplierFilter;
+      const matchesEstado = !estadoFilter || compra.estado === estadoFilter;
 
-    const fechaCompra = dayjs(compra.fecha);
-    const matchesFecha =
-      (!fechaDesde || fechaCompra.isAfter(fechaDesde.subtract(1, 'day'))) &&
-      (!fechaHasta || fechaCompra.isBefore(fechaHasta.add(1, 'day')));
+      const fechaCompra = dayjs(compra.fecha);
+      const matchesFecha =
+        (!fechaDesde || fechaCompra.isAfter(fechaDesde.subtract(1, 'day'))) &&
+        (!fechaHasta || fechaCompra.isBefore(fechaHasta.add(1, 'day')));
 
-    return matchesSearch && matchesSupplier && matchesEstado && matchesFecha;
-  });
+      return matchesSearch && matchesSupplier && matchesEstado && matchesFecha;
+    });
+  }, [compras, searchTerm, supplierFilter, estadoFilter, fechaDesde, fechaHasta]);
+
+  // Paginate filtered compras
+  const paginatedCompras = useMemo(() => {
+    return filteredCompras.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
+  }, [filteredCompras, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const getTotalFilteredAmount = () => {
     return filteredCompras.reduce((sum, compra) => sum + compra.total, 0);
@@ -424,75 +448,96 @@ const HistorialComprasPage: React.FC = () => {
             </Paper>
 
             {/* Purchases Table */}
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Número</TableCell>
-                    <TableCell>Proveedor</TableCell>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Método de Pago</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell align="right">Total</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredCompras.map((compra) => (
-                    <TableRow key={compra.id}>
-                      <TableCell>
-                        <Typography variant="subtitle2">
-                          {compra.numero}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box display="flex" alignItems="center">
-                          <Avatar sx={{ mr: 1, bgcolor: 'primary.main' }}>
-                            <BusinessIcon />
-                          </Avatar>
-                          <Typography variant="body2">
-                            {compra.supplier?.razonSocial || 'Sin nombre'}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(compra.fecha).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>{compra.metodoPago}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={compra.estado}
-                          color={getEstadoColor(compra.estado) as any}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="subtitle2">
-                          ${compra.total.toLocaleString()}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleViewDetail(compra)}
-                          color="primary"
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Card>
+              <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+                <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                  <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ minWidth: 120 }}>Número</TableCell>
+                        <TableCell sx={{ minWidth: 180 }}>Proveedor</TableCell>
+                        <TableCell sx={{ minWidth: 120 }}>Fecha</TableCell>
+                        <TableCell sx={{ minWidth: 140 }}>Método de Pago</TableCell>
+                        <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                        <TableCell sx={{ minWidth: 120 }} align="right">Total</TableCell>
+                        <TableCell sx={{ minWidth: 100 }} align="center">Acciones</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {paginatedCompras.map((compra) => (
+                        <TableRow key={compra.id}>
+                          <TableCell>
+                            <Typography variant="subtitle2">
+                              {compra.numero}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box display="flex" alignItems="center">
+                              <Avatar sx={{ mr: 1, bgcolor: 'primary.main' }}>
+                                <BusinessIcon />
+                              </Avatar>
+                              <Typography variant="body2">
+                                {compra.supplier?.razonSocial || 'Sin nombre'}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(compra.fecha).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>{compra.metodoPago}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={compra.estado}
+                              color={getEstadoColor(compra.estado) as any}
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="subtitle2">
+                              ${compra.total.toLocaleString()}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewDetail(compra)}
+                              color="primary"
+                            >
+                              <ViewIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredCompras.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} align="center">
+                            <Box textAlign="center" py={4}>
+                              <Typography variant="body1" color="text.secondary">
+                                No se encontraron compras en el período seleccionado
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
 
-            {filteredCompras.length === 0 && (
-              <Box textAlign="center" py={4}>
-                <Typography variant="body1" color="text.secondary">
-                  No se encontraron compras en el período seleccionado
-                </Typography>
-              </Box>
-            )}
+                <TablePagination
+                  component="div"
+                  count={filteredCompras.length}
+                  page={page}
+                  onPageChange={handleChangePage}
+                  rowsPerPage={rowsPerPage}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
+                  rowsPerPageOptions={[5, 10, 25, 50, 100]}
+                  labelRowsPerPage="Filas por página:"
+                  labelDisplayedRows={({ from, to, count }) =>
+                    `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                  }
+                />
+              </CardContent>
+            </Card>
           </TabPanel>
 
           {/* Statistics Tab */}

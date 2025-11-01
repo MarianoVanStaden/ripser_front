@@ -480,7 +480,7 @@ const CarpetaClientePage: React.FC = () => {
             </Button>
           </Box>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2, mb: 2 }}>
             {paginatedDocumentos.map((doc) => (
               <Card key={doc.id}>
                 <CardContent>
@@ -495,17 +495,17 @@ const CarpetaClientePage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Box>
-                  
+
                   {doc.descripcion && (
                     <Typography variant="body2" color="text.secondary" mb={2}>
                       {doc.descripcion}
                     </Typography>
                   )}
-                  
+
                   <Typography variant="caption" display="block" mb={2}>
                     Subido el {new Date(doc.fechaSubida).toLocaleDateString()}
                   </Typography>
-                  
+
                   <Box display="flex" justifyContent="space-between">
                     <IconButton size="small" color="primary">
                       <DownloadIcon />
@@ -519,22 +519,19 @@ const CarpetaClientePage: React.FC = () => {
             ))}
           </Box>
 
-          {/* Paginación de Documentos */}
-          {sortedDocumentos.length > 0 && (
-            <Box display="flex" justifyContent="center" mt={3}>
-              <TablePagination
-                component="div"
-                count={sortedDocumentos.length}
-                page={pageDocumentos}
-                onPageChange={handleChangePageDocumentos}
-                rowsPerPage={rowsPerPageDocumentos}
-                onRowsPerPageChange={handleChangeRowsPerPageDocumentos}
-                rowsPerPageOptions={[3, 6, 12, 24]}
-                labelRowsPerPage="Documentos por página:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-              />
-            </Box>
-          )}
+          <TablePagination
+            component="div"
+            count={sortedDocumentos.length}
+            page={pageDocumentos}
+            onPageChange={handleChangePageDocumentos}
+            rowsPerPage={rowsPerPageDocumentos}
+            onRowsPerPageChange={handleChangeRowsPerPageDocumentos}
+            rowsPerPageOptions={[3, 6, 12, 24]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </TabPanel>
 
         {/* Tab 3: Notes */}
@@ -552,7 +549,7 @@ const CarpetaClientePage: React.FC = () => {
             </Button>
           </Box>
 
-          <Box>
+          <Box sx={{ mb: 2 }}>
             {paginatedNotas.map((nota) => (
               <Accordion key={nota.id}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -586,22 +583,19 @@ const CarpetaClientePage: React.FC = () => {
             ))}
           </Box>
 
-          {/* Paginación de Notas */}
-          {sortedNotas.length > 0 && (
-            <Box display="flex" justifyContent="center" mt={3}>
-              <TablePagination
-                component="div"
-                count={sortedNotas.length}
-                page={pageNotas}
-                onPageChange={handleChangePageNotas}
-                rowsPerPage={rowsPerPageNotas}
-                onRowsPerPageChange={handleChangeRowsPerPageNotas}
-                rowsPerPageOptions={[5, 10, 25, 50]}
-                labelRowsPerPage="Notas por página:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-              />
-            </Box>
-          )}
+          <TablePagination
+            component="div"
+            count={sortedNotas.length}
+            page={pageNotas}
+            onPageChange={handleChangePageNotas}
+            rowsPerPage={rowsPerPageNotas}
+            onRowsPerPageChange={handleChangeRowsPerPageNotas}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </TabPanel>
       </Paper>
 
