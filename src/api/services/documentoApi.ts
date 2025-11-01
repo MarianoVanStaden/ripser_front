@@ -70,18 +70,22 @@ export const documentoApi = {
   // Get documentos by tipo
   getByTipo: async (tipo: string): Promise<DocumentoComercial[]> => {
     try {
-      const response = await api.get<DocumentoComercial[]>(`/api/documentos/tipo/${encodeURIComponent(tipo)}`);
-      return response.data; // Backend returns List<DocumentoComercialDTO>
-    } catch (err) {
-      // Narrow axios error shape safely without using 'any'
-      const status = typeof err === 'object' && err !== null && 'response' in err
-        ? (err as { response?: { status?: number } }).response?.status
-        : undefined;
-      if (status === 403) {
-        console.warn('Sin permisos para documentos; devolviendo lista vacía');
-        return [];
+      const response = await api.get(`/documentos/tipo/${tipo}`);
+      const data = Array.isArray(response.data) ? response.data : response.data.content || [];
+      
+      // Remove duplicates in frontend as temporary fix
+      const uniqueData = data.filter((item, index, self) =>
+        index === self.findIndex(t => t.id === item.id)
+      );
+      
+      if (uniqueData.length < data.length) {
+        console.warn(`⚠️ Removed ${data.length - uniqueData.length} duplicate records from tipo ${tipo}`);
       }
-      throw err;
+      
+      return uniqueData;
+    } catch (error) {
+      console.error(`Error fetching documentos tipo ${tipo}:`, error);
+      throw error;
     }
   },
   // Get documentos by cliente
@@ -114,13 +118,8 @@ export const documentoApi = {
 
   // Obtener presupuestos
   getPresupuestos: async (): Promise<DocumentoComercial[]> => {
-    try {
-      const response = await api.get<DocumentoComercial[]>(`/api/documentos/tipo/PRESUPUESTO`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching presupuestos:', error);
-      throw error;
-    }
+    // Use getByTipo instead of direct endpoint to benefit from duplicate removal
+    return await documentoApi.getByTipo('PRESUPUESTO');
   },
 
 

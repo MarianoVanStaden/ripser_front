@@ -89,10 +89,24 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
       const asignacion = newAsignaciones[i];
       try {
         const equipos = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId);
+
+        // Filter equipos to only include those that are COMPLETADO and NOT asignado
+        const equiposDisponibles = equipos.filter(
+          (equipo: EquipoFabricadoDTO) =>
+            equipo.estado === 'COMPLETADO' && !equipo.asignado
+        );
+
+        if (equiposDisponibles.length === 0) {
+          setError(
+            `No hay equipos disponibles para "${asignacion.recetaNombre}". ` +
+            `Todos los equipos están asignados o no están completados.`
+          );
+        }
+
         setAsignaciones((prev) =>
           prev.map((a, index) =>
             index === i
-              ? { ...a, equiposDisponibles: equipos, loading: false }
+              ? { ...a, equiposDisponibles, loading: false }
               : a
           )
         );
@@ -172,6 +186,12 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            Solo se muestran equipos COMPLETADOS y NO ASIGNADOS. Si un equipo ya fue asignado a otra factura, no aparecerá en la lista.
+          </Typography>
+        </Alert>
+
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
             {error}

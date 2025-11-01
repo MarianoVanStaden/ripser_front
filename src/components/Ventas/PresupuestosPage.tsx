@@ -767,6 +767,50 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [clientes, presupuestosFinanciamiento]);
 
+  const handleCreateFacturaFromPresupuesto = useCallback(async (presupuesto: DocumentoComercial) => {
+    try {
+      // Validate that the presupuesto exists and hasn't been converted already
+      const existingFacturas = await documentoApi.getByTipo('FACTURA');
+      const alreadyConverted = existingFacturas.some(
+        (factura: DocumentoComercial) => 
+          factura.documentoOrigenId === presupuesto.id
+      );
+
+      if (alreadyConverted) {
+        setSnackbar({
+          open: true,
+          message: 'Este presupuesto ya fue convertido a factura',
+          severity: 'warning'
+        });
+        return;
+      }
+
+      // Create factura
+      const facturaData = {
+        ...presupuesto,
+        tipoDocumento: 'FACTURA',
+        documentoOrigenId: presupuesto.id,
+        estado: 'CONFIRMADA',
+      };
+
+      await documentoApi.createFactura(facturaData);
+      
+      setSnackbar({
+        open: true,
+        message: 'Factura creada exitosamente',
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      console.error('Error creating factura:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al crear la factura',
+        severity: 'error'
+      });
+    }
+  }, []);
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
@@ -1192,12 +1236,12 @@ const PresupuestosPage: React.FC = () => {
                               select
                               size="small"
                               fullWidth
-                              value={detalle.productoId || ""}
+                              value={detalle.productoId}
                               onChange={(e) => updateDetalle(index, "productoId", e.target.value)}
                               disabled={readOnly || !!editingPresupuesto}
                               error={!detalle.productoId && hasUnsavedChanges}
                             >
-                              <MenuItem value="">Seleccionar producto</MenuItem>
+                              <MenuItem value="">Sin producto</MenuItem>
                               {productos.length === 0 ? (
                                 <MenuItem disabled>No hay productos disponibles</MenuItem>
                               ) : (
@@ -1213,7 +1257,7 @@ const PresupuestosPage: React.FC = () => {
                               select
                               size="small"
                               fullWidth
-                              value={detalle.recetaId || ""}
+                              value={detalle.recetaId}
                               onChange={(e) => updateDetalle(index, "recetaId", e.target.value)}
                               disabled={readOnly || !!editingPresupuesto}
                               error={!detalle.recetaId && hasUnsavedChanges}
@@ -1359,7 +1403,7 @@ const PresupuestosPage: React.FC = () => {
                 })()}
                 
                 {/* If no financing option selected, show regular total */}
-                {(!editingPresupuesto || !getSelectedFinancingOption(editingPresupuesto)) && (
+                {(!editingPresupuesto || !getSelectedFinancingOption(editandoPresupuesto)) && (
                   <>
                     <Divider sx={{ width: '200px', my: 1 }} />
                     <Typography variant="h6" fontWeight="bold">
