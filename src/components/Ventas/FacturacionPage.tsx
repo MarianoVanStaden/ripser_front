@@ -186,10 +186,6 @@ const FacturacionPage = () => {
   const [isManualInvoice, setIsManualInvoice] = useState(false);
   const [notaOpcionesFinanciamiento, setNotaOpcionesFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
 
-  // Pagination for Notas de Pedido
-  const [pageNotas, setPageNotas] = useState(0);
-  const [rowsPerPageNotas, setRowsPerPageNotas] = useState(12);
-
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -292,31 +288,6 @@ const FacturacionPage = () => {
   }, [notaSubtotal, notaFinancingAdjustment, selectedNotaPedido]);
 
   const notaTotalVenta = useMemo(() => notaSubtotal + notaFinancingAdjustment + notaIvaAmount, [notaSubtotal, notaFinancingAdjustment, notaIvaAmount]);
-
-  // Sort and paginate Notas de Pedido
-  const sortedNotasPedido = useMemo(() => {
-    return [...notasPedido].sort((a, b) => {
-      const dateA = new Date(a.fecha || a.fechaEmision || 0).getTime();
-      const dateB = new Date(b.fecha || b.fechaEmision || 0).getTime();
-      return dateB - dateA; // Descending order (newest first)
-    });
-  }, [notasPedido]);
-
-  const paginatedNotasPedido = useMemo(() => {
-    return sortedNotasPedido.slice(
-      pageNotas * rowsPerPageNotas,
-      pageNotas * rowsPerPageNotas + rowsPerPageNotas
-    );
-  }, [sortedNotasPedido, pageNotas, rowsPerPageNotas]);
-
-  const handleChangePageNotas = (_event: unknown, newPage: number) => {
-    setPageNotas(newPage);
-  };
-
-  const handleChangeRowsPerPageNotas = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPageNotas(parseInt(event.target.value, 10));
-    setPageNotas(0);
-  };
 
   // Helper functions for financing
   const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
@@ -1195,7 +1166,7 @@ const FacturacionPage = () => {
       {/* Tab 1: From Nota de Pedido */}
       {activeTab === 1 && (
         <Box sx={{ width: '100%', maxWidth: '100%' }}>
-          {sortedNotasPedido.length === 0 ? (
+          {notasPedido.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No hay Notas de Pedido disponibles
@@ -1205,94 +1176,74 @@ const FacturacionPage = () => {
               </Typography>
             </Paper>
           ) : (
-            <>
-              <Grid container spacing={3} sx={{ mb: 2 }}>
-                {paginatedNotasPedido.map((nota) => (
-                  <Grid item xs={12} sm={6} md={6} lg={4} xl={3} key={nota.id}>
-                    <Card>
-                      <CardContent>
-                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
-                          <Typography variant="h6">
-                            Nota #{nota.numeroDocumento}
-                          </Typography>
+            <Grid container spacing={3}>
+              {notasPedido.map((nota) => (
+                <Grid item xs={12} sm={6} md={6} lg={4} xl={3} key={nota.id}>
+                  <Card>
+                    <CardContent>
+                      <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
+                        <Typography variant="h6">
+                          Nota #{nota.numeroDocumento}
+                        </Typography>
+                        <Chip
+                          label={ESTADO_OPTIONS[nota.estado]?.label || nota.estado}
+                          color={ESTADO_OPTIONS[nota.estado]?.color || 'default'}
+                          size="small"
+                        />
+                      </Box>
+                      
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Cliente: {nota.clienteNombre}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Fecha: {dayjs(nota.fecha).format('DD/MM/YYYY')}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Items: {nota.detalles?.length || 0}
+                      </Typography>
+                      
+                      <Divider sx={{ my: 2 }} />
+                      
+                      <Typography variant="h6" color="primary">
+                        Total: ${nota.total?.toFixed(2) || '0.00'}
+                      </Typography>
+
+                      {notaOpcionesFinanciamiento[nota.id] && notaOpcionesFinanciamiento[nota.id].length > 0 && (
+                        <Box mt={1}>
                           <Chip
-                            label={ESTADO_OPTIONS[nota.estado]?.label || nota.estado}
-                            color={ESTADO_OPTIONS[nota.estado]?.color || 'default'}
+                            icon={<CreditCardIcon />}
+                            label={`${notaOpcionesFinanciamiento[nota.id].length} opciones de financiamiento`}
                             size="small"
+                            color="info"
+                            variant="outlined"
                           />
                         </Box>
-
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Cliente: {nota.clienteNombre}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Fecha: {dayjs(nota.fecha).format('DD/MM/YYYY')}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Items: {nota.detalles?.length || 0}
-                        </Typography>
-
-                        <Divider sx={{ my: 2 }} />
-
-                        <Typography variant="h6" color="primary">
-                          Total: ${nota.total?.toFixed(2) || '0.00'}
-                        </Typography>
-
-                        {notaOpcionesFinanciamiento[nota.id] && notaOpcionesFinanciamiento[nota.id].length > 0 && (
-                          <Box mt={1}>
-                            <Chip
-                              icon={<CreditCardIcon />}
-                              label={`${notaOpcionesFinanciamiento[nota.id].length} opciones de financiamiento`}
-                              size="small"
-                              color="info"
-                              variant="outlined"
-                            />
-                          </Box>
-                        )}
-
-                        <Box mt={2} display="flex" gap={1}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            fullWidth
-                            startIcon={<CheckCircleIcon />}
-                            onClick={() => handleOpenConvertDialog(nota)}
-                          >
-                            Facturar
-                          </Button>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleOpenEstadoDialog(nota)}
-                            title="Cambiar estado"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-
-              <Box display="flex" justifyContent="center" mt={2}>
-                <Paper>
-                  <TablePagination
-                    component="div"
-                    count={sortedNotasPedido.length}
-                    page={pageNotas}
-                    onPageChange={handleChangePageNotas}
-                    rowsPerPage={rowsPerPageNotas}
-                    onRowsPerPageChange={handleChangeRowsPerPageNotas}
-                    rowsPerPageOptions={[6, 12, 24, 48]}
-                    labelRowsPerPage="Notas por página:"
-                    labelDisplayedRows={({ from, to, count }) =>
-                      `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-                    }
-                  />
-                </Paper>
-              </Box>
-            </>
+                      )}
+                      
+                      <Box mt={2} display="flex" gap={1}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          fullWidth
+                          startIcon={<CheckCircleIcon />}
+                          onClick={() => handleOpenConvertDialog(nota)}
+                        >
+                          Facturar
+                        </Button>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleOpenEstadoDialog(nota)}
+                          title="Cambiar estado"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           )}
         </Box>
       )}

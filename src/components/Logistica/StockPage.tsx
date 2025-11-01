@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -30,7 +30,6 @@ import {
   InputLabel,
   Switch,
   FormControlLabel,
-  TablePagination,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
@@ -81,23 +80,6 @@ const StockPage: React.FC = () => {
     categoriaProductoId: 1,
     activo: true,
   });
-
-  // Filter states for Inventory tab
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoriaFilter, setCategoriaFilter] = useState<string>('all');
-  const [estadoFilter, setEstadoFilter] = useState<string>('all');
-
-  // Pagination states for Inventory tab
-  const [pageInventory, setPageInventory] = useState(0);
-  const [rowsPerPageInventory, setRowsPerPageInventory] = useState(10);
-
-  // Filter states for Movements tab
-  const [searchMovements, setSearchMovements] = useState('');
-  const [tipoMovimientoFilter, setTipoMovimientoFilter] = useState<string>('all');
-
-  // Pagination states for Movements tab
-  const [pageMovements, setPageMovements] = useState(0);
-  const [rowsPerPageMovements, setRowsPerPageMovements] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -169,83 +151,6 @@ const StockPage: React.FC = () => {
 
   const lowStockCount = products.filter(p => p.stockActual <= p.stockMinimo && p.stockActual > 0).length;
   const outOfStockCount = products.filter(p => p.stockActual === 0).length;
-
-  // Filter products for Inventory tab
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchesSearch = searchTerm === '' ||
-        product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesCategoria = categoriaFilter === 'all' ||
-        product.categoriaProductoId?.toString() === categoriaFilter ||
-        product.categoriaProducto?.id.toString() === categoriaFilter;
-
-      let matchesEstado = true;
-      if (estadoFilter === 'sin-stock') {
-        matchesEstado = product.stockActual === 0;
-      } else if (estadoFilter === 'stock-bajo') {
-        matchesEstado = product.stockActual > 0 && product.stockActual <= product.stockMinimo;
-      } else if (estadoFilter === 'disponible') {
-        matchesEstado = product.stockActual > product.stockMinimo;
-      } else if (estadoFilter === 'inactivo') {
-        matchesEstado = !product.activo;
-      } else if (estadoFilter === 'activo') {
-        matchesEstado = product.activo;
-      }
-
-      return matchesSearch && matchesCategoria && matchesEstado;
-    });
-  }, [products, searchTerm, categoriaFilter, estadoFilter]);
-
-  // Paginate filtered products
-  const paginatedProducts = useMemo(() => {
-    return filteredProducts.slice(
-      pageInventory * rowsPerPageInventory,
-      pageInventory * rowsPerPageInventory + rowsPerPageInventory
-    );
-  }, [filteredProducts, pageInventory, rowsPerPageInventory]);
-
-  const handleChangePageInventory = (_event: unknown, newPage: number) => {
-    setPageInventory(newPage);
-  };
-
-  const handleChangeRowsPerPageInventory = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPageInventory(parseInt(event.target.value, 10));
-    setPageInventory(0);
-  };
-
-  // Filter movements
-  const filteredMovements = useMemo(() => {
-    return stockMovements.filter((movement) => {
-      const matchesSearch = searchMovements === '' ||
-        movement.productoNombre?.toLowerCase().includes(searchMovements.toLowerCase()) ||
-        movement.concepto?.toLowerCase().includes(searchMovements.toLowerCase()) ||
-        movement.numeroComprobante?.toLowerCase().includes(searchMovements.toLowerCase());
-
-      const matchesTipo = tipoMovimientoFilter === 'all' || movement.tipo === tipoMovimientoFilter;
-
-      return matchesSearch && matchesTipo;
-    });
-  }, [stockMovements, searchMovements, tipoMovimientoFilter]);
-
-  // Paginate filtered movements
-  const paginatedMovements = useMemo(() => {
-    return filteredMovements.slice(
-      pageMovements * rowsPerPageMovements,
-      pageMovements * rowsPerPageMovements + rowsPerPageMovements
-    );
-  }, [filteredMovements, pageMovements, rowsPerPageMovements]);
-
-  const handleChangePageMovements = (_event: unknown, newPage: number) => {
-    setPageMovements(newPage);
-  };
-
-  const handleChangeRowsPerPageMovements = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPageMovements(parseInt(event.target.value, 10));
-    setPageMovements(0);
-  };
 
   const getStockChip = (stock: number, stockMinimo: number, activo: boolean) => {
     if (!activo) {
@@ -354,74 +259,24 @@ const StockPage: React.FC = () => {
 
       {/* Tab Panel 0: Inventory */}
       <TabPanel value={tabValue} index={0}>
-        {/* Filters */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <Typography variant="h6">Filtros</Typography>
-            </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
-              <TextField
-                fullWidth
-                label="Buscar"
-                variant="outlined"
-                size="small"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nombre, código, descripción..."
-              />
-              <FormControl fullWidth size="small">
-                <InputLabel>Categoría</InputLabel>
-                <Select
-                  value={categoriaFilter}
-                  label="Categoría"
-                  onChange={(e) => setCategoriaFilter(e.target.value)}
-                >
-                  <MenuItem value="all">Todas</MenuItem>
-                  {categorias.map((cat) => (
-                    <MenuItem key={cat.id} value={cat.id.toString()}>
-                      {cat.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth size="small">
-                <InputLabel>Estado</InputLabel>
-                <Select
-                  value={estadoFilter}
-                  label="Estado"
-                  onChange={(e) => setEstadoFilter(e.target.value)}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="disponible">Disponible</MenuItem>
-                  <MenuItem value="stock-bajo">Stock Bajo</MenuItem>
-                  <MenuItem value="sin-stock">Sin Stock</MenuItem>
-                  <MenuItem value="activo">Activo</MenuItem>
-                  <MenuItem value="inactivo">Inactivo</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          </CardContent>
-        </Card>
-
         <Card>
-          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-              <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+          <CardContent>
+            <TableContainer component={Paper}>
+              <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ minWidth: 100 }}>Código</TableCell>
-                    <TableCell sx={{ minWidth: 200 }}>Producto</TableCell>
-                    <TableCell sx={{ minWidth: 100 }} align="center">Stock Actual</TableCell>
-                    <TableCell sx={{ minWidth: 100 }} align="center">Stock Mínimo</TableCell>
-                    <TableCell sx={{ minWidth: 120 }}>Categoría</TableCell>
-                    <TableCell sx={{ minWidth: 100 }}>Precio</TableCell>
-                    <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
-                    <TableCell sx={{ minWidth: 100 }} align="center">Acciones</TableCell>
+                    <TableCell>Código</TableCell>
+                    <TableCell>Producto</TableCell>
+                    <TableCell align="center">Stock Actual</TableCell>
+                    <TableCell align="center">Stock Mínimo</TableCell>
+                    <TableCell>Categoría</TableCell>
+                    <TableCell>Precio</TableCell>
+                    <TableCell>Estado</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedProducts.map((product) => (
+                  {products.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell>{product.codigo}</TableCell>
                       <TableCell>
@@ -466,92 +321,31 @@ const StockPage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredProducts.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center">
-                        <Box textAlign="center" py={4}>
-                          <Typography variant="body1" color="text.secondary">
-                            No se encontraron productos con los filtros aplicados
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </TableContainer>
-
-            <TablePagination
-              component="div"
-              count={filteredProducts.length}
-              page={pageInventory}
-              onPageChange={handleChangePageInventory}
-              rowsPerPage={rowsPerPageInventory}
-              onRowsPerPageChange={handleChangeRowsPerPageInventory}
-              rowsPerPageOptions={[5, 10, 25, 50, 100]}
-              labelRowsPerPage="Filas por página:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-              }
-            />
           </CardContent>
         </Card>
       </TabPanel>
 
       {/* Tab Panel 1: Movements */}
       <TabPanel value={tabValue} index={1}>
-        {/* Filters */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <Typography variant="h6">Filtros</Typography>
-            </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
-              <TextField
-                fullWidth
-                label="Buscar"
-                variant="outlined"
-                size="small"
-                value={searchMovements}
-                onChange={(e) => setSearchMovements(e.target.value)}
-                placeholder="Buscar por producto, concepto, comprobante..."
-              />
-              <FormControl fullWidth size="small">
-                <InputLabel>Tipo de Movimiento</InputLabel>
-                <Select
-                  value={tipoMovimientoFilter}
-                  label="Tipo de Movimiento"
-                  onChange={(e) => setTipoMovimientoFilter(e.target.value)}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="ENTRADA">Entrada</MenuItem>
-                  <MenuItem value="SALIDA">Salida</MenuItem>
-                  <MenuItem value="SALIDA_FABRICACION">Salida Fabricación</MenuItem>
-                  <MenuItem value="REINGRESO_CANCELACION_FABRICACION">Reingreso</MenuItem>
-                  <MenuItem value="RECUENTO">Recuento</MenuItem>
-                  <MenuItem value="AJUSTE">Ajuste</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          </CardContent>
-        </Card>
-
         <Card>
-          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-              <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+          <CardContent>
+            <TableContainer component={Paper}>
+              <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ minWidth: 150 }}>Fecha</TableCell>
-                    <TableCell sx={{ minWidth: 180 }}>Producto</TableCell>
-                    <TableCell sx={{ minWidth: 150 }}>Tipo</TableCell>
-                    <TableCell sx={{ minWidth: 100 }} align="center">Cantidad</TableCell>
-                    <TableCell sx={{ minWidth: 200 }}>Concepto</TableCell>
-                    <TableCell sx={{ minWidth: 120 }}>Comprobante</TableCell>
+                    <TableCell>Fecha</TableCell>
+                    <TableCell>Producto</TableCell>
+                    <TableCell>Tipo</TableCell>
+                    <TableCell align="center">Cantidad</TableCell>
+                    <TableCell>Concepto</TableCell>
+                    <TableCell>Comprobante</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedMovements.map((movement) => {
+                  {stockMovements.map((movement) => {
                     return (
                       <TableRow key={movement.id}>
                         <TableCell>
@@ -604,34 +398,9 @@ const StockPage: React.FC = () => {
                       </TableRow>
                     );
                   })}
-                  {filteredMovements.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Box textAlign="center" py={4}>
-                          <Typography variant="body1" color="text.secondary">
-                            No se encontraron movimientos con los filtros aplicados
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </TableContainer>
-
-            <TablePagination
-              component="div"
-              count={filteredMovements.length}
-              page={pageMovements}
-              onPageChange={handleChangePageMovements}
-              rowsPerPage={rowsPerPageMovements}
-              onRowsPerPageChange={handleChangeRowsPerPageMovements}
-              rowsPerPageOptions={[5, 10, 25, 50, 100]}
-              labelRowsPerPage="Filas por página:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-              }
-            />
           </CardContent>
         </Card>
       </TabPanel>

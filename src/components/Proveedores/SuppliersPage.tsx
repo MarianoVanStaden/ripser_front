@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -21,11 +21,6 @@ import {
   TableRow,
   Paper,
   Chip,
-  TablePagination,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -60,16 +55,6 @@ const SuppliersPage: React.FC = () => {
     email?: string;
     telefono?: string;
   }>({});
-
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [estadoFilter, setEstadoFilter] = useState<string>('');
-  const [ciudadFilter, setCiudadFilter] = useState<string>('all');
-  const [provinciaFilter, setProvinciaFilter] = useState<string>('all');
-
-  // Pagination states
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -201,48 +186,6 @@ const SuppliersPage: React.FC = () => {
     }
   };
 
-  // Get unique cities and provinces for filters
-  const uniqueCiudades = useMemo(() => {
-    const ciudades = new Set(suppliers.map(s => s.ciudad).filter(Boolean));
-    return Array.from(ciudades).sort();
-  }, [suppliers]);
-
-  const uniqueProvincias = useMemo(() => {
-    const provincias = new Set(suppliers.map(s => s.provincia).filter(Boolean));
-    return Array.from(provincias).sort();
-  }, [suppliers]);
-
-  // Filter suppliers
-  const filteredSuppliers = useMemo(() => {
-    return suppliers.filter((supplier) => {
-      const matchesSearch = searchTerm === '' ||
-        supplier.razonSocial?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        supplier.cuit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        supplier.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesEstado = !estadoFilter || supplier.estado === estadoFilter;
-      const matchesCiudad = ciudadFilter === 'all' || supplier.ciudad === ciudadFilter;
-      const matchesProvincia = provinciaFilter === 'all' || supplier.provincia === provinciaFilter;
-      return matchesSearch && matchesEstado && matchesCiudad && matchesProvincia;
-    });
-  }, [suppliers, searchTerm, estadoFilter, ciudadFilter, provinciaFilter]);
-
-  // Paginate filtered suppliers
-  const paginatedSuppliers = useMemo(() => {
-    return filteredSuppliers.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    );
-  }, [filteredSuppliers, page, rowsPerPage]);
-
-  const handleChangePage = (_event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
   const getEstadoLabel = (estado: string) => {
     switch (estado) {
       case 'ACTIVO':
@@ -299,98 +242,35 @@ const SuppliersPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Filtros */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box display="flex" alignItems="center" gap={1} mb={2}>
-            <Typography variant="h6">Filtros</Typography>
-          </Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
-            <TextField
-              fullWidth
-              label="Buscar"
-              variant="outlined"
-              size="small"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por razón social, CUIT, email..."
-            />
-            <FormControl fullWidth size="small">
-              <InputLabel>Estado</InputLabel>
-              <Select
-                value={estadoFilter}
-                label="Estado"
-                onChange={(e) => setEstadoFilter(e.target.value)}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="ACTIVO">Activo</MenuItem>
-                <MenuItem value="INACTIVO">Inactivo</MenuItem>
-                <MenuItem value="BLOQUEADO">Bloqueado</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small">
-              <InputLabel>Ciudad</InputLabel>
-              <Select
-                value={ciudadFilter}
-                label="Ciudad"
-                onChange={(e) => setCiudadFilter(e.target.value)}
-              >
-                <MenuItem value="all">Todas</MenuItem>
-                {uniqueCiudades.map((ciudad) => (
-                  <MenuItem key={ciudad} value={ciudad}>
-                    {ciudad}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small">
-              <InputLabel>Provincia</InputLabel>
-              <Select
-                value={provinciaFilter}
-                label="Provincia"
-                onChange={(e) => setProvinciaFilter(e.target.value)}
-              >
-                <MenuItem value="all">Todas</MenuItem>
-                {uniqueProvincias.map((provincia) => (
-                  <MenuItem key={provincia} value={provincia}>
-                    {provincia}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </CardContent>
-      </Card>
-
       <Card>
-        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+        <CardContent>
+          <TableContainer component={Paper}>
+            <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ minWidth: 150 }}>Razón Social</TableCell>
-                  <TableCell sx={{ minWidth: 120 }}>CUIT</TableCell>
-                  <TableCell sx={{ minWidth: 150 }}>Email</TableCell>
-                  <TableCell sx={{ minWidth: 120 }}>Teléfono</TableCell>
-                  <TableCell sx={{ minWidth: 150 }}>Dirección</TableCell>
-                  <TableCell sx={{ minWidth: 100 }}>Ciudad</TableCell>
-                  <TableCell sx={{ minWidth: 100 }}>Provincia</TableCell>
-                  <TableCell sx={{ minWidth: 100 }}>Código Postal</TableCell>
-                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
-                  <TableCell sx={{ minWidth: 120 }} align="center">Acciones</TableCell>
+                  <TableCell>Razón Social</TableCell>
+                  <TableCell>CUIT</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Teléfono</TableCell>
+                  <TableCell>Dirección</TableCell>
+                  <TableCell>Ciudad</TableCell>
+                  <TableCell>Provincia</TableCell>
+                  <TableCell>Código Postal</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredSuppliers.length === 0 ? (
+                {suppliers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} align="center">
                       <Typography variant="body1" color="textSecondary">
-                        No hay proveedores que coincidan con los filtros
+                        No hay proveedores registrados
                       </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedSuppliers.map((supplier) => (
+                  suppliers.map((supplier) => (
                     <TableRow key={supplier.id}>
                       <TableCell>{supplier.razonSocial}</TableCell>
                       <TableCell>{supplier.cuit}</TableCell>
@@ -437,20 +317,6 @@ const SuppliersPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
-
-          <TablePagination
-            component="div"
-            count={filteredSuppliers.length}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) =>
-              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-            }
-          />
         </CardContent>
       </Card>
 

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, TextField, Stack, Chip,
-  IconButton, Alert, CircularProgress, Grid, MenuItem, Select, FormControl,
-  InputLabel, InputAdornment, Autocomplete, TablePagination
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell, 
+  TableContainer, TableHead, TableRow, Paper, TextField, Stack, Chip, 
+  IconButton, Alert, CircularProgress, Grid, MenuItem, Select, FormControl, 
+  InputLabel, InputAdornment, Autocomplete
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -33,11 +33,7 @@ const ReclamosGarantiaPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
   const [garantiaFilter, setGarantiaFilter] = useState<any>(null);
-
-  // Pagination
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-
+  
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
   const [selectedReclamo, setSelectedReclamo] = useState<ReclamoGarantiaDTO | null>(null);
@@ -67,37 +63,18 @@ const ReclamosGarantiaPage: React.FC = () => {
   };
 
   // Filter reclamos
-  const filteredReclamos = useMemo(() => {
-    return reclamos.filter(r => {
-      const matchSearch = search === '' ||
-        r.numeroReclamo.toLowerCase().includes(search.toLowerCase()) ||
-        r.descripcionProblema.toLowerCase().includes(search.toLowerCase()) ||
-        r.garantiaNumeroSerie.toLowerCase().includes(search.toLowerCase()) ||
-        (r.garantiaEquipoModelo?.toLowerCase().includes(search.toLowerCase()) || false);
+  const filteredReclamos = reclamos.filter(r => {
+    const matchSearch = search === '' ||
+      r.numeroReclamo.toLowerCase().includes(search.toLowerCase()) ||
+      r.descripcionProblema.toLowerCase().includes(search.toLowerCase()) ||
+      r.garantiaNumeroSerie.toLowerCase().includes(search.toLowerCase()) ||
+      (r.garantiaEquipoModelo?.toLowerCase().includes(search.toLowerCase()) || false);
 
-      const matchEstado = estadoFilter === 'TODOS' || r.estado === estadoFilter;
-      const matchGarantia = !garantiaFilter || r.garantiaId === garantiaFilter.id;
+    const matchEstado = estadoFilter === 'TODOS' || r.estado === estadoFilter;
+    const matchGarantia = !garantiaFilter || r.garantiaId === garantiaFilter.id;
 
-      return matchSearch && matchEstado && matchGarantia;
-    });
-  }, [reclamos, search, estadoFilter, garantiaFilter]);
-
-  // Paginate filtered reclamos
-  const paginatedReclamos = useMemo(() => {
-    return filteredReclamos.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    );
-  }, [filteredReclamos, page, rowsPerPage]);
-
-  const handleChangePage = (_event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+    return matchSearch && matchEstado && matchGarantia;
+  });
 
   // Get estado color
   const getEstadoColor = (estado: string) => {
@@ -326,34 +303,32 @@ const ReclamosGarantiaPage: React.FC = () => {
       </Card>
 
       {/* Table */}
-      <Card>
-        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ minWidth: 120 }}><strong>N° Reclamo</strong></TableCell>
-                  <TableCell sx={{ minWidth: 120 }}><strong>Fecha</strong></TableCell>
-                  <TableCell sx={{ minWidth: 120 }}><strong>Garantía</strong></TableCell>
-                  <TableCell sx={{ minWidth: 140 }}><strong>Modelo de Equipo</strong></TableCell>
-                  <TableCell sx={{ minWidth: 200 }}><strong>Problema</strong></TableCell>
-                  <TableCell sx={{ minWidth: 140 }}><strong>Tipo Solución</strong></TableCell>
-                  <TableCell sx={{ minWidth: 120 }} align="center"><strong>Estado</strong></TableCell>
-                  <TableCell sx={{ minWidth: 150 }}><strong>Técnico</strong></TableCell>
-                  <TableCell sx={{ minWidth: 100 }} align="center"><strong>Acciones</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredReclamos.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} align="center">
-                      <Typography variant="body2" color="textSecondary" py={4}>
-                        No se encontraron reclamos
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedReclamos.map((reclamo) => (
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell><strong>N° Reclamo</strong></TableCell>
+              <TableCell><strong>Fecha</strong></TableCell>
+              <TableCell><strong>Garantía</strong></TableCell>
+              <TableCell><strong>Modelo de Equipo</strong></TableCell>
+              <TableCell><strong>Problema</strong></TableCell>
+              <TableCell><strong>Tipo Solución</strong></TableCell>
+              <TableCell align="center"><strong>Estado</strong></TableCell>
+              <TableCell><strong>Técnico</strong></TableCell>
+              <TableCell align="center"><strong>Acciones</strong></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredReclamos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} align="center">
+                  <Typography variant="body2" color="textSecondary" py={4}>
+                    No se encontraron reclamos
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredReclamos.map((reclamo) => (
                 <TableRow key={reclamo.id} hover>
                   <TableCell>
                     <Typography variant="body2" fontWeight="500">
@@ -411,27 +386,11 @@ const ReclamosGarantiaPage: React.FC = () => {
                     </IconButton>
                   </TableCell>
                 </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <TablePagination
-            component="div"
-            count={filteredReclamos.length}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) =>
-              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-            }
-          />
-        </CardContent>
-      </Card>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* Reclamo Dialog */}
       <ReclamoFormDialog
