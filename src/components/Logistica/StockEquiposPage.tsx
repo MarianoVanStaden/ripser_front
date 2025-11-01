@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -28,6 +28,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  TablePagination,
 } from '@mui/material';
 import {
   Inventory2 as Inventory2Icon,
@@ -98,6 +99,27 @@ const StockEquiposPage: React.FC = () => {
     estado: 'EN_PROCESO' as EstadoFabricacion,
   });
 
+  // Filter and Pagination states for Tab 0: Inventario de Equipos
+  const [searchEquipos, setSearchEquipos] = useState('');
+  const [tipoEquipoFilter, setTipoEquipoFilter] = useState<string>('all');
+  const [estadoEquipoFilter, setEstadoEquipoFilter] = useState<string>('all');
+  const [asignadoFilter, setAsignadoFilter] = useState<string>('all');
+  const [pageEquipos, setPageEquipos] = useState(0);
+  const [rowsPerPageEquipos, setRowsPerPageEquipos] = useState(10);
+
+  // Filter and Pagination states for Tab 1: Registro de Movimientos de Equipos
+  const [searchMovimientos, setSearchMovimientos] = useState('');
+  const [accionFilter, setAccionFilter] = useState<string>('all');
+  const [tipoMovimientoFilter, setTipoMovimientoFilter] = useState<string>('all');
+  const [pageMovimientos, setPageMovimientos] = useState(0);
+  const [rowsPerPageMovimientos, setRowsPerPageMovimientos] = useState(10);
+
+  // Filter and Pagination states for Tab 2: Movimientos de Materias Primas
+  const [searchMateriasPrimas, setSearchMateriasPrimas] = useState('');
+  const [tipoMPFilter, setTipoMPFilter] = useState<string>('all');
+  const [pageMateriasPrimas, setPageMateriasPrimas] = useState(0);
+  const [rowsPerPageMateriasPrimas, setRowsPerPageMateriasPrimas] = useState(10);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -158,6 +180,42 @@ const StockEquiposPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ============= FILTER AND PAGINATION LOGIC =============
+
+  // Tab 0: Filter and paginate Equipos
+  const filteredEquipos = useMemo(() => {
+    return equipos.filter((equipo) => {
+      const matchesSearch = searchEquipos === '' ||
+        equipo.numeroHeladera.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+        equipo.modelo.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+        equipo.clienteNombre?.toLowerCase().includes(searchEquipos.toLowerCase());
+
+      const matchesTipo = tipoEquipoFilter === 'all' || equipo.tipo === tipoEquipoFilter;
+      const matchesEstado = estadoEquipoFilter === 'all' || equipo.estado === estadoEquipoFilter;
+      const matchesAsignado = asignadoFilter === 'all' ||
+        (asignadoFilter === 'asignado' && equipo.asignado) ||
+        (asignadoFilter === 'no-asignado' && !equipo.asignado);
+
+      return matchesSearch && matchesTipo && matchesEstado && matchesAsignado;
+    });
+  }, [equipos, searchEquipos, tipoEquipoFilter, estadoEquipoFilter, asignadoFilter]);
+
+  const paginatedEquipos = useMemo(() => {
+    return filteredEquipos.slice(
+      pageEquipos * rowsPerPageEquipos,
+      pageEquipos * rowsPerPageEquipos + rowsPerPageEquipos
+    );
+  }, [filteredEquipos, pageEquipos, rowsPerPageEquipos]);
+
+  const handleChangePageEquipos = (_event: unknown, newPage: number) => {
+    setPageEquipos(newPage);
+  };
+
+  const handleChangeRowsPerPageEquipos = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPageEquipos(parseInt(event.target.value, 10));
+    setPageEquipos(0);
   };
 
   // Generar historial de movimientos de equipos
@@ -227,6 +285,75 @@ const StockEquiposPage: React.FC = () => {
     );
   };
 
+  // Tab 1: Filter and paginate Movimientos de Equipos
+  const historialMovimientos = generarHistorialMovimientos(equipos);
+
+  const filteredMovimientos = useMemo(() => {
+    return historialMovimientos.filter((movimiento) => {
+      const matchesSearch = searchMovimientos === '' ||
+        movimiento.numeroHeladera.toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+        movimiento.modelo.toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+        movimiento.clienteNombre?.toLowerCase().includes(searchMovimientos.toLowerCase()) ||
+        movimiento.responsableNombre?.toLowerCase().includes(searchMovimientos.toLowerCase());
+
+      const matchesAccion = accionFilter === 'all' || movimiento.accion === accionFilter;
+      const matchesTipo = tipoMovimientoFilter === 'all' || movimiento.tipo === tipoMovimientoFilter;
+
+      return matchesSearch && matchesAccion && matchesTipo;
+    });
+  }, [historialMovimientos, searchMovimientos, accionFilter, tipoMovimientoFilter]);
+
+  const paginatedMovimientos = useMemo(() => {
+    return filteredMovimientos.slice(
+      pageMovimientos * rowsPerPageMovimientos,
+      pageMovimientos * rowsPerPageMovimientos + rowsPerPageMovimientos
+    );
+  }, [filteredMovimientos, pageMovimientos, rowsPerPageMovimientos]);
+
+  const handleChangePageMovimientos = (_event: unknown, newPage: number) => {
+    setPageMovimientos(newPage);
+  };
+
+  const handleChangeRowsPerPageMovimientos = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPageMovimientos(parseInt(event.target.value, 10));
+    setPageMovimientos(0);
+  };
+
+  // Tab 2: Filter and paginate Movimientos de Materias Primas
+  const materiasPrimasMovimientos = movimientosStock.filter(m =>
+    m.tipo === 'SALIDA_FABRICACION' ||
+    m.tipo === 'REINGRESO_CANCELACION_FABRICACION'
+  );
+
+  const filteredMateriasPrimas = useMemo(() => {
+    return materiasPrimasMovimientos.filter((movimiento) => {
+      const matchesSearch = searchMateriasPrimas === '' ||
+        movimiento.productoNombre?.toLowerCase().includes(searchMateriasPrimas.toLowerCase()) ||
+        movimiento.equipoFabricadoNumero?.toLowerCase().includes(searchMateriasPrimas.toLowerCase()) ||
+        movimiento.concepto?.toLowerCase().includes(searchMateriasPrimas.toLowerCase());
+
+      const matchesTipo = tipoMPFilter === 'all' || movimiento.tipo === tipoMPFilter;
+
+      return matchesSearch && matchesTipo;
+    });
+  }, [materiasPrimasMovimientos, searchMateriasPrimas, tipoMPFilter]);
+
+  const paginatedMateriasPrimas = useMemo(() => {
+    return filteredMateriasPrimas.slice(
+      pageMateriasPrimas * rowsPerPageMateriasPrimas,
+      pageMateriasPrimas * rowsPerPageMateriasPrimas + rowsPerPageMateriasPrimas
+    );
+  }, [filteredMateriasPrimas, pageMateriasPrimas, rowsPerPageMateriasPrimas]);
+
+  const handleChangePageMateriasPrimas = (_event: unknown, newPage: number) => {
+    setPageMateriasPrimas(newPage);
+  };
+
+  const handleChangeRowsPerPageMateriasPrimas = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPageMateriasPrimas(parseInt(event.target.value, 10));
+    setPageMateriasPrimas(0);
+  };
+
   // Calcular métricas
   const totalEquipos = equipos.length;
   const equiposCompletados = equipos.filter(e => e.estado === 'COMPLETADO').length;
@@ -292,8 +419,6 @@ const StockEquiposPage: React.FC = () => {
       </Box>
     );
   }
-
-  const historialMovimientos = generarHistorialMovimientos(equipos);
 
   return (
     <Box p={3}>
@@ -385,25 +510,84 @@ const StockEquiposPage: React.FC = () => {
 
       {/* Tab Panel 0: Inventario de Equipos */}
       <TabPanel value={tabValue} index={0}>
-        <Card>
+        {/* Filters */}
+        <Card sx={{ mb: 3 }}>
           <CardContent>
-            <TableContainer component={Paper}>
-              <Table>
+            <Box display="flex" alignItems="center" gap={1} mb={2}>
+              <Typography variant="h6">Filtros</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+              <TextField
+                fullWidth
+                label="Buscar"
+                variant="outlined"
+                size="small"
+                value={searchEquipos}
+                onChange={(e) => setSearchEquipos(e.target.value)}
+                placeholder="Buscar por número, modelo, cliente..."
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo</InputLabel>
+                <Select
+                  value={tipoEquipoFilter}
+                  label="Tipo"
+                  onChange={(e) => setTipoEquipoFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="HELADERA">Heladera</MenuItem>
+                  <MenuItem value="COOLBOX">Coolbox</MenuItem>
+                  <MenuItem value="EXHIBIDOR">Exhibidor</MenuItem>
+                  <MenuItem value="OTRO">Otro</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={estadoEquipoFilter}
+                  label="Estado"
+                  onChange={(e) => setEstadoEquipoFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
+                  <MenuItem value="COMPLETADO">Completado</MenuItem>
+                  <MenuItem value="CANCELADO">Cancelado</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Asignación</InputLabel>
+                <Select
+                  value={asignadoFilter}
+                  label="Asignación"
+                  onChange={(e) => setAsignadoFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="asignado">Asignados</MenuItem>
+                  <MenuItem value="no-asignado">No Asignados</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Número Heladera</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell>Modelo</TableCell>
-                    <TableCell>Color</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell align="center">Asignado</TableCell>
-                    <TableCell>Cliente</TableCell>
-                    <TableCell>Fecha Creación</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
+                    <TableCell sx={{ minWidth: 140 }}>Número Heladera</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Tipo</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Modelo</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Color</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
+                    <TableCell sx={{ minWidth: 100 }} align="center">Asignado</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Fecha Creación</TableCell>
+                    <TableCell sx={{ minWidth: 100 }} align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {equipos.map((equipo) => (
+                  {paginatedEquipos.map((equipo) => (
                     <TableRow key={equipo.id}>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
@@ -446,37 +630,111 @@ const StockEquiposPage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {filteredEquipos.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} align="center">
+                        <Box textAlign="center" py={4}>
+                          <Typography variant="body1" color="text.secondary">
+                            No se encontraron equipos con los filtros aplicados
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={filteredEquipos.length}
+              page={pageEquipos}
+              onPageChange={handleChangePageEquipos}
+              rowsPerPage={rowsPerPageEquipos}
+              onRowsPerPageChange={handleChangeRowsPerPageEquipos}
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+            />
           </CardContent>
         </Card>
       </TabPanel>
 
       {/* Tab Panel 1: Registro de Movimientos de Equipos */}
       <TabPanel value={tabValue} index={1}>
-        <Card>
+        {/* Filters */}
+        <Card sx={{ mb: 3 }}>
           <CardContent>
+            <Box display="flex" alignItems="center" gap={1} mb={2}>
+              <Typography variant="h6">Filtros</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+              <TextField
+                fullWidth
+                label="Buscar"
+                variant="outlined"
+                size="small"
+                value={searchMovimientos}
+                onChange={(e) => setSearchMovimientos(e.target.value)}
+                placeholder="Buscar por número, modelo, cliente..."
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Acción</InputLabel>
+                <Select
+                  value={accionFilter}
+                  label="Acción"
+                  onChange={(e) => setAccionFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todas</MenuItem>
+                  <MenuItem value="CREADO">Creado</MenuItem>
+                  <MenuItem value="COMPLETADO">Completado</MenuItem>
+                  <MenuItem value="CANCELADO">Cancelado</MenuItem>
+                  <MenuItem value="ASIGNADO">Asignado</MenuItem>
+                  <MenuItem value="DESASIGNADO">Desasignado</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo de Equipo</InputLabel>
+                <Select
+                  value={tipoMovimientoFilter}
+                  label="Tipo de Equipo"
+                  onChange={(e) => setTipoMovimientoFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="HELADERA">Heladera</MenuItem>
+                  <MenuItem value="COOLBOX">Coolbox</MenuItem>
+                  <MenuItem value="EXHIBIDOR">Exhibidor</MenuItem>
+                  <MenuItem value="OTRO">Otro</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
             <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
               <HistoryIcon />
               Historial de Movimientos de Equipos
             </Typography>
-            <TableContainer component={Paper}>
-              <Table>
+            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Nº Heladera</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell>Modelo</TableCell>
-                    <TableCell>Acción</TableCell>
-                    <TableCell>Cliente</TableCell>
-                    <TableCell>Responsable</TableCell>
-                    <TableCell>Observaciones</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Fecha</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Nº Heladera</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Tipo</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Modelo</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Acción</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Responsable</TableCell>
+                    <TableCell sx={{ minWidth: 200 }}>Observaciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {historialMovimientos.map((movimiento) => (
+                  {paginatedMovimientos.map((movimiento) => (
                     <TableRow key={movimiento.id}>
                       <TableCell>
                         <Typography variant="body2">
@@ -515,40 +773,92 @@ const StockEquiposPage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {filteredMovimientos.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center">
+                        <Box textAlign="center" py={4}>
+                          <Typography variant="body1" color="text.secondary">
+                            No se encontraron movimientos con los filtros aplicados
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={filteredMovimientos.length}
+              page={pageMovimientos}
+              onPageChange={handleChangePageMovimientos}
+              rowsPerPage={rowsPerPageMovimientos}
+              onRowsPerPageChange={handleChangeRowsPerPageMovimientos}
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+            />
           </CardContent>
         </Card>
       </TabPanel>
 
       {/* Tab Panel 2: Movimientos de Materias Primas */}
       <TabPanel value={tabValue} index={2}>
-        <Card>
+        {/* Filters */}
+        <Card sx={{ mb: 3 }}>
           <CardContent>
+            <Box display="flex" alignItems="center" gap={1} mb={2}>
+              <Typography variant="h6">Filtros</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+              <TextField
+                fullWidth
+                label="Buscar"
+                variant="outlined"
+                size="small"
+                value={searchMateriasPrimas}
+                onChange={(e) => setSearchMateriasPrimas(e.target.value)}
+                placeholder="Buscar por producto, heladera, concepto..."
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo de Movimiento</InputLabel>
+                <Select
+                  value={tipoMPFilter}
+                  label="Tipo de Movimiento"
+                  onChange={(e) => setTipoMPFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="SALIDA_FABRICACION">Salida Fabricación</MenuItem>
+                  <MenuItem value="REINGRESO_CANCELACION_FABRICACION">Reingreso Cancelación</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
             <Typography variant="h6" gutterBottom>
               Movimientos de Stock de Materias Primas (Fabricación)
             </Typography>
-            <TableContainer component={Paper}>
-              <Table>
+            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Tipo Movimiento</TableCell>
-                    <TableCell>Producto</TableCell>
-                    <TableCell align="center">Cantidad</TableCell>
-                    <TableCell>Nº Heladera</TableCell>
-                    <TableCell>Concepto</TableCell>
-                    <TableCell>Comprobante</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Fecha</TableCell>
+                    <TableCell sx={{ minWidth: 180 }}>Tipo Movimiento</TableCell>
+                    <TableCell sx={{ minWidth: 180 }}>Producto</TableCell>
+                    <TableCell sx={{ minWidth: 100 }} align="center">Cantidad</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Nº Heladera</TableCell>
+                    <TableCell sx={{ minWidth: 200 }}>Concepto</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Comprobante</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {movimientosStock
-                    .filter(m => 
-                      m.tipo === 'SALIDA_FABRICACION' || 
-                      m.tipo === 'REINGRESO_CANCELACION_FABRICACION'
-                    )
-                    .map((movimiento) => (
+                  {paginatedMateriasPrimas.map((movimiento) => (
                       <TableRow key={movimiento.id}>
                         <TableCell>
                           {new Date(movimiento.fecha).toLocaleDateString()}
@@ -579,9 +889,34 @@ const StockEquiposPage: React.FC = () => {
                         <TableCell>{movimiento.numeroComprobante || '-'}</TableCell>
                       </TableRow>
                     ))}
+                  {filteredMateriasPrimas.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        <Box textAlign="center" py={4}>
+                          <Typography variant="body1" color="text.secondary">
+                            No se encontraron movimientos de materias primas con los filtros aplicados
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={filteredMateriasPrimas.length}
+              page={pageMateriasPrimas}
+              onPageChange={handleChangePageMateriasPrimas}
+              rowsPerPage={rowsPerPageMateriasPrimas}
+              onRowsPerPageChange={handleChangeRowsPerPageMateriasPrimas}
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+            />
           </CardContent>
         </Card>
       </TabPanel>

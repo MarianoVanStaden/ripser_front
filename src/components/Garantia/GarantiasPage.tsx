@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell, 
-  TableContainer, TableHead, TableRow, Paper, IconButton, TextField, Stack, 
+  Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, Paper, IconButton, TextField, Stack,
   Chip, Alert, CircularProgress, Grid, InputAdornment, Autocomplete, Dialog,
-  MenuItem, Select, FormControl, InputLabel
+  MenuItem, Select, FormControl, InputLabel, TablePagination
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -32,7 +32,11 @@ const GarantiasPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
   const [equipoFilter, setEquipoFilter] = useState<any>(null);
-  
+
+  // Pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -98,16 +102,35 @@ const GarantiasPage: React.FC = () => {
   };
 
   // Filter garantias
-  const filteredGarantias = garantias.filter(g => {
-    const matchSearch = search === '' ||
-      g.equipoFabricadoModelo.toLowerCase().includes(search.toLowerCase()) ||
-      g.numeroSerie.toLowerCase().includes(search.toLowerCase());
+  const filteredGarantias = useMemo(() => {
+    return garantias.filter(g => {
+      const matchSearch = search === '' ||
+        g.equipoFabricadoModelo.toLowerCase().includes(search.toLowerCase()) ||
+        g.numeroSerie.toLowerCase().includes(search.toLowerCase());
 
-    const matchEstado = estadoFilter === 'TODOS' || g.estado === estadoFilter;
-    const matchEquipo = !equipoFilter || g.equipoFabricadoId === equipoFilter.id;
+      const matchEstado = estadoFilter === 'TODOS' || g.estado === estadoFilter;
+      const matchEquipo = !equipoFilter || g.equipoFabricadoId === equipoFilter.id;
 
-    return matchSearch && matchEstado && matchEquipo;
-  });
+      return matchSearch && matchEstado && matchEquipo;
+    });
+  }, [garantias, search, estadoFilter, equipoFilter]);
+
+  // Paginate filtered garantias
+  const paginatedGarantias = useMemo(() => {
+    return filteredGarantias.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
+  }, [filteredGarantias, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   // Get status color
   const getStatusColor = (estado: string) => {
@@ -334,30 +357,32 @@ const GarantiasPage: React.FC = () => {
       </Card>
 
       {/* Table */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell><strong>N° Serie</strong></TableCell>
-              <TableCell><strong>Modelo de Equipo</strong></TableCell>
-              <TableCell><strong>N° Venta</strong></TableCell>
-              <TableCell align="center"><strong>Fecha Compra</strong></TableCell>
-              <TableCell align="center"><strong>Fecha Vencimiento</strong></TableCell>
-              <TableCell align="center"><strong>Estado</strong></TableCell>
-              <TableCell align="center"><strong>Acciones</strong></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredGarantias.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <Typography variant="body2" color="textSecondary" py={4}>
-                    No se encontraron garantías
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredGarantias.map((garantia) => (
+      <Card>
+        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ minWidth: 120 }}><strong>N° Serie</strong></TableCell>
+                  <TableCell sx={{ minWidth: 150 }}><strong>Modelo de Equipo</strong></TableCell>
+                  <TableCell sx={{ minWidth: 100 }}><strong>N° Venta</strong></TableCell>
+                  <TableCell sx={{ minWidth: 120 }} align="center"><strong>Fecha Compra</strong></TableCell>
+                  <TableCell sx={{ minWidth: 140 }} align="center"><strong>Fecha Vencimiento</strong></TableCell>
+                  <TableCell sx={{ minWidth: 100 }} align="center"><strong>Estado</strong></TableCell>
+                  <TableCell sx={{ minWidth: 120 }} align="center"><strong>Acciones</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredGarantias.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      <Typography variant="body2" color="textSecondary" py={4}>
+                        No se encontraron garantías
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedGarantias.map((garantia) => (
                 <TableRow key={garantia.id} hover>
                   <TableCell>
                     <Typography variant="body2" fontWeight="500">
@@ -421,11 +446,27 @@ const GarantiasPage: React.FC = () => {
                     </Stack>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={filteredGarantias.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
+        </CardContent>
+      </Card>
 
       {/* Dialogs */}
       <GarantiaFormDialog
