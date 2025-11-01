@@ -396,36 +396,20 @@ const NotasPedidoPage: React.FC = () => {
 
     try {
       setError(null);
-      setFormLoading(true);
+      setAsignarEquiposDialogOpen(false);
 
       await documentoApi.convertToFactura({
         notaPedidoId: notaForAsignacion.id,
         equiposAsignaciones: asignaciones,
       });
 
-      // Success - close dialog and refresh
-      setAsignarEquiposDialogOpen(false);
       setNotaForAsignacion(null);
+      // Refresh data after conversion
       fetchData();
     } catch (err: any) {
       console.error("Error converting to factura with equipos:", err);
-
-      // Parse error message to provide better feedback
-      let errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
-
-      // Check if it's a duplicate equipment error
-      if (errorMessage.includes("Duplicate entry") && errorMessage.includes("uk_equipo_unico")) {
-        const match = errorMessage.match(/Duplicate entry '(\d+)'/);
-        const equipoId = match ? match[1] : "desconocido";
-        errorMessage = `El equipo con ID ${equipoId} ya está asignado a otra factura. Por favor, seleccione un equipo diferente o verifique si esta nota de pedido ya fue convertida.`;
-      }
-
+      const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
       setError(errorMessage);
-      // Keep the dialog open so user can fix the selection
-      setAsignarEquiposDialogOpen(false);
-      setNotaForAsignacion(null);
-    } finally {
-      setFormLoading(false);
     }
   }, [notaForAsignacion, fetchData]);
 
@@ -588,19 +572,14 @@ const NotasPedidoPage: React.FC = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Convertir a Factura">
-                        <span>
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleConvertToFactura(nota.id)}
-                            disabled={
-                              formLoading ||
-                              (nota.estado !== EstadoDocumentoEnum.APROBADO && nota.estado !== EstadoDocumentoEnum.PENDIENTE)
-                            }
-                          >
-                            <ReceiptIcon />
-                          </IconButton>
-                        </span>
+                        <IconButton 
+                          size="small" 
+                          color="success"
+                          onClick={() => handleConvertToFactura(nota.id)}
+                          disabled={nota.estado !== EstadoDocumentoEnum.APROBADO && nota.estado !== EstadoDocumentoEnum.PENDIENTE}
+                        >
+                          <ReceiptIcon />
+                        </IconButton>
                       </Tooltip>
                       <Tooltip title="Exportar PDF">
                         <IconButton
