@@ -51,6 +51,8 @@ import {
   AttachMoney as MoneyIcon,
   FilterList as FilterIcon,
   Refresh as RefreshIcon,
+  Print as PrintIcon,
+  GetApp as GetAppIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -64,6 +66,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import type { OrdenCompra, ProductoDTO} from '../../types';
+import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
 dayjs.locale('es');
 class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
   state = { hasError: false };
@@ -592,6 +595,46 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
   setRowsPerPage(parseInt(event.target.value, 10));
   setPage(0);
 };
+
+  // Handler para exportar lista completa de órdenes a PDF
+  const handleExportarListaPDF = async (): Promise<void> => {
+    try {
+      const proveedorNombre = supplierFilter
+        ? proveedores.find(p => p.id.toString() === supplierFilter)?.razonSocial || ''
+        : '';
+
+      await generatePurchaseOrdersListPDF(
+        filteredOrdenes,
+        {
+          searchTerm,
+          estadoFilter,
+          supplierFilter: proveedorNombre,
+          fechaDesde: fechaDesde ? fechaDesde.format('YYYY-MM-DD') : '',
+          fechaHasta: fechaHasta ? fechaHasta.format('YYYY-MM-DD') : '',
+        },
+        {
+          pendientes: getOrderCountByStatus('PENDIENTE'),
+          enTransito: getOrderCountByStatus('EN_TRANSITO'),
+          recibidas: getOrderCountByStatus('RECIBIDA'),
+          totalAmount: getTotalAmount(),
+        }
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de lista de órdenes:', error);
+      setError('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
+  // Handler para exportar detalle de orden a PDF
+  const handleExportarOrdenPDF = async (orden: OrdenCompra): Promise<void> => {
+    try {
+      await generatePurchaseOrderDetailPDF(orden);
+    } catch (error) {
+      console.error('Error al generar PDF de orden:', error);
+      setError('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
   const getTotalAmount = () => {
     return filteredOrdenes.reduce((sum, orden) => sum + orden.total, 0);
   };
@@ -652,17 +695,26 @@ const handleDeleteCompra = async (id: number) => {
             <ShoppingCartIcon sx={{ mr: 2 }} />
             Compras y Pedidos
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setIsEditMode(false);
-              setSelectedOrden(null);
-              setOpenOrdenDialog(true);
-            }}
-          >
-            Nueva Orden de Compra
-          </Button>
+          <Box display="flex" gap={1}>
+            <Button
+              variant="outlined"
+              startIcon={<GetAppIcon />}
+              onClick={handleExportarListaPDF}
+            >
+              Exportar PDF
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setIsEditMode(false);
+                setSelectedOrden(null);
+                setOpenOrdenDialog(true);
+              }}
+            >
+              Nueva Orden de Compra
+            </Button>
+          </Box>
         </Box>
 
         {error && (
@@ -858,6 +910,7 @@ const handleDeleteCompra = async (id: number) => {
                       size="small"
                       onClick={() => handleViewOrden(orden)}
                       color="primary"
+                      title="Ver detalles"
                     >
                       <ViewIcon />
                     </IconButton>
@@ -865,8 +918,17 @@ const handleDeleteCompra = async (id: number) => {
                       size="small"
                       onClick={() => handleEditOrden(orden)}
                       color="default"
+                      title="Editar"
                     >
                       <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleExportarOrdenPDF(orden)}
+                      color="info"
+                      title="Exportar PDF"
+                    >
+                      <PrintIcon />
                     </IconButton>
                   </TableCell>
                 </TableRow>
@@ -1234,6 +1296,13 @@ const handleDeleteCompra = async (id: number) => {
           <DialogActions>
             <Button onClick={() => setOpenViewDialog(false)}>
               Cerrar
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<PrintIcon />}
+              onClick={() => selectedOrden && handleExportarOrdenPDF(selectedOrden)}
+            >
+              Imprimir PDF
             </Button>
           </DialogActions>       
         </Dialog>

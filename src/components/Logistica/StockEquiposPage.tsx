@@ -41,15 +41,17 @@ import {
   History as HistoryIcon,
   Assignment as AssignmentIcon,
   Edit as EditIcon,
+  GetApp as GetAppIcon,
 } from '@mui/icons-material';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import { movimientoStockFabricacionApi } from '../../api/services/movimientoStockFabricacionApi';
-import type { 
+import type {
   EquipoFabricadoDTO,
-  TipoEquipo, 
+  TipoEquipo,
   EstadoFabricacion,
   MovimientoStock,
 } from '../../types';
+import { generateEquiposInventoryPDF } from '../../utils/pdfExportUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -216,6 +218,34 @@ const StockEquiposPage: React.FC = () => {
   const handleChangeRowsPerPageEquipos = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPageEquipos(parseInt(event.target.value, 10));
     setPageEquipos(0);
+  };
+
+  // Handler para exportar inventario de equipos a PDF
+  const handleExportEquiposPDF = async (): Promise<void> => {
+    try {
+      const disponibles = equipos.filter(e => !e.asignado && e.estadoFabricacion === 'COMPLETADO').length;
+      const asignados = equipos.filter(e => e.asignado).length;
+      const enProceso = equipos.filter(e => e.estadoFabricacion === 'EN_PROCESO').length;
+
+      await generateEquiposInventoryPDF(
+        filteredEquipos,
+        {
+          searchTerm: searchEquipos,
+          tipoFilter: tipoEquipoFilter,
+          estadoFilter: estadoEquipoFilter,
+          asignadoFilter,
+        },
+        {
+          totalEquipos: equipos.length,
+          disponibles,
+          asignados,
+          enProceso,
+        }
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de inventario de equipos:', error);
+      setError('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
   };
 
   // Generar historial de movimientos de equipos
@@ -427,6 +457,13 @@ const StockEquiposPage: React.FC = () => {
           <Inventory2Icon />
           Gestión de Stock de Equipos
         </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<GetAppIcon />}
+          onClick={handleExportEquiposPDF}
+        >
+          Exportar PDF
+        </Button>
       </Box>
 
       {error && (

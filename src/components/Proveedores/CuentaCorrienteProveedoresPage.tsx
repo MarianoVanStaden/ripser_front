@@ -41,6 +41,7 @@ import 'dayjs/locale/es';
 import { proveedorApi } from '../../api/services/proveedorApi';
 import { cuentaCorrienteProveedorApi } from '../../api/services/cuentaCorrienteProveedorApi';
 import type { CuentaCorrienteProveedor, TipoMovimiento } from '../../types';
+import { generateCuentaCorrienteProveedorPDF } from '../../utils/pdfExportUtils';
 
 dayjs.locale('es');
 
@@ -219,6 +220,31 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
       .reduce((sum, m) => sum + (m.importe ?? 0), 0);
   };
 
+  const handleExportarPDF = async (): Promise<void> => {
+    if (!selectedProveedor) {
+      setError('Debe seleccionar un proveedor para exportar el PDF.');
+      return;
+    }
+
+    try {
+      const saldoTotal = getSaldoTotal();
+      await generateCuentaCorrienteProveedorPDF(
+        selectedProveedor,
+        filteredMovimientos,
+        {
+          searchTerm,
+          tipoFilter: tipoFilter || '',
+          fechaDesde: fechaDesde ? fechaDesde.format('YYYY-MM-DD') : '',
+          fechaHasta: fechaHasta ? fechaHasta.format('YYYY-MM-DD') : '',
+        },
+        saldoTotal
+      );
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+      setError('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
   if (loading && !selectedProveedor) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -240,8 +266,10 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
+              onClick={handleExportarPDF}
+              disabled={!selectedProveedor}
             >
-              Exportar
+              Exportar PDF
             </Button>
             <Button
               variant="contained"

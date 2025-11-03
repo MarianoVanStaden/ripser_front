@@ -37,11 +37,13 @@ import {
   Warning as WarningIcon,
   TrendingDown as TrendingDownIcon,
   Edit as EditIcon,
+  GetApp as GetAppIcon,
 } from '@mui/icons-material';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
 import type { Producto, MovimientoStock, CategoriaProducto } from '../../types';
+import { generateStockInventoryPDF } from '../../utils/pdfExportUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -247,6 +249,33 @@ const StockPage: React.FC = () => {
     setPageMovements(0);
   };
 
+  // Handler para exportar inventario a PDF
+  const handleExportInventoryPDF = async (): Promise<void> => {
+    try {
+      const categoriaNombre = categoriaFilter !== 'all'
+        ? categorias.find(c => c.id.toString() === categoriaFilter)?.nombre || ''
+        : '';
+
+      await generateStockInventoryPDF(
+        filteredProducts,
+        {
+          searchTerm,
+          categoriaFilter: categoriaNombre,
+          estadoFilter,
+        },
+        {
+          totalProducts: products.length,
+          lowStock: lowStockCount,
+          outOfStock: outOfStockCount,
+          totalValue: products.reduce((sum, p) => sum + (p.precio * p.stockActual), 0),
+        }
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de inventario:', error);
+      setError('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
   const getStockChip = (stock: number, stockMinimo: number, activo: boolean) => {
     if (!activo) {
       return <Chip label="Inactivo" color="default" size="small" />;
@@ -274,6 +303,13 @@ const StockPage: React.FC = () => {
           <InventoryIcon />
           Gestión de Stock
         </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<GetAppIcon />}
+          onClick={handleExportInventoryPDF}
+        >
+          Exportar PDF
+        </Button>
       </Box>
 
       {error && (

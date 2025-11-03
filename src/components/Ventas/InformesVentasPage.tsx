@@ -50,6 +50,7 @@ import {
 // Ensure we import named APIs from the barrel; there is no default export for clienteApi
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
 import { Bar, Pie, Line } from 'react-chartjs-2';
+import { generateSalesReportPDF, generateSaleDetailPDF } from '../../utils/pdfExportUtils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -641,6 +642,50 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
 
   const salesReport = generateSalesReport();
 
+  const handleExportPDF = async () => {
+    try {
+      await generateSalesReportPDF(
+        salesReport,
+        {
+          searchTerm,
+          statusFilter,
+          paymentMethodFilter,
+          clientFilter,
+          vendedorFilter,
+          dateFromFilter,
+          dateToFilter,
+        },
+        {
+          totalRevenue,
+          totalTransactions,
+          averageOrderValue,
+        },
+        groupBy
+      );
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      alert('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
+  const handlePrintSaleDetail = async () => {
+    if (!viewingSale) return;
+
+    try {
+      await generateSaleDetailPDF(
+        viewingSale,
+        opcionesFinanciamiento[viewingSale.id],
+        getClientFullName,
+        getUsuarioFullName,
+        getStatusLabel,
+        getPaymentMethodLabel
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de detalle:', error);
+      alert('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
   // Prepare chart data
   const chartColors = [
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
@@ -753,14 +798,14 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
           <Button
             variant="outlined"
             startIcon={<GetAppIcon />}
-            onClick={() => alert('Función de exportación en desarrollo')}
+            onClick={handleExportPDF}
           >
-            Exportar
+            Exportar PDF
           </Button>
           <Button
             variant="contained"
             startIcon={<PrintIcon />}
-            onClick={() => window.print()}
+            onClick={handleExportPDF}
           >
             Imprimir
           </Button>
@@ -1318,9 +1363,9 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
           <Button
             variant="outlined"
             startIcon={<PrintIcon />}
-            onClick={() => alert('Función de impresión en desarrollo')}
+            onClick={handlePrintSaleDetail}
           >
-            Imprimir
+            Imprimir PDF
           </Button>
         </DialogActions>
       </Dialog>

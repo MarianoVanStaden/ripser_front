@@ -46,6 +46,7 @@ import {
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
 import { generarVentaPDF } from '../../services/pdfService';
+import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 
 const RegistroVentasPage: React.FC = () => {
   const [sales, setSales] = useState<Venta[]>([]);
@@ -405,6 +406,35 @@ const RegistroVentasPage: React.FC = () => {
     setPage(0); // Reset to first page when changing rows per page
   };
 
+  // Handler para exportar lista completa de ventas a PDF
+  const handleExportarListaPDF = async (): Promise<void> => {
+    try {
+      await generateSalesListPDF(
+        filteredSales,
+        {
+          searchTerm,
+          statusFilter,
+          paymentMethodFilter,
+          clientFilter,
+          dateFromFilter,
+          dateToFilter,
+        },
+        {
+          totalRevenue,
+          totalTransactions,
+          averageOrderValue,
+        },
+        getClientFullName,
+        getUsuarioFullName,
+        getStatusLabel,
+        getPaymentMethodLabel
+      );
+    } catch (error) {
+      console.error('Error al generar PDF de lista de ventas:', error);
+      setError('Error al generar el PDF. Por favor, intente nuevamente.');
+    }
+  };
+
   // Handler para exportar venta a PDF
   const handleExportarPDF = async (venta: Venta): Promise<void> => {
     try {
@@ -505,9 +535,9 @@ const RegistroVentasPage: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<GetAppIcon />}
-            onClick={() => alert('Función de exportación en desarrollo')}
+            onClick={handleExportarListaPDF}
           >
-            Exportar
+            Exportar PDF
           </Button>
           <Button
             variant="contained"
@@ -960,9 +990,9 @@ const RegistroVentasPage: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<PrintIcon />}
-            onClick={() => alert('Función de impresión en desarrollo')}
+            onClick={() => viewingSale && handleExportarPDF(viewingSale)}
           >
-            Imprimir
+            Imprimir PDF
           </Button>
         </DialogActions>
       </Dialog>
