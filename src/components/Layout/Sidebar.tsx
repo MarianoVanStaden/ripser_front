@@ -127,6 +127,16 @@ const navigation: NavigationSection[] = [
       { text: 'Licencias', icon: <AssignmentIcon />, path: '/rrhh/licencias' },
     ],
   },
+  {
+    title: 'ADMINISTRACIÓN',
+    modulo: 'ADMIN',
+    items: [
+      { text: 'Flujo de Caja', icon: <BarChartIcon />, path: '/admin/flujo-caja' },
+      { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
+      { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
+      { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
+    ],
+  },
 ];
 
 const Sidebar: React.FC = () => {

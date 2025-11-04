@@ -3,6 +3,14 @@ import type { CuentaCorriente, CreateMovimientoPayload } from '../../types';
 
 export const cuentaCorrienteApi = {
   /**
+   * Fetches all account movements from all clients.
+   */
+  getAll: async (): Promise<CuentaCorriente[]> => {
+    const res = await api.get('/api/cuentas-corriente');
+    return res.data;
+  },
+
+  /**
    * Fetches all account movements for a specific client.
    */
   getByClienteId: async (clienteId: number): Promise<CuentaCorriente[]> => {

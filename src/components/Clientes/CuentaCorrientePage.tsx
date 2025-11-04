@@ -23,6 +23,7 @@ import {
   TableHead,
   TableRow,
   InputAdornment,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -64,6 +65,10 @@ const CuentaCorrientePage: React.FC = () => {
     concepto: '',
     numeroComprobante: ''
   });
+
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -254,6 +259,21 @@ const CuentaCorrientePage: React.FC = () => {
     }
   };
 
+  // Paginate filtered movimientos
+  const paginatedMovimientos = filteredMovimientos.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // Reset to first page when changing rows per page
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -420,7 +440,7 @@ const CuentaCorrientePage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredMovimientos.map((movimiento) => (
+              {paginatedMovimientos.map((movimiento) => (
                 <TableRow key={movimiento.id}>
                   <TableCell>
                     {dayjs(movimiento.fecha).format('DD/MM/YYYY HH:mm')}
@@ -444,17 +464,31 @@ const CuentaCorrientePage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {paginatedMovimientos.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Typography color="text.secondary" py={4}>
+                      No se encontraron movimientos
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={filteredMovimientos.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </TableContainer>
-
-        {filteredMovimientos.length === 0 && (
-          <Box textAlign="center" py={4}>
-            <Typography variant="body1" color="text.secondary">
-              No se encontraron movimientos
-            </Typography>
-          </Box>
-        )}
 
         {/* New Movement Dialog */}
         <Dialog open={openMovimientoDialog} onClose={() => setOpenMovimientoDialog(false)} maxWidth="sm" fullWidth>

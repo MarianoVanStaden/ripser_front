@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { List, ListItem, ListItemText, Avatar, Typography, CircularProgress, Tooltip, Box } from '@mui/material';
+import { List, ListItem, ListItemText, Avatar, Typography, CircularProgress, Tooltip, Box, Chip } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import BuildIcon from '@mui/icons-material/Build';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import WarningIcon from '@mui/icons-material/Warning';
 import { clientApi, productApi, saleApi } from '../../api/services';
 
-
-// Removed unused icons
-
 import dayjs from 'dayjs';
+import 'dayjs/locale/es';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import type { Cliente, Product, Sale } from '../../types';
 
-type ActivityType = 'client' | 'product' | 'sale';
+dayjs.extend(relativeTime);
+dayjs.locale('es');
+
+type ActivityType = 'client' | 'product' | 'sale' | 'purchase' | 'equipment' | 'payment' | 'alert';
 
 interface ActivityItem {
   id: number;
@@ -24,16 +30,30 @@ interface ActivityItem {
   avatarColor?: string;
   link?: string;
   icon?: React.ReactElement;
+  priority?: 'low' | 'medium' | 'high';
 }
-
-
-
-// iconMap is not used anymore
 
 const avatarColors = {
   client: '#1976d2',
   product: '#388e3c',
   sale: '#7b1fa2',
+  purchase: '#f57c00',
+  equipment: '#0288d1',
+  payment: '#388e3c',
+  alert: '#d32f2f',
+};
+
+const getTypeLabel = (type: ActivityType): string => {
+  const labels: Record<ActivityType, string> = {
+    client: 'Cliente',
+    product: 'Producto',
+    sale: 'Venta',
+    purchase: 'Compra',
+    equipment: 'Equipo',
+    payment: 'Pago',
+    alert: 'Alerta',
+  };
+  return labels[type] || type;
 };
 
 export const RecentActivity: React.FC = () => {
@@ -44,49 +64,91 @@ export const RecentActivity: React.FC = () => {
     const fetchRecent = async () => {
       setLoading(true);
       try {
-        // Fetch latest 3 clients, products, and sales
+        // Fetch latest clients, products, and sales
         const [clients, products, sales] = await Promise.all([
           clientApi.getAll(),
           productApi.getAll(),
           saleApi.getAll(),
         ]);
-        const recentClients = clients.slice(-3).map((c: any) => ({
-          id: c.id,
-          type: 'client' as ActivityType,
-          title: c.nombre || c.name || '',
-          subtitle: 'Nuevo cliente',
-          date: c.fechaAlta || c.createdAt || '',
-          details: c.email ? `Email: ${c.email}` : c.phone ? `Tel: ${c.phone}` : c.telefono ? `Tel: ${c.telefono}` : '',
-          avatarText: (c.nombre?.[0] || c.name?.[0] || 'C').toUpperCase(),
-          avatarColor: avatarColors.client,
-          icon: <PeopleIcon />,
-        }));
-        const recentProducts = products.slice(-3).map((p: any) => ({
-          id: p.id,
-          type: 'product' as ActivityType,
-          title: p.nombre || p.name || '',
-          subtitle: 'Nuevo producto',
-          date: p.fechaAlta || p.createdAt || '',
-          details: p.categoria?.nombre ? `Categoría: ${p.categoria.nombre}` : p.category?.name ? `Categoría: ${p.category.name}` : `Stock: ${p.stock}`,
-          avatarText: (p.nombre?.[0] || p.name?.[0] || 'P').toUpperCase(),
-          avatarColor: avatarColors.product,
-          icon: <InventoryIcon />,
-        }));
-        const recentSales = sales.slice(-3).map((s: Sale) => ({
-          id: s.id,
-          type: 'sale' as ActivityType,
-          title: s.saleNumber || 'Venta',
-          subtitle: 'Nueva venta',
-          date: s.saleDate,
-          details: s.totalAmount ? `Total: $${s.totalAmount}` : s.total ? `Total: $${s.total}` : '',
-          avatarText: '#',
-          avatarColor: avatarColors.sale,
-          icon: <TrendingUpIcon />,
-        }));
-        // Combine and sort by date desc
-        const all = [...recentClients, ...recentProducts, ...recentSales].filter(a => a.date).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setActivities(all.slice(0, 7));
+
+        // Recent clients (last 3)
+        const recentClients = clients
+          .slice(-3)
+          .reverse()
+          .map((c: any) => ({
+            id: c.id,
+            type: 'client' as ActivityType,
+            title: `${c.nombre || ''} ${c.apellido || ''}`.trim() || 'Cliente',
+            subtitle: 'Cliente registrado',
+            date: c.fechaAlta || c.createdAt || new Date().toISOString(),
+            details: c.email || c.telefono ? `${c.email || ''} ${c.telefono || ''}`.trim() : undefined,
+            avatarText: (c.nombre?.[0] || 'C').toUpperCase(),
+            avatarColor: avatarColors.client,
+            icon: <PeopleIcon fontSize="small" />,
+          }));
+
+        // Recent products (last 3)
+        const recentProducts = products
+          .slice(-3)
+          .reverse()
+          .map((p: any) => ({
+            id: p.id,
+            type: 'product' as ActivityType,
+            title: p.nombre || 'Producto',
+            subtitle: 'Producto agregado',
+            date: p.fechaAlta || p.createdAt || new Date().toISOString(),
+            details: `Stock: ${p.stockActual || 0} | $${(p.precio || 0).toLocaleString()}`,
+            avatarText: (p.nombre?.[0] || 'P').toUpperCase(),
+            avatarColor: avatarColors.product,
+            icon: <InventoryIcon fontSize="small" />,
+          }));
+
+        // Recent sales (last 5)
+        const recentSales = sales
+          .slice(-5)
+          .reverse()
+          .map((s: any) => ({
+            id: s.id,
+            type: 'sale' as ActivityType,
+            title: `Venta ${s.numeroDocumento || s.id}`,
+            subtitle: `Cliente: ${s.clienteNombre || 'N/A'}`,
+            date: s.fechaEmision || s.fechaVenta || new Date().toISOString(),
+            details: `Total: $${(s.total || 0).toLocaleString()} | ${s.estado || 'Completado'}`,
+            avatarText: '$',
+            avatarColor: avatarColors.sale,
+            icon: <TrendingUpIcon fontSize="small" />,
+          }));
+
+        // Low stock alerts
+        const lowStockAlerts = products
+          .filter((p: any) => p.stockActual <= (p.stockMinimo || 5) && p.stockActual > 0)
+          .slice(0, 3)
+          .map((p: any) => ({
+            id: p.id,
+            type: 'alert' as ActivityType,
+            title: `Stock bajo: ${p.nombre}`,
+            subtitle: 'Alerta de inventario',
+            date: new Date().toISOString(),
+            details: `Stock actual: ${p.stockActual} | Mínimo: ${p.stockMinimo || 5}`,
+            avatarText: '!',
+            avatarColor: avatarColors.alert,
+            icon: <WarningIcon fontSize="small" />,
+            priority: 'high' as const,
+          }));
+
+        // Combine and sort by date desc, prioritizing alerts
+        const all = [...lowStockAlerts, ...recentSales, ...recentClients, ...recentProducts]
+          .filter(a => a.date)
+          .sort((a, b) => {
+            // Alerts always first
+            if (a.priority === 'high' && b.priority !== 'high') return -1;
+            if (a.priority !== 'high' && b.priority === 'high') return 1;
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          });
+
+        setActivities(all.slice(0, 10));
       } catch (err) {
+        console.error('Error fetching activities:', err);
         setActivities([]);
       } finally {
         setLoading(false);
@@ -100,29 +162,63 @@ export const RecentActivity: React.FC = () => {
 
   return (
     <List dense>
-      {activities.map((a) => (
-        <ListItem key={a.type + a.id} alignItems="flex-start" sx={{ gap: 1 }}>
-          <Avatar sx={{ bgcolor: a.avatarColor, mr: 2, width: 40, height: 40, fontWeight: 'bold' }}>
+      {activities.map((a, index) => (
+        <ListItem
+          key={`${a.type}-${a.id}-${index}`}
+          alignItems="flex-start"
+          sx={{
+            gap: 1.5,
+            py: 1.5,
+            px: 2,
+            borderRadius: 1,
+            mb: 0.5,
+            '&:hover': {
+              bgcolor: 'action.hover',
+            },
+            bgcolor: a.priority === 'high' ? 'error.lighter' : 'transparent',
+          }}
+        >
+          <Avatar
+            sx={{
+              bgcolor: a.avatarColor,
+              width: 36,
+              height: 36,
+              fontWeight: 'bold',
+              fontSize: '1rem',
+            }}
+          >
             {a.avatarText}
           </Avatar>
           <ListItemText
             primary={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Tooltip title={a.subtitle} arrow>
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    {a.title}
-                  </Typography>
-                </Tooltip>
-                {a.icon}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="body2" fontWeight="600" sx={{ flex: 1 }}>
+                  {a.title}
+                </Typography>
+                <Chip
+                  label={getTypeLabel(a.type)}
+                  size="small"
+                  sx={{
+                    height: 20,
+                    fontSize: '0.7rem',
+                    bgcolor: a.avatarColor,
+                    color: 'white',
+                    fontWeight: 500,
+                  }}
+                />
               </Box>
             }
             secondary={
               <>
-                <Typography variant="caption" color="text.secondary">
-                  {a.subtitle} &mdash; {dayjs(a.date).format('DD/MM/YYYY HH:mm')}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  {a.subtitle}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+                  {a.icon}
+                  {dayjs(a.date).fromNow()}
                 </Typography>
                 {a.details && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontWeight: 500 }}>
                     {a.details}
                   </Typography>
                 )}

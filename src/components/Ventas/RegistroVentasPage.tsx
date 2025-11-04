@@ -43,12 +43,14 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 
 const RegistroVentasPage: React.FC = () => {
+  const navigate = useNavigate();
   const [sales, setSales] = useState<Venta[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -57,6 +59,7 @@ const RegistroVentasPage: React.FC = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [confirmStateChangeDialogOpen, setConfirmStateChangeDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Venta | null>(null);
   const [ventaToDelete, setVentaToDelete] = useState<Venta | null>(null);
   const [editingSale, setEditingSale] = useState<Venta | null>(null);
@@ -242,6 +245,10 @@ const RegistroVentasPage: React.FC = () => {
     setEditDialogOpen(true);
   };
 
+  const handleOpenConfirmStateChange = (): void => {
+    setConfirmStateChangeDialogOpen(true);
+  };
+
   const handleUpdateSale = async (): Promise<void> => {
     if (!editingSale) return;
 
@@ -254,23 +261,24 @@ const RegistroVentasPage: React.FC = () => {
         editingSale.id,
         editForm.estado as any
       );
-      
+
       // Update the local state with enriched data
       const clientsMap = new Map(clients.map((client: Cliente) => [client.id, client]));
       const usuariosMap = new Map(usuarios.map((usuario: Usuario) => [usuario.id, usuario]));
-      
+
       const enrichedUpdatedSale = {
         ...updatedSale,
         cliente: clientsMap.get(parseInt(editForm.clienteId)) || null,
         usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || null,
       } as unknown as Venta;
 
-      setSales(prevSales => 
-        prevSales.map(sale => 
+      setSales(prevSales =>
+        prevSales.map(sale =>
           sale.id === editingSale.id ? enrichedUpdatedSale : sale
         )
       );
 
+      setConfirmStateChangeDialogOpen(false);
       setEditDialogOpen(false);
       setEditingSale(null);
     } catch (err) {
@@ -542,7 +550,7 @@ const RegistroVentasPage: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => alert('Ir a Facturación para crear nueva venta')}
+            onClick={() => navigate('/ventas/facturacion')}
           >
             Nueva Venta
           </Button>
@@ -1065,12 +1073,84 @@ const RegistroVentasPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
           <Button
+            onClick={handleOpenConfirmStateChange}
+            color="primary"
+            variant="contained"
+            disabled={editLoading}
+          >
+            Guardar Cambios
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm State Change Dialog */}
+      <Dialog
+        open={confirmStateChangeDialogOpen}
+        onClose={() => setConfirmStateChangeDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Confirmar Cambio de Estado</DialogTitle>
+        <DialogContent>
+          {editingSale && (
+            <Box sx={{ mt: 1 }}>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Está por cambiar el estado de la factura. Por favor, confirme los detalles antes de continuar.
+              </Alert>
+
+              <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Factura:</strong> {(editingSale as any)?.numeroDocumento || editingSale?.ventaNumero || `#${editingSale.id}`}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Cliente:</strong> {getClientFullName(editingSale.cliente || null)}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <strong>Total:</strong> ${(editingSale.total || 0).toLocaleString()}
+                </Typography>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="body2" gutterBottom>
+                  <strong>Estado Actual:</strong>{' '}
+                  <Chip
+                    label={getStatusLabel(editingSale.estado)}
+                    color={getStatusColor(editingSale.estado)}
+                    size="small"
+                  />
+                </Typography>
+                <Typography variant="body2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <strong>Nuevo Estado:</strong>{' '}
+                  <Chip
+                    label={getStatusLabel(editForm.estado)}
+                    color={getStatusColor(editForm.estado)}
+                    size="small"
+                  />
+                </Typography>
+              </Box>
+
+              {editForm.estado === 'CONFIRMADA' && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    <strong>Nota:</strong> Al confirmar esta venta, se reducirá el stock de los productos asociados.
+                  </Typography>
+                </Alert>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setConfirmStateChangeDialogOpen(false)}
+            disabled={editLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
             onClick={handleUpdateSale}
             color="primary"
             variant="contained"
             disabled={editLoading}
           >
-            {editLoading ? <CircularProgress size={24} /> : 'Guardar Cambios'}
+            {editLoading ? <CircularProgress size={24} /> : 'Confirmar Cambio'}
           </Button>
         </DialogActions>
       </Dialog>

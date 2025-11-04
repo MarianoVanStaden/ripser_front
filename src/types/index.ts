@@ -2133,4 +2133,5 @@ export type Modulo =
   | 'TALLER'
   | 'PRODUCCION'
   | 'GARANTIAS'
-  | 'RRHH';
+  | 'RRHH'
+  | 'ADMIN';

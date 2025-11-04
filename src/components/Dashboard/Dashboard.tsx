@@ -63,6 +63,9 @@ interface DashboardStats {
   productsOutOfStock: number;
   pendingOrders: number;
   completedOrdersToday: number;
+  todayTrend: number;
+  weekTrend: number;
+  monthTrend: number;
 }
 
 interface TopProduct {
@@ -103,6 +106,7 @@ interface StatCardProps {
   trend?: {
     value: number;
     isPositive: boolean;
+    label?: string;
   };
 }
 
@@ -159,11 +163,13 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
                   fontWeight: 600
                 }}
               >
-                {trend.isPositive ? '+' : ''}{trend.value}%
+                {trend.isPositive ? '+' : ''}{trend.value.toFixed(1)}%
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                vs mes anterior
-              </Typography>
+              {trend.label && (
+                <Typography variant="caption" color="text.secondary">
+                  {trend.label}
+                </Typography>
+              )}
             </Box>
           )}
         </Box>
@@ -262,6 +268,47 @@ const Dashboard: React.FC = () => {
       const weekSalesAmount = weekSales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
       const averageOrderValue = sales.length > 0 ? sales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0) / sales.length : 0;
 
+      // Calculate previous period sales for trends
+      const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+      const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+      const lastMonthStart = new Date(currentYear, currentMonth - 1, 1);
+      const lastMonthEnd = new Date(currentYear, currentMonth, 0);
+
+      const yesterdaySales = sales.filter((sale: any) => {
+        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
+        if (!fechaVenta) return false;
+        const saleDate = new Date(fechaVenta);
+        return saleDate >= yesterday && saleDate < today;
+      });
+
+      const previousWeekSales = sales.filter((sale: any) => {
+        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
+        if (!fechaVenta) return false;
+        const saleDate = new Date(fechaVenta);
+        return saleDate >= twoWeeksAgo && saleDate < weekAgo;
+      });
+
+      const lastMonthSales = sales.filter((sale: any) => {
+        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
+        if (!fechaVenta) return false;
+        const saleDate = new Date(fechaVenta);
+        return saleDate >= lastMonthStart && saleDate <= lastMonthEnd;
+      });
+
+      const yesterdaySalesAmount = yesterdaySales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
+      const previousWeekSalesAmount = previousWeekSales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
+      const lastMonthSalesAmount = lastMonthSales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
+
+      // Calculate trend percentages
+      const calculateTrend = (current: number, previous: number): number => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+      };
+
+      const todayTrend = calculateTrend(todaySalesAmount, yesterdaySalesAmount);
+      const weekTrend = calculateTrend(weekSalesAmount, previousWeekSalesAmount);
+      const monthTrend = calculateTrend(monthlySalesAmount, lastMonthSalesAmount);
+
       // Clients this month
       const monthlyClients = clients.filter((client: any) => {
         const fechaAlta = client.fechaAlta;
@@ -322,6 +369,9 @@ const Dashboard: React.FC = () => {
         productsOutOfStock: outOfStock.length,
         pendingOrders: 0, // TODO: implement pending orders
         completedOrdersToday: todaySales.length,
+        todayTrend,
+        weekTrend,
+        monthTrend,
       });
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err.message);
@@ -509,7 +559,7 @@ const Dashboard: React.FC = () => {
               icon={<MoneyIcon />}
               color="#2e7d32"
               subtitle={`${stats.completedOrdersToday} órdenes`}
-              trend={{ value: 12.5, isPositive: true }}
+              trend={{ value: Math.abs(stats.todayTrend), isPositive: stats.todayTrend >= 0, label: 'vs ayer' }}
             />
             <StatCard
               title="Ventas Semanales"
@@ -517,7 +567,7 @@ const Dashboard: React.FC = () => {
               icon={<TrendingUpIcon />}
               color="#1976d2"
               subtitle="Últimos 7 días"
-              trend={{ value: 8.3, isPositive: true }}
+              trend={{ value: Math.abs(stats.weekTrend), isPositive: stats.weekTrend >= 0, label: 'vs semana anterior' }}
             />
             <StatCard
               title="Ventas Mensuales"
@@ -525,7 +575,7 @@ const Dashboard: React.FC = () => {
               icon={<AssessmentIcon />}
               color="#7b1fa2"
               subtitle={`${stats.monthlySalesCount} ventas`}
-              trend={{ value: 15.2, isPositive: true }}
+              trend={{ value: Math.abs(stats.monthTrend), isPositive: stats.monthTrend >= 0, label: 'vs mes anterior' }}
             />
             <StatCard
               title="Ticket Promedio"

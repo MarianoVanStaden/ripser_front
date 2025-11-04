@@ -28,6 +28,7 @@ import InformesVentasPage from './components/Ventas/InformesVentasPage';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
+import FlujoCajaPage from './components/Admin/FlujoCajaPage';
 import {
   SuppliersPage,
   ComprasPedidosPage,
@@ -102,6 +103,7 @@ function App() {
               <Route path="admin/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
               <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
               <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+              <Route path="admin/flujo-caja" element={<PrivateRoute><FlujoCajaPage /></PrivateRoute>} />
               {/* VENTAS Module */}
               <Route path="ventas/notasPedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
               <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
