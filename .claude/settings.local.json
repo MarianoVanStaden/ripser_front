@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(mvn clean compile:*)"
     ],
     "deny": [],
     "ask": []

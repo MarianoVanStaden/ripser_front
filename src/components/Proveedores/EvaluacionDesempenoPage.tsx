@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -37,9 +37,9 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   StarRate as StarRateIcon,
-  
   TrendingUp,
   TrendingDown,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 import { supplierApiWithFallback } from '../../api/services/apiWithFallback';
 import evaluacionProveedorApi, { CriterioEvaluacion } from '../../api/services/evaluacionProveedorApi';
@@ -333,11 +333,53 @@ const EvaluacionDesempenoPage = () => {
     );
   };
 
+  const handleExportPDF = useCallback(async () => {
+    if (!selectedSupplier) {
+      setSnackbar({
+        open: true,
+        message: 'Por favor seleccione un proveedor',
+        severity: 'warning'
+      });
+      return;
+    }
+
+    try {
+      const supplier = suppliers.find(s => s.id === selectedSupplier);
+      if (!supplier) return;
+
+      // TODO: Implement PDF export for supplier evaluations
+      // Similar to other PDF export functions in pdfExportUtils.ts
+      
+      setSnackbar({
+        open: true,
+        message: 'Exportación PDF en desarrollo',
+        severity: 'info'
+      });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al exportar PDF',
+        severity: 'error'
+      });
+    }
+  }, [selectedSupplier, suppliers]);
+
   return (
     <Box p={3}>
-      <Typography variant="h4" gutterBottom>
-        Evaluación de Desempeño Proveedor
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4">
+          Evaluación de Desempeño Proveedor
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<PdfIcon />}
+          onClick={handleExportPDF}
+          disabled={!selectedSupplier}
+        >
+          Exportar PDF
+        </Button>
+      </Box>
 
       <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel id="supplier-select-label">Seleccionar Proveedor</InputLabel>
@@ -501,3 +543,10 @@ const EvaluacionDesempenoPage = () => {
 };
 
 export default EvaluacionDesempenoPage;
+
+/*
+Nota: El backend está generando un error al comparar fechas. Asegúrate de que los tipos de datos coincidan entre el frontend y el backend.
+
+El error es el siguiente:
+java.lang.ClassCastException: Cannot cast java.time.LocalDate to java.time.LocalDateTime
+*/

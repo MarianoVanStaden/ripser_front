@@ -32,9 +32,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
-import { cuentaCorrienteProveedorApi } from '../../api/services/cuentaCorrienteProveedorApi';
-import type { CuentaCorriente, CuentaCorrienteProveedor } from '../../types';
+import { adminFlujoCajaApi } from '../../api/services/adminFlujoCajaApi';
+import { generateFlujoCajaPDF } from '../../utils/pdfExportUtils';
 
 dayjs.locale('es');
 
@@ -62,6 +61,7 @@ const FlujoCajaPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -69,45 +69,13 @@ const FlujoCajaPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch movimientos from both clientes and proveedores
-      const [movimientosClientes, movimientosProveedores] = await Promise.all([
-        cuentaCorrienteApi.getAll(),
-        cuentaCorrienteProveedorApi.getAll(),
-      ]);
+      // Fetch cash flow data from admin endpoint with date filters
+      const fechaDesdeStr = fechaDesde ? fechaDesde.format('YYYY-MM-DD') : undefined;
+      const fechaHastaStr = fechaHasta ? fechaHasta.format('YYYY-MM-DD') : undefined;
 
-      // Process cliente movimientos
-      const ingresosClientes: MovimientoFlujoCaja[] = (movimientosClientes as CuentaCorriente[])
-        .filter(m => m.tipo === 'CREDITO') // Crédito del cliente = pago = ingreso
-        .map(m => ({
-          id: m.id,
-          fecha: m.fecha,
-          tipo: 'INGRESO' as const,
-          origen: 'CLIENTE' as const,
-          entidad: m.clienteNombre || `Cliente ID: ${m.clienteId}`,
-          concepto: m.concepto,
-          importe: m.importe,
-          numeroComprobante: m.numeroComprobante,
-        }));
+      const response = await adminFlujoCajaApi.getFlujoCaja(fechaDesdeStr, fechaHastaStr);
 
-      // Process proveedor movimientos
-      const egresosProveedores: MovimientoFlujoCaja[] = (movimientosProveedores as CuentaCorrienteProveedor[])
-        .filter(m => m.tipo === 'CREDITO') // Crédito a proveedor = pago = egreso
-        .map(m => ({
-          id: m.id,
-          fecha: m.fecha,
-          tipo: 'EGRESO' as const,
-          origen: 'PROVEEDOR' as const,
-          entidad: m.proveedorNombre || `Proveedor ID: ${m.proveedorId}`,
-          concepto: m.concepto,
-          importe: m.importe,
-          numeroComprobante: m.numeroComprobante,
-        }));
-
-      // Combine and sort by date
-      const allMovimientos = [...ingresosClientes, ...egresosProveedores]
-        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-
-      setMovimientos(allMovimientos);
+      setMovimientos(response.movimientos);
     } catch (err) {
       console.error('Error loading flujo de caja:', err);
       setError('Error al cargar el flujo de caja. Verifique la conexión con el servidor.');
@@ -116,14 +84,30 @@ const FlujoCajaPage: React.FC = () => {
     }
   };
 
-  // Filter movimientos by date
-  const filteredMovimientos = movimientos.filter(mov => {
-    const fechaMovimiento = dayjs(mov.fecha);
-    const matchesFecha =
-      (!fechaDesde || fechaMovimiento.isAfter(fechaDesde.subtract(1, 'day'))) &&
-      (!fechaHasta || fechaMovimiento.isBefore(fechaHasta.add(1, 'day')));
-    return matchesFecha;
-  });
+  const handleExportPDF = async () => {
+    try {
+      await generateFlujoCajaPDF(
+        filteredMovimientos,
+        {
+          fechaDesde: fechaDesde ? fechaDesde.format('DD/MM/YYYY') : '',
+          fechaHasta: fechaHasta ? fechaHasta.format('DD/MM/YYYY') : '',
+        },
+        {
+          totalIngresos,
+          totalEgresos,
+          flujoNeto,
+          totalMovimientos: filteredMovimientos.length,
+        }
+      );
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      setError('Error al generar el PDF. Intente nuevamente.');
+    }
+  };
+
+  // Note: Date filtering is now handled by the backend,
+  // so filteredMovimientos is just the movimientos as-is
+  const filteredMovimientos = movimientos;
 
   // Calculate totals
   const totalIngresos = filteredMovimientos
@@ -169,6 +153,14 @@ const FlujoCajaPage: React.FC = () => {
             Flujo de Caja
           </Typography>
           <Box display="flex" gap={2}>
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              onClick={handleExportPDF}
+              disabled={filteredMovimientos.length === 0}
+            >
+              Exportar PDF
+            </Button>
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
@@ -333,9 +325,11 @@ const FlujoCajaPage: React.FC = () => {
 
             <Button
               variant="outlined"
-              onClick={() => {
-                setFechaDesde(dayjs().subtract(30, 'day'));
-                setFechaHasta(dayjs());
+              onClick={async () => {
+                const newDesde = dayjs().subtract(30, 'day');
+                const newHasta = dayjs();
+                setFechaDesde(newDesde);
+                setFechaHasta(newHasta);
                 setPage(0);
               }}
             >
@@ -344,13 +338,22 @@ const FlujoCajaPage: React.FC = () => {
 
             <Button
               variant="outlined"
-              onClick={() => {
-                setFechaDesde(dayjs().startOf('month'));
-                setFechaHasta(dayjs().endOf('month'));
+              onClick={async () => {
+                const newDesde = dayjs().startOf('month');
+                const newHasta = dayjs().endOf('month');
+                setFechaDesde(newDesde);
+                setFechaHasta(newHasta);
                 setPage(0);
               }}
             >
               Este mes
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={loadData}
+            >
+              Aplicar Filtros
             </Button>
           </Box>
         </Paper>

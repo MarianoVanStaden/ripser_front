@@ -1718,6 +1718,220 @@ export const generateCuentaCorrienteProveedorPDF = async (
 };
 
 /**
+ * Genera un PDF del flujo de caja
+ * @param movimientos Lista de movimientos del flujo de caja
+ * @param filters Filtros aplicados
+ * @param summary Resumen con totales
+ */
+export const generateFlujoCajaPDF = async (
+  movimientos: any[],
+  filters: {
+    fechaDesde: string;
+    fechaHasta: string;
+  },
+  summary: {
+    totalIngresos: number;
+    totalEgresos: number;
+    flujoNeto: number;
+    totalMovimientos: number;
+  }
+) => {
+  const pdf = new jsPDF('l', 'mm', 'a4'); // landscape orientation
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // Agregar encabezado corporativo
+  let yPosition = addCorporateHeader(pdf, 'Flujo de Caja');
+
+  // Filtros aplicados
+  if (filters.fechaDesde || filters.fechaHasta) {
+    pdf.setFillColor(...COLORS.white);
+    pdf.rect(15, yPosition, pageWidth - 30, 3, 'F');
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text('Período:', 17, yPosition + 2);
+    yPosition += 5;
+
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.black);
+
+    const fromDate = filters.fechaDesde || 'Inicio';
+    const toDate = filters.fechaHasta || 'Fin';
+    pdf.text(`Desde: ${fromDate} - Hasta: ${toDate}`, 20, yPosition);
+    yPosition += 5;
+  }
+
+  // Resumen en cajas blancas
+  pdf.setFillColor(...COLORS.white);
+  pdf.rect(15, yPosition, pageWidth - 30, 22, 'F');
+
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Resumen del Flujo de Caja:', 17, yPosition + 4);
+  yPosition += 8;
+
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.black);
+
+  const col1Stats = 20;
+  const col2Stats = pageWidth / 2;
+
+  pdf.setTextColor(...COLORS.green);
+  pdf.text(`Ingresos (Pagos de Clientes): $${summary.totalIngresos.toLocaleString()}`, col1Stats, yPosition);
+  pdf.setTextColor(...COLORS.red);
+  pdf.text(`Egresos (Pagos a Proveedores): $${summary.totalEgresos.toLocaleString()}`, col2Stats, yPosition);
+  yPosition += 5;
+
+  pdf.setTextColor(...COLORS.black);
+  pdf.text(`Total de Movimientos: ${summary.totalMovimientos}`, col1Stats, yPosition);
+
+  pdf.setFont('helvetica', 'bold');
+  const flujoNetoColor = summary.flujoNeto >= 0 ? COLORS.green : COLORS.red;
+  pdf.setTextColor(...flujoNetoColor);
+  pdf.text(`Flujo Neto: $${summary.flujoNeto.toLocaleString()} ${summary.flujoNeto >= 0 ? '(Superávit)' : '(Déficit)'}`, col2Stats, yPosition);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.black);
+  yPosition += 10;
+
+  // Tabla de movimientos
+  pdf.setFillColor(...COLORS.white);
+  pdf.rect(15, yPosition, pageWidth - 30, 3, 'F');
+
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Detalle de Movimientos:', 17, yPosition + 2);
+  yPosition += 6;
+
+  // Encabezados de tabla con fondo azul
+  pdf.setFillColor(...COLORS.darkBlue);
+  pdf.rect(15, yPosition - 1, pageWidth - 30, 5, 'F');
+
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.white);
+  const col1 = 17;
+  const col2 = 47;
+  const col3 = 67;
+  const col4 = 97;
+  const col5 = 167;
+  const col6 = 217;
+  const col7 = 257;
+
+  pdf.text('Fecha', col1, yPosition + 2.5);
+  pdf.text('Tipo', col2, yPosition + 2.5);
+  pdf.text('Origen', col3, yPosition + 2.5);
+  pdf.text('Entidad', col4, yPosition + 2.5);
+  pdf.text('Concepto', col5, yPosition + 2.5);
+  pdf.text('Comprobante', col6, yPosition + 2.5);
+  pdf.text('Importe', col7, yPosition + 2.5);
+  yPosition += 5;
+
+  // Datos de la tabla
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(7);
+
+  movimientos.forEach((mov) => {
+    if (yPosition > pageHeight - 20) {
+      pdf.addPage();
+      yPosition = 20;
+
+      // Reprint headers
+      pdf.setFillColor(...COLORS.darkBlue);
+      pdf.rect(15, yPosition - 1, pageWidth - 30, 5, 'F');
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...COLORS.white);
+      pdf.text('Fecha', col1, yPosition + 2.5);
+      pdf.text('Tipo', col2, yPosition + 2.5);
+      pdf.text('Origen', col3, yPosition + 2.5);
+      pdf.text('Entidad', col4, yPosition + 2.5);
+      pdf.text('Concepto', col5, yPosition + 2.5);
+      pdf.text('Comprobante', col6, yPosition + 2.5);
+      pdf.text('Importe', col7, yPosition + 2.5);
+      yPosition += 5;
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'normal');
+    }
+
+    // Color de fila según tipo
+    if (mov.tipo === 'INGRESO') {
+      pdf.setFillColor(230, 255, 230); // Light green
+    } else {
+      pdf.setFillColor(255, 230, 230); // Light red
+    }
+    pdf.rect(15, yPosition - 1, pageWidth - 30, 4, 'F');
+
+    const fecha = mov.fecha ? new Date(mov.fecha).toLocaleDateString() : '-';
+    const tipo = mov.tipo || 'N/A';
+    const origen = mov.origen || 'N/A';
+    const entidad = mov.entidad || '-';
+    const concepto = mov.concepto || '-';
+    const comprobante = mov.numeroComprobante || '-';
+    const importe = `$${(mov.importe || 0).toLocaleString()}`;
+
+    const entidadTrunc = entidad.length > 35 ? entidad.substring(0, 32) + '...' : entidad;
+    const conceptoTrunc = concepto.length > 25 ? concepto.substring(0, 22) + '...' : concepto;
+    const comprobanteTrunc = comprobante.length > 18 ? comprobante.substring(0, 15) + '...' : comprobante;
+
+    pdf.setTextColor(...COLORS.black);
+    pdf.text(fecha, col1, yPosition + 2);
+    pdf.text(tipo, col2, yPosition + 2);
+    pdf.text(origen, col3, yPosition + 2);
+    pdf.text(entidadTrunc, col4, yPosition + 2);
+    pdf.text(conceptoTrunc, col5, yPosition + 2);
+    pdf.text(comprobanteTrunc, col6, yPosition + 2);
+
+    // Color según el tipo
+    if (tipo === 'INGRESO') {
+      pdf.setTextColor(...COLORS.green);
+    } else {
+      pdf.setTextColor(...COLORS.red);
+    }
+    pdf.text(importe, col7, yPosition + 2);
+
+    yPosition += 4;
+  });
+
+  // Resumen final
+  yPosition += 4;
+  if (yPosition > pageHeight - 35) {
+    pdf.addPage();
+    yPosition = 20;
+  }
+
+  pdf.setFillColor(...COLORS.white);
+  pdf.rect(15, yPosition, pageWidth - 30, 18, 'F');
+
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('RESUMEN FINAL:', 17, yPosition + 4);
+  yPosition += 8;
+
+  pdf.setFontSize(10);
+  pdf.setTextColor(...COLORS.green);
+  pdf.text(`Ingresos: $${summary.totalIngresos.toLocaleString()}`, 20, yPosition);
+  pdf.setTextColor(...COLORS.red);
+  pdf.text(`Egresos: $${summary.totalEgresos.toLocaleString()}`, pageWidth / 2, yPosition);
+  yPosition += 6;
+
+  pdf.setTextColor(...flujoNetoColor);
+  pdf.setFontSize(12);
+  pdf.text(`FLUJO NETO: $${summary.flujoNeto.toLocaleString()}`, pageWidth / 2, yPosition, { align: 'center' });
+
+  // Footer corporativo
+  addCorporateFooter(pdf);
+
+  pdf.save(`flujo-caja-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+/**
  * Captura un elemento HTML y lo convierte en imagen para PDF
  * Útil para capturar gráficos y visualizaciones
  * @param elementId ID del elemento HTML a capturar
