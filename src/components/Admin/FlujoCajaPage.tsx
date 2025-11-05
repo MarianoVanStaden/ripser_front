@@ -52,7 +52,8 @@ const FlujoCajaPage: React.FC = () => {
   const [movimientos, setMovimientos] = useState<MovimientoFlujoCaja[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(30, 'day'));
+  // Por defecto muestra los últimos 3 meses
+  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(3, 'month'));
   const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
 
   // Pagination states
@@ -148,10 +149,18 @@ const FlujoCajaPage: React.FC = () => {
       <Box p={3}>
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" display="flex" alignItems="center">
-            <AccountBalanceIcon sx={{ mr: 2 }} />
-            Flujo de Caja
-          </Typography>
+          <Box>
+            <Typography variant="h4" component="h1" display="flex" alignItems="center">
+              <AccountBalanceIcon sx={{ mr: 2 }} />
+              Flujo de Caja
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mt={0.5}>
+              Mostrando {filteredMovimientos.length} de {movimientos.length} movimientos
+              {fechaDesde && fechaHasta && (
+                <> | Período: {fechaDesde.format('DD/MM/YYYY')} - {fechaHasta.format('DD/MM/YYYY')}</>
+              )}
+            </Typography>
+          </Box>
           <Box display="flex" gap={2}>
             <Button
               variant="contained"
@@ -306,7 +315,120 @@ const FlujoCajaPage: React.FC = () => {
         {/* Filters */}
         <Paper sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" mb={2}>
-            Filtros
+            Filtros por Fecha
+          </Typography>
+
+          {/* Quick Filter Buttons */}
+          <Typography variant="subtitle2" color="text.secondary" mb={1.5}>
+            Filtros Rápidos:
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setFechaDesde(dayjs());
+                setFechaHasta(dayjs());
+                setPage(0);
+              }}
+            >
+              Hoy
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setFechaDesde(dayjs().subtract(7, 'day'));
+                setFechaHasta(dayjs());
+                setPage(0);
+              }}
+            >
+              Última Semana
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setFechaDesde(dayjs().subtract(30, 'day'));
+                setFechaHasta(dayjs());
+                setPage(0);
+              }}
+            >
+              Últimos 30 días
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setFechaDesde(dayjs().startOf('month'));
+                setFechaHasta(dayjs().endOf('month'));
+                setPage(0);
+              }}
+            >
+              Este Mes
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                const lastMonthStart = dayjs().subtract(1, 'month').startOf('month');
+                const lastMonthEnd = dayjs().subtract(1, 'month').endOf('month');
+                setFechaDesde(lastMonthStart);
+                setFechaHasta(lastMonthEnd);
+                setPage(0);
+              }}
+            >
+              Mes Anterior
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => {
+                setFechaDesde(dayjs().subtract(3, 'month'));
+                setFechaHasta(dayjs());
+                setPage(0);
+              }}
+            >
+              Últimos 3 Meses
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setFechaDesde(dayjs().subtract(6, 'month'));
+                setFechaHasta(dayjs());
+                setPage(0);
+              }}
+            >
+              Últimos 6 Meses
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setFechaDesde(dayjs().startOf('year'));
+                setFechaHasta(dayjs());
+                setPage(0);
+              }}
+            >
+              Este Año
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setFechaDesde(null);
+                setFechaHasta(null);
+                setPage(0);
+              }}
+            >
+              Todo
+            </Button>
+          </Box>
+
+          {/* Manual Date Selection */}
+          <Typography variant="subtitle2" color="text.secondary" mb={1.5}>
+            Fechas Personalizadas:
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <DatePicker
@@ -322,32 +444,6 @@ const FlujoCajaPage: React.FC = () => {
               onChange={setFechaHasta}
               slotProps={{ textField: { size: 'small' } }}
             />
-
-            <Button
-              variant="outlined"
-              onClick={async () => {
-                const newDesde = dayjs().subtract(30, 'day');
-                const newHasta = dayjs();
-                setFechaDesde(newDesde);
-                setFechaHasta(newHasta);
-                setPage(0);
-              }}
-            >
-              Últimos 30 días
-            </Button>
-
-            <Button
-              variant="outlined"
-              onClick={async () => {
-                const newDesde = dayjs().startOf('month');
-                const newHasta = dayjs().endOf('month');
-                setFechaDesde(newDesde);
-                setFechaHasta(newHasta);
-                setPage(0);
-              }}
-            >
-              Este mes
-            </Button>
 
             <Button
               variant="contained"

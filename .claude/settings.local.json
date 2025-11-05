@@ -4,7 +4,11 @@
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
       "Bash(nul)",
-      "Bash(mvn clean compile:*)"
+      "Bash(mvn clean compile:*)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []
