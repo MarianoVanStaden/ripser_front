@@ -1255,6 +1255,43 @@ export interface Legajo {
   activo: boolean;
 }
 
+// Documentos
+export interface DocumentoLegajo {
+  id: number;
+  legajoId: number;
+  nombreArchivo: string;
+  tipoArchivo: string;
+  tamanioBytes: number;
+  descripcion?: string;
+  categoria: string;
+  fechaSubida: string;
+  subidoPor: string;
+}
+
+export interface DocumentoCliente {
+  id: number;
+  clienteId: number;
+  nombreArchivo: string;
+  tipoArchivo: string;
+  tamanioBytes: number;
+  descripcion?: string;
+  categoria: string;
+  fechaSubida: string;
+  subidoPor: string;
+}
+
+export interface UploadDocumentoRequest {
+  file: File;
+  categoria: string;
+  descripcion?: string;
+}
+
+export interface UploadResponse {
+  message: string;
+  fileName: string | null;
+  documentoId: number | null;
+}
+
 export interface Usuario {
   id: number;
   username: string;

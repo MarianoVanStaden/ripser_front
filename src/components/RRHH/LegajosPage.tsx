@@ -22,7 +22,9 @@ import {
 import dayjs from 'dayjs';
 import { legajoApi } from '../../api/services/legajoApi';
 import { employeeApi } from '../../api/services/employeeApi';
-import type { Legajo, Empleado } from '../../types';
+import { documentoLegajoApi } from '../../api/services/documentoLegajoApi';
+import DocumentManager from '../shared/DocumentManager';
+import type { Legajo, Empleado, DocumentoLegajo as DocLegajo } from '../../types';
 
 const LegajosPage: React.FC = () => {
   const [legajos, setLegajos] = useState<Legajo[]>([]);
@@ -678,6 +680,27 @@ const LegajosPage: React.FC = () => {
                     </Card>
                   </Grid>
                 )}
+
+                {/* Documentos */}
+                <Grid item xs={12}>
+                  <DocumentManager
+                    entityId={selected.id}
+                    entityType="legajo"
+                    categorias={['CV', 'Contrato', 'Certificado', 'Titulo', 'Constancia', 'DNI', 'Otros']}
+                    onUpload={async (file, categoria, descripcion) => {
+                      await documentoLegajoApi.upload(selected.id, file, categoria, descripcion);
+                    }}
+                    onDownload={async (id, fileName) => {
+                      await documentoLegajoApi.downloadAndSave(id, fileName);
+                    }}
+                    onDelete={async (id) => {
+                      await documentoLegajoApi.delete(id);
+                    }}
+                    onLoad={async (legajoId) => {
+                      return await documentoLegajoApi.getByLegajoId(legajoId);
+                    }}
+                  />
+                </Grid>
               </Grid>
             </DialogContent>
             <DialogActions>

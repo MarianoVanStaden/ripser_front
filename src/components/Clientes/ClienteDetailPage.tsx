@@ -25,7 +25,9 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Cliente, EstadoCliente } from '../../types';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import { ContactosTab, CuentaCorrienteTab } from './index';
+import DocumentManager from '../shared/DocumentManager';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -272,6 +274,7 @@ const ClienteDetailPage: React.FC = () => {
             <Tab label="Información Básica" {...a11yProps(0)} />
             <Tab label="Historial de Contactos" {...a11yProps(1)} />
             <Tab label="Cuenta Corriente" {...a11yProps(2)} />
+            <Tab label="Documentos" {...a11yProps(3)} />
           </Tabs>
         </Box>
 
@@ -350,6 +353,28 @@ const ClienteDetailPage: React.FC = () => {
 
         <TabPanel value={tabValue} index={2}>
           <CuentaCorrienteTab clienteId={Number(id)} />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          {cliente && (
+            <DocumentManager
+              entityId={cliente.id}
+              entityType="cliente"
+              categorias={['Contrato', 'DNI', 'CUIT', 'Factura', 'Presupuesto', 'Garantia', 'Otros']}
+              onUpload={async (file, categoria, descripcion) => {
+                await documentoClienteApi.upload(cliente.id, file, categoria, descripcion);
+              }}
+              onDownload={async (id, fileName) => {
+                await documentoClienteApi.downloadAndSave(id, fileName);
+              }}
+              onDelete={async (id) => {
+                await documentoClienteApi.delete(id);
+              }}
+              onLoad={async (clienteId) => {
+                return await documentoClienteApi.getByClienteId(clienteId);
+              }}
+            />
+          )}
         </TabPanel>
       </Paper>
     </Box>
