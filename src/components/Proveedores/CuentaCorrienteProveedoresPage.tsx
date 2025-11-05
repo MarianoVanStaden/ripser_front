@@ -138,13 +138,13 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
 
     try {
       setLoading(true);
-      // Fix: Use local datetime without timezone conversion
-      const now = new Date();
-      const localISOTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString();
-      
+      // Send date in local time format (without timezone suffix)
+      // Backend is configured to use Argentina timezone
+      const localDateTime = dayjs().format('YYYY-MM-DDTHH:mm:ss');
+
       const payload = {
         proveedorId: selectedProveedor.id,
-        fecha: localISOTime,
+        fecha: localDateTime,
         tipo: newMovimiento.tipo,
         importe: newMovimiento.importe,
         concepto: newMovimiento.concepto,
