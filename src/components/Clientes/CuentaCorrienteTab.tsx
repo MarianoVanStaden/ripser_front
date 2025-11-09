@@ -28,6 +28,7 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
+import dayjs from 'dayjs';
 import type { CuentaCorriente, CreateCuentaCorrienteRequest, TipoMovimiento } from '../../types';
 import { cuentaCorrienteApiWithFallback as cuentaCorrienteApi } from '../../api/services/apiWithFallback';
 
@@ -45,7 +46,7 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
   
   const [formData, setFormData] = useState<CreateCuentaCorrienteRequest>({
     clienteId,
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: dayjs().format('YYYY-MM-DD'),
     tipo: 'DEBITO',
     importe: 0,
     concepto: '',
@@ -73,7 +74,7 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
   const handleOpenDialog = () => {
     setFormData({
       clienteId,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: dayjs().format('YYYY-MM-DD'),
       tipo: 'DEBITO',
       importe: 0,
       concepto: '',
@@ -99,7 +100,7 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    
+
     if (!formData.concepto.trim()) {
       setError('El concepto es obligatorio');
       return;
@@ -111,10 +112,14 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
     }
 
     try {
+      // Use current time for the selected date
+      const currentTime = dayjs().format('HH:mm:ss');
       const requestData = {
         ...formData,
-        fecha: formData.fecha + 'T00:00:00',
+        fecha: `${formData.fecha}T${currentTime}`,
       };
+
+      console.log('Sending requestData:', JSON.stringify(requestData, null, 2));
 
       await cuentaCorrienteApi.create(requestData);
       handleCloseDialog();

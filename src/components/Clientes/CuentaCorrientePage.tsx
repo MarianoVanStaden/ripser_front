@@ -153,7 +153,7 @@ const CuentaCorrientePage: React.FC = () => {
       // Create payload matching CreateMovimientoPayload interface
       const payload = {
         clienteId: selectedCliente.id,
-        fecha: new Date().toISOString(),
+        fecha: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
         tipo: newMovimiento.tipo,
         importe: newMovimiento.importe,
         concepto: newMovimiento.concepto,

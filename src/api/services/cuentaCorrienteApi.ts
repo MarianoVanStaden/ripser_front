@@ -22,6 +22,7 @@ export const cuentaCorrienteApi = {
    * Creates a new account movement.
    */
   create: async (movimiento: CreateMovimientoPayload): Promise<CuentaCorriente> => {
+    console.log('cuentaCorrienteApi.create - About to send:', movimiento);
     const response = await api.post(`/api/cuentas-corriente`, movimiento);
     return response.data;
   },
