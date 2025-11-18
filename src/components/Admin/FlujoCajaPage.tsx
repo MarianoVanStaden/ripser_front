@@ -55,6 +55,7 @@ const FlujoCajaPage: React.FC = () => {
   // Por defecto muestra los últimos 3 meses
   const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(3, 'month'));
   const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
+  const [activeFilter, setActiveFilter] = useState<string>('last3months');
 
   // Pagination states
   const [page, setPage] = useState(0);
@@ -325,10 +326,11 @@ const FlujoCajaPage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'today' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(dayjs());
                 setFechaHasta(dayjs());
+                setActiveFilter('today');
                 setPage(0);
               }}
             >
@@ -336,10 +338,11 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'lastweek' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(dayjs().subtract(7, 'day'));
                 setFechaHasta(dayjs());
+                setActiveFilter('lastweek');
                 setPage(0);
               }}
             >
@@ -347,10 +350,11 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'last30days' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(dayjs().subtract(30, 'day'));
                 setFechaHasta(dayjs());
+                setActiveFilter('last30days');
                 setPage(0);
               }}
             >
@@ -358,10 +362,11 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'thismonth' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(dayjs().startOf('month'));
                 setFechaHasta(dayjs().endOf('month'));
+                setActiveFilter('thismonth');
                 setPage(0);
               }}
             >
@@ -369,12 +374,13 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'lastmonth' ? 'contained' : 'outlined'}
               onClick={() => {
                 const lastMonthStart = dayjs().subtract(1, 'month').startOf('month');
                 const lastMonthEnd = dayjs().subtract(1, 'month').endOf('month');
                 setFechaDesde(lastMonthStart);
                 setFechaHasta(lastMonthEnd);
+                setActiveFilter('lastmonth');
                 setPage(0);
               }}
             >
@@ -382,10 +388,11 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="contained"
+              variant={activeFilter === 'last3months' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(dayjs().subtract(3, 'month'));
                 setFechaHasta(dayjs());
+                setActiveFilter('last3months');
                 setPage(0);
               }}
             >
@@ -393,10 +400,11 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'last6months' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(dayjs().subtract(6, 'month'));
                 setFechaHasta(dayjs());
+                setActiveFilter('last6months');
                 setPage(0);
               }}
             >
@@ -404,10 +412,11 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'thisyear' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(dayjs().startOf('year'));
                 setFechaHasta(dayjs());
+                setActiveFilter('thisyear');
                 setPage(0);
               }}
             >
@@ -415,10 +424,11 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               size="small"
-              variant="outlined"
+              variant={activeFilter === 'all' ? 'contained' : 'outlined'}
               onClick={() => {
                 setFechaDesde(null);
                 setFechaHasta(null);
+                setActiveFilter('all');
                 setPage(0);
               }}
             >
@@ -434,14 +444,20 @@ const FlujoCajaPage: React.FC = () => {
             <DatePicker
               label="Desde"
               value={fechaDesde}
-              onChange={setFechaDesde}
+              onChange={(newValue) => {
+                setFechaDesde(newValue);
+                setActiveFilter('custom');
+              }}
               slotProps={{ textField: { size: 'small' } }}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
-              onChange={setFechaHasta}
+              onChange={(newValue) => {
+                setFechaHasta(newValue);
+                setActiveFilter('custom');
+              }}
               slotProps={{ textField: { size: 'small' } }}
             />
 

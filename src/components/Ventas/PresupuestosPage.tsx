@@ -49,8 +49,8 @@ import { documentoApi } from "../../api/services/documentoApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento } from "../../types";
-import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento, ColorEquipo, MedidaEquipo } from "../../types";
+import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import SuccessDialog from "../common/SuccessDialog";
 import { generarPresupuestoPDF } from "../../services/pdfService";
@@ -81,7 +81,7 @@ interface DetalleForm {
   // For EQUIPO type
   recetaId?: string;
   color?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
   descripcion: string;
   cantidad: number;
   precioUnitario: number;
@@ -561,17 +561,26 @@ const PresupuestosPage: React.FC = () => {
   }, [user]);
 
   // Function to create equipos in process when there's no available stock
-  const createEquiposEnProcesoIfNeeded = useCallback(async (detallesConEquipo: DetalleForm[]) => {
+  const createEquiposEnProcesoIfNeeded = useCallback(async (detallesConEquipo: DetalleForm[]): Promise<{
+    equiposCreados: string[];
+    advertencias: string[];
+  }> => {
     const equiposCreados: string[] = [];
+    const advertencias: string[] = [];
 
     for (const detalle of detallesConEquipo) {
       if (detalle.tipoItem === 'EQUIPO' && detalle.recetaId) {
+        let equiposFiltrados: any[] = [];
+
         try {
+          console.log(`🔍 Verificando stock para receta ${detalle.recetaId}, color: "${detalle.color}", medida: "${detalle.medida}"`);
+
           // Get all available equipos for this receta
           const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(Number(detalle.recetaId));
+          console.log(`📦 Equipos disponibles totales: ${equiposDisponibles.length}`);
 
           // Filter by color and medida if specified
-          const equiposFiltrados = equiposDisponibles.filter(equipo => {
+          equiposFiltrados = equiposDisponibles.filter(equipo => {
             const matchColor = !detalle.color || equipo.color === detalle.color;
             const matchMedida = !detalle.medida || equipo.medida === detalle.medida;
             return matchColor && matchMedida;
@@ -579,37 +588,73 @@ const PresupuestosPage: React.FC = () => {
 
           const cantidadDisponible = equiposFiltrados.length;
           const cantidadRequerida = detalle.cantidad;
+          
+          console.log(`✅ Equipos que coinciden con filtros: ${cantidadDisponible} de ${cantidadRequerida} requeridos`);
 
           // If there aren't enough equipos, create the missing ones as "EN_PROCESO"
           if (cantidadDisponible < cantidadRequerida) {
             const cantidadFaltante = cantidadRequerida - cantidadDisponible;
-
             const receta = recetas.find(r => r.id === Number(detalle.recetaId));
 
+            console.log(`🏭 Creando ${cantidadFaltante} equipo(s) en proceso...`);
+
             // Create the missing equipos in batch
-            const equipoData = {
+            const equipoData: any = {
               recetaId: Number(detalle.recetaId),
               tipo: receta?.tipoEquipo || 'HELADERA' as any,
               modelo: receta?.modelo || '',
               medida: detalle.medida || receta?.medida,
               color: detalle.color,
-              numeroHeladera: 'AUTO', // Auto-generate
+              // Don't send numeroHeladera - let backend auto-generate it
               cantidad: cantidadFaltante,
               estado: 'EN_PROCESO' as any,
             };
 
+            console.log('📝 Datos del equipo a crear:', equipoData);
             const response = await equipoFabricadoApi.createBatch(equipoData);
+            console.log('✅ Respuesta del backend:', response);
+            
             equiposCreados.push(`${cantidadFaltante} equipo(s) "${receta?.nombre || 'sin nombre'}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'})`);
-            console.log(`Created ${cantidadFaltante} equipos en proceso for receta ${detalle.recetaId}:`, response);
+          } else {
+            console.log(`✅ Stock suficiente, no se requiere crear equipos`);
           }
-        } catch (error) {
-          console.error(`Error creating equipos for receta ${detalle.recetaId}:`, error);
+        } catch (error: any) {
+          console.error(`❌ Error creating equipos for receta ${detalle.recetaId}:`, error);
+
+          const receta = recetas.find(r => r.id === Number(detalle.recetaId));
+          const recetaNombre = receta?.nombre || `Receta ${detalle.recetaId}`;
+
+          // Check if it's a stock insufficiency error (409 Conflict)
+          if (error?.response?.status === 409) {
+            const cantidadFaltante = detalle.cantidad - (equiposFiltrados?.length || 0);
+            advertencias.push(
+              `⚠️ No se pudieron crear ${cantidadFaltante} equipo(s) "${recetaNombre}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'}) automáticamente porque faltan componentes en stock. ` +
+              `Deberás crearlos manualmente en el módulo de Producción cuando tengas los componentes necesarios.`
+            );
+          } else {
+            // Extract detailed error message for other errors
+            let errorMsg = 'Error desconocido';
+            if (error?.response?.data) {
+              const data = error.response.data;
+              errorMsg = data.message || data.error || JSON.stringify(data);
+              console.error('📋 Detalles del error del backend:', data);
+            } else if (error instanceof Error) {
+              errorMsg = error.message;
+            }
+
+            console.error(`📋 Status: ${error?.response?.status || 'N/A'}`);
+            advertencias.push(`${recetaNombre}: ${errorMsg}`);
+          }
           // Don't throw - continue with other equipos
         }
       }
     }
 
-    return equiposCreados;
+    if (advertencias.length > 0) {
+      console.warn('⚠️ Advertencias al crear equipos:', advertencias);
+    }
+
+    return { equiposCreados, advertencias };
   }, [recetas]);
 
   const handleSavePresupuesto = useCallback(async () => {
@@ -701,13 +746,30 @@ const PresupuestosPage: React.FC = () => {
         // Create equipos en proceso if needed for new presupuestos
         const detallesEquipo = detalles.filter(d => d.tipoItem === 'EQUIPO');
         if (detallesEquipo.length > 0) {
-          const equiposCreados = await createEquiposEnProcesoIfNeeded(detallesEquipo);
+          const { equiposCreados, advertencias } = await createEquiposEnProcesoIfNeeded(detallesEquipo);
+
+          // Build combined message
+          const mensajes: string[] = [];
+
           if (equiposCreados.length > 0) {
-            console.log('Equipos creados automáticamente:', equiposCreados);
+            mensajes.push(`✅ Se crearon automáticamente: ${equiposCreados.join(', ')}`);
+          }
+
+          if (advertencias.length > 0) {
+            mensajes.push(...advertencias);
+          }
+
+          // Show combined snackbar if there are any messages
+          if (mensajes.length > 0) {
+            const tieneAdvertencias = advertencias.length > 0;
+            const severity = tieneAdvertencias && equiposCreados.length === 0 ? 'warning' :
+                            tieneAdvertencias ? 'info' :
+                            'success';
+
             setSnackbar({
               open: true,
-              message: `Se crearon automáticamente: ${equiposCreados.join(', ')}`,
-              severity: 'info'
+              message: mensajes.join('\n\n'),
+              severity: severity
             });
           }
         }
@@ -1321,13 +1383,23 @@ const PresupuestosPage: React.FC = () => {
                             </Typography>
                           ) : (
                             <TextField
+                              select
                               size="small"
                               fullWidth
                               value={detalle.color || ""}
                               onChange={(e) => updateDetalle(index, "color", e.target.value)}
                               disabled={detalle.tipoItem !== 'EQUIPO'}
                               placeholder={detalle.tipoItem === 'EQUIPO' ? "Color" : ""}
-                            />
+                            >
+                              <MenuItem value="">
+                                <em>Sin especificar</em>
+                              </MenuItem>
+                              {COLORES_EQUIPO.map((color) => (
+                                <MenuItem key={color} value={color}>
+                                  {color}
+                                </MenuItem>
+                              ))}
+                            </TextField>
                           )}
                         </TableCell>
                         <TableCell>
@@ -1337,13 +1409,23 @@ const PresupuestosPage: React.FC = () => {
                             </Typography>
                           ) : (
                             <TextField
+                              select
                               size="small"
                               fullWidth
                               value={detalle.medida || ""}
-                              onChange={(e) => updateDetalle(index, "medida", e.target.value)}
+                              onChange={(e) => updateDetalle(index, "medida", e.target.value as MedidaEquipo)}
                               disabled={detalle.tipoItem !== 'EQUIPO'}
                               placeholder={detalle.tipoItem === 'EQUIPO' ? "Medida" : ""}
-                            />
+                            >
+                              <MenuItem value="">
+                                <em>Sin especificar</em>
+                              </MenuItem>
+                              {MEDIDAS_EQUIPO.map((medida) => (
+                                <MenuItem key={medida} value={medida}>
+                                  {medida}
+                                </MenuItem>
+                              ))}
+                            </TextField>
                           )}
                         </TableCell>
                         <TableCell>

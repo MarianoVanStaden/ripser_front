@@ -1356,6 +1356,120 @@ export interface Venta {
 }
 export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE'| 'FINANCIACION_PROPIA' | 'OTRO';
 
+// Enums para equipos fabricados
+export type ColorEquipo =
+  | 'BLANCO_LISO'
+  | 'PLATA'
+  | 'MARRON'
+  | 'BEIGE'
+  | 'DORADO'
+  | 'PLATEADO'
+  | 'BRONCE'
+  | 'COBRE'
+  | 'INOXIDABLE'
+  | 'MADERA'
+  | 'ACERO'
+  | 'ATAKAMA'
+  | 'FAPLAC_NORDICO'
+  | 'GRIS_GRAFITO'
+  | 'DAKAR'
+  | 'HELSINKI'
+  | 'LINO_TIERRA'
+  | 'MADERA_CEREJEIRA'
+  | 'ROBLE_KENDAL_ENCERADO'
+  | 'NEGRO_LISO'
+  | 'NEGRO_VETA'
+  | 'NOGAL_LINCOLN'
+  | 'PREMIUM'
+  | 'ROBLE_DAKAR'
+  | 'ROBLE_KAISEBERG'
+  | 'TEKA_ARTICO'
+  | 'TEKA_OSLO'
+  | 'FAPLAC_TRIBAL'
+  | 'FAPLAC_NORDICO_FINLANDES';
+
+export type MedidaEquipo =
+  | '0.8m'
+  | '0.9m'
+  | '1.0m'
+  | '1.1m'
+  | '1.2m'
+  | '1.3m'
+  | '1.4m'
+  | '1.5m'
+  | '1.6m'
+  | '1.7m'
+  | '1.8m'
+  | '1.9m'
+  | '2.0m'
+  | '2.2m'
+  | '2.4m'
+  | '2.5m'
+  | '2.8m'
+  | '3.0m'
+  | '30x40x50m'
+  | '25x32x6cm'
+  | '60x40cm'
+  | '70x45cm';
+
+// Constantes para los selectores
+export const COLORES_EQUIPO: readonly ColorEquipo[] = [
+  'BLANCO_LISO',
+  'PLATA',
+  'MARRON',
+  'BEIGE',
+  'DORADO',
+  'PLATEADO',
+  'BRONCE',
+  'COBRE',
+  'INOXIDABLE',
+  'MADERA',
+  'ACERO',
+  'ATAKAMA',
+  'FAPLAC_NORDICO',
+  'GRIS_GRAFITO',
+  'DAKAR',
+  'HELSINKI',
+  'LINO_TIERRA',
+  'MADERA_CEREJEIRA',
+  'ROBLE_KENDAL_ENCERADO',
+  'NEGRO_LISO',
+  'NEGRO_VETA',
+  'NOGAL_LINCOLN',
+  'PREMIUM',
+  'ROBLE_DAKAR',
+  'ROBLE_KAISEBERG',
+  'TEKA_ARTICO',
+  'TEKA_OSLO',
+  'FAPLAC_TRIBAL',
+  'FAPLAC_NORDICO_FINLANDES'
+] as const;
+
+export const MEDIDAS_EQUIPO: readonly MedidaEquipo[] = [
+  '0.8m',
+  '0.9m',
+  '1.0m',
+  '1.1m',
+  '1.2m',
+  '1.3m',
+  '1.4m',
+  '1.5m',
+  '1.6m',
+  '1.7m',
+  '1.8m',
+  '1.9m',
+  '2.0m',
+  '2.2m',
+  '2.4m',
+  '2.5m',
+  '2.8m',
+  '3.0m',
+  '30x40x50m',
+  '25x32x6cm',
+  '60x40cm',
+  '70x45cm'
+] as const;
+
 // DTO para crear una Venta desde el frontend
 export interface CreateVentaDTO {
   clienteId: number;
@@ -1933,7 +2047,7 @@ export interface DetalleDocumento {
   recetaTipo?: string;
   descripcionEquipo?: string;
   color?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
 
   cantidad: number;
   precioUnitario: number;
@@ -1960,7 +2074,7 @@ export interface DetalleDocumentoDTO {
   recetaTipo?: string;
   descripcionEquipo?: string;
   color?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
 
   cantidad: number;
   precioUnitario: number;
@@ -2079,7 +2193,7 @@ export interface EquipoFabricadoDTO {
   tipo: TipoEquipo;
   modelo: string;
   equipo?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
   color?: string;
   observaciones?: string;
   fechaCreacion: string;
@@ -2114,7 +2228,7 @@ export interface EquipoFabricadoCreateDTO {
   tipo: TipoEquipo;
   modelo: string;
   equipo?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
   color?: string;
   observaciones?: string;
   numeroHeladera: string; // Required - use 'AUTO' for auto-generation
@@ -2129,7 +2243,7 @@ export interface EquipoFabricadoUpdateDTO {
   tipo?: TipoEquipo;
   modelo?: string;
   equipo?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
   color?: string;
   observaciones?: string;
   cantidad?: number;
