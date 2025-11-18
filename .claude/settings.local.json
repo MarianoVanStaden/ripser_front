@@ -14,7 +14,10 @@
       "Bash(MSYS_NO_PATHCONV=1 taskkill:*)",
       "Bash(cmd.exe /c \"taskkill /F /PID 23860\")",
       "Bash(powershell -Command \"Stop-Process -Id 23860 -Force\")",
-      "Bash(powershell -Command \"Stop-Process -Id 13352 -Force\")"
+      "Bash(powershell -Command \"Stop-Process -Id 13352 -Force\")",
+      "Bash(npx tsc:*)",
+      "Bash(timeout /t 10)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

@@ -77,6 +77,7 @@ const StockPage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
   const [editForm, setEditForm] = useState({
     nombre: '',
+    codigo: '',
     descripcion: '',
     precio: 0,
     stockMinimo: 0,
@@ -135,6 +136,7 @@ const StockPage: React.FC = () => {
     setSelectedProduct(product);
     setEditForm({
       nombre: product.nombre,
+      codigo: product.codigo || '',
       descripcion: product.descripcion || '',
       precio: product.precio,
       stockMinimo: product.stockMinimo,
@@ -151,6 +153,7 @@ const StockPage: React.FC = () => {
       setLoading(true);
       await productApi.update(selectedProduct.id, {
         nombre: editForm.nombre,
+        codigo: editForm.codigo,
         descripcion: editForm.descripcion,
         precio: editForm.precio,
         stockMinimo: editForm.stockMinimo,
@@ -686,6 +689,14 @@ const StockPage: React.FC = () => {
             />
 
             <TextField
+              label="Código"
+              value={editForm.codigo}
+              onChange={(e) => setEditForm({ ...editForm, codigo: e.target.value })}
+              fullWidth
+              helperText="Código único del producto"
+            />
+
+            <TextField
               label="Descripción"
               value={editForm.descripcion}
               onChange={(e) => setEditForm({ ...editForm, descripcion: e.target.value })}
@@ -739,10 +750,6 @@ const StockPage: React.FC = () => {
             />
 
             <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                Código: <strong>{selectedProduct?.codigo}</strong>
-              </Typography>
-              <br />
               <Typography variant="caption" color="text.secondary">
                 Stock Actual: <strong>{selectedProduct?.stockActual}</strong>
               </Typography>

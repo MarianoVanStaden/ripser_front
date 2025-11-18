@@ -1641,6 +1641,7 @@ export interface OrdenCompra {
     subtotal: number;
   }[];
   observaciones?: string;
+  metodoPago?: MetodoPago;
 }
 
 export interface CompraDTO {
@@ -1652,12 +1653,14 @@ export interface CompraDTO {
   fechaEntrega: string;
   estado: string;
   observaciones?: string;
+  metodoPago?: MetodoPago;
   detalles: {
     id?: number;
     productoId?: number;
     nombreProductoTemporal?: string;
     descripcionProductoTemporal?: string;
     codigoProductoTemporal?: string;
+    categoriaProductoId?: number;
     esProductoNuevo: boolean;
     cantidad: number;
     costoUnitario: number;
@@ -1669,12 +1672,14 @@ export interface CreateCompraDTO {
   fechaEntrega: string;
   observaciones?: string;
   estado?: string; // Included for state updates
+  metodoPago?: MetodoPago;
   detalles: Array<{
     id?: number; // For existing detalles
     productoId?: number;
     nombreProductoTemporal?: string;
     descripcionProductoTemporal?: string;
     codigoProductoTemporal?: string;
+    categoriaProductoId?: number;
     esProductoNuevo: boolean;
     cantidad: number;
     costoUnitario: number;
@@ -1888,9 +1893,9 @@ export interface CreateOpcionFinanciamientoDTO {
 }
 
 export interface OpcionFinanciamiento {
-  id: number;
+  id?: number;
   nombre: string;
-  metodoPago: string;
+  metodoPago: MetodoPago;
   cantidadCuotas: number;
   tasaInteres: number;
   montoTotal: number;
@@ -1912,19 +1917,6 @@ export interface Presupuesto {
   opcionFinanciamientoSeleccionadaId?: number;
 }
 
-export interface OpcionFinanciamiento {
-  id?: number;
-  nombre: string;
-  metodoPago: MetodoPago;
-  cantidadCuotas: number;
-  tasaInteres: number;
-  montoTotal: number;
-  montoCuota: number;
-  descripcion?: string;
-  esSeleccionada?: boolean;
-  ordenPresentacion?: number;
-}
-
 export interface DetalleDocumento {
   id: number;
   documentoComercialId: number;
@@ -1940,6 +1932,8 @@ export interface DetalleDocumento {
   recetaModelo?: string;
   recetaTipo?: string;
   descripcionEquipo?: string;
+  color?: string;
+  medida?: string;
 
   cantidad: number;
   precioUnitario: number;
@@ -1965,6 +1959,8 @@ export interface DetalleDocumentoDTO {
   recetaModelo?: string;
   recetaTipo?: string;
   descripcionEquipo?: string;
+  color?: string;
+  medida?: string;
 
   cantidad: number;
   precioUnitario: number;

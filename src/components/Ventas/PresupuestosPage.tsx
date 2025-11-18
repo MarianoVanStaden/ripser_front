@@ -48,6 +48,7 @@ import { clienteApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
+import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import { useAuth } from "../../context/AuthContext";
@@ -79,6 +80,8 @@ interface DetalleForm {
   productoId?: string;
   // For EQUIPO type
   recetaId?: string;
+  color?: string;
+  medida?: string;
   descripcion: string;
   cantidad: number;
   precioUnitario: number;
@@ -107,6 +110,8 @@ const initialDetalle: DetalleForm = {
   tipoItem: 'PRODUCTO',
   productoId: "",
   recetaId: "",
+  color: "",
+  medida: "",
   descripcion: "",
   cantidad: 1,
   precioUnitario: 0,
@@ -437,6 +442,8 @@ const PresupuestosPage: React.FC = () => {
         // Reset item-specific fields when switching type
         detalle.productoId = "";
         detalle.recetaId = "";
+        detalle.color = "";
+        detalle.medida = "";
         detalle.descripcion = "";
         detalle.precioUnitario = 0;
         detalle.subtotal = 0;
@@ -444,6 +451,10 @@ const PresupuestosPage: React.FC = () => {
         detalle.productoId = value as string;
       } else if (field === "recetaId") {
         detalle.recetaId = value as string;
+      } else if (field === "color") {
+        detalle.color = value as string;
+      } else if (field === "medida") {
+        detalle.medida = value as string;
       } else if (field === "descripcion") {
         detalle.descripcion = value as string;
       } else if (field === "cantidad") {
@@ -507,6 +518,8 @@ const PresupuestosPage: React.FC = () => {
               tipoItem: detalle.tipoItem,
               productoId: detalle.productoId?.toString() || "",
               recetaId: detalle.recetaId?.toString() || "",
+              color: detalle.color || "",
+              medida: detalle.medida || "",
               descripcion: detalle.descripcion || "",
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
@@ -547,6 +560,58 @@ const PresupuestosPage: React.FC = () => {
     setConfirmDialogAction(null);
   }, [user]);
 
+  // Function to create equipos in process when there's no available stock
+  const createEquiposEnProcesoIfNeeded = useCallback(async (detallesConEquipo: DetalleForm[]) => {
+    const equiposCreados: string[] = [];
+
+    for (const detalle of detallesConEquipo) {
+      if (detalle.tipoItem === 'EQUIPO' && detalle.recetaId) {
+        try {
+          // Get all available equipos for this receta
+          const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(Number(detalle.recetaId));
+
+          // Filter by color and medida if specified
+          const equiposFiltrados = equiposDisponibles.filter(equipo => {
+            const matchColor = !detalle.color || equipo.color === detalle.color;
+            const matchMedida = !detalle.medida || equipo.medida === detalle.medida;
+            return matchColor && matchMedida;
+          });
+
+          const cantidadDisponible = equiposFiltrados.length;
+          const cantidadRequerida = detalle.cantidad;
+
+          // If there aren't enough equipos, create the missing ones as "EN_PROCESO"
+          if (cantidadDisponible < cantidadRequerida) {
+            const cantidadFaltante = cantidadRequerida - cantidadDisponible;
+
+            const receta = recetas.find(r => r.id === Number(detalle.recetaId));
+
+            // Create the missing equipos in batch
+            const equipoData = {
+              recetaId: Number(detalle.recetaId),
+              tipo: receta?.tipoEquipo || 'HELADERA' as any,
+              modelo: receta?.modelo || '',
+              medida: detalle.medida || receta?.medida,
+              color: detalle.color,
+              numeroHeladera: 'AUTO', // Auto-generate
+              cantidad: cantidadFaltante,
+              estado: 'EN_PROCESO' as any,
+            };
+
+            const response = await equipoFabricadoApi.createBatch(equipoData);
+            equiposCreados.push(`${cantidadFaltante} equipo(s) "${receta?.nombre || 'sin nombre'}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'})`);
+            console.log(`Created ${cantidadFaltante} equipos en proceso for receta ${detalle.recetaId}:`, response);
+          }
+        } catch (error) {
+          console.error(`Error creating equipos for receta ${detalle.recetaId}:`, error);
+          // Don't throw - continue with other equipos
+        }
+      }
+    }
+
+    return equiposCreados;
+  }, [recetas]);
+
   const handleSavePresupuesto = useCallback(async () => {
     if (!user) {
       setError("Debe iniciar sesión");
@@ -577,6 +642,8 @@ const PresupuestosPage: React.FC = () => {
           baseDetalle.productoId = Number(d.productoId);
         } else if (d.tipoItem === 'EQUIPO') {
           baseDetalle.recetaId = Number(d.recetaId);
+          baseDetalle.color = d.color || undefined;
+          baseDetalle.medida = d.medida || undefined;
         }
 
         return baseDetalle;
@@ -630,6 +697,20 @@ const PresupuestosPage: React.FC = () => {
         console.log("Enviando datos:", JSON.stringify(payload));
         savedPresupuesto = await documentoApi.createPresupuesto(payload);
         setPresupuestos((prev) => [savedPresupuesto, ...prev]);
+
+        // Create equipos en proceso if needed for new presupuestos
+        const detallesEquipo = detalles.filter(d => d.tipoItem === 'EQUIPO');
+        if (detallesEquipo.length > 0) {
+          const equiposCreados = await createEquiposEnProcesoIfNeeded(detallesEquipo);
+          if (equiposCreados.length > 0) {
+            console.log('Equipos creados automáticamente:', equiposCreados);
+            setSnackbar({
+              open: true,
+              message: `Se crearon automáticamente: ${equiposCreados.join(', ')}`,
+              severity: 'info'
+            });
+          }
+        }
       }
 
       setConfirmDialogOpen(false);
@@ -668,7 +749,7 @@ const PresupuestosPage: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
-  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose]);
+  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose, createEquiposEnProcesoIfNeeded]);
 
   // Financiamiento handlers
   const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
@@ -1160,6 +1241,8 @@ const PresupuestosPage: React.FC = () => {
                   <TableRow>
                     {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 120 }}>Tipo</TableCell>}
                     <TableCell sx={{ minWidth: 220 }}>Producto/Equipo</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Color</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Medida</TableCell>
                     <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Cantidad</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Precio Unit.</TableCell>
@@ -1232,6 +1315,38 @@ const PresupuestosPage: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
+                          {readOnly || editingPresupuesto ? (
+                            <Typography variant="body2">
+                              {detalle.color || '-'}
+                            </Typography>
+                          ) : (
+                            <TextField
+                              size="small"
+                              fullWidth
+                              value={detalle.color || ""}
+                              onChange={(e) => updateDetalle(index, "color", e.target.value)}
+                              disabled={detalle.tipoItem !== 'EQUIPO'}
+                              placeholder={detalle.tipoItem === 'EQUIPO' ? "Color" : ""}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {readOnly || editingPresupuesto ? (
+                            <Typography variant="body2">
+                              {detalle.medida || '-'}
+                            </Typography>
+                          ) : (
+                            <TextField
+                              size="small"
+                              fullWidth
+                              value={detalle.medida || ""}
+                              onChange={(e) => updateDetalle(index, "medida", e.target.value)}
+                              disabled={detalle.tipoItem !== 'EQUIPO'}
+                              placeholder={detalle.tipoItem === 'EQUIPO' ? "Medida" : ""}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <TextField
                             size="small"
                             fullWidth
@@ -1281,7 +1396,7 @@ const PresupuestosPage: React.FC = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={readOnly || editingPresupuesto ? 5 : 7} align="center">
+                      <TableCell colSpan={readOnly || editingPresupuesto ? 7 : 9} align="center">
                         No hay detalles para este presupuesto.
                       </TableCell>
                     </TableRow>

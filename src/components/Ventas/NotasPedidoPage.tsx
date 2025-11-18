@@ -851,6 +851,8 @@ const NotasPedidoPage: React.FC = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ minWidth: 120 }}>Producto/Equipo</TableCell>
+                      <TableCell sx={{ minWidth: 100 }}>Color</TableCell>
+                      <TableCell sx={{ minWidth: 100 }}>Medida</TableCell>
                       <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
                       <TableCell align="center" sx={{ minWidth: 80 }}>Cantidad</TableCell>
                       <TableCell align="right" sx={{ minWidth: 100 }}>Precio Unit.</TableCell>
@@ -865,6 +867,8 @@ const NotasPedidoPage: React.FC = () => {
                             ? `${detalle.recetaNombre || ''} ${detalle.recetaModelo ? `- ${detalle.recetaModelo}` : ''}`
                             : detalle.productoNombre || "-"}
                         </TableCell>
+                        <TableCell>{detalle.color || '-'}</TableCell>
+                        <TableCell>{detalle.medida || '-'}</TableCell>
                         <TableCell>{detalle.descripcion}</TableCell>
                         <TableCell align="center">{detalle.cantidad}</TableCell>
                         <TableCell align="right">

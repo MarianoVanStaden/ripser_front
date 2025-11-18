@@ -833,6 +833,8 @@ const FacturacionPage = () => {
           <TableRow>
             {editable && <TableCell sx={{ minWidth: { xs: 100, md: 120 } }}>Tipo</TableCell>}
             <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto/Equipo</TableCell>
+            <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Color</TableCell>
+            <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Medida</TableCell>
             <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Cantidad</TableCell>
             <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Precio Unit.</TableCell>
             <TableCell align="right" sx={{ minWidth: { xs: 90, md: 120 } }}>Desc. %</TableCell>
@@ -893,6 +895,12 @@ const FacturacionPage = () => {
                         : item.productoNombre}
                     </Typography>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Typography>{itemAny.color || '-'}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography>{itemAny.medida || '-'}</Typography>
                 </TableCell>
                 <TableCell align="center">
                   {editable ? (

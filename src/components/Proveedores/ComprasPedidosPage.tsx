@@ -34,6 +34,8 @@ import {
   ListItemAvatar,
   Divider,
   TablePagination,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -65,7 +67,8 @@ import type { ProveedorDTO, CompraDTO, CreateCompraDTO } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
-import type { OrdenCompra, ProductoDTO} from '../../types';
+import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
+import type { OrdenCompra, ProductoDTO, CategoriaProducto} from '../../types';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
 dayjs.locale('es');
 class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
@@ -87,6 +90,7 @@ const ComprasPedidosPage: React.FC = () => {
   const [proveedores, setProveedores] = useState<ProveedorDTO[]>([]);
   const [compras, setCompras] = useState<CompraDTO[]>([]);
   const [productos, setProductos] = useState<ProductDTO[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,6 +103,16 @@ const ComprasPedidosPage: React.FC = () => {
   const [selectedOrden, setSelectedOrden] = useState<OrdenCompra | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // Price change confirmation dialog
+  const [openPriceChangeDialog, setOpenPriceChangeDialog] = useState(false);
+  const [priceChanges, setPriceChanges] = useState<Array<{
+    productoId: number;
+    nombreProducto: string;
+    precioAnterior: number;
+    precioNuevo: number;
+    shouldUpdate: boolean;
+  }>>([]);
+
   // Pagination states
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -108,11 +122,13 @@ const [newOrden, setNewOrden] = useState({
   fechaEntregaEstimada: dayjs().add(15, 'day'),
   observaciones: '',
   estado: 'PENDIENTE', // Add estado field
+  metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO',
   items: [{
     productoId: '',
     nombreProductoTemporal: '',
     descripcionProductoTemporal: '',
     codigoProductoTemporal: '',
+    categoriaId: '',
     esProductoNuevo: false,
     cantidad: 1,
     precioUnitario: 0,
@@ -123,6 +139,7 @@ const [newOrden, setNewOrden] = useState({
     loadProveedores();
     loadCompras();
     loadProductos();
+    loadCategorias();
   }, []);
 
 const loadProveedores = async () => {
@@ -181,6 +198,7 @@ const loadCompras = async () => {
             subtotal: detalle.cantidad * detalle.costoUnitario,
           })),
           observaciones: compra.observaciones,
+          metodoPago: compra.metodoPago,
         };
         return orden;
       })
@@ -221,6 +239,17 @@ const loadProductos = async () => {
   }
 };
 
+const loadCategorias = async () => {
+  try {
+    const data = await categoriaProductoApi.getAll();
+    console.log('Categorías response:', data);
+    setCategorias(data || []);
+  } catch (err: any) {
+    console.error('Error loading categorías:', err);
+    // No mostramos error porque las categorías son opcionales
+  }
+};
+
   const handleViewOrden = (orden: OrdenCompra) => {
     setSelectedOrden(orden);
     setOpenViewDialog(true);
@@ -234,11 +263,13 @@ const handleEditOrden = (orden: OrdenCompra) => {
     fechaEntregaEstimada: dayjs(orden.fechaEntregaEstimada),
     observaciones: orden.observaciones || '',
     estado: orden.estado || 'PENDIENTE', // Set estado from the selected order
+    metodoPago: (orden.metodoPago || '') as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO',
     items: orden.items.map((item) => ({
       productoId: item.productoId ? item.productoId.toString() : '',
       nombreProductoTemporal: item.descripcion || '',
       descripcionProductoTemporal: item.descripcion || '',
       codigoProductoTemporal: '',
+      categoriaId: '',
       esProductoNuevo: !item.productoId,
       cantidad: item.cantidad,
       precioUnitario: item.precioUnitario,
@@ -336,7 +367,7 @@ const createNewProduct = async (item: CompraDTO['detalles'][0]): Promise<number>
       precio: item.costoUnitario,
       stockActual: 0, // Initial stock is 0, will be updated via stock movement
       stockMinimo: 0,
-      categoriaProductoId: 1, // You might want to make this configurable
+      categoriaProductoId: item.categoriaProductoId || 1, // Use selected category or default to 1
     });
     console.log('Created new product:', newProduct);
     return newProduct.id;
@@ -408,12 +439,41 @@ const createStockMovementsForReceivedItems = async (compra: CompraDTO): Promise<
   }
 };
 
+// Function to detect price changes and show confirmation dialog
+const detectPriceChanges = () => {
+  const changes: Array<{
+    productoId: number;
+    nombreProducto: string;
+    precioAnterior: number;
+    precioNuevo: number;
+    shouldUpdate: boolean;
+  }> = [];
+
+  newOrden.items.forEach((item) => {
+    if (item.productoId && !item.esProductoNuevo) {
+      const producto = productos.find(p => p.id.toString() === item.productoId);
+      if (producto && producto.precio !== item.precioUnitario) {
+        changes.push({
+          productoId: producto.id,
+          nombreProducto: producto.nombre,
+          precioAnterior: producto.precio,
+          precioNuevo: item.precioUnitario,
+          shouldUpdate: true, // Default to true
+        });
+      }
+    }
+  });
+
+  return changes;
+};
+
 const handleSaveOrden = async () => {
   try {
     setLoading(true);
 
     if (!newOrden.supplierId) {
       setError('Debe seleccionar un proveedor');
+      setLoading(false);
       return;
     }
     if (
@@ -426,12 +486,38 @@ const handleSaveOrden = async () => {
       )
     ) {
       setError('Todos los items deben tener un producto (existente o nuevo), cantidad y precio unitario válidos');
+      setLoading(false);
       return;
     }
     if (!newOrden.estado) {
       setError('Debe seleccionar un estado válido');
+      setLoading(false);
       return;
     }
+
+    // Detect price changes before saving
+    const detectedChanges = detectPriceChanges();
+    if (detectedChanges.length > 0) {
+      setPriceChanges(detectedChanges);
+      setOpenPriceChangeDialog(true);
+      setLoading(false);
+      return; // Stop here and wait for user confirmation
+    }
+
+    // If no price changes, proceed with saving
+    await saveOrdenWithPriceUpdates([]);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+    setError(`Error al guardar la compra: ${errorMessage}`);
+    console.error('Error saving compra:', err);
+    setLoading(false);
+  }
+};
+
+// Separated function to save orden and update prices
+const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: number; precioNuevo: number }>) => {
+  try {
+    setLoading(true);
 
     // Check if estado is changing to RECIBIDA
     const wasNotRecibida = isEditMode && selectedOrden?.estado !== 'RECIBIDA';
@@ -443,11 +529,13 @@ const handleSaveOrden = async () => {
       fechaEntrega: newOrden.fechaEntregaEstimada.format('YYYY-MM-DDTHH:mm:ss'),
       observaciones: newOrden.observaciones,
       estado: newOrden.estado,
+      metodoPago: newOrden.metodoPago || undefined,
       detalles: newOrden.items.map((item) => ({
         productoId: item.productoId ? parseInt(item.productoId) : undefined,
         nombreProductoTemporal: item.esProductoNuevo ? item.nombreProductoTemporal : undefined,
         descripcionProductoTemporal: item.esProductoNuevo ? (item.descripcionProductoTemporal || item.nombreProductoTemporal) : undefined,
-        codigoProductoTemporal: item.esProductoNuevo ? item.codigoProductoTemporal : undefined,
+        codigoProductoTemporal: item.codigoProductoTemporal || undefined,
+        categoriaProductoId: item.categoriaId ? parseInt(item.categoriaId) : undefined,
         esProductoNuevo: item.esProductoNuevo,
         cantidad: item.cantidad,
         costoUnitario: item.precioUnitario,
@@ -472,21 +560,37 @@ const handleSaveOrden = async () => {
       await createStockMovementsForReceivedItems(createdOrUpdatedCompra);
     }
 
+    // Update prices for selected products
+    for (const update of priceUpdates) {
+      try {
+        await productApi.update(update.productoId, {
+          precio: update.precioNuevo,
+        });
+        console.log(`Updated price for product ${update.productoId} to ${update.precioNuevo}`);
+      } catch (err) {
+        console.error(`Error updating price for product ${update.productoId}:`, err);
+      }
+    }
+
     await loadCompras();
-    await loadProductos(); // Reload products to show updated stock
+    await loadProductos(); // Reload products to show updated prices and stock
     setOpenOrdenDialog(false);
+    setOpenPriceChangeDialog(false);
     setIsEditMode(false);
     setSelectedOrden(null);
+    setPriceChanges([]);
     setNewOrden({
       supplierId: '',
       fechaEntregaEstimada: dayjs().add(15, 'day'),
       observaciones: '',
       estado: 'PENDIENTE',
+      metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO',
       items: [{
         productoId: '',
         nombreProductoTemporal: '',
         descripcionProductoTemporal: '',
         codigoProductoTemporal: '',
+        categoriaId: '',
         esProductoNuevo: false,
         cantidad: 1,
         precioUnitario: 0,
@@ -507,7 +611,7 @@ const handleSaveOrden = async () => {
       ...newOrden,
       items: [
         ...newOrden.items,
-        { productoId: '', nombreProductoTemporal: '', cantidad: 1, precioUnitario: 0 },
+        { productoId: '', nombreProductoTemporal: '', descripcionProductoTemporal: '', codigoProductoTemporal: '', categoriaId: '', esProductoNuevo: false, cantidad: 1, precioUnitario: 0 },
       ],
     });
   };
@@ -519,14 +623,63 @@ const handleSaveOrden = async () => {
     });
   };
 
+// Function to generate automatic code based on category
+const generateProductCode = (categoriaId: string): string => {
+  if (!categoriaId) return '';
+
+  const categoria = categorias.find(c => c.id.toString() === categoriaId);
+  if (!categoria) return '';
+
+  // Get first 3 letters of category name in uppercase
+  const prefix = categoria.nombre.substring(0, 3).toUpperCase();
+
+  // Find all existing products with this prefix
+  const existingCodes = productos
+    .filter(p => p.codigo && p.codigo.startsWith(prefix))
+    .map(p => p.codigo);
+
+  // Also consider codes in current order items
+  const currentOrderCodes = newOrden.items
+    .filter(item => item.codigoProductoTemporal && item.codigoProductoTemporal.startsWith(prefix))
+    .map(item => item.codigoProductoTemporal);
+
+  // Combine all codes
+  const allCodes = [...existingCodes, ...currentOrderCodes];
+
+  // Find the highest number used with this prefix
+  let maxNumber = 0;
+  allCodes.forEach(code => {
+    const numberPart = code.replace(prefix, '');
+    const num = parseInt(numberPart, 10);
+    if (!isNaN(num) && num > maxNumber) {
+      maxNumber = num;
+    }
+  });
+
+  // Generate next code
+  const nextNumber = (maxNumber + 1).toString().padStart(3, '0');
+  return `${prefix}${nextNumber}`;
+};
+
 const handleItemChange = (index: number, field: string, value: any) => {
   const updatedItems = [...newOrden.items];
   updatedItems[index] = { ...updatedItems[index], [field]: value };
+
   // If changing the product name for a new product, update descripcionProductoTemporal
   if (field === 'nombreProductoTemporal') {
     updatedItems[index].descripcionProductoTemporal = value;
     updatedItems[index].esProductoNuevo = !!value; // Mark as new product if nombreProductoTemporal is set
   }
+
+  // If changing category for a new product, auto-generate code if code field is empty
+  if (field === 'categoriaId' && updatedItems[index].esProductoNuevo && value) {
+    const autoCode = generateProductCode(value);
+    // Only set auto-generated code if code field is empty
+    if (autoCode && !updatedItems[index].codigoProductoTemporal) {
+      updatedItems[index].codigoProductoTemporal = autoCode;
+    }
+  }
+
   setNewOrden({ ...newOrden, items: updatedItems });
 };
 
@@ -1003,6 +1156,24 @@ const handleDeleteCompra = async (id: number) => {
   ))}
 </TextField>
 
+<TextField
+  fullWidth
+  select
+  label="Forma de Pago"
+  value={newOrden.metodoPago || ''}
+  onChange={(e) => setNewOrden({ ...newOrden, metodoPago: e.target.value as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO' })}
+  margin="normal"
+>
+  <MenuItem value="">Seleccione...</MenuItem>
+  <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+  <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+  <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
+  <MenuItem value="CHEQUE">Cheque</MenuItem>
+  <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
+  <MenuItem value="OTRO">Otro</MenuItem>
+</TextField>
+
       <DatePicker
         label="Fecha de Entrega Estimada"
         value={newOrden.fechaEntregaEstimada}
@@ -1024,137 +1195,169 @@ const handleDeleteCompra = async (id: number) => {
         Items de la Orden
       </Typography>
       {newOrden.items.map((item, index) => (
-  <Box key={index} display="flex" gap={2} alignItems="center" mb={2}>
-   <Autocomplete
-  freeSolo
-  options={productos}
-  getOptionLabel={(option) =>
-    typeof option === 'string' ? option : `${option.nombre} (Stock: ${option.stockActual})`
-  }
-  getOptionKey={(option) =>
-    typeof option === 'string' ? option : option.id.toString()
-  }
-  isOptionEqualToValue={(option, value) =>
-    typeof option === 'object' && typeof value === 'object' && option.id === value.id
-  }
-  value={
-    item.productoId
-      ? productos.find((p) => p.id.toString() === item.productoId) || null
-      : null
-  }
-  inputValue={
-    item.productoId
-      ? productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''
-      : item.nombreProductoTemporal || ''
-  }
-  onChange={(_, newValue) => {
-    const updatedItems = [...newOrden.items];
-    if (typeof newValue === 'string') {
-      // User typed a new product name
-      updatedItems[index] = {
-        ...updatedItems[index],
-        productoId: '',
-        nombreProductoTemporal: newValue,
-        descripcionProductoTemporal: newValue,
-        esProductoNuevo: true,
-        precioUnitario: updatedItems[index].precioUnitario || 0,
-      };
-    } else if (newValue && newValue.id) {
-      // User selected an existing product
-      updatedItems[index] = {
-        ...updatedItems[index],
-        productoId: newValue.id.toString(),
-        nombreProductoTemporal: newValue.nombre,
-        descripcionProductoTemporal: newValue.nombre,
-        esProductoNuevo: false,
-        precioUnitario: newValue.precio || updatedItems[index].precioUnitario || 0,
-      };
-    } else {
-      // User cleared the selection
-      updatedItems[index] = {
-        ...updatedItems[index],
-        productoId: '',
-        nombreProductoTemporal: '',
-        descripcionProductoTemporal: '',
-        esProductoNuevo: false,
-        precioUnitario: updatedItems[index].precioUnitario || 0,
-      };
-    }
-    setNewOrden({ ...newOrden, items: updatedItems });
-  }}
-  onInputChange={(_, newInputValue, reason) => {
-    // Only update when user is typing, not when selecting from dropdown
-    if (reason === 'input') {
-      const updatedItems = [...newOrden.items];
-      // Don't override if a product was already selected
-      if (!updatedItems[index].productoId) {
-        updatedItems[index] = {
-          ...updatedItems[index],
-          nombreProductoTemporal: newInputValue,
-          descripcionProductoTemporal: newInputValue,
-          esProductoNuevo: !!newInputValue && newInputValue.trim() !== '',
-          productoId: '',
-          precioUnitario: updatedItems[index].precioUnitario || 0,
-        };
-        setNewOrden({ ...newOrden, items: updatedItems });
-      }
-    } else if (reason === 'clear') {
-      const updatedItems = [...newOrden.items];
-      updatedItems[index] = {
-        ...updatedItems[index],
-        productoId: '',
-        nombreProductoTemporal: '',
-        descripcionProductoTemporal: '',
-        esProductoNuevo: false,
-      };
-      setNewOrden({ ...newOrden, items: updatedItems });
-    }
-  }}
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      label="Producto (selecciona existente o escribe nuevo)"
-      required
-      sx={{ flex: 2, minWidth: 200 }}
-      helperText={item.esProductoNuevo ? 'Producto nuevo' : item.productoId ? 'Producto existente' : ''}
-    />
-  )}
-/>
-    <TextField
-      type="number"
-      label="Cantidad"
-      value={item.cantidad}
-      onChange={(e) => handleItemChange(index, 'cantidad', parseInt(e.target.value) || 0)}
-      sx={{ width: 100 }}
-      required
-    />
-    <TextField
-      type="number"
-      label="Precio Unitario"
-      value={item.precioUnitario}
-      onChange={(e) => handleItemChange(index, 'precioUnitario', parseFloat(e.target.value) || 0)}
-      InputProps={{
-        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-      }}
-      sx={{ width: 120 }}
-      required
-    />
-    <TextField
-      label="Total"
-      value={(item.cantidad * item.precioUnitario).toFixed(2)}
-      InputProps={{
-        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-        readOnly: true,
-      }}
-      sx={{ width: 120 }}
-    />
-    <IconButton
-      onClick={() => handleRemoveItem(index)}
-      disabled={newOrden.items.length === 1}
-      color="error"
-    >
-      <DeleteIcon />
-    </IconButton>
+  <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+    <Box display="flex" gap={2} alignItems="flex-start" mb={2}>
+      <Autocomplete
+        freeSolo
+        options={productos}
+        getOptionLabel={(option) =>
+          typeof option === 'string' ? option : `${option.nombre} (Stock: ${option.stockActual})`
+        }
+        getOptionKey={(option) =>
+          typeof option === 'string' ? option : option.id.toString()
+        }
+        isOptionEqualToValue={(option, value) =>
+          typeof option === 'object' && typeof value === 'object' && option.id === value.id
+        }
+        value={
+          item.productoId
+            ? productos.find((p) => p.id.toString() === item.productoId) || null
+            : null
+        }
+        inputValue={
+          item.productoId
+            ? productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''
+            : item.nombreProductoTemporal || ''
+        }
+        onChange={(_, newValue) => {
+          const updatedItems = [...newOrden.items];
+          if (typeof newValue === 'string') {
+            // User typed a new product name
+            updatedItems[index] = {
+              ...updatedItems[index],
+              productoId: '',
+              nombreProductoTemporal: newValue,
+              descripcionProductoTemporal: newValue,
+              esProductoNuevo: true,
+              precioUnitario: updatedItems[index].precioUnitario || 0,
+            };
+          } else if (newValue && newValue.id) {
+            // User selected an existing product
+            updatedItems[index] = {
+              ...updatedItems[index],
+              productoId: newValue.id.toString(),
+              nombreProductoTemporal: newValue.nombre,
+              descripcionProductoTemporal: newValue.nombre,
+              codigoProductoTemporal: newValue.codigo || '',
+              esProductoNuevo: false,
+              precioUnitario: newValue.precio || updatedItems[index].precioUnitario || 0,
+            };
+          } else {
+            // User cleared the selection
+            updatedItems[index] = {
+              ...updatedItems[index],
+              productoId: '',
+              nombreProductoTemporal: '',
+              descripcionProductoTemporal: '',
+              codigoProductoTemporal: '',
+              esProductoNuevo: false,
+              precioUnitario: updatedItems[index].precioUnitario || 0,
+            };
+          }
+          setNewOrden({ ...newOrden, items: updatedItems });
+        }}
+        onInputChange={(_, newInputValue, reason) => {
+          // Only update when user is typing, not when selecting from dropdown
+          if (reason === 'input') {
+            const updatedItems = [...newOrden.items];
+            // Don't override if a product was already selected
+            if (!updatedItems[index].productoId) {
+              updatedItems[index] = {
+                ...updatedItems[index],
+                nombreProductoTemporal: newInputValue,
+                descripcionProductoTemporal: newInputValue,
+                esProductoNuevo: !!newInputValue && newInputValue.trim() !== '',
+                productoId: '',
+                precioUnitario: updatedItems[index].precioUnitario || 0,
+              };
+              setNewOrden({ ...newOrden, items: updatedItems });
+            }
+          } else if (reason === 'clear') {
+            const updatedItems = [...newOrden.items];
+            updatedItems[index] = {
+              ...updatedItems[index],
+              productoId: '',
+              nombreProductoTemporal: '',
+              descripcionProductoTemporal: '',
+              codigoProductoTemporal: '',
+              esProductoNuevo: false,
+            };
+            setNewOrden({ ...newOrden, items: updatedItems });
+          }
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Producto (selecciona existente o escribe nuevo)"
+            required
+            helperText={item.esProductoNuevo ? 'Producto nuevo' : item.productoId ? 'Producto existente' : ''}
+          />
+        )}
+        sx={{ flex: 1 }}
+      />
+      <IconButton
+        onClick={() => handleRemoveItem(index)}
+        disabled={newOrden.items.length === 1}
+        color="error"
+      >
+        <DeleteIcon />
+      </IconButton>
+    </Box>
+    <Box display="flex" gap={2} flexWrap="wrap">
+      {item.esProductoNuevo && (
+        <TextField
+          select
+          label="Categoría *"
+          value={item.categoriaId || ''}
+          onChange={(e) => handleItemChange(index, 'categoriaId', e.target.value)}
+          sx={{ minWidth: 200 }}
+          required={item.esProductoNuevo}
+          helperText="Seleccione primero para generar código automático"
+        >
+          <MenuItem value="">Seleccione...</MenuItem>
+          {categorias.map((cat) => (
+            <MenuItem key={cat.id} value={cat.id.toString()}>
+              {cat.nombre}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
+      <TextField
+        label="Código"
+        value={item.codigoProductoTemporal || ''}
+        onChange={(e) => handleItemChange(index, 'codigoProductoTemporal', e.target.value)}
+        sx={{ minWidth: 150 }}
+        helperText={item.esProductoNuevo ? "Auto-generado al seleccionar categoría" : "Código del producto"}
+      />
+      <TextField
+        type="number"
+        label="Cantidad"
+        value={item.cantidad}
+        onChange={(e) => handleItemChange(index, 'cantidad', parseInt(e.target.value) || 0)}
+        sx={{ width: 100 }}
+        required
+      />
+      <TextField
+        type="number"
+        label="Precio Unitario"
+        value={item.precioUnitario}
+        onChange={(e) => handleItemChange(index, 'precioUnitario', parseFloat(e.target.value) || 0)}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+        }}
+        sx={{ width: 120 }}
+        required
+      />
+      <TextField
+        label="Total"
+        value={(item.cantidad * item.precioUnitario).toFixed(2)}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+          readOnly: true,
+        }}
+        sx={{ width: 120 }}
+      />
+    </Box>
   </Box>
 ))}
       <Button onClick={handleAddItem} sx={{ mb: 2 }} startIcon={<AddIcon />}>
@@ -1250,6 +1453,20 @@ const handleDeleteCompra = async (id: number) => {
                         </Box>
                       </>
                     )}
+                    {selectedOrden.metodoPago && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Forma de Pago</Typography>
+                        <Typography variant="body1">
+                          {selectedOrden.metodoPago === 'EFECTIVO' && 'Efectivo'}
+                          {selectedOrden.metodoPago === 'TARJETA_CREDITO' && 'Tarjeta de Crédito'}
+                          {selectedOrden.metodoPago === 'TARJETA_DEBITO' && 'Tarjeta de Débito'}
+                          {selectedOrden.metodoPago === 'TRANSFERENCIA_BANCARIA' && 'Transferencia Bancaria'}
+                          {selectedOrden.metodoPago === 'CHEQUE' && 'Cheque'}
+                          {selectedOrden.metodoPago === 'FINANCIACION_PROPIA' && 'Financiación Propia'}
+                          {selectedOrden.metodoPago === 'OTRO' && 'Otro'}
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                   {selectedOrden.observaciones && (
                     <Box sx={{ mt: 2 }}>
@@ -1304,9 +1521,147 @@ const handleDeleteCompra = async (id: number) => {
             >
               Imprimir PDF
             </Button>
-          </DialogActions>       
+          </DialogActions>
         </Dialog>
-      </Box>    
+
+        {/* Price Change Confirmation Dialog */}
+        <Dialog
+          open={openPriceChangeDialog}
+          onClose={() => {
+            setOpenPriceChangeDialog(false);
+            setPriceChanges([]);
+          }}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" alignItems="center" gap={1}>
+              <MoneyIcon color="warning" />
+              <Typography variant="h6">Cambios de Precio Detectados</Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Se detectaron cambios en los precios de compra. Seleccione los productos cuyos precios desea actualizar en el sistema.
+            </Alert>
+
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Actualizar</TableCell>
+                    <TableCell>Producto</TableCell>
+                    <TableCell align="right">Precio Anterior</TableCell>
+                    <TableCell align="center">→</TableCell>
+                    <TableCell align="right">Precio Nuevo</TableCell>
+                    <TableCell align="right">Variación</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {priceChanges.map((change, index) => {
+                    const variation = ((change.precioNuevo - change.precioAnterior) / change.precioAnterior) * 100;
+                    const isIncrease = variation > 0;
+
+                    return (
+                      <TableRow key={change.productoId}>
+                        <TableCell>
+                          <Checkbox
+                            checked={change.shouldUpdate}
+                            onChange={(e) => {
+                              const updated = [...priceChanges];
+                              updated[index].shouldUpdate = e.target.checked;
+                              setPriceChanges(updated);
+                            }}
+                            color="primary"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="medium">
+                            {change.nombreProducto}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" color="text.secondary">
+                            ${change.precioAnterior.toLocaleString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography color={isIncrease ? 'error' : 'success'}>
+                            →
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography
+                            variant="body2"
+                            fontWeight="bold"
+                            color={isIncrease ? 'error.main' : 'success.main'}
+                          >
+                            ${change.precioNuevo.toLocaleString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Chip
+                            label={`${isIncrease ? '+' : ''}${variation.toFixed(1)}%`}
+                            color={isIncrease ? 'error' : 'success'}
+                            size="small"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Box sx={{ mt: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={priceChanges.every(c => c.shouldUpdate)}
+                    indeterminate={
+                      priceChanges.some(c => c.shouldUpdate) &&
+                      !priceChanges.every(c => c.shouldUpdate)
+                    }
+                    onChange={(e) => {
+                      const allChecked = e.target.checked;
+                      setPriceChanges(priceChanges.map(c => ({ ...c, shouldUpdate: allChecked })));
+                    }}
+                  />
+                }
+                label="Seleccionar todos"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                // Save without updating prices
+                saveOrdenWithPriceUpdates([]);
+              }}
+              color="inherit"
+            >
+              Guardar sin Actualizar Precios
+            </Button>
+            <Button
+              onClick={() => {
+                // Save with selected price updates
+                const updates = priceChanges
+                  .filter(c => c.shouldUpdate)
+                  .map(c => ({
+                    productoId: c.productoId,
+                    precioNuevo: c.precioNuevo,
+                  }));
+                saveOrdenWithPriceUpdates(updates);
+              }}
+              variant="contained"
+              color="primary"
+              disabled={!priceChanges.some(c => c.shouldUpdate)}
+            >
+              Actualizar {priceChanges.filter(c => c.shouldUpdate).length} Precio(s)
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </LocalizationProvider>
     </ErrorBoundary>
   );
