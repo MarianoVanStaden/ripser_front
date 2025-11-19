@@ -1,5 +1,5 @@
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -101,22 +101,32 @@ const TrabajosRealizadosPage: React.FC = () => {
     }
   };
 
-  const filteredOrdenes = ordenes.filter(o => {
-    const matchesEstado = estadoFilter === 'TODOS' || o.estado === estadoFilter;
-    
-    const matchesSearch = !searchTerm ||
-      o.numeroOrden?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getClientName(o).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.descripcionTrabajo?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filter and sort ordenes by finalization date descending (newest first)
+  const filteredOrdenes = useMemo(() => {
+    const filtered = ordenes.filter(o => {
+      const matchesEstado = estadoFilter === 'TODOS' || o.estado === estadoFilter;
 
-    const matchesFechaDesde = !fechaDesde || 
-      (o.fechaFinalizacion && new Date(o.fechaFinalizacion) >= new Date(fechaDesde));
-    
-    const matchesFechaHasta = !fechaHasta || 
-      (o.fechaFinalizacion && new Date(o.fechaFinalizacion) <= new Date(fechaHasta));
+      const matchesSearch = !searchTerm ||
+        o.numeroOrden?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getClientName(o).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        o.descripcionTrabajo?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesEstado && matchesSearch && matchesFechaDesde && matchesFechaHasta;
-  });
+      const matchesFechaDesde = !fechaDesde ||
+        (o.fechaFinalizacion && new Date(o.fechaFinalizacion) >= new Date(fechaDesde));
+
+      const matchesFechaHasta = !fechaHasta ||
+        (o.fechaFinalizacion && new Date(o.fechaFinalizacion) <= new Date(fechaHasta));
+
+      return matchesEstado && matchesSearch && matchesFechaDesde && matchesFechaHasta;
+    });
+
+    // Sort by finalization date descending (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = a.fechaFinalizacion ? new Date(a.fechaFinalizacion).getTime() : 0;
+      const dateB = b.fechaFinalizacion ? new Date(b.fechaFinalizacion).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [ordenes, estadoFilter, searchTerm, fechaDesde, fechaHasta]);
 
   const handleViewDetails = (orden: OrdenServicio) => {
     setSelected(orden);

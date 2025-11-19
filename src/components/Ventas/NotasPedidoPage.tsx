@@ -28,6 +28,7 @@ import {
   InputLabel,
   Select,
   TablePagination,
+  Snackbar,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -38,13 +39,16 @@ import {
   CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
 import { documentoApi, clienteApi, opcionFinanciamientoApi } from "../../api/services";
+import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
+import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
 import type {
   DocumentoComercial,
   EstadoDocumento,
   MetodoPago,
   DetalleDocumento,
   Cliente,
-  OpcionFinanciamientoDTO
+  OpcionFinanciamientoDTO,
+  RecetaFabricacionDTO
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import SuccessDialog from "../common/SuccessDialog";
@@ -95,13 +99,23 @@ const NotasPedidoPage: React.FC = () => {
   const [createdNota, setCreatedNota] = useState<DocumentoComercial | null>(null);
   const [facturaSuccessDialogOpen, setFacturaSuccessDialogOpen] = useState(false);
   const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
+  const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [notasData, presupuestosData] = await Promise.all([
+      const [notasData, presupuestosData, recetasData] = await Promise.all([
         documentoApi.getByTipo("NOTA_PEDIDO").catch((err) => {
           console.error("Error fetching notas de pedido:", err);
           return [];
@@ -110,7 +124,13 @@ const NotasPedidoPage: React.FC = () => {
           console.error("Error fetching presupuestos:", err);
           return [];
         }),
+        recetaFabricacionApi.getAllRecetas().catch((err) => {
+          console.error("Error fetching recetas:", err);
+          return [];
+        }),
       ]);
+
+      setRecetas(Array.isArray(recetasData) ? recetasData : []);
 
       const notasArray = Array.isArray(notasData) ? notasData : [];
       
@@ -257,6 +277,105 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, [presupuestos]);
 
+  // Function to create equipos in process when there's no available stock
+  const createEquiposEnProcesoIfNeeded = useCallback(async (detalles: DetalleDocumento[]): Promise<{
+    equiposCreados: string[];
+    advertencias: string[];
+  }> => {
+    const equiposCreados: string[] = [];
+    const advertencias: string[] = [];
+
+    const detallesConEquipo = detalles.filter(d => d.tipoItem === 'EQUIPO');
+
+    for (const detalle of detallesConEquipo) {
+      if (detalle.recetaId) {
+        let equiposFiltrados: any[] = [];
+
+        try {
+          console.log(`🔍 Verificando stock para receta ${detalle.recetaId}, color: "${detalle.color}", medida: "${detalle.medida}"`);
+
+          // Get all available equipos for this receta
+          const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(Number(detalle.recetaId));
+          console.log(`📦 Equipos disponibles totales: ${equiposDisponibles.length}`);
+
+          // Filter by color and medida if specified
+          equiposFiltrados = equiposDisponibles.filter(equipo => {
+            const matchColor = !detalle.color || equipo.color === detalle.color;
+            const matchMedida = !detalle.medida || equipo.medida === detalle.medida;
+            return matchColor && matchMedida;
+          });
+
+          const cantidadDisponible = equiposFiltrados.length;
+          const cantidadRequerida = detalle.cantidad || 0;
+
+          console.log(`✅ Equipos que coinciden con filtros: ${cantidadDisponible} de ${cantidadRequerida} requeridos`);
+
+          // If there aren't enough equipos, create the missing ones as "EN_PROCESO"
+          if (cantidadDisponible < cantidadRequerida) {
+            const cantidadFaltante = cantidadRequerida - cantidadDisponible;
+            const receta = recetas.find(r => r.id === Number(detalle.recetaId));
+
+            console.log(`🏭 Creando ${cantidadFaltante} equipo(s) en proceso...`);
+
+            // Create the missing equipos in batch
+            const equipoData: any = {
+              recetaId: Number(detalle.recetaId),
+              tipo: receta?.tipoEquipo || 'HELADERA' as any,
+              modelo: receta?.modelo || '',
+              medida: detalle.medida || receta?.medida,
+              color: detalle.color,
+              // Don't send numeroHeladera - let backend auto-generate it
+              cantidad: cantidadFaltante,
+              estado: 'EN_PROCESO' as any,
+            };
+
+            console.log('📝 Datos del equipo a crear:', equipoData);
+            const response = await equipoFabricadoApi.createBatch(equipoData);
+            console.log('✅ Respuesta del backend:', response);
+
+            equiposCreados.push(`${cantidadFaltante} equipo(s) "${receta?.nombre || 'sin nombre'}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'})`);
+          } else {
+            console.log(`✅ Stock suficiente, no se requiere crear equipos`);
+          }
+        } catch (error: any) {
+          console.error(`❌ Error creating equipos for receta ${detalle.recetaId}:`, error);
+
+          const receta = recetas.find(r => r.id === Number(detalle.recetaId));
+          const recetaNombre = receta?.nombre || `Receta ${detalle.recetaId}`;
+
+          // Check if it's a stock insufficiency error (409 Conflict)
+          if (error?.response?.status === 409) {
+            const cantidadFaltante = (detalle.cantidad || 0) - (equiposFiltrados?.length || 0);
+            advertencias.push(
+              `⚠️ No se pudieron crear ${cantidadFaltante} equipo(s) "${recetaNombre}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'}) automáticamente porque faltan componentes en stock. ` +
+              `Deberás crearlos manualmente en el módulo de Producción cuando tengas los componentes necesarios.`
+            );
+          } else {
+            // Extract detailed error message for other errors
+            let errorMsg = 'Error desconocido';
+            if (error?.response?.data) {
+              const data = error.response.data;
+              errorMsg = data.message || data.error || JSON.stringify(data);
+              console.error('📋 Detalles del error del backend:', data);
+            } else if (error instanceof Error) {
+              errorMsg = error.message;
+            }
+
+            console.error(`📋 Status: ${error?.response?.status || 'N/A'}`);
+            advertencias.push(`${recetaNombre}: ${errorMsg}`);
+          }
+          // Don't throw - continue with other equipos
+        }
+      }
+    }
+
+    if (advertencias.length > 0) {
+      console.warn('⚠️ Advertencias al crear equipos:', advertencias);
+    }
+
+    return { equiposCreados, advertencias };
+  }, [recetas]);
+
   const handleConvertToNotaPedido = useCallback(async () => {
     if (!convertForm.presupuestoId) {
       setError("Debe seleccionar un presupuesto");
@@ -275,10 +394,40 @@ const NotasPedidoPage: React.FC = () => {
 
       const nuevaNota = await documentoApi.convertToNotaPedido(payload);
       setNotasPedido(prev => [nuevaNota, ...prev]);
-      
+
+      // Create equipos en proceso if needed for new nota de pedido
+      if (nuevaNota.detalles && nuevaNota.detalles.length > 0) {
+        const { equiposCreados, advertencias } = await createEquiposEnProcesoIfNeeded(nuevaNota.detalles);
+
+        // Build combined message
+        const mensajes: string[] = [];
+
+        if (equiposCreados.length > 0) {
+          mensajes.push(`✅ Se crearon automáticamente: ${equiposCreados.join(', ')}`);
+        }
+
+        if (advertencias.length > 0) {
+          mensajes.push(...advertencias);
+        }
+
+        // Show combined snackbar if there are any messages
+        if (mensajes.length > 0) {
+          const tieneAdvertencias = advertencias.length > 0;
+          const severity = tieneAdvertencias && equiposCreados.length === 0 ? 'warning' :
+                          tieneAdvertencias ? 'info' :
+                          'success';
+
+          setSnackbar({
+            open: true,
+            message: mensajes.join('\n\n'),
+            severity: severity
+          });
+        }
+      }
+
       // Remove converted presupuesto from available list
       setPresupuestos(prev => prev.filter(p => p.id !== Number(convertForm.presupuestoId)));
-      
+
       handleCloseConvertDialog();
       setCreatedNota(nuevaNota);
       setSuccessDialogOpen(true);
@@ -294,7 +443,7 @@ const NotasPedidoPage: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
-  }, [convertForm, handleCloseConvertDialog]);
+  }, [convertForm, handleCloseConvertDialog, createEquiposEnProcesoIfNeeded]);
 
   const handleViewNota = useCallback((nota: DocumentoComercial) => {
     setSelectedNota(nota);
@@ -963,6 +1112,22 @@ const NotasPedidoPage: React.FC = () => {
           { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
         ] : []}
       />
+
+      {/* Snackbar for equipment creation messages */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={8000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%', whiteSpace: 'pre-line' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

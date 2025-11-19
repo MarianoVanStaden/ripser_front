@@ -560,103 +560,6 @@ const PresupuestosPage: React.FC = () => {
     setConfirmDialogAction(null);
   }, [user]);
 
-  // Function to create equipos in process when there's no available stock
-  const createEquiposEnProcesoIfNeeded = useCallback(async (detallesConEquipo: DetalleForm[]): Promise<{
-    equiposCreados: string[];
-    advertencias: string[];
-  }> => {
-    const equiposCreados: string[] = [];
-    const advertencias: string[] = [];
-
-    for (const detalle of detallesConEquipo) {
-      if (detalle.tipoItem === 'EQUIPO' && detalle.recetaId) {
-        let equiposFiltrados: any[] = [];
-
-        try {
-          console.log(`🔍 Verificando stock para receta ${detalle.recetaId}, color: "${detalle.color}", medida: "${detalle.medida}"`);
-
-          // Get all available equipos for this receta
-          const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(Number(detalle.recetaId));
-          console.log(`📦 Equipos disponibles totales: ${equiposDisponibles.length}`);
-
-          // Filter by color and medida if specified
-          equiposFiltrados = equiposDisponibles.filter(equipo => {
-            const matchColor = !detalle.color || equipo.color === detalle.color;
-            const matchMedida = !detalle.medida || equipo.medida === detalle.medida;
-            return matchColor && matchMedida;
-          });
-
-          const cantidadDisponible = equiposFiltrados.length;
-          const cantidadRequerida = detalle.cantidad;
-          
-          console.log(`✅ Equipos que coinciden con filtros: ${cantidadDisponible} de ${cantidadRequerida} requeridos`);
-
-          // If there aren't enough equipos, create the missing ones as "EN_PROCESO"
-          if (cantidadDisponible < cantidadRequerida) {
-            const cantidadFaltante = cantidadRequerida - cantidadDisponible;
-            const receta = recetas.find(r => r.id === Number(detalle.recetaId));
-
-            console.log(`🏭 Creando ${cantidadFaltante} equipo(s) en proceso...`);
-
-            // Create the missing equipos in batch
-            const equipoData: any = {
-              recetaId: Number(detalle.recetaId),
-              tipo: receta?.tipoEquipo || 'HELADERA' as any,
-              modelo: receta?.modelo || '',
-              medida: detalle.medida || receta?.medida,
-              color: detalle.color,
-              // Don't send numeroHeladera - let backend auto-generate it
-              cantidad: cantidadFaltante,
-              estado: 'EN_PROCESO' as any,
-            };
-
-            console.log('📝 Datos del equipo a crear:', equipoData);
-            const response = await equipoFabricadoApi.createBatch(equipoData);
-            console.log('✅ Respuesta del backend:', response);
-            
-            equiposCreados.push(`${cantidadFaltante} equipo(s) "${receta?.nombre || 'sin nombre'}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'})`);
-          } else {
-            console.log(`✅ Stock suficiente, no se requiere crear equipos`);
-          }
-        } catch (error: any) {
-          console.error(`❌ Error creating equipos for receta ${detalle.recetaId}:`, error);
-
-          const receta = recetas.find(r => r.id === Number(detalle.recetaId));
-          const recetaNombre = receta?.nombre || `Receta ${detalle.recetaId}`;
-
-          // Check if it's a stock insufficiency error (409 Conflict)
-          if (error?.response?.status === 409) {
-            const cantidadFaltante = detalle.cantidad - (equiposFiltrados?.length || 0);
-            advertencias.push(
-              `⚠️ No se pudieron crear ${cantidadFaltante} equipo(s) "${recetaNombre}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'}) automáticamente porque faltan componentes en stock. ` +
-              `Deberás crearlos manualmente en el módulo de Producción cuando tengas los componentes necesarios.`
-            );
-          } else {
-            // Extract detailed error message for other errors
-            let errorMsg = 'Error desconocido';
-            if (error?.response?.data) {
-              const data = error.response.data;
-              errorMsg = data.message || data.error || JSON.stringify(data);
-              console.error('📋 Detalles del error del backend:', data);
-            } else if (error instanceof Error) {
-              errorMsg = error.message;
-            }
-
-            console.error(`📋 Status: ${error?.response?.status || 'N/A'}`);
-            advertencias.push(`${recetaNombre}: ${errorMsg}`);
-          }
-          // Don't throw - continue with other equipos
-        }
-      }
-    }
-
-    if (advertencias.length > 0) {
-      console.warn('⚠️ Advertencias al crear equipos:', advertencias);
-    }
-
-    return { equiposCreados, advertencias };
-  }, [recetas]);
-
   const handleSavePresupuesto = useCallback(async () => {
     if (!user) {
       setError("Debe iniciar sesión");
@@ -742,37 +645,6 @@ const PresupuestosPage: React.FC = () => {
         console.log("Enviando datos:", JSON.stringify(payload));
         savedPresupuesto = await documentoApi.createPresupuesto(payload);
         setPresupuestos((prev) => [savedPresupuesto, ...prev]);
-
-        // Create equipos en proceso if needed for new presupuestos
-        const detallesEquipo = detalles.filter(d => d.tipoItem === 'EQUIPO');
-        if (detallesEquipo.length > 0) {
-          const { equiposCreados, advertencias } = await createEquiposEnProcesoIfNeeded(detallesEquipo);
-
-          // Build combined message
-          const mensajes: string[] = [];
-
-          if (equiposCreados.length > 0) {
-            mensajes.push(`✅ Se crearon automáticamente: ${equiposCreados.join(', ')}`);
-          }
-
-          if (advertencias.length > 0) {
-            mensajes.push(...advertencias);
-          }
-
-          // Show combined snackbar if there are any messages
-          if (mensajes.length > 0) {
-            const tieneAdvertencias = advertencias.length > 0;
-            const severity = tieneAdvertencias && equiposCreados.length === 0 ? 'warning' :
-                            tieneAdvertencias ? 'info' :
-                            'success';
-
-            setSnackbar({
-              open: true,
-              message: mensajes.join('\n\n'),
-              severity: severity
-            });
-          }
-        }
       }
 
       setConfirmDialogOpen(false);
@@ -811,7 +683,7 @@ const PresupuestosPage: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
-  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose, createEquiposEnProcesoIfNeeded]);
+  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose]);
 
   // Financiamiento handlers
   const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
