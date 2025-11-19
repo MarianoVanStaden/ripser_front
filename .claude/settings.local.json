@@ -17,7 +17,9 @@
       "Bash(powershell -Command \"Stop-Process -Id 13352 -Force\")",
       "Bash(npx tsc:*)",
       "Bash(timeout /t 10)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(cmd.exe /c \"taskkill /F /PID 26644\")",
+      "Bash(timeout /t 3)"
     ],
     "deny": [],
     "ask": []

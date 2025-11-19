@@ -109,11 +109,16 @@ const StockPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      // Request all products with a large page size to avoid pagination issues
       const [productsData, movementsData, categoriasData] = await Promise.all([
-        productApi.getAll(),
+        productApi.getAll(0, 10000), // Request up to 10000 products
         movimientoStockApi.getAll(),
         categoriaProductoApi.getAll(),
       ]);
+
+      console.log('📦 Productos cargados desde el backend:', productsData.length, productsData);
+      console.log('📂 Categorías cargadas:', categoriasData);
+      console.log('🔍 Muestra de productos:', productsData.slice(0, 5));
 
       setProducts(productsData);
       setStockMovements(movementsData);
@@ -177,15 +182,35 @@ const StockPage: React.FC = () => {
 
   // Filter products for Inventory tab
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    console.log('🔍 Filtrando productos...');
+    console.log('Total productos:', products.length);
+    console.log('Filtros activos:', { searchTerm, categoriaFilter, estadoFilter });
+
+    // Debug: Log category data for first few products
+    console.log('🏷️ Muestra de categorías en productos:');
+    products.slice(0, 3).forEach(p => {
+      console.log(`  - ${p.nombre}:`, {
+        categoriaProductoId: p.categoriaProductoId,
+        categoriaProducto: p.categoriaProducto,
+        categoriaProductoNombre: p.categoriaProductoNombre
+      });
+    });
+
+    const filtered = products.filter((product) => {
       const matchesSearch = searchTerm === '' ||
         product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesCategoria = categoriaFilter === 'all' ||
-        product.categoriaProductoId?.toString() === categoriaFilter ||
-        product.categoriaProducto?.id.toString() === categoriaFilter;
+      // More robust category matching - check all possible category fields
+      let matchesCategoria = categoriaFilter === 'all';
+      if (!matchesCategoria && categoriaFilter !== 'all') {
+        const productCategoryId =
+          product.categoriaProductoId?.toString() ||
+          product.categoriaProducto?.id?.toString();
+
+        matchesCategoria = productCategoryId === categoriaFilter;
+      }
 
       let matchesEstado = true;
       if (estadoFilter === 'sin-stock') {
@@ -200,8 +225,26 @@ const StockPage: React.FC = () => {
         matchesEstado = product.activo;
       }
 
-      return matchesSearch && matchesCategoria && matchesEstado;
+      const passes = matchesSearch && matchesCategoria && matchesEstado;
+
+      if (!passes && categoriaFilter !== 'all') {
+        console.log(`❌ Producto filtrado: ${product.nombre}`, {
+          matchesSearch,
+          matchesCategoria,
+          matchesEstado,
+          categoriaFilter,
+          categoriaProductoId: product.categoriaProductoId,
+          categoriaProducto: product.categoriaProducto,
+          activo: product.activo,
+          stockActual: product.stockActual,
+        });
+      }
+
+      return passes;
     });
+
+    console.log('✅ Productos después del filtro:', filtered.length);
+    return filtered;
   }, [products, searchTerm, categoriaFilter, estadoFilter]);
 
   // Paginate filtered products

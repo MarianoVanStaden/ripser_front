@@ -1735,6 +1735,12 @@ export interface DetalleCompraDTO {
   cantidad: number;
   costoUnitario: number;
   subtotal: number;
+  // Campos para productos temporales
+  nombreProductoTemporal?: string;
+  descripcionProductoTemporal?: string;
+  codigoProductoTemporal?: string;
+  categoriaProductoId?: number;
+  esProductoNuevo?: boolean;
 }
 export interface OrdenCompra {
   id: number;
@@ -1753,6 +1759,12 @@ export interface OrdenCompra {
     cantidad: number;
     precioUnitario: number;
     subtotal: number;
+    // Campos para productos temporales
+    nombreProductoTemporal?: string;
+    descripcionProductoTemporal?: string;
+    codigoProductoTemporal?: string;
+    categoriaProductoId?: number;
+    esProductoNuevo?: boolean;
   }[];
   observaciones?: string;
   metodoPago?: MetodoPago;
