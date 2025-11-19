@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -20,6 +20,9 @@ import {
   DialogActions,
   Stack,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
@@ -30,6 +33,7 @@ import {
   Delete as DeleteIcon,
   CheckCircle as ActiveIcon,
   Cancel as InactiveIcon,
+  ExpandMore,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -60,6 +64,24 @@ const RecetasList: React.FC = () => {
     open: boolean;
     recetaId: number | null;
   }>({ open: false, recetaId: null });
+
+  // Group recetas by tipo
+  const recetasPorTipo = useMemo(() => {
+    const grupos: Record<TipoEquipo, RecetaFabricacionListDTO[]> = {
+      HELADERA: [],
+      COOLBOX: [],
+      EXHIBIDOR: [],
+      OTRO: [],
+    };
+
+    recetas.forEach(receta => {
+      if (receta.tipoEquipo && grupos[receta.tipoEquipo]) {
+        grupos[receta.tipoEquipo].push(receta);
+      }
+    });
+
+    return grupos;
+  }, [recetas]);
 
   useEffect(() => {
     loadRecetas();
@@ -169,26 +191,6 @@ const RecetasList: React.FC = () => {
       headerName: 'Nombre',
       flex: 1,
       minWidth: 200,
-    },
-    {
-      field: 'tipoEquipo',
-      headerName: 'Tipo',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => {
-        const colorMap: Record<TipoEquipo, 'primary' | 'secondary' | 'success' | 'warning'> = {
-          HELADERA: 'primary',
-          COOLBOX: 'secondary',
-          EXHIBIDOR: 'success',
-          OTRO: 'warning',
-        };
-        return (
-          <Chip
-            label={params.value}
-            color={colorMap[params.value as TipoEquipo] || 'default'}
-            size="small"
-          />
-        );
-      },
     },
     {
       field: 'modelo',
@@ -329,27 +331,83 @@ const RecetasList: React.FC = () => {
           </Button>
         </Stack>
 
-        {/* DataGrid */}
-        <Box sx={{ height: 600, width: '100%' }}>
-          <DataGrid
-            rows={recetas}
-            columns={columns}
-            loading={loading}
-            paginationMode="server"
-            rowCount={totalElements}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-            rowsPerPageOptions={[5, 10, 20, 50]}
-            disableSelectionOnClick
-            localeText={{
-              noRowsLabel: 'No hay recetas disponibles',
-              MuiTablePagination: {
-                labelRowsPerPage: 'Filas por página:',
-              },
-            }}
-          />
+        {/* DataGrid Grouped by Tipo */}
+        <Box>
+          {(['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'] as TipoEquipo[]).map((tipo) => {
+            const recetasDelTipo = recetasPorTipo[tipo];
+            if (recetasDelTipo.length === 0) return null;
+
+            const tipoLabels: Record<TipoEquipo, string> = {
+              HELADERA: 'Heladeras',
+              COOLBOX: 'Coolbox',
+              EXHIBIDOR: 'Exhibidores',
+              OTRO: 'Otros',
+            };
+
+            const tipoColors: Record<TipoEquipo, 'primary' | 'secondary' | 'success' | 'warning'> = {
+              HELADERA: 'primary',
+              COOLBOX: 'secondary',
+              EXHIBIDOR: 'success',
+              OTRO: 'warning',
+            };
+
+            return (
+              <Accordion key={tipo} defaultExpanded sx={{ mb: 2 }}>
+                <AccordionSummary
+                  expandIcon={<ExpandMore />}
+                  sx={{
+                    bgcolor: `${tipoColors[tipo]}.lighter`,
+                    '&:hover': {
+                      bgcolor: `${tipoColors[tipo]}.light`,
+                    },
+                  }}
+                >
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <Chip
+                      label={tipoLabels[tipo]}
+                      color={tipoColors[tipo]}
+                      size="medium"
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {recetasDelTipo.length} receta{recetasDelTipo.length !== 1 ? 's' : ''}
+                    </Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ p: 0 }}>
+                  <Box sx={{ width: '100%' }}>
+                    <DataGrid
+                      rows={recetasDelTipo}
+                      columns={columns}
+                      loading={loading}
+                      autoHeight
+                      disableRowSelectionOnClick
+                      pageSizeOptions={[10, 25, 50, 100]}
+                      initialState={{
+                        pagination: {
+                          paginationModel: { pageSize: 10 },
+                        },
+                      }}
+                      localeText={{
+                        noRowsLabel: 'No hay recetas disponibles',
+                      }}
+                      sx={{
+                        border: 'none',
+                        '& .MuiDataGrid-columnHeaders': {
+                          bgcolor: 'grey.50',
+                        },
+                      }}
+                    />
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            );
+          })}
+
+          {recetas.length === 0 && !loading && (
+            <Alert severity="info">
+              No hay recetas disponibles
+            </Alert>
+          )}
         </Box>
       </Paper>
 

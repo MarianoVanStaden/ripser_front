@@ -1,5 +1,5 @@
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -233,19 +233,27 @@ const OrdenesServicioPage: React.FC = () => {
     }
   };
 
-  const filteredOrdenes = Array.isArray(ordenes) 
-    ? ordenes
-        .filter(o => estadoFilter === 'TODOS' || o.estado === estadoFilter)
-        .filter(o => {
-          if (!searchTerm) return true;
-          const searchLower = searchTerm.toLowerCase();
-          return (
-            o.numeroOrden?.toLowerCase().includes(searchLower) ||
-            getClientName(o).toLowerCase().includes(searchLower) ||
-            o.descripcionTrabajo?.toLowerCase().includes(searchLower)
-          );
-        })
-    : [];
+  // Filter and sort ordenes by date descending (newest first)
+  const filteredOrdenes = useMemo(() => {
+    if (!Array.isArray(ordenes)) return [];
+
+    const filtered = ordenes
+      .filter(o => estadoFilter === 'TODOS' || o.estado === estadoFilter)
+      .filter(o => {
+        if (!searchTerm) return true;
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          o.numeroOrden?.toLowerCase().includes(searchLower) ||
+          getClientName(o).toLowerCase().includes(searchLower) ||
+          o.descripcionTrabajo?.toLowerCase().includes(searchLower)
+        );
+      });
+
+    // Sort by date descending (newest first)
+    return filtered.sort((a, b) =>
+      new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime()
+    );
+  }, [ordenes, estadoFilter, searchTerm]);
 
   const handleViewDetails = (orden: OrdenServicio) => {
     setSelected(orden);

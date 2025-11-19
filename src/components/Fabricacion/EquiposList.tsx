@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Chip, IconButton,
   Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
-  DialogContentText, DialogActions, Stack, Autocomplete,
+  DialogContentText, DialogActions, Stack, Autocomplete, Card, CardContent,
+  Grid, Tabs, Tab, Divider, Accordion, AccordionSummary, AccordionDetails,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
+  Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -17,6 +19,7 @@ import {
 } from '../../api/services/equipoFabricadoApi';
 import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO } from '../../types';
 import api from '../../api/config';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const EquiposList: React.FC = () => {
   const navigate = useNavigate();
@@ -62,6 +65,43 @@ const EquiposList: React.FC = () => {
 
   const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
+  const [currentTab, setCurrentTab] = useState(0);
+
+  // Calculate metrics from all equipos (not just current page)
+  const metrics = useMemo(() => {
+    return {
+      total: equipos.length,
+      asignados: equipos.filter(e => e.asignado).length,
+      noAsignados: equipos.filter(e => !e.asignado).length,
+      enProceso: equipos.filter(e => e.estado === 'EN_PROCESO').length,
+      completados: equipos.filter(e => e.estado === 'COMPLETADO').length,
+      cancelados: equipos.filter(e => e.estado === 'CANCELADO').length,
+      // Entregados = completados y asignados
+      entregados: equipos.filter(e => e.estado === 'COMPLETADO' && e.asignado).length,
+      // En tránsito = completados pero aún no asignados (listos para entrega)
+      enTransito: equipos.filter(e => e.estado === 'COMPLETADO' && !e.asignado).length,
+      // Stock disponible = completados y no asignados
+      disponibles: equipos.filter(e => e.estado === 'COMPLETADO' && !e.asignado).length,
+    };
+  }, [equipos]);
+
+  // Group equipos by tipo
+  const equiposPorTipo = useMemo(() => {
+    const grupos: Record<TipoEquipo, EquipoFabricadoListDTO[]> = {
+      HELADERA: [],
+      COOLBOX: [],
+      EXHIBIDOR: [],
+      OTRO: [],
+    };
+
+    equipos.forEach(equipo => {
+      if (equipo.tipo && grupos[equipo.tipo]) {
+        grupos[equipo.tipo].push(equipo);
+      }
+    });
+
+    return grupos;
+  }, [equipos]);
 
   // Reload equipos when navigating back to this page
   useEffect(() => {
@@ -241,30 +281,30 @@ const EquiposList: React.FC = () => {
       ),
     },
     {
-      field: 'tipo',
-      headerName: 'Tipo',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => {
-        const colorMap: Record<TipoEquipo, 'primary' | 'secondary' | 'success' | 'warning'> = {
-          HELADERA: 'primary',
-          COOLBOX: 'secondary',
-          EXHIBIDOR: 'success',
-          OTRO: 'warning',
-        };
-        return (
-          <Chip
-            label={params.value}
-            color={colorMap[params.value as TipoEquipo] || 'default'}
-            size="small"
-          />
-        );
-      },
-    },
-    {
       field: 'modelo',
       headerName: 'Modelo',
       flex: 1,
-      minWidth: 150,
+      minWidth: 180,
+    },
+    {
+      field: 'medida',
+      headerName: 'Medida',
+      width: 120,
+      renderCell: (params: GridRenderCellParams) => (
+        <Typography variant="body2">
+          {params.value || '-'}
+        </Typography>
+      ),
+    },
+    {
+      field: 'color',
+      headerName: 'Color',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => (
+        <Typography variant="body2">
+          {params.value ? params.value.replace(/_/g, ' ') : '-'}
+        </Typography>
+      ),
     },
     {
       field: 'estado',
@@ -412,12 +452,22 @@ const EquiposList: React.FC = () => {
     },
   ];
 
+  // Chart colors
+  const COLORS = {
+    primary: '#1976d2',
+    success: '#2e7d32',
+    warning: '#ed6c02',
+    error: '#d32f2f',
+    info: '#0288d1',
+    grey: '#757575',
+  };
+
   return (
     <Box p={3}>
       <Paper elevation={2} sx={{ p: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h5" fontWeight="600">
-            Equipos Fabricados ({totalElements} total)
+            Gestión de Equipos Fabricados
           </Typography>
           <Stack direction="row" spacing={2}>
             <Button
@@ -438,6 +488,183 @@ const EquiposList: React.FC = () => {
             </Button>
           </Stack>
         </Box>
+
+        {/* Summary Cards */}
+        <Grid container spacing={2} mb={3}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'primary.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.main', color: 'white' }}>
+                    <Inventory fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="primary.main">
+                      {totalElements}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Total Equipos
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.main', color: 'white' }}>
+                    <Done fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="success.main">
+                      {metrics.disponibles}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Stock Disponible
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'info.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'info.main', color: 'white' }}>
+                    <Build fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="info.main">
+                      {metrics.enProceso}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      En Proceso
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'warning.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.main', color: 'white' }}>
+                    <Assignment fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="warning.main">
+                      {metrics.asignados}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Asignados
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.dark', color: 'white' }}>
+                    <LocalShipping fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="success.dark">
+                      {metrics.entregados}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Entregados
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'grey.100' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'grey.600', color: 'white' }}>
+                    <Inventory fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="grey.700">
+                      {metrics.noAsignados}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      No Asignados
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'success.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.main', color: 'white' }}>
+                    <CheckCircle fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="success.main">
+                      {metrics.completados}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Completados
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'error.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.main', color: 'white' }}>
+                    <Cancel fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="error.main">
+                      {metrics.cancelados}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Cancelados
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        <Divider sx={{ mb: 3 }} />
+
+        {/* Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs value={currentTab} onChange={(_, newValue) => setCurrentTab(newValue)}>
+            <Tab label="Lista de Equipos" icon={<Inventory />} iconPosition="start" />
+            <Tab label="KPIs y Análisis" icon={<TrendingUp />} iconPosition="start" />
+          </Tabs>
+        </Box>
+
+        {/* Tab Content */}
+        {currentTab === 0 && (
+          <Box>
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
           <TextField
@@ -469,25 +696,264 @@ const EquiposList: React.FC = () => {
           </TextField>
         </Stack>
 
-        <Box sx={{ height: 600, width: '100%' }}>
-          <DataGrid
-            rows={equipos}
-            columns={columns}
-            loading={loading}
-            paginationMode="server"
-            rowCount={totalElements}
-            paginationModel={{ page, pageSize }}
-            onPaginationModelChange={(model) => {
-              setPage(model.page);
-              setPageSize(model.pageSize);
-            }}
-            pageSizeOptions={[5, 10, 20, 50]}
-            disableRowSelectionOnClick
-            localeText={{
-              noRowsLabel: 'No hay equipos disponibles',
-            }}
-          />
-        </Box>
+            <Box>
+              {/* Grouped by Tipo */}
+              {(['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'] as TipoEquipo[]).map((tipo) => {
+                const equiposDelTipo = equiposPorTipo[tipo];
+                if (equiposDelTipo.length === 0) return null;
+
+                const tipoLabels: Record<TipoEquipo, string> = {
+                  HELADERA: 'Heladeras',
+                  COOLBOX: 'Coolbox',
+                  EXHIBIDOR: 'Exhibidores',
+                  OTRO: 'Otros',
+                };
+
+                const tipoColors: Record<TipoEquipo, 'primary' | 'secondary' | 'success' | 'warning'> = {
+                  HELADERA: 'primary',
+                  COOLBOX: 'secondary',
+                  EXHIBIDOR: 'success',
+                  OTRO: 'warning',
+                };
+
+                return (
+                  <Accordion key={tipo} defaultExpanded sx={{ mb: 2 }}>
+                    <AccordionSummary
+                      expandIcon={<ExpandMore />}
+                      sx={{
+                        bgcolor: `${tipoColors[tipo]}.lighter`,
+                        '&:hover': {
+                          bgcolor: `${tipoColors[tipo]}.light`,
+                        },
+                      }}
+                    >
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <Chip
+                          label={tipoLabels[tipo]}
+                          color={tipoColors[tipo]}
+                          size="medium"
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          {equiposDelTipo.length} equipo{equiposDelTipo.length !== 1 ? 's' : ''}
+                        </Typography>
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails sx={{ p: 0 }}>
+                      <Box sx={{ width: '100%' }}>
+                        <DataGrid
+                          rows={equiposDelTipo}
+                          columns={columns}
+                          loading={loading}
+                          autoHeight
+                          disableRowSelectionOnClick
+                          pageSizeOptions={[10, 25, 50, 100]}
+                          initialState={{
+                            pagination: {
+                              paginationModel: { pageSize: 10 },
+                            },
+                          }}
+                          localeText={{
+                            noRowsLabel: 'No hay equipos disponibles',
+                          }}
+                          sx={{
+                            border: 'none',
+                            '& .MuiDataGrid-columnHeaders': {
+                              bgcolor: 'grey.50',
+                            },
+                          }}
+                        />
+                      </Box>
+                    </AccordionDetails>
+                  </Accordion>
+                );
+              })}
+
+              {equipos.length === 0 && !loading && (
+                <Alert severity="info">
+                  No hay equipos disponibles
+                </Alert>
+              )}
+            </Box>
+          </Box>
+        )}
+
+        {/* KPIs Tab */}
+        {currentTab === 1 && (
+          <Box>
+            <Grid container spacing={3}>
+              {/* Estado de Fabricación */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" gutterBottom fontWeight="600">
+                    Estado de Fabricación
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'En Proceso', value: metrics.enProceso },
+                          { name: 'Completados', value: metrics.completados },
+                          { name: 'Cancelados', value: metrics.cancelados },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={(entry) => `${entry.name}: ${entry.value}`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        <Cell fill={COLORS.info} />
+                        <Cell fill={COLORS.success} />
+                        <Cell fill={COLORS.error} />
+                      </Pie>
+                      <RechartsTooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Paper>
+              </Grid>
+
+              {/* Estado de Asignación */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" gutterBottom fontWeight="600">
+                    Estado de Asignación
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Asignados', value: metrics.asignados },
+                          { name: 'No Asignados', value: metrics.noAsignados },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={(entry) => `${entry.name}: ${entry.value}`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        <Cell fill={COLORS.warning} />
+                        <Cell fill={COLORS.grey} />
+                      </Pie>
+                      <RechartsTooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Paper>
+              </Grid>
+
+              {/* Distribución por Tipo */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" gutterBottom fontWeight="600">
+                    Distribución por Tipo de Equipo
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={[
+                        { tipo: 'Heladera', cantidad: equipos.filter(e => e.tipo === 'HELADERA').length },
+                        { tipo: 'Coolbox', cantidad: equipos.filter(e => e.tipo === 'COOLBOX').length },
+                        { tipo: 'Exhibidor', cantidad: equipos.filter(e => e.tipo === 'EXHIBIDOR').length },
+                        { tipo: 'Otro', cantidad: equipos.filter(e => e.tipo === 'OTRO').length },
+                      ]}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="tipo" />
+                      <YAxis />
+                      <RechartsTooltip />
+                      <Bar dataKey="cantidad" fill={COLORS.primary} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Paper>
+              </Grid>
+
+              {/* Resumen de Flujo */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" gutterBottom fontWeight="600">
+                    Flujo de Equipos
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={[
+                        { estado: 'En Proceso', cantidad: metrics.enProceso, fill: COLORS.info },
+                        { estado: 'Disponibles', cantidad: metrics.disponibles, fill: COLORS.success },
+                        { estado: 'Entregados', cantidad: metrics.entregados, fill: COLORS.warning },
+                        { estado: 'Cancelados', cantidad: metrics.cancelados, fill: COLORS.error },
+                      ]}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="estado" />
+                      <YAxis />
+                      <RechartsTooltip />
+                      <Bar dataKey="cantidad" fill={COLORS.primary}>
+                        {[COLORS.info, COLORS.success, COLORS.warning, COLORS.error].map((color, index) => (
+                          <Cell key={`cell-${index}`} fill={color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Paper>
+              </Grid>
+
+              {/* KPIs Adicionales */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom fontWeight="600">
+                    Indicadores Clave de Rendimiento
+                  </Typography>
+                  <Grid container spacing={3} mt={1}>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box textAlign="center">
+                        <Typography variant="h3" color="success.main" fontWeight="bold">
+                          {totalElements > 0 ? ((metrics.completados / totalElements) * 100).toFixed(1) : 0}%
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Tasa de Completación
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box textAlign="center">
+                        <Typography variant="h3" color="warning.main" fontWeight="bold">
+                          {metrics.completados > 0 ? ((metrics.asignados / metrics.completados) * 100).toFixed(1) : 0}%
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Tasa de Asignación
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box textAlign="center">
+                        <Typography variant="h3" color="info.main" fontWeight="bold">
+                          {totalElements > 0 ? ((metrics.enProceso / totalElements) * 100).toFixed(1) : 0}%
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          En Fabricación
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Box textAlign="center">
+                        <Typography variant="h3" color="error.main" fontWeight="bold">
+                          {totalElements > 0 ? ((metrics.cancelados / totalElements) * 100).toFixed(1) : 0}%
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Tasa de Cancelación
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
       </Paper>
 
       {/* Assign Dialog */}
@@ -551,52 +1017,115 @@ const EquiposList: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Completar Dialog */}
+      {/* Completar Dialog - Enhanced */}
       <Dialog
         open={completarDialog.open}
         onClose={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: 'visible',
+          },
+        }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CheckCircle color="success" />
-          Completar Fabricación
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            ¿Desea marcar este equipo como completado?
-          </DialogContentText>
-          {completarDialog.equipo && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Equipo a completar:
+        <DialogContent sx={{ pt: 4, pb: 3 }}>
+          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+            {/* Success Icon */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: (theme) => theme.palette.success.main + '20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <CheckCircle sx={{ fontSize: 50, color: 'success.main' }} />
+            </Box>
+
+            {/* Title */}
+            <Typography variant="h5" fontWeight="600" gutterBottom>
+              Completar Fabricación
+            </Typography>
+
+            {/* Message */}
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              ¿Está seguro de que desea marcar este equipo como completado?
+            </Typography>
+
+            {/* Equipment Details */}
+            {completarDialog.equipo && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  width: '100%',
+                  p: 2,
+                  bgcolor: (theme) => theme.palette.primary.main + '08',
+                  borderColor: (theme) => theme.palette.primary.main + '30',
+                }}
+              >
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Número:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {completarDialog.equipo.numeroHeladera}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Tipo:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {completarDialog.equipo.tipo}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Modelo:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {completarDialog.equipo.modelo}
+                  </Typography>
+                </Box>
+                {completarDialog.equipo.responsableNombre && (
+                  <>
+                    <Divider />
+                    <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                      <Typography variant="body2" color="text.secondary">
+                        Responsable:
+                      </Typography>
+                      <Typography variant="body1" fontWeight="600">
+                        {completarDialog.equipo.responsableNombre}
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+              </Paper>
+            )}
+
+            {/* Info Message */}
+            <Alert severity="info" sx={{ mt: 2, width: '100%' }}>
+              <Typography variant="caption">
+                Al completar, el equipo estará disponible para asignación o venta.
               </Typography>
-              <Typography variant="body2">
-                <strong>Número:</strong> {completarDialog.equipo.numeroHeladera}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Tipo:</strong> {completarDialog.equipo.tipo}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Modelo:</strong> {completarDialog.equipo.modelo}
-              </Typography>
-              {completarDialog.equipo.responsableNombre && (
-                <Typography variant="body2">
-                  <strong>Responsable:</strong> {completarDialog.equipo.responsableNombre}
-                </Typography>
-              )}
             </Alert>
-          )}
-          <Typography variant="caption" color="text.secondary">
-            Al completar, el equipo estará disponible para asignación o venta.
-          </Typography>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })}>
+
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+          <Button onClick={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })} color="inherit">
             Cancelar
           </Button>
           <Button onClick={handleCompletar} color="success" variant="contained" startIcon={<CheckCircle />}>
-            Completar
+            Confirmar Completado
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -26,6 +26,7 @@ import {
   Select,
   MenuItem,
   Autocomplete,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -53,6 +54,10 @@ const InventoryPage: React.FC = () => {
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [adjustmentFilter, setAdjustmentFilter] = useState<'all' | 'pending' | 'approved'>('all');
+
+  // Pagination for adjustments
+  const [adjustmentPage, setAdjustmentPage] = useState(0);
+  const [adjustmentRowsPerPage, setAdjustmentRowsPerPage] = useState(10);
   
   // Forms
   const [adjustmentFormData, setAdjustmentFormData] = useState({
@@ -130,9 +135,24 @@ const InventoryPage: React.FC = () => {
     return !selectedCategory || product.categoriaProductoId === selectedCategory;
   });
 
-  const filteredAdjustments = adjustments.filter(adjustment => {
-    return adjustmentFilter === 'all' || adjustment.status.toLowerCase() === adjustmentFilter;
-  });
+  // Filter and sort adjustments by date descending (newest first)
+  const filteredAdjustments = useMemo(() => {
+    const filtered = adjustments.filter(adjustment => {
+      return adjustmentFilter === 'all' || adjustment.status.toLowerCase() === adjustmentFilter;
+    });
+
+    // Sort by date descending (newest first)
+    return filtered.sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [adjustments, adjustmentFilter]);
+
+  // Paginate adjustments
+  const paginatedAdjustments = useMemo(() => {
+    const startIndex = adjustmentPage * adjustmentRowsPerPage;
+    const endIndex = startIndex + adjustmentRowsPerPage;
+    return filteredAdjustments.slice(startIndex, endIndex);
+  }, [filteredAdjustments, adjustmentPage, adjustmentRowsPerPage]);
 
   const handleAddAdjustment = () => {
     setAdjustmentFormData({
@@ -490,9 +510,9 @@ const InventoryPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredAdjustments.map((adjustment) => {
+                {paginatedAdjustments.map((adjustment) => {
                   const product = products.find(p => p.id === adjustment.productId);
-                  
+
                   return (
                     <TableRow key={adjustment.id}>
                       <TableCell>
@@ -503,7 +523,7 @@ const InventoryPage: React.FC = () => {
                       <TableCell align="center">{adjustment.expectedQuantity}</TableCell>
                       <TableCell align="center">{adjustment.actualQuantity}</TableCell>
                       <TableCell align="center">
-                        <Typography 
+                        <Typography
                           fontWeight="bold"
                           color={adjustment.difference >= 0 ? 'success.main' : 'error.main'}
                         >
@@ -530,6 +550,19 @@ const InventoryPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            component="div"
+            count={filteredAdjustments.length}
+            page={adjustmentPage}
+            onPageChange={(_, newPage) => setAdjustmentPage(newPage)}
+            rowsPerPage={adjustmentRowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setAdjustmentRowsPerPage(parseInt(e.target.value, 10));
+              setAdjustmentPage(0);
+            }}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          />
         </CardContent>
       </Card>
 

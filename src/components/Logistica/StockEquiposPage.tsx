@@ -350,10 +350,15 @@ const StockEquiposPage: React.FC = () => {
   };
 
   // Tab 2: Filter and paginate Movimientos de Materias Primas
-  const materiasPrimasMovimientos = movimientosStock.filter(m =>
-    m.tipo === 'SALIDA_FABRICACION' ||
-    m.tipo === 'REINGRESO_CANCELACION_FABRICACION'
-  );
+  // Sort by date descending (newest first)
+  const materiasPrimasMovimientos = movimientosStock
+    .filter(m =>
+      m.tipo === 'SALIDA_FABRICACION' ||
+      m.tipo === 'REINGRESO_CANCELACION_FABRICACION'
+    )
+    .sort((a, b) =>
+      new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+    );
 
   const filteredMateriasPrimas = useMemo(() => {
     return materiasPrimasMovimientos.filter((movimiento) => {

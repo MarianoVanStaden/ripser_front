@@ -93,6 +93,8 @@ const NotasPedidoPage: React.FC = () => {
   const [notaForAsignacion, setNotaForAsignacion] = useState<DocumentoComercial | null>(null);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdNota, setCreatedNota] = useState<DocumentoComercial | null>(null);
+  const [facturaSuccessDialogOpen, setFacturaSuccessDialogOpen] = useState(false);
+  const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -327,7 +329,10 @@ const NotasPedidoPage: React.FC = () => {
 
       try {
         setError(null);
-        await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        const factura = await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        // Show success dialog
+        setCreatedFactura(factura);
+        setFacturaSuccessDialogOpen(true);
         // Refresh data after conversion
         fetchData();
       } catch (err: any) {
@@ -398,12 +403,15 @@ const NotasPedidoPage: React.FC = () => {
       setError(null);
       setAsignarEquiposDialogOpen(false);
 
-      await documentoApi.convertToFactura({
+      const factura = await documentoApi.convertToFactura({
         notaPedidoId: notaForAsignacion.id,
         equiposAsignaciones: asignaciones,
       });
 
       setNotaForAsignacion(null);
+      // Show success dialog
+      setCreatedFactura(factura);
+      setFacturaSuccessDialogOpen(true);
       // Refresh data after conversion
       fetchData();
     } catch (err: any) {
@@ -924,7 +932,7 @@ const NotasPedidoPage: React.FC = () => {
         />
       )}
 
-      {/* Success Dialog */}
+      {/* Success Dialog - Nota de Pedido Creada */}
       <SuccessDialog
         open={successDialogOpen}
         onClose={() => {
@@ -937,6 +945,22 @@ const NotasPedidoPage: React.FC = () => {
           { label: 'Número de Documento', value: createdNota.numeroDocumento },
           { label: 'Cliente', value: createdNota.clienteNombre || '-' },
           { label: 'Total', value: `$${createdNota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+        ] : []}
+      />
+
+      {/* Success Dialog - Factura Creada */}
+      <SuccessDialog
+        open={facturaSuccessDialogOpen}
+        onClose={() => {
+          setFacturaSuccessDialogOpen(false);
+          setCreatedFactura(null);
+        }}
+        title="¡Factura Creada Exitosamente!"
+        message="La nota de pedido ha sido facturada correctamente"
+        details={createdFactura ? [
+          { label: 'Número de Factura', value: createdFactura.numeroDocumento },
+          { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
+          { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
         ] : []}
       />
     </Box>

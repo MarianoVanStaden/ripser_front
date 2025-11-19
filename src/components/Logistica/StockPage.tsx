@@ -221,9 +221,9 @@ const StockPage: React.FC = () => {
     setPageInventory(0);
   };
 
-  // Filter movements
+  // Filter movements and sort by date descending (newest first)
   const filteredMovements = useMemo(() => {
-    return stockMovements.filter((movement) => {
+    const filtered = stockMovements.filter((movement) => {
       const matchesSearch = searchMovements === '' ||
         movement.productoNombre?.toLowerCase().includes(searchMovements.toLowerCase()) ||
         movement.concepto?.toLowerCase().includes(searchMovements.toLowerCase()) ||
@@ -233,6 +233,11 @@ const StockPage: React.FC = () => {
 
       return matchesSearch && matchesTipo;
     });
+
+    // Sort by date descending (newest first)
+    return filtered.sort((a, b) =>
+      new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+    );
   }, [stockMovements, searchMovements, tipoMovimientoFilter]);
 
   // Paginate filtered movements

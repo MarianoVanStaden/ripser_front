@@ -2139,6 +2139,7 @@ export interface RecetaFabricacionDTO {
   tipoEquipo: TipoEquipo;
   modelo?: string;
   medida?: string;
+  color?: string;
   observaciones?: string;
   precioVenta?: number;
   disponibleParaVenta?: boolean;
@@ -2154,6 +2155,7 @@ export type RecetaFabricacionListDTO = {
   tipoEquipo: TipoEquipo;
   modelo?: string;
   medida?: string;
+  color?: string;
   activo: boolean;
   fechaCreacion: string;
   cantidadDetalles: number;
@@ -2166,6 +2168,7 @@ export interface RecetaFabricacionCreateDTO {
   tipoEquipo: TipoEquipo;
   modelo?: string;
   medida?: string;
+  color?: string;
   observaciones?: string;
   precioVenta?: number;
   disponibleParaVenta?: boolean;
@@ -2178,6 +2181,7 @@ export interface RecetaFabricacionUpdateDTO {
   tipoEquipo?: TipoEquipo;
   modelo?: string;
   medida?: string;
+  color?: string;
   observaciones?: string;
   precioVenta?: number;
   disponibleParaVenta?: boolean;

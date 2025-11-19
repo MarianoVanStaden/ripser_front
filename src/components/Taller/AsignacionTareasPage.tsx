@@ -1,5 +1,5 @@
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -302,17 +302,23 @@ const AsignacionTareasPage: React.FC = () => {
     }
   };
 
-  const filteredTareas = tareas.filter(t => {
-    const matchesEstado = estadoFilter === 'TODOS' || t.estado === estadoFilter;
-    const matchesOrden = ordenFilter === null || t.ordenServicioId === ordenFilter;
-    const matchesEmpleado = empleadoFilter === null || t.empleadoId === empleadoFilter;
-    const matchesSearch = !searchTerm ||
-      t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getOrdenInfo(t).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getEmpleadoNombre(t).toLowerCase().includes(searchTerm.toLowerCase());
+  // Filter and sort tareas by creation date descending (newest first)
+  const filteredTareas = useMemo(() => {
+    const filtered = tareas.filter(t => {
+      const matchesEstado = estadoFilter === 'TODOS' || t.estado === estadoFilter;
+      const matchesOrden = ordenFilter === null || t.ordenServicioId === ordenFilter;
+      const matchesEmpleado = empleadoFilter === null || t.empleadoId === empleadoFilter;
+      const matchesSearch = !searchTerm ||
+        t.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getOrdenInfo(t).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getEmpleadoNombre(t).toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesEstado && matchesOrden && matchesEmpleado && matchesSearch;
-  });
+      return matchesEstado && matchesOrden && matchesEmpleado && matchesSearch;
+    });
+
+    // Sort by id descending (newest first) - assuming higher ID = more recent
+    return filtered.sort((a, b) => b.id - a.id);
+  }, [tareas, estadoFilter, ordenFilter, empleadoFilter, searchTerm]);
 
   if (loading) {
     return (

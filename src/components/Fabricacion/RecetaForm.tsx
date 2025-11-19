@@ -17,8 +17,13 @@ import type {
   RecetaFabricacionUpdateDTO,
   DetalleRecetaCreateDTO,
   TipoEquipo,
+  ColorEquipo,
+  MedidaEquipo,
+  RecetaFabricacionDTO,
 } from '../../types';
+import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 import api from '../../api/config';
+import SuccessDialog from '../common/SuccessDialog';
 
 const schema = yup.object().shape({
   nombre: yup.string().required('El nombre es obligatorio'),
@@ -26,6 +31,7 @@ const schema = yup.object().shape({
   descripcion: yup.string(),
   modelo: yup.string(),
   medida: yup.string(),
+  color: yup.string(),
   observaciones: yup.string(),
   precioVenta: yup.number().nullable().min(0, 'El precio debe ser mayor o igual a 0'),
   disponibleParaVenta: yup.boolean(),
@@ -51,6 +57,10 @@ const RecetaForm: React.FC = () => {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+  
+  // Success Dialog states
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdReceta, setCreatedReceta] = useState<RecetaFabricacionDTO | null>(null);
 
   const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -60,6 +70,7 @@ const RecetaForm: React.FC = () => {
       tipoEquipo: '' as TipoEquipo,
       modelo: '',
       medida: '',
+      color: '',
       observaciones: '',
       precioVenta: undefined as number | undefined,
       disponibleParaVenta: true,
@@ -92,6 +103,7 @@ const RecetaForm: React.FC = () => {
         tipoEquipo: data.tipoEquipo,
         modelo: data.modelo || '',
         medida: data.medida || '',
+        color: data.color || '',
         observaciones: data.observaciones || '',
         precioVenta: data.precioVenta,
         disponibleParaVenta: data.disponibleParaVenta ?? true,
@@ -126,6 +138,7 @@ const RecetaForm: React.FC = () => {
           tipoEquipo: data.tipoEquipo,
           modelo: data.modelo,
           medida: data.medida,
+          color: data.color,
           observaciones: data.observaciones,
           precioVenta: data.precioVenta,
           disponibleParaVenta: data.disponibleParaVenta,
@@ -166,19 +179,21 @@ const RecetaForm: React.FC = () => {
           tipoEquipo: data.tipoEquipo,
           modelo: data.modelo,
           medida: data.medida,
+          color: data.color,
           observaciones: data.observaciones,
           precioVenta: data.precioVenta,
           disponibleParaVenta: data.disponibleParaVenta,
           detalles,
         };
-        await recetaFabricacionApi.create(createData);
-        setSnackbar({
-          open: true,
-          message: 'Receta creada correctamente',
-          severity: 'success',
-        });
+        const savedReceta = await recetaFabricacionApi.create(createData);
+        setCreatedReceta(savedReceta);
+        setSuccessDialogOpen(true);
       }
-      setTimeout(() => navigate('/fabricacion/recetas'), 1500);
+      
+      // For updates, show snackbar and navigate
+      if (isEdit) {
+        setTimeout(() => navigate('/fabricacion/recetas'), 1500);
+      }
     } catch (error: any) {
       console.error('Error saving receta:', error);
       setSnackbar({
@@ -293,7 +308,38 @@ const RecetaForm: React.FC = () => {
               name="medida"
               control={control}
               render={({ field }) => (
-                <TextField {...field} label="Medida" fullWidth />
+                <TextField
+                  {...field}
+                  select
+                  label="Medida"
+                  fullWidth
+                >
+                  <MenuItem value="">Ninguna</MenuItem>
+                  {MEDIDAS_EQUIPO.map((medida) => (
+                    <MenuItem key={medida} value={medida}>
+                      {medida}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+            <Controller
+              name="color"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Color"
+                  fullWidth
+                >
+                  <MenuItem value="">Ninguno</MenuItem>
+                  {COLORES_EQUIPO.map((color) => (
+                    <MenuItem key={color} value={color}>
+                      {color.replace(/_/g, ' ')}
+                    </MenuItem>
+                  ))}
+                </TextField>
               )}
             />
             <Controller
@@ -428,6 +474,49 @@ const RecetaForm: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        open={successDialogOpen}
+        onClose={() => {
+          setSuccessDialogOpen(false);
+          setCreatedReceta(null);
+          navigate('/fabricacion/recetas');
+        }}
+        title="¡Receta Creada Exitosamente!"
+        message="La receta de fabricación ha sido registrada correctamente"
+        details={createdReceta ? [
+          { label: 'Nombre', value: createdReceta.nombre },
+          { label: 'Tipo de Equipo', value: createdReceta.tipoEquipo },
+          { label: 'Modelo', value: createdReceta.modelo || '-' },
+          { label: 'Color', value: createdReceta.color || '-' },
+          { label: 'Medida', value: createdReceta.medida || '-' },
+          { label: 'Precio de Venta', value: createdReceta.precioVenta ? `$${createdReceta.precioVenta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '-' },
+        ] : []}
+        actions={[
+          {
+            label: 'Crear Otra Receta',
+            onClick: () => {
+              setSuccessDialogOpen(false);
+              setCreatedReceta(null);
+              reset({
+                nombre: '',
+                descripcion: '',
+                tipoEquipo: '' as TipoEquipo,
+                modelo: '',
+                medida: '',
+                color: '',
+                observaciones: '',
+                precioVenta: undefined,
+                disponibleParaVenta: true,
+              });
+              setDetalles([]);
+            },
+            icon: <Add />,
+            variant: 'outlined',
+          },
+        ]}
+      />
     </Box>
   );
 };
