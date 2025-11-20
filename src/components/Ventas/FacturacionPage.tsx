@@ -568,8 +568,41 @@ const FacturacionPage = () => {
       }
     } catch (err: any) {
       console.error('Error creando factura manual:', err);
-      const msg = err?.response?.data?.message || err?.message || 'Error desconocido';
-      setError(`No se pudo crear la factura: ${msg}`);
+      let errorMessage = 'Error desconocido al crear la factura';
+      
+      if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+        
+        // Detectar error de constraint de equipo único
+        if (errorMessage.includes('uk_equipo_unico') || 
+            errorMessage.includes('constraint') || 
+            errorMessage.includes('Duplicate entry') ||
+            errorMessage.includes('ya está asignado') || 
+            errorMessage.includes('already assigned')) {
+          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
+                        'Uno o más equipos ya están asignados a esta u otra factura. ' +
+                        'Cada equipo solo puede ser asignado una vez.\n\n' +
+                        '💡 Soluciones:\n' +
+                        '• Verifique que no haya seleccionado el mismo equipo múltiples veces\n' +
+                        '• Revise si los equipos ya fueron facturados previamente\n' +
+                        '• Seleccione equipos diferentes del inventario';
+        }
+      } else if (err?.response?.status === 500 && err?.response?.data) {
+        // Intentar extraer información del error 500
+        const responseData = JSON.stringify(err.response.data);
+        if (responseData.includes('uk_equipo_unico') || responseData.includes('Duplicate')) {
+          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
+                        'El sistema detectó que está intentando asignar equipos que ya están en uso.\n\n' +
+                        '💡 Por favor:\n' +
+                        '• Verifique los equipos seleccionados\n' +
+                        '• Asegúrese de no repetir números de equipo\n' +
+                        '• Consulte el inventario de equipos disponibles';
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -606,8 +639,41 @@ const FacturacionPage = () => {
       await loadData();
     } catch (err: any) {
       console.error('Error converting to factura with equipos:', err);
-      const errorMessage = err?.response?.data?.message || err?.message || 'Error desconocido';
-      setError(`Error al convertir a factura: ${errorMessage}`);
+      let errorMessage = 'Error desconocido al convertir a factura';
+      
+      if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+        
+        // Detectar error de constraint de equipo único
+        if (errorMessage.includes('uk_equipo_unico') || 
+            errorMessage.includes('constraint') || 
+            errorMessage.includes('Duplicate entry') ||
+            errorMessage.includes('ya está asignado') || 
+            errorMessage.includes('already assigned')) {
+          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
+                        'Uno o más equipos ya están asignados a esta u otra factura. ' +
+                        'Cada equipo solo puede ser asignado una vez.\n\n' +
+                        '💡 Soluciones:\n' +
+                        '• Verifique que no haya seleccionado el mismo equipo múltiples veces\n' +
+                        '• Revise si los equipos ya fueron facturados previamente\n' +
+                        '• Seleccione equipos diferentes del inventario';
+        }
+      } else if (err?.response?.status === 500 && err?.response?.data) {
+        // Intentar extraer información del error 500
+        const responseData = JSON.stringify(err.response.data);
+        if (responseData.includes('uk_equipo_unico') || responseData.includes('Duplicate')) {
+          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
+                        'El sistema detectó que está intentando asignar equipos que ya están en uso.\n\n' +
+                        '💡 Por favor:\n' +
+                        '• Verifique los equipos seleccionados\n' +
+                        '• Asegúrese de no repetir números de equipo\n' +
+                        '• Consulte el inventario de equipos disponibles';
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -998,13 +1064,40 @@ const FacturacionPage = () => {
       </Box>
 
       {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
-          {error}
+        <Alert 
+          severity="error" 
+          onClose={() => setError(null)} 
+          sx={{ 
+            mb: 3,
+            '& .MuiAlert-message': {
+              width: '100%',
+              fontSize: '0.95rem',
+            }
+          }}
+        >
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+              Error en la operación
+            </Typography>
+            <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-line' }}>
+              {error}
+            </Typography>
+          </Box>
         </Alert>
       )}
       
       {success && (
-        <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>
+        <Alert 
+          severity="success" 
+          onClose={() => setSuccess(null)} 
+          sx={{ 
+            mb: 3,
+            '& .MuiAlert-message': {
+              width: '100%',
+              fontSize: '0.95rem',
+            }
+          }}
+        >
           {success}
         </Alert>
       )}
