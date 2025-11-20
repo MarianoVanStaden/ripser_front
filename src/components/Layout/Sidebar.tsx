@@ -43,6 +43,7 @@ const navigation: NavigationSection[] = [
       { text: 'Presupuestos', icon: <AssignmentIcon />, path: '/ventas/presupuestos' },
       { text: 'Notas de Pedido', icon: <AssignmentIcon />, path: '/ventas/notasPedido' },
       { text: 'Facturación', icon: <AssignmentIcon />, path: '/ventas/facturacion' },
+      { text: 'Notas de Crédito', icon: <AssignmentIcon />, path: '/ventas/notas-credito' },
       { text: 'Registro Ventas', icon: <AssignmentIcon />, path: '/ventas/registro' },
       { text: 'Informes', icon: <AssignmentIcon />, path: '/ventas/informes' },
       { text: 'Opción Financiamiento Particular', icon: <AssignmentIcon />, path: '/ventas/opciones-financiamiento' },
@@ -82,6 +83,7 @@ const navigation: NavigationSection[] = [
       { text: 'Tareas de Recuento', icon: <LocalShippingIcon />, path: '/logistica/recuentos' },
       { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/entregas' },
+      { text: 'Entregas de Equipos', icon: <LocalShippingIcon />, path: '/logistica/entregas-equipos' },
     ],
   },
   {
@@ -102,6 +104,7 @@ const navigation: NavigationSection[] = [
       { text: 'Tablero de Producción', icon: <PrecisionManufacturingIcon />, path: '/fabricacion/dashboard' },
       { text: 'Estructura de Producción', icon: <AssignmentIcon />, path: '/fabricacion/recetas' },
       { text: 'Equipos Fabricados', icon: <CategoryIcon />, path: '/fabricacion/equipos' },
+      { text: 'Reportes de Estados', icon: <AssignmentIcon />, path: '/fabricacion/reportes-estados' },
     ],
   },
   {

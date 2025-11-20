@@ -108,6 +108,13 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  marcarComoEntregado: async (equipoId: number) => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/marcar-entregado`
+    );
+    return response.data;
+  },
+
   completarFabricacion: async (equipoId: number) => {
     const response = await api.patch<EquipoFabricadoDTO>(
       `/api/equipos-fabricados/${equipoId}/completar`
@@ -142,6 +149,15 @@ export const equipoFabricadoApi = {
   findDisponiblesParaVentaByReceta: async (recetaId: number): Promise<EquipoFabricadoDTO[]> => {
     const response = await api.get<EquipoFabricadoDTO[]>(
       `/api/equipos-fabricados/disponibles-venta/receta/${recetaId}`
+    );
+    return response.data;
+  },
+
+  // Cambiar estado de asignación manualmente
+  updateEstadoAsignacion: async (equipoId: number, nuevoEstado: string) => {
+    const response = await api.put<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/estado-asignacion`,
+      { estadoAsignacion: nuevoEstado }
     );
     return response.data;
   },

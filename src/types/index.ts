@@ -1988,7 +1988,7 @@ export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocument
 export interface DocumentoComercial {
   id: number;
   numeroDocumento: string;
-  tipoDocumento: 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA';
+  tipoDocumento: 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA' | 'NOTA_CREDITO';
   clienteId: number;
   clienteNombre: string;
   usuarioId: number;
@@ -2005,6 +2005,17 @@ export interface DocumentoComercial {
   detalles: DetalleDocumento[];
   opcionesFinanciamiento?: OpcionFinanciamiento[];
   opcionFinanciamientoSeleccionadaId?: number;
+  documentoOrigenId?: number;
+  documentoOrigenNumero?: string;
+  documentoOrigenTipo?: string;
+  numeroReferencia?: string;
+}
+
+export interface CreateNotaCreditoDTO {
+  facturaId: number;
+  usuarioId: number;
+  observaciones?: string;
+  equiposADevolver?: number[];
 }
 // En types/index.ts agregar:
 export interface CreateOpcionFinanciamientoDTO {
@@ -2201,6 +2212,21 @@ export interface RecetaFabricacionUpdateDTO {
 }
 
 export type TipoEquipo = 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
+
+export type EstadoAsignacionEquipo = 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'ENTREGADO';
+
+export interface HistorialEstadoEquipo {
+  id: number;
+  equipoFabricadoId: number;
+  estadoAnterior: string | null;
+  estadoNuevo: string;
+  fechaCambio: string;
+  observaciones?: string;
+  usuarioNombre?: string;
+  documentoId?: number;
+  tipoDocumento?: string;
+}
+
 export interface EquipoFabricadoDTO {
   id: number;
   recetaId?: number;
@@ -2216,6 +2242,7 @@ export interface EquipoFabricadoDTO {
   numeroHeladera: string;
   cantidad: number;
   asignado: boolean;
+  estadoAsignacion?: EstadoAsignacionEquipo;
   estado: EstadoFabricacion;
   fechaFinalizacion?: string;
   responsableId?: number;

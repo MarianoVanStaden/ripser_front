@@ -25,6 +25,7 @@ import ConfiguracionFinanciamiento from './components/Ventas/ConfiguracionFinanc
 import RegistroVentasPage from './components/Ventas/RegistroVentasPage';
 import FacturacionPage from './components/Ventas/FacturacionPage';
 import InformesVentasPage from './components/Ventas/InformesVentasPage';
+import NotasCreditoPage from './components/Ventas/NotasCreditoPage';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
@@ -46,6 +47,7 @@ import InventoryPage from './components/Logistica/InventoryPage';
 import RecountTasksPage from './components/Logistica/RecountTasksPage';
 import TripsPage from './components/Logistica/TripsPage';
 import DeliveriesPage from './components/Logistica/DeliveriesPage';
+import EntregasEquiposPage from './components/Logistica/EntregasEquiposPage';
 import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
 import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
@@ -61,6 +63,7 @@ import {
   EquipoForm,
   DashboardFabricacion
 } from './components/Fabricacion';
+import ReportesEstadosPage from './components/Fabricacion/ReportesEstadosPage';
 
 
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -112,6 +115,7 @@ function App() {
               <Route path="ventas/configuracion-financiamiento" element={<PrivateRoute><ConfiguracionFinanciamiento /></PrivateRoute>} />
               <Route path="ventas/registro" element={<PrivateRoute><RegistroVentasPage /></PrivateRoute>} />
               <Route path="ventas/facturacion" element={<PrivateRoute><FacturacionPage /></PrivateRoute>} />
+              <Route path="ventas/notas-credito" element={<PrivateRoute><NotasCreditoPage /></PrivateRoute>} />
               <Route path="ventas/informes" element={<PrivateRoute><InformesVentasPage /></PrivateRoute>} />
              
               {/* CLIENTES Module */}
@@ -151,6 +155,7 @@ function App() {
               <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
               <Route path="logistica/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
               <Route path="logistica/entregas" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
+              <Route path="logistica/entregas-equipos" element={<PrivateRoute><EntregasEquiposPage /></PrivateRoute>} />
               {/* TALLER Module */}
               <Route path="taller/trabajos" element={<PrivateRoute><TrabajosRealizadosPage /></PrivateRoute>} />
               <Route path="taller/ordenes" element={<PrivateRoute><OrdenesServicioPage /></PrivateRoute>} />
@@ -167,6 +172,7 @@ function App() {
               <Route path="fabricacion/equipos/:id" element={<PrivateRoute><EquipoDetail /></PrivateRoute>} />
               <Route path="fabricacion/equipos/nuevo" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
               <Route path="fabricacion/equipos/editar/:id" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
+              <Route path="fabricacion/reportes-estados" element={<PrivateRoute><ReportesEstadosPage /></PrivateRoute>} />
             </Route>
           </Routes>
         </Router>

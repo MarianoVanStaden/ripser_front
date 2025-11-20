@@ -7,7 +7,8 @@ import type {
   DetalleDocumentoDTO,
   OpcionFinanciamiento,
   CreateOpcionFinanciamientoDTO,
-  ConvertToFacturaDTO
+  ConvertToFacturaDTO,
+  CreateNotaCreditoDTO
 } from '../../types';
 
 // Narrow DTO for creating presupuesto in current backend
@@ -203,6 +204,17 @@ export const documentoApi = {
       return true;
     } catch (error) {
       console.error('Error deleting opcion:', error);
+      throw error;
+    }
+  },
+
+  // Crear Nota de Crédito
+  createNotaCredito: async (data: CreateNotaCreditoDTO): Promise<DocumentoComercial> => {
+    try {
+      const response = await api.post<DocumentoComercial>('/api/documentos/nota-credito', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating nota de credito:', error);
       throw error;
     }
   },

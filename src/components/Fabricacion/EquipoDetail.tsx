@@ -5,16 +5,20 @@ import {
   DialogTitle, DialogContent, DialogActions, Autocomplete, TextField,
 } from '@mui/material';
 import {
-  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff,
+  Timeline, TimelineItem, TimelineSeparator, TimelineConnector, 
+  TimelineContent, TimelineDot, TimelineOppositeContent,
+} from '@mui/lab';
+import {
+  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
   equipoFabricadoApi,
 } from '../../api/services/equipoFabricadoApi';
+import { historialEstadoEquipoApi } from '../../api/historialEstadoEquipoApi';
 import api from '../../api/config';
-import type { EquipoFabricadoDTO } from '../../types';
-import { employeeApi } from '../../api/services/employeeApi';
+import type { EquipoFabricadoDTO, HistorialEstadoEquipo } from '../../types';
 
 
 const EquipoDetail: React.FC = () => {
@@ -25,12 +29,23 @@ const EquipoDetail: React.FC = () => {
   const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [assignDialog, setAssignDialog] = useState(false);
+  const [historial, setHistorial] = useState<HistorialEstadoEquipo[]>([]);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
 
   const [unassignDialog, setUnassignDialog] = useState(false);
   const [unassignErrorDialog, setUnassignErrorDialog] = useState<{
     open: boolean;
     errorMessage: string;
   }>({ open: false, errorMessage: '' });
+
+  const [deliveryDialog, setDeliveryDialog] = useState(false);
+  const [deliveryErrorDialog, setDeliveryErrorDialog] = useState<{
+    open: boolean;
+    errorMessage: string;
+  }>({ open: false, errorMessage: '' });
+
+  const [changeStateDialog, setChangeStateDialog] = useState(false);
+  const [newState, setNewState] = useState<'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'ENTREGADO' | null>(null);
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -42,6 +57,7 @@ const EquipoDetail: React.FC = () => {
     if (id) {
       loadEquipo();
       loadClientes();
+      loadHistorial();
     }
   }, [id]);
 
@@ -59,6 +75,18 @@ const EquipoDetail: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadHistorial = async () => {
+    try {
+      setLoadingHistorial(true);
+      const data = await historialEstadoEquipoApi.getByEquipoId(Number(id));
+      setHistorial(data);
+    } catch (error) {
+      console.error('Error loading historial:', error);
+    } finally {
+      setLoadingHistorial(false);
     }
   };
 
@@ -126,6 +154,7 @@ const loadClientes = async () => {
       setAssignDialog(false);
       setSelectedCliente(null);
       loadEquipo();
+      loadHistorial();
     } catch (error) {
       setSnackbar({
         open: true,
@@ -146,6 +175,7 @@ const loadClientes = async () => {
       });
       setUnassignDialog(false);
       loadEquipo();
+      loadHistorial();
     } catch (error: any) {
       // Close confirmation dialog
       setUnassignDialog(false);
@@ -158,6 +188,62 @@ const loadClientes = async () => {
       setUnassignErrorDialog({
         open: true,
         errorMessage: errorMessage,
+      });
+    }
+  };
+
+  const handleMarcarEntregado = async () => {
+    if (!equipo) return;
+    try {
+      await equipoFabricadoApi.marcarComoEntregado(equipo.id);
+      setSnackbar({
+        open: true,
+        message: '✅ Equipo marcado como ENTREGADO correctamente',
+        severity: 'success',
+      });
+      setDeliveryDialog(false);
+      loadEquipo();
+      loadHistorial();
+    } catch (error: any) {
+      // Close confirmation dialog
+      setDeliveryDialog(false);
+
+      // Show error dialog with backend message
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data ||
+                          error.message ||
+                          'Error desconocido al marcar como entregado';
+      setDeliveryErrorDialog({
+        open: true,
+        errorMessage: errorMessage,
+      });
+    }
+  };
+
+  const handleChangeState = async () => {
+    if (!equipo || !newState) return;
+    try {
+      // Cambiar estado usando el método del API
+      await equipoFabricadoApi.updateEstadoAsignacion(equipo.id, newState);
+      
+      setSnackbar({
+        open: true,
+        message: `✅ Estado cambiado a ${newState} correctamente`,
+        severity: 'success',
+      });
+      setChangeStateDialog(false);
+      setNewState(null);
+      loadEquipo();
+      loadHistorial();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data ||
+                          error.message ||
+                          'Error al cambiar el estado';
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error',
       });
     }
   };
@@ -228,7 +314,7 @@ const loadClientes = async () => {
               Asignar Cliente
             </Button>
           )}
-          {equipo.asignado && (
+          {equipo.asignado && equipo.estadoAsignacion !== 'ENTREGADO' && (
             <Button
               variant="outlined"
               color="warning"
@@ -238,6 +324,27 @@ const loadClientes = async () => {
               Desasignar
             </Button>
           )}
+          {equipo.asignado && equipo.estadoAsignacion === 'FACTURADO' && (
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<CheckCircle />}
+              onClick={() => setDeliveryDialog(true)}
+            >
+              Marcar como Entregado
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            color="info"
+            startIcon={<History />}
+            onClick={() => {
+              setNewState((equipo.estadoAsignacion as 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'ENTREGADO') || null);
+              setChangeStateDialog(true);
+            }}
+          >
+            Cambiar Estado
+          </Button>
           <Button
             variant="contained"
             startIcon={<Edit />}
@@ -301,6 +408,25 @@ const loadClientes = async () => {
                   </Typography>
                   <Typography variant="body1">{equipo.cantidad}</Typography>
                 </Box>
+                {equipo.estadoAsignacion && (
+                  <Box>
+                    <Typography variant="caption" color="textSecondary">
+                      Estado de Asignación
+                    </Typography>
+                    <Box>
+                      <Chip
+                        label={equipo.estadoAsignacion}
+                        color={
+                          equipo.estadoAsignacion === 'ENTREGADO' ? 'success' :
+                          equipo.estadoAsignacion === 'FACTURADO' ? 'primary' :
+                          equipo.estadoAsignacion === 'RESERVADO' ? 'warning' :
+                          'default'
+                        }
+                        size="small"
+                      />
+                    </Box>
+                  </Box>
+                )}
               </Stack>
             </CardContent>
           </Card>
@@ -374,6 +500,103 @@ const loadClientes = async () => {
                 <Typography variant="body1" fontWeight="500">
                   {equipo.clienteNombre}
                 </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Historial de Estados */}
+        {equipo.estadoAsignacion && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={1} mb={2}>
+                  <History color="primary" />
+                  <Typography variant="h6">
+                    Historial de Estados de Asignación
+                  </Typography>
+                </Box>
+                <Divider sx={{ mb: 3 }} />
+                
+                {loadingHistorial ? (
+                  <Box display="flex" justifyContent="center" py={3}>
+                    <CircularProgress size={30} />
+                  </Box>
+                ) : historial.length === 0 ? (
+                  <Alert severity="info">
+                    No hay cambios de estado registrados para este equipo.
+                  </Alert>
+                ) : (
+                  <Timeline position="right">
+                    {historial.map((item, index) => (
+                      <TimelineItem key={item.id}>
+                        <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+                          <Typography variant="body2" fontWeight="500">
+                            {dayjs(item.fechaCambio).format('DD/MM/YYYY')}
+                          </Typography>
+                          <Typography variant="caption">
+                            {dayjs(item.fechaCambio).format('HH:mm')}
+                          </Typography>
+                        </TimelineOppositeContent>
+                        
+                        <TimelineSeparator>
+                          <TimelineDot 
+                            color={
+                              item.estadoNuevo === 'ENTREGADO' ? 'success' :
+                              item.estadoNuevo === 'FACTURADO' ? 'primary' :
+                              item.estadoNuevo === 'RESERVADO' ? 'warning' :
+                              'grey'
+                            }
+                          />
+                          {index < historial.length - 1 && <TimelineConnector />}
+                        </TimelineSeparator>
+                        
+                        <TimelineContent sx={{ py: '12px', px: 2 }}>
+                          <Box>
+                            <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                              {item.estadoAnterior && (
+                                <>
+                                  <Chip
+                                    label={item.estadoAnterior}
+                                    size="small"
+                                    color="default"
+                                  />
+                                  <Typography variant="body2">→</Typography>
+                                </>
+                              )}
+                              <Chip
+                                label={item.estadoNuevo}
+                                size="small"
+                                color={
+                                  item.estadoNuevo === 'ENTREGADO' ? 'success' :
+                                  item.estadoNuevo === 'FACTURADO' ? 'primary' :
+                                  item.estadoNuevo === 'RESERVADO' ? 'warning' :
+                                  'default'
+                                }
+                              />
+                            </Box>
+                            {item.usuarioNombre && (
+                              <Typography variant="body2" color="text.secondary">
+                                Usuario: <strong>{item.usuarioNombre}</strong>
+                              </Typography>
+                            )}
+                            {item.tipoDocumento && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Documento: {item.tipoDocumento}
+                                {item.documentoId && ` #${item.documentoId}`}
+                              </Typography>
+                            )}
+                            {item.observaciones && (
+                              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                {item.observaciones}
+                              </Typography>
+                            )}
+                          </Box>
+                        </TimelineContent>
+                      </TimelineItem>
+                    ))}
+                  </Timeline>
+                )}
               </CardContent>
             </Card>
           </Grid>
@@ -564,11 +787,238 @@ const loadClientes = async () => {
         </DialogActions>
       </Dialog>
 
+      {/* Delivery Confirmation Dialog */}
+      <Dialog
+        open={deliveryDialog}
+        onClose={() => setDeliveryDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogContent sx={{ pt: 4, pb: 3 }}>
+          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+            {/* Success Icon */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: (theme) => theme.palette.success.main + '20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <CheckCircle sx={{ fontSize: 50, color: 'success.main' }} />
+            </Box>
+
+            {/* Title */}
+            <Typography variant="h5" fontWeight="600" gutterBottom>
+              ¿Marcar como ENTREGADO?
+            </Typography>
+
+            {/* Description */}
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Está a punto de marcar el equipo como entregado al cliente
+            </Typography>
+
+            {equipo && (
+              <Paper
+                elevation={0}
+                sx={{
+                  bgcolor: (theme) => theme.palette.grey[50],
+                  p: 2,
+                  width: '100%',
+                  borderRadius: 2,
+                }}
+              >
+                <>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">
+                      Equipo:
+                    </Typography>
+                    <Typography variant="body2" fontWeight="600">
+                      {equipo.numeroHeladera}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="body2" color="text.secondary">
+                      Modelo:
+                    </Typography>
+                    <Typography variant="body2" fontWeight="600">
+                      {equipo.modelo}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">
+                      Cliente:
+                    </Typography>
+                    <Typography variant="body2" fontWeight="600">
+                      {equipo.clienteNombre || 'No asignado'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ mt: 2, p: 1.5, bgcolor: 'warning.lighter', borderRadius: 1 }}>
+                    <Typography variant="caption" color="warning.dark" sx={{ display: 'block', fontWeight: 600 }}>
+                      ⚠️ Acción Irreversible
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                      Una vez marcado como ENTREGADO, el equipo no podrá ser desasignado ni modificado.
+                      La entrega cierra el contrato definitivamente.
+                    </Typography>
+                  </Box>
+                </>
+              </Paper>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center', gap: 2 }}>
+          <Button
+            onClick={() => setDeliveryDialog(false)}
+            variant="outlined"
+            size="large"
+            sx={{ minWidth: 120 }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleMarcarEntregado}
+            color="success"
+            variant="contained"
+            startIcon={<CheckCircle />}
+            size="large"
+            sx={{ minWidth: 120 }}
+          >
+            Confirmar Entrega
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delivery Error Dialog */}
+      <Dialog
+        open={deliveryErrorDialog.open}
+        onClose={() => setDeliveryErrorDialog({ open: false, errorMessage: '' })}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogContent sx={{ pt: 4, pb: 3 }}>
+          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+            {/* Error Icon */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: (theme) => theme.palette.error.main + '20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <Cancel sx={{ fontSize: 50, color: 'error.main' }} />
+            </Box>
+
+            {/* Title */}
+            <Typography variant="h5" fontWeight="600" gutterBottom color="error">
+              Error al marcar como entregado
+            </Typography>
+
+            {/* Error Message */}
+            <Alert severity="error" sx={{ width: '100%', mt: 2, textAlign: 'left' }}>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                {deliveryErrorDialog.errorMessage}
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center' }}>
+          <Button
+            onClick={() => setDeliveryErrorDialog({ open: false, errorMessage: '' })}
+            variant="contained"
+            size="large"
+            sx={{ minWidth: 120 }}
+          >
+            Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Change State Dialog */}
+      <Dialog
+        open={changeStateDialog}
+        onClose={() => setChangeStateDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Cambiar Estado de Asignación</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                Estado actual: <strong>{equipo?.estadoAsignacion}</strong>
+              </Typography>
+              <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                Cambiar el estado manualmente puede afectar el flujo normal del sistema.
+              </Typography>
+            </Alert>
+            
+            <TextField
+              select
+              fullWidth
+              label="Nuevo Estado"
+              value={newState || ''}
+              onChange={(e) => setNewState(e.target.value as any)}
+              SelectProps={{
+                native: true,
+              }}
+            >
+              <option value="">Seleccione un estado</option>
+              <option value="DISPONIBLE">DISPONIBLE</option>
+              <option value="RESERVADO">RESERVADO</option>
+              <option value="FACTURADO">FACTURADO</option>
+              <option value="ENTREGADO">ENTREGADO</option>
+            </TextField>
+
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                Flujo normal de estados:
+              </Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                DISPONIBLE → RESERVADO → FACTURADO → ENTREGADO
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setChangeStateDialog(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleChangeState}
+            variant="contained"
+            disabled={!newState || newState === equipo?.estadoAsignacion}
+            color="primary"
+          >
+            Cambiar Estado
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}

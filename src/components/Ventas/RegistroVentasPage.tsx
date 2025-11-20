@@ -931,13 +931,25 @@ const RegistroVentasPage: React.FC = () => {
                             <TableCell>
                               {item.tipoItem === 'EQUIPO' ? (
                                 <>
-                                  <Typography variant="body2">
+                                  <Typography variant="body2" fontWeight="500">
                                     {item.recetaNombre || item.descripcionEquipo || 'Equipo'}
                                   </Typography>
                                   {item.equiposNumerosHeladera && item.equiposNumerosHeladera.length > 0 && (
-                                    <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
-                                      Equipos: {item.equiposNumerosHeladera.join(', ')}
-                                    </Typography>
+                                    <Box sx={{ mt: 0.5 }}>
+                                      <Typography variant="caption" color="primary" sx={{ display: 'block' }}>
+                                        <strong>N° Equipos:</strong> {item.equiposNumerosHeladera.join(', ')}
+                                      </Typography>
+                                      {item.descripcionEquipo && (
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                          {item.descripcionEquipo}
+                                        </Typography>
+                                      )}
+                                      {(item.recetaModelo || item.color || item.medida) && (
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.3 }}>
+                                          {[item.recetaModelo, item.medida, item.color].filter(Boolean).join(' - ')}
+                                        </Typography>
+                                      )}
+                                    </Box>
                                   )}
                                 </>
                               ) : (
