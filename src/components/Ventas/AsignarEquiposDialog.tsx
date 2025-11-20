@@ -36,6 +36,8 @@ interface DetalleAsignacion {
   recetaNombre: string;
   recetaModelo?: string;
   recetaTipo?: string;
+  color?: string;
+  medida?: string;
   cantidadRequerida: number;
   equiposSeleccionados: number[];
   equiposDisponibles: EquipoFabricadoDTO[];
@@ -72,6 +74,8 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           recetaNombre: detalle.recetaNombre || '',
           recetaModelo: detalle.recetaModelo,
           recetaTipo: detalle.recetaTipo,
+          color: detalle.color,
+          medida: detalle.medida,
           cantidadRequerida: detalle.cantidad,
           equiposSeleccionados: [],
           equiposDisponibles: [],
@@ -89,10 +93,24 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
       const asignacion = newAsignaciones[i];
       try {
         const equipos = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId);
+
+        // Filter by color and medida if specified
+        const equiposFiltrados = equipos.filter((equipo) => {
+          const matchColor = !asignacion.color || equipo.color === asignacion.color;
+          const matchMedida = !asignacion.medida || equipo.medida === asignacion.medida;
+          return matchColor && matchMedida;
+        });
+
+        console.log(`🔍 Filtrado de equipos para ${asignacion.recetaNombre}:`);
+        console.log(`  - Total disponibles: ${equipos.length}`);
+        console.log(`  - Color requerido: "${asignacion.color || 'Sin especificar'}"`);
+        console.log(`  - Medida requerida: "${asignacion.medida || 'Sin especificar'}"`);
+        console.log(`  - Equipos que cumplen criterios: ${equiposFiltrados.length}`);
+
         setAsignaciones((prev) =>
           prev.map((a, index) =>
             index === i
-              ? { ...a, equiposDisponibles: equipos, loading: false }
+              ? { ...a, equiposDisponibles: equiposFiltrados, loading: false }
               : a
           )
         );
@@ -204,6 +222,26 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                       <Typography variant="body2" color="text.secondary">
                         Tipo: {asignacion.recetaTipo} | Cantidad requerida: {asignacion.cantidadRequerida}
                       </Typography>
+                      {(asignacion.color || asignacion.medida) && (
+                        <Box display="flex" gap={1} mt={0.5}>
+                          {asignacion.color && (
+                            <Chip
+                              label={`Color: ${asignacion.color.replace(/_/g, ' ')}`}
+                              size="small"
+                              variant="outlined"
+                              color="primary"
+                            />
+                          )}
+                          {asignacion.medida && (
+                            <Chip
+                              label={`Medida: ${asignacion.medida}`}
+                              size="small"
+                              variant="outlined"
+                              color="primary"
+                            />
+                          )}
+                        </Box>
+                      )}
                     </Box>
                     {asignacion.equiposSeleccionados.length === asignacion.cantidadRequerida ? (
                       <Chip
@@ -263,10 +301,19 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                               value={equipo.id}
                               onClick={() => handleEquipoToggle(index, equipo.id)}
                             >
-                              <Box display="flex" justifyContent="space-between" width="100%">
-                                <Typography>
-                                  {equipo.numeroHeladera}
-                                </Typography>
+                              <Box display="flex" justifyContent="space-between" width="100%" alignItems="center">
+                                <Box>
+                                  <Typography>
+                                    {equipo.numeroHeladera}
+                                  </Typography>
+                                  {(equipo.color || equipo.medida) && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {equipo.color && equipo.color.replace(/_/g, ' ')}
+                                      {equipo.color && equipo.medida && ' - '}
+                                      {equipo.medida}
+                                    </Typography>
+                                  )}
+                                </Box>
                                 <Typography variant="body2" color="text.secondary">
                                   {equipo.estado}
                                 </Typography>

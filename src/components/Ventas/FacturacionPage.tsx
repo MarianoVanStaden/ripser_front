@@ -112,6 +112,8 @@ type CartItem = {
   recetaNombre?: string;
   recetaModelo?: string;
   recetaTipo?: string;
+  color?: string;
+  medida?: string;
 };
 
 type NotaCartItem = {
@@ -128,6 +130,8 @@ type NotaCartItem = {
   recetaModelo?: string;
   recetaTipo?: string;
   descripcionEquipo?: string;
+  color?: string;
+  medida?: string;
 };
 
 const FacturacionPage = () => {
@@ -635,6 +639,8 @@ const FacturacionPage = () => {
             recetaModelo: d.recetaModelo,
             recetaTipo: d.recetaTipo,
             descripcionEquipo: d.descripcionEquipo,
+            color: d.color,
+            medida: d.medida,
           }))
         : []
     );

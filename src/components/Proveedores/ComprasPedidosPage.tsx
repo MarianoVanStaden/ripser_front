@@ -117,6 +117,11 @@ const ComprasPedidosPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Delete confirmation modal states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [ordenToDelete, setOrdenToDelete] = useState<OrdenCompra | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState('');
+
 const [newOrden, setNewOrden] = useState({
   supplierId: '',
   fechaEntregaEstimada: dayjs().add(15, 'day'),
@@ -196,6 +201,12 @@ const loadCompras = async () => {
             cantidad: detalle.cantidad,
             precioUnitario: detalle.costoUnitario,
             subtotal: detalle.cantidad * detalle.costoUnitario,
+            // Include fields needed for editing
+            nombreProductoTemporal: detalle.nombreProductoTemporal || '',
+            descripcionProductoTemporal: detalle.descripcionProductoTemporal || '',
+            codigoProductoTemporal: detalle.codigoProductoTemporal || '',
+            categoriaProductoId: detalle.categoriaProductoId,
+            esProductoNuevo: detalle.esProductoNuevo ?? !detalle.productoId,
           })),
           observaciones: compra.observaciones,
           metodoPago: compra.metodoPago,
@@ -616,6 +627,51 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
   } finally {
     setLoading(false);
   }
+};
+
+const handleDeleteOrdenClick = (orden: OrdenCompra) => {
+  // Verificar si la orden está en estado RECIBIDA
+  if (orden.estado === 'RECIBIDA') {
+    setDeleteErrorMessage('No se puede eliminar una orden en estado RECIBIDA. Los productos ya fueron ingresados al stock.');
+    setDeleteConfirmOpen(true);
+    setOrdenToDelete(null);
+  } else {
+    setOrdenToDelete(orden);
+    setDeleteErrorMessage('');
+    setDeleteConfirmOpen(true);
+  }
+};
+
+const handleConfirmDelete = async () => {
+  if (!ordenToDelete) {
+    setDeleteConfirmOpen(false);
+    return;
+  }
+
+  try {
+    setLoading(true);
+    await compraApi.delete(ordenToDelete.id);
+    setError(null);
+    setDeleteConfirmOpen(false);
+    setOrdenToDelete(null);
+    setOpenOrdenDialog(false);
+    setSelectedOrden(null);
+    setIsEditMode(false);
+    // Recargar las órdenes
+    loadCompras();
+  } catch (err: any) {
+    const errorMessage = err.response?.data?.message || err.message || 'Error desconocido';
+    setDeleteErrorMessage(errorMessage);
+    console.error('Error deleting compra:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleCancelDelete = () => {
+  setDeleteConfirmOpen(false);
+  setOrdenToDelete(null);
+  setDeleteErrorMessage('');
 };
 
   const handleAddItem = () => {
@@ -1099,6 +1155,14 @@ const handleDeleteCompra = async (id: number) => {
                     </IconButton>
                     <IconButton
                       size="small"
+                      onClick={() => handleDeleteOrdenClick(orden)}
+                      color="error"
+                      title="Eliminar"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
                       onClick={() => handleExportarOrdenPDF(orden)}
                       color="info"
                       title="Exportar PDF"
@@ -1151,6 +1215,8 @@ const handleDeleteCompra = async (id: number) => {
         onChange={(e) => setNewOrden({ ...newOrden, supplierId: e.target.value })}
         margin="normal"
         required
+        disabled={isEditMode}
+        helperText={isEditMode ? "El proveedor no se puede modificar al editar una orden" : ""}
       >
         {proveedores.map((proveedor) => (
           <MenuItem key={proveedor.id} value={proveedor.id.toString()}>
@@ -1394,24 +1460,38 @@ const handleDeleteCompra = async (id: number) => {
       </Typography>
     </Box>
   </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setOpenOrdenDialog(false)}>Cancelar</Button>
-    <Button
-      variant="contained"
-      onClick={handleSaveOrden}
-      disabled={
-  !newOrden.supplierId ||
-  newOrden.items.length === 0 ||
-  newOrden.items.some(
-    (item) =>
-      (!item.productoId && !item.nombreProductoTemporal) ||
-      item.cantidad <= 0 ||
-      item.precioUnitario <= 0
-  )
-}
-    >
-      {isEditMode ? 'Actualizar' : 'Crear'} Orden
-    </Button>
+  <DialogActions sx={{ justifyContent: 'space-between' }}>
+    <Box>
+      {isEditMode && selectedOrden && (
+        <Button
+          startIcon={<DeleteIcon />}
+          color="error"
+          onClick={() => handleDeleteOrdenClick(selectedOrden)}
+          disabled={loading}
+        >
+          Eliminar
+        </Button>
+      )}
+    </Box>
+    <Box>
+      <Button onClick={() => setOpenOrdenDialog(false)}>Cancelar</Button>
+      <Button
+        variant="contained"
+        onClick={handleSaveOrden}
+        disabled={
+    !newOrden.supplierId ||
+    newOrden.items.length === 0 ||
+    newOrden.items.some(
+      (item) =>
+        (!item.productoId && !item.nombreProductoTemporal) ||
+        item.cantidad <= 0 ||
+        item.precioUnitario <= 0
+    )
+  }
+      >
+        {isEditMode ? 'Actualizar' : 'Crear'} Orden
+      </Button>
+    </Box>
   </DialogActions>
 </Dialog>
         <Dialog
@@ -1544,6 +1624,55 @@ const handleDeleteCompra = async (id: number) => {
             >
               Imprimir PDF
             </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={deleteConfirmOpen}
+          onClose={handleCancelDelete}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" alignItems="center" gap={1}>
+              <DeleteIcon color={deleteErrorMessage ? 'disabled' : 'error'} />
+              <Typography variant="h6">
+                {ordenToDelete ? 'Confirmar Eliminación' : 'No se puede eliminar'}
+              </Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            {deleteErrorMessage ? (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                {deleteErrorMessage}
+              </Alert>
+            ) : ordenToDelete ? (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body1" gutterBottom>
+                  ¿Está seguro de que desea eliminar la orden de compra <strong>#{ordenToDelete.numero}</strong>?
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Esta acción no se puede deshacer.
+                </Typography>
+              </Box>
+            ) : null}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelDelete} color="inherit">
+              {deleteErrorMessage ? 'Cerrar' : 'Cancelar'}
+            </Button>
+            {ordenToDelete && !deleteErrorMessage && (
+              <Button
+                onClick={handleConfirmDelete}
+                color="error"
+                variant="contained"
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={20} /> : <DeleteIcon />}
+              >
+                {loading ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
 

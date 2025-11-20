@@ -63,6 +63,17 @@ const EquiposList: React.FC = () => {
     equipoId: number | null;
   }>({ open: false, equipoId: null });
 
+  const [unassignDialog, setUnassignDialog] = useState<{
+    open: boolean;
+    equipoId: number | null;
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipoId: null, equipo: null });
+
+  const [unassignErrorDialog, setUnassignErrorDialog] = useState<{
+    open: boolean;
+    errorMessage: string;
+  }>({ open: false, errorMessage: '' });
+
   const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [currentTab, setCurrentTab] = useState(0);
@@ -230,20 +241,30 @@ const EquiposList: React.FC = () => {
     }
   };
 
-  const handleDesasignar = async (id: number) => {
+  const handleDesasignar = async () => {
+    if (!unassignDialog.equipoId) return;
+
     try {
-      await equipoFabricadoApi.desasignarEquipo(id);
+      await equipoFabricadoApi.desasignarEquipo(unassignDialog.equipoId);
       setSnackbar({
         open: true,
         message: 'Equipo desasignado correctamente',
         severity: 'success',
       });
+      setUnassignDialog({ open: false, equipoId: null, equipo: null });
       loadEquipos();
-    } catch (error) {
-      setSnackbar({
+    } catch (error: any) {
+      // Close confirmation dialog
+      setUnassignDialog({ open: false, equipoId: null, equipo: null });
+
+      // Show error dialog with backend message
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data ||
+                          error.message ||
+                          'Error desconocido al desasignar el equipo';
+      setUnassignErrorDialog({
         open: true,
-        message: 'Error al desasignar el equipo',
-        severity: 'error',
+        errorMessage: errorMessage,
       });
     }
   };
@@ -428,7 +449,11 @@ const EquiposList: React.FC = () => {
               <IconButton
                 size="small"
                 color="warning"
-                onClick={() => handleDesasignar(params.row.id)}
+                onClick={() => setUnassignDialog({
+                  open: true,
+                  equipoId: params.row.id,
+                  equipo: params.row
+                })}
               >
                 <LinkOff fontSize="small" />
               </IconButton>
@@ -1224,6 +1249,169 @@ const EquiposList: React.FC = () => {
           </Button>
           <Button onClick={handleDelete} color="error" variant="contained" startIcon={<Delete />}>
             Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Unassign Confirmation Dialog */}
+      <Dialog
+        open={unassignDialog.open}
+        onClose={() => setUnassignDialog({ open: false, equipoId: null, equipo: null })}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: 'visible',
+          },
+        }}
+      >
+        <DialogContent sx={{ pt: 4, pb: 3 }}>
+          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+            {/* Warning Icon */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: (theme) => theme.palette.warning.main + '20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <LinkOff sx={{ fontSize: 50, color: 'warning.main' }} />
+            </Box>
+
+            {/* Title */}
+            <Typography variant="h5" fontWeight="600" gutterBottom>
+              Desasignar Equipo
+            </Typography>
+
+            {/* Message */}
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              ¿Está seguro de que desea desasignar este equipo del cliente?
+            </Typography>
+
+            {/* Equipment Details */}
+            {unassignDialog.equipo && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  width: '100%',
+                  p: 2,
+                  bgcolor: (theme) => theme.palette.warning.main + '08',
+                  borderColor: (theme) => theme.palette.warning.main + '30',
+                }}
+              >
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Número:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {unassignDialog.equipo.numeroHeladera}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Modelo:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {unassignDialog.equipo.modelo}
+                  </Typography>
+                </Box>
+                {unassignDialog.equipo.clienteNombre && (
+                  <>
+                    <Divider />
+                    <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                      <Typography variant="body2" color="text.secondary">
+                        Cliente Actual:
+                      </Typography>
+                      <Typography variant="body1" fontWeight="600">
+                        {unassignDialog.equipo.clienteNombre}
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+              </Paper>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center', gap: 2 }}>
+          <Button
+            onClick={() => setUnassignDialog({ open: false, equipoId: null, equipo: null })}
+            variant="outlined"
+            size="large"
+            sx={{ minWidth: 120 }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleDesasignar}
+            color="warning"
+            variant="contained"
+            startIcon={<LinkOff />}
+            size="large"
+            sx={{ minWidth: 120 }}
+          >
+            Desasignar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Unassign Error Dialog */}
+      <Dialog
+        open={unassignErrorDialog.open}
+        onClose={() => setUnassignErrorDialog({ open: false, errorMessage: '' })}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogContent sx={{ pt: 4, pb: 3 }}>
+          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+            {/* Error Icon */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: (theme) => theme.palette.error.main + '20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <Cancel sx={{ fontSize: 50, color: 'error.main' }} />
+            </Box>
+
+            {/* Title */}
+            <Typography variant="h5" fontWeight="600" gutterBottom color="error">
+              No se puede desasignar
+            </Typography>
+
+            {/* Error Message */}
+            <Alert severity="error" sx={{ width: '100%', mt: 2, textAlign: 'left' }}>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                {unassignErrorDialog.errorMessage}
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center' }}>
+          <Button
+            onClick={() => setUnassignErrorDialog({ open: false, errorMessage: '' })}
+            variant="contained"
+            size="large"
+            sx={{ minWidth: 120 }}
+          >
+            Entendido
           </Button>
         </DialogActions>
       </Dialog>

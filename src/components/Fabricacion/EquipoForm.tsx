@@ -18,7 +18,10 @@ import type {
   EquipoFabricadoCreateDTO,
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
+  MedidaEquipo,
+  ColorEquipo,
 } from '../../types';
+import { MEDIDAS_EQUIPO, COLORES_EQUIPO } from '../../types';
 import { employeeApi } from '../../api/services/employeeApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import StockErrorDialog, { type ProductoInsuficiente } from '../common/StockErrorDialog';
@@ -429,14 +432,44 @@ const EquipoForm: React.FC = () => {
                 name="medida"
                 control={control}
                 render={({ field }) => (
-                  <TextField {...field} label="Medida" fullWidth />
+                  <TextField
+                    {...field}
+                    select
+                    label="Medida"
+                    fullWidth
+                    value={field.value || ''}
+                  >
+                    <MenuItem value="">
+                      <em>Sin especificar</em>
+                    </MenuItem>
+                    {MEDIDAS_EQUIPO.map((medida) => (
+                      <MenuItem key={medida} value={medida}>
+                        {medida}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 )}
               />
               <Controller
                 name="color"
                 control={control}
                 render={({ field }) => (
-                  <TextField {...field} label="Color" fullWidth />
+                  <TextField
+                    {...field}
+                    select
+                    label="Color"
+                    fullWidth
+                    value={field.value || ''}
+                  >
+                    <MenuItem value="">
+                      <em>Sin especificar</em>
+                    </MenuItem>
+                    {COLORES_EQUIPO.map((color) => (
+                      <MenuItem key={color} value={color}>
+                        {color.replace(/_/g, ' ')}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 )}
               />
               <Controller

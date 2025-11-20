@@ -124,7 +124,7 @@ const NotasPedidoPage: React.FC = () => {
           console.error("Error fetching presupuestos:", err);
           return [];
         }),
-        recetaFabricacionApi.getAllRecetas().catch((err) => {
+        recetaFabricacionApi.findAllActive().catch((err) => {
           console.error("Error fetching recetas:", err);
           return [];
         }),
