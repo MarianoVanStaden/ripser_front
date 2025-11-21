@@ -24,22 +24,18 @@ import {
   Collapse,
   Stack,
   Divider,
-  Grid,
-  Tooltip,
 } from '@mui/material';
 import {
   LocalShipping as ShippingIcon,
   CheckCircle as CheckIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  Assignment as OrderIcon,
   Inventory as EquipoIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { documentoApi } from '../../api/services/documentoApi';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
-import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import type { DocumentoComercial, EquipoFabricadoDTO } from '../../types';
 import api from '../../api/config';
 
@@ -61,6 +57,8 @@ const EntregasEquiposPage: React.FC = () => {
   const [receptorNombre, setReceptorNombre] = useState('');
   const [receptorDni, setReceptorDni] = useState('');
   const [observaciones, setObservaciones] = useState('');
+  
+  // Removed: Add to trip dialog (not compatible with real API)
 
   useEffect(() => {
     loadFacturasConEquiposPorEntregar();
@@ -195,7 +193,11 @@ const EntregasEquiposPage: React.FC = () => {
     }
   };
 
-  const getEstadoColor = (estado: string) => {
+  // Removed: handleAgregarAViaje and handleConfirmarAgregarAViaje
+  // These functions were designed for a different backend structure that doesn't match the real API
+
+  const getEstadoColor = (estado?: string) => {
+    if (!estado) return 'default';
     switch (estado) {
       case 'FACTURADO':
         return 'warning';
@@ -418,6 +420,8 @@ const EntregasEquiposPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Trip integration dialog removed - not compatible with real backend API */}
     </Box>
   );
 };

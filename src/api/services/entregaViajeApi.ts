@@ -90,5 +90,46 @@ export const entregaViajeApi = {
       params: { nuevaFecha }
     });
     return response.data;
+  },
+
+  // === NUEVOS ENDPOINTS DE INTEGRACIÓN ===
+
+  // Agregar factura a entrega
+  agregarFactura: async (entregaId: number, documentoComercialId: number): Promise<EntregaViaje> => {
+    const response = await api.post('/api/entregas-viaje/agregar-factura', {
+      entregaId,
+      documentoComercialId
+    });
+    return response.data;
+  },
+
+  // Obtener entregas disponibles (sin factura asignada)
+  getDisponibles: async (): Promise<EntregaViaje[]> => {
+    const response = await api.get('/api/entregas-viaje/disponibles');
+    return response.data;
+  },
+
+  // Obtener detalles completos de una entrega
+  getDetalles: async (id: number): Promise<any> => {
+    const response = await api.get(`/api/entregas-viaje/${id}/detalles`);
+    return response.data;
+  },
+
+  // Confirmar entrega (marca como ENTREGADA o NO_ENTREGADA)
+  confirmarEntrega: async (
+    entregaId: number,
+    estado: 'ENTREGADA' | 'NO_ENTREGADA',
+    receptorNombre: string,
+    receptorDni: string,
+    observaciones?: string
+  ): Promise<EntregaViaje> => {
+    const response = await api.post('/api/entregas-viaje/confirmar-entrega', {
+      entregaId,
+      estado,
+      receptorNombre,
+      receptorDni,
+      observaciones
+    });
+    return response.data;
   }
 };

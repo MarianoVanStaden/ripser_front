@@ -343,6 +343,7 @@ const PresupuestosPage: React.FC = () => {
       case EstadoDocumentoEnum.PENDIENTE: return "warning";
       case EstadoDocumentoEnum.APROBADO: return "success";
       case EstadoDocumentoEnum.RECHAZADO: return "error";
+      case EstadoDocumentoEnum.FACTURADA: return "info";
       default: return "default";
     }
   }, []);
@@ -352,6 +353,7 @@ const PresupuestosPage: React.FC = () => {
       case EstadoDocumentoEnum.PENDIENTE: return "Pendiente";
       case EstadoDocumentoEnum.APROBADO: return "Aprobado";
       case EstadoDocumentoEnum.RECHAZADO: return "Rechazado";
+      case EstadoDocumentoEnum.FACTURADA: return "Facturada";
       default: return estado;
     }
   }, []);

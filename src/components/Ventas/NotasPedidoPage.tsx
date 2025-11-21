@@ -213,6 +213,7 @@ const NotasPedidoPage: React.FC = () => {
       case EstadoDocumentoEnum.APROBADO: return "success";
       case EstadoDocumentoEnum.PAGADA: return "primary";
       case EstadoDocumentoEnum.VENCIDA: return "error";
+      case EstadoDocumentoEnum.FACTURADA: return "info";
       default: return "default";
     }
   }, []);
@@ -223,6 +224,7 @@ const NotasPedidoPage: React.FC = () => {
       case EstadoDocumentoEnum.APROBADO: return "Aprobado";
       case EstadoDocumentoEnum.PAGADA: return "Pagada";
       case EstadoDocumentoEnum.VENCIDA: return "Vencida";
+      case EstadoDocumentoEnum.FACTURADA: return "Facturada";
       default: return estado;
     }
   }, []);
@@ -479,11 +481,11 @@ const NotasPedidoPage: React.FC = () => {
       try {
         setError(null);
         const factura = await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        // Remove nota from local state
+        setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
         // Show success dialog
         setCreatedFactura(factura);
         setFacturaSuccessDialogOpen(true);
-        // Refresh data after conversion
-        fetchData();
       } catch (err: any) {
         console.error("Error converting to factura:", err);
         const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
@@ -557,12 +559,12 @@ const NotasPedidoPage: React.FC = () => {
         equiposAsignaciones: asignaciones,
       });
 
+      // Remove nota from local state
+      setNotasPedido((prev) => prev.filter((n) => n.id !== notaForAsignacion.id));
       setNotaForAsignacion(null);
       // Show success dialog
       setCreatedFactura(factura);
       setFacturaSuccessDialogOpen(true);
-      // Refresh data after conversion
-      fetchData();
     } catch (err: any) {
       console.error("Error converting to factura with equipos:", err);
       const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";

@@ -68,6 +68,7 @@ const TripsPage: React.FC = () => {
   const [editingTrip, setEditingTrip] = useState<Viaje | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
   const [selectedFactura, setSelectedFactura] = useState<DocumentoComercial | null>(null);
+  const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, any>>({});
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoViaje>('all');
@@ -272,9 +273,25 @@ const TripsPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleViewDetails = (trip: Viaje) => {
+  const handleViewDetails = async (trip: Viaje) => {
     setSelectedTrip(trip);
     setDetailsDialogOpen(true);
+    
+    // Load complete details for all deliveries using new API
+    const tripDeliveriesData = getTripDeliveries(trip.id);
+    const detailsMap: Record<number, any> = {};
+    
+    for (const delivery of tripDeliveriesData) {
+      try {
+        const detalles = await entregaViajeApi.getDetalles(delivery.id);
+        detailsMap[delivery.id] = detalles;
+        console.log(`📦 Detalles de entrega #${delivery.id}:`, detalles);
+      } catch (err) {
+        console.error(`Error loading details for delivery #${delivery.id}:`, err);
+      }
+    }
+    
+    setDeliveryDetailsMap(detailsMap);
   };
 
   const handleSave = async () => {
@@ -1182,7 +1199,9 @@ Opciones:
                         Entregas del Viaje
                       </Typography>
                       <List>
-                        {getTripDeliveries(selectedTrip.id).map((delivery, index) => (
+                        {getTripDeliveries(selectedTrip.id).map((delivery, index) => {
+                          const detalles = deliveryDetailsMap[delivery.id];
+                          return (
                           <ListItem key={delivery.id} divider>
                             <ListItemText
                               primary={
@@ -1206,11 +1225,20 @@ Opciones:
                                   <Typography variant="caption" color="text.secondary">
                                     {new Date(delivery.fechaEntrega).toLocaleString()}
                                   </Typography>
+                                  {detalles && detalles.equipos && detalles.equipos.length > 0 && (
+                                    <Box mt={0.5}>
+                                      <Typography variant="caption" fontWeight="bold" color="primary">
+                                        🔧 {detalles.equipos.length} equipos: {' '}
+                                        {detalles.equipos.map((eq: any) => eq.numeroHeladera || `#${eq.id}`).join(', ')}
+                                      </Typography>
+                                    </Box>
+                                  )}
                                 </Box>
                               }
                             />
                           </ListItem>
-                        ))}
+                        );
+                        })}
                         {getTripDeliveries(selectedTrip.id).length === 0 && (
                           <ListItem>
                             <ListItemText

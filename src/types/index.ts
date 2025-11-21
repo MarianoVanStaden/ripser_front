@@ -1981,7 +1981,8 @@ export const EstadoDocumento = {
   RECHAZADO: "RECHAZADO",
   CONFIRMADA: "CONFIRMADA",
   PAGADA: "PAGADA",
-  VENCIDA: "VENCIDA"
+  VENCIDA: "VENCIDA",
+  FACTURADA: "FACTURADA"
 } as const;
 export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocumento];
 
@@ -2309,6 +2310,98 @@ export interface ValidacionStockDTO {
   stockSuficiente: boolean;
   productosInsuficientes?: string[];
   mensaje: string;
+}
+
+// --- Sistema de Entregas Integrado ---
+
+export type EstadoEntregaEquipo = 'PENDIENTE' | 'EN_RUTA' | 'ENTREGADO' | 'RECHAZADO' | 'REPROGRAMADO';
+
+export type EstadoViaje = 'PLANIFICADO' | 'EN_RUTA' | 'COMPLETADO' | 'CANCELADO';
+
+export interface EntregaViajeDetalle {
+  id: number;
+  viajeId: number;
+  facturaId: number;
+  equipoFabricadoId: number;
+  ordenEntrega: number;
+  estadoEntrega: EstadoEntregaEquipo;
+  
+  // Datos de entrega
+  receptorNombre?: string;
+  receptorDni?: string;
+  fechaEntregaPlanificada?: string;
+  fechaEntregaReal?: string;
+  
+  // Ubicación
+  direccionEntrega?: string;
+  latitud?: number;
+  longitud?: number;
+  
+  // Observaciones y evidencias
+  observaciones?: string;
+  motivoRechazo?: string;
+  fotoEntregaUrl?: string;
+  firmaDigitalUrl?: string;
+  
+  // Auditoría
+  usuarioConfirmacionId?: number;
+  fechaCreacion?: string;
+  fechaActualizacion?: string;
+  
+  // Relaciones populadas
+  equipo?: EquipoFabricadoDTO;
+  factura?: DocumentoComercial;
+}
+
+export interface ViajeExtendido {
+  id: number;
+  fechaViaje: string;
+  estadoViaje: EstadoViaje;
+  conductorId?: number;
+  conductorNombre?: string;
+  vehiculoId?: number;
+  vehiculoPatente?: string;
+  totalEquipos: number;
+  equiposEntregados: number;
+  totalFacturas?: number;
+  totalParadas?: number;
+  paradasCompletadas?: number;
+  paradasPendientes?: number;
+  paradasRechazadas?: number;
+  observaciones?: string;
+  horaInicio?: string;
+  horaFin?: string;
+  detalles?: EntregaViajeDetalle[];
+}
+
+export interface EquipoPendienteViaje {
+  equipoId: number;
+  numeroHeladera: string;
+  estadoAsignacion: EstadoAsignacionEquipo;
+  clienteId: number;
+  clienteNombre: string;
+  clienteDireccion?: string;
+  clienteTelefono?: string;
+  facturaId: number;
+  numeroDocumento: string;
+  fechaFactura: string;
+  detalleId: number;
+}
+
+export interface AgregarFacturaViajeDTO {
+  viajeId: number;
+  facturaId: number;
+  ordenEntrega: number;
+}
+
+export interface ConfirmarEntregaEquipoDTO {
+  detalleId: number;
+  receptorNombre: string;
+  receptorDni?: string;
+  observaciones?: string;
+  usuarioId: number;
+  fotoEntregaUrl?: string;
+  firmaDigitalUrl?: string;
 }
 
 // --- Sistema de Roles y Permisos ---

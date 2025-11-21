@@ -91,6 +91,7 @@ const DeliveriesPage: React.FC = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState<EntregaViaje | null>(null);
   const [selectedDelivery, setSelectedDelivery] = useState<EntregaViaje | null>(null);
+  const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
 
   // Filters
@@ -255,9 +256,19 @@ const DeliveriesPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleViewDetails = (delivery: EntregaViaje) => {
+  const handleViewDetails = async (delivery: EntregaViaje) => {
     setSelectedDelivery(delivery);
     setDetailsDialogOpen(true);
+    
+    // Load complete details using new API
+    try {
+      const detalles = await entregaViajeApi.getDetalles(delivery.id);
+      setSelectedDeliveryDetails(detalles);
+      console.log('📦 Detalles completos de entrega:', detalles);
+    } catch (err) {
+      console.error('Error loading delivery details:', err);
+      setSelectedDeliveryDetails(null);
+    }
   };
 
   const handleSave = async () => {
@@ -306,13 +317,44 @@ const DeliveriesPage: React.FC = () => {
       // Prompt for receptor info if not provided
       const nombre = receptorNombre || window.prompt('Nombre del receptor:') || 'Sin nombre';
       const dni = receptorDni || window.prompt('DNI del receptor:') || '';
+      const observaciones = window.prompt('Observaciones (opcional):') || undefined;
 
-      await entregaViajeApi.marcarComoEntregada(id, nombre, dni);
+      // Use new confirmarEntrega API - creates warranties automatically for facturas
+      await entregaViajeApi.confirmarEntrega(
+        id,
+        'ENTREGADA',
+        nombre,
+        dni,
+        observaciones
+      );
+      
       await loadData();
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al marcar como entregado');
       console.error('Error marking as delivered:', err);
+    }
+  };
+
+  // Handle mark as not delivered
+  const handleMarkAsNotDelivered = async (id: number) => {
+    try {
+      const motivo = window.prompt('Motivo del rechazo:') || 'No especificado';
+      const observaciones = `RECHAZADO: ${motivo}`;
+
+      await entregaViajeApi.confirmarEntrega(
+        id,
+        'NO_ENTREGADA',
+        'N/A',
+        'N/A',
+        observaciones
+      );
+      
+      await loadData();
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Error al marcar como no entregado');
+      console.error('Error marking as not delivered:', err);
     }
   };
 
@@ -569,13 +611,39 @@ const DeliveriesPage: React.FC = () => {
                           <ViewIcon />
                         </IconButton>
 
-                        <IconButton onClick={() => handleEdit(delivery)} size="small">
-                          <EditIcon />
-                        </IconButton>
-
                         {delivery.estado === 'PENDIENTE' && (
-                          <IconButton onClick={() => handleDelete(delivery.id)} size="small">
-                            <DeleteIcon />
+                          <>
+                            <IconButton
+                              onClick={() => handleMarkAsDelivered(delivery.id)}
+                              size="small"
+                              title="Confirmar entrega"
+                              color="success"
+                            >
+                              <CheckIcon />
+                            </IconButton>
+
+                            <IconButton
+                              onClick={() => handleMarkAsNotDelivered(delivery.id)}
+                              size="small"
+                              title="Marcar como no entregada"
+                              color="error"
+                            >
+                              <CancelIcon />
+                            </IconButton>
+
+                            <IconButton onClick={() => handleEdit(delivery)} size="small">
+                              <EditIcon />
+                            </IconButton>
+
+                            <IconButton onClick={() => handleDelete(delivery.id)} size="small">
+                              <DeleteIcon />
+                            </IconButton>
+                          </>
+                        )}
+
+                        {delivery.estado !== 'PENDIENTE' && (
+                          <IconButton onClick={() => handleEdit(delivery)} size="small">
+                            <EditIcon />
                           </IconButton>
                         )}
                       </TableCell>
@@ -826,6 +894,44 @@ const DeliveriesPage: React.FC = () => {
                 </Grid>
               </Grid>
               
+              {/* Equipos de la factura (si están disponibles en detalles) */}
+              {selectedDeliveryDetails?.equipos && selectedDeliveryDetails.equipos.length > 0 && (
+                <Card sx={{ mt: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
+                      <LocationIcon />
+                      Equipos a Entregar ({selectedDeliveryDetails.equipos.length})
+                    </Typography>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>N° Equipo</TableCell>
+                            <TableCell>Modelo</TableCell>
+                            <TableCell>Tipo</TableCell>
+                            <TableCell>Color</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {selectedDeliveryDetails.equipos.map((equipo: any) => (
+                            <TableRow key={equipo.id}>
+                              <TableCell>
+                                <Typography variant="body2" fontWeight="600">
+                                  #{equipo.numeroHeladera || equipo.id}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>{equipo.modelo || 'N/A'}</TableCell>
+                              <TableCell>{equipo.tipo || 'N/A'}</TableCell>
+                              <TableCell>{equipo.color || 'N/A'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
+              )}
+
               {selectedDelivery.observaciones && (
                 <Card sx={{ mt: 2 }}>
                   <CardContent>
@@ -838,6 +944,36 @@ const DeliveriesPage: React.FC = () => {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Botones de acción rápida si está pendiente */}
+              {selectedDelivery.estado === 'PENDIENTE' && (
+                <Box display="flex" gap={2} mt={2}>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<CheckIcon />}
+                    onClick={async () => {
+                      await handleMarkAsDelivered(selectedDelivery.id);
+                      setDetailsDialogOpen(false);
+                    }}
+                    fullWidth
+                  >
+                    Confirmar Entrega
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<CancelIcon />}
+                    onClick={async () => {
+                      await handleMarkAsNotDelivered(selectedDelivery.id);
+                      setDetailsDialogOpen(false);
+                    }}
+                    fullWidth
+                  >
+                    No Entregada
+                  </Button>
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
@@ -848,7 +984,12 @@ const DeliveriesPage: React.FC = () => {
           >
             Imprimir
           </Button>
-          <Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
+          <Button onClick={() => {
+            setDetailsDialogOpen(false);
+            setSelectedDeliveryDetails(null);
+          }}>
+            Cerrar
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -58,6 +58,7 @@ import { documentoApi } from '../../api/services/documentoApi';
 import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
+import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
 import { useAuth } from '../../context/AuthContext';
@@ -71,7 +72,10 @@ import type {
   OpcionFinanciamientoDTO,
   RecetaFabricacionDTO,
   TipoItemDocumento,
+  ColorEquipo,
+  MedidaEquipo,
 } from '../../types';
+import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 
 // Types
 const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
@@ -96,6 +100,7 @@ const ESTADO_OPTIONS: Record<string, { label: string; color: 'default' | 'primar
   PAGADA: { label: 'Pagada', color: 'primary' },
   VENCIDA: { label: 'Vencida', color: 'error' },
   ANULADA: { label: 'Anulada', color: 'default' },
+  FACTURADA: { label: 'Facturada', color: 'info' },
 };
 
 type CartItem = {
@@ -112,8 +117,12 @@ type CartItem = {
   recetaNombre?: string;
   recetaModelo?: string;
   recetaTipo?: string;
-  color?: string;
-  medida?: string;
+  color?: ColorEquipo;
+  medida?: MedidaEquipo;
+  // Stock validation fields
+  stockDisponible?: number;
+  stockVerificado?: boolean;
+  requiereFabricacion?: boolean;
 };
 
 type NotaCartItem = {
@@ -130,8 +139,11 @@ type NotaCartItem = {
   recetaModelo?: string;
   recetaTipo?: string;
   descripcionEquipo?: string;
-  color?: string;
-  medida?: string;
+  color?: ColorEquipo;
+  medida?: MedidaEquipo;
+  // Stock validation fields
+  stockDisponible?: number;
+  stockVerificado?: boolean;
 };
 
 const FacturacionPage = () => {
@@ -194,6 +206,17 @@ const FacturacionPage = () => {
   // Pagination for Notas de Pedido
   const [pageNotas, setPageNotas] = useState(0);
   const [rowsPerPageNotas, setRowsPerPageNotas] = useState(12);
+
+  // Fabrication confirmation dialog
+  const [fabricacionDialogOpen, setFabricacionDialogOpen] = useState(false);
+  const [itemPendienteFabricacion, setItemPendienteFabricacion] = useState<{
+    recetaId: number;
+    recetaNombre: string;
+    cantidad: number;
+    color?: ColorEquipo;
+    medida?: MedidaEquipo;
+    stockDisponible: number;
+  } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -404,7 +427,26 @@ const FacturacionPage = () => {
     }
   };
 
-  const updateCartItem = (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento', value: any) => {
+  // Función para verificar stock disponible de un equipo
+  const verificarStockEquipo = useCallback(async (recetaId: number, color?: ColorEquipo, medida?: MedidaEquipo): Promise<number> => {
+    try {
+      const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(recetaId);
+      
+      // Filtrar por color y medida si están especificados
+      const equiposFiltrados = equiposDisponibles.filter(equipo => {
+        const matchColor = !color || equipo.color === color;
+        const matchMedida = !medida || equipo.medida === medida;
+        return matchColor && matchMedida;
+      });
+
+      return equiposFiltrados.length;
+    } catch (error) {
+      console.error('Error verificando stock:', error);
+      return 0;
+    }
+  }, []);
+
+  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'color'|'medida', value: any) => {
     const newCart = [...cart];
     const item = { ...newCart[index] };
 
@@ -424,6 +466,11 @@ const FacturacionPage = () => {
         delete item.recetaNombre;
         delete item.recetaModelo;
         delete item.recetaTipo;
+        delete item.color;
+        delete item.medida;
+        delete item.stockDisponible;
+        delete item.stockVerificado;
+        delete item.requiereFabricacion;
       } else if (newTipoItem === 'EQUIPO' && recetas.length > 0) {
         const defaultReceta = recetas[0];
         item.recetaId = defaultReceta.id;
@@ -431,9 +478,16 @@ const FacturacionPage = () => {
         item.recetaModelo = defaultReceta.modelo;
         item.recetaTipo = defaultReceta.tipoEquipo;
         item.precioUnitario = defaultReceta.precioVenta || 0;
+        // Set default color and medida from receta
+        item.color = defaultReceta.color;
+        item.medida = defaultReceta.medida;
         // Clear producto fields
         delete item.productoId;
         delete item.productoNombre;
+        // Reset stock verification
+        item.stockVerificado = false;
+        delete item.stockDisponible;
+        delete item.requiereFabricacion;
       }
       item.precioManualmenteModificado = false;
     } else if (field === 'productoId') {
@@ -452,12 +506,31 @@ const FacturacionPage = () => {
         item.recetaNombre = receta.nombre;
         item.recetaModelo = receta.modelo;
         item.recetaTipo = receta.tipoEquipo;
+        // Set default color and medida from receta
+        item.color = receta.color;
+        item.medida = receta.medida;
         if (!item.precioManualmenteModificado) {
           item.precioUnitario = receta.precioVenta || 0;
         }
+        // Reset stock verification
+        item.stockVerificado = false;
+        delete item.stockDisponible;
+        delete item.requiereFabricacion;
       }
+    } else if (field === 'color' || field === 'medida') {
+      // Update color or medida
+      item[field] = value || undefined;
+      // Reset stock verification when color/medida changes
+      item.stockVerificado = false;
+      delete item.stockDisponible;
+      delete item.requiereFabricacion;
     } else if (field === 'cantidad') {
       item.cantidad = Math.max(1, Number(value) || 1);
+      // Reset stock verification when cantidad changes
+      if (item.tipoItem === 'EQUIPO') {
+        item.stockVerificado = false;
+        delete item.requiereFabricacion;
+      }
     } else if (field === 'precioUnitario') {
       item.precioUnitario = Math.max(0, Number(value) || 0);
       item.precioManualmenteModificado = true;
@@ -467,16 +540,133 @@ const FacturacionPage = () => {
 
     newCart[index] = item;
     setCart(newCart);
+
+    // Solo verificar stock de forma silenciosa (sin abrir dialog), para mostrar indicadores
+    if (item.tipoItem === 'EQUIPO' && item.recetaId && (field === 'recetaId' || field === 'color' || field === 'medida' || field === 'cantidad')) {
+      const stockDisponible = await verificarStockEquipo(item.recetaId, item.color, item.medida);
+      newCart[index].stockDisponible = stockDisponible;
+      newCart[index].stockVerificado = true;
+      newCart[index].requiereFabricacion = stockDisponible < item.cantidad;
+      
+      setCart([...newCart]);
+      
+      // NO mostrar dialog aquí - solo actualizar indicadores visuales
+    }
   };
 
   const removeItemFromCart = (index: number) => {
     setCart((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Función para crear pedido de fabricación automáticamente
+  const handleConfirmarFabricacion = useCallback(async () => {
+    if (!itemPendienteFabricacion) return;
+
+    setLoading(true);
+    setFabricacionDialogOpen(false);
+
+    try {
+      // Crear los equipos en estado EN_PROCESO
+      const equipoData: any = {
+        recetaId: itemPendienteFabricacion.recetaId,
+        cantidad: itemPendienteFabricacion.cantidad,
+        color: itemPendienteFabricacion.color,
+        medida: itemPendienteFabricacion.medida,
+        estado: 'EN_PROCESO',
+      };
+
+      const receta = recetas.find(r => r.id === itemPendienteFabricacion.recetaId);
+      if (receta) {
+        equipoData.tipo = receta.tipoEquipo || 'HELADERA';
+        equipoData.modelo = receta.modelo || '';
+      }
+
+      await equipoFabricadoApi.createBatch(equipoData);
+
+      // Actualizar verificación de stock en el carrito
+      const updatedCart = [...cart];
+      const itemIndex = updatedCart.findIndex(
+        item => item.recetaId === itemPendienteFabricacion.recetaId &&
+                item.color === itemPendienteFabricacion.color &&
+                item.medida === itemPendienteFabricacion.medida
+      );
+      
+      if (itemIndex >= 0) {
+        const newStock = (itemPendienteFabricacion.stockDisponible || 0) + itemPendienteFabricacion.cantidad;
+        updatedCart[itemIndex].stockDisponible = newStock;
+        updatedCart[itemIndex].requiereFabricacion = false;
+        setCart(updatedCart);
+      }
+
+      setItemPendienteFabricacion(null);
+      
+      // Mostrar mensaje de éxito temporal
+      setSuccess(
+        `✅ Pedido de fabricación creado: ${itemPendienteFabricacion.cantidad} equipo(s) "${itemPendienteFabricacion.recetaNombre}" en producción.`
+      );
+      
+      // Continuar con la creación de la factura automáticamente
+      // Llamar a handleSubmitManualInvoice después de 1 segundo para que el usuario vea el mensaje
+      setTimeout(() => {
+        handleSubmitManualInvoice();
+      }, 1000);
+      
+    } catch (err: any) {
+      console.error('Error creando pedido de fabricación:', err);
+      
+      let errorMessage = 'Error desconocido al crear el pedido de fabricación';
+      
+      if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+        
+        // Check if it's a stock insufficiency error (409 Conflict)
+        if (err?.response?.status === 409) {
+          errorMessage = 
+            `⚠️ Stock Insuficiente de Componentes\n\n` +
+            `No se pueden fabricar los equipos solicitados porque faltan componentes en el inventario.\n\n` +
+            `💡 Debes:\n` +
+            `1. Revisar el inventario de componentes necesarios\n` +
+            `2. Realizar compras de los componentes faltantes\n` +
+            `3. Luego crear el pedido de fabricación manualmente desde Producción → Equipos Fabricados\n\n` +
+            `Detalles: ${err.response.data.message}`;
+        }
+      }
+      
+      setError(errorMessage);
+      setLoading(false);
+    }
+  }, [itemPendienteFabricacion, recetas, cart]);
+
+  const handleCancelarFabricacion = useCallback(() => {
+    setFabricacionDialogOpen(false);
+    setItemPendienteFabricacion(null);
+  }, []);
+
   const handleSubmitManualInvoice = async () => {
     if (!selectedClientId) return setError('Debe seleccionar un cliente.');
     if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
+
+    // Verificar stock de equipos antes de crear factura
+    const equiposEnCarrito = cart.filter(item => item.tipoItem === 'EQUIPO' && item.recetaId);
+    
+    for (const item of equiposEnCarrito) {
+      const stockDisponible = await verificarStockEquipo(item.recetaId!, item.color, item.medida);
+      
+      if (stockDisponible < item.cantidad) {
+        // Mostrar dialog de confirmación
+        setItemPendienteFabricacion({
+          recetaId: item.recetaId!,
+          recetaNombre: item.recetaNombre || 'Equipo',
+          cantidad: item.cantidad - stockDisponible,
+          color: item.color,
+          medida: item.medida,
+          stockDisponible,
+        });
+        setFabricacionDialogOpen(true);
+        return; // Detener el proceso hasta que el usuario decida
+      }
+    }
 
     setLoading(true);
     setError(null);
@@ -508,6 +698,13 @@ const FacturacionPage = () => {
               : undefined;
             detalle.descripcionEquipo = equipoDesc;
             detalle.descripcion = equipoDesc; // Also set general descripcion for reports
+            // Include color and medida for filtering in AsignarEquiposDialog
+            if (item.color) {
+              detalle.color = item.color;
+            }
+            if (item.medida) {
+              detalle.medida = item.medida;
+            }
           } else {
             detalle.productoId = Number(item.productoId);
             detalle.descripcion = item.productoNombre || undefined;
@@ -630,13 +827,14 @@ const FacturacionPage = () => {
         setSelectedOpcionId(null);
         setOpcionesFinanciamiento([]);
         setIsManualInvoice(false);
+        // Reload data to get updated notas
+        await loadData();
       } else {
         // Remove nota from list (facturacion desde nota)
         setNotasPedido((prev) => prev.filter((n) => n.id !== notaParaAsignacion.id));
         handleCloseConvertDialog();
+        // NO recargar datos aquí - la nota ya fue removida del estado local
       }
-
-      await loadData();
     } catch (err: any) {
       console.error('Error converting to factura with equipos:', err);
       let errorMessage = 'Error desconocido al convertir a factura';
@@ -771,7 +969,7 @@ const FacturacionPage = () => {
         handleCloseConvertDialog();
         setCreatedFactura(factura);
         setSuccessDialogOpen(true);
-        loadData();
+        // NO recargar datos aquí - la nota ya fue removida del estado local
         setLoading(false);
       }
     } catch (err: any) {
@@ -970,24 +1168,73 @@ const FacturacionPage = () => {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Typography>{itemAny.color || '-'}</Typography>
+                  {editable && itemAny.tipoItem === 'EQUIPO' ? (
+                    <Select
+                      fullWidth
+                      size="small"
+                      value={itemAny.color || ''}
+                      onChange={(e) => onUpdate(index, 'color', e.target.value)}
+                      displayEmpty
+                    >
+                      <MenuItem value="">Sin especificar</MenuItem>
+                      {COLORES_EQUIPO.map((color) => (
+                        <MenuItem key={color} value={color}>
+                          {color.replace(/_/g, ' ')}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Typography>{itemAny.color ? itemAny.color.replace(/_/g, ' ') : '-'}</Typography>
+                  )}
                 </TableCell>
                 <TableCell>
-                  <Typography>{itemAny.medida || '-'}</Typography>
+                  {editable && itemAny.tipoItem === 'EQUIPO' ? (
+                    <Select
+                      fullWidth
+                      size="small"
+                      value={itemAny.medida || ''}
+                      onChange={(e) => onUpdate(index, 'medida', e.target.value)}
+                      displayEmpty
+                    >
+                      <MenuItem value="">Sin especificar</MenuItem>
+                      {MEDIDAS_EQUIPO.map((medida) => (
+                        <MenuItem key={medida} value={medida}>
+                          {medida}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Typography>{itemAny.medida || '-'}</Typography>
+                  )}
                 </TableCell>
                 <TableCell align="center">
-                  {editable ? (
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={item.cantidad}
-                      onChange={(e) => onUpdate(index, 'cantidad', e.target.value)}
-                      inputProps={{ min: 1 }}
-                      sx={{ width: 90 }}
-                    />
-                  ) : (
-                    <Typography align="center">{item.cantidad}</Typography>
-                  )}
+                  <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+                    {editable ? (
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={item.cantidad}
+                        onChange={(e) => onUpdate(index, 'cantidad', e.target.value)}
+                        inputProps={{ min: 1 }}
+                        sx={{ width: 90 }}
+                      />
+                    ) : (
+                      <Typography align="center">{item.cantidad}</Typography>
+                    )}
+                    {itemAny.tipoItem === 'EQUIPO' && itemAny.stockVerificado && (
+                      <Tooltip 
+                        title={`Stock disponible: ${itemAny.stockDisponible || 0} unidades`}
+                        arrow
+                      >
+                        <Chip
+                          size="small"
+                          label={itemAny.requiereFabricacion ? `Stock: ${itemAny.stockDisponible}` : '✓ Stock OK'}
+                          color={itemAny.requiereFabricacion ? 'warning' : 'success'}
+                          sx={{ fontSize: '0.7rem', height: 20 }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Box>
                 </TableCell>
                 <TableCell align="right">
                   {editable ? (
@@ -1814,6 +2061,106 @@ const FacturacionPage = () => {
             disabled={selectedOpcionId === null}
           >
             Confirmar Selección
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Fabricacion Confirmation Dialog */}
+      <Dialog
+        open={fabricacionDialogOpen}
+        onClose={handleCancelarFabricacion}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <ShoppingCartIcon color="warning" />
+            <Typography variant="h6">Stock Insuficiente</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {itemPendienteFabricacion && (
+            <Box>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                No hay suficiente stock disponible para completar este pedido
+              </Alert>
+              
+              <Paper sx={{ p: 2, bgcolor: 'grey.50', mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                  Detalle del Equipo:
+                </Typography>
+                <Box display="flex" flexDirection="column" gap={1}>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Equipo:</Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {itemPendienteFabricacion.recetaNombre}
+                    </Typography>
+                  </Box>
+                  {itemPendienteFabricacion.color && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">Color:</Typography>
+                      <Typography variant="body2" fontWeight="bold">
+                        {itemPendienteFabricacion.color.replace(/_/g, ' ')}
+                      </Typography>
+                    </Box>
+                  )}
+                  {itemPendienteFabricacion.medida && (
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">Medida:</Typography>
+                      <Typography variant="body2" fontWeight="bold">
+                        {itemPendienteFabricacion.medida}
+                      </Typography>
+                    </Box>
+                  )}
+                  <Divider sx={{ my: 1 }} />
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Cantidad solicitada:</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="primary">
+                      {itemPendienteFabricacion.cantidad + itemPendienteFabricacion.stockDisponible}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Stock disponible:</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="success.main">
+                      {itemPendienteFabricacion.stockDisponible}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Faltante:</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="error.main">
+                      {itemPendienteFabricacion.cantidad}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+
+              <Typography variant="body2" paragraph>
+                ¿Deseas generar un pedido de fabricación para crear los{' '}
+                <strong>{itemPendienteFabricacion.cantidad}</strong> equipos faltantes?
+              </Typography>
+              
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="caption">
+                  💡 Los equipos se crearán en estado <strong>EN_PROCESO</strong> y podrás 
+                  verlos en el módulo <strong>Producción → Equipos Fabricados</strong>.
+                  <br /><br />
+                  Después de crear el pedido, la facturación continuará automáticamente.
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelarFabricacion} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmarFabricacion}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
+          >
+            Sí, Generar Pedido
           </Button>
         </DialogActions>
       </Dialog>
