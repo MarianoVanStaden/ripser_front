@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardContent, CircularProgress,
-  TextField, MenuItem, Button, Paper, Chip, Table, TableBody,
+  TextField, MenuItem, Button, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TablePagination,
-  Select, FormControl, InputLabel, Stack,
+  Select, FormControl, InputLabel,
 } from '@mui/material';
 import {
   Inventory, Assignment, CheckCircle, LocalShipping,
@@ -18,6 +18,7 @@ interface EstadisticasEstados {
   DISPONIBLE: number;
   RESERVADO: number;
   FACTURADO: number;
+  EN_TRANSITO: number;
   ENTREGADO: number;
   total: number;
 }
@@ -27,6 +28,7 @@ const ReportesEstadosPage: React.FC = () => {
     DISPONIBLE: 0,
     RESERVADO: 0,
     FACTURADO: 0,
+    EN_TRANSITO: 0,
     ENTREGADO: 0,
     total: 0,
   });
@@ -66,21 +68,37 @@ const ReportesEstadosPage: React.FC = () => {
       const equiposData = response.data.content || [];
       setEquipos(equiposData);
       
-      // Calcular estadísticas
+      console.log('📊 Total equipos cargados:', equiposData.length);
+      console.log('📊 Primer equipo (muestra):', equiposData[0]);
+      
+      // Calcular estadísticas basadas en estado y asignación
       const stats: EstadisticasEstados = {
-        DISPONIBLE: 0,
-        RESERVADO: 0,
-        FACTURADO: 0,
-        ENTREGADO: 0,
+        DISPONIBLE: 0,   // Completado y no asignado
+        RESERVADO: 0,    // Asignado en nota de pedido
+        FACTURADO: 0,    // Incluido en factura
+        EN_TRANSITO: 0,  // En viaje hacia el cliente
+        ENTREGADO: 0,    // Entregado al cliente
         total: equiposData.length,
       };
 
       equiposData.forEach((equipo: EquipoFabricadoDTO) => {
+        // Si tiene estadoAsignacion explícito (versión completa del DTO)
         if (equipo.estadoAsignacion) {
           stats[equipo.estadoAsignacion]++;
+        } else {
+          // Inferir estado de asignación basado en estado y flag asignado
+          if (equipo.estado === 'COMPLETADO') {
+            if (equipo.asignado) {
+              stats.ENTREGADO++;
+            } else {
+              stats.DISPONIBLE++;
+            }
+          }
+          // Los equipos EN_PROCESO o CANCELADO no cuentan para estados de asignación
         }
       });
 
+      console.log('📊 Estadísticas calculadas:', stats);
       setEstadisticas(stats);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -157,20 +175,26 @@ const ReportesEstadosPage: React.FC = () => {
     }
   };
 
-  // Datos para gráficos
+  // Datos para gráficos - Filtrar solo valores > 0 para mejor visualización
   const pieChartData = [
     { name: 'Disponible', value: estadisticas.DISPONIBLE, color: '#9e9e9e' },
     { name: 'Reservado', value: estadisticas.RESERVADO, color: '#ff9800' },
     { name: 'Facturado', value: estadisticas.FACTURADO, color: '#2196f3' },
+    { name: 'En Tránsito', value: estadisticas.EN_TRANSITO, color: '#9c27b0' },
     { name: 'Entregado', value: estadisticas.ENTREGADO, color: '#4caf50' },
-  ];
+  ].filter(item => item.value > 0);
 
   const barChartData = [
     { estado: 'Disponible', cantidad: estadisticas.DISPONIBLE },
     { estado: 'Reservado', cantidad: estadisticas.RESERVADO },
     { estado: 'Facturado', cantidad: estadisticas.FACTURADO },
+    { estado: 'En Tránsito', cantidad: estadisticas.EN_TRANSITO },
     { estado: 'Entregado', cantidad: estadisticas.ENTREGADO },
   ];
+
+  const hasAsignacionData = estadisticas.total > 0 && 
+    (estadisticas.DISPONIBLE > 0 || estadisticas.RESERVADO > 0 || 
+     estadisticas.FACTURADO > 0 || estadisticas.EN_TRANSITO > 0 || estadisticas.ENTREGADO > 0);
 
   if (loading) {
     return (
@@ -193,7 +217,7 @@ const ReportesEstadosPage: React.FC = () => {
 
       {/* Cards de resumen */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ bgcolor: '#f5f5f5' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -211,7 +235,7 @@ const ReportesEstadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ bgcolor: '#f5f5f5' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -229,7 +253,7 @@ const ReportesEstadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ bgcolor: '#fff3e0' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -247,7 +271,7 @@ const ReportesEstadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ bgcolor: '#e3f2fd' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -265,7 +289,25 @@ const ReportesEstadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+        <Grid item xs={12} sm={6} md={2}>
+          <Card sx={{ bgcolor: '#f3e5f5' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    En Tránsito
+                  </Typography>
+                  <Typography variant="h4" fontWeight="600" sx={{ color: '#9c27b0' }}>
+                    {estadisticas.EN_TRANSITO}
+                  </Typography>
+                </Box>
+                <LocalShipping sx={{ fontSize: 40, color: '#9c27b0' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={2}>
           <Card sx={{ bgcolor: '#e8f5e9' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -277,63 +319,94 @@ const ReportesEstadosPage: React.FC = () => {
                     {estadisticas.ENTREGADO}
                   </Typography>
                 </Box>
-                <LocalShipping sx={{ fontSize: 40, color: 'success.main' }} />
+                <CheckCircle sx={{ fontSize: 40, color: 'success.main' }} />
               </Box>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Gráficos */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
-                <PieChartIcon /> Distribución por Estado
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Gráficos de Estados de Asignación */}
+      <Typography variant="h5" fontWeight="600" mb={2}>
+        Estados de Asignación de Equipos
+      </Typography>
+      <Grid container spacing={3} mb={4}>
+        {hasAsignacionData ? (
+          <>
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
+                    <PieChartIcon /> Distribución por Estado de Asignación
+                  </Typography>
+                  {pieChartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <Box display="flex" justifyContent="center" alignItems="center" height={300}>
+                      <Typography color="text.secondary">
+                        No hay datos de estados de asignación disponibles
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Cantidad por Estado
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={barChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="estado" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="cantidad" fill="#2196f3" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
+            <Grid item xs={12} md={6}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Cantidad por Estado de Asignación
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={barChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="estado" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="cantidad" fill="#2196f3" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+          </>
+        ) : (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={4}>
+                  <Assignment sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    No hay equipos con estados de asignación
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Los gráficos de asignación aparecerán cuando los equipos tengan estados asignados
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
       {/* Filtros */}
@@ -355,6 +428,7 @@ const ReportesEstadosPage: React.FC = () => {
                   <MenuItem value="DISPONIBLE">Disponible</MenuItem>
                   <MenuItem value="RESERVADO">Reservado</MenuItem>
                   <MenuItem value="FACTURADO">Facturado</MenuItem>
+                  <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
                   <MenuItem value="ENTREGADO">Entregado</MenuItem>
                 </Select>
               </FormControl>

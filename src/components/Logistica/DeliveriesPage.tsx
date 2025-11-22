@@ -48,7 +48,32 @@ import {
   Print as PrintIcon,
   Map as MapIcon,
 } from '@mui/icons-material';
-import type { EntregaViaje, Viaje, Cliente, Venta, EstadoEntrega, DocumentoComercial } from '../../types';
+import type { EntregaViaje, Viaje, Cliente, Venta, EstadoEntrega, DocumentoComercial, EstadoAsignacionEquipo } from '../../types';
+
+// Helper function to get color for estadoAsignacion
+const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefined): 'default' | 'warning' | 'info' | 'secondary' | 'success' => {
+  if (!estado) return 'default';
+  const colorMap: Record<EstadoAsignacionEquipo, 'default' | 'warning' | 'info' | 'secondary' | 'success'> = {
+    DISPONIBLE: 'default',
+    RESERVADO: 'warning',
+    FACTURADO: 'info',
+    EN_TRANSITO: 'secondary',
+    ENTREGADO: 'success',
+  };
+  return colorMap[estado] || 'default';
+};
+
+const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefined): string => {
+  if (!estado) return 'No especificado';
+  const labelMap: Record<EstadoAsignacionEquipo, string> = {
+    DISPONIBLE: 'Disponible',
+    RESERVADO: 'Reservado',
+    FACTURADO: 'Facturado',
+    EN_TRANSITO: 'En Tránsito',
+    ENTREGADO: 'Entregado',
+  };
+  return labelMap[estado] || estado;
+};
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import { documentoApi } from '../../api/services/documentoApi';
@@ -93,6 +118,20 @@ const DeliveriesPage: React.FC = () => {
   const [selectedDelivery, setSelectedDelivery] = useState<EntregaViaje | null>(null);
   const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
+
+  // Estados para modal de confirmar entrega
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmDeliveryId, setConfirmDeliveryId] = useState<number | null>(null);
+  const [receptorData, setReceptorData] = useState({
+    nombre: '',
+    dni: '',
+    observaciones: ''
+  });
+
+  // Estados para modal de rechazar entrega
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectDeliveryId, setRejectDeliveryId] = useState<number | null>(null);
+  const [rejectMotivo, setRejectMotivo] = useState('');
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoEntrega>('all');
@@ -312,23 +351,45 @@ const DeliveriesPage: React.FC = () => {
     }
   };
 
-  const handleMarkAsDelivered = async (id: number, receptorNombre?: string, receptorDni?: string) => {
+  // Abrir modal de confirmación
+  const openConfirmDialog = (id: number) => {
+    setConfirmDeliveryId(id);
+    setReceptorData({ nombre: '', dni: '', observaciones: '' });
+    setConfirmDialogOpen(true);
+  };
+
+  // Confirmar entrega desde el modal
+  const handleConfirmDelivery = async () => {
+    if (!confirmDeliveryId) return;
+
     try {
-      // Prompt for receptor info if not provided
-      const nombre = receptorNombre || window.prompt('Nombre del receptor:') || 'Sin nombre';
-      const dni = receptorDni || window.prompt('DNI del receptor:') || '';
-      const observaciones = window.prompt('Observaciones (opcional):') || undefined;
+      // Validar campos requeridos
+      if (!receptorData.nombre.trim()) {
+        setError('El nombre del receptor es obligatorio');
+        return;
+      }
 
       // Use new confirmarEntrega API - creates warranties automatically for facturas
+      // This also changes equipment estado to ENTREGADO
       await entregaViajeApi.confirmarEntrega(
-        id,
+        confirmDeliveryId,
         'ENTREGADA',
-        nombre,
-        dni,
-        observaciones
+        receptorData.nombre,
+        receptorData.dni,
+        receptorData.observaciones || undefined
       );
       
+      // Cerrar modal y limpiar
+      setConfirmDialogOpen(false);
+      setConfirmDeliveryId(null);
+      setReceptorData({ nombre: '', dni: '', observaciones: '' });
+      
+      // Clear any previous errors and reload data
+      setError(null);
       await loadData();
+      
+      // Cerrar dialog de detalles si está abierto
+      setDetailsDialogOpen(false);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al marcar como entregado');
@@ -336,21 +397,44 @@ const DeliveriesPage: React.FC = () => {
     }
   };
 
-  // Handle mark as not delivered
-  const handleMarkAsNotDelivered = async (id: number) => {
+  // Abrir modal de rechazo
+  const openRejectDialog = (id: number) => {
+    setRejectDeliveryId(id);
+    setRejectMotivo('');
+    setRejectDialogOpen(true);
+  };
+
+  // Rechazar entrega desde el modal
+  const handleRejectDelivery = async () => {
+    if (!rejectDeliveryId) return;
+
     try {
-      const motivo = window.prompt('Motivo del rechazo:') || 'No especificado';
-      const observaciones = `RECHAZADO: ${motivo}`;
+      // Validar motivo requerido
+      if (!rejectMotivo.trim()) {
+        setError('El motivo del rechazo es obligatorio');
+        return;
+      }
+
+      const observaciones = `RECHAZADO: ${rejectMotivo}`;
 
       await entregaViajeApi.confirmarEntrega(
-        id,
+        rejectDeliveryId,
         'NO_ENTREGADA',
         'N/A',
         'N/A',
         observaciones
       );
       
+      // Cerrar modal y limpiar
+      setRejectDialogOpen(false);
+      setRejectDeliveryId(null);
+      setRejectMotivo('');
+      
+      setError(null);
       await loadData();
+      
+      // Cerrar dialog de detalles si está abierto
+      setDetailsDialogOpen(false);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al marcar como no entregado');
@@ -614,7 +698,7 @@ const DeliveriesPage: React.FC = () => {
                         {delivery.estado === 'PENDIENTE' && (
                           <>
                             <IconButton
-                              onClick={() => handleMarkAsDelivered(delivery.id)}
+                              onClick={() => openConfirmDialog(delivery.id)}
                               size="small"
                               title="Confirmar entrega"
                               color="success"
@@ -623,7 +707,7 @@ const DeliveriesPage: React.FC = () => {
                             </IconButton>
 
                             <IconButton
-                              onClick={() => handleMarkAsNotDelivered(delivery.id)}
+                              onClick={() => openRejectDialog(delivery.id)}
                               size="small"
                               title="Marcar como no entregada"
                               color="error"
@@ -910,21 +994,38 @@ const DeliveriesPage: React.FC = () => {
                             <TableCell>Modelo</TableCell>
                             <TableCell>Tipo</TableCell>
                             <TableCell>Color</TableCell>
+                            <TableCell>Estado</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {selectedDeliveryDetails.equipos.map((equipo: any) => (
-                            <TableRow key={equipo.id}>
-                              <TableCell>
-                                <Typography variant="body2" fontWeight="600">
-                                  #{equipo.numeroHeladera || equipo.id}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>{equipo.modelo || 'N/A'}</TableCell>
-                              <TableCell>{equipo.tipo || 'N/A'}</TableCell>
-                              <TableCell>{equipo.color || 'N/A'}</TableCell>
-                            </TableRow>
-                          ))}
+                          {selectedDeliveryDetails.equipos.map((equipo: any) => {
+                            // Infer estadoAsignacion if not provided
+                            let estadoAsignacion = equipo.estadoAsignacion;
+                            if (!estadoAsignacion) {
+                              // If delivery is confirmed, it should be ENTREGADO, otherwise EN_TRANSITO
+                              estadoAsignacion = selectedDelivery.estado === 'ENTREGADA' ? 'ENTREGADO' : 'EN_TRANSITO';
+                            }
+                            
+                            return (
+                              <TableRow key={equipo.id}>
+                                <TableCell>
+                                  <Typography variant="body2" fontWeight="600">
+                                    #{equipo.numeroHeladera || equipo.id}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>{equipo.modelo || 'N/A'}</TableCell>
+                                <TableCell>{equipo.tipo || 'N/A'}</TableCell>
+                                <TableCell>{equipo.color || 'N/A'}</TableCell>
+                                <TableCell>
+                                  <Chip
+                                    label={getEstadoAsignacionLabel(estadoAsignacion)}
+                                    size="small"
+                                    color={getEstadoAsignacionColor(estadoAsignacion)}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </TableContainer>
@@ -952,10 +1053,7 @@ const DeliveriesPage: React.FC = () => {
                     variant="contained"
                     color="success"
                     startIcon={<CheckIcon />}
-                    onClick={async () => {
-                      await handleMarkAsDelivered(selectedDelivery.id);
-                      setDetailsDialogOpen(false);
-                    }}
+                    onClick={() => openConfirmDialog(selectedDelivery.id)}
                     fullWidth
                   >
                     Confirmar Entrega
@@ -964,10 +1062,7 @@ const DeliveriesPage: React.FC = () => {
                     variant="outlined"
                     color="error"
                     startIcon={<CancelIcon />}
-                    onClick={async () => {
-                      await handleMarkAsNotDelivered(selectedDelivery.id);
-                      setDetailsDialogOpen(false);
-                    }}
+                    onClick={() => openRejectDialog(selectedDelivery.id)}
                     fullWidth
                   >
                     No Entregada
@@ -989,6 +1084,124 @@ const DeliveriesPage: React.FC = () => {
             setSelectedDeliveryDetails(null);
           }}>
             Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Confirmación de Entrega */}
+      <Dialog 
+        open={confirmDialogOpen} 
+        onClose={() => setConfirmDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <CheckIcon color="success" />
+            Confirmar Entrega
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="info" sx={{ mb: 3 }}>
+              Complete los datos del receptor para confirmar la entrega. Los equipos cambiarán a estado <strong>ENTREGADO</strong>.
+            </Alert>
+            
+            <TextField
+              label="Nombre del Receptor *"
+              fullWidth
+              value={receptorData.nombre}
+              onChange={(e) => setReceptorData({ ...receptorData, nombre: e.target.value })}
+              margin="normal"
+              placeholder="Ej: Juan Pérez"
+              required
+            />
+            
+            <TextField
+              label="DNI del Receptor"
+              fullWidth
+              value={receptorData.dni}
+              onChange={(e) => setReceptorData({ ...receptorData, dni: e.target.value })}
+              margin="normal"
+              placeholder="Ej: 12345678"
+            />
+            
+            <TextField
+              label="Observaciones"
+              fullWidth
+              multiline
+              rows={3}
+              value={receptorData.observaciones}
+              onChange={(e) => setReceptorData({ ...receptorData, observaciones: e.target.value })}
+              margin="normal"
+              placeholder="Notas adicionales sobre la entrega (opcional)"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleConfirmDelivery} 
+            variant="contained" 
+            color="success"
+            startIcon={<CheckIcon />}
+            disabled={!receptorData.nombre.trim()}
+          >
+            Confirmar Entrega
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Rechazo de Entrega */}
+      <Dialog 
+        open={rejectDialogOpen} 
+        onClose={() => setRejectDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <CancelIcon color="error" />
+            Marcar como No Entregada
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Indique el motivo por el cual la entrega no pudo realizarse.
+            </Alert>
+            
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <strong>Nota:</strong> Los equipos mantendrán su estado actual. Será necesario crear una nueva entrega para volver a intentar la entrega de estos equipos.
+            </Alert>
+            
+            <TextField
+              label="Motivo del Rechazo *"
+              fullWidth
+              multiline
+              rows={4}
+              value={rejectMotivo}
+              onChange={(e) => setRejectMotivo(e.target.value)}
+              margin="normal"
+              placeholder="Ej: Cliente no se encontraba en el domicilio, dirección incorrecta, etc."
+              required
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleRejectDelivery} 
+            variant="contained" 
+            color="error"
+            startIcon={<CancelIcon />}
+            disabled={!rejectMotivo.trim()}
+          >
+            Marcar como No Entregada
           </Button>
         </DialogActions>
       </Dialog>

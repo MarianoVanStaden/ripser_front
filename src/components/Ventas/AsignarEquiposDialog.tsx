@@ -21,7 +21,32 @@ import {
 } from '@mui/material';
 import { CheckCircle, Warning } from '@mui/icons-material';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
-import type { DetalleDocumento, EquipoFabricadoDTO } from '../../types';
+import type { DetalleDocumento, EquipoFabricadoDTO, EstadoAsignacionEquipo } from '../../types';
+
+// Helper function to get color for estadoAsignacion
+const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefined): 'default' | 'warning' | 'info' | 'secondary' | 'success' => {
+  if (!estado) return 'default';
+  const colorMap: Record<EstadoAsignacionEquipo, 'default' | 'warning' | 'info' | 'secondary' | 'success'> = {
+    DISPONIBLE: 'default',
+    RESERVADO: 'warning',
+    FACTURADO: 'info',
+    EN_TRANSITO: 'secondary',
+    ENTREGADO: 'success',
+  };
+  return colorMap[estado] || 'default';
+};
+
+const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefined): string => {
+  if (!estado) return 'No especificado';
+  const labelMap: Record<EstadoAsignacionEquipo, string> = {
+    DISPONIBLE: 'Disponible',
+    RESERVADO: 'Reservado',
+    FACTURADO: 'Facturado',
+    EN_TRANSITO: 'En Tránsito',
+    ENTREGADO: 'Entregado',
+  };
+  return labelMap[estado] || estado;
+};
 
 interface AsignarEquiposDialogProps {
   open: boolean;
@@ -94,17 +119,27 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
       try {
         const equipos = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId);
 
-        // Filter by color and medida if specified
+        // Filter by color, medida, and estadoAsignacion
         const equiposFiltrados = equipos.filter((equipo) => {
           const matchColor = !asignacion.color || equipo.color === asignacion.color;
           const matchMedida = !asignacion.medida || equipo.medida === asignacion.medida;
-          return matchColor && matchMedida;
+          
+          // Only DISPONIBLE equipos can be assigned
+          // If estadoAsignacion is not provided, infer from estado + asignado
+          let estadoAsignacion = equipo.estadoAsignacion;
+          if (!estadoAsignacion && equipo.estado === 'COMPLETADO') {
+            estadoAsignacion = equipo.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+          }
+          const isDisponible = estadoAsignacion === 'DISPONIBLE';
+          
+          return matchColor && matchMedida && isDisponible;
         });
 
         console.log(`🔍 Filtrado de equipos para ${asignacion.recetaNombre}:`);
         console.log(`  - Total disponibles: ${equipos.length}`);
         console.log(`  - Color requerido: "${asignacion.color || 'Sin especificar'}"`);
         console.log(`  - Medida requerida: "${asignacion.medida || 'Sin especificar'}"`);
+        console.log(`  - Solo DISPONIBLES: Sí`);
         console.log(`  - Equipos que cumplen criterios: ${equiposFiltrados.length}`);
 
         setAsignaciones((prev) =>
@@ -314,9 +349,21 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                                     </Typography>
                                   )}
                                 </Box>
-                                <Typography variant="body2" color="text.secondary">
-                                  {equipo.estado}
-                                </Typography>
+                                <Box display="flex" gap={1} alignItems="center">
+                                  <Chip
+                                    label={equipo.estado}
+                                    size="small"
+                                    color={equipo.estado === 'COMPLETADO' ? 'success' : 'default'}
+                                    variant="outlined"
+                                  />
+                                  {equipo.estadoAsignacion && (
+                                    <Chip
+                                      label={getEstadoAsignacionLabel(equipo.estadoAsignacion)}
+                                      size="small"
+                                      color={getEstadoAsignacionColor(equipo.estadoAsignacion)}
+                                    />
+                                  )}
+                                </Box>
                               </Box>
                             </MenuItem>
                           ))}

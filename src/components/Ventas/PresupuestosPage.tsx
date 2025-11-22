@@ -107,7 +107,7 @@ const initialFormData: FormData = {
 };
 
 const initialDetalle: DetalleForm = {
-  tipoItem: 'PRODUCTO',
+  tipoItem: 'EQUIPO',
   productoId: "",
   recetaId: "",
   color: "",

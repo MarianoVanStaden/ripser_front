@@ -2214,7 +2214,7 @@ export interface RecetaFabricacionUpdateDTO {
 
 export type TipoEquipo = 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
 
-export type EstadoAsignacionEquipo = 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'ENTREGADO';
+export type EstadoAsignacionEquipo = 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'EN_TRANSITO' | 'ENTREGADO';
 
 export interface HistorialEstadoEquipo {
   id: number;

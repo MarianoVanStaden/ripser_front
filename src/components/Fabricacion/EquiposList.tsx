@@ -17,9 +17,34 @@ import {
   equipoFabricadoApi,
 
 } from '../../api/services/equipoFabricadoApi';
-import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO } from '../../types';
+import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsignacionEquipo } from '../../types';
 import api from '../../api/config';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+
+// Helper function to get color for estadoAsignacion
+const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefined): 'default' | 'warning' | 'info' | 'secondary' | 'success' => {
+  if (!estado) return 'default';
+  const colorMap: Record<EstadoAsignacionEquipo, 'default' | 'warning' | 'info' | 'secondary' | 'success'> = {
+    DISPONIBLE: 'default',
+    RESERVADO: 'warning',
+    FACTURADO: 'info',
+    EN_TRANSITO: 'secondary',
+    ENTREGADO: 'success',
+  };
+  return colorMap[estado] || 'default';
+};
+
+const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefined): string => {
+  if (!estado) return 'No especificado';
+  const labelMap: Record<EstadoAsignacionEquipo, string> = {
+    DISPONIBLE: 'Disponible',
+    RESERVADO: 'Reservado',
+    FACTURADO: 'Facturado',
+    EN_TRANSITO: 'En Tránsito',
+    ENTREGADO: 'Entregado',
+  };
+  return labelMap[estado] || estado;
+};
 
 const EquiposList: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +58,7 @@ const EquiposList: React.FC = () => {
   // Filtros
   const [tipoFilter, setTipoFilter] = useState<TipoEquipo | ''>('');
   const [estadoFilter, setEstadoFilter] = useState<EstadoFabricacion | ''>('');
+  const [estadoAsignacionFilter, setEstadoAsignacionFilter] = useState<EstadoAsignacionEquipo | ''>('');
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -117,7 +143,7 @@ const EquiposList: React.FC = () => {
   // Reload equipos when navigating back to this page
   useEffect(() => {
     loadEquipos();
-  }, [page, pageSize, tipoFilter, estadoFilter, location.key]);
+  }, [page, pageSize, tipoFilter, estadoFilter, estadoAsignacionFilter, location.key]);
 
   useEffect(() => {
     loadClientes();
@@ -142,6 +168,21 @@ const EquiposList: React.FC = () => {
       if (estadoFilter) {
         console.log('🔍 Filtering by estado:', estadoFilter);
         filtered = filtered.filter((e: EquipoFabricadoListDTO) => e.estado === estadoFilter);
+      }
+      if (estadoAsignacionFilter) {
+        console.log('🔍 Filtering by estadoAsignacion:', estadoAsignacionFilter);
+        filtered = filtered.filter((e: EquipoFabricadoListDTO) => {
+          // If backend provides estadoAsignacion, use it
+          if (e.estadoAsignacion) {
+            return e.estadoAsignacion === estadoAsignacionFilter;
+          }
+          // Otherwise, infer it
+          if (e.estado === 'COMPLETADO') {
+            const inferredEstado = e.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+            return inferredEstado === estadoAsignacionFilter;
+          }
+          return false;
+        });
       }
 
       console.log('📋 Filtered equipos:', filtered.length, 'items');
@@ -347,6 +388,28 @@ const EquiposList: React.FC = () => {
       },
     },
     {
+      field: 'estadoAsignacion',
+      headerName: 'Estado Asignación',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => {
+        const estadoAsignacion = params.value as EstadoAsignacionEquipo | null;
+        
+        // Infer estado if not provided by backend
+        let inferredEstado = estadoAsignacion;
+        if (!inferredEstado && params.row.estado === 'COMPLETADO') {
+          inferredEstado = params.row.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+        }
+        
+        return (
+          <Chip
+            label={getEstadoAsignacionLabel(inferredEstado)}
+            color={getEstadoAsignacionColor(inferredEstado)}
+            size="small"
+          />
+        );
+      },
+    },
+    {
       field: 'asignado',
       headerName: 'Asignado',
       width: 100,
@@ -383,97 +446,125 @@ const EquiposList: React.FC = () => {
       headerName: 'Acciones',
       width: 250,
       sortable: false,
-      renderCell: (params: GridRenderCellParams) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Ver detalle">
-            <IconButton
-              size="small"
-              color="info"
-              onClick={() => navigate(`/fabricacion/equipos/${params.row.id}`)}
-            >
-              <Visibility fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Editar">
-            <IconButton
-              size="small"
-              color="primary"
-              onClick={() => navigate(`/fabricacion/equipos/editar/${params.row.id}`)}
-            >
-              <Edit fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {params.row.estado === 'EN_PROCESO' && (
-            <Tooltip title="Completar">
+      renderCell: (params: GridRenderCellParams) => {
+        // Get estadoAsignacion (or infer it)
+        let estadoAsignacion = params.row.estadoAsignacion as EstadoAsignacionEquipo | null;
+        if (!estadoAsignacion && params.row.estado === 'COMPLETADO') {
+          estadoAsignacion = params.row.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+        }
+        
+        // Validations based on estadoAsignacion
+        const isReservadoOrHigher = estadoAsignacion && ['RESERVADO', 'FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(estadoAsignacion);
+        const isFacturadoOrHigher = estadoAsignacion && ['FACTURADO', 'EN_TRANSITO', 'ENTREGADO'].includes(estadoAsignacion);
+        const canEdit = !isReservadoOrHigher;
+        const canDelete = !isReservadoOrHigher;
+        const canAssign = params.row.estado === 'COMPLETADO' && !params.row.asignado && estadoAsignacion === 'DISPONIBLE';
+        const canUnassign = params.row.asignado && !isFacturadoOrHigher;
+        
+        return (
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Ver detalle">
               <IconButton
                 size="small"
-                color="success"
-                onClick={() => setCompletarDialog({ 
-                  open: true, 
-                  equipoId: params.row.id,
-                  equipo: params.row 
-                })}
+                color="info"
+                onClick={() => navigate(`/fabricacion/equipos/${params.row.id}`)}
               >
-                <CheckCircle fontSize="small" />
+                <Visibility fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
-          {params.row.estado !== 'CANCELADO' && (
-            <Tooltip title="Cancelar">
-              <IconButton
-                size="small"
-                color="warning"
-                onClick={() => setCancelDialog({ 
-                  open: true, 
-                  equipoId: params.row.id,
-                  equipo: params.row 
-                })}
-              >
-                <Cancel fontSize="small" />
-              </IconButton>
+            <Tooltip title={canEdit ? "Editar" : `No se puede editar (Estado: ${getEstadoAsignacionLabel(estadoAsignacion)})`}>
+              <span>
+                <IconButton
+                  size="small"
+                  color="primary"
+                  disabled={!canEdit}
+                  onClick={() => navigate(`/fabricacion/equipos/editar/${params.row.id}`)}
+                >
+                  <Edit fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
-          )}
-          {!params.row.asignado && (
-            <Tooltip title="Asignar Cliente">
-              <IconButton
-                size="small"
-                color="success"
-                onClick={() => setAssignDialog({ open: true, equipoId: params.row.id })}
-              >
-                <Link fontSize="small" />
-              </IconButton>
+            {params.row.estado === 'EN_PROCESO' && (
+              <Tooltip title="Completar">
+                <IconButton
+                  size="small"
+                  color="success"
+                  onClick={() => setCompletarDialog({ 
+                    open: true, 
+                    equipoId: params.row.id,
+                    equipo: params.row 
+                  })}
+                >
+                  <CheckCircle fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {params.row.estado !== 'CANCELADO' && (
+              <Tooltip title="Cancelar">
+                <IconButton
+                  size="small"
+                  color="warning"
+                  onClick={() => setCancelDialog({ 
+                    open: true, 
+                    equipoId: params.row.id,
+                    equipo: params.row 
+                  })}
+                >
+                  <Cancel fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {!params.row.asignado && (
+              <Tooltip title={canAssign ? "Asignar Cliente" : `No se puede asignar (Estado: ${getEstadoAsignacionLabel(estadoAsignacion)})`}>
+                <span>
+                  <IconButton
+                    size="small"
+                    color="success"
+                    disabled={!canAssign}
+                    onClick={() => setAssignDialog({ open: true, equipoId: params.row.id })}
+                  >
+                    <Link fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+            {params.row.asignado && (
+              <Tooltip title={canUnassign ? "Desasignar Cliente" : `No se puede desasignar (Estado: ${getEstadoAsignacionLabel(estadoAsignacion)})`}>
+                <span>
+                  <IconButton
+                    size="small"
+                    color="warning"
+                    disabled={!canUnassign}
+                    onClick={() => setUnassignDialog({
+                      open: true,
+                      equipoId: params.row.id,
+                      equipo: params.row
+                    })}
+                  >
+                    <LinkOff fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+            <Tooltip title={canDelete ? "Eliminar" : `No se puede eliminar (Estado: ${getEstadoAsignacionLabel(estadoAsignacion)})`}>
+              <span>
+                <IconButton
+                  size="small"
+                  color="error"
+                  disabled={!canDelete}
+                  onClick={() => setDeleteDialog({ 
+                    open: true, 
+                    equipoId: params.row.id,
+                    equipo: params.row 
+                  })}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
-          )}
-          {params.row.asignado && (
-            <Tooltip title="Desasignar Cliente">
-              <IconButton
-                size="small"
-                color="warning"
-                onClick={() => setUnassignDialog({
-                  open: true,
-                  equipoId: params.row.id,
-                  equipo: params.row
-                })}
-              >
-                <LinkOff fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-          <Tooltip title="Eliminar">
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => setDeleteDialog({ 
-                open: true, 
-                equipoId: params.row.id,
-                equipo: params.row 
-              })}
-            >
-              <Delete fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      ),
+          </Stack>
+        );
+      },
     },
   ];
 
@@ -707,7 +798,7 @@ const EquiposList: React.FC = () => {
             <MenuItem value="OTRO">Otro</MenuItem>
           </TextField>
           <TextField
-            label="Estado"
+            label="Estado Fabricación"
             select
             size="small"
             value={estadoFilter}
@@ -718,6 +809,21 @@ const EquiposList: React.FC = () => {
             <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
             <MenuItem value="COMPLETADO">Completado</MenuItem>
             <MenuItem value="CANCELADO">Cancelado</MenuItem>
+          </TextField>
+          <TextField
+            label="Estado Asignación"
+            select
+            size="small"
+            value={estadoAsignacionFilter}
+            onChange={(e) => setEstadoAsignacionFilter(e.target.value as EstadoAsignacionEquipo | '')}
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="DISPONIBLE">Disponible</MenuItem>
+            <MenuItem value="RESERVADO">Reservado</MenuItem>
+            <MenuItem value="FACTURADO">Facturado</MenuItem>
+            <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
+            <MenuItem value="ENTREGADO">Entregado</MenuItem>
           </TextField>
         </Stack>
 

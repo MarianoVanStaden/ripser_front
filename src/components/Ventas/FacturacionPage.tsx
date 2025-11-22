@@ -393,22 +393,8 @@ const FacturacionPage = () => {
       return;
     }
 
-    // Add PRODUCTO by default if available, otherwise EQUIPO
-    if (products.length > 0) {
-      const defaultProduct = products[0];
-      setCart((prev) => [
-        ...prev,
-        {
-          tipoItem: 'PRODUCTO',
-          productoId: defaultProduct.id,
-          productoNombre: defaultProduct.nombre || 'Producto sin nombre',
-          cantidad: 1,
-          precioUnitario: defaultProduct.precio || 0,
-          descuento: 0,
-          precioManualmenteModificado: false,
-        },
-      ]);
-    } else if (recetas.length > 0) {
+    // Add EQUIPO by default if available, otherwise PRODUCTO
+    if (recetas.length > 0) {
       const defaultReceta = recetas[0];
       setCart((prev) => [
         ...prev,
@@ -420,6 +406,20 @@ const FacturacionPage = () => {
           recetaTipo: defaultReceta.tipoEquipo,
           cantidad: 1,
           precioUnitario: defaultReceta.precioVenta || 0,
+          descuento: 0,
+          precioManualmenteModificado: false,
+        },
+      ]);
+    } else if (products.length > 0) {
+      const defaultProduct = products[0];
+      setCart((prev) => [
+        ...prev,
+        {
+          tipoItem: 'PRODUCTO',
+          productoId: defaultProduct.id,
+          productoNombre: defaultProduct.nombre || 'Producto sin nombre',
+          cantidad: 1,
+          precioUnitario: defaultProduct.precio || 0,
           descuento: 0,
           precioManualmenteModificado: false,
         },
