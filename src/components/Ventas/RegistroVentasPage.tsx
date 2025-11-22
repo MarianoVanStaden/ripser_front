@@ -86,6 +86,7 @@ const RegistroVentasPage: React.FC = () => {
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
+  const [tipoDocumentoFilter, setTipoDocumentoFilter] = useState<string>('all');
 
   useEffect(() => {
     loadData();
@@ -97,11 +98,15 @@ const RegistroVentasPage: React.FC = () => {
       setError(null);
       
       // Load all data in parallel
-      const [salesData, clientsData, usuariosData] = await Promise.all([
+      const [facturasData, notasCreditoData, clientsData, usuariosData] = await Promise.all([
         documentoApi.getByTipo('FACTURA'),
+        documentoApi.getByTipo('NOTA_CREDITO'),
         clienteApi.getAll(),
         usuarioApi.getAll(),
       ]);
+      
+      // Combine both document types
+      const salesData = [...facturasData, ...notasCreditoData];
       
       console.log('Sales data:', salesData);
       console.log('Clients data:', clientsData);
@@ -113,11 +118,8 @@ const RegistroVentasPage: React.FC = () => {
       const usuariosArray = Array.isArray(usuariosData) ? usuariosData : (usuariosData as any).content || [];
       const usuariosMap = new Map(usuariosArray.map((usuario: Usuario) => [usuario.id, usuario]));
       
-      // Filter only invoices (FAC-), exclude order notes (NP-)
-      const facturas = salesData.filter((sale: any) => {
-        const numeroDoc = sale.numeroDocumento || sale.ventaNumero || '';
-        return numeroDoc.startsWith('FAC-');
-      });
+      // Keep all loaded documents (FACTURA and NOTA_CREDITO)
+      const facturas = salesData;
 
       // Enrich sales data with client and usuario information
       const enrichedSales = facturas.map((sale: any) => {
@@ -370,13 +372,15 @@ const RegistroVentasPage: React.FC = () => {
     const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
     const matchesPaymentMethod = paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter;
     const matchesClient = clientFilter === 'all' || sale.cliente?.id?.toString() === clientFilter;
+    
+    const matchesTipoDocumento = tipoDocumentoFilter === 'all' || sale.tipoDocumento === tipoDocumentoFilter;
 
     const saleDate = new Date(sale.fechaVenta);
     const matchesDateFrom = !dateFromFilter || saleDate >= new Date(dateFromFilter);
     const matchesDateTo = !dateToFilter || saleDate <= new Date(dateToFilter);
 
     return matchesSearch && matchesStatus && matchesPaymentMethod && 
-           matchesClient && matchesDateFrom && matchesDateTo;
+           matchesClient && matchesTipoDocumento && matchesDateFrom && matchesDateTo;
   });
 
   const clearFilters = (): void => {
@@ -386,6 +390,7 @@ const RegistroVentasPage: React.FC = () => {
     setClientFilter('all');
     setDateFromFilter('');
     setDateToFilter('');
+    setTipoDocumentoFilter('all');
   };
 
   const calculateTotals = () => {
@@ -633,6 +638,20 @@ const RegistroVentasPage: React.FC = () => {
                   startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
                 }}
               />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo de Documento</InputLabel>
+                <Select
+                  value={tipoDocumentoFilter}
+                  label="Tipo de Documento"
+                  onChange={(e) => setTipoDocumentoFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="FACTURA">Facturas</MenuItem>
+                  <MenuItem value="NOTA_CREDITO">Notas de Crédito</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={2}>
               <FormControl fullWidth size="small">

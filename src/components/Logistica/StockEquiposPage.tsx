@@ -122,6 +122,11 @@ const StockEquiposPage: React.FC = () => {
   const [pageMateriasPrimas, setPageMateriasPrimas] = useState(0);
   const [rowsPerPageMateriasPrimas, setRowsPerPageMateriasPrimas] = useState(10);
 
+  // Filter and Pagination states for Tab 3: Historial de Entregas
+  const [searchEntregas, setSearchEntregas] = useState('');
+  const [pageEntregas, setPageEntregas] = useState(0);
+  const [rowsPerPageEntregas, setRowsPerPageEntregas] = useState(10);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -389,6 +394,42 @@ const StockEquiposPage: React.FC = () => {
     setPageMateriasPrimas(0);
   };
 
+  // Filtrar equipos entregados para el historial de entregas
+  const filteredEntregas = useMemo(() => {
+    return equipos.filter((equipo) => {
+      const matchesSearch = searchEntregas === '' ||
+        equipo.numeroHeladera?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
+        equipo.modelo?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
+        equipo.clienteNombre?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
+        equipo.receptorNombre?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
+        equipo.receptorDni?.toLowerCase().includes(searchEntregas.toLowerCase());
+
+      // Solo mostrar equipos en estado ENTREGADO que tienen fecha de entrega
+      return equipo.estadoAsignacion === 'ENTREGADO' && equipo.fechaEntrega && matchesSearch;
+    }).sort((a, b) => {
+      // Ordenar por fecha de entrega descendente (más reciente primero)
+      const dateA = new Date(a.fechaEntrega || 0).getTime();
+      const dateB = new Date(b.fechaEntrega || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [equipos, searchEntregas]);
+
+  const paginatedEntregas = useMemo(() => {
+    return filteredEntregas.slice(
+      pageEntregas * rowsPerPageEntregas,
+      pageEntregas * rowsPerPageEntregas + rowsPerPageEntregas
+    );
+  }, [filteredEntregas, pageEntregas, rowsPerPageEntregas]);
+
+  const handleChangePageEntregas = (_event: unknown, newPage: number) => {
+    setPageEntregas(newPage);
+  };
+
+  const handleChangeRowsPerPageEntregas = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPageEntregas(parseInt(event.target.value, 10));
+    setPageEntregas(0);
+  };
+
   // Calcular métricas
   const totalEquipos = equipos.length;
   const equiposCompletados = equipos.filter(e => e.estado === 'COMPLETADO').length;
@@ -546,6 +587,7 @@ const StockEquiposPage: React.FC = () => {
             <Tab label="Inventario de Equipos" />
             <Tab label="Registro de Movimientos de Equipos" icon={<HistoryIcon />} iconPosition="end" />
             <Tab label="Movimientos de Materias Primas" />
+            <Tab label="Historial de Entregas" icon={<PersonIcon />} iconPosition="end" />
           </Tabs>
         </CardContent>
       </Card>
@@ -953,6 +995,130 @@ const StockEquiposPage: React.FC = () => {
               onPageChange={handleChangePageMateriasPrimas}
               rowsPerPage={rowsPerPageMateriasPrimas}
               onRowsPerPageChange={handleChangeRowsPerPageMateriasPrimas}
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+            />
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Tab Panel 3: Historial de Entregas */}
+      <TabPanel value={tabValue} index={3}>
+        {/* Filters */}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" gap={1} mb={2}>
+              <Typography variant="h6">Filtros</Typography>
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr' }, gap: 2 }}>
+              <TextField
+                fullWidth
+                label="Buscar"
+                variant="outlined"
+                size="small"
+                value={searchEntregas}
+                onChange={(e) => setSearchEntregas(e.target.value)}
+                placeholder="Buscar por número, modelo, cliente, receptor, DNI..."
+              />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6">
+                Entregas Completadas ({filteredEntregas.length})
+              </Typography>
+            </Box>
+            
+            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: { xs: 1000, md: 'auto' } }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ minWidth: 140 }}>Número Equipo</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Tipo</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Modelo</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                    <TableCell sx={{ minWidth: 140 }}>Fecha Entrega</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Receptor</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>DNI Receptor</TableCell>
+                    <TableCell sx={{ minWidth: 200 }}>Observaciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedEntregas.map((equipo) => (
+                    <TableRow key={equipo.id}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">
+                          {equipo.numeroHeladera}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{getTipoChip(equipo.tipo)}</TableCell>
+                      <TableCell>{equipo.modelo}</TableCell>
+                      <TableCell>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <PersonIcon fontSize="small" color="action" />
+                          <Typography variant="body2">
+                            {equipo.clienteNombre || '-'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {equipo.fechaEntrega 
+                            ? new Date(equipo.fechaEntrega).toLocaleString('es-ES', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium" color="primary">
+                          {equipo.receptorNombre || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {equipo.receptorDni || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 200 }}>
+                          {equipo.observacionesEntrega || '-'}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredEntregas.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center">
+                        <Box textAlign="center" py={4}>
+                          <Typography variant="body1" color="text.secondary">
+                            No se encontraron entregas completadas
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={filteredEntregas.length}
+              page={pageEntregas}
+              onPageChange={handleChangePageEntregas}
+              rowsPerPage={rowsPerPageEntregas}
+              onRowsPerPageChange={handleChangeRowsPerPageEntregas}
               rowsPerPageOptions={[5, 10, 25, 50, 100]}
               labelRowsPerPage="Filas por página:"
               labelDisplayedRows={({ from, to, count }) =>

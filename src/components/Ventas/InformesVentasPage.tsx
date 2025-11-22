@@ -96,6 +96,7 @@ const InformeVentasPage = () => {
   const [vendedorFilter, setVendedorFilter] = useState('all');
   const [dateFromFilter, setDateFromFilter] = useState(null);
   const [dateToFilter, setDateToFilter] = useState(null);
+  const [tipoDocumentoFilter, setTipoDocumentoFilter] = useState('all');
   const [reportType, setReportType] = useState('summary');
   const [groupBy, setGroupBy] = useState('Método de Pago');
   const [chartType, setChartType] = useState('pie');
@@ -131,7 +132,7 @@ const loadData = async () => {
     setLoading(true);
     setError(null);
 
-    const [salesResponse, clientsResponse, usuariosResponse] = await Promise.all([
+    const [facturasResponse, notasCreditoResponse, clientsResponse, usuariosResponse] = await Promise.all([
       documentoApi.getByTipo('FACTURA').catch(err => {
         console.error('Error loading facturas:', err);
         // If 500 error, show helpful message
@@ -140,9 +141,17 @@ const loadData = async () => {
         }
         throw err;
       }),
+      documentoApi.getByTipo('NOTA_CREDITO').catch(err => {
+        console.error('Error loading notas de crédito:', err);
+        return []; // Return empty array if notas de crédito fail to load
+      }),
       clienteApi.getAll(),
       usuarioApi.getAll(),
     ]);
+    
+    // Combine both document types
+    const salesResponse = [...(Array.isArray(facturasResponse) ? facturasResponse : facturasResponse.content || facturasResponse.data || []), 
+                           ...(Array.isArray(notasCreditoResponse) ? notasCreditoResponse : notasCreditoResponse.content || notasCreditoResponse.data || [])];
 
     // Extract actual data from paginated responses
     const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
@@ -153,14 +162,10 @@ const loadData = async () => {
     console.log('Clients data:', clientsData);
     console.log('Usuarios data:', usuariosData);
 
-    // Filter only invoices (FAC-), exclude order notes (NP-)
-    const facturas = salesData.filter((sale: any) => {
-      const numeroDoc = sale.numeroDocumento || sale.ventaNumero || '';
-      console.log(`Checking sale ${sale.id}: numeroDoc="${numeroDoc}", starts with FAC-? ${numeroDoc.startsWith('FAC-')}`);
-      return numeroDoc.startsWith('FAC-');
-    });
+    // Keep all loaded documents (FACTURA and NOTA_CREDITO)
+    const facturas = salesData;
 
-    console.log(`Total sales: ${salesData.length}, Filtered facturas: ${facturas.length}`);
+    console.log(`Total sales loaded: ${salesData.length}`);
 
     // Debug the usuarios structure
     console.log('=== USUARIOS DEBUG ===');
@@ -221,7 +226,7 @@ const loadData = async () => {
     console.log('Usuario with ID "2":', usuariosMap.get("2"));
 
     // Enrich sales data with client and usuario information
-    const enrichedSales = facturas.map(sale => {
+    const enrichedSales = salesData.map(sale => {
       // Map cliente - DocumentoComercial has clienteId and clienteNombre
       let cliente = null;
       if (sale.cliente) {
@@ -372,6 +377,26 @@ const loadData = async () => {
       MERCADO_PAGO: 'Mercado Pago',
     };
     return methods[method] || method;
+  };
+
+  const getTipoDocumentoLabel = (tipo) => {
+    const tipos = {
+      FACTURA: 'Factura',
+      NOTA_CREDITO: 'Nota de Crédito',
+      NOTA_PEDIDO: 'Nota de Pedido',
+      PRESUPUESTO: 'Presupuesto',
+    };
+    return tipos[tipo] || tipo;
+  };
+
+  const getTipoDocumentoColor = (tipo) => {
+    const colors = {
+      FACTURA: 'primary',
+      NOTA_CREDITO: 'error',
+      NOTA_PEDIDO: 'warning',
+      PRESUPUESTO: 'info',
+    };
+    return colors[tipo] || 'default';
   };
 
   function getClientFullName(cliente) {
@@ -549,6 +574,8 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
     const matchesVendedor = vendedorFilter === 'all' ||
       (sale.usuario?.id?.toString() === vendedorFilter) ||
       (sale.usuarioId?.toString() === vendedorFilter);
+    
+    const matchesTipoDocumento = tipoDocumentoFilter === 'all' || sale.tipoDocumento === tipoDocumentoFilter;
 
     const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta);
     if (!saleDate) return false;
@@ -562,7 +589,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
     const matchesDateTo = !toDateEndOfDay || saleDate <= toDateEndOfDay;
 
     return matchesSearch && matchesStatus && matchesPaymentMethod &&
-           matchesClient && matchesVendedor && matchesDateFrom && matchesDateTo;
+           matchesClient && matchesVendedor && matchesTipoDocumento && matchesDateFrom && matchesDateTo;
   });
 
   // Paginated sales
@@ -587,6 +614,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
     setVendedorFilter('all');
     setDateFromFilter(null);
     setDateToFilter(null);
+    setTipoDocumentoFilter('all');
   };
 
   const calculateTotals = () => {
@@ -616,11 +644,16 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
         case 'Año':
           key = saleDate.getFullYear().toString();
           break;
+        case 'Tipo de Documento':
+          key = getTipoDocumentoLabel(sale.tipoDocumento);
+          break;
         case 'Estado':
           key = getStatusLabel(sale.estado);
           break;
         case 'Método de Pago':
-          key = getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago);
+          const tipoLabel = sale.tipoDocumento === 'NOTA_CREDITO' ? 'NC' : 'FAC';
+          const paymentLabel = getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago);
+          key = `${paymentLabel} (${tipoLabel})`;
           break;
         case 'Cliente':
           key = getClientFullName(sale.cliente);
@@ -852,6 +885,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                   <MenuItem value="Semana">Semana</MenuItem>
                   <MenuItem value="Mes">Mes</MenuItem>
                   <MenuItem value="Año">Año</MenuItem>
+                  <MenuItem value="Tipo de Documento">Tipo de Documento</MenuItem>
                   <MenuItem value="Estado">Estado</MenuItem>
                   <MenuItem value="Método de Pago">Método de Pago</MenuItem>
                   <MenuItem value="Cliente">Cliente</MenuItem>
@@ -945,6 +979,20 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                   startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />,
                 }}
               />
+            </Grid>
+            <Grid item xs={12} sm={6} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo de Documento</InputLabel>
+                <Select
+                  value={tipoDocumentoFilter}
+                  label="Tipo de Documento"
+                  onChange={(e) => setTipoDocumentoFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="FACTURA">Facturas</MenuItem>
+                  <MenuItem value="NOTA_CREDITO">Notas de Crédito</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small">
@@ -1102,6 +1150,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 80 }}>ID</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>Tipo</TableCell>
                   <TableCell sx={{ minWidth: 120 }}>Fecha</TableCell>
                   <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
                   <TableCell sx={{ minWidth: 150 }}>Vendedor</TableCell>
@@ -1118,6 +1167,14 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                       <Typography variant="body2" fontWeight="bold">
                         #{sale.id}
                       </Typography>                
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getTipoDocumentoLabel(sale.tipoDocumento)}
+                        color={getTipoDocumentoColor(sale.tipoDocumento)}
+                        size="small"
+                        variant="outlined"
+                      />
                     </TableCell>
                     <TableCell>
                       {(sale.fechaVenta || sale.fecha_venta) ? 
@@ -1167,7 +1224,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 ))}
                 {filteredSales.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       <Typography color="text.secondary">
                         No se encontraron ventas que coincidan con los filtros aplicados
                       </Typography>

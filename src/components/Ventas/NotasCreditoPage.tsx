@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Button, TextField, Grid, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogContent, DialogActions, Chip, Alert,
   Autocomplete, Card, CardContent, Divider, CircularProgress,
+  Paper, Checkbox, Tooltip, alpha, useTheme,
 } from '@mui/material';
-import { CheckCircle } from '@mui/icons-material';
+import {
+  CheckCircle, Receipt, Inventory, Warning,
+  CreditCard, Description,
+} from '@mui/icons-material';
 import dayjs from 'dayjs';
 import api from '../../api/config';
 import { documentoApi } from '../../api/services';
@@ -21,13 +25,23 @@ interface NotaCreditoForm {
   motivo: string;
 }
 
+interface SuccessData {
+  notaCredito: any;
+  equiposDevueltos: number;
+  facturaNumero: string;
+  montoCalculado: number;
+  totalEquiposFactura: number;
+}
+
 const NotasCreditoPage: React.FC = () => {
+  const theme = useTheme();
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
   const [equiposFactura, setEquiposFactura] = useState<EquipoFabricadoDTO[]>([]);
+  const [facturaSeleccionada, setFacturaSeleccionada] = useState<DocumentoComercial | null>(null);
   const [loadingFacturas, setLoadingFacturas] = useState(false);
   const [loadingEquipos, setLoadingEquipos] = useState(false);
   const [creating, setCreating] = useState(false);
-  
+
   const [form, setForm] = useState<NotaCreditoForm>({
     facturaId: null,
     facturaNumero: '',
@@ -52,8 +66,21 @@ const NotasCreditoPage: React.FC = () => {
 
   const [successDialog, setSuccessDialog] = useState<{
     open: boolean;
-    notaCredito: any;
-  }>({ open: false, notaCredito: null });
+    data: SuccessData | null;
+  }>({ open: false, data: null });
+
+  // Calcular monto proporcional según equipos seleccionados
+  const montoCalculado = useMemo(() => {
+    if (!facturaSeleccionada || equiposFactura.length === 0 || form.equiposSeleccionados.length === 0) {
+      return 0;
+    }
+    const totalFactura = facturaSeleccionada.total || facturaSeleccionada.subtotal || 0;
+    const totalEquipos = equiposFactura.length;
+    const equiposSeleccionados = form.equiposSeleccionados.length;
+
+    // Calcular monto proporcional
+    return (totalFactura / totalEquipos) * equiposSeleccionados;
+  }, [facturaSeleccionada, equiposFactura.length, form.equiposSeleccionados.length]);
 
   useEffect(() => {
     loadFacturas();
@@ -62,14 +89,24 @@ const NotasCreditoPage: React.FC = () => {
   const loadFacturas = async () => {
     try {
       setLoadingFacturas(true);
-      // Usar documentoApi que maneja mejor los permisos
-      const facturas = await documentoApi.getByTipo('FACTURA');
-      setFacturas(facturas);
-      
-      if (facturas.length === 0) {
+      const allFacturas = await documentoApi.getByTipo('FACTURA');
+
+      // Ordenar en orden inverso (más recientes primero)
+      const sortedFacturas = allFacturas.sort((a, b) => {
+        // Primero por fecha de emisión
+        const dateA = new Date(a.fechaEmision).getTime();
+        const dateB = new Date(b.fechaEmision).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        // Si misma fecha, por ID descendente
+        return (b.id || 0) - (a.id || 0);
+      });
+
+      setFacturas(sortedFacturas);
+
+      if (sortedFacturas.length === 0) {
         setAlert({
           open: true,
-          message: 'No se encontraron facturas o no tiene permisos para acceder a ellas',
+          message: 'No se encontraron facturas disponibles',
           severity: 'info',
         });
       }
@@ -96,10 +133,12 @@ const NotasCreditoPage: React.FC = () => {
         equiposSeleccionados: [],
       });
       setEquiposFactura([]);
+      setFacturaSeleccionada(null);
       setErrors({ ...errors, factura: '' });
       return;
     }
 
+    setFacturaSeleccionada(factura);
     setForm({
       ...form,
       facturaId: factura.id,
@@ -110,17 +149,14 @@ const NotasCreditoPage: React.FC = () => {
     });
     setErrors({ ...errors, factura: '' });
 
-    // Cargar equipos de la factura
     await loadEquiposFactura(factura.id);
   };
 
   const loadEquiposFactura = async (facturaId: number) => {
     try {
       setLoadingEquipos(true);
-      // Obtener los detalles de la factura para extraer los equipos
       const factura = await documentoApi.getById(facturaId);
-      
-      // Extraer IDs de equipos desde equiposFabricadosIds en detalles
+
       const equiposIds: number[] = [];
       factura.detalles.forEach(detalle => {
         if (detalle.tipoItem === 'EQUIPO' && detalle.equiposFabricadosIds) {
@@ -138,14 +174,13 @@ const NotasCreditoPage: React.FC = () => {
         return;
       }
 
-      // Cargar información completa de cada equipo
       const equiposPromises = equiposIds.map((id: number) =>
         api.get(`/api/equipos-fabricados/${id}`)
       );
       const equiposResponses = await Promise.all(equiposPromises);
       const equipos = equiposResponses.map(res => res.data);
 
-      // Filtrar solo equipos ENTREGADOS (elegibles para devolución)
+      // Filtrar solo equipos ENTREGADOS
       const equiposEntregados = equipos.filter(
         (equipo: EquipoFabricadoDTO) => equipo.estadoAsignacion === 'ENTREGADO'
       );
@@ -153,7 +188,7 @@ const NotasCreditoPage: React.FC = () => {
       if (equiposEntregados.length === 0) {
         setAlert({
           open: true,
-          message: 'Esta factura no tiene equipos en estado ENTREGADO. Solo se pueden crear Notas de Crédito para equipos entregados.',
+          message: 'No hay equipos en estado ENTREGADO disponibles para devolver',
           severity: 'warning',
         });
       }
@@ -174,7 +209,7 @@ const NotasCreditoPage: React.FC = () => {
 
   const handleEquipoToggle = (equipo: EquipoFabricadoDTO) => {
     const isSelected = form.equiposSeleccionados.some(e => e.id === equipo.id);
-    
+
     if (isSelected) {
       setForm({
         ...form,
@@ -189,6 +224,14 @@ const NotasCreditoPage: React.FC = () => {
     setErrors({ ...errors, equipos: '' });
   };
 
+  const handleSelectAll = () => {
+    if (form.equiposSeleccionados.length === equiposFactura.length) {
+      setForm({ ...form, equiposSeleccionados: [] });
+    } else {
+      setForm({ ...form, equiposSeleccionados: [...equiposFactura] });
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors = {
       factura: '',
@@ -201,7 +244,7 @@ const NotasCreditoPage: React.FC = () => {
     }
 
     if (form.equiposSeleccionados.length === 0) {
-      newErrors.equipos = 'Debe seleccionar al menos un equipo';
+      newErrors.equipos = 'Debe seleccionar al menos un equipo para devolver';
     }
 
     if (!form.motivo.trim()) {
@@ -224,15 +267,20 @@ const NotasCreditoPage: React.FC = () => {
 
     try {
       setCreating(true);
-      
-      // Get current user ID from localStorage or context
+
       const currentUser = localStorage.getItem('user');
       const usuarioId = currentUser ? JSON.parse(currentUser).id : 1;
 
-      // Extract equipos IDs to return
       const equiposADevolver = form.equiposSeleccionados.map(e => e.id);
 
-      // Create nota de credito using the correct backend endpoint
+      // Guardar datos ANTES de resetear el formulario
+      const datosParaDialog: Omit<SuccessData, 'notaCredito'> = {
+        equiposDevueltos: form.equiposSeleccionados.length,
+        facturaNumero: form.facturaNumero,
+        montoCalculado: montoCalculado,
+        totalEquiposFactura: equiposFactura.length,
+      };
+
       const notaCreditoData = {
         facturaId: form.facturaId!,
         usuarioId: usuarioId,
@@ -241,13 +289,17 @@ const NotasCreditoPage: React.FC = () => {
       };
 
       const notaCredito = await documentoApi.createNotaCredito(notaCreditoData);
-      
+
+      // Mostrar diálogo con los datos guardados
       setSuccessDialog({
         open: true,
-        notaCredito: notaCredito,
+        data: {
+          notaCredito,
+          ...datosParaDialog,
+        },
       });
 
-      // Resetear formulario
+      // Resetear formulario DESPUÉS de guardar los datos
       setForm({
         facturaId: null,
         facturaNumero: '',
@@ -258,7 +310,8 @@ const NotasCreditoPage: React.FC = () => {
         motivo: '',
       });
       setEquiposFactura([]);
-      
+      setFacturaSeleccionada(null);
+
     } catch (error: any) {
       console.error('Error creating nota credito:', error);
       const errorMessage = error.response?.data?.message ||
@@ -275,51 +328,128 @@ const NotasCreditoPage: React.FC = () => {
   };
 
   const handleSuccessClose = () => {
-    setSuccessDialog({ open: false, notaCredito: null });
+    setSuccessDialog({ open: false, data: null });
     loadFacturas();
+  };
+
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 2,
+    });
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight="600">
-          Notas de Crédito
-        </Typography>
+      {/* Header */}
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        sx={{
+          pb: 2,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        <Box display="flex" alignItems="center" gap={2}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.warning.main, 0.1),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <CreditCard sx={{ fontSize: 28, color: 'warning.main' }} />
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="600">
+              Notas de Crédito
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Generar notas de crédito por devolución de equipos
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
       {alert.open && (
         <Alert
           severity={alert.severity}
           onClose={() => setAlert({ ...alert, open: false })}
-          sx={{ mb: 3 }}
+          sx={{ mb: 3, borderRadius: 2 }}
         >
           {alert.message}
         </Alert>
       )}
 
       <Grid container spacing={3}>
-        {/* Selección de Factura */}
+        {/* Paso 1: Selección de Factura */}
         <Grid item xs={12}>
-          <Card>
+          <Card
+            elevation={0}
+            sx={{
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 2,
+            }}
+          >
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                1. Seleccionar Factura
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              
+              <Box display="flex" alignItems="center" gap={1.5} mb={2}>
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  1
+                </Box>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Receipt sx={{ color: 'primary.main' }} />
+                  <Typography variant="h6" fontWeight="600">
+                    Seleccionar Factura
+                  </Typography>
+                </Box>
+              </Box>
+              <Divider sx={{ mb: 2.5 }} />
+
               <Autocomplete
                 options={facturas}
-                getOptionLabel={(option) => 
-                  `${option.numeroDocumento} - ${option.clienteNombre} - ${dayjs(option.fechaEmision).format('DD/MM/YYYY')}`
+                getOptionLabel={(option) =>
+                  `${option.numeroDocumento} - ${option.clienteNombre} (${dayjs(option.fechaEmision).format('DD/MM/YYYY')})`
                 }
                 loading={loadingFacturas}
                 onChange={(_, value) => handleFacturaChange(value)}
+                value={facturaSeleccionada}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.id}>
+                    <Box sx={{ py: 0.5 }}>
+                      <Typography variant="body2" fontWeight="600">
+                        {option.numeroDocumento}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.clienteNombre} - {dayjs(option.fechaEmision).format('DD/MM/YYYY')} - {formatCurrency(option.total || 0)}
+                      </Typography>
+                    </Box>
+                  </li>
+                )}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Factura *"
+                    label="Buscar factura por número o cliente"
                     error={!!errors.factura}
-                    helperText={errors.factura}
+                    helperText={errors.factura || 'Las facturas se muestran de más reciente a más antigua'}
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
@@ -333,51 +463,126 @@ const NotasCreditoPage: React.FC = () => {
                 )}
               />
 
-              {form.facturaId && (
-                <Box mt={2}>
-                  <Typography variant="body2" color="text.secondary">
-                    Cliente: <strong>{form.clienteNombre}</strong>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Factura N°: <strong>{form.facturaNumero}</strong>
-                  </Typography>
-                </Box>
+              {facturaSeleccionada && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    bgcolor: alpha(theme.palette.primary.main, 0.04),
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  }}
+                >
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Cliente</Typography>
+                      <Typography variant="body2" fontWeight="600">{form.clienteNombre}</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Factura</Typography>
+                      <Typography variant="body2" fontWeight="600">{form.facturaNumero}</Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Fecha</Typography>
+                      <Typography variant="body2" fontWeight="600">
+                        {dayjs(facturaSeleccionada.fechaEmision).format('DD/MM/YYYY')}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Total Factura</Typography>
+                      <Typography variant="body2" fontWeight="600" color="primary.main">
+                        {formatCurrency(facturaSeleccionada.total || 0)}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
               )}
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Selección de Equipos */}
+        {/* Paso 2: Selección de Equipos */}
         {form.facturaId && (
           <Grid item xs={12}>
-            <Card>
+            <Card
+              elevation={0}
+              sx={{
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+              }}
+            >
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  2. Seleccionar Equipos a Acreditar
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                  <Box display="flex" alignItems="center" gap={1.5}>
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      2
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Inventory sx={{ color: 'primary.main' }} />
+                      <Typography variant="h6" fontWeight="600">
+                        Seleccionar Equipos a Devolver
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {equiposFactura.length > 0 && (
+                    <Button
+                      size="small"
+                      onClick={handleSelectAll}
+                      variant="outlined"
+                    >
+                      {form.equiposSeleccionados.length === equiposFactura.length
+                        ? 'Deseleccionar todos'
+                        : 'Seleccionar todos'}
+                    </Button>
+                  )}
+                </Box>
+                <Divider sx={{ mb: 2.5 }} />
 
                 {loadingEquipos ? (
-                  <Box display="flex" justifyContent="center" py={3}>
+                  <Box display="flex" justifyContent="center" py={4}>
                     <CircularProgress />
                   </Box>
                 ) : equiposFactura.length === 0 ? (
-                  <Alert severity="info">
-                    No hay equipos ENTREGADOS en esta factura disponibles para acreditar.
+                  <Alert severity="info" sx={{ borderRadius: 2 }}>
+                    No hay equipos en estado ENTREGADO disponibles para devolver en esta factura.
                   </Alert>
                 ) : (
                   <>
-                    <TableContainer>
+                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                       <Table size="small">
                         <TableHead>
-                          <TableRow>
-                            <TableCell padding="checkbox"></TableCell>
-                            <TableCell>N° Heladera</TableCell>
-                            <TableCell>Tipo</TableCell>
-                            <TableCell>Modelo</TableCell>
-                            <TableCell>Color</TableCell>
-                            <TableCell>Medida</TableCell>
-                            <TableCell>Estado</TableCell>
+                          <TableRow sx={{ bgcolor: 'grey.50' }}>
+                            <TableCell padding="checkbox">
+                              <Checkbox
+                                indeterminate={
+                                  form.equiposSeleccionados.length > 0 &&
+                                  form.equiposSeleccionados.length < equiposFactura.length
+                                }
+                                checked={form.equiposSeleccionados.length === equiposFactura.length}
+                                onChange={handleSelectAll}
+                              />
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>N° Heladera</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Tipo</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Modelo</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Color</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Medida</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Estado</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -388,16 +593,23 @@ const NotasCreditoPage: React.FC = () => {
                                 key={equipo.id}
                                 hover
                                 onClick={() => handleEquipoToggle(equipo)}
-                                sx={{ cursor: 'pointer', bgcolor: isSelected ? 'action.selected' : 'inherit' }}
+                                selected={isSelected}
+                                sx={{
+                                  cursor: 'pointer',
+                                  '&.Mui-selected': {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                  },
+                                  '&.Mui-selected:hover': {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.12),
+                                  },
+                                }}
                               >
                                 <TableCell padding="checkbox">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => handleEquipoToggle(equipo)}
-                                  />
+                                  <Checkbox checked={isSelected} />
                                 </TableCell>
-                                <TableCell>{equipo.numeroHeladera}</TableCell>
+                                <TableCell>
+                                  <Typography fontWeight="600">{equipo.numeroHeladera}</Typography>
+                                </TableCell>
                                 <TableCell>{equipo.tipo}</TableCell>
                                 <TableCell>{equipo.modelo}</TableCell>
                                 <TableCell>{equipo.color || '-'}</TableCell>
@@ -407,6 +619,7 @@ const NotasCreditoPage: React.FC = () => {
                                     label={equipo.estadoAsignacion}
                                     color="success"
                                     size="small"
+                                    variant="outlined"
                                   />
                                 </TableCell>
                               </TableRow>
@@ -415,19 +628,55 @@ const NotasCreditoPage: React.FC = () => {
                         </TableBody>
                       </Table>
                     </TableContainer>
-                    
+
                     {errors.equipos && (
-                      <Alert severity="error" sx={{ mt: 2 }}>
+                      <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
                         {errors.equipos}
                       </Alert>
                     )}
 
+                    {/* Resumen de selección */}
                     {form.equiposSeleccionados.length > 0 && (
-                      <Box mt={2}>
-                        <Typography variant="body2" color="primary">
-                          {form.equiposSeleccionados.length} equipo(s) seleccionado(s)
-                        </Typography>
-                      </Box>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          mt: 2,
+                          p: 2,
+                          bgcolor: alpha(theme.palette.success.main, 0.08),
+                          borderRadius: 2,
+                          border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                        }}
+                      >
+                        <Grid container spacing={2} alignItems="center">
+                          <Grid item xs={12} sm={4}>
+                            <Typography variant="body2" color="text.secondary">
+                              Equipos seleccionados
+                            </Typography>
+                            <Typography variant="h6" fontWeight="600" color="success.main">
+                              {form.equiposSeleccionados.length} de {equiposFactura.length}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <Typography variant="body2" color="text.secondary">
+                              Monto a acreditar (proporcional)
+                            </Typography>
+                            <Typography variant="h6" fontWeight="600" color="primary.main">
+                              {formatCurrency(montoCalculado)}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <Tooltip title="El monto se calcula proporcionalmente según la cantidad de equipos devueltos respecto al total de la factura">
+                              <Alert severity="info" sx={{ py: 0.5, borderRadius: 1 }}>
+                                <Typography variant="caption">
+                                  {form.equiposSeleccionados.length === equiposFactura.length
+                                    ? 'Devolución total'
+                                    : 'Devolución parcial'}
+                                </Typography>
+                              </Alert>
+                            </Tooltip>
+                          </Grid>
+                        </Grid>
+                      </Paper>
                     )}
                   </>
                 )}
@@ -436,18 +685,45 @@ const NotasCreditoPage: React.FC = () => {
           </Grid>
         )}
 
-        {/* Motivo y Observaciones */}
+        {/* Paso 3: Motivo y Observaciones */}
         {form.equiposSeleccionados.length > 0 && (
           <Grid item xs={12}>
-            <Card>
+            <Card
+              elevation={0}
+              sx={{
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+              }}
+            >
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  3. Motivo de la Nota de Crédito
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
+                <Box display="flex" alignItems="center" gap={1.5} mb={2}>
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 600,
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    3
+                  </Box>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Description sx={{ color: 'primary.main' }} />
+                    <Typography variant="h6" fontWeight="600">
+                      Motivo de la Devolución
+                    </Typography>
+                  </Box>
+                </Box>
+                <Divider sx={{ mb: 2.5 }} />
 
                 <Grid container spacing={2}>
-                  <Grid item xs={12}>
+                  <Grid item xs={12} md={6}>
                     <TextField
                       select
                       fullWidth
@@ -470,10 +746,10 @@ const NotasCreditoPage: React.FC = () => {
                       fullWidth
                       multiline
                       rows={3}
-                      label="Observaciones"
+                      label="Observaciones adicionales"
                       value={form.observaciones}
                       onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-                      placeholder="Descripción detallada del motivo de la nota de crédito..."
+                      placeholder="Describa detalladamente el motivo de la devolución..."
                     />
                   </Grid>
                 </Grid>
@@ -482,38 +758,91 @@ const NotasCreditoPage: React.FC = () => {
           </Grid>
         )}
 
-        {/* Botones de acción */}
-        {form.equiposSeleccionados.length > 0 && (
+        {/* Resumen y botones de acción */}
+        {form.equiposSeleccionados.length > 0 && form.motivo && (
           <Grid item xs={12}>
-            <Box display="flex" justifyContent="flex-end" gap={2}>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setForm({
-                    facturaId: null,
-                    facturaNumero: '',
-                    clienteId: null,
-                    clienteNombre: '',
-                    equiposSeleccionados: [],
-                    observaciones: '',
-                    motivo: '',
-                  });
-                  setEquiposFactura([]);
-                  setErrors({ factura: '', equipos: '', motivo: '' });
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSubmit}
-                disabled={creating}
-                startIcon={creating ? <CircularProgress size={20} /> : <CheckCircle />}
-              >
-                {creating ? 'Creando...' : 'Crear Nota de Crédito'}
-              </Button>
-            </Box>
+            <Card
+              elevation={0}
+              sx={{
+                border: `2px solid ${theme.palette.warning.main}`,
+                borderRadius: 2,
+                bgcolor: alpha(theme.palette.warning.main, 0.04),
+              }}
+            >
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={1} mb={2}>
+                  <Warning sx={{ color: 'warning.main' }} />
+                  <Typography variant="h6" fontWeight="600">
+                    Confirmar Nota de Crédito
+                  </Typography>
+                </Box>
+                <Divider sx={{ mb: 2 }} />
+
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">Factura</Typography>
+                    <Typography variant="body1" fontWeight="600">{form.facturaNumero}</Typography>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">Cliente</Typography>
+                    <Typography variant="body1" fontWeight="600">{form.clienteNombre}</Typography>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">Equipos a devolver</Typography>
+                    <Typography variant="body1" fontWeight="600">
+                      {form.equiposSeleccionados.length} de {equiposFactura.length}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <Typography variant="caption" color="text.secondary">Monto a acreditar</Typography>
+                    <Typography variant="h6" fontWeight="600" color="primary.main">
+                      {formatCurrency(montoCalculado)}
+                    </Typography>
+                  </Grid>
+                </Grid>
+
+                <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+                  <Typography variant="body2">
+                    <strong>Atención:</strong> Esta acción generará una nota de crédito,
+                    acreditará {formatCurrency(montoCalculado)} en la cuenta corriente del cliente
+                    y devolverá {form.equiposSeleccionados.length} equipo(s) al inventario.
+                  </Typography>
+                </Alert>
+
+                <Box display="flex" justifyContent="flex-end" gap={2}>
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    onClick={() => {
+                      setForm({
+                        facturaId: null,
+                        facturaNumero: '',
+                        clienteId: null,
+                        clienteNombre: '',
+                        equiposSeleccionados: [],
+                        observaciones: '',
+                        motivo: '',
+                      });
+                      setEquiposFactura([]);
+                      setFacturaSeleccionada(null);
+                      setErrors({ factura: '', equipos: '', motivo: '' });
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    onClick={handleSubmit}
+                    disabled={creating}
+                    startIcon={creating ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+                    sx={{ minWidth: 200 }}
+                  >
+                    {creating ? 'Creando...' : 'Crear Nota de Crédito'}
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
         )}
       </Grid>
@@ -526,7 +855,7 @@ const NotasCreditoPage: React.FC = () => {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
+            borderRadius: 3,
             overflow: 'visible',
           },
         }}
@@ -538,7 +867,7 @@ const NotasCreditoPage: React.FC = () => {
                 width: 80,
                 height: 80,
                 borderRadius: '50%',
-                bgcolor: (theme) => theme.palette.success.main + '20',
+                bgcolor: alpha(theme.palette.success.main, 0.1),
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -549,79 +878,114 @@ const NotasCreditoPage: React.FC = () => {
             </Box>
 
             <Typography variant="h5" fontWeight="600" gutterBottom>
-              ¡Nota de Crédito Creada!
+              Nota de Crédito Generada
             </Typography>
-            
-            {successDialog.notaCredito && (
+
+            {successDialog.data && (
               <>
                 <Typography variant="body1" color="text.secondary" paragraph>
-                  La nota de crédito ha sido generada exitosamente
+                  La nota de crédito ha sido creada exitosamente
                 </Typography>
 
-                <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }}>
-                  <Typography variant="body2" fontWeight="600" gutterBottom>
-                    Acciones automáticas realizadas:
-                  </Typography>
-                  <Typography variant="body2" component="div">
-                    • Crédito de ${successDialog.notaCredito.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })} aplicado a la cuenta corriente del cliente
-                  </Typography>
-                  <Typography variant="body2" component="div">
-                    • {form.equiposSeleccionados.length} equipo(s) devuelto(s) al inventario (estado: DISPONIBLE)
-                  </Typography>
-                </Alert>
-
-                <Box
+                <Alert
+                  severity="success"
                   sx={{
-                    bgcolor: 'grey.100',
-                    borderRadius: 2,
-                    p: 2,
+                    mb: 3,
+                    textAlign: 'left',
                     width: '100%',
-                    mt: 2,
+                    borderRadius: 2,
                   }}
                 >
-                  <Grid container spacing={1}>
+                  <Typography variant="body2" fontWeight="600" gutterBottom>
+                    Acciones realizadas:
+                  </Typography>
+                  <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                    <li>
+                      <Typography variant="body2">
+                        Crédito de <strong>{formatCurrency(successDialog.data.montoCalculado)}</strong> aplicado
+                        a la cuenta corriente del cliente
+                      </Typography>
+                    </li>
+                    <li>
+                      <Typography variant="body2">
+                        <strong>{successDialog.data.equiposDevueltos}</strong> equipo(s) devuelto(s) al
+                        inventario (estado: DISPONIBLE)
+                      </Typography>
+                    </li>
+                  </Box>
+                </Alert>
+
+                <Paper
+                  elevation={0}
+                  sx={{
+                    bgcolor: 'grey.50',
+                    borderRadius: 2,
+                    p: 2.5,
+                    width: '100%',
+                    border: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  <Grid container spacing={2}>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
                         N° Nota de Crédito
                       </Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {successDialog.notaCredito.numeroDocumento || 'N/A'}
+                      <Typography variant="body1" fontWeight="600">
+                        {successDialog.data.notaCredito?.numeroDocumento || 'N/A'}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
                         Cliente
                       </Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {successDialog.notaCredito.clienteNombre}
+                      <Typography variant="body1" fontWeight="600">
+                        {successDialog.data.notaCredito?.clienteNombre}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
-                        Monto Total
+                        Monto Acreditado
                       </Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        ${successDialog.notaCredito.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      <Typography variant="body1" fontWeight="600" color="success.main">
+                        {formatCurrency(successDialog.data.montoCalculado)}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">
                         Equipos Devueltos
                       </Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {form.equiposSeleccionados.length}
+                      <Typography variant="body1" fontWeight="600">
+                        {successDialog.data.equiposDevueltos} de {successDialog.data.totalEquiposFactura}
                       </Typography>
                     </Grid>
                     <Grid item xs={12}>
+                      <Divider sx={{ my: 1 }} />
                       <Typography variant="caption" color="text.secondary">
                         Factura de Referencia
                       </Typography>
-                      <Typography variant="body2" fontWeight="600">
-                        {successDialog.notaCredito.numeroReferencia || form.facturaNumero}
+                      <Typography variant="body1" fontWeight="600">
+                        {successDialog.data.facturaNumero}
                       </Typography>
                     </Grid>
                   </Grid>
-                </Box>
+                </Paper>
+
+                {successDialog.data.equiposDevueltos < successDialog.data.totalEquiposFactura && (
+                  <Alert
+                    severity="info"
+                    sx={{
+                      mt: 2,
+                      width: '100%',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Typography variant="body2">
+                      <strong>Nota:</strong> Esta fue una devolución parcial.
+                      Quedan {successDialog.data.totalEquiposFactura - successDialog.data.equiposDevueltos} equipo(s)
+                      de la factura original sin devolver.
+                    </Typography>
+                  </Alert>
+                )}
               </>
             )}
           </Box>
@@ -630,8 +994,7 @@ const NotasCreditoPage: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleSuccessClose}
-            fullWidth
-            sx={{ maxWidth: 200 }}
+            sx={{ minWidth: 150, borderRadius: 2 }}
           >
             Cerrar
           </Button>
