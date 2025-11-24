@@ -1092,7 +1092,7 @@ const StockEquiposPage: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ maxWidth: 200 }}>
-                          {equipo.observacionesEntrega || '-'}
+                          {equipo.observaciones || '-'}
                         </Typography>
                       </TableCell>
                     </TableRow>

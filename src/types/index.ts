@@ -2250,6 +2250,10 @@ export interface EquipoFabricadoDTO {
   responsableNombre?: string;
   clienteId?: number;
   clienteNombre?: string;
+  // Campos de entrega
+  receptorNombre?: string;
+  receptorDni?: string;
+  fechaEntrega?: string;
 }
 
 export interface EquipoFabricadoListDTO {
