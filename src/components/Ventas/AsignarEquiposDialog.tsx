@@ -196,6 +196,14 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
       asignacionesMap[asignacion.detalleId] = asignacion.equiposSeleccionados;
     });
 
+    console.log('🔍 AsignarEquiposDialog - Asignaciones a enviar:');
+    asignaciones.forEach((asignacion) => {
+      console.log(`  - Detalle ID ${asignacion.detalleId} (${asignacion.recetaNombre}):`);
+      console.log(`    Cantidad requerida: ${asignacion.cantidadRequerida}`);
+      console.log(`    Equipos seleccionados (${asignacion.equiposSeleccionados.length}):`, asignacion.equiposSeleccionados);
+    });
+    console.log('📦 Mapa final:', asignacionesMap);
+
     onConfirm(asignacionesMap);
   };
 

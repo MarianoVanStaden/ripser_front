@@ -41,7 +41,7 @@ import {
   Schedule as ScheduleIcon,
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
-import { clientApi, productApi, documentoApi } from '../../api/services';
+import { clientApi, productApi, documentoApi, parametroSistemaApi } from '../../api/services';
 import RecentActivity from './RecentActivity';
 import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
@@ -192,11 +192,23 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [setupDialogOpen, setSetupDialogOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
+  const [metaVentasMensuales, setMetaVentasMensuales] = useState<number>(50); // Default 50
 
   useEffect(() => {
     checkConnection();
     fetchDashboardData();
+    loadMetaVentas();
   }, []);
+
+  const loadMetaVentas = async () => {
+    try {
+      const parametro = await parametroSistemaApi.getByClave('META_VENTAS_MENSUALES');
+      setMetaVentasMensuales(parseInt(parametro.valor));
+    } catch (error) {
+      console.warn('No se pudo cargar META_VENTAS_MENSUALES, usando valor por defecto (50)');
+      // Mantener el valor por defecto de 50 si hay error
+    }
+  };
 
   const checkConnection = async () => {
     try {
@@ -714,15 +726,15 @@ const Dashboard: React.FC = () => {
                       <Box>
                         <Box display="flex" justifyContent="space-between" mb={0.5}>
                           <Typography variant="body2" color="text.secondary">
-                            Cumplimiento de Ventas Mensuales
+                            Cumplimiento de Ventas Mensuales (Meta: {metaVentasMensuales})
                           </Typography>
                           <Typography variant="body2" fontWeight="600">
-                            {stats.monthlySalesCount > 0 ? Math.min(100, (stats.monthlySalesCount / 50) * 100).toFixed(0) : 0}%
+                            {stats.monthlySalesCount > 0 ? Math.min(100, (stats.monthlySalesCount / metaVentasMensuales) * 100).toFixed(0) : 0}%
                           </Typography>
                         </Box>
                         <LinearProgress
                           variant="determinate"
-                          value={stats.monthlySalesCount > 0 ? Math.min(100, (stats.monthlySalesCount / 50) * 100) : 0}
+                          value={stats.monthlySalesCount > 0 ? Math.min(100, (stats.monthlySalesCount / metaVentasMensuales) * 100) : 0}
                           sx={{ height: 8, borderRadius: 4 }}
                         />
                       </Box>

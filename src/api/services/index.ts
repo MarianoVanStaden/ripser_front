@@ -24,3 +24,4 @@ export { movimientoStockApi } from "./movimientoStockApi";
 export { categoriaProductoApi } from "./categoriaProductoApi";
 export { sueldoApi } from "./sueldoApi";
 export { legajoApi } from "./legajoApi";
+export { parametroSistemaApi } from "./parametroSistemaApi";

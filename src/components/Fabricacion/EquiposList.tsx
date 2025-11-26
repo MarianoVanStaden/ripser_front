@@ -52,7 +52,7 @@ const EquiposList: React.FC = () => {
   const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50); // Increased to 50 to see more equipos
+  const [pageSize, setPageSize] = useState(10000); // Load all equipos for client-side filtering
   const [totalElements, setTotalElements] = useState(0);
 
   // Filtros
@@ -890,6 +890,16 @@ const EquiposList: React.FC = () => {
                             border: 'none',
                             '& .MuiDataGrid-columnHeaders': {
                               bgcolor: 'grey.50',
+                            },
+                            '& .MuiDataGrid-footerContainer': {
+                              borderTop: '1px solid',
+                              borderColor: 'divider',
+                              '& .MuiIconButton-root': {
+                                color: 'primary.main',
+                              },
+                              '& .MuiTablePagination-actions button': {
+                                color: 'text.primary',
+                              },
                             },
                           }}
                         />

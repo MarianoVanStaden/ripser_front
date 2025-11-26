@@ -38,6 +38,7 @@ import { documentoApi } from '../../api/services/documentoApi';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import type { DocumentoComercial, EquipoFabricadoDTO } from '../../types';
 import api from '../../api/config';
+import SuccessDialog from '../common/SuccessDialog';
 
 interface FacturaConEquipos {
   factura: DocumentoComercial;
@@ -49,15 +50,22 @@ const EntregasEquiposPage: React.FC = () => {
   const [facturasConEquipos, setFacturasConEquipos] = useState<FacturaConEquipos[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
+
   // Confirm delivery dialog
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [selectedFactura, setSelectedFactura] = useState<DocumentoComercial | null>(null);
   const [receptorNombre, setReceptorNombre] = useState('');
   const [receptorDni, setReceptorDni] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  
+
+  // Success dialog
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [entregaConfirmada, setEntregaConfirmada] = useState<{
+    facturaNumero: string;
+    clienteNombre: string;
+    cantidadEquipos: number;
+  } | null>(null);
+
   // Removed: Add to trip dialog (not compatible with real API)
 
   useEffect(() => {
@@ -150,44 +158,48 @@ const EntregasEquiposPage: React.FC = () => {
         }
       });
 
-      // Marcar cada equipo como ENTREGADO
-      for (const equipoId of equiposIds) {
-        try {
-          // Verificar estado actual
-          const equipo = await equipoFabricadoApi.findById(equipoId);
-          if (equipo.estadoAsignacion === 'FACTURADO') {
-            await equipoFabricadoApi.marcarComoEntregado(equipoId);
-          }
-        } catch (err) {
-          console.error(`Error marcando equipo ${equipoId} como entregado:`, err);
-        }
-      }
+      // Paso 1: Crear registro de entrega con estado PENDIENTE
+      const entregaResponse = await api.post('/api/entregas-viaje', {
+        documentoComercialId: selectedFactura.id,
+        direccionEntrega: selectedFactura.clienteDireccion || `Cliente: ${selectedFactura.clienteNombre}`,
+        fechaEntrega: dayjs().toISOString(),
+        estado: 'PENDIENTE',
+        observaciones: observaciones || `Entrega directa. Equipos: ${equiposIds.length}`,
+        receptorNombre: null,
+        receptorDni: null,
+      });
 
-      // Crear registro de entrega (opcional - si el backend lo requiere)
-      try {
-        await api.post('/api/entregas-viaje', {
-          ventaId: selectedFactura.id,
-          direccionEntrega: `Cliente: ${selectedFactura.clienteNombre}`,
-          fechaEntrega: dayjs().format('YYYY-MM-DD'),
-          estado: 'ENTREGADA',
-          observaciones: observaciones || `Equipos entregados: ${equiposIds.length}`,
-          receptorNombre: receptorNombre,
-          receptorDni: receptorDni,
-        });
-      } catch (err) {
-        console.warn('No se pudo crear registro de entrega:', err);
-        // No es crítico si falla
-      }
+      console.log('✅ Entrega creada:', entregaResponse.data);
 
-      setSuccess(`✅ Entrega confirmada: ${equiposIds.length} equipo(s) marcados como ENTREGADO`);
+      // Paso 2: Confirmar la entrega (esto marca equipos como ENTREGADO y crea garantías)
+      const confirmarResponse = await api.post('/api/entregas-viaje/confirmar-entrega', {
+        entregaId: entregaResponse.data.id,
+        estado: 'ENTREGADA',
+        receptorNombre: receptorNombre,
+        receptorDni: receptorDni,
+        observaciones: observaciones,
+      });
+
+      console.log('✅ Entrega confirmada:', confirmarResponse.data);
+
+      // Guardar datos de la entrega confirmada
+      setEntregaConfirmada({
+        facturaNumero: selectedFactura.numeroDocumento || `FAC-${selectedFactura.id}`,
+        clienteNombre: selectedFactura.clienteNombre || 'Sin nombre',
+        cantidadEquipos: equiposIds.length,
+      });
+
       setConfirmDialog(false);
       setSelectedFactura(null);
-      
+
+      // Mostrar modal de éxito
+      setSuccessDialogOpen(true);
+
       // Recargar datos
       await loadFacturasConEquiposPorEntregar();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error confirmando entrega:', err);
-      setError('Error al confirmar la entrega');
+      setError(err.response?.data?.message || err.response?.data || 'Error al confirmar la entrega');
     } finally {
       setLoading(false);
     }
@@ -241,12 +253,6 @@ const EntregasEquiposPage: React.FC = () => {
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
           {error}
-        </Alert>
-      )}
-
-      {success && (
-        <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 3 }}>
-          {success}
         </Alert>
       )}
 
@@ -422,6 +428,22 @@ const EntregasEquiposPage: React.FC = () => {
       </Dialog>
 
       {/* Trip integration dialog removed - not compatible with real backend API */}
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        open={successDialogOpen}
+        onClose={() => {
+          setSuccessDialogOpen(false);
+          setEntregaConfirmada(null);
+        }}
+        title="¡Entrega Confirmada Exitosamente!"
+        message={`${entregaConfirmada?.cantidadEquipos || 0} equipo(s) marcados como ENTREGADO`}
+        details={entregaConfirmada ? [
+          { label: 'Factura', value: entregaConfirmada.facturaNumero },
+          { label: 'Cliente', value: entregaConfirmada.clienteNombre },
+          { label: 'Equipos Entregados', value: entregaConfirmada.cantidadEquipos },
+        ] : []}
+      />
     </Box>
   );
 };

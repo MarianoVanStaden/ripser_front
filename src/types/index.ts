@@ -1939,9 +1939,8 @@ export interface ParametroSistema {
   clave: string;
   valor: string;
   descripcion?: string;
-  categoria?: string;
-  tipoDato: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON';
-  fechaActualizacion: string;
+  tipo: string; // STRING, INTEGER, BOOLEAN, DECIMAL
+  fechaActualizacion?: string;
 }
 export interface Configuracion {
   id: number;

@@ -22,136 +22,36 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Switch,
   Chip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  alpha,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   Settings as SettingsIcon,
   ExpandMore as ExpandMoreIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
-import type { SystemParameter } from '../../types';
-
-// Mock data for development
-const mockParameters: SystemParameter[] = [
-  {
-    id: 1,
-    key: 'company.name',
-    value: 'Ripser S.A.',
-    description: 'Nombre de la empresa',
-    category: 'company',
-    dataType: 'STRING',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 2,
-    key: 'company.address',
-    value: 'Av. Principal 123, Buenos Aires',
-    description: 'Dirección de la empresa',
-    category: 'company',
-    dataType: 'STRING',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 3,
-    key: 'company.phone',
-    value: '+54 11 1234-5678',
-    description: 'Teléfono de contacto',
-    category: 'company',
-    dataType: 'STRING',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 4,
-    key: 'company.email',
-    value: 'info@ripser.com',
-    description: 'Email de contacto',
-    category: 'company',
-    dataType: 'STRING',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 5,
-    key: 'sales.tax_rate',
-    value: '21',
-    description: 'Tasa de IVA predeterminada (%)',
-    category: 'sales',
-    dataType: 'NUMBER',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 6,
-    key: 'sales.quote_validity_days',
-    value: '30',
-    description: 'Días de validez para presupuestos',
-    category: 'sales',
-    dataType: 'NUMBER',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 7,
-    key: 'system.enable_notifications',
-    value: 'true',
-    description: 'Habilitar notificaciones del sistema',
-    category: 'system',
-    dataType: 'BOOLEAN',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 8,
-    key: 'inventory.low_stock_threshold',
-    value: '10',
-    description: 'Umbral mínimo de stock',
-    category: 'inventory',
-    dataType: 'NUMBER',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 9,
-    key: 'security.password_expiry_days',
-    value: '90',
-    description: 'Días para caducidad de contraseñas',
-    category: 'security',
-    dataType: 'NUMBER',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 10,
-    key: 'security.max_login_attempts',
-    value: '5',
-    description: 'Máximo intentos de login fallidos',
-    category: 'security',
-    dataType: 'NUMBER',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-];
-
-const categoryNames = {
-  company: 'Información de la Empresa',
-  sales: 'Configuración de Ventas',
-  system: 'Sistema',
-  inventory: 'Inventario',
-  security: 'Seguridad',
-};
+import { parametroSistemaApi } from '../../api/services';
+import type { ParametroSistema } from '../../types';
 
 const SettingsPage: React.FC = () => {
-  const [parameters, setParameters] = useState<SystemParameter[]>([]);
+  const theme = useTheme();
+  const [parameters, setParameters] = useState<ParametroSistema[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingParameter, setEditingParameter] = useState<SystemParameter | null>(null);
+  const [editingParameter, setEditingParameter] = useState<ParametroSistema | null>(null);
   const [formData, setFormData] = useState({
-    key: '',
-    value: '',
-    description: '',
-    category: '',
-    dataType: 'STRING' as 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON',
+    clave: '',
+    valor: '',
+    descripcion: '',
+    tipo: 'STRING' as 'STRING' | 'INTEGER' | 'DECIMAL' | 'BOOLEAN',
   });
   const [unsavedChanges, setUnsavedChanges] = useState<Record<number, string>>({});
 
@@ -162,12 +62,12 @@ const SettingsPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setParameters(mockParameters);
+      const data = await parametroSistemaApi.getAll();
+      setParameters(data);
       setError(null);
     } catch (err) {
-      setError('Error al cargar los parámetros');
-      console.error('Error loading data:', err);
+      setError('Error al cargar los parámetros del sistema');
+      console.error('Error loading parameters:', err);
     } finally {
       setLoading(false);
     }
@@ -176,341 +76,357 @@ const SettingsPage: React.FC = () => {
   const handleAdd = () => {
     setEditingParameter(null);
     setFormData({
-      key: '',
-      value: '',
-      description: '',
-      category: '',
-      dataType: 'STRING',
+      clave: '',
+      valor: '',
+      descripcion: '',
+      tipo: 'STRING',
     });
     setDialogOpen(true);
   };
 
-  const handleEdit = (parameter: SystemParameter) => {
+  const handleEdit = (parameter: ParametroSistema) => {
     setEditingParameter(parameter);
     setFormData({
-      key: parameter.key,
-      value: parameter.value,
-      description: parameter.description,
-      category: parameter.category,
-      dataType: parameter.dataType,
+      clave: parameter.clave,
+      valor: parameter.valor,
+      descripcion: parameter.descripcion || '',
+      tipo: parameter.tipo as 'STRING' | 'INTEGER' | 'DECIMAL' | 'BOOLEAN',
     });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     try {
-      console.log('Saving parameter:', formData);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      if (editingParameter) {
-        setParameters(parameters.map(param => 
-          param.id === editingParameter.id 
-            ? { 
-                ...param, 
-                ...formData, 
-                updatedAt: new Date().toISOString() 
-              }
-            : param
-        ));
-      } else {
-        const newParameter: SystemParameter = {
-          id: Math.max(...parameters.map(p => p.id)) + 1,
-          ...formData,
-          updatedAt: new Date().toISOString(),
-        };
-        setParameters([...parameters, newParameter]);
+      if (!formData.clave || !formData.valor) {
+        setError('La clave y el valor son obligatorios');
+        return;
       }
-      
+
+      if (editingParameter) {
+        // Update existing
+        await parametroSistemaApi.update(editingParameter.id, {
+          ...editingParameter,
+          ...formData,
+        } as ParametroSistema);
+        setSuccess('Parámetro actualizado exitosamente');
+      } else {
+        // Create new
+        await parametroSistemaApi.create({
+          id: 0, // Backend will assign
+          ...formData,
+          fechaActualizacion: new Date().toISOString(),
+        } as ParametroSistema);
+        setSuccess('Parámetro creado exitosamente');
+      }
+
       setDialogOpen(false);
-    } catch (err) {
-      setError('Error al guardar el parámetro');
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al guardar el parámetro');
       console.error('Error saving parameter:', err);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este parámetro?')) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setParameters(parameters.filter(param => param.id !== id));
-      } catch (err) {
-        setError('Error al eliminar el parámetro');
-        console.error('Error deleting parameter:', err);
-      }
-    }
-  };
-
-  const handleValueChange = (id: number, newValue: string) => {
+  const handleInlineChange = (id: number, newValue: string) => {
     setUnsavedChanges({ ...unsavedChanges, [id]: newValue });
   };
 
-  const saveParameter = async (id: number) => {
+  const handleInlineSave = async (parameter: ParametroSistema) => {
     try {
-      const newValue = unsavedChanges[id];
-      console.log('Saving parameter value:', { id, newValue });
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setParameters(parameters.map(param => 
-        param.id === id 
-          ? { ...param, value: newValue, updatedAt: new Date().toISOString() }
-          : param
-      ));
-      
-      const newUnsavedChanges = { ...unsavedChanges };
-      delete newUnsavedChanges[id];
-      setUnsavedChanges(newUnsavedChanges);
-    } catch (err) {
-      setError('Error al guardar el parámetro');
+      const newValue = unsavedChanges[parameter.id];
+      if (newValue === undefined) return;
+
+      await parametroSistemaApi.update(parameter.id, {
+        ...parameter,
+        valor: newValue,
+      });
+
+      setSuccess('Parámetro actualizado');
+      setUnsavedChanges((prev) => {
+        const { [parameter.id]: _, ...rest } = prev;
+        return rest;
+      });
+
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al guardar');
       console.error('Error saving parameter:', err);
     }
   };
 
-  const renderValueInput = (parameter: SystemParameter) => {
-    const currentValue = unsavedChanges[parameter.id] ?? parameter.value;
-    const hasChanges = unsavedChanges[parameter.id] !== undefined;
-
-    switch (parameter.dataType) {
-      case 'BOOLEAN':
-        return (
-          <Box display="flex" alignItems="center" gap={1}>
-            <Switch
-              checked={currentValue === 'true'}
-              onChange={(e) => handleValueChange(parameter.id, e.target.checked ? 'true' : 'false')}
-            />
-            {hasChanges && (
-              <IconButton 
-                size="small" 
-                color="primary"
-                onClick={() => saveParameter(parameter.id)}
-              >
-                <SaveIcon />
-              </IconButton>
-            )}
-          </Box>
-        );
-      case 'NUMBER':
-        return (
-          <Box display="flex" alignItems="center" gap={1}>
-            <TextField
-              type="number"
-              value={currentValue}
-              onChange={(e) => handleValueChange(parameter.id, e.target.value)}
-              size="small"
-              sx={{ width: 120 }}
-            />
-            {hasChanges && (
-              <IconButton 
-                size="small" 
-                color="primary"
-                onClick={() => saveParameter(parameter.id)}
-              >
-                <SaveIcon />
-              </IconButton>
-            )}
-          </Box>
-        );
-      default:
-        return (
-          <Box display="flex" alignItems="center" gap={1}>
-            <TextField
-              value={currentValue}
-              onChange={(e) => handleValueChange(parameter.id, e.target.value)}
-              size="small"
-              sx={{ minWidth: 200 }}
-            />
-            {hasChanges && (
-              <IconButton 
-                size="small" 
-                color="primary"
-                onClick={() => saveParameter(parameter.id)}
-              >
-                <SaveIcon />
-              </IconButton>
-            )}
-          </Box>
-        );
-    }
-  };
-
-  const groupedParameters = parameters.reduce((acc, parameter) => {
-    if (!acc[parameter.category]) {
-      acc[parameter.category] = [];
-    }
-    acc[parameter.category].push(parameter);
+  // Categorizar parámetros por prefijo
+  const categorizedParameters = parameters.reduce((acc, param) => {
+    const category = param.clave.split('_')[0] || 'GENERAL';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(param);
     return acc;
-  }, {} as Record<string, SystemParameter[]>);
+  }, {} as Record<string, ParametroSistema[]>);
+
+  const categoryLabels: Record<string, string> = {
+    META: 'Metas y Objetivos',
+    DIAS: 'Configuración de Tiempos',
+    IVA: 'Impuestos',
+    NOMBRE: 'Información de Empresa',
+    TELEFONO: 'Contacto',
+    EMAIL: 'Contacto',
+    GENERAL: 'General',
+  };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-          <SettingsIcon />
-          Parámetros del Sistema
-        </Typography>
+    <Box>
+      {/* Header */}
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        sx={{
+          pb: 2,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        <Box display="flex" alignItems="center" gap={2}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <SettingsIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+          </Box>
+          <Box>
+            <Typography variant="h5" fontWeight="600">
+              Parámetros del Sistema
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Configuración general del sistema
+            </Typography>
+          </Box>
+        </Box>
+
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
         >
-          Agregar Parámetro
+          Nuevo Parámetro
         </Button>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {Object.keys(unsavedChanges).length > 0 && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Hay cambios sin guardar. Haga clic en el ícono de guardar junto a cada parámetro modificado.
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
+          {success}
         </Alert>
       )}
 
-      {Object.entries(groupedParameters).map(([category, categoryParameters]) => (
-        <Accordion key={category} defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">
-              {categoryNames[category as keyof typeof categoryNames] || category}
-            </Typography>
-            <Box ml={2}>
-              <Chip
-                label={`${categoryParameters.length} parámetros`}
-                size="small"
-                color="primary"
-                variant="outlined"
-              />
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Clave</TableCell>
-                    <TableCell>Descripción</TableCell>
-                    <TableCell>Valor</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell>Última Actualización</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {categoryParameters.map((parameter) => (
-                    <TableRow key={parameter.id}>
-                      <TableCell>
-                        <Typography variant="body2" fontFamily="monospace">
-                          {parameter.key}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{parameter.description}</TableCell>
-                      <TableCell>{renderValueInput(parameter)}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={parameter.dataType}
-                          size="small"
-                          color="default"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {new Date(parameter.updatedAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton onClick={() => handleEdit(parameter)} size="small">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleDelete(parameter.id)} size="small">
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </AccordionDetails>
-        </Accordion>
-      ))}
+      {/* Parámetros agrupados por categoría */}
+      <Box>
+        {Object.entries(categorizedParameters).map(([category, categoryParameters]) => (
+          <Accordion
+            key={category}
+            defaultExpanded={category === 'META' || category === 'GENERAL'}
+            sx={{
+              mb: 2,
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 2,
+              '&:before': { display: 'none' },
+              overflow: 'hidden',
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              sx={{
+                bgcolor: alpha(theme.palette.primary.main, 0.04),
+                '&:hover': {
+                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                },
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={2} width="100%">
+                <Typography variant="h6" fontWeight="600">
+                  {categoryLabels[category] || category}
+                </Typography>
+                <Chip
+                  label={`${categoryParameters.length} parámetros`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+              </Box>
+            </AccordionSummary>
 
-      {/* Parameter Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+            <AccordionDetails sx={{ p: 0 }}>
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'grey.50' }}>
+                      <TableCell sx={{ fontWeight: 600, width: '25%' }}>Clave</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: '25%' }}>Valor</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: '35%' }}>Descripción</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: '10%' }}>Tipo</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: '5%' }}>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {categoryParameters.map((param) => {
+                      const hasUnsavedChanges = unsavedChanges[param.id] !== undefined;
+                      const displayValue = hasUnsavedChanges
+                        ? unsavedChanges[param.id]
+                        : param.valor;
+
+                      return (
+                        <TableRow key={param.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="600" fontFamily="monospace">
+                              {param.clave}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              value={displayValue}
+                              onChange={(e) => handleInlineChange(param.id, e.target.value)}
+                              InputProps={{
+                                endAdornment: hasUnsavedChanges && (
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => handleInlineSave(param)}
+                                  >
+                                    <SaveIcon fontSize="small" />
+                                  </IconButton>
+                                ),
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {param.descripcion || '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={param.tipo}
+                              size="small"
+                              variant="outlined"
+                              color={
+                                param.tipo === 'INTEGER' || param.tipo === 'DECIMAL'
+                                  ? 'primary'
+                                  : param.tipo === 'BOOLEAN'
+                                  ? 'success'
+                                  : 'default'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEdit(param)}
+                              color="primary"
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </AccordionDetails>
+          </Accordion>
+        ))}
+      </Box>
+
+      {/* Dialog para Crear/Editar */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3 },
+        }}
+      >
         <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <SettingsIcon />
-            {editingParameter ? 'Editar Parámetro' : 'Agregar Parámetro'}
-          </Box>
+          {editingParameter ? 'Editar Parámetro' : 'Nuevo Parámetro'}
         </DialogTitle>
+
         <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <TextField
               label="Clave"
-              value={formData.key}
-              onChange={(e) => setFormData({ ...formData, key: e.target.value })}
               fullWidth
-              required
-              helperText="Usar formato: categoria.nombre (ej: company.name)"
-            />
-            
-            <TextField
-              label="Descripción"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              fullWidth
+              value={formData.clave}
+              onChange={(e) => setFormData({ ...formData, clave: e.target.value.toUpperCase() })}
+              disabled={!!editingParameter}
+              helperText="Identificador único del parámetro (ej: META_VENTAS_MENSUALES)"
               required
             />
-            
-            <FormControl fullWidth required>
-              <InputLabel>Categoría</InputLabel>
-              <Select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              >
-                {Object.entries(categoryNames).map(([key, name]) => (
-                  <MenuItem key={key} value={key}>
-                    {name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth required>
-              <InputLabel>Tipo de Dato</InputLabel>
-              <Select
-                value={formData.dataType}
-                onChange={(e) => setFormData({ ...formData, dataType: e.target.value as any })}
-              >
-                <MenuItem value="STRING">Texto</MenuItem>
-                <MenuItem value="NUMBER">Número</MenuItem>
-                <MenuItem value="BOOLEAN">Booleano</MenuItem>
-                <MenuItem value="JSON">JSON</MenuItem>
-              </Select>
-            </FormControl>
-            
+
             <TextField
               label="Valor"
-              value={formData.value}
-              onChange={(e) => setFormData({ ...formData, value: e.target.value })}
               fullWidth
+              value={formData.valor}
+              onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
               required
-              multiline={formData.dataType === 'JSON'}
-              rows={formData.dataType === 'JSON' ? 3 : 1}
             />
+
+            <TextField
+              label="Descripción"
+              fullWidth
+              multiline
+              rows={2}
+              value={formData.descripcion}
+              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Tipo de Dato</InputLabel>
+              <Select
+                value={formData.tipo}
+                label="Tipo de Dato"
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    tipo: e.target.value as 'STRING' | 'INTEGER' | 'DECIMAL' | 'BOOLEAN',
+                  })
+                }
+              >
+                <MenuItem value="STRING">Texto (STRING)</MenuItem>
+                <MenuItem value="INTEGER">Número Entero (INTEGER)</MenuItem>
+                <MenuItem value="DECIMAL">Número Decimal (DECIMAL)</MenuItem>
+                <MenuItem value="BOOLEAN">Booleano (BOOLEAN)</MenuItem>
+              </Select>
+            </FormControl>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
-            {editingParameter ? 'Actualizar' : 'Crear'}
+
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setDialogOpen(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} variant="contained" startIcon={<SaveIcon />}>
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>
