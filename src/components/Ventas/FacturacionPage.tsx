@@ -944,9 +944,9 @@ const FacturacionPage = () => {
 
     try {
       const notaId = selectedNotaPedido.id;
-      
+
       // Apply selected financing option if different from current
-      if (selectedOpcionId) {
+      if (selectedOpcionId !== null && selectedOpcionId !== undefined) {
         const currentSelected = opcionesFinanciamiento.find(o => o.esSeleccionada);
         if (currentSelected?.id !== selectedOpcionId) {
           await documentoApi.selectFinanciamiento(notaId, selectedOpcionId);
@@ -1699,64 +1699,70 @@ const FacturacionPage = () => {
                     Opciones de Financiamiento
                   </Typography>
                   <RadioGroup
-                    value={selectedOpcionId || ''}
+                    value={selectedOpcionId !== null ? String(selectedOpcionId) : ''}
                     onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
                   >
                     <Grid container spacing={2}>
-                      {opcionesFinanciamiento.map((opcion, index) => (
-                        <Grid item xs={12} sm={6} md={4} key={index}>
-                          <Card 
-                            variant="outlined" 
-                            sx={{ 
-                              p: 1,
-                              border: selectedOpcionId === index ? '2px solid' : '1px solid',
-                              borderColor: selectedOpcionId === index ? 'primary.main' : 'divider',
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => setSelectedOpcionId(index)}
-                          >
-                            <FormControlLabel
-                              value={index}
-                              control={<Radio />}
-                              label={
-                                <Box>
-                                  <Box display="flex" alignItems="center" gap={1}>
-                                    {getMetodoPagoIcon(opcion.metodoPago)}
-                                    <Typography variant="body2" fontWeight="bold">
-                                      {opcion.nombre}
+                      {opcionesFinanciamiento.map((opcion, index) => {
+                        const optionValue = opcion.id !== undefined ? opcion.id : index;
+                        return (
+                          <Grid item xs={12} sm={6} md={4} key={index}>
+                            <Card
+                              variant="outlined"
+                              sx={{
+                                p: 1,
+                                border: selectedOpcionId === optionValue ? '2px solid' : '1px solid',
+                                borderColor: selectedOpcionId === optionValue ? 'primary.main' : 'divider',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => setSelectedOpcionId(optionValue)}
+                            >
+                              <FormControlLabel
+                                value={optionValue}
+                                control={<Radio />}
+                                label={
+                                  <Box>
+                                    <Box display="flex" alignItems="center" gap={1}>
+                                      {getMetodoPagoIcon(opcion.metodoPago)}
+                                      <Typography variant="body2" fontWeight="bold">
+                                        {opcion.nombre}
+                                      </Typography>
+                                    </Box>
+                                    <Typography variant="caption" display="block" color="text.secondary">
+                                      {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
                                     </Typography>
+                                    <Typography variant="body2" color="primary">
+                                      Total: ${opcion.montoTotal?.toFixed(2)}
+                                    </Typography>
+                                    {opcion.cantidadCuotas > 1 && (
+                                      <Typography variant="caption" color="text.secondary">
+                                        ${opcion.montoCuota?.toFixed(2)}/cuota
+                                      </Typography>
+                                    )}
                                   </Box>
-                                  <Typography variant="caption" display="block" color="text.secondary">
-                                    {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
-                                  </Typography>
-                                  <Typography variant="body2" color="primary">
-                                    Total: ${opcion.montoTotal?.toFixed(2)}
-                                  </Typography>
-                                  {opcion.cantidadCuotas > 1 && (
-                                    <Typography variant="caption" color="text.secondary">
-                                      ${opcion.montoCuota?.toFixed(2)}/cuota
-                                    </Typography>
-                                  )}
-                                </Box>
-                              }
-                            />
-                          </Card>
-                        </Grid>
-                      ))}
+                                }
+                              />
+                            </Card>
+                          </Grid>
+                        );
+                      })}
                     </Grid>
                   </RadioGroup>
                 </Box>
               )}
 
               {/* Display selected financing option */}
-              {selectedOpcionId && opcionesFinanciamiento.length > 0 && (
+              {selectedOpcionId !== null && selectedOpcionId !== undefined && opcionesFinanciamiento.length > 0 && (
                 <Box mb={2}>
                   <Alert severity="info" icon={<CreditCardIcon />}>
                     <Typography variant="body2">
-                      <strong>Opción de Financiamiento Seleccionada:</strong> {opcionesFinanciamiento[selectedOpcionId]?.nombre}
-                      {opcionesFinanciamiento[selectedOpcionId]?.tasaInteres !== 0 && (
-                        <> ({opcionesFinanciamiento[selectedOpcionId]?.tasaInteres}% {(opcionesFinanciamiento[selectedOpcionId]?.tasaInteres || 0) > 0 ? 'recargo' : 'descuento'})</>
-                      )}
+                      <strong>Opción de Financiamiento Seleccionada:</strong> {opcionesFinanciamiento.find(o => (o.id !== undefined ? o.id : opcionesFinanciamiento.indexOf(o)) === selectedOpcionId)?.nombre}
+                      {(() => {
+                        const selectedOption = opcionesFinanciamiento.find(o => (o.id !== undefined ? o.id : opcionesFinanciamiento.indexOf(o)) === selectedOpcionId);
+                        return selectedOption && selectedOption.tasaInteres !== 0 && (
+                          <> ({selectedOption.tasaInteres}% {selectedOption.tasaInteres > 0 ? 'recargo' : 'descuento'})</>
+                        );
+                      })()}
                     </Typography>
                   </Alert>
                 </Box>
@@ -1995,59 +2001,62 @@ const FacturacionPage = () => {
           )}
 
           <RadioGroup
-            value={selectedOpcionId || ''}
+            value={selectedOpcionId !== null ? String(selectedOpcionId) : ''}
             onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
           >
             <Grid container spacing={2}>
-              {opcionesFinanciamiento.map((opcion, index) => (
-                <Grid item xs={12} sm={6} key={index}>
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      border: selectedOpcionId === opcion.id ? '2px solid' : '1px solid',
-                      borderColor: selectedOpcionId === opcion.id ? 'primary.main' : 'divider',
-                    }}
-                    onClick={() => setSelectedOpcionId(opcion.id || index)}
-                  >
-                    <FormControlLabel
-                      value={opcion.id || index}
-                      control={<Radio />}
-                      label={
-                        <Box>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            {getMetodoPagoIcon(opcion.metodoPago)}
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {opcion.nombre}
-                            </Typography>
-                          </Box>
-                          <Typography variant="body2" color="text.secondary">
-                            {getMetodoPagoLabel(opcion.metodoPago)}
-                          </Typography>
-                          <Typography variant="body2">
-                            {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
-                          </Typography>
-                          <Divider sx={{ my: 1 }} />
-                          <Typography variant="h6" color="primary">
-                            Total: ${opcion.montoTotal.toFixed(2)}
-                          </Typography>
-                          {opcion.cantidadCuotas > 1 && (
+              {opcionesFinanciamiento.map((opcion, index) => {
+                const optionValue = opcion.id !== undefined ? opcion.id : index;
+                return (
+                  <Grid item xs={12} sm={6} key={index}>
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        cursor: 'pointer',
+                        border: selectedOpcionId === optionValue ? '2px solid' : '1px solid',
+                        borderColor: selectedOpcionId === optionValue ? 'primary.main' : 'divider',
+                      }}
+                      onClick={() => setSelectedOpcionId(optionValue)}
+                    >
+                      <FormControlLabel
+                        value={optionValue}
+                        control={<Radio />}
+                        label={
+                          <Box>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              {getMetodoPagoIcon(opcion.metodoPago)}
+                              <Typography variant="subtitle1" fontWeight="bold">
+                                {opcion.nombre}
+                              </Typography>
+                            </Box>
                             <Typography variant="body2" color="text.secondary">
-                              ${opcion.montoCuota.toFixed(2)} por cuota
+                              {getMetodoPagoLabel(opcion.metodoPago)}
                             </Typography>
-                          )}
-                          {opcion.descripcion && (
-                            <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                              {opcion.descripcion}
+                            <Typography variant="body2">
+                              {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
                             </Typography>
-                          )}
-                        </Box>
-                      }
-                    />
-                  </Card>
-                </Grid>
-              ))}
+                            <Divider sx={{ my: 1 }} />
+                            <Typography variant="h6" color="primary">
+                              Total: ${opcion.montoTotal.toFixed(2)}
+                            </Typography>
+                            {opcion.cantidadCuotas > 1 && (
+                              <Typography variant="body2" color="text.secondary">
+                                ${opcion.montoCuota.toFixed(2)} por cuota
+                              </Typography>
+                            )}
+                            {opcion.descripcion && (
+                              <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                                {opcion.descripcion}
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                      />
+                    </Card>
+                  </Grid>
+                );
+              })}
             </Grid>
           </RadioGroup>
         </DialogContent>

@@ -21,7 +21,9 @@
       "Bash(cmd.exe /c \"taskkill /F /PID 26644\")",
       "Bash(timeout /t 3)",
       "Bash(mvn compile:*)",
-      "Bash(cmd.exe /c \"taskkill /F /PID 43632\")"
+      "Bash(cmd.exe /c \"taskkill /F /PID 43632\")",
+      "Bash(where:*)",
+      "Bash(./mvnw.cmd clean:*)"
     ],
     "deny": [],
     "ask": []

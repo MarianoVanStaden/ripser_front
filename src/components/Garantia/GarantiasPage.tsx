@@ -101,9 +101,9 @@ const GarantiasPage: React.FC = () => {
     }
   };
 
-  // Filter garantias
+  // Filter and sort garantias (newest first)
   const filteredGarantias = useMemo(() => {
-    return garantias.filter(g => {
+    const filtered = garantias.filter(g => {
       const matchSearch = search === '' ||
         g.equipoFabricadoModelo.toLowerCase().includes(search.toLowerCase()) ||
         g.numeroSerie.toLowerCase().includes(search.toLowerCase());
@@ -112,6 +112,13 @@ const GarantiasPage: React.FC = () => {
       const matchEquipo = !equipoFilter || g.equipoFabricadoId === equipoFilter.id;
 
       return matchSearch && matchEstado && matchEquipo;
+    });
+
+    // Sort by fechaCompra DESC (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.fechaCompra).getTime();
+      const dateB = new Date(b.fechaCompra).getTime();
+      return dateB - dateA; // Descending order (newest first)
     });
   }, [garantias, search, estadoFilter, equipoFilter]);
 

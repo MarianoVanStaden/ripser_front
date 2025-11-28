@@ -122,7 +122,7 @@ const EquiposList: React.FC = () => {
     };
   }, [equipos]);
 
-  // Group equipos by tipo
+  // Group equipos by tipo and sort by fechaCreacion DESC (newest first)
   const equiposPorTipo = useMemo(() => {
     const grupos: Record<TipoEquipo, EquipoFabricadoListDTO[]> = {
       HELADERA: [],
@@ -135,6 +135,15 @@ const EquiposList: React.FC = () => {
       if (equipo.tipo && grupos[equipo.tipo]) {
         grupos[equipo.tipo].push(equipo);
       }
+    });
+
+    // Sort each group by fechaCreacion DESC (newest first)
+    Object.keys(grupos).forEach((tipo) => {
+      grupos[tipo as TipoEquipo].sort((a, b) => {
+        const dateA = new Date(a.fechaCreacion).getTime();
+        const dateB = new Date(b.fechaCreacion).getTime();
+        return dateB - dateA; // Descending order (newest first)
+      });
     });
 
     return grupos;
@@ -877,10 +886,10 @@ const EquiposList: React.FC = () => {
                           loading={loading}
                           autoHeight
                           disableRowSelectionOnClick
-                          pageSizeOptions={[10, 25, 50, 100]}
+                          pageSizeOptions={[25, 50, 100]}
                           initialState={{
                             pagination: {
-                              paginationModel: { pageSize: 10 },
+                              paginationModel: { pageSize: 25 },
                             },
                           }}
                           localeText={{

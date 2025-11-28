@@ -118,10 +118,21 @@ const EquipoForm: React.FC = () => {
 
   const loadRecetas = async () => {
     try {
+      console.log('🔄 Cargando recetas activas...');
       const data = await recetaFabricacionApi.findAllActive();
+      console.log('✅ Recetas cargadas:', data);
       setRecetas(data);
-    } catch (error) {
-      console.error('Error loading recetas:', error);
+    } catch (error: any) {
+      console.error('❌ Error loading recetas:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      // Mostrar error al usuario
+      setSnackbar({
+        open: true,
+        message: `Error al cargar recetas: ${error.response?.data?.message || error.message || 'Error desconocido'}`,
+        severity: 'error',
+      });
     }
   };
 
