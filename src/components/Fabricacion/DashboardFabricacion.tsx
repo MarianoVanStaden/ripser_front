@@ -42,8 +42,11 @@ const DashboardFabricacion: React.FC = () => {
         recetaFabricacionApi.findAll(0, 1000),
       ]);
 
-      setEquipos(equiposRes.content || []);
-      setRecetas(recetasRes.content || []);
+      const equiposData = equiposRes.content || [];
+      const recetasData = recetasRes.content || [];
+
+      setEquipos(equiposData);
+      setRecetas(recetasData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -103,27 +106,45 @@ const DashboardFabricacion: React.FC = () => {
     .sort((a, b) => dayjs(b.fechaCreacion).diff(dayjs(a.fechaCreacion)))
     .slice(0, 10);
 
-  // Recetas más usadas
-  const recetasUsadas = equipos
-    .filter((e) => e.recetaId)
-    .reduce((acc: any, eq) => {
-      const recetaId = eq.recetaId;
-      if (!acc[recetaId]) {
-        acc[recetaId] = { count: 0, nombre: '', codigo: '' };
+  // Modelos más usados (ya que no hay recetas asignadas)
+  // Primero intentamos agrupar por receta, si no hay, agrupamos por modelo
+  const equiposConReceta = equipos.filter((e) => e.recetaId);
+  
+  let modelosUsados: any = {};
+  
+  if (equiposConReceta.length > 0) {
+    // Si hay equipos con receta, agrupar por receta
+    modelosUsados = equiposConReceta.reduce((acc: any, eq) => {
+      const key = eq.recetaId;
+      if (!acc[key]) {
+        acc[key] = { 
+          count: 0, 
+          nombre: eq.recetaNombre || eq.modelo,
+          codigo: eq.recetaCodigo || 'N/A'
+        };
       }
-      acc[recetaId].count++;
-      // Buscar nombre en recetas
-      const receta = recetas.find((r) => r.id === recetaId);
-      if (receta) {
-        acc[recetaId].nombre = receta.nombre;
-        acc[recetaId].codigo = receta.codigo;
-      }
+      acc[key].count++;
       return acc;
     }, {});
+  } else {
+    // Si no hay recetas, agrupar por modelo + tipo
+    modelosUsados = equipos.reduce((acc: any, eq) => {
+      const key = `${eq.tipo}-${eq.modelo}`;
+      if (!acc[key]) {
+        acc[key] = { 
+          count: 0, 
+          nombre: eq.modelo || 'Sin modelo',
+          codigo: eq.tipo || 'N/A'
+        };
+      }
+      acc[key].count++;
+      return acc;
+    }, {});
+  }
 
-  const recetasOrdenadas = Object.entries(recetasUsadas)
+  const recetasOrdenadas = Object.entries(modelosUsados)
     .sort(([, a]: any, [, b]: any) => b.count - a.count)
-    .slice(0, 10);
+    .slice(0, 5);
 
   return (
     <Box p={3}>
@@ -187,19 +208,19 @@ const DashboardFabricacion: React.FC = () => {
           </Paper>
         </Grid>
 
-        {/* Recetas Más Usadas */}
+        {/* Recetas/Modelos Más Usados */}
         <Grid item xs={12} md={6}>
           <Paper elevation={2} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Recetas Más Usadas
+              {equiposConReceta.length > 0 ? 'Recetas Más Usadas' : 'Modelos Más Fabricados'}
             </Typography>
             <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Receta</TableCell>
-                    <TableCell>Código</TableCell>
-                    <TableCell align="right">Usos</TableCell>
+                    <TableCell>{equiposConReceta.length > 0 ? 'Receta' : 'Modelo'}</TableCell>
+                    <TableCell>{equiposConReceta.length > 0 ? 'Código' : 'Tipo'}</TableCell>
+                    <TableCell align="right">Cantidad</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>

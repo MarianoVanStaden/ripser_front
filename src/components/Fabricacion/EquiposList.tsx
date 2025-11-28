@@ -335,7 +335,7 @@ const EquiposList: React.FC = () => {
     {
       field: 'numeroHeladera',
       headerName: 'Número',
-      width: 130,
+      width: 110,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2" fontWeight="500">
           {params.value}
@@ -346,12 +346,12 @@ const EquiposList: React.FC = () => {
       field: 'modelo',
       headerName: 'Modelo',
       flex: 1,
-      minWidth: 180,
+      minWidth: 140,
     },
     {
       field: 'medida',
       headerName: 'Medida',
-      width: 120,
+      width: 100,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2">
           {params.value || '-'}
@@ -361,7 +361,7 @@ const EquiposList: React.FC = () => {
     {
       field: 'color',
       headerName: 'Color',
-      width: 150,
+      width: 130,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2">
           {params.value ? params.value.replace(/_/g, ' ') : '-'}
@@ -370,8 +370,8 @@ const EquiposList: React.FC = () => {
     },
     {
       field: 'estado',
-      headerName: 'Estado',
-      width: 130,
+      headerName: 'Estado Fab.',
+      width: 120,
       renderCell: (params: GridRenderCellParams) => {
         const colorMap: Record<EstadoFabricacion, 'info' | 'success' | 'error'> = {
           EN_PROCESO: 'info',
@@ -389,17 +389,17 @@ const EquiposList: React.FC = () => {
     },
     {
       field: 'estadoAsignacion',
-      headerName: 'Estado Asignación',
-      width: 150,
+      headerName: 'Estado Asig.',
+      width: 120,
       renderCell: (params: GridRenderCellParams) => {
         const estadoAsignacion = params.value as EstadoAsignacionEquipo | null;
-        
+
         // Infer estado if not provided by backend
         let inferredEstado = estadoAsignacion;
         if (!inferredEstado && params.row.estado === 'COMPLETADO') {
           inferredEstado = params.row.asignado ? 'ENTREGADO' : 'DISPONIBLE';
         }
-        
+
         return (
           <Chip
             label={getEstadoAsignacionLabel(inferredEstado)}
@@ -411,8 +411,8 @@ const EquiposList: React.FC = () => {
     },
     {
       field: 'asignado',
-      headerName: 'Asignado',
-      width: 100,
+      headerName: 'Asig.',
+      width: 70,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params: GridRenderCellParams) =>
@@ -425,26 +425,26 @@ const EquiposList: React.FC = () => {
     {
       field: 'clienteNombre',
       headerName: 'Cliente',
-      width: 150,
+      width: 130,
       renderCell: (params: GridRenderCellParams) => params.value || '-',
     },
     {
       field: 'responsableNombre',
       headerName: 'Responsable',
-      width: 150,
+      width: 130,
       renderCell: (params: GridRenderCellParams) => params.value || '-',
     },
     {
       field: 'fechaCreacion',
-      headerName: 'Fecha Creación',
-      width: 130,
+      headerName: 'Fecha',
+      width: 90,
       renderCell: (params: GridRenderCellParams) =>
-        dayjs(params.value).format('DD/MM/YYYY'),
+        dayjs(params.value).format('DD/MM/YY'),
     },
     {
       field: 'actions',
       headerName: 'Acciones',
-      width: 250,
+      width: 220,
       sortable: false,
       renderCell: (params: GridRenderCellParams) => {
         // Get estadoAsignacion (or infer it)

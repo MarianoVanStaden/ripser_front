@@ -51,12 +51,25 @@ export interface ContactoProveedorDTO {
   usuarioId?: number;
 }
   
+export type EstadoCreditoCliente = 'PENDIENTE' | 'APLICADO' | 'ANULADO';
+
 export interface CreditoCliente {
   id: number;
-  montoOtorgado: number;
-  saldoPendiente: number;
-  fechaOtorgamiento: string; // ISO 8601 string
-  estado: 'VIGENTE' | 'PAGADO' | 'VENCIDO';
+  numeroNotaCredito: string;
+  clienteId: number;
+  clienteNombre: string;
+  fecha: string; // ISO 8601 string
+  importe: number;
+  motivo?: string;
+  estado: EstadoCreditoCliente;
+  ventaAsociadaId?: number;
+}
+
+export interface CreditoCreateDTO {
+  clienteId: number;
+  importe: number;
+  motivo: string;
+  ventaAsociadaId?: number;
 }
 // Client Contact entity
 export interface ContactoCliente {
