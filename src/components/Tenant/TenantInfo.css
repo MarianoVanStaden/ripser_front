@@ -1,0 +1,63 @@
+.tenant-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 8px 16px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: white;
+}
+
+.tenant-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tenant-badge.super-admin {
+  background-color: #dc3545;
+  color: white;
+}
+
+.tenant-empresa,
+.tenant-sucursal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.tenant-nombre {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-shield::before {
+  content: "🛡️";
+}
+
+.icon-building::before {
+  content: "🏢";
+}
+
+.icon-location::before {
+  content: "📍";
+}
+
+@media (max-width: 768px) {
+  .tenant-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .tenant-nombre {
+    max-width: 100px;
+  }
+}

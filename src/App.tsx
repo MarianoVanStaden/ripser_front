@@ -6,6 +6,7 @@ import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
 import DevKPIs from './components/Dashboard/DevKPIs';
 import { AuthProvider } from "./context/AuthContext";
+import { TenantProvider } from "./context/TenantContext";
 import LoginPage from "./components/Auth/LoginPage";
 import { useAuth } from "./context/AuthContext";
 import {
@@ -30,6 +31,9 @@ import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
 import FlujoCajaPage from './components/Admin/FlujoCajaPage';
+import { EmpresasPage } from './components/Admin/EmpresasPage';
+import { SucursalesPage } from './components/Admin/SucursalesPage';
+import { TenantSelector } from './components/Tenant';
 import {
   SuppliersPage,
   ComprasPedidosPage,
@@ -84,9 +88,10 @@ const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Router>
+      <TenantProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <Router>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route
@@ -107,6 +112,10 @@ function App() {
               <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
               <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
               <Route path="admin/flujo-caja" element={<PrivateRoute><FlujoCajaPage /></PrivateRoute>} />
+              {/* Multi-Tenant Admin */}
+              <Route path="admin/empresas" element={<PrivateRoute><EmpresasPage /></PrivateRoute>} />
+              <Route path="admin/sucursales" element={<PrivateRoute><SucursalesPage /></PrivateRoute>} />
+              <Route path="admin/tenant-selector" element={<PrivateRoute><TenantSelector /></PrivateRoute>} />
               {/* VENTAS Module */}
               <Route path="ventas/notasPedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
               <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
@@ -177,6 +186,7 @@ function App() {
           </Routes>
         </Router>
       </ThemeProvider>
+      </TenantProvider>
     </AuthProvider>
   );
 }

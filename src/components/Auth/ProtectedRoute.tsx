@@ -11,6 +11,9 @@ interface ProtectedRouteProps {
   requiredModulo?: Modulo;
   requiredRoles?: TipoRol[];
   redirectTo?: string;
+  requireSuperAdmin?: boolean;      // NEW: Require super admin access
+  requireAdminEmpresa?: boolean;    // NEW: Require empresa admin access
+  requireGerenteSucursal?: boolean; // NEW: Require sucursal manager access
 }
 
 /**
@@ -31,9 +34,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredModulo,
   requiredRoles,
   redirectTo = '/login',
+  requireSuperAdmin = false,
+  requireAdminEmpresa = false,
+  requireGerenteSucursal = false,
 }) => {
   const { user, loading } = useAuth();
   const { tienePermiso, tieneRol } = usePermisos();
+
+  // Get auth data from localStorage for multi-tenant checks
+  const esSuperAdmin = localStorage.getItem('esSuperAdmin') === 'true';
 
   // Mostrar loading mientras se valida la autenticación
   if (loading) {
@@ -102,6 +111,89 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         </Typography>
         <Typography variant="body1" color="text.secondary">
           Tu rol no tiene permisos para acceder a esta página.
+        </Typography>
+        <Button variant="contained" href="/">
+          Volver al Dashboard
+        </Button>
+      </Box>
+    );
+  }
+
+  // Multi-tenant role checks
+  if (requireSuperAdmin && !esSuperAdmin) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          gap: 2,
+        }}
+      >
+        <LockIcon sx={{ fontSize: 80, color: 'error.main' }} />
+        <Typography variant="h4" color="error">
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Esta página requiere permisos de Super Administrador.
+        </Typography>
+        <Button variant="contained" href="/">
+          Volver al Dashboard
+        </Button>
+      </Box>
+    );
+  }
+
+  if (requireAdminEmpresa && !esSuperAdmin && !tieneRol('ADMIN_EMPRESA', 'ADMIN')) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          gap: 2,
+        }}
+      >
+        <LockIcon sx={{ fontSize: 80, color: 'error.main' }} />
+        <Typography variant="h4" color="error">
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Esta página requiere permisos de Administrador de Empresa.
+        </Typography>
+        <Button variant="contained" href="/">
+          Volver al Dashboard
+        </Button>
+      </Box>
+    );
+  }
+
+  if (
+    requireGerenteSucursal &&
+    !esSuperAdmin &&
+    !tieneRol('ADMIN_EMPRESA', 'GERENTE_SUCURSAL', 'ADMIN')
+  ) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          gap: 2,
+        }}
+      >
+        <LockIcon sx={{ fontSize: 80, color: 'error.main' }} />
+        <Typography variant="h4" color="error">
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Esta página requiere permisos de Gerente de Sucursal o superior.
         </Typography>
         <Button variant="contained" href="/">
           Volver al Dashboard

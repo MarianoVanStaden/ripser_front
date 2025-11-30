@@ -68,6 +68,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem("auth_refresh_token", res.refreshToken);
       }
       localStorage.setItem("auth_user", JSON.stringify(usr));
+
+      // Save multi-tenant data
+      if (res.empresaId) {
+        localStorage.setItem("empresaId", res.empresaId.toString());
+      }
+      if (res.sucursalId) {
+        localStorage.setItem("sucursalId", res.sucursalId.toString());
+      }
+      if (res.esSuperAdmin !== undefined) {
+        localStorage.setItem("esSuperAdmin", res.esSuperAdmin.toString());
+      }
+
   axios.defaults.headers.common.Authorization = `Bearer ${access}`;
   setAuthToken(access);
     } catch (error: any) {
@@ -83,6 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("auth_token");
   localStorage.removeItem("auth_user");
   localStorage.removeItem("auth_refresh_token");
+    // Clear multi-tenant data
+    localStorage.removeItem("empresaId");
+    localStorage.removeItem("sucursalId");
+    localStorage.removeItem("esSuperAdmin");
   delete axios.defaults.headers.common.Authorization;
   setAuthToken(null);
   };

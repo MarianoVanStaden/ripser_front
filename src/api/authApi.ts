@@ -1,7 +1,5 @@
-import axios from "axios";
+import api from "./config";
 import type { TipoRol } from "../types";
-
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/RipserApp/api/auth";
 
 export interface LoginRequest {
   usernameOrEmail: string;
@@ -18,6 +16,9 @@ export interface LoginResponse {
   username?: string;
   email?: string;
   roles?: TipoRol[];
+  empresaId?: number;        // Multi-tenant: active company ID
+  sucursalId?: number;       // Multi-tenant: active branch ID
+  esSuperAdmin?: boolean;    // Multi-tenant: super admin flag
 }
 
 export interface RefreshResponse {
@@ -27,17 +28,26 @@ export interface RefreshResponse {
   expiresIn?: number;
 }
 
+export interface SelectTenantRequest {
+  empresaId: number;
+  sucursalId?: number;
+}
+
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     console.log("Sending login request with data:", data);
-    const res = await axios.post(`${BASE}/login`, data);
+    const res = await api.post('/api/auth/login', data);
     return res.data;
   },
   validateToken: async (token: string): Promise<void> => {
-    await axios.post(`${BASE}/validate`, { token });
+    await api.post('/api/auth/validate', { token });
   },
   refresh: async (refreshToken: string): Promise<RefreshResponse> => {
-    const res = await axios.post(`${BASE}/refresh`, { refreshToken });
+    const res = await api.post('/api/auth/refresh', { refreshToken });
+    return res.data;
+  },
+  selectTenant: async (data: SelectTenantRequest): Promise<LoginResponse> => {
+    const res = await api.post('/api/auth/select-tenant', data);
     return res.data;
   }
 };

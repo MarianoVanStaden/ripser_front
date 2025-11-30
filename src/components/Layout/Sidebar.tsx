@@ -12,6 +12,9 @@ import StoreIcon from '@mui/icons-material/Store';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import BusinessIcon from '@mui/icons-material/Business';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { Link, useLocation } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { Modulo } from '../../types';
@@ -135,6 +138,9 @@ const navigation: NavigationSection[] = [
     modulo: 'ADMIN',
     items: [
       { text: 'Flujo de Caja', icon: <BarChartIcon />, path: '/admin/flujo-caja' },
+      { text: 'Empresas', icon: <BusinessIcon />, path: '/admin/empresas' },
+      { text: 'Sucursales', icon: <AccountBalanceIcon />, path: '/admin/sucursales' },
+      { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },

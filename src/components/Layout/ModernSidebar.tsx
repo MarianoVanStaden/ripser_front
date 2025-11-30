@@ -8,6 +8,9 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
+import BusinessIcon from '@mui/icons-material/Business';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { Link, useLocation } from "react-router-dom";
 
 const ModernSidebar: React.FC = () => {
@@ -32,7 +35,10 @@ const ModernSidebar: React.FC = () => {
         <MenuItem icon={<StoreIcon />} component={Link} link="/proveedores/gestion" isSelected={location.pathname.startsWith("/proveedores")}>Proveedores</MenuItem>
         <MenuItem icon={<LocalShippingIcon />} component={Link} link="/logistica/stock" isSelected={location.pathname.startsWith("/logistica")}>Logística</MenuItem>
       </Menu>
-      <Menu subHeading="OTROS">
+      <Menu subHeading="ADMINISTRACIÓN">
+        <MenuItem icon={<BusinessIcon />} component={Link} link="/admin/empresas" isSelected={location.pathname.startsWith("/admin/empresas")}>Empresas</MenuItem>
+        <MenuItem icon={<AccountBalanceIcon />} component={Link} link="/admin/sucursales" isSelected={location.pathname.startsWith("/admin/sucursales")}>Sucursales</MenuItem>
+        <MenuItem icon={<SwapHorizIcon />} component={Link} link="/admin/tenant-selector" isSelected={location.pathname.startsWith("/admin/tenant-selector")}>Cambiar Contexto</MenuItem>
         <MenuItem component={Link} link="/admin/settings" isSelected={location.pathname.startsWith("/admin/settings")}>Configuración</MenuItem>
       </Menu>
     </Sidebar>

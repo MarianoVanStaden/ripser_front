@@ -1,3 +1,7 @@
+// Export new multi-tenant types
+export * from './auth.types';
+export * from './tenant.types';
+
 // --- Garantía (Warranty) Aliases for Frontend Consistency ---
 export type Garantia = Warranty;
 export type ReclamoGarantia = WarrantyClaim;
@@ -5,6 +9,7 @@ export type ReclamoGarantia = WarrantyClaim;
 // Client entity interface (extended to match backend)
 export interface Cliente {
   id: number;
+  empresaId: number;        // Multi-tenant: empresa ID
   nombre: string;
   apellido?: string;
   razonSocial?: string;
@@ -1186,6 +1191,8 @@ export interface Puesto {
 
 export interface Empleado {
   id: number;
+  empresaId: number;         // Multi-tenant: empresa ID
+  sucursalId?: number;       // Multi-tenant: sucursal ID (optional)
   nombre: string;
   apellido: string;
   dni: string;
@@ -1502,6 +1509,8 @@ export interface CreateVentaDTO {
 // Vehiculo (Vehicle)
 export interface Vehiculo {
   id: number;
+  empresaId: number;         // Multi-tenant: empresa ID
+  sucursalId?: number;       // Multi-tenant: sucursal ID (optional)
   patente: string;
   marca: string;
   modelo: string;
@@ -2242,6 +2251,7 @@ export interface HistorialEstadoEquipo {
 
 export interface EquipoFabricadoDTO {
   id: number;
+  empresaId: number;         // Multi-tenant: empresa ID
   recetaId?: number;
   recetaNombre?: string;
   recetaCodigo?: string;
@@ -2270,6 +2280,7 @@ export interface EquipoFabricadoDTO {
 
 export interface EquipoFabricadoListDTO {
   id: number;
+  empresaId: number;         // Multi-tenant: empresa ID
   tipo: TipoEquipo;
   modelo: string;
   numeroHeladera: string;
