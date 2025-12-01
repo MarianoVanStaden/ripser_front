@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Drawer, 
   List, 
@@ -11,7 +11,13 @@ import {
   Typography, 
   ListSubheader,
   Tooltip,
-  IconButton
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button
 } from '@mui/material';
 import './Sidebar.css';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -169,134 +175,184 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { tienePermiso } = usePermisos();
   const { logout } = useAuth();
+  const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
 
   // Filtrar las secciones según los permisos del usuario
   const seccionesFiltradas = navigation.filter((section) => tienePermiso(section.modulo));
 
-  const handleLogout = () => {
-    if (window.confirm('¿Está seguro que desea cerrar sesión?')) {
-      logout();
-      navigate('/login');
-    }
+  const handleLogoutClick = () => {
+    setOpenLogoutDialog(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setOpenLogoutDialog(false);
+    logout();
+    navigate('/login');
+  };
+
+  const handleLogoutCancel = () => {
+    setOpenLogoutDialog(false);
   };
 
   return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        [`& .MuiDrawer-paper`]: { 
-          width: drawerWidth, 
-          boxSizing: 'border-box', 
-          background: '#212A3E', 
-          color: '#fff',
-          display: 'flex',
-          flexDirection: 'column',
-        },
-      }}
-    >
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
-          Ripser
-        </Typography>
-      </Toolbar>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-      
-      {/* Scrollable menu section */}
-      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        <List>
-          {seccionesFiltradas.map((section, idx) => (
-            <React.Fragment key={section.title}>
-              {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-              <ListSubheader
-                sx={{
-                  bgcolor: 'inherit',
-                  color: '#00B8A9',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  pl: 2,
-                  py: 1,
-                  position: 'relative'
-                }}
-              >
-                {section.title}
-              </ListSubheader>
-              {section.items.map(item => (
-                <ListItem
-                  key={item.text}
-                  disablePadding
-                  sx={{
-                    background: location.pathname === item.path ? 'rgba(0,184,169,0.08)' : 'inherit',
-                    borderRadius: 1,
-                    mb: 0.5,
-                  }}
-                >
-                  <ListItemButton
-                    component={Link}
-                    to={item.path}
-                    selected={location.pathname === item.path}
-                    sx={{
-                      color: location.pathname === item.path ? '#00B8A9' : '#fff',
-                      '&:hover': { background: 'rgba(0,184,169,0.15)' },
-                      borderRadius: 1,
-                    }}
-                  >
-                    <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.text} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </React.Fragment>
-          ))}
-        </List>
-      </Box>
-
-      {/* Fixed bottom section with minimal logout button */}
-      <Box
+    <>
+      <Drawer
+        variant="permanent"
         sx={{
-          position: 'relative',
-          height: 56,
-          overflow: 'hidden',
-          '&:hover .logout-button': {
-            transform: 'translateY(0)',
-            opacity: 1,
+          width: drawerWidth,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: { 
+            width: drawerWidth, 
+            boxSizing: 'border-box', 
+            background: '#212A3E', 
+            color: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
-        <Tooltip title="Cerrar sesión" placement="top" arrow>
-          <IconButton
-            className="logout-button"
-            onClick={handleLogout}
-            sx={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: '100%',
-              borderRadius: 0,
-              bgcolor: 'rgba(244, 67, 54, 0.08)',
-              color: '#f44336',
-              transform: 'translateY(100%)',
-              opacity: 0,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                bgcolor: 'rgba(244, 67, 54, 0.15)',
-              },
-            }}
-          >
-            <LogoutIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
+            Ripser
+          </Typography>
+        </Toolbar>
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+        
+        {/* Scrollable menu section */}
+        <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <List>
+            {seccionesFiltradas.map((section, idx) => (
+              <React.Fragment key={section.title}>
+                {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
+                <ListSubheader
+                  sx={{
+                    bgcolor: 'inherit',
+                    color: '#00B8A9',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    pl: 2,
+                    py: 1,
+                    position: 'relative'
+                  }}
+                >
+                  {section.title}
+                </ListSubheader>
+                {section.items.map(item => (
+                  <ListItem
+                    key={item.text}
+                    disablePadding
+                    sx={{
+                      background: location.pathname === item.path ? 'rgba(0,184,169,0.08)' : 'inherit',
+                      borderRadius: 1,
+                      mb: 0.5,
+                    }}
+                  >
+                    <ListItemButton
+                      component={Link}
+                      to={item.path}
+                      selected={location.pathname === item.path}
+                      sx={{
+                        color: location.pathname === item.path ? '#00B8A9' : '#fff',
+                        '&:hover': { background: 'rgba(0,184,169,0.15)' },
+                        borderRadius: 1,
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
+                      <ListItemText primary={item.text} />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </React.Fragment>
+            ))}
+          </List>
+        </Box>
 
-      {/* Copyright */}
-      <Box p={2} pt={1}>
-        <Typography variant="caption" color="#aaa">
-          © {new Date().getFullYear()} Ripser
-        </Typography>
-      </Box>
-    </Drawer>
+        {/* Fixed bottom section with minimal logout button */}
+        <Box
+          sx={{
+            position: 'relative',
+            height: 56,
+            overflow: 'hidden',
+            '&:hover .logout-button': {
+              transform: 'translateY(0)',
+              opacity: 1,
+            },
+          }}
+        >
+          <Tooltip title="Cerrar sesión" placement="top" arrow>
+            <IconButton
+              className="logout-button"
+              onClick={handleLogoutClick}
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '100%',
+                borderRadius: 0,
+                bgcolor: 'rgba(244, 67, 54, 0.08)',
+                color: '#f44336',
+                transform: 'translateY(100%)',
+                opacity: 0,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  bgcolor: 'rgba(244, 67, 54, 0.15)',
+                },
+              }}
+            >
+              <LogoutIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Copyright */}
+        <Box p={2} pt={1}>
+          <Typography variant="caption" color="#aaa">
+            © {new Date().getFullYear()} Ripser
+          </Typography>
+        </Box>
+      </Drawer>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog
+        open={openLogoutDialog}
+        onClose={handleLogoutCancel}
+        aria-labelledby="logout-dialog-title"
+        aria-describedby="logout-dialog-description"
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            minWidth: 400,
+          },
+        }}
+      >
+        <DialogTitle id="logout-dialog-title" sx={{ pb: 1 }}>
+          Confirmar cierre de sesión
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="logout-dialog-description">
+            ¿Está seguro que desea cerrar sesión?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button 
+            onClick={handleLogoutCancel} 
+            color="inherit"
+            variant="outlined"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleLogoutConfirm} 
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Cerrar sesión
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

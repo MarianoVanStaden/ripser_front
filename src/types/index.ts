@@ -1588,7 +1588,6 @@ export interface EmpleadoUpdateDTO {
 export interface EntregaViaje {
   id: number;
   viajeId?: number;
-  viaje?: Viaje;
   ventaId?: number; // Deprecated - usar documentoComercialId
   venta?: Venta;
   documentoComercialId?: number; // Nuevo campo - ID del documento comercial
@@ -2445,3 +2444,23 @@ export type Modulo =
   | 'GARANTIAS'
   | 'RRHH'
   | 'ADMIN';
+
+export type UserRole = 
+  | 'ADMIN'
+  | 'GERENTE'
+  | 'VENDEDOR'
+  | 'PRODUCCION'
+  | 'LOGISTICA'
+  | 'TALLER'
+  | 'RRHH';
+
+export interface DashboardMetric {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  color: string;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+}

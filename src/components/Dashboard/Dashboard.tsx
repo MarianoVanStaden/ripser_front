@@ -47,6 +47,10 @@ import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
 import BackendSetupDialog from '../BackendSetupDialog/BackendSetupDialog';
 import { useAuth } from "../../context/AuthContext";
+import AdminDashboard from './AdminDashboard';
+import VendedorDashboard from './VendedorDashboard';
+import ProduccionDashboard from './ProduccionDashboard';
+import TallerDashboard from './TallerDashboard';
 
 interface DashboardStats {
   totalClients: number;
@@ -402,6 +406,62 @@ const Dashboard: React.FC = () => {
     fetchDashboardData();
   };
 
+  const renderDashboard = () => {
+    // Debug: Log user information
+    console.log('👤 Current user:', user);
+    console.log('👤 User rol:', user?.rol);
+    console.log('👤 User roles array:', user?.roles);
+    
+    // Check rol or roles array - handle both formats
+    let userRole = user?.rol;
+    if (!userRole && user?.roles && user.roles.length > 0) {
+      userRole = user.roles[0];
+    }
+    
+    console.log('🎯 Determined role:', userRole);
+    
+    // Normalize role to uppercase and trim whitespace
+    const normalizedRole = userRole?.toString().trim().toUpperCase();
+    console.log('✨ Normalized role:', normalizedRole);
+    
+    switch (normalizedRole) {
+      case 'GERENTE':
+        console.log('✅ Rendering AdminDashboard for GERENTE');
+        return <AdminDashboard />;
+      case 'VENDEDOR':
+        console.log('✅ Rendering VendedorDashboard');
+        return <VendedorDashboard />;
+      case 'PRODUCCION':
+        console.log('✅ Rendering ProduccionDashboard');
+        return <ProduccionDashboard />;
+      case 'TALLER':
+        console.log('✅ Rendering TallerDashboard');
+        return <TallerDashboard />;
+      case 'LOGISTICA':
+      case 'RRHH':
+        return (
+          <Box>
+            <Typography variant="h4" gutterBottom>
+              Dashboard de {normalizedRole}
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Dashboard en construcción para el rol {normalizedRole}
+            </Typography>
+            <Alert severity="info">
+              Las métricas y funcionalidades específicas para este rol se agregarán próximamente.
+            </Alert>
+          </Box>
+        );
+      case 'ADMIN':
+        // ADMIN uses the full generic dashboard below
+        console.log('✅ ADMIN - showing full dashboard');
+        return null;
+      default:
+        console.log('⚠️ No specific dashboard found for role:', normalizedRole, '- showing generic');
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: { xs: 280, sm: 360, md: 400 }, px: 2 }}>
@@ -415,19 +475,33 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  // Check if user has a specific dashboard
+  const specificDashboard = renderDashboard();
+  if (specificDashboard) {
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 2, sm: 3, md: 4 },
+          maxWidth: '100%',
+        }}
+      >
+        {specificDashboard}
+      </Box>
+    );
+  }
+
+  // Generic dashboard for users without specific role
   return (
-
-
     <Box
-  sx={{
-    width: '100%',
-    px: { xs: 2, sm: 3, md: 4 },
-    py: { xs: 2, sm: 3, md: 4 },
-    maxWidth: '100%',
-  }}
->
-
-
+      sx={{
+        width: '100%',
+        px: { xs: 2, sm: 3, md: 4 },
+        py: { xs: 2, sm: 3, md: 4 },
+        maxWidth: '100%',
+      }}
+    >
       {/* Header responsive */}
       <Box
         sx={{
@@ -710,11 +784,14 @@ const Dashboard: React.FC = () => {
                                 </TableCell>
                               </TableRow>
                             ))
+                          
                           )}
+                          
                         </TableBody>
                       </Table>
                     </TableContainer>
                   </Grid>
+
 
                   {/* Performance Indicators */}
                   <Grid item xs={12} lg={5}>
