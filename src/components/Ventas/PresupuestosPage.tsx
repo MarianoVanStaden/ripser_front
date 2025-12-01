@@ -784,6 +784,31 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [clientes, presupuestosFinanciamiento]);
 
+  const loadPresupuestos = async () => {
+    try {
+      setLoading(true);
+      const data = await documentoApi.getByTipo("PRESUPUESTO");
+      setPresupuestos(data);
+    } catch (error: any) {
+      console.error('Error al cargar presupuestos:', error);
+      
+      // Show user-friendly error message
+      let errorMessage = 'Error al cargar los presupuestos';
+      
+      if (error.response?.status === 500 && 
+          error.response?.data?.message?.includes('More than one row with the given identifier')) {
+        errorMessage = 'Error de integridad de datos en la base de datos. Por favor, contacta al administrador del sistema.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      // You can use a toast/snackbar here to show the error
+      alert(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>

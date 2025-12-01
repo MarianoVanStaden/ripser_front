@@ -21,8 +21,10 @@ interface AuthContextType {
   loading: boolean;
 }
 
+// 3. Context creation
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// 4. Provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const validateToken = async () => {
-  const t = localStorage.getItem("auth_token");
+      const t = localStorage.getItem("auth_token");
       const u = localStorage.getItem("auth_user");
       if (t && u) {
         try {
@@ -59,11 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: res.email || "",
         roles: res.roles || [],
       };
-  const access = res.accessToken || (res as any).token; // support alternate field name
-  if (!access) throw new Error('No access token en la respuesta');
-  setToken(access);
+      const access = res.accessToken || (res as any).token; // support alternate field name
+      if (!access) throw new Error('No access token en la respuesta');
+      setToken(access);
       setUser(usr);
-  localStorage.setItem("auth_token", access);
+      localStorage.setItem("auth_token", access);
       if (res.refreshToken) {
         localStorage.setItem("auth_refresh_token", res.refreshToken);
       }
@@ -80,8 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem("esSuperAdmin", res.esSuperAdmin.toString());
       }
 
-  axios.defaults.headers.common.Authorization = `Bearer ${access}`;
-  setAuthToken(access);
+      axios.defaults.headers.common.Authorization = `Bearer ${access}`;
+      setAuthToken(access);
     } catch (error: any) {
       throw new Error(error.response?.data?.error || "Error de autenticación");
     } finally {
@@ -93,14 +95,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
     localStorage.removeItem("auth_token");
-  localStorage.removeItem("auth_user");
-  localStorage.removeItem("auth_refresh_token");
+    localStorage.removeItem("auth_user");
+    localStorage.removeItem("auth_refresh_token");
     // Clear multi-tenant data
     localStorage.removeItem("empresaId");
     localStorage.removeItem("sucursalId");
     localStorage.removeItem("esSuperAdmin");
-  delete axios.defaults.headers.common.Authorization;
-  setAuthToken(null);
+    delete axios.defaults.headers.common.Authorization;
+    setAuthToken(null);
   };
 
   useEffect(() => {
@@ -120,14 +122,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+// Hook export (named export)
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 };
+
+
+
+export default AuthProvider;// 6. Optional: default export for the provider

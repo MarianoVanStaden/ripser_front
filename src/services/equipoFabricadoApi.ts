@@ -41,36 +41,13 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      const { status, data } = error.response;
+      console.error('❌ Server error:', error.response.data);
       
-      // Log detailed error information
-      console.error('❌ Server error:', {
-        status,
-        message: data.message || data.error,
-        details: data.details || data,
-      });
-      
-      // Handle specific status codes
-      switch (status) {
-        case 401:
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          localStorage.removeItem('empresaId');
-          localStorage.removeItem('tenantId');
-          window.location.href = '/login';
-          break;
-        case 409:
-          console.warn('⚠️ Conflicto de negocio:', data.message || 'Operación rechazada por el servidor');
-          break;
-        case 500:
-          // Check for database integrity errors
-          if (data.message?.includes('More than one row with the given identifier')) {
-            console.error('💥 Error de integridad de datos:', 
-              'Hay registros duplicados en la base de datos. Contacta al administrador del sistema.');
-          } else {
-            console.error('💥 Error interno del servidor:', data.message);
-          }
-          break;
+      // Handle unauthorized errors
+      if (error.response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
       }
     } else if (error.request) {
       console.error('❌ Network error:', error.message);
@@ -79,3 +56,17 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Nueva función para verificar disponibilidad
+export const checkAvailability = async (recetaId: number, cantidad: number) => {
+  try {
+    const response = await apiClient.post('/equipos-fabricados/check-availability', {
+      recetaId,
+      cantidad,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error checking availability:', error);
+    throw error;
+  }
+};
