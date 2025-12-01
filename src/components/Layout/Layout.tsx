@@ -12,7 +12,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ScrollToTopButton from './ScrollToTopButton';
 import CommandPalette from './CommandPalette'; // Make sure this component exists
-import { TenantDebugPanel } from '../Debug'; // Panel de debugging para desarrollo
+//import { TenantDebugPanel } from '../Debug'; // Panel de debugging para desarrollo
 
 
 
@@ -61,7 +61,7 @@ const Layout: React.FC = () => {
       </Fab>
       <ScrollToTopButton />
       {/* Panel de debugging - Solo para desarrollo */}
-      {import.meta.env.DEV && <TenantDebugPanel />}
+      {/* {import.meta.env.DEV && <TenantDebugPanel />} */}
     </Box>
   );
 };

@@ -23,7 +23,10 @@
       "Bash(mvn compile:*)",
       "Bash(cmd.exe /c \"taskkill /F /PID 43632\")",
       "Bash(where:*)",
-      "Bash(./mvnw.cmd clean:*)"
+      "Bash(./mvnw.cmd clean:*)",
+      "Bash(cmd.exe /c \"dir /B\")",
+      "Bash(cmd.exe /c \"taskkill /F /PID 23788\")",
+      "Bash(./mvnw.cmd spring-boot:run:*)"
     ],
     "deny": [],
     "ask": []
