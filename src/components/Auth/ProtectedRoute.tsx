@@ -38,11 +38,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdminEmpresa = false,
   requireGerenteSucursal = false,
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, esSuperAdmin } = useAuth();
   const { tienePermiso, tieneRol } = usePermisos();
-
-  // Get auth data from localStorage for multi-tenant checks
-  const esSuperAdmin = localStorage.getItem('esSuperAdmin') === 'true';
 
   // Mostrar loading mientras se valida la autenticación
   if (loading) {

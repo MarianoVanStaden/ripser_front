@@ -38,10 +38,12 @@ const api = axios.create({
   },
 });
 
-// Request interceptor: attach Authorization header if token exists
+// Request interceptor: attach Authorization header and X-Empresa-Id if token exists
 api.interceptors.request.use(
   (config) => {
     const token = authToken || localStorage.getItem('auth_token');
+    const empresaId = localStorage.getItem('empresaId');
+
     if (token) {
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
@@ -61,6 +63,14 @@ api.interceptors.request.use(
     } else {
       console.warn('No token available for request:', config.url);
     }
+
+    // Attach X-Empresa-Id header for multi-tenant support (required after tenant selection)
+    if (empresaId) {
+      config.headers = config.headers || {};
+      (config.headers as any)['X-Empresa-Id'] = empresaId;
+      console.log('Attaching X-Empresa-Id:', empresaId, 'to request:', config.url);
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

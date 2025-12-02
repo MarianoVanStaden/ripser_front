@@ -17,7 +17,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  Button
+  Button,
+  Chip,
+  Avatar
 } from '@mui/material';
 import './Sidebar.css';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -36,6 +38,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useAuth } from '../../context/AuthContext';
@@ -174,7 +177,7 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { tienePermiso } = usePermisos();
-  const { logout } = useAuth();
+  const { user, esSuperAdmin, logout } = useAuth();
   const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
 
   // Filtrar las secciones según los permisos del usuario
@@ -216,6 +219,57 @@ const Sidebar: React.FC = () => {
             Ripser
           </Typography>
         </Toolbar>
+        <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+
+        {/* User Profile Section */}
+        <Box sx={{ p: 2, bgcolor: 'rgba(0,184,169,0.05)' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Avatar
+              sx={{
+                width: 40,
+                height: 40,
+                bgcolor: '#00B8A9',
+                fontSize: '1rem',
+              }}
+            >
+              {user?.username?.charAt(0).toUpperCase() || 'U'}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user?.username || 'Usuario'}
+              </Typography>
+              {esSuperAdmin && (
+                <Chip
+                  icon={<AdminPanelSettingsIcon sx={{ fontSize: '0.875rem' }} />}
+                  label="Super Admin"
+                  size="small"
+                  sx={{
+                    mt: 0.5,
+                    height: 20,
+                    fontSize: '0.65rem',
+                    bgcolor: '#FF6B6B',
+                    color: '#fff',
+                    fontWeight: 700,
+                    '& .MuiChip-icon': {
+                      color: '#fff',
+                      fontSize: '0.875rem',
+                    },
+                  }}
+                />
+              )}
+            </Box>
+          </Box>
+        </Box>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
         
         {/* Scrollable menu section */}

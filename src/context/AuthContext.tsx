@@ -11,11 +11,13 @@ export interface AuthUser {
   username: string;
   email?: string;
   roles?: TipoRol[];
+  esSuperAdmin?: boolean;  // Multi-tenant: indicates if user has full system access
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
+  esSuperAdmin: boolean;  // Exposed for easy access
   login: (usernameOrEmail: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -29,16 +31,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [esSuperAdmin, setEsSuperAdmin] = useState<boolean>(false);
 
   useEffect(() => {
     const validateToken = async () => {
       const t = localStorage.getItem("auth_token");
       const u = localStorage.getItem("auth_user");
+      const superAdmin = localStorage.getItem("esSuperAdmin");
       if (t && u) {
         try {
           await authApi.validateToken(t);
           setToken(t);
           setUser(JSON.parse(u));
+          setEsSuperAdmin(superAdmin === 'true');
           // Set for global axios (fallback) and our dedicated api instance
           axios.defaults.headers.common.Authorization = `Bearer ${t}`;
           setAuthToken(t);
@@ -55,16 +60,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const res = await authApi.login({ usernameOrEmail, password });
+      const isSuperAdmin = res.esSuperAdmin || false;
       const usr: AuthUser = {
         id: res.id || 0,
         username: res.username || usernameOrEmail,
         email: res.email || "",
         roles: res.roles || [],
+        esSuperAdmin: isSuperAdmin,
       };
       const access = res.accessToken || (res as any).token; // support alternate field name
       if (!access) throw new Error('No access token en la respuesta');
       setToken(access);
       setUser(usr);
+      setEsSuperAdmin(isSuperAdmin);
       localStorage.setItem("auth_token", access);
       if (res.refreshToken) {
         localStorage.setItem("auth_refresh_token", res.refreshToken);
@@ -94,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setToken(null);
     setUser(null);
+    setEsSuperAdmin(false);
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("auth_refresh_token");
@@ -126,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         token,
+        esSuperAdmin,
         login,
         logout,
         loading,

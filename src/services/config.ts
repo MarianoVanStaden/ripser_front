@@ -13,22 +13,21 @@ export const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    const tenantId = localStorage.getItem('tenantId') || localStorage.getItem('empresaId');
-    
+    // Use consistent token storage key
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    const empresaId = localStorage.getItem('empresaId');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       console.log('Attaching token to request:', token.substring(0, 20) + '...', config.url);
     }
-    
-    // Add tenant ID header if available
-    if (tenantId) {
-      config.headers['X-Tenant-ID'] = tenantId;
-      console.log('Attaching tenant ID to request:', tenantId);
-    } else {
-      console.warn('⚠️ No tenant ID found in localStorage!');
+
+    // Add X-Empresa-Id header for multi-tenant support (backend expects this header)
+    if (empresaId) {
+      config.headers['X-Empresa-Id'] = empresaId;
+      console.log('Attaching X-Empresa-Id to request:', empresaId);
     }
-    
+
     return config;
   },
   (error) => {
@@ -53,10 +52,13 @@ apiClient.interceptors.response.use(
       // Handle specific status codes
       switch (status) {
         case 401:
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          // Clear all authentication data
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_refresh_token');
+          localStorage.removeItem('auth_user');
           localStorage.removeItem('empresaId');
-          localStorage.removeItem('tenantId');
+          localStorage.removeItem('sucursalId');
+          localStorage.removeItem('esSuperAdmin');
           window.location.href = '/login';
           break;
         case 409:

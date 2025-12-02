@@ -12,11 +12,35 @@ import BusinessIcon from '@mui/icons-material/Business';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const ModernSidebar: React.FC = () => {
   const location = useLocation();
+  const { user, esSuperAdmin } = useAuth();
+
+  // Get user designation based on roles
+  const getUserDesignation = () => {
+    if (esSuperAdmin) return "Super Admin";
+    if (user?.roles && user.roles.length > 0) {
+      return user.roles[0].toString();
+    }
+    return "Usuario";
+  };
+
+  const userName = user?.username || "Usuario";
+  const userDesignation = getUserDesignation();
+  const userAvatar = `https://ui-avatars.com/api/?name=${userName}`;
+
   return (
-    <Sidebar width={"260px"} themeColor="#00B8A9" mode="dark" userName="Usuario" designation="Admin" showProfile={true} userimg="https://ui-avatars.com/api/?name=Usuario" >
+    <Sidebar
+      width={"260px"}
+      themeColor="#00B8A9"
+      mode="dark"
+      userName={userName}
+      designation={userDesignation}
+      showProfile={true}
+      userimg={userAvatar}
+    >
       <Logo
         component={Link}
         href="/"

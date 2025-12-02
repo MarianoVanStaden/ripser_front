@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
+import { CssBaseline, Box, Typography } from '@mui/material';
 import theme from './theme';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -79,10 +79,21 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
   const { user, loading } = useAuth();
+  
   if (loading) {
-    return <div>Loading...</div>; // Replace with a proper loading component if needed
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography>Cargando...</Typography>
+      </Box>
+    );
   }
-  return user ? children : <Navigate to="/login" replace />;
+  
+  if (!user) {
+    console.warn('⚠️ PrivateRoute: No user found, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 function App() {

@@ -256,6 +256,7 @@ const Dashboard: React.FC = () => {
       const currentYear = now.getFullYear();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const ninetyDaysAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
 
       // Calculate time-based sales
       const monthlySales = sales.filter((sale: any) => {
@@ -282,7 +283,15 @@ const Dashboard: React.FC = () => {
       const monthlySalesAmount = monthlySales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
       const todaySalesAmount = todaySales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
       const weekSalesAmount = weekSales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
-      const averageOrderValue = sales.length > 0 ? sales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0) / sales.length : 0;
+
+      // Calculate average order value for last 90 days
+      const last90DaysSales = sales.filter((sale: any) => {
+        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
+        if (!fechaVenta) return false;
+        const saleDate = new Date(fechaVenta);
+        return saleDate >= ninetyDaysAgo;
+      });
+      const averageOrderValue = last90DaysSales.length > 0 ? last90DaysSales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0) / last90DaysSales.length : 0;
 
       // Calculate previous period sales for trends
       const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
@@ -336,8 +345,9 @@ const Dashboard: React.FC = () => {
       // Products out of stock
       const outOfStock = products.filter((p: any) => p.stockActual === 0);
 
-      // Set low stock products
-      setLowStockProducts(lowStock.slice(0, 5));
+      // Set low stock products - Filter only active products
+      const activeLowStock = lowStock.filter((p: any) => p.activo === true);
+      setLowStockProducts(activeLowStock.slice(0, 5));
 
       // Top products by stock value
       const topProductsByValue = [...products]
@@ -377,7 +387,7 @@ const Dashboard: React.FC = () => {
         totalSales: sales.length,
         monthlySalesAmount,
         monthlySalesCount: monthlySales.length,
-        lowStockProducts: lowStock.length,
+        lowStockProducts: activeLowStock.length, // Use filtered active products
         todaySales: todaySalesAmount,
         weekSales: weekSalesAmount,
         averageOrderValue,

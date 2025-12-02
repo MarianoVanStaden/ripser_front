@@ -196,6 +196,14 @@ const EquiposList: React.FC = () => {
 
       console.log('📋 Filtered equipos:', filtered.length, 'items');
       console.log('📋 First 3 equipos:', filtered.slice(0, 3));
+
+      // Check if equipos have IDs
+      const equiposSinId = filtered.filter(e => !e.id);
+      if (equiposSinId.length > 0) {
+        console.warn(`⚠️ ${equiposSinId.length} equipos sin campo 'id':`, equiposSinId.slice(0, 3));
+        console.warn('⚠️ Campos disponibles en equipos:', Object.keys(filtered[0] || {}));
+      }
+
       setEquipos(filtered);
       setTotalElements(response.totalElements || filtered.length);
     } catch (error) {
@@ -228,21 +236,47 @@ const EquiposList: React.FC = () => {
   };
 
   const handleCompletar = async () => {
-    if (!completarDialog.equipoId) return;
+    // WORKAROUND: Backend returns id: null, use numeroHeladera as identifier
+    const equipo = completarDialog.equipo;
 
-    try {
-      await equipoFabricadoApi.completarFabricacion(completarDialog.equipoId);
+    if (!equipo || !equipo.numeroHeladera) {
+      console.error('❌ No equipo or numeroHeladera available in completarDialog:', completarDialog);
       setSnackbar({
         open: true,
-        message: 'Equipo completado correctamente',
+        message: '❌ Error: No se pudo identificar el equipo (falta numeroHeladera)',
+        severity: 'error',
+      });
+      return;
+    }
+
+    console.log('🔄 Completando equipo con numeroHeladera:', equipo.numeroHeladera);
+    console.log('📦 Equipo completo:', equipo);
+    console.warn('⚠️ USANDO WORKAROUND: Backend devuelve id: null, usando numeroHeladera como identificador');
+
+    try {
+      // Try to use numeroHeladera endpoint instead of ID
+      await equipoFabricadoApi.completarFabricacionPorNumero(equipo.numeroHeladera);
+      console.log('✅ Equipo completado exitosamente');
+      setSnackbar({
+        open: true,
+        message: '✅ Equipo completado correctamente',
         severity: 'success',
       });
       setCompletarDialog({ open: false, equipoId: null, equipo: null });
       loadEquipos();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Error al completar el equipo:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data?.error ||
+                          error.message ||
+                          'Error al completar el equipo';
+
       setSnackbar({
         open: true,
-        message: 'Error al completar el equipo',
+        message: `❌ Error: ${errorMessage}`,
         severity: 'error',
       });
     }
@@ -498,11 +532,17 @@ const EquiposList: React.FC = () => {
                 <IconButton
                   size="small"
                   color="success"
-                  onClick={() => setCompletarDialog({ 
-                    open: true, 
-                    equipoId: params.row.id,
-                    equipo: params.row 
-                  })}
+                  onClick={() => {
+                    console.log('🔵 Abriendo diálogo de completar');
+                    console.log('📊 params.row:', params.row);
+                    console.log('🆔 params.row.id:', params.row.id);
+
+                    setCompletarDialog({
+                      open: true,
+                      equipoId: params.row.id,
+                      equipo: params.row
+                    });
+                  }}
                 >
                   <CheckCircle fontSize="small" />
                 </IconButton>
@@ -887,6 +927,7 @@ const EquiposList: React.FC = () => {
                           autoHeight
                           disableRowSelectionOnClick
                           pageSizeOptions={[25, 50, 100]}
+                          getRowId={(row) => row.id || `temp-${row.numeroHeladera || Math.random()}`}
                           initialState={{
                             pagination: {
                               paginationModel: { pageSize: 25 },
@@ -1274,7 +1315,16 @@ const EquiposList: React.FC = () => {
           <Button onClick={() => setCompletarDialog({ open: false, equipoId: null, equipo: null })} color="inherit">
             Cancelar
           </Button>
-          <Button onClick={handleCompletar} color="success" variant="contained" startIcon={<CheckCircle />}>
+          <Button
+            onClick={() => {
+              console.log('🔘 Botón "Confirmar Completado" presionado');
+              console.log('📋 completarDialog state:', completarDialog);
+              handleCompletar();
+            }}
+            color="success"
+            variant="contained"
+            startIcon={<CheckCircle />}
+          >
             Confirmar Completado
           </Button>
         </DialogActions>

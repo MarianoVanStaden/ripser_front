@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../context/AuthContext';
 import { empresaService } from '../../services/empresaService';
 import { sucursalService } from '../../services/sucursalService';
-import type { Empresa, Sucursal } from '../../types';
+import { usuarioEmpresaService } from '../../services/usuarioEmpresaService';
+import type { Empresa, Sucursal, UsuarioEmpresa } from '../../types';
 import './TenantSelector.css';
+
+interface EmpresaConRol extends Empresa {
+  rol?: string;
+}
 
 export const TenantSelector: React.FC = () => {
   const { empresaId, sucursalId, cambiarTenant, esSuperAdmin } = useTenant();
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const { user } = useAuth();
+  const [empresas, setEmpresas] = useState<EmpresaConRol[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [selectedEmpresa, setSelectedEmpresa] = useState<number | null>(empresaId);
   const [selectedSucursal, setSelectedSucursal] = useState<number | null>(sucursalId);
@@ -16,7 +23,7 @@ export const TenantSelector: React.FC = () => {
 
   useEffect(() => {
     loadEmpresas();
-  }, []);
+  }, [esSuperAdmin, user]);
 
   useEffect(() => {
     if (selectedEmpresa) {
@@ -27,9 +34,34 @@ export const TenantSelector: React.FC = () => {
   }, [selectedEmpresa]);
 
   const loadEmpresas = async () => {
+    if (!user) return;
+
     try {
-      const data = await empresaService.getActive();
-      setEmpresas(data);
+      if (esSuperAdmin) {
+        // Super Admin: Load ALL empresas
+        console.log('🔑 Super Admin: Loading all empresas...');
+        const data = await empresaService.getActive();
+        setEmpresas(data);
+      } else {
+        // Regular user: Load only assigned empresas
+        console.log('👤 Regular user: Loading assigned empresas for user', user.id);
+        const usuarioEmpresas: UsuarioEmpresa[] = await usuarioEmpresaService.getByUsuario(user.id);
+
+        // Get full empresa data for each assignment
+        const empresasConRol = await Promise.all(
+          usuarioEmpresas
+            .filter(ue => ue.esActivo)
+            .map(async (ue) => {
+              const empresa = await empresaService.getById(ue.empresaId);
+              return {
+                ...empresa,
+                rol: ue.rol
+              };
+            })
+        );
+
+        setEmpresas(empresasConRol);
+      }
     } catch (err) {
       console.error('Error loading empresas:', err);
       setError('Error al cargar empresas');
@@ -116,6 +148,7 @@ export const TenantSelector: React.FC = () => {
           {empresas.map((empresa) => (
             <option key={empresa.id} value={empresa.id}>
               {empresa.nombre}
+              {empresa.rol && ` - ${empresa.rol}`}
             </option>
           ))}
         </select>
