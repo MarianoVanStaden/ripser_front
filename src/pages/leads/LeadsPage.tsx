@@ -195,7 +195,48 @@ export const LeadsPage = () => {
                   <TableCell>
                     <LeadStatusBadge status={lead.estadoLead} />
                   </TableCell>
-                  <TableCell>{lead.equipoInteresadoNombre || '-'}</TableCell>
+                  <TableCell>
+                    {lead.productoInteresNombre && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="body2" fontWeight="bold">
+                          📦 {lead.productoInteresNombre}
+                        </Typography>
+                        {lead.cantidadProductoInteres && (
+                          <Typography variant="caption" color="primary.main">
+                            Cantidad: {lead.cantidadProductoInteres}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                    {(lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre) && (
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold" color="primary.main">
+                          🔧 RECETA: {lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre}
+                        </Typography>
+                        {(lead.modeloRecetaInteres || lead.modeloEquipoInteres) && (
+                          <Typography variant="caption" display="block">
+                            Modelo: {lead.modeloRecetaInteres || lead.modeloEquipoInteres}
+                          </Typography>
+                        )}
+                        {(lead.colorRecetaInteres || lead.colorEquipoInteres) && (
+                          <Typography variant="caption" display="block">
+                            Color: {(lead.colorRecetaInteres || lead.colorEquipoInteres)?.replace(/_/g, ' ')}
+                          </Typography>
+                        )}
+                        {(lead.medidaRecetaInteres || lead.medidaEquipoInteres) && (
+                          <Typography variant="caption" display="block">
+                            Medida: {lead.medidaRecetaInteres || lead.medidaEquipoInteres}
+                          </Typography>
+                        )}
+                        {(lead.cantidadRecetaInteres || lead.cantidadEquipoInteres) && (
+                          <Typography variant="caption" color="success.main" display="block" fontWeight="bold">
+                            Cantidad: {lead.cantidadRecetaInteres || lead.cantidadEquipoInteres}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                    {!lead.productoInteresNombre && !lead.recetaInteresNombre && !lead.equipoFabricadoInteresNombre && (lead.equipoInteresadoNombre || '-')}
+                  </TableCell>
                   <TableCell align="center">
                     {lead.dias !== null && lead.dias !== undefined ? lead.dias : '-'}
                   </TableCell>

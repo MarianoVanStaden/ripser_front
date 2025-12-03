@@ -3,7 +3,10 @@ import type {
   LeadDTO,
   ConversionLeadRequest,
   ConversionLeadResponse,
-  EstadoLeadEnum
+  EstadoLeadEnum,
+  InteraccionLeadDTO,
+  RecordatorioLeadDTO,
+  PrioridadLeadEnum
 } from '../../types/lead.types';
 
 const BASE_PATH = '/api/leads';
@@ -27,6 +30,18 @@ export const leadApi = {
     return response.data;
   },
 
+  // Buscar leads por prioridad
+  getByPrioridad: async (prioridad: PrioridadLeadEnum): Promise<LeadDTO[]> => {
+    const response = await api.get<LeadDTO[]>(`${BASE_PATH}/prioridad/${prioridad}`);
+    return response.data;
+  },
+
+  // Obtener leads próximos a seguimiento
+  getProximosSeguimiento: async (): Promise<LeadDTO[]> => {
+    const response = await api.get<LeadDTO[]>(`${BASE_PATH}/proximos-seguimiento`);
+    return response.data;
+  },
+
   // Crear nuevo lead
   create: async (leadData: Omit<LeadDTO, 'id' | 'dias' | 'fechaConversion'>): Promise<LeadDTO> => {
     const response = await api.post<LeadDTO>(BASE_PATH, leadData);
@@ -34,7 +49,7 @@ export const leadApi = {
   },
 
   // Actualizar lead
-  update: async (id: number, leadData: LeadDTO): Promise<LeadDTO> => {
+  update: async (id: number, leadData: Partial<LeadDTO>): Promise<LeadDTO> => {
     const response = await api.put<LeadDTO>(`${BASE_PATH}/${id}`, leadData);
     return response.data;
   },
@@ -53,6 +68,76 @@ export const leadApi = {
       `${BASE_PATH}/${id}/convertir`,
       conversionData
     );
+    return response.data;
+  },
+
+  // ========== INTERACCIONES ==========
+
+  // Obtener historial de interacciones
+  getInteracciones: async (leadId: number): Promise<InteraccionLeadDTO[]> => {
+    const response = await api.get<InteraccionLeadDTO[]>(`${BASE_PATH}/${leadId}/interacciones`);
+    return response.data;
+  },
+
+  // Agregar interacción
+  createInteraccion: async (leadId: number, interaccion: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>): Promise<InteraccionLeadDTO> => {
+    const response = await api.post<InteraccionLeadDTO>(
+      `${BASE_PATH}/${leadId}/interacciones`,
+      interaccion
+    );
+    return response.data;
+  },
+
+  // Actualizar interacción
+  updateInteraccion: async (leadId: number, interaccionId: number, interaccion: Partial<InteraccionLeadDTO>): Promise<InteraccionLeadDTO> => {
+    const response = await api.put<InteraccionLeadDTO>(
+      `${BASE_PATH}/${leadId}/interacciones/${interaccionId}`,
+      interaccion
+    );
+    return response.data;
+  },
+
+  // Eliminar interacción
+  deleteInteraccion: async (leadId: number, interaccionId: number): Promise<void> => {
+    await api.delete(`${BASE_PATH}/${leadId}/interacciones/${interaccionId}`);
+  },
+
+  // ========== RECORDATORIOS ==========
+
+  // Obtener recordatorios del lead
+  getRecordatorios: async (leadId: number): Promise<RecordatorioLeadDTO[]> => {
+    const response = await api.get<RecordatorioLeadDTO[]>(`${BASE_PATH}/${leadId}/recordatorios`);
+    return response.data;
+  },
+
+  // Crear recordatorio
+  createRecordatorio: async (leadId: number, recordatorio: Omit<RecordatorioLeadDTO, 'id' | 'leadId' | 'fechaCreacion' | 'enviado' | 'fechaEnvio'>): Promise<RecordatorioLeadDTO> => {
+    const response = await api.post<RecordatorioLeadDTO>(
+      `${BASE_PATH}/${leadId}/recordatorios`,
+      recordatorio
+    );
+    return response.data;
+  },
+
+  // Actualizar recordatorio
+  updateRecordatorio: async (leadId: number, recordatorioId: number, recordatorio: Partial<RecordatorioLeadDTO>): Promise<RecordatorioLeadDTO> => {
+    const response = await api.put<RecordatorioLeadDTO>(
+      `${BASE_PATH}/${leadId}/recordatorios/${recordatorioId}`,
+      recordatorio
+    );
+    return response.data;
+  },
+
+  // Eliminar recordatorio
+  deleteRecordatorio: async (leadId: number, recordatorioId: number): Promise<void> => {
+    await api.delete(`${BASE_PATH}/${leadId}/recordatorios/${recordatorioId}`);
+  },
+
+  // ========== ESTADÍSTICAS ==========
+
+  // Obtener estadísticas del dashboard
+  getStatistics: async (): Promise<any> => {
+    const response = await api.get(`/api/dashboard/leads/statistics`);
     return response.data;
   },
 };

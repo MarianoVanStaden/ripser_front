@@ -27,7 +27,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
 import { EstadoLeadEnum, PROVINCIA_LABELS } from '../../types/lead.types';
-import type { LeadDTO } from '../../types/lead.types';
+import type { LeadDTO, RecordatorioLeadDTO } from '../../types/lead.types';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 
@@ -50,6 +50,16 @@ export const LeadDetailPage = () => {
     try {
       setLoading(true);
       const data = await leadApi.getById(leadId);
+      
+      // Cargar recordatorios del lead
+      try {
+        const recordatorios = await leadApi.getRecordatorios(leadId);
+        data.recordatorios = recordatorios;
+      } catch (err) {
+        console.error('Error al cargar recordatorios:', err);
+        data.recordatorios = [];
+      }
+      
       setLead(data);
     } catch (err) {
       console.error('Error al cargar lead:', err);
@@ -74,6 +84,60 @@ export const LeadDetailPage = () => {
 
   const canEdit = (leadData: LeadDTO): boolean => {
     return leadData.estadoLead !== EstadoLeadEnum.CONVERTIDO;
+  };
+
+  const getRecordatorioColor = (fechaRecordatorio: string, enviado: boolean) => {
+    if (enviado) {
+      return {
+        bgcolor: '#e8f5e9', // Verde muy claro
+        borderColor: '#4caf50'
+      };
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fecha = new Date(fechaRecordatorio);
+    fecha.setHours(0, 0, 0, 0);
+    
+    const diferenciaDias = Math.ceil((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diferenciaDias < 0) {
+      // Vencido - rojo claro
+      return {
+        bgcolor: '#ffebee',
+        borderColor: '#ef5350'
+      };
+    } else if (diferenciaDias === 0) {
+      // Hoy - naranja muy claro
+      return {
+        bgcolor: '#fff3e0',
+        borderColor: '#ff9800'
+      };
+    } else if (diferenciaDias === 1) {
+      // Mañana - amarillo claro
+      return {
+        bgcolor: '#fffde7',
+        borderColor: '#fdd835'
+      };
+    } else if (diferenciaDias <= 3) {
+      // 2-3 días - amarillo verdoso claro
+      return {
+        bgcolor: '#f9fbe7',
+        borderColor: '#c0ca33'
+      };
+    } else if (diferenciaDias <= 7) {
+      // 4-7 días - verde amarillento claro
+      return {
+        bgcolor: '#f1f8e9',
+        borderColor: '#9ccc65'
+      };
+    } else {
+      // Más de 7 días - verde claro
+      return {
+        bgcolor: '#e8f5e9',
+        borderColor: '#66bb6a'
+      };
+    }
   };
 
   if (loading) {
@@ -214,21 +278,100 @@ export const LeadDetailPage = () => {
             </CardContent>
           </Card>
 
-          {/* Producto de Interés */}
-          {lead.equipoInteresadoNombre && (
+          {/* Productos de Interés */}
+          {(lead.productoInteresNombre || lead.equipoFabricadoInteresNombre || lead.equipoInteresadoNombre) && (
             <Card sx={{ mt: 3 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  🛒 Producto de Interés
+                  🛒 Productos de Interés
                 </Typography>
                 <Divider sx={{ my: 2 }} />
-                <Typography variant="body1" fontWeight="bold">
-                  {lead.equipoInteresadoNombre}
-                </Typography>
-                {lead.equipoInteresadoId && (
-                  <Typography variant="body2" color="text.secondary">
-                    ID: {lead.equipoInteresadoId}
-                  </Typography>
+                
+                {lead.productoInteresNombre && (
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      📦 Producto:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="bold">
+                      {lead.productoInteresNombre}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+                      {lead.productoInteresId && (
+                        <Typography variant="caption" color="text.secondary">
+                          ID: {lead.productoInteresId}
+                        </Typography>
+                      )}
+                      {lead.cantidadProductoInteres && (
+                        <Typography variant="caption" color="primary.main" fontWeight="bold">
+                          Cantidad: {lead.cantidadProductoInteres}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+
+                {(lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre) && (
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      🔧 Equipo a Fabricar:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="bold">
+                      {lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+                      {(lead.recetaInteresId || lead.equipoFabricadoInteresId) && (
+                        <Typography variant="caption" color="text.secondary">
+                          Receta ID: {lead.recetaInteresId || lead.equipoFabricadoInteresId}
+                        </Typography>
+                      )}
+                      {(lead.cantidadRecetaInteres || lead.cantidadEquipoInteres) && (
+                        <Typography variant="caption" color="primary.main" fontWeight="bold">
+                          Cantidad: {lead.cantidadRecetaInteres || lead.cantidadEquipoInteres}
+                        </Typography>
+                      )}
+                    </Box>
+                    {((lead.modeloRecetaInteres || lead.modeloEquipoInteres) || (lead.colorRecetaInteres || lead.colorEquipoInteres) || (lead.medidaRecetaInteres || lead.medidaEquipoInteres)) && (
+                      <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'background.paper', borderRadius: 1, border: 1, borderColor: 'divider' }}>
+                        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                          ⚙️ Personalización:
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+                          {(lead.modeloRecetaInteres || lead.modeloEquipoInteres) && (
+                            <Typography variant="body2">
+                              Modelo: <strong>{lead.modeloRecetaInteres || lead.modeloEquipoInteres}</strong>
+                            </Typography>
+                          )}
+                          {(lead.colorRecetaInteres || lead.colorEquipoInteres) && (
+                            <Typography variant="body2">
+                              Color: <strong>{lead.colorRecetaInteres || lead.colorEquipoInteres}</strong>
+                            </Typography>
+                          )}
+                          {(lead.medidaRecetaInteres || lead.medidaEquipoInteres) && (
+                            <Typography variant="body2">
+                              Medida: <strong>{lead.medidaRecetaInteres || lead.medidaEquipoInteres}</strong>
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
+                {/* Legacy field support */}
+                {!lead.productoInteresNombre && !lead.equipoFabricadoInteresNombre && lead.equipoInteresadoNombre && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Equipo Interesado (Legacy):
+                    </Typography>
+                    <Typography variant="body1" fontWeight="bold">
+                      {lead.equipoInteresadoNombre}
+                    </Typography>
+                    {lead.equipoInteresadoId && (
+                      <Typography variant="caption" color="text.secondary">
+                        ID: {lead.equipoInteresadoId}
+                      </Typography>
+                    )}
+                  </Box>
                 )}
               </CardContent>
             </Card>
@@ -245,71 +388,56 @@ export const LeadDetailPage = () => {
               </Typography>
               <Divider sx={{ my: 2 }} />
 
-              {!lead.recordatorio1Fecha && !lead.recordatorio2Fecha ? (
+              {(!lead.recordatorios || lead.recordatorios.length === 0) ? (
                 <Typography variant="body2" color="text.secondary">
                   No hay recordatorios programados
                 </Typography>
               ) : (
                 <List>
-                  {lead.recordatorio1Fecha && (
-                    <ListItem>
+                  {/* Mostrar recordatorios de la nueva estructura */}
+                  {lead.recordatorios?.map((recordatorio) => {
+                    const colors = getRecordatorioColor(recordatorio.fechaRecordatorio, recordatorio.enviado || false);
+                    return (
+                    <ListItem key={recordatorio.id}>
                       <Paper 
                         sx={{ 
                           p: 2, 
                           width: '100%',
-                          bgcolor: lead.recordatorio1Enviado ? 'success.light' : 'warning.light'
+                          bgcolor: colors.bgcolor,
+                          borderLeft: 4,
+                          borderColor: colors.borderColor
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
                           <NotificationsIcon fontSize="small" />
                           <Typography variant="body2" fontWeight="bold">
-                            Recordatorio 1
+                            {recordatorio.tipo?.replace(/_/g, ' ')}
                           </Typography>
                           <Chip 
-                            label={lead.recordatorio1Enviado ? 'Enviado' : 'Pendiente'}
+                            label={recordatorio.enviado ? 'Enviado' : 'Pendiente'}
                             size="small"
-                            color={lead.recordatorio1Enviado ? 'success' : 'warning'}
+                            color={recordatorio.enviado ? 'success' : 'warning'}
                           />
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <EventIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {lead.recordatorio1Fecha}
-                          </Typography>
-                        </Box>
-                      </Paper>
-                    </ListItem>
-                  )}
-
-                  {lead.recordatorio2Fecha && (
-                    <ListItem>
-                      <Paper 
-                        sx={{ 
-                          p: 2, 
-                          width: '100%',
-                          bgcolor: lead.recordatorio2Enviado ? 'success.light' : 'warning.light'
-                        }}
-                      >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <NotificationsIcon fontSize="small" />
-                          <Typography variant="body2" fontWeight="bold">
-                            Recordatorio 2
-                          </Typography>
-                          <Chip 
-                            label={lead.recordatorio2Enviado ? 'Enviado' : 'Pendiente'}
-                            size="small"
-                            color={lead.recordatorio2Enviado ? 'success' : 'warning'}
-                          />
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <EventIcon fontSize="small" />
                           <Typography variant="body2">
-                            {lead.recordatorio2Fecha}
+                            {recordatorio.fechaRecordatorio}
                           </Typography>
                         </Box>
+                        {recordatorio.mensaje && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontStyle: 'italic' }}>
+                            {recordatorio.mensaje}
+                          </Typography>
+                        )}
+                        {recordatorio.fechaEnvio && (
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                            Enviado: {new Date(recordatorio.fechaEnvio).toLocaleString('es-AR')}
+                          </Typography>
+                        )}
                       </Paper>
                     </ListItem>
-                  )}
+                  )})}
                 </List>
               )}
             </CardContent>

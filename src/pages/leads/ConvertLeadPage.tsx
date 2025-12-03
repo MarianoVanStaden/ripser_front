@@ -61,9 +61,10 @@ export const ConvertLeadPage = () => {
       setLead(data);
 
       // Pre-cargar algunos datos si están disponibles
+      // Prioridad: productoInteresId > recetaInteresId > equipoInteresadoId (legacy)
       setConversionData((prev) => ({
         ...prev,
-        productoCompradoId: data.equipoInteresadoId
+        productoCompradoId: data.productoInteresId || data.recetaInteresId || data.equipoFabricadoInteresId || data.equipoInteresadoId
       }));
     } catch (err) {
       console.error('Error al cargar lead:', err);
@@ -303,12 +304,49 @@ export const ConvertLeadPage = () => {
                 </Box>
               )}
 
-              {lead.equipoInteresadoNombre && (
+              {(lead.productoInteresNombre || lead.equipoFabricadoInteresNombre || lead.equipoInteresadoNombre) && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
                     Interesado en:
                   </Typography>
-                  <Typography variant="body1">{lead.equipoInteresadoNombre}</Typography>
+                  {lead.productoInteresNombre && (
+                    <Box sx={{ ml: 2 }}>
+                      <Typography variant="body1" fontWeight="bold">
+                        📦 Producto: {lead.productoInteresNombre}
+                      </Typography>
+                      {lead.cantidadProductoInteres && (
+                        <Typography variant="body2" color="primary.main">
+                          Cantidad: {lead.cantidadProductoInteres}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                  {(lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre) && (
+                    <Box sx={{ ml: 2, mt: lead.productoInteresNombre ? 1 : 0 }}>
+                      <Typography variant="body1" fontWeight="bold">
+                        🔧 Equipo a Fabricar: {lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre}
+                      </Typography>
+                      {(lead.cantidadRecetaInteres || lead.cantidadEquipoInteres) && (
+                        <Typography variant="body2" color="primary.main">
+                          Cantidad: {lead.cantidadRecetaInteres || lead.cantidadEquipoInteres}
+                        </Typography>
+                      )}
+                      {((lead.modeloRecetaInteres || lead.modeloEquipoInteres) || (lead.colorRecetaInteres || lead.colorEquipoInteres) || (lead.medidaRecetaInteres || lead.medidaEquipoInteres)) && (
+                        <Typography variant="body2" color="text.secondary">
+                          Personalizado: {[
+                            (lead.modeloRecetaInteres || lead.modeloEquipoInteres) && `Modelo: ${lead.modeloRecetaInteres || lead.modeloEquipoInteres}`,
+                            (lead.colorRecetaInteres || lead.colorEquipoInteres) && `Color: ${lead.colorRecetaInteres || lead.colorEquipoInteres}`,
+                            (lead.medidaRecetaInteres || lead.medidaEquipoInteres) && `Medida: ${lead.medidaRecetaInteres || lead.medidaEquipoInteres}`
+                          ].filter(Boolean).join(' • ')}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                  {!lead.productoInteresNombre && !lead.equipoFabricadoInteresNombre && lead.equipoInteresadoNombre && (
+                    <Typography variant="body1" sx={{ ml: 2 }}>
+                      {lead.equipoInteresadoNombre}
+                    </Typography>
+                  )}
                 </Box>
               )}
 

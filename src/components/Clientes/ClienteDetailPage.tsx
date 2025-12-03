@@ -6,7 +6,6 @@ import {
   Button,
   Tabs,
   Tab,
-  Grid,
   Chip,
   Divider,
   CircularProgress,
@@ -24,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Cliente, EstadoCliente } from '../../types';
+import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import { ContactosTab, CuentaCorrienteTab } from './index';
@@ -241,7 +241,7 @@ const ClienteDetailPage: React.FC = () => {
                   <Typography>
                     {cliente.direccion}
                     {cliente.ciudad && `, ${cliente.ciudad}`}
-                    {cliente.provincia && `, ${cliente.provincia}`}
+                    {cliente.provincia && `, ${PROVINCIA_LABELS[cliente.provincia]}`}
                   </Typography>
                 </Box>
               )}
@@ -322,7 +322,7 @@ const ClienteDetailPage: React.FC = () => {
                 <Box flex="1" minWidth="250px">
                   <Typography><strong>Dirección:</strong> {cliente.direccion || 'No especificada'}</Typography>
                   <Typography><strong>Ciudad:</strong> {cliente.ciudad || 'No especificada'}</Typography>
-                  <Typography><strong>Provincia:</strong> {cliente.provincia || 'No especificada'}</Typography>
+                  <Typography><strong>Provincia:</strong> {cliente.provincia ? PROVINCIA_LABELS[cliente.provincia] : 'No especificada'}</Typography>
                   <Typography><strong>Código Postal:</strong> {cliente.codigoPostal || 'No especificado'}</Typography>
                 </Box>
               </Box>

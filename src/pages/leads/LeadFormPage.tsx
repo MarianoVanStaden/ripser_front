@@ -12,20 +12,38 @@ import {
   TextField,
   Typography,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Autocomplete,
+  IconButton,
+  List,
+  ListItem,
+  Paper,
+  Chip,
+  Divider
 } from '@mui/material';
-import { Save as SaveIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { 
+  Save as SaveIcon, 
+  ArrowBack as ArrowBackIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Notifications as NotificationsIcon
+} from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
+import { productApi } from '../../api/services/productApi';
+import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import {
   EstadoLeadEnum,
   CanalEnum,
   ProvinciaEnum,
+  TipoRecordatorioEnum,
   ESTADO_LABELS,
   CANAL_LABELS,
   PROVINCIA_LABELS
 } from '../../types/lead.types';
-import type { LeadDTO, ValidationErrors } from '../../types/lead.types';
+import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO } from '../../types/lead.types';
+import type { Producto, RecetaFabricacionListDTO, ColorEquipo, MedidaEquipo } from '../../types';
+import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 
 export const LeadFormPage = () => {
   const navigate = useNavigate();
@@ -36,6 +54,9 @@ export const LeadFormPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(false);
 
   const [formData, setFormData] = useState<Partial<LeadDTO>>({
     nombre: '',
@@ -44,24 +65,73 @@ export const LeadFormPage = () => {
     canal: CanalEnum.WHATSAPP,
     estadoLead: EstadoLeadEnum.PRIMER_CONTACTO,
     fechaPrimerContacto: new Date().toISOString().split('T')[0],
+    productoInteresId: undefined,
+    cantidadProductoInteres: undefined,
+    recetaInteresId: undefined,
+    cantidadRecetaInteres: undefined,
+    modeloRecetaInteres: '',
+    colorRecetaInteres: '',
+    medidaRecetaInteres: '',
+    // Legacy fields
+    equipoFabricadoInteresId: undefined,
+    cantidadEquipoInteres: undefined,
+    modeloEquipoInteres: '',
+    colorEquipoInteres: '',
+    medidaEquipoInteres: '',
     equipoInteresadoId: undefined,
-    recordatorio1Fecha: '',
-    recordatorio1Enviado: false,
-    recordatorio2Fecha: '',
-    recordatorio2Enviado: false
+    recordatorios: []
   });
 
-  // Cargar datos del lead si estamos en modo edición
+  // Estado para nuevo recordatorio
+  const [nuevoRecordatorio, setNuevoRecordatorio] = useState({
+    fechaRecordatorio: '',
+    tipo: 'TAREA',
+    mensaje: ''
+  });
+
+  // Rastrear recordatorios originales para detectar eliminaciones
+  const [recordatoriosOriginales, setRecordatoriosOriginales] = useState<RecordatorioLeadDTO[]>([]);
+
+  // Cargar catálogos y datos del lead
   useEffect(() => {
+    loadCatalogs();
     if (isEditMode && id) {
       loadLead(parseInt(id));
     }
   }, [id, isEditMode]);
 
+  const loadCatalogs = async () => {
+    try {
+      setLoadingCatalogs(true);
+      const [productosData, recetasData] = await Promise.all([
+        productApi.getAll(0, 1000).catch(() => []),
+        recetaFabricacionApi.findAllActive().catch(() => [])
+      ]);
+      setProductos(productosData);
+      setRecetas(recetasData);
+    } catch (err) {
+      console.error('Error al cargar catálogos:', err);
+    } finally {
+      setLoadingCatalogs(false);
+    }
+  };
+
   const loadLead = async (leadId: number) => {
     try {
       setLoading(true);
       const data = await leadApi.getById(leadId);
+      
+      // Cargar recordatorios del lead
+      try {
+        const recordatorios = await leadApi.getRecordatorios(leadId);
+        data.recordatorios = recordatorios;
+        setRecordatoriosOriginales([...recordatorios]); // Guardar copia para detectar eliminaciones
+      } catch (err) {
+        console.error('Error al cargar recordatorios:', err);
+        data.recordatorios = [];
+        setRecordatoriosOriginales([]);
+      }
+      
       setFormData(data);
     } catch (err) {
       console.error('Error al cargar lead:', err);
@@ -105,10 +175,64 @@ export const LeadFormPage = () => {
       setSaving(true);
       setError(null);
 
+      let leadId: number;
+
       if (isEditMode && id) {
         await leadApi.update(parseInt(id), formData as LeadDTO);
+        leadId = parseInt(id);
       } else {
-        await leadApi.create(formData as Omit<LeadDTO, 'id' | 'dias' | 'fechaConversion'>);
+        const leadCreado = await leadApi.create(formData as Omit<LeadDTO, 'id' | 'dias' | 'fechaConversion'>);
+        leadId = leadCreado.id!;
+      }
+
+      // Gestionar recordatorios usando la API específica
+      if (isEditMode) {
+        // Detectar recordatorios eliminados
+        const recordatoriosActualesIds = (formData.recordatorios || [])
+          .filter(r => r.id)
+          .map(r => r.id);
+        
+        const recordatoriosEliminados = recordatoriosOriginales.filter(
+          original => original.id && !recordatoriosActualesIds.includes(original.id)
+        );
+
+        // Eliminar recordatorios removidos
+        for (const recordatorio of recordatoriosEliminados) {
+          if (recordatorio.id) {
+            try {
+              await leadApi.deleteRecordatorio(leadId, recordatorio.id);
+            } catch (err) {
+              console.error('Error al eliminar recordatorio:', err);
+            }
+          }
+        }
+      }
+
+      // Crear o actualizar recordatorios
+      if (formData.recordatorios && formData.recordatorios.length > 0) {
+        for (const recordatorio of formData.recordatorios) {
+          if (!recordatorio.id) {
+            // Crear nuevo recordatorio
+            try {
+              const payload: any = {
+                fechaRecordatorio: recordatorio.fechaRecordatorio,
+                tipo: recordatorio.tipo,
+                mensaje: recordatorio.mensaje || ''
+              };
+              console.log('Creando recordatorio:', payload);
+              await leadApi.createRecordatorio(leadId, payload);
+            } catch (err) {
+              console.error('Error al crear recordatorio:', err);
+            }
+          } else {
+            // Actualizar recordatorio existente
+            try {
+              await leadApi.updateRecordatorio(leadId, recordatorio.id, recordatorio);
+            } catch (err) {
+              console.error('Error al actualizar recordatorio:', err);
+            }
+          }
+        }
       }
 
       navigate('/leads');
@@ -134,6 +258,41 @@ export const LeadFormPage = () => {
       delete newErrors[field];
       setErrors(newErrors);
     }
+  };
+
+  const handleAgregarRecordatorio = () => {
+    if (!nuevoRecordatorio.fechaRecordatorio) {
+      return;
+    }
+
+    const recordatorio: RecordatorioLeadDTO = {
+      leadId: parseInt(id || '0'),
+      fechaRecordatorio: nuevoRecordatorio.fechaRecordatorio,
+      tipo: nuevoRecordatorio.tipo as any,
+      mensaje: nuevoRecordatorio.mensaje,
+      enviado: false
+    };
+
+    setFormData({
+      ...formData,
+      recordatorios: [...(formData.recordatorios || []), recordatorio]
+    });
+
+    // Limpiar formulario de nuevo recordatorio
+    setNuevoRecordatorio({
+      fechaRecordatorio: '',
+      tipo: 'TAREA',
+      mensaje: ''
+    });
+  };
+
+  const handleEliminarRecordatorio = (index: number) => {
+    const nuevosRecordatorios = [...(formData.recordatorios || [])];
+    nuevosRecordatorios.splice(index, 1);
+    setFormData({
+      ...formData,
+      recordatorios: nuevosRecordatorios
+    });
   };
 
   if (loading) {
@@ -272,46 +431,297 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              {/* Producto de Interés */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, mb: 1 }}>
+                  Producto de Interés
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={8}>
+                <Autocomplete
+                  options={productos}
+                  getOptionLabel={(option) => `${option.nombre} - $${option.precio}`}
+                  value={productos.find(p => p.id === formData.productoInteresId) || null}
+                  onChange={(_, newValue) => {
+                    setFormData({ 
+                      ...formData, 
+                      productoInteresId: newValue?.id,
+                      productoInteresNombre: newValue?.nombre
+                    });
+                  }}
+                  disabled={loadingCatalogs}
+                  renderInput={(params) => (
+                    <TextField 
+                      {...params} 
+                      label="Buscar producto" 
+                      placeholder="Escriba para buscar..."
+                    />
+                  )}
+                  noOptionsText="No se encontraron productos"
+                  loading={loadingCatalogs}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   type="number"
-                  label="ID Equipo Interesado"
-                  value={formData.equipoInteresadoId || ''}
-                  onChange={handleChange('equipoInteresadoId')}
-                  helperText="Opcional: ID del producto en el que está interesado"
+                  label="Cantidad"
+                  value={formData.cantidadProductoInteres || ''}
+                  onChange={(e) => setFormData({ ...formData, cantidadProductoInteres: e.target.value ? Number(e.target.value) : undefined })}
+                  disabled={!formData.productoInteresId}
+                  inputProps={{ min: 1 }}
                 />
+              </Grid>
+
+              {/* Receta de Fabricación de Interés */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom sx={{ mt: 2, mb: 1 }}>
+                  Equipo a Fabricar (Receta Base)
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={12}>
+                <Autocomplete
+                  options={recetas}
+                  getOptionLabel={(option) => {
+                    const parts = [option.nombre, option.tipoEquipo];
+                    if (option.modelo) parts.push(`Modelo: ${option.modelo}`);
+                    if (option.medida) parts.push(option.medida);
+                    if (option.color) parts.push(option.color);
+                    return parts.join(' - ');
+                  }}
+                  value={recetas.find(r => r.id === formData.recetaInteresId) || null}
+                  onChange={(_, newValue) => {
+                    setFormData({ 
+                      ...formData, 
+                      recetaInteresId: newValue?.id,
+                      recetaInteresNombre: newValue?.nombre,
+                      // Pre-cargar valores de la receta, pero permitir edición
+                      modeloRecetaInteres: newValue?.modelo || '',
+                      colorRecetaInteres: newValue?.color || '',
+                      medidaRecetaInteres: newValue?.medida || '',
+                      // Mapear a campos del backend
+                      equipoFabricadoInteresId: newValue?.id,
+                      equipoFabricadoInteresNombre: newValue?.nombre,
+                      modeloEquipoInteres: newValue?.modelo || '',
+                      colorEquipoInteres: newValue?.color || '',
+                      medidaEquipoInteres: newValue?.medida || ''
+                    });
+                  }}
+                  disabled={loadingCatalogs}
+                  renderInput={(params) => (
+                    <TextField 
+                      {...params} 
+                      label="Buscar receta de fabricación" 
+                      placeholder="Escriba para buscar..."
+                      helperText="Seleccione una receta base. Puede editar los parámetros abajo."
+                    />
+                  )}
+                  noOptionsText="No se encontraron recetas activas"
+                  loading={loadingCatalogs}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Cantidad"
+                  value={formData.cantidadRecetaInteres || ''}
+                  onChange={(e) => {
+                    const cantidad = e.target.value ? Number(e.target.value) : undefined;
+                    setFormData({ 
+                      ...formData, 
+                      cantidadRecetaInteres: cantidad,
+                      cantidadEquipoInteres: cantidad // Mapear al backend
+                    });
+                  }}
+                  disabled={!formData.recetaInteresId}
+                  inputProps={{ min: 1 }}
+                  helperText="Cantidad a fabricar"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <TextField
+                  fullWidth
+                  label="Modelo Personalizado"
+                  value={formData.modeloRecetaInteres || ''}
+                  onChange={(e) => {
+                    setFormData({ 
+                      ...formData, 
+                      modeloRecetaInteres: e.target.value,
+                      modeloEquipoInteres: e.target.value // Mapear al backend
+                    });
+                  }}
+                  disabled={!formData.recetaInteresId}
+                  placeholder="Ej: HI-2024-001"
+                  helperText="Puede personalizar el modelo"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth disabled={!formData.recetaInteresId}>
+                  <InputLabel>Color</InputLabel>
+                  <Select
+                    value={formData.colorRecetaInteres || ''}
+                    label="Color"
+                    onChange={(e) => {
+                      setFormData({ 
+                        ...formData, 
+                        colorRecetaInteres: e.target.value as ColorEquipo,
+                        colorEquipoInteres: e.target.value // Mapear al backend
+                      });
+                    }}
+                  >
+                    <MenuItem value="">Ninguno</MenuItem>
+                    {COLORES_EQUIPO.map((color) => (
+                      <MenuItem key={color} value={color}>
+                        {color.replace(/_/g, ' ')}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth disabled={!formData.recetaInteresId}>
+                  <InputLabel>Medida</InputLabel>
+                  <Select
+                    value={formData.medidaRecetaInteres || ''}
+                    label="Medida"
+                    onChange={(e) => {
+                      setFormData({ 
+                        ...formData, 
+                        medidaRecetaInteres: e.target.value as MedidaEquipo,
+                        medidaEquipoInteres: e.target.value // Mapear al backend
+                      });
+                    }}
+                  >
+                    <MenuItem value="">Ninguna</MenuItem>
+                    {MEDIDAS_EQUIPO.map((medida) => (
+                      <MenuItem key={medida} value={medida}>
+                        {medida}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
 
               {/* Recordatorios */}
               <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                  Recordatorios
+                <Divider sx={{ my: 3 }} />
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <NotificationsIcon /> Recordatorios
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Recordatorio 1"
-                  value={formData.recordatorio1Fecha || ''}
-                  onChange={handleChange('recordatorio1Fecha')}
-                  InputLabelProps={{ shrink: true }}
-                  helperText="Fecha para el primer recordatorio"
-                />
-              </Grid>
+              {/* Lista de recordatorios existentes */}
+              {formData.recordatorios && formData.recordatorios.length > 0 && (
+                <Grid item xs={12}>
+                  <List>
+                    {formData.recordatorios.map((recordatorio, index) => (
+                      <ListItem key={index}>
+                        <Paper 
+                          sx={{ 
+                            p: 2, 
+                            width: '100%',
+                            bgcolor: 'action.hover',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+                              <Chip 
+                                label={recordatorio.tipo?.replace(/_/g, ' ')}
+                                size="small"
+                                color="primary"
+                              />
+                              <Typography variant="body2" fontWeight="bold">
+                                {recordatorio.fechaRecordatorio}
+                              </Typography>
+                            </Box>
+                            {recordatorio.mensaje && (
+                              <Typography variant="body2" color="text.secondary">
+                                {recordatorio.mensaje}
+                              </Typography>
+                            )}
+                          </Box>
+                          <IconButton 
+                            color="error" 
+                            size="small"
+                            onClick={() => handleEliminarRecordatorio(index)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Paper>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+              )}
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Recordatorio 2"
-                  value={formData.recordatorio2Fecha || ''}
-                  onChange={handleChange('recordatorio2Fecha')}
-                  InputLabelProps={{ shrink: true }}
-                  helperText="Fecha para el segundo recordatorio"
-                />
+              {/* Formulario para nuevo recordatorio */}
+              <Grid item xs={12}>
+                <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Agregar Nuevo Recordatorio
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        type="date"
+                        label="Fecha"
+                        value={nuevoRecordatorio.fechaRecordatorio}
+                        onChange={(e) => setNuevoRecordatorio({ ...nuevoRecordatorio, fechaRecordatorio: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Tipo</InputLabel>
+                        <Select
+                          value={nuevoRecordatorio.tipo}
+                          label="Tipo"
+                          onChange={(e) => setNuevoRecordatorio({ ...nuevoRecordatorio, tipo: e.target.value })}
+                        >
+                          {Object.values(TipoRecordatorioEnum).map(tipo => (
+                            <MenuItem key={tipo} value={tipo}>
+                              {tipo.replace(/_/g, ' ')}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        label="Mensaje (opcional)"
+                        value={nuevoRecordatorio.mensaje}
+                        onChange={(e) => setNuevoRecordatorio({ ...nuevoRecordatorio, mensaje: e.target.value })}
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={1}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        size="medium"
+                        onClick={handleAgregarRecordatorio}
+                        disabled={!nuevoRecordatorio.fechaRecordatorio}
+                        startIcon={<AddIcon />}
+                      >
+                        Agregar
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </Paper>
               </Grid>
 
               {/* Botones */}

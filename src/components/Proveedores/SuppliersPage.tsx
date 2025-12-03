@@ -36,7 +36,8 @@ import {
   Email as EmailIcon,
 } from '@mui/icons-material';
 import { supplierApi } from '../../api/services/supplierApi';
-import type { ProveedorDTO, CreateProveedorDTO } from '../../types';
+import type { ProveedorDTO, CreateProveedorDTO, ProvinciaEnum } from '../../types';
+import { PROVINCIA_LABELS } from '../../types/shared.enums';
 
 const SuppliersPage: React.FC = () => {
   const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
@@ -51,7 +52,7 @@ const SuppliersPage: React.FC = () => {
     telefono: '',
     direccion: '',
     ciudad: '',
-    provincia: '',
+    provincia: undefined as ProvinciaEnum | undefined,
     codigoPostal: '',
   });
   const [formErrors, setFormErrors] = useState<{
@@ -137,7 +138,7 @@ const SuppliersPage: React.FC = () => {
       telefono: '',
       direccion: '',
       ciudad: '',
-      provincia: '',
+      provincia: undefined as ProvinciaEnum | undefined,
       codigoPostal: '',
     });
     setFormErrors({});
@@ -153,7 +154,7 @@ const SuppliersPage: React.FC = () => {
       telefono: supplier.telefono || '',
       direccion: supplier.direccion || '',
       ciudad: supplier.ciudad || '',
-      provincia: supplier.provincia || '',
+      provincia: supplier.provincia,
       codigoPostal: supplier.codigoPostal || '',
     });
     setFormErrors({});
@@ -208,7 +209,7 @@ const SuppliersPage: React.FC = () => {
   }, [suppliers]);
 
   const uniqueProvincias = useMemo(() => {
-    const provincias = new Set(suppliers.map(s => s.provincia).filter(Boolean));
+    const provincias = new Set(suppliers.map(s => s.provincia).filter((p): p is ProvinciaEnum => Boolean(p)));
     return Array.from(provincias).sort();
   }, [suppliers]);
 
@@ -353,7 +354,7 @@ const SuppliersPage: React.FC = () => {
                 <MenuItem value="all">Todas</MenuItem>
                 {uniqueProvincias.map((provincia) => (
                   <MenuItem key={provincia} value={provincia}>
-                    {provincia}
+                    {provincia && PROVINCIA_LABELS[provincia as ProvinciaEnum] || provincia}
                   </MenuItem>
                 ))}
               </Select>
@@ -412,7 +413,7 @@ const SuppliersPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{supplier.direccion}</TableCell>
                       <TableCell>{supplier.ciudad}</TableCell>
-                      <TableCell>{supplier.provincia}</TableCell>
+                      <TableCell>{supplier.provincia ? PROVINCIA_LABELS[supplier.provincia] : '-'}</TableCell>
                       <TableCell>{supplier.codigoPostal}</TableCell>
                       <TableCell>
                         {supplier.estado && (
@@ -537,11 +538,19 @@ const SuppliersPage: React.FC = () => {
                 fullWidth
               />
               <TextField
+                select
                 label="Provincia"
-                value={formData.provincia}
-                onChange={(e) => setFormData({ ...formData, provincia: e.target.value })}
+                value={formData.provincia || ''}
+                onChange={(e) => setFormData({ ...formData, provincia: e.target.value as ProvinciaEnum })}
                 fullWidth
-              />
+              >
+                <MenuItem value="">Seleccionar provincia</MenuItem>
+                {Object.entries(PROVINCIA_LABELS).map(([key, label]) => (
+                  <MenuItem key={key} value={key}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
                 label="Código Postal"
                 value={formData.codigoPostal}

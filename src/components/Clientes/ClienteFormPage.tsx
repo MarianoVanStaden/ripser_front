@@ -20,7 +20,8 @@ import {
   Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { TipoCliente, EstadoCliente } from '../../types';
+import type { TipoCliente, EstadoCliente, ProvinciaEnum } from '../../types';
+import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 
 const ClienteFormPage: React.FC = () => {
@@ -41,7 +42,7 @@ const ClienteFormPage: React.FC = () => {
     telefono: '',
     direccion: '',
     ciudad: '',
-    provincia: '',
+    provincia: undefined as ProvinciaEnum | undefined,
     codigoPostal: '',
     tipo: 'PERSONA_FISICA' as TipoCliente,
     estado: 'ACTIVO' as EstadoCliente,
@@ -68,7 +69,7 @@ const ClienteFormPage: React.FC = () => {
         telefono: cliente.telefono || '',
         direccion: cliente.direccion || '',
         ciudad: cliente.ciudad || '',
-        provincia: cliente.provincia || '',
+        provincia: cliente.provincia,
         codigoPostal: cliente.codigoPostal || '',
         tipo: cliente.tipo,
         estado: cliente.estado,
@@ -142,7 +143,7 @@ const ClienteFormPage: React.FC = () => {
           telefono: '',
           direccion: '',
           ciudad: '',
-          provincia: '',
+          provincia: undefined as ProvinciaEnum | undefined,
           codigoPostal: '',
           tipo: 'PERSONA_FISICA',
           estado: 'ACTIVO',
@@ -340,12 +341,22 @@ const ClienteFormPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
+                select
                 size="small"
                 label="Provincia"
-                value={formData.provincia}
+                value={formData.provincia || ''}
                 onChange={handleFormChange}
                 name="provincia"
-              />
+              >
+                <MenuItem value="">
+                  <em>Ninguna</em>
+                </MenuItem>
+                {Object.entries(PROVINCIA_LABELS).map(([key, label]) => (
+                  <MenuItem key={key} value={key}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Grid>
             <Grid item xs={12} md={4}>
               <TextField

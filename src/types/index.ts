@@ -2,6 +2,10 @@
 export * from './auth.types';
 export * from './tenant.types';
 
+// Export shared enums
+export * from './shared.enums';
+import type { ProvinciaEnum } from './shared.enums';
+
 // --- Garantía (Warranty) Aliases for Frontend Consistency ---
 export type Garantia = Warranty;
 export type ReclamoGarantia = WarrantyClaim;
@@ -16,22 +20,60 @@ export interface Cliente {
   cuit?: string;
   email?: string;
   telefono?: string;
+  telefonoAlternativo?: string;
+  whatsapp?: string;
   direccion?: string;
   ciudad?: string;
-  provincia?: string;
+  provincia?: ProvinciaEnum;
   codigoPostal?: string;
   tipo: TipoCliente;
   estado: EstadoCliente;
+  segmento?: SegmentoCliente;
+  esClienteCorporativo?: boolean;
   limiteCredito?: number;
   saldoActual: number;
+  diasCredito?: number;
+  condicionPago?: CondicionPago;
+  totalCompras?: number;
+  cantidadCompras?: number;
+  ticketPromedio?: number;
+  lifetimeValue?: number;
+  fechaUltimaCompra?: string;
+  diasDesdeUltimaCompra?: number;
+  frecuenciaCompraDias?: number;
+  leadId?: number;
+  fechaConversion?: string;
+  productoComprado?: ProductoSimple;
+  montoConversion?: number;
+  canalAdquisicion?: string;
+  aceptaMarketing?: boolean;
+  preferenciaContacto?: PreferenciaContacto;
+  horarioPreferidoContacto?: string;
+  calificacion?: number; // 0.00 to 5.00
+  observaciones?: string;
+  usuarioAsignadoId?: number;
+  creadoPorId?: number;
+  modificadoPorId?: number;
   fechaAlta: string; // ISO 8601 string
-  fechaActualizacion: string; // ISO 8601 string
+  fechaActualizacion?: string; // ISO 8601 string
+  fechaBaja?: string;
+  enRiesgoChurn?: boolean;
+  segmentoAutomatico?: SegmentoCliente;
   contactos?: ContactoCliente[];
   cuentaCorriente?: CuentaCorriente[];
   ventas?: Venta[];
-  creditos?: CreditoCliente[]; // New field
-  calificacion?: number; // New field (e.g., 0.00 to 5.00)
+  creditos?: CreditoCliente[];
 }
+
+export interface ProductoSimple {
+  id: number;
+  nombre: string;
+  precio: number;
+}
+
+export type SegmentoCliente = 'VIP' | 'PREMIUM' | 'STANDARD' | 'BASICO';
+export type CondicionPago = 'CONTADO' | 'CREDITO';
+export type PreferenciaContacto = 'TELEFONO' | 'EMAIL' | 'WHATSAPP';
 
 export interface CreateMovimientoPayload {
   clienteId: number;
@@ -123,7 +165,7 @@ export interface CreateClienteRequest {
   telefono?: string;
   direccion?: string;
   ciudad?: string;
-  provincia?: string;
+  provincia?: ProvinciaEnum;
   codigoPostal?: string;
   tipo: TipoCliente;
   estado: EstadoCliente;
@@ -1678,7 +1720,7 @@ export interface ProveedorDTO {
   telefono: string;
   direccion: string;
   ciudad: string;
-  provincia: string;
+  provincia?: ProvinciaEnum;
   codigoPostal: string;
   estado: 'ACTIVO' | 'INACTIVO' | 'BLOQUEADO';
   fechaAlta: string;
@@ -1692,7 +1734,7 @@ export interface CreateProveedorDTO {
   telefono?: string;
   direccion?: string;
   ciudad?: string;
-  provincia?: string;
+  provincia?: ProvinciaEnum;
   codigoPostal?: string;
 }
 export interface Proveedor {

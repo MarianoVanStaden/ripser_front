@@ -283,15 +283,7 @@ const Dashboard: React.FC = () => {
       const monthlySalesAmount = monthlySales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
       const todaySalesAmount = todaySales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
       const weekSalesAmount = weekSales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0);
-
-      // Calculate average order value for last 90 days
-      const last90DaysSales = sales.filter((sale: any) => {
-        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
-        if (!fechaVenta) return false;
-        const saleDate = new Date(fechaVenta);
-        return saleDate >= ninetyDaysAgo;
-      });
-      const averageOrderValue = last90DaysSales.length > 0 ? last90DaysSales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0) / last90DaysSales.length : 0;
+      const averageOrderValue = sales.length > 0 ? sales.reduce((sum: number, sale: any) => sum + Number(sale.total || 0), 0) / sales.length : 0;
 
       // Calculate previous period sales for trends
       const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
@@ -675,6 +667,7 @@ const Dashboard: React.FC = () => {
             />
             <StatCard
               title="Ticket Promedio"
+              subtitle='Últimos 90 días'
               value={`$${stats.averageOrderValue.toLocaleString(undefined, {maximumFractionDigits: 0})}`}
               icon={<ShoppingCartIcon />}
               color="#ed6c02"
