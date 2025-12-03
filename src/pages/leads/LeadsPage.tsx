@@ -20,7 +20,8 @@ import {
   Visibility as VisibilityIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  SwapHoriz as ConvertIcon
+  SwapHoriz as ConvertIcon,
+  WhatsApp as WhatsAppIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
@@ -238,7 +239,12 @@ export const LeadsPage = () => {
                     {!lead.productoInteresNombre && !lead.recetaInteresNombre && !lead.equipoFabricadoInteresNombre && (lead.equipoInteresadoNombre || '-')}
                   </TableCell>
                   <TableCell align="center">
-                    {lead.dias !== null && lead.dias !== undefined ? lead.dias : '-'}
+                    {lead.fechaPrimerContacto ? (() => {
+                      const hoy = new Date();
+                      const fechaContacto = new Date(lead.fechaPrimerContacto);
+                      const diferenciaDias = Math.floor((hoy.getTime() - fechaContacto.getTime()) / (1000 * 60 * 60 * 24));
+                      return diferenciaDias;
+                    })() : '-'}
                   </TableCell>
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
@@ -251,6 +257,21 @@ export const LeadsPage = () => {
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
+
+                      {lead.telefono && (
+                        <Tooltip title="Abrir WhatsApp">
+                          <IconButton
+                            size="small"
+                            sx={{ color: '#25D366' }}
+                            onClick={() => {
+                              const phone = lead.telefono.replace(/\D/g, '');
+                              window.open(`https://wa.me/${phone}`, '_blank');
+                            }}
+                          >
+                            <WhatsAppIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
 
                       {lead.estadoLead !== EstadoLeadEnum.CONVERTIDO && (
                         <Tooltip title="Editar">

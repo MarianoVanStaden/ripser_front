@@ -131,6 +131,17 @@ export const LeadFormPage = () => {
         data.recordatorios = [];
         setRecordatoriosOriginales([]);
       }
+
+      // Normalizar campos de equipo/receta para compatibilidad
+      // Si vienen datos en equipoFabricadoInteres*, copiarlos a recetaInteres*
+      if (data.equipoFabricadoInteresId && !data.recetaInteresId) {
+        data.recetaInteresId = data.equipoFabricadoInteresId;
+        data.recetaInteresNombre = data.equipoFabricadoInteresNombre;
+        data.cantidadRecetaInteres = data.cantidadEquipoInteres;
+        data.modeloRecetaInteres = data.modeloEquipoInteres;
+        data.colorRecetaInteres = data.colorEquipoInteres;
+        data.medidaRecetaInteres = data.medidaEquipoInteres;
+      }
       
       setFormData(data);
     } catch (err) {
