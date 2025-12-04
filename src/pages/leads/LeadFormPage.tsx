@@ -21,8 +21,8 @@ import {
   Chip,
   Divider
 } from '@mui/material';
-import { 
-  Save as SaveIcon, 
+import {
+  Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -44,10 +44,13 @@ import {
 import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO } from '../../types/lead.types';
 import type { Producto, RecetaFabricacionListDTO, ColorEquipo, MedidaEquipo } from '../../types';
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
+import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
+import { useTenant } from '../../context/TenantContext';
 
 export const LeadFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { sucursalFiltro } = useTenant();
   const isEditMode = Boolean(id);
 
   const [loading, setLoading] = useState(false);
@@ -186,13 +189,19 @@ export const LeadFormPage = () => {
       setSaving(true);
       setError(null);
 
+      // Auto-asignar sucursal del contexto si no está especificada
+      const dataToSend = {
+        ...formData,
+        sucursalId: formData.sucursalId || sucursalFiltro
+      };
+
       let leadId: number;
 
       if (isEditMode && id) {
-        await leadApi.update(parseInt(id), formData as LeadDTO);
+        await leadApi.update(parseInt(id), dataToSend as LeadDTO);
         leadId = parseInt(id);
       } else {
-        const leadCreado = await leadApi.create(formData as Omit<LeadDTO, 'id' | 'dias' | 'fechaConversion'>);
+        const leadCreado = await leadApi.create(dataToSend as Omit<LeadDTO, 'id' | 'dias' | 'fechaConversion'>);
         leadId = leadCreado.id!;
       }
 
@@ -628,6 +637,30 @@ export const LeadFormPage = () => {
                   <NotificationsIcon /> Recordatorios
                 </Typography>
               </Grid>
+
+              {/* Próximo Recordatorio Pendiente (solo en modo edición) */}
+              {isEditMode && formData.recordatorios && formData.recordatorios.length > 0 && (() => {
+                const recordatoriosPendientes = formData.recordatorios
+                  .filter(r => !r.enviado)
+                  .sort((a, b) => new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime());
+                
+                const proximoRecordatorio = recordatoriosPendientes[0] || null;
+                
+                if (proximoRecordatorio) {
+                  return (
+                    <Grid item xs={12}>
+                      <ProximoRecordatorio 
+                        leadId={parseInt(id!)} 
+                        recordatorio={proximoRecordatorio}
+                        onRecordatorioEnviado={() => {
+                          if (id) loadLead(parseInt(id));
+                        }}
+                      />
+                    </Grid>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Lista de recordatorios existentes */}
               {formData.recordatorios && formData.recordatorios.length > 0 && (

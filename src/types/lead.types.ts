@@ -46,6 +46,7 @@ export type PrioridadLeadEnum = typeof PrioridadLeadEnum[keyof typeof PrioridadL
 export interface LeadDTO {
   id?: number;
   empresaId?: number;
+  sucursalId?: number;
   nombre: string;
   apellido?: string;
   telefono: string;
@@ -119,16 +120,17 @@ export const TipoInteraccionEnum = {
   WHATSAPP: 'WHATSAPP',
   REUNION: 'REUNION',
   VISITA: 'VISITA',
-  VIDEOLLAMADA: 'VIDEOLLAMADA'
+  OTRO: 'OTRO'
 } as const;
 
 export type TipoInteraccionEnum = typeof TipoInteraccionEnum[keyof typeof TipoInteraccionEnum];
 
 export const ResultadoInteraccionEnum = {
-  EXITOSA: 'EXITOSA',
+  EXITOSO: 'EXITOSO',
   SIN_RESPUESTA: 'SIN_RESPUESTA',
-  RECHAZADA: 'RECHAZADA',
-  PENDIENTE: 'PENDIENTE'
+  REAGENDAR: 'REAGENDAR',
+  NO_INTERESADO: 'NO_INTERESADO',
+  INTERESADO: 'INTERESADO'
 } as const;
 
 export type ResultadoInteraccionEnum = typeof ResultadoInteraccionEnum[keyof typeof ResultadoInteraccionEnum];
@@ -136,17 +138,16 @@ export type ResultadoInteraccionEnum = typeof ResultadoInteraccionEnum[keyof typ
 export interface InteraccionLeadDTO {
   id?: number;
   leadId: number;
-  empresaId?: number;
+  sucursalId?: number;
   tipo: TipoInteraccionEnum;
-  fecha: string; // ISO format
+  fecha: string; // LocalDateTime ISO format
   descripcion: string;
-  resultado?: ResultadoInteraccionEnum;
-  duracionMinutos?: number;
-  usuarioId?: number;
-  usuarioNombre?: string;
-  proximaAccion?: string;
-  fechaProximaAccion?: string;
-  fechaCreacion?: string;
+  resultado?: ResultadoInteraccionEnum | null;
+  duracionMinutos?: number | null;
+  proximaAccion?: string | null; // LocalDate YYYY-MM-DD
+  notasProximaAccion?: string | null;
+  realizadoPorId?: number | null;
+  fechaCreacion?: string; // LocalDateTime ISO format
 }
 
 // Recordatorios del Lead
@@ -154,7 +155,9 @@ export const TipoRecordatorioEnum = {
   EMAIL: 'EMAIL',
   SMS: 'SMS',
   TAREA: 'TAREA',
-  NOTIFICACION: 'NOTIFICACION'
+  NOTIFICACION: 'NOTIFICACION',
+  WHATSAPP: 'WHATSAPP',
+  LLAMADA: 'LLAMADA'
 } as const;
 
 export type TipoRecordatorioEnum = typeof TipoRecordatorioEnum[keyof typeof TipoRecordatorioEnum];
@@ -171,6 +174,7 @@ export interface RecordatorioLeadDTO {
   id?: number;
   leadId: number;
   empresaId?: number;
+  sucursalId?: number;
   fechaRecordatorio: string; // YYYY-MM-DD
   hora?: string; // HH:mm
   tipo: TipoRecordatorioEnum;
@@ -187,6 +191,7 @@ export interface LeadFilterState {
   estados?: EstadoLeadEnum[];
   canales?: CanalEnum[];
   provincias?: ProvinciaEnum[];
+  sucursalId?: number;
   fechaDesde?: string;
   fechaHasta?: string;
   busqueda?: string;
@@ -262,4 +267,38 @@ export const CANAL_ICONS: Record<CanalEnum, string> = {
   REFERIDO: '🤝',
   FACEBOOK: '📘',
   INSTAGRAM: '📸'
+};
+
+export const TIPO_INTERACCION_LABELS: Record<TipoInteraccionEnum, string> = {
+  LLAMADA: 'Llamada',
+  EMAIL: 'Email',
+  WHATSAPP: 'WhatsApp',
+  REUNION: 'Reunión',
+  VISITA: 'Visita',
+  OTRO: 'Otro'
+};
+
+export const TIPO_INTERACCION_ICONS: Record<TipoInteraccionEnum, string> = {
+  LLAMADA: '📞',
+  EMAIL: '📧',
+  WHATSAPP: '💬',
+  REUNION: '🤝',
+  VISITA: '🚗',
+  OTRO: '📋'
+};
+
+export const RESULTADO_INTERACCION_LABELS: Record<ResultadoInteraccionEnum, string> = {
+  EXITOSO: 'Exitoso',
+  SIN_RESPUESTA: 'Sin Respuesta',
+  REAGENDAR: 'Reagendar',
+  NO_INTERESADO: 'No Interesado',
+  INTERESADO: 'Interesado'
+};
+
+export const RESULTADO_INTERACCION_COLORS: Record<ResultadoInteraccionEnum, string> = {
+  EXITOSO: '#10B981', // Verde
+  SIN_RESPUESTA: '#6B7280', // Gris
+  REAGENDAR: '#F59E0B', // Amarillo
+  NO_INTERESADO: '#EF4444', // Rojo
+  INTERESADO: '#3B82F6' // Azul
 };

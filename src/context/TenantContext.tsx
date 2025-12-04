@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import type { Empresa, Sucursal } from '../types';
 import { authApi } from '../api/authApi';
 import { setAuthToken } from '../api/config';
+import { sucursalService } from '../services/sucursalService';
 
 interface TenantContextType {
   empresaId: number | null;
@@ -13,6 +14,11 @@ interface TenantContextType {
   setSucursalActual: (sucursal: Sucursal | null) => void;
   cambiarTenant: (empresaId: number, sucursalId?: number) => Promise<void>;
   loading: boolean;
+  // Nuevos campos para filtrado temporal
+  sucursalFiltro: number | null;
+  setSucursalFiltro: (id: number | null) => void;
+  sucursales: Sucursal[];
+  canSelectSucursal: boolean;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -37,6 +43,31 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [empresaActual, setEmpresaActual] = useState<Empresa | null>(null);
   const [sucursalActual, setSucursalActual] = useState<Sucursal | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Nuevos estados para filtrado temporal
+  const [sucursalFiltro, setSucursalFiltro] = useState<number | null>(sucursalId);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+
+  // Determinar si el usuario puede seleccionar diferentes sucursales
+  const canSelectSucursal = useMemo(() => {
+    return esSuperAdmin === true;
+  }, [esSuperAdmin]);
+
+  // Cargar sucursales disponibles
+  useEffect(() => {
+    const loadSucursales = async () => {
+      if (empresaId && canSelectSucursal) {
+        try {
+          const data = await sucursalService.getByEmpresa(empresaId);
+          setSucursales(data);
+        } catch (err) {
+          console.error('Error al cargar sucursales:', err);
+        }
+      }
+    };
+
+    loadSucursales();
+  }, [empresaId, canSelectSucursal]);
 
   useEffect(() => {
     // Estados ya inicializados desde localStorage
@@ -101,7 +132,12 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setEmpresaActual,
       setSucursalActual,
       cambiarTenant,
-      loading
+      loading,
+      // Nuevos valores para filtrado temporal
+      sucursalFiltro,
+      setSucursalFiltro,
+      sucursales,
+      canSelectSucursal
     }}>
       {children}
     </TenantContext.Provider>

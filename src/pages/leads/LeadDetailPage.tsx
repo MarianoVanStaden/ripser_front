@@ -27,9 +27,11 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
 import { EstadoLeadEnum, PROVINCIA_LABELS } from '../../types/lead.types';
-import type { LeadDTO, RecordatorioLeadDTO } from '../../types/lead.types';
+import type { LeadDTO, InteraccionLeadDTO } from '../../types/lead.types';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
+import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
+import { InteraccionesTimeline } from '../../components/leads/InteraccionesTimeline';
 
 export const LeadDetailPage = () => {
   const navigate = useNavigate();
@@ -38,6 +40,7 @@ export const LeadDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lead, setLead] = useState<LeadDTO | null>(null);
+  const [interacciones, setInteracciones] = useState<InteraccionLeadDTO[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
@@ -58,6 +61,15 @@ export const LeadDetailPage = () => {
       } catch (err) {
         console.error('Error al cargar recordatorios:', err);
         data.recordatorios = [];
+      }
+
+      // Cargar interacciones del lead
+      try {
+        const interaccionesData = await leadApi.getInteracciones(leadId);
+        setInteracciones(interaccionesData);
+      } catch (err) {
+        console.error('Error al cargar interacciones:', err);
+        setInteracciones([]);
       }
       
       setLead(data);
@@ -380,11 +392,36 @@ export const LeadDetailPage = () => {
 
         {/* Columna Derecha - Timeline y Recordatorios */}
         <Grid item xs={12} md={6}>
+          {/* Próximo Recordatorio Pendiente */}
+          {lead.recordatorios && lead.recordatorios.length > 0 && (() => {
+            // Filtrar solo recordatorios pendientes (no enviados)
+            const recordatoriosPendientes = lead.recordatorios
+              .filter(r => !r.enviado)
+              .sort((a, b) => new Date(a.fechaRecordatorio).getTime() - new Date(b.fechaRecordatorio).getTime());
+            
+            const proximoRecordatorio = recordatoriosPendientes[0] || null;
+            
+            if (proximoRecordatorio) {
+              return (
+                <Box sx={{ mb: 3 }}>
+                  <ProximoRecordatorio 
+                    leadId={lead.id!} 
+                    recordatorio={proximoRecordatorio}
+                    onRecordatorioEnviado={() => {
+                      if (id) loadLead(parseInt(id));
+                    }}
+                  />
+                </Box>
+              );
+            }
+            return null;
+          })()}
+
           {/* Recordatorios */}
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                📅 Recordatorios
+                📅 Todos los Recordatorios
               </Typography>
               <Divider sx={{ my: 2 }} />
 
@@ -442,6 +479,17 @@ export const LeadDetailPage = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Interacciones Timeline */}
+          <Box sx={{ mt: 3 }}>
+            <InteraccionesTimeline
+              leadId={lead.id!}
+              interacciones={interacciones}
+              onInteraccionesChange={() => {
+                if (id) loadLead(parseInt(id));
+              }}
+            />
+          </Box>
 
           {/* Timeline de Estados */}
           <Card sx={{ mt: 3 }}>

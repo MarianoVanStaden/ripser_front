@@ -4,6 +4,7 @@ import type {
   ConversionLeadRequest,
   ConversionLeadResponse,
   EstadoLeadEnum,
+  CanalEnum,
   InteraccionLeadDTO,
   RecordatorioLeadDTO,
   PrioridadLeadEnum
@@ -12,9 +13,26 @@ import type {
 const BASE_PATH = '/api/leads';
 
 export const leadApi = {
-  // Listar todos los leads
-  getAll: async (): Promise<LeadDTO[]> => {
-    const response = await api.get<LeadDTO[]>(BASE_PATH);
+  // Listar todos los leads con filtros opcionales
+  getAll: async (params?: {
+    sucursalId?: number | null;
+    estado?: EstadoLeadEnum;
+    canal?: CanalEnum;
+  }): Promise<LeadDTO[]> => {
+    const queryParams = new URLSearchParams();
+
+    if (params?.sucursalId !== undefined && params.sucursalId !== null) {
+      queryParams.append('sucursalId', params.sucursalId.toString());
+    }
+    if (params?.estado) {
+      queryParams.append('estado', params.estado);
+    }
+    if (params?.canal) {
+      queryParams.append('canal', params.canal);
+    }
+
+    const url = `${BASE_PATH}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const response = await api.get<LeadDTO[]>(url);
     return response.data;
   },
 
@@ -131,6 +149,14 @@ export const leadApi = {
   // Eliminar recordatorio
   deleteRecordatorio: async (leadId: number, recordatorioId: number): Promise<void> => {
     await api.delete(`${BASE_PATH}/${leadId}/recordatorios/${recordatorioId}`);
+  },
+
+  // Marcar recordatorio como enviado
+  marcarRecordatorioEnviado: async (leadId: number, recordatorioId: number): Promise<RecordatorioLeadDTO> => {
+    const response = await api.patch<RecordatorioLeadDTO>(
+      `${BASE_PATH}/${leadId}/recordatorios/${recordatorioId}/marcar-enviado`
+    );
+    return response.data;
   },
 
   // ========== ESTADÍSTICAS ==========

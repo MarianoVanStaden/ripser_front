@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Drawer, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
-  Toolbar, 
-  Divider, 
-  Box, 
-  Typography, 
+import {
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  Divider,
+  Box,
+  Typography,
   ListSubheader,
   Tooltip,
   IconButton,
@@ -19,7 +19,10 @@ import {
   DialogActions,
   Button,
   Chip,
-  Avatar
+  Avatar,
+  FormControl,
+  Select,
+  MenuItem
 } from '@mui/material';
 import './Sidebar.css';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -42,6 +45,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import type { Modulo } from '../../types';
 
 const drawerWidth = 240;
@@ -179,6 +183,7 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { tienePermiso } = usePermisos();
   const { user, esSuperAdmin, logout } = useAuth();
+  const { sucursalFiltro, setSucursalFiltro, sucursales, canSelectSucursal } = useTenant();
   const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
 
   // Filtrar las secciones según los permisos del usuario
@@ -272,7 +277,81 @@ const Sidebar: React.FC = () => {
           </Box>
         </Box>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-        
+
+        {/* Selector de Sucursal (solo para super admins) */}
+        {canSelectSucursal && sucursales.length > 0 && (
+          <>
+            <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.1)' }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'rgba(255,255,255,0.7)',
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  mb: 1,
+                  display: 'block'
+                }}
+              >
+                FILTRAR POR SUCURSAL
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={sucursalFiltro || ''}
+                  onChange={(e) => setSucursalFiltro(e.target.value ? Number(e.target.value) : null)}
+                  displayEmpty
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.05)',
+                    color: '#fff',
+                    fontSize: '0.875rem',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255,255,255,0.2)',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#00B8A9',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#00B8A9',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: 'rgba(255,255,255,0.7)',
+                    },
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#2C3E50',
+                        '& .MuiMenuItem-root': {
+                          color: '#fff',
+                          fontSize: '0.875rem',
+                          '&:hover': {
+                            bgcolor: 'rgba(0,184,169,0.15)',
+                          },
+                          '&.Mui-selected': {
+                            bgcolor: 'rgba(0,184,169,0.25)',
+                            '&:hover': {
+                              bgcolor: 'rgba(0,184,169,0.35)',
+                            },
+                          },
+                        },
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="">
+                    <em>Todas las sucursales</em>
+                  </MenuItem>
+                  {sucursales.map((sucursal) => (
+                    <MenuItem key={sucursal.id} value={sucursal.id}>
+                      {sucursal.nombre} {sucursal.esPrincipal && '⭐'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+          </>
+        )}
+
         {/* Scrollable menu section */}
         <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <List>

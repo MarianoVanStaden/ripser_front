@@ -30,9 +30,12 @@ import type { LeadDTO, LeadFilterState } from '../../types/lead.types';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { LeadFilters } from '../../components/leads/LeadFilters';
+import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
+import { useTenant } from '../../context/TenantContext';
 
 export const LeadsPage = () => {
   const navigate = useNavigate();
+  const { sucursalFiltro } = useTenant();
   const [leads, setLeads] = useState<LeadDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,17 +46,34 @@ export const LeadsPage = () => {
     busqueda: ''
   });
 
-  // Cargar leads al montar el componente
+  // Cargar leads al montar el componente y cuando cambia la sucursal
   useEffect(() => {
     loadLeads();
-  }, []);
+  }, [sucursalFiltro]);
 
   const loadLeads = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await leadApi.getAll();
-      setLeads(data);
+      // Pasar sucursalFiltro al API
+      const data = await leadApi.getAll({
+        sucursalId: sucursalFiltro
+      });
+      
+      // Cargar recordatorios para cada lead
+      const leadsConRecordatorios = await Promise.all(
+        data.map(async (lead) => {
+          try {
+            const recordatorios = await leadApi.getRecordatorios(lead.id!);
+            return { ...lead, recordatorios };
+          } catch (err) {
+            console.error(`Error al cargar recordatorios del lead ${lead.id}:`, err);
+            return { ...lead, recordatorios: [] };
+          }
+        })
+      );
+      
+      setLeads(leadsConRecordatorios);
     } catch (err) {
       console.error('Error al cargar leads:', err);
       setError('Error al cargar los leads. Por favor, intente nuevamente.');
@@ -164,6 +184,7 @@ export const LeadsPage = () => {
               <TableCell><strong>Canal</strong></TableCell>
               <TableCell><strong>Estado</strong></TableCell>
               <TableCell><strong>Equipo Interesado</strong></TableCell>
+              <TableCell align="center"><strong>Recordatorio</strong></TableCell>
               <TableCell align="center"><strong>Días</strong></TableCell>
               <TableCell align="center"><strong>Acciones</strong></TableCell>
             </TableRow>
@@ -171,7 +192,7 @@ export const LeadsPage = () => {
           <TableBody>
             {filteredLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                   <Typography variant="body1" color="text.secondary">
                     No se encontraron leads con los filtros seleccionados
                   </Typography>
@@ -237,6 +258,9 @@ export const LeadsPage = () => {
                       </Box>
                     )}
                     {!lead.productoInteresNombre && !lead.recetaInteresNombre && !lead.equipoFabricadoInteresNombre && (lead.equipoInteresadoNombre || '-')}
+                  </TableCell>
+                  <TableCell align="center">
+                    <RecordatorioStatusBadge recordatorios={lead.recordatorios} />
                   </TableCell>
                   <TableCell align="center">
                     {lead.fechaPrimerContacto ? (() => {
