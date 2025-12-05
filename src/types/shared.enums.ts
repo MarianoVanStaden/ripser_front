@@ -36,7 +36,7 @@ export type ProvinciaEnum = typeof ProvinciaEnum[keyof typeof ProvinciaEnum];
  */
 export const PROVINCIA_LABELS: Record<ProvinciaEnum, string> = {
   BUENOS_AIRES: 'Buenos Aires',
-  CABA: 'Ciudad Autónoma de Buenos Aires',
+  CABA: 'CABA',
   CATAMARCA: 'Catamarca',
   CHACO: 'Chaco',
   CHUBUT: 'Chubut',

@@ -20,6 +20,7 @@ import {
   CuentaCorrientePage
 } from './components/Clientes';
 import { LeadsPage } from './pages/leads/LeadsPage';
+import { LeadsTablePage } from './pages/leads/LeadsTablePage';
 import { LeadFormPage } from './pages/leads/LeadFormPage';
 import { LeadDetailPage } from './pages/leads/LeadDetailPage';
 import { ConvertLeadPage } from './pages/leads/ConvertLeadPage';
@@ -154,6 +155,7 @@ function App() {
               <Route path="clientes/credito" element={<PrivateRoute><CreditoPersonalPage /></PrivateRoute>} />
               {/* LEADS Module */}
               <Route path="leads" element={<PrivateRoute><LeadsPage /></PrivateRoute>} />
+              <Route path="leads/table" element={<PrivateRoute><LeadsTablePage /></PrivateRoute>} />
               <Route path="leads/nuevo" element={<PrivateRoute><LeadFormPage /></PrivateRoute>} />
               <Route path="leads/:id" element={<PrivateRoute><LeadDetailPage /></PrivateRoute>} />
               <Route path="leads/:id/editar" element={<PrivateRoute><LeadFormPage /></PrivateRoute>} />

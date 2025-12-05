@@ -57,7 +57,7 @@ Se creó `PROVINCIA_LABELS` para mostrar nombres legibles al usuario:
 ```typescript
 export const PROVINCIA_LABELS: Record<ProvinciaEnum, string> = {
   BUENOS_AIRES: 'Buenos Aires',
-  CABA: 'Ciudad Autónoma de Buenos Aires',
+  CABA: 'CABA',
   CATAMARCA: 'Catamarca',
   // ... resto de provincias
   RIO_NEGRO: 'Río Negro',

@@ -88,6 +88,7 @@ const navigation: NavigationSection[] = [
     items: [
       { text: 'Gestión Clientes', icon: <PeopleIcon />, path: '/clientes/gestion' },
       { text: 'Gestión Leads', icon: <PeopleIcon />, path: '/leads' },
+      { text: 'Gestión Leads 2', icon: <BarChartIcon />, path: '/leads/table' },
       { text: 'Carpeta Cliente', icon: <PeopleIcon />, path: '/clientes/carpeta' },
       { text: 'Agenda Visitas', icon: <PeopleIcon />, path: '/clientes/agenda' },
       { text: 'Cuenta Corriente', icon: <PeopleIcon />, path: '/clientes/cuenta-corriente' },
