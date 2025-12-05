@@ -31,15 +31,16 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
-import { EstadoLeadEnum, PROVINCIA_LABELS, ESTADO_LABELS } from '../../types/lead.types';
+import { EstadoLeadEnum, PrioridadLeadEnum, PROVINCIA_LABELS, ESTADO_LABELS, PRIORIDAD_LABELS } from '../../types/lead.types';
 import type { LeadDTO } from '../../types/lead.types';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
+import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
 import { useTenant } from '../../context/TenantContext';
 
 type Order = 'asc' | 'desc';
-type OrderBy = 'nombre' | 'telefono' | 'provincia' | 'canal' | 'estadoLead' | 'dias';
+type OrderBy = 'nombre' | 'telefono' | 'provincia' | 'canal' | 'estadoLead' | 'prioridad' | 'dias' | 'fechaPrimerContacto' | 'fechaUltimoContacto';
 
 export const LeadsTablePage = () => {
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ export const LeadsTablePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstados, setSelectedEstados] = useState<EstadoLeadEnum[]>([]);
+  const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadLeadEnum[]>([]);
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('dias');
 
@@ -106,6 +108,28 @@ export const LeadsTablePage = () => {
            lead.estadoLead !== EstadoLeadEnum.DESCARTADO;
   };
 
+  const handleUpdatePriority = async (leadId: number, newPriority: any) => {
+    try {
+      // Encontrar el lead actual
+      const leadActual = leads.find(l => l.id === leadId);
+      if (!leadActual) {
+        throw new Error('Lead no encontrado');
+      }
+
+      // Enviar el lead completo con la prioridad actualizada
+      const leadActualizado = { ...leadActual, prioridad: newPriority };
+      await leadApi.update(leadId, leadActualizado);
+
+      // Actualizar el lead en la lista local
+      setLeads(leads.map(lead =>
+        lead.id === leadId ? { ...lead, prioridad: newPriority } : lead
+      ));
+    } catch (err) {
+      console.error('Error al actualizar prioridad:', err);
+      alert('Error al actualizar la prioridad del lead');
+    }
+  };
+
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -117,6 +141,14 @@ export const LeadsTablePage = () => {
       prev.includes(estado)
         ? prev.filter(e => e !== estado)
         : [...prev, estado]
+    );
+  };
+
+  const togglePrioridad = (prioridad: PrioridadLeadEnum) => {
+    setSelectedPrioridades(prev =>
+      prev.includes(prioridad)
+        ? prev.filter(p => p !== prioridad)
+        : [...prev, prioridad]
     );
   };
 
@@ -154,6 +186,11 @@ export const LeadsTablePage = () => {
         if (!selectedEstados.includes(lead.estadoLead)) return false;
       }
 
+      // Filtro por prioridades
+      if (selectedPrioridades.length > 0) {
+        if (!lead.prioridad || !selectedPrioridades.includes(lead.prioridad)) return false;
+      }
+
       return true;
     });
 
@@ -183,9 +220,23 @@ export const LeadsTablePage = () => {
           aValue = a.estadoLead;
           bValue = b.estadoLead;
           break;
+        case 'prioridad':
+          // Ordenar por prioridad: HOT > WARM > COLD
+          const prioridadOrder = { HOT: 1, WARM: 2, COLD: 3 };
+          aValue = a.prioridad ? prioridadOrder[a.prioridad] : 999;
+          bValue = b.prioridad ? prioridadOrder[b.prioridad] : 999;
+          break;
         case 'dias':
           aValue = calcularDias(a.fechaPrimerContacto);
           bValue = calcularDias(b.fechaPrimerContacto);
+          break;
+        case 'fechaPrimerContacto':
+          aValue = a.fechaPrimerContacto || '';
+          bValue = b.fechaPrimerContacto || '';
+          break;
+        case 'fechaUltimoContacto':
+          aValue = a.fechaUltimoContacto || '';
+          bValue = b.fechaUltimoContacto || '';
           break;
         default:
           return 0;
@@ -197,7 +248,7 @@ export const LeadsTablePage = () => {
     });
 
     return filtered;
-  }, [leads, searchTerm, selectedEstados, order, orderBy]);
+  }, [leads, searchTerm, selectedEstados, selectedPrioridades, order, orderBy]);
 
   // Obtener fecha de creación normalizada (solo fecha, sin hora)
   const getFechaCreacion = (lead: LeadDTO): string => {
@@ -331,6 +382,25 @@ export const LeadsTablePage = () => {
               ))}
             </Stack>
           </Box>
+
+          {/* Chips de filtro por prioridad */}
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Filtrar por prioridad:
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {[PrioridadLeadEnum.HOT, PrioridadLeadEnum.WARM, PrioridadLeadEnum.COLD].map((prioridad) => (
+                <Chip
+                  key={prioridad}
+                  label={PRIORIDAD_LABELS[prioridad]}
+                  size="small"
+                  onClick={() => togglePrioridad(prioridad)}
+                  color={selectedPrioridades.includes(prioridad) ? 'primary' : 'default'}
+                  variant={selectedPrioridades.includes(prioridad) ? 'filled' : 'outlined'}
+                />
+              ))}
+            </Stack>
+          </Box>
         </Stack>
       </Paper>
 
@@ -384,10 +454,35 @@ export const LeadsTablePage = () => {
                   Estado
                 </TableSortLabel>
               </TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
+                <TableSortLabel
+                  active={orderBy === 'prioridad'}
+                  direction={orderBy === 'prioridad' ? order : 'asc'}
+                  onClick={() => handleRequestSort('prioridad')}
+                >
+                  Prioridad
+                </TableSortLabel>
+              </TableCell>
               <TableCell sx={{ fontWeight: 'bold', py: 1 }}>Interés</TableCell>
               <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>Recordatorio</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>1er Contacto</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>Últ. Contacto</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
+                <TableSortLabel
+                  active={orderBy === 'fechaPrimerContacto'}
+                  direction={orderBy === 'fechaPrimerContacto' ? order : 'asc'}
+                  onClick={() => handleRequestSort('fechaPrimerContacto')}
+                >
+                  1er Contacto
+                </TableSortLabel>
+              </TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
+                <TableSortLabel
+                  active={orderBy === 'fechaUltimoContacto'}
+                  direction={orderBy === 'fechaUltimoContacto' ? order : 'asc'}
+                  onClick={() => handleRequestSort('fechaUltimoContacto')}
+                >
+                  Últ. Contacto
+                </TableSortLabel>
+              </TableCell>
               <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
                 <TableSortLabel
                   active={orderBy === 'dias'}
@@ -403,7 +498,7 @@ export const LeadsTablePage = () => {
           <TableBody>
             {processedLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="text.secondary">
                     No se encontraron leads con los filtros seleccionados
                   </Typography>
@@ -438,6 +533,13 @@ export const LeadsTablePage = () => {
                   </TableCell>
                   <TableCell sx={{ py: 0.75 }}>
                     <LeadStatusBadge status={lead.estadoLead} />
+                  </TableCell>
+                  <TableCell align="center" sx={{ py: 0.75 }}>
+                    <PriorityQuickEdit
+                      leadId={lead.id!}
+                      currentPriority={lead.prioridad}
+                      onUpdate={handleUpdatePriority}
+                    />
                   </TableCell>
                   <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 280 }}>
                     {lead.productoInteresNombre ? (
