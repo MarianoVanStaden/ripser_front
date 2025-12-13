@@ -32,6 +32,7 @@ import {
   InputLabel,
   Select,
   TablePagination,
+  Autocomplete,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -44,12 +45,12 @@ import {
   CreditCard as CreditCardIcon,
   AccountBalance as BankIcon,
 } from "@mui/icons-material";
-import { clienteApi, usuarioApi, productApi } from "../../api/services";
+import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento, ColorEquipo, MedidaEquipo } from "../../types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento, ColorEquipo, MedidaEquipo, Lead } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import SuccessDialog from "../common/SuccessDialog";
@@ -90,6 +91,7 @@ interface DetalleForm {
 
 interface FormData {
   clienteId: string;
+  leadId: string;
   usuarioId: string;
   fechaEmision: string;
   observaciones: string;
@@ -99,6 +101,7 @@ interface FormData {
 
 const initialFormData: FormData = {
   clienteId: "",
+  leadId: "",
   usuarioId: "",
   fechaEmision: new Date().toISOString().split("T")[0],
   observaciones: "",
@@ -149,6 +152,7 @@ const PresupuestosPage: React.FC = () => {
   // Main data states
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
@@ -219,10 +223,15 @@ const PresupuestosPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [clientesData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
+      const [clientesData, leadsData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
         clienteApi.getAll().catch((err) => {
           console.error("Error fetching clientes:", err);
           setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
+          return [];
+        }),
+        leadApi.getAll().catch((err) => {
+          console.error("Error fetching leads:", err);
+          setError("Error al cargar leads: " + (err.response?.data?.message || err.message));
           return [];
         }),
         usuarioApi.getAll().catch((err) => {
@@ -252,9 +261,10 @@ const PresupuestosPage: React.FC = () => {
         }),
       ]);
 
-      console.log("Fetched data:", { clientesData, usuariosData, presupuestosData, productosData, recetasData });
+      console.log("Fetched data:", { clientesData, leadsData, usuariosData, presupuestosData, productosData, recetasData });
       console.log("Recetas disponibles para venta:", recetasData); // Debug: Check loaded recetas
       setClientes(Array.isArray(clientesData) ? clientesData : []);
+      setLeads(Array.isArray(leadsData) ? leadsData : []);
       setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
       setRecetas(Array.isArray(recetasData) ? recetasData : []);
 
@@ -576,7 +586,8 @@ const PresupuestosPage: React.FC = () => {
     }
 
     const payload: any = {
-      clienteId: Number(formData.clienteId),
+      ...(formData.clienteId ? { clienteId: Number(formData.clienteId) } : {}),
+      ...(formData.leadId ? { leadId: Number(formData.leadId) } : {}),
       usuarioId: Number(formData.usuarioId) || (user?.id ?? 0),
       observaciones: formData.observaciones,
       tipoIva: formData.tipoIva,
@@ -601,8 +612,8 @@ const PresupuestosPage: React.FC = () => {
     };
 
     try {
-      if (!formData.clienteId) {
-        setError("Debe seleccionar un cliente");
+      if (!formData.clienteId && !formData.leadId) {
+        setError("Debe seleccionar un cliente o lead");
         return;
       }
       if (detalles.length === 0) {
@@ -919,7 +930,7 @@ const PresupuestosPage: React.FC = () => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 100 }}>Número</TableCell>
-                  <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Cliente / Lead</TableCell>
                   <TableCell sx={{ minWidth: 120 }}>Fecha</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
                   <TableCell sx={{ minWidth: 120 }} align="right">Subtotal</TableCell>
@@ -937,7 +948,19 @@ const PresupuestosPage: React.FC = () => {
                   return (
                     <TableRow key={presupuesto.id}>
                       <TableCell>{presupuesto.numeroDocumento}</TableCell>
-                      <TableCell>{presupuesto.clienteNombre}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">
+                            {presupuesto.clienteNombre || presupuesto.leadNombre || '-'}
+                          </Typography>
+                          {presupuesto.clienteNombre && (
+                            <Chip label="Cliente" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
+                          )}
+                          {presupuesto.leadNombre && (
+                            <Chip label="Lead" size="small" color="warning" sx={{ height: 20, fontSize: '0.7rem' }} />
+                          )}
+                        </Box>
+                      </TableCell>
                       <TableCell>{new Date(presupuesto.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
                       <TableCell>
                         <Chip
@@ -1065,28 +1088,52 @@ const PresupuestosPage: React.FC = () => {
         <DialogContent sx={{ minHeight: { xs: "auto", sm: "500px" } }}>
           <Box sx={{ pt: 2 }}>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(auto-fit, minmax(280px, 1fr))" }, gap: 2 }}>
-              <TextField
+              <Autocomplete
                 fullWidth
-                select
-                label="Cliente"
-                value={formData.clienteId}
-                onChange={(e) => {
-                  setFormData({ ...formData, clienteId: e.target.value });
+                options={[
+                  ...clientes.map(c => ({ type: 'cliente' as const, id: c.id, nombre: c.nombre, apellido: c.apellido || '' })),
+                  ...leads.map(l => ({ type: 'lead' as const, id: l.id, nombre: l.nombre, apellido: l.apellido || '' }))
+                ]}
+                getOptionKey={(option) => `${option.type}-${option.id}`}
+                getOptionLabel={(option) => {
+                  const label = option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre;
+                  return `${label} (${option.type === 'cliente' ? 'Cliente' : 'Lead'})`;
+                }}
+                value={
+                  formData.clienteId
+                    ? clientes.find(c => c.id.toString() === formData.clienteId)
+                      ? { type: 'cliente' as const, id: Number(formData.clienteId), nombre: clientes.find(c => c.id.toString() === formData.clienteId)!.nombre, apellido: clientes.find(c => c.id.toString() === formData.clienteId)!.apellido || '' }
+                      : null
+                    : formData.leadId
+                      ? leads.find(l => l.id.toString() === formData.leadId)
+                        ? { type: 'lead' as const, id: Number(formData.leadId), nombre: leads.find(l => l.id.toString() === formData.leadId)!.nombre, apellido: leads.find(l => l.id.toString() === formData.leadId)!.apellido || '' }
+                        : null
+                      : null
+                }
+                onChange={(_, newValue) => {
+                  if (newValue) {
+                    if (newValue.type === 'cliente') {
+                      setFormData({ ...formData, clienteId: newValue.id.toString(), leadId: '' });
+                    } else {
+                      setFormData({ ...formData, leadId: newValue.id.toString(), clienteId: '' });
+                    }
+                  } else {
+                    setFormData({ ...formData, clienteId: '', leadId: '' });
+                  }
                   setHasUnsavedChanges(true);
                 }}
-                margin="normal"
-                required
                 disabled={readOnly || !!editingPresupuesto}
-                error={!formData.clienteId && hasUnsavedChanges}
-                helperText={!formData.clienteId && hasUnsavedChanges ? "Seleccione un cliente" : ""}
-              >
-                <MenuItem value="">Seleccionar cliente</MenuItem>
-                {clientes.map((cliente) => (
-                  <MenuItem key={cliente.id} value={cliente.id.toString()}>
-                    {cliente.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Cliente / Lead"
+                    margin="normal"
+                    required
+                    error={!formData.clienteId && !formData.leadId && hasUnsavedChanges}
+                    helperText={!formData.clienteId && !formData.leadId && hasUnsavedChanges ? "Seleccione un cliente o lead" : ""}
+                  />
+                )}
+              />
 
               {editingPresupuesto && usuarios.length > 0 && (
                 <TextField
@@ -1204,7 +1251,6 @@ const PresupuestosPage: React.FC = () => {
                     <TableCell sx={{ minWidth: 220 }}>Producto/Equipo</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Color</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Medida</TableCell>
-                    <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Cantidad</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Precio Unit.</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Subtotal</TableCell>
@@ -1247,7 +1293,7 @@ const PresupuestosPage: React.FC = () => {
                               ) : (
                                 productos.map((producto) => (
                                   <MenuItem key={producto.id} value={producto.id.toString()}>
-                                    {producto.nombre} - ${producto.precio?.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                                    {producto.nombre}
                                   </MenuItem>
                                 ))
                               )}
@@ -1268,7 +1314,7 @@ const PresupuestosPage: React.FC = () => {
                               ) : (
                                 recetas.map((receta) => (
                                   <MenuItem key={receta.id} value={receta.id.toString()}>
-                                    {receta.nombre} - {receta.modelo} ({receta.tipoEquipo}) - ${receta.precioVenta?.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                                    {receta.modelo}
                                   </MenuItem>
                                 ))
                               )}
@@ -1326,16 +1372,6 @@ const PresupuestosPage: React.FC = () => {
                               ))}
                             </TextField>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            fullWidth
-                            value={detalle.descripcion}
-                            onChange={(e) => updateDetalle(index, "descripcion", e.target.value)}
-                            disabled={readOnly || !!editingPresupuesto}
-                            error={!detalle.descripcion.trim() && hasUnsavedChanges}
-                          />
                         </TableCell>
                         <TableCell>
                           <TextField
@@ -1475,7 +1511,7 @@ const PresupuestosPage: React.FC = () => {
             <Button
               variant="contained"
               onClick={handleSavePresupuesto}
-              disabled={formLoading || !formData.clienteId || detalles.length === 0}
+              disabled={formLoading || (!formData.clienteId && !formData.leadId) || detalles.length === 0}
               aria-label={editingPresupuesto ? "Actualizar presupuesto" : "Crear presupuesto"}
             >
               {formLoading ? <CircularProgress size={24} /> : editingPresupuesto ? "Actualizar" : "Crear"}
@@ -1557,7 +1593,17 @@ const PresupuestosPage: React.FC = () => {
           {selectedPresupuesto && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary">Presupuesto: {selectedPresupuesto.numeroDocumento}</Typography>
-              <Typography variant="body2" color="text.secondary">Cliente: {selectedPresupuesto.clienteNombre}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedPresupuesto.clienteNombre ? 'Cliente:' : 'Lead:'} {selectedPresupuesto.clienteNombre || selectedPresupuesto.leadNombre}
+                </Typography>
+                {selectedPresupuesto.clienteNombre && (
+                  <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />
+                )}
+                {selectedPresupuesto.leadNombre && (
+                  <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
+                )}
+              </Box>
               <Typography variant="subtitle1" sx={{ mt: 1 }}>Subtotal: ${selectedPresupuesto.subtotal?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
             </Box>
           )}
@@ -1624,7 +1670,10 @@ const PresupuestosPage: React.FC = () => {
         message="El presupuesto ha sido generado correctamente"
         details={createdPresupuesto ? [
           { label: 'Número de Documento', value: createdPresupuesto.numeroDocumento },
-          { label: 'Cliente', value: createdPresupuesto.clienteNombre || '-' },
+          { 
+            label: createdPresupuesto.clienteNombre ? 'Cliente' : 'Lead', 
+            value: createdPresupuesto.clienteNombre || createdPresupuesto.leadNombre || '-' 
+          },
           { label: 'Total', value: `$${createdPresupuesto.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
         ] : []}
         actions={[

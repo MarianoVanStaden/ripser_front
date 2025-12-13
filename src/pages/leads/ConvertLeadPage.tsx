@@ -10,7 +10,8 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  Chip
+  Chip,
+  Autocomplete
 } from '@mui/material';
 import {
   SwapHoriz as ConvertIcon,
@@ -19,7 +20,10 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
+import { productApi } from '../../api/services';
+import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import { PROVINCIA_LABELS } from '../../types/lead.types';
+import type { Producto } from '../../types';
 import type {
   LeadDTO,
   ConversionLeadRequest,
@@ -39,6 +43,9 @@ export const ConvertLeadPage = () => {
   const [success, setSuccess] = useState<ConversionLeadResponse | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [lead, setLead] = useState<LeadDTO | null>(null);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [recetas, setRecetas] = useState<any[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<{type: 'producto' | 'receta', id: number, nombre: string, precio?: number} | null>(null);
 
   const [conversionData, setConversionData] = useState<ConversionLeadRequest>({
     productoCompradoId: undefined,
@@ -57,15 +64,52 @@ export const ConvertLeadPage = () => {
   const loadLead = async (leadId: number) => {
     try {
       setLoading(true);
-      const data = await leadApi.getById(leadId);
-      setLead(data);
+      const [leadData, productosData, recetasData] = await Promise.all([
+        leadApi.getById(leadId),
+        productApi.getAll().catch(() => []),
+        recetaFabricacionApi.findAllActive().catch(() => [])
+      ]);
+      
+      setLead(leadData);
+      setProductos(productosData);
+      setRecetas(recetasData);
 
-      // Pre-cargar algunos datos si están disponibles
-      // Prioridad: productoInteresId > recetaInteresId > equipoInteresadoId (legacy)
-      setConversionData((prev) => ({
-        ...prev,
-        productoCompradoId: data.productoInteresId || data.recetaInteresId || data.equipoFabricadoInteresId || data.equipoInteresadoId
-      }));
+      // Pre-seleccionar producto/receta si está disponible
+      if (leadData.productoInteresId) {
+        const producto = productosData.find(p => p.id === leadData.productoInteresId);
+        if (producto) {
+          const selected = { type: 'producto' as const, id: producto.id, nombre: producto.nombre, precio: producto.precio };
+          setSelectedProduct(selected);
+          
+          // Calcular monto automáticamente
+          const cantidad = leadData.cantidadProductoInteres || 1;
+          const monto = (producto.precio || 0) * cantidad;
+          setConversionData((prev) => ({
+            ...prev,
+            productoCompradoId: producto.id,
+            montoConversion: monto
+          }));
+        }
+      } else if (leadData.recetaInteresId) {
+        // Cargar receta completa para obtener el precio
+        try {
+          const recetaCompleta = await recetaFabricacionApi.findById(leadData.recetaInteresId);
+          const precio = recetaCompleta.precioVenta || 0;
+          const selected = { type: 'receta' as const, id: recetaCompleta.id, nombre: recetaCompleta.nombre, precio };
+          setSelectedProduct(selected);
+          
+          // Calcular monto automáticamente
+          const cantidad = leadData.cantidadRecetaInteres || 1;
+          const monto = precio * cantidad;
+          setConversionData((prev) => ({
+            ...prev,
+            productoCompradoId: recetaCompleta.id,
+            montoConversion: monto
+          }));
+        } catch (err) {
+          console.error('Error cargando receta completa:', err);
+        }
+      }
     } catch (err) {
       console.error('Error al cargar lead:', err);
       setError('Error al cargar el lead');
@@ -106,7 +150,13 @@ export const ConvertLeadPage = () => {
       setConverting(true);
       setError(null);
 
-      const result = await leadApi.convertir(parseInt(id), conversionData);
+      // Si productoCompradoId es undefined o null, eliminarlo del payload
+      const payload = {
+        ...conversionData,
+        productoCompradoId: conversionData.productoCompradoId || undefined
+      };
+
+      const result = await leadApi.convertir(parseInt(id), payload);
       setSuccess(result);
     } catch (err: any) {
       console.error('Error al convertir lead:', err);
@@ -115,7 +165,19 @@ export const ConvertLeadPage = () => {
       if (err.response?.status === 400) {
         setError(err.response.data.message || 'El lead no puede ser convertido');
       } else if (err.response?.status === 404) {
-        setError('Lead no encontrado');
+        const errorMsg = err.response.data?.message || 'Recurso no encontrado';
+        
+        // Si el error es por producto no encontrado, dar un mensaje más claro
+        if (errorMsg.includes('Producto no encontrado')) {
+          setError(
+            'El producto asociado al lead ya no existe en el sistema. ' +
+            'Por favor, deje el campo "Producto Comprado" vacío o seleccione otro producto.'
+          );
+          // Limpiar el productoCompradoId
+          setConversionData(prev => ({ ...prev, productoCompradoId: undefined }));
+        } else {
+          setError(errorMsg);
+        }
       } else {
         setError('Error al convertir el lead. Por favor, intente nuevamente.');
       }
@@ -209,10 +271,24 @@ export const ConvertLeadPage = () => {
                 )}
               </Grid>
 
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 4 }}>
+              <Alert severity="info" sx={{ mt: 3, mb: 2 }}>
+                <Typography variant="body2">
+                  <strong>✅ Actualización automática:</strong> Todos los presupuestos asociados a este lead 
+                  se han actualizado automáticamente al nuevo cliente.
+                </Typography>
+              </Alert>
+
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 4, flexWrap: 'wrap' }}>
                 <Button
                   variant="contained"
-                  onClick={() => navigate(`/clientes/${success.clienteId}`)}
+                  color="primary"
+                  onClick={() => navigate('/ventas/notas-pedido')}
+                >
+                  Ir a Notas de Pedido
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(`/clientes/detalle/${success.clienteId}`)}
                 >
                   Ver Perfil del Cliente
                 </Button>
@@ -405,30 +481,77 @@ export const ConvertLeadPage = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="ID Producto Comprado"
-                      value={conversionData.productoCompradoId || ''}
-                      onChange={handleChange('productoCompradoId')}
-                      helperText="ID del producto que compró"
+                  <Grid item xs={12}>
+                    <Autocomplete
+                      options={[
+                        ...productos.map(p => ({ type: 'producto' as const, id: p.id, nombre: p.nombre, precio: p.precio || 0 }))
+                      ]}
+                      getOptionLabel={(option) => `${option.nombre} - $${(option.precio || 0).toLocaleString('es-AR')}`}
+                      value={selectedProduct}
+                      isOptionEqualToValue={(option, value) => option.id === value.id && option.type === value.type}
+                      onChange={(_, newValue) => {
+                        setSelectedProduct(newValue);
+                        if (newValue) {
+                          // Calcular monto basado en cantidad del lead
+                          const cantidad = newValue.type === 'producto' 
+                            ? (lead?.cantidadProductoInteres || 1)
+                            : (lead?.cantidadRecetaInteres || lead?.cantidadEquipoInteres || 1);
+                          const monto = (newValue.precio || 0) * cantidad;
+                          
+                          setConversionData(prev => ({
+                            ...prev,
+                            productoCompradoId: newValue.id,
+                            montoConversion: monto
+                          }));
+                        } else {
+                          setConversionData(prev => ({
+                            ...prev,
+                            productoCompradoId: undefined,
+                            montoConversion: undefined
+                          }));
+                        }
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Producto/Equipo Comprado (Opcional)"
+                          helperText="Seleccione el producto o equipo que compró el cliente. El monto se calculará automáticamente."
+                        />
+                      )}
                     />
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      type="number"
-                      label="Monto de la Venta"
-                      value={conversionData.montoConversion || ''}
-                      onChange={handleChange('montoConversion')}
-                      error={Boolean(errors.montoConversion)}
-                      helperText={errors.montoConversion || 'Monto total de la venta'}
-                      InputProps={{
-                        startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>
-                      }}
-                    />
+                  <Grid item xs={12}>
+                    <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Resumen de Conversión:
+                      </Typography>
+                      {selectedProduct && (
+                        <>
+                          <Typography variant="body2">
+                            • Producto: <strong>{selectedProduct.nombre}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            • Precio unitario: <strong>${(selectedProduct.precio || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            • Cantidad: <strong>
+                              {selectedProduct.type === 'producto' 
+                                ? (lead?.cantidadProductoInteres || 1)
+                                : (lead?.cantidadRecetaInteres || lead?.cantidadEquipoInteres || 1)}
+                            </strong>
+                          </Typography>
+                          <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
+                            Monto Total: ${(conversionData.montoConversion || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </>
+                      )}
+                      {!selectedProduct && (
+                        <Typography variant="body2" color="text.secondary">
+                          Seleccione un producto para calcular el monto automáticamente.
+                        </Typography>
+                      )}
+                    </Box>
                   </Grid>
 
                   <Grid item xs={12}>

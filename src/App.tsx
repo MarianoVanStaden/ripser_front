@@ -133,7 +133,7 @@ function App() {
               <Route path="admin/sucursales" element={<PrivateRoute><SucursalesPage /></PrivateRoute>} />
               <Route path="admin/tenant-selector" element={<PrivateRoute><TenantSelector /></PrivateRoute>} />
               {/* VENTAS Module */}
-              <Route path="ventas/notasPedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
+              <Route path="ventas/notas-pedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
               <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
               {/* Financing routes (aliases to match sidebar paths) */}
               <Route path="ventas/opciones-financiamiento" element={<PrivateRoute><OpcionesFinanciamientoPage /></PrivateRoute>} />

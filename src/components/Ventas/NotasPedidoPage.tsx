@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -38,7 +39,7 @@ import {
   Receipt as ReceiptIcon,
   CheckCircle as CheckCircleIcon,
 } from "@mui/icons-material";
-import { documentoApi, clienteApi, opcionFinanciamientoApi } from "../../api/services";
+import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
 import type {
@@ -48,7 +49,8 @@ import type {
   DetalleDocumento,
   Cliente,
   OpcionFinanciamientoDTO,
-  RecetaFabricacionDTO
+  RecetaFabricacionDTO,
+  Lead
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import SuccessDialog from "../common/SuccessDialog";
@@ -70,6 +72,8 @@ const initialConvertForm: ConvertFormData = {
 };
 
 const NotasPedidoPage: React.FC = () => {
+  const navigate = useNavigate();
+  
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.APROBADO);
@@ -109,6 +113,9 @@ const NotasPedidoPage: React.FC = () => {
     message: '',
     severity: 'success'
   });
+  const [leadConversionDialogOpen, setLeadConversionDialogOpen] = useState(false);
+  const [leadToConvert, setLeadToConvert] = useState<DocumentoComercial | null>(null);
+  const [convertingLead, setConvertingLead] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -384,6 +391,52 @@ const NotasPedidoPage: React.FC = () => {
       return;
     }
 
+    // Check if presupuesto is from a lead
+    if (selectedPresupuesto?.leadId && !selectedPresupuesto?.clienteId) {
+      // Verificar si el lead ya fue convertido a cliente
+      try {
+        const lead = await leadApi.getById(selectedPresupuesto.leadId);
+        
+        if (lead.estadoLead === 'CONVERTIDO' && lead.clienteIdConvertido) {
+          // Lead ya convertido - mostrar opción de migrar presupuesto
+          setSnackbar({
+            open: true,
+            message: `Este lead ya fue convertido a cliente. Actualizando presupuesto al cliente ID ${lead.clienteIdConvertido}...`,
+            severity: 'info'
+          });
+          
+          // Intentar actualizar el presupuesto al cliente
+          try {
+            // Aquí deberíamos llamar a un endpoint del backend que actualice el presupuesto
+            // Como workaround temporal, mostramos mensaje y continuamos
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            setError(
+              `⚠️ IMPORTANTE: Este presupuesto está asociado al lead "${selectedPresupuesto.leadNombre}" que ya fue convertido a cliente.\n\n` +
+              `El backend debe actualizar automáticamente estos presupuestos durante la conversión del lead.\n\n` +
+              `Por favor, contacte al administrador del sistema para que implemente la migración automática de presupuestos en el endpoint de conversión de leads.\n\n` +
+              `Cliente ID: ${lead.clienteIdConvertido}`
+            );
+            setFormLoading(false);
+            return;
+          } catch (updateErr) {
+            console.error('Error actualizando presupuesto:', updateErr);
+          }
+        } else {
+          // Lead no convertido - mostrar diálogo de conversión
+          setLeadToConvert(selectedPresupuesto);
+          setLeadConversionDialogOpen(true);
+          return;
+        }
+      } catch (leadErr) {
+        console.error('Error verificando lead:', leadErr);
+        // Si no se puede verificar, mostrar diálogo normal
+        setLeadToConvert(selectedPresupuesto);
+        setLeadConversionDialogOpen(true);
+        return;
+      }
+    }
+
     try {
       setFormLoading(true);
       setError(null);
@@ -436,12 +489,25 @@ const NotasPedidoPage: React.FC = () => {
     } catch (err: any) {
       console.error("Error converting to nota de pedido:", err);
       let errorMessage = "Error al convertir el presupuesto";
-      if (err.response?.data?.message) {
+
+      // Check if error is due to lead conversion requirement
+      if (err.response?.data?.message && err.response.data.message.includes("lead")) {
+        errorMessage = "⚠️ No se puede convertir a Nota de Pedido: Este presupuesto está asociado a un lead.\n\n" +
+                      "Para continuar, primero debe convertir el lead a cliente.\n" +
+                      "Puede hacerlo desde la página de Leads.";
+      } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.message) {
         errorMessage = err.message;
       }
       setError(errorMessage);
+
+      // Also show error in snackbar for better visibility
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
     } finally {
       setFormLoading(false);
     }
@@ -826,8 +892,18 @@ const NotasPedidoPage: React.FC = () => {
               <MenuItem value="">Seleccionar presupuesto</MenuItem>
               {presupuestos.map((presupuesto) => (
                 <MenuItem key={presupuesto.id} value={presupuesto.id.toString()}>
-                  {presupuesto.numeroDocumento} - {presupuesto.clienteNombre} - 
-                  ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                    <Typography component="span" variant="body2">
+                      {presupuesto.numeroDocumento} - {presupuesto.clienteNombre || presupuesto.leadNombre} - 
+                      ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                    </Typography>
+                    {presupuesto.clienteNombre && (
+                      <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem', ml: 'auto' }} />
+                    )}
+                    {presupuesto.leadNombre && (
+                      <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem', ml: 'auto' }} />
+                    )}
+                  </Box>
                 </MenuItem>
               ))}
             </TextField>
@@ -837,9 +913,17 @@ const NotasPedidoPage: React.FC = () => {
                 <Typography variant="subtitle2" gutterBottom>
                   Detalles del Presupuesto
                 </Typography>
-                <Typography variant="body2">
-                  Cliente: {selectedPresupuesto.clienteNombre}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Typography variant="body2">
+                    {selectedPresupuesto.clienteNombre ? 'Cliente:' : 'Lead:'} {selectedPresupuesto.clienteNombre || selectedPresupuesto.leadNombre}
+                  </Typography>
+                  {selectedPresupuesto.clienteNombre && (
+                    <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />
+                  )}
+                  {selectedPresupuesto.leadNombre && (
+                    <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
+                  )}
+                </Box>
                 <Typography variant="body2">
                   Fecha: {new Date(selectedPresupuesto.fechaEmision).toLocaleDateString("es-AR")}
                 </Typography>
@@ -1114,6 +1198,92 @@ const NotasPedidoPage: React.FC = () => {
           { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
         ] : []}
       />
+
+      {/* Lead Conversion Dialog */}
+      <Dialog
+        open={leadConversionDialogOpen}
+        onClose={() => setLeadConversionDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          ⚠️ Conversión de Lead a Cliente Requerida
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Este presupuesto está asociado a un <strong>Lead</strong> y no puede convertirse a Nota de Pedido directamente.
+            </Alert>
+            
+            <Box sx={{ my: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="subtitle2" color="primary" gutterBottom>
+                Lead a convertir:
+              </Typography>
+              <Typography variant="body1">
+                <strong>{leadToConvert?.leadNombre}</strong>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                ID: {leadToConvert?.leadId}
+              </Typography>
+            </Box>
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Para continuar con la creación de la Nota de Pedido, primero debe convertir este lead a cliente 
+              completando toda su información (datos fiscales, dirección, etc.).
+            </Typography>
+
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2" gutterBottom>
+                <strong>📋 Pasos a seguir:</strong>
+              </Typography>
+              <Typography variant="body2" component="div">
+                <ol style={{ marginTop: 4, marginBottom: 0, paddingLeft: 20 }}>
+                  <li>Haga clic en "Ir a Leads" para abrir la página de gestión de leads</li>
+                  <li>Complete todos los datos del cliente (CUIT, dirección, condición fiscal, etc.)</li>
+                  <li>Confirme la conversión del lead a cliente</li>
+                  <li>Regrese a esta página y los presupuestos se actualizarán automáticamente</li>
+                </ol>
+              </Typography>
+            </Alert>
+
+            <Alert severity="success" sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                <strong>✅ Después de la conversión:</strong>
+              </Typography>
+              <Typography variant="body2" component="div">
+                <ul style={{ marginTop: 4, marginBottom: 0 }}>
+                  <li>El lead se convertirá en un cliente completo</li>
+                  <li>Todos los presupuestos asociados al lead se vincularán automáticamente al nuevo cliente</li>
+                  <li>Podrá crear notas de pedido y facturas normalmente</li>
+                </ul>
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setLeadConversionDialogOpen(false);
+              setLeadToConvert(null);
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              // Navigate directly to lead conversion page
+              navigate(`/leads/${leadToConvert?.leadId}/convertir`);
+              // Close dialog
+              setLeadConversionDialogOpen(false);
+              setLeadToConvert(null);
+            }}
+          >
+            Convertir Lead a Cliente
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar for equipment creation messages */}
       <Snackbar

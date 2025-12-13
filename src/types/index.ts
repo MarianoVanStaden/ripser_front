@@ -2052,8 +2052,10 @@ export interface DocumentoComercial {
   id: number;
   numeroDocumento: string;
   tipoDocumento: 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA' | 'NOTA_CREDITO';
-  clienteId: number;
-  clienteNombre: string;
+  clienteId?: number;
+  clienteNombre?: string;
+  leadId?: number;
+  leadNombre?: string;
   usuarioId: number;
   usuarioNombre: string;
   fechaEmision: string; // ISO string
@@ -2174,7 +2176,8 @@ export interface DetalleDocumentoDTO {
 }
 
 export interface CreatePresupuestoRequest {
-  clienteId: number;
+  clienteId?: number;
+  leadId?: number;
   usuarioId: number;
   detalles: DetalleDocumentoDTO[];
   observaciones?: string;

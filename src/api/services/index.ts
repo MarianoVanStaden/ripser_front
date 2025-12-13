@@ -26,3 +26,4 @@ export { sueldoApi } from "./sueldoApi";
 export { legajoApi } from "./legajoApi";
 export { parametroSistemaApi } from "./parametroSistemaApi";
 export { creditoClienteApi } from "./creditoClienteApi";
+export { leadApi } from "./leadApi";

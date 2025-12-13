@@ -766,15 +766,21 @@ const FacturacionPage = () => {
     } catch (err: any) {
       console.error('Error creando factura manual:', err);
       let errorMessage = 'Error desconocido al crear la factura';
-      
+
       if (err?.response?.data?.message) {
         errorMessage = err.response.data.message;
-        
+
+        // Detectar error de lead conversion
+        if (errorMessage.includes('lead')) {
+          errorMessage = '⚠️ No se puede crear Factura: El presupuesto está asociado a un lead.\n\n' +
+                        'Para continuar, primero debe convertir el lead a cliente.\n' +
+                        'Puede hacerlo desde la página de Leads.';
+        }
         // Detectar error de constraint de equipo único
-        if (errorMessage.includes('uk_equipo_unico') || 
-            errorMessage.includes('constraint') || 
+        else if (errorMessage.includes('uk_equipo_unico') ||
+            errorMessage.includes('constraint') ||
             errorMessage.includes('Duplicate entry') ||
-            errorMessage.includes('ya está asignado') || 
+            errorMessage.includes('ya está asignado') ||
             errorMessage.includes('already assigned')) {
           errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
                         'Uno o más equipos ya están asignados a esta u otra factura. ' +

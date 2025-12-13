@@ -26,7 +26,9 @@
       "Bash(./mvnw.cmd clean:*)",
       "Bash(cmd.exe /c \"dir /B\")",
       "Bash(cmd.exe /c \"taskkill /F /PID 23788\")",
-      "Bash(./mvnw.cmd spring-boot:run:*)"
+      "Bash(./mvnw.cmd spring-boot:run:*)",
+      "Bash(cmd.exe /c \"dir /B C:\\Users\\maria\\ripser_back\")",
+      "Bash(cmd.exe /c \"dir /B src\\types\")"
     ],
     "deny": [],
     "ask": []

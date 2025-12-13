@@ -12,8 +12,9 @@ import type {
 } from '../../types';
 
 // Narrow DTO for creating presupuesto in current backend
-type CreatePresupuestoPayload = {
-  clienteId: number;
+export type CreatePresupuestoPayload = {
+  clienteId?: number;
+  leadId?: number;
   usuarioId: number;
   tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
   observaciones?: string;
