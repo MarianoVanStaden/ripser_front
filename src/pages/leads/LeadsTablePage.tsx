@@ -118,14 +118,22 @@ export const LeadsTablePage = () => {
 
       // Enviar el lead completo con la prioridad actualizada
       const leadActualizado = { ...leadActual, prioridad: newPriority };
-      await leadApi.update(leadId, leadActualizado);
+      console.log('🔄 Actualizando prioridad del lead:', {
+        leadId,
+        prioridadAnterior: leadActual.prioridad,
+        prioridadNueva: newPriority,
+        leadActualizado
+      });
+
+      const resultado = await leadApi.update(leadId, leadActualizado);
+      console.log('✅ Respuesta del servidor:', resultado);
 
       // Actualizar el lead en la lista local
       setLeads(leads.map(lead =>
         lead.id === leadId ? { ...lead, prioridad: newPriority } : lead
       ));
     } catch (err) {
-      console.error('Error al actualizar prioridad:', err);
+      console.error('❌ Error al actualizar prioridad:', err);
       alert('Error al actualizar la prioridad del lead');
     }
   };
@@ -409,7 +417,7 @@ export const LeadsTablePage = () => {
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '12%', minWidth: 120 }}>
                 <TableSortLabel
                   active={orderBy === 'nombre'}
                   direction={orderBy === 'nombre' ? order : 'asc'}
@@ -418,7 +426,7 @@ export const LeadsTablePage = () => {
                   Nombre
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '8%', minWidth: 100 }}>
                 <TableSortLabel
                   active={orderBy === 'telefono'}
                   direction={orderBy === 'telefono' ? order : 'asc'}
@@ -427,16 +435,16 @@ export const LeadsTablePage = () => {
                   Teléfono
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '6%', minWidth: 80, display: { xs: 'none', lg: 'table-cell' } }}>
                 <TableSortLabel
                   active={orderBy === 'provincia'}
                   direction={orderBy === 'provincia' ? order : 'asc'}
                   onClick={() => handleRequestSort('provincia')}
                 >
-                  Provincia
+                  Prov.
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '6%', minWidth: 70, display: { xs: 'none', md: 'table-cell' } }}>
                 <TableSortLabel
                   active={orderBy === 'canal'}
                   direction={orderBy === 'canal' ? order : 'asc'}
@@ -445,7 +453,7 @@ export const LeadsTablePage = () => {
                   Canal
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '8%', minWidth: 90 }}>
                 <TableSortLabel
                   active={orderBy === 'estadoLead'}
                   direction={orderBy === 'estadoLead' ? order : 'asc'}
@@ -454,36 +462,36 @@ export const LeadsTablePage = () => {
                   Estado
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '6%', minWidth: 70 }}>
                 <TableSortLabel
                   active={orderBy === 'prioridad'}
                   direction={orderBy === 'prioridad' ? order : 'asc'}
                   onClick={() => handleRequestSort('prioridad')}
                 >
-                  Prioridad
+                  Prior.
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1 }}>Interés</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>Recordatorio</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '15%', minWidth: 150, display: { xs: 'none', xl: 'table-cell' } }}>Interés</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '6%', minWidth: 70, display: { xs: 'none', md: 'table-cell' } }}>Rec.</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '7%', minWidth: 80, display: { xs: 'none', lg: 'table-cell' } }}>
                 <TableSortLabel
                   active={orderBy === 'fechaPrimerContacto'}
                   direction={orderBy === 'fechaPrimerContacto' ? order : 'asc'}
                   onClick={() => handleRequestSort('fechaPrimerContacto')}
                 >
-                  1er Contacto
+                  1er Cont.
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '7%', minWidth: 80, display: { xs: 'none', xl: 'table-cell' } }}>
                 <TableSortLabel
                   active={orderBy === 'fechaUltimoContacto'}
                   direction={orderBy === 'fechaUltimoContacto' ? order : 'asc'}
                   onClick={() => handleRequestSort('fechaUltimoContacto')}
                 >
-                  Últ. Contacto
+                  Últ. Cont.
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '4%', minWidth: 50 }}>
                 <TableSortLabel
                   active={orderBy === 'dias'}
                   direction={orderBy === 'dias' ? order : 'asc'}
@@ -492,7 +500,7 @@ export const LeadsTablePage = () => {
                   Días
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1 }}>Acciones</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '10%', minWidth: 120 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -525,10 +533,10 @@ export const LeadsTablePage = () => {
                   <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>
                     {lead.telefono}
                   </TableCell>
-                  <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>
+                  <TableCell sx={{ py: 0.75, fontSize: '0.875rem', display: { xs: 'none', lg: 'table-cell' } }}>
                     {lead.provincia ? PROVINCIA_LABELS[lead.provincia] : '-'}
                   </TableCell>
-                  <TableCell sx={{ py: 0.75 }}>
+                  <TableCell sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
                     <CanalBadge canal={lead.canal} />
                   </TableCell>
                   <TableCell sx={{ py: 0.75 }}>
@@ -541,7 +549,7 @@ export const LeadsTablePage = () => {
                       onUpdate={handleUpdatePriority}
                     />
                   </TableCell>
-                  <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 280 }}>
+                  <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 200, display: { xs: 'none', xl: 'table-cell' } }}>
                     {lead.productoInteresNombre ? (
                       <Typography variant="caption" display="block" noWrap>
                         📦 {lead.productoInteresNombre}
@@ -564,13 +572,13 @@ export const LeadsTablePage = () => {
                       </Typography>
                     ) : '-'}
                   </TableCell>
-                  <TableCell align="center" sx={{ py: 0.75 }}>
+                  <TableCell align="center" sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
                     <RecordatorioStatusBadge recordatorios={lead.recordatorios} />
                   </TableCell>
-                  <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem' }}>
+                  <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem', display: { xs: 'none', lg: 'table-cell' } }}>
                     {formatearFecha(lead.fechaPrimerContacto)}
                   </TableCell>
-                  <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem' }}>
+                  <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem', display: { xs: 'none', xl: 'table-cell' } }}>
                     {formatearFecha(lead.fechaUltimoContacto)}
                   </TableCell>
                   <TableCell align="center" sx={{ py: 0.75, fontSize: '0.875rem' }}>

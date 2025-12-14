@@ -255,7 +255,7 @@ export const LeadFormPage = () => {
         }
       }
 
-      navigate('/leads');
+      navigate('/leads/table');
     } catch (err) {
       console.error('Error al guardar lead:', err);
       setError('Error al guardar el lead. Por favor, intente nuevamente.');
@@ -328,7 +328,7 @@ export const LeadFormPage = () => {
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/leads')}
+          onClick={() => navigate('/leads/table')}
           sx={{ mb: 2 }}
         >
           Volver
@@ -773,7 +773,7 @@ export const LeadFormPage = () => {
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
                   <Button
                     variant="outlined"
-                    onClick={() => navigate('/leads')}
+                    onClick={() => navigate('/leads/table')}
                     disabled={saving}
                   >
                     Cancelar

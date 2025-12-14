@@ -294,7 +294,7 @@ export const ConvertLeadPage = () => {
                 </Button>
                 <Button
                   variant="outlined"
-                  onClick={() => navigate('/leads')}
+                  onClick={() => navigate('/leads/table')}
                 >
                   Volver a Leads
                 </Button>
@@ -311,7 +311,7 @@ export const ConvertLeadPage = () => {
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/leads')}
+          onClick={() => navigate('/leads/table')}
           sx={{ mb: 2 }}
         >
           Volver
@@ -565,7 +565,7 @@ export const ConvertLeadPage = () => {
                     <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
                       <Button
                         variant="outlined"
-                        onClick={() => navigate('/leads')}
+                        onClick={() => navigate('/leads/table')}
                         disabled={converting}
                       >
                         Cancelar

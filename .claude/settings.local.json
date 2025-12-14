@@ -28,7 +28,10 @@
       "Bash(cmd.exe /c \"taskkill /F /PID 23788\")",
       "Bash(./mvnw.cmd spring-boot:run:*)",
       "Bash(cmd.exe /c \"dir /B C:\\Users\\maria\\ripser_back\")",
-      "Bash(cmd.exe /c \"dir /B src\\types\")"
+      "Bash(cmd.exe /c \"dir /B src\\types\")",
+      "Bash(cmd.exe /c \"dir /B C:\\Users\\maria\")",
+      "Bash(cmd.exe /c \"dir /S /B C:\\Users\\maria\\ripser_back\\src\\main\\java\\com\\ripser_back\\*Lead*.java\")",
+      "Bash(cmd.exe /c \"dir /B C:\\Users\\maria\\ripser_back\\src\\main\\java\\com\\ripser_back\")"
     ],
     "deny": [],
     "ask": []

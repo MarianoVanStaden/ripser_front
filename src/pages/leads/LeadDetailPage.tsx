@@ -166,7 +166,7 @@ export const LeadDetailPage = () => {
         <Alert severity="error">{error || 'Lead no encontrado'}</Alert>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/leads')}
+          onClick={() => navigate('/leads/table')}
           sx={{ mt: 2 }}
         >
           Volver a Leads
@@ -181,7 +181,7 @@ export const LeadDetailPage = () => {
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/leads')}
+          onClick={() => navigate('/leads/table')}
           sx={{ mb: 2 }}
         >
           Volver
