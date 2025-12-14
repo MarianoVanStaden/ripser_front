@@ -105,12 +105,14 @@ const addCorporateFooter = (pdf: jsPDF): void => {
  * @param nombreArchivo - Nombre del archivo a generar
  * @param metaMensualLeads - Meta mensual de leads (opcional)
  * @param metaPresupuestoMensual - Meta mensual de presupuesto (opcional)
+ * @param sucursalNombre - Nombre de la sucursal filtrada (opcional)
  */
 export const exportarMetricasExcel = (
   metricas: LeadMetricasResponseDTO,
   nombreArchivo: string = 'metricas-leads.xlsx',
   metaMensualLeads?: number,
-  metaPresupuestoMensual?: number
+  metaPresupuestoMensual?: number,
+  sucursalNombre?: string
 ) => {
   // Crear un nuevo libro de Excel
   const workbook = XLSX.utils.book_new();
@@ -131,29 +133,38 @@ export const exportarMetricasExcel = (
   const resumenData: any[] = [
     ['RESUMEN GENERAL DE MÉTRICAS DE LEADS'],
     [],
-    ['Tasa de Conversión'],
-    ['Total Leads', totalLeads],
-    ['Leads Convertidos', convertidos],
-    ['Leads en Pipeline Activo', leadsEnPipeline],
-    ['Tasa de Conversión (%)', (metricas.tasaConversion?.tasaConversion ?? 0).toFixed(2)],
-    ['Tasa Mes Anterior (%)', (metricas.tasaConversion?.tasaConversionMesAnterior ?? 0).toFixed(2)],
-    ['Variación (%)', (metricas.tasaConversion?.variacionPorcentual ?? 0).toFixed(2)],
-    [],
-    ['Tiempo de Conversión'],
-    ['Promedio (días)', (metricas.tiempoConversion?.promedioGeneral ?? 0).toFixed(0)],
-    ['Mínimo (días)', metricas.tiempoConversion?.minimoTiempo ?? 0],
-    ['Máximo (días)', metricas.tiempoConversion?.maximoTiempo ?? 0],
-    ['Mediana (días)', (metricas.tiempoConversion?.medianaGeneral ?? 0).toFixed(0)],
-    [],
-    ['Presupuesto vs Realizado'],
-    ['Presupuesto Estimado Total', (metricas.presupuestoVsRealizado?.presupuestoEstimadoTotal ?? 0).toFixed(2)],
-    ['Valor Realizado Total', valorRealizado.toFixed(2)],
-    ['Valor Promedio por Conversión', valorPromedioPorConversion.toFixed(2)],
-    ['Diferencia', (metricas.presupuestoVsRealizado?.diferencia ?? 0).toFixed(2)],
-    ['Tasa Realización (%)', (metricas.presupuestoVsRealizado?.tasaRealizacion ?? 0).toFixed(2)],
-    ['Cant. Presupuestos Estimados', metricas.presupuestoVsRealizado?.cantidadPresupuestosEstimados ?? 0],
-    ['Cant. Presupuestos Realizados', cantidadConversiones]
   ];
+
+  // Agregar información de sucursal si está disponible
+  if (sucursalNombre) {
+    resumenData.push(['SUCURSAL:', sucursalNombre]);
+    resumenData.push(['Fecha de generación:', new Date().toLocaleString('es-AR')]);
+    resumenData.push([]);
+  }
+
+  // Agregar métricas principales
+  resumenData.push(['Tasa de Conversión']);
+  resumenData.push(['Total Leads', totalLeads]);
+  resumenData.push(['Leads Convertidos', convertidos]);
+  resumenData.push(['Leads en Pipeline Activo', leadsEnPipeline]);
+  resumenData.push(['Tasa de Conversión (%)', (metricas.tasaConversion?.tasaConversion ?? 0).toFixed(2)]);
+  resumenData.push(['Tasa Mes Anterior (%)', (metricas.tasaConversion?.tasaConversionMesAnterior ?? 0).toFixed(2)]);
+  resumenData.push(['Variación (%)', (metricas.tasaConversion?.variacionPorcentual ?? 0).toFixed(2)]);
+  resumenData.push([]);
+  resumenData.push(['Tiempo de Conversión']);
+  resumenData.push(['Promedio (días)', (metricas.tiempoConversion?.promedioGeneral ?? 0).toFixed(0)]);
+  resumenData.push(['Mínimo (días)', metricas.tiempoConversion?.minimoTiempo ?? 0]);
+  resumenData.push(['Máximo (días)', metricas.tiempoConversion?.maximoTiempo ?? 0]);
+  resumenData.push(['Mediana (días)', (metricas.tiempoConversion?.medianaGeneral ?? 0).toFixed(0)]);
+  resumenData.push([]);
+  resumenData.push(['Presupuesto vs Realizado']);
+  resumenData.push(['Presupuesto Estimado Total', (metricas.presupuestoVsRealizado?.presupuestoEstimadoTotal ?? 0).toFixed(2)]);
+  resumenData.push(['Valor Realizado Total', valorRealizado.toFixed(2)]);
+  resumenData.push(['Valor Promedio por Conversión', valorPromedioPorConversion.toFixed(2)]);
+  resumenData.push(['Diferencia', (metricas.presupuestoVsRealizado?.diferencia ?? 0).toFixed(2)]);
+  resumenData.push(['Tasa Realización (%)', (metricas.presupuestoVsRealizado?.tasaRealizacion ?? 0).toFixed(2)]);
+  resumenData.push(['Cant. Presupuestos Estimados', metricas.presupuestoVsRealizado?.cantidadPresupuestosEstimados ?? 0]);
+  resumenData.push(['Cant. Presupuestos Realizados', cantidadConversiones]);
 
   // Agregar metas si están disponibles
   if (metaMensualLeads !== undefined && metaMensualLeads > 0) {
@@ -370,7 +381,8 @@ export const exportarMetricasPDF = (
   metricas: LeadMetricasResponseDTO,
   nombreArchivo: string = 'metricas-leads.pdf',
   metaMensualLeads?: number,
-  metaPresupuestoMensual?: number
+  metaPresupuestoMensual?: number,
+  sucursalNombre?: string
 ) => {
   try {
     const doc = new jsPDF('p', 'mm', 'a4');
@@ -379,6 +391,15 @@ export const exportarMetricasPDF = (
 
     // Agregar encabezado corporativo
     let yPosition = addCorporateHeader(doc, 'Informe de Métricas de Leads');
+
+    // Agregar información de sucursal si está disponible
+    if (sucursalNombre) {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...COLORS.darkBlue);
+      doc.text(`Sucursal: ${sucursalNombre}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 7;
+    }
 
     // === INDICADORES CLAVE (KPIs) ===
     doc.setFontSize(11);

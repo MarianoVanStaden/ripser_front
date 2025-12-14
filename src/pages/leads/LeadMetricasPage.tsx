@@ -11,13 +11,15 @@ import {
   Alert,
   TextField,
   Button,
-  Stack
+  Stack,
+  Chip
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
   Assessment as AssessmentIcon,
   Download as DownloadIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -44,7 +46,12 @@ import { exportarMetricasExcel, exportarMetricasPDF, generarNombreArchivo } from
 dayjs.locale('es');
 
 export const LeadMetricasPage = () => {
-  const { sucursalFiltro } = useTenant();
+  const { sucursalFiltro, sucursales } = useTenant();
+  
+  // Obtener nombre de la sucursal actual
+  const sucursalActualNombre = sucursalFiltro 
+    ? sucursales.find(s => s.id === sucursalFiltro)?.nombre || 'Sucursal desconocida'
+    : 'Todas las sucursales';
   
   // Estado de filtros
   const [fechaInicio, setFechaInicio] = useState<Dayjs | null>(
@@ -150,7 +157,7 @@ export const LeadMetricasPage = () => {
 
     try {
       const nombreArchivo = generarNombreArchivo('xlsx');
-      exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual);
+      exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre);
       setError(null); // Limpiar errores previos si fue exitoso
     } catch (err: any) {
       console.error('Error al exportar métricas a Excel:', err);
@@ -163,7 +170,7 @@ export const LeadMetricasPage = () => {
 
     try {
       const nombreArchivo = generarNombreArchivo('pdf');
-      exportarMetricasPDF(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual);
+      exportarMetricasPDF(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre);
       setError(null); // Limpiar errores previos si fue exitoso
     } catch (err: any) {
       console.error('Error al exportar PDF:', err);
@@ -180,10 +187,19 @@ export const LeadMetricasPage = () => {
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         {/* Header */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AssessmentIcon fontSize="large" />
-            Métricas de Leads
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AssessmentIcon fontSize="large" />
+              Métricas de Leads
+            </Typography>
+            <Chip
+              icon={<BusinessIcon />}
+              label={sucursalActualNombre}
+              color={sucursalFiltro ? 'primary' : 'default'}
+              variant={sucursalFiltro ? 'filled' : 'outlined'}
+              sx={{ fontWeight: 'medium' }}
+            />
+          </Box>
           <Typography variant="body2" color="text.secondary">
             Análisis detallado del rendimiento de leads y conversiones
           </Typography>
