@@ -77,22 +77,22 @@ export const RankingVendedoresTable = ({ data }: RankingVendedoresTableProps) =>
                   <TableCell align="right">{vendedor.leadsConvertidos}</TableCell>
                   <TableCell align="right">
                     <Chip
-                      label={`${vendedor.tasaConversion.toFixed(1)}%`}
+                      label={`${vendedor.tasaConversion?.toFixed(1) ?? '0.0'}%`}
                       size="small"
-                      color={vendedor.tasaConversion >= 40 ? 'success' : vendedor.tasaConversion >= 25 ? 'warning' : 'default'}
-                      icon={vendedor.tasaConversion >= 40 ? <TrendingUpIcon /> : undefined}
+                      color={(vendedor.tasaConversion ?? 0) >= 40 ? 'success' : (vendedor.tasaConversion ?? 0) >= 25 ? 'warning' : 'default'}
+                      icon={(vendedor.tasaConversion ?? 0) >= 40 ? <TrendingUpIcon /> : undefined}
                     />
                   </TableCell>
                   <TableCell align="right">
-                    ${vendedor.valorEstimadoTotal.toLocaleString()}
+                    ${(vendedor.valorEstimadoTotal ?? 0).toLocaleString()}
                   </TableCell>
                   <TableCell align="right">
                     <Typography
                       variant="body2"
-                      color={vendedor.valorRealizado >= vendedor.valorEstimadoTotal ? 'success.main' : 'text.primary'}
+                      color={(vendedor.valorRealizado ?? 0) >= (vendedor.valorEstimadoTotal ?? 0) ? 'success.main' : 'text.primary'}
                       fontWeight="medium"
                     >
-                      ${vendedor.valorRealizado.toLocaleString()}
+                      ${(vendedor.valorRealizado ?? 0).toLocaleString()}
                     </Typography>
                   </TableCell>
                 </TableRow>

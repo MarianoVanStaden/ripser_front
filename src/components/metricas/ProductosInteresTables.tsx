@@ -2,7 +2,6 @@ import {
   Card,
   CardContent,
   Typography,
-  Box,
   Tabs,
   Tab,
   Table,
@@ -23,24 +22,82 @@ interface ProductosInteresTablesProps {
 export const ProductosInteresTables = ({ data }: ProductosInteresTablesProps) => {
   const [tabValue, setTabValue] = useState(0);
 
+  console.log('⭐ Productos/Equipos - Datos recibidos:', {
+    equipos: data.equipos.slice(0, 3),
+    productos: data.productos.slice(0, 3)
+  });
+
   // Ordenar por cantidad de leads descendente
-  const sortedProductos = [...data.productos].sort((a, b) => b.cantidadLeads - a.cantidadLeads).slice(0, 10);
-  const sortedEquipos = [...data.equipos].sort((a, b) => b.cantidadLeads - a.cantidadLeads).slice(0, 10);
+  const sortedProductos = [...data.productos].sort((a, b) => 
+    (b.cantidadLeads ?? b.cantidad ?? b.cantidadSolicitudes ?? 0) - (a.cantidadLeads ?? a.cantidad ?? a.cantidadSolicitudes ?? 0)
+  ).slice(0, 10);
+  const sortedEquipos = [...data.equipos].sort((a, b) => 
+    (b.cantidadLeads ?? b.cantidad ?? b.cantidadSolicitudes ?? 0) - (a.cantidadLeads ?? a.cantidad ?? a.cantidadSolicitudes ?? 0)
+  ).slice(0, 10);
 
   return (
     <Card>
       <CardContent>
         <Typography variant="h6" gutterBottom>
-          ⭐ Productos y Equipos de Mayor Interés
+          ⭐ Equipos y Productos de Mayor Interés
         </Typography>
         
         <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} sx={{ mb: 2 }}>
-          <Tab label={`Productos (${data.productos.length})`} />
           <Tab label={`Equipos (${data.equipos.length})`} />
+          <Tab label={`Productos (${data.productos.length})`} />
         </Tabs>
 
-        {/* Tab Productos */}
+        {/* Tab Equipos */}
         {tabValue === 0 && (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell><strong>#</strong></TableCell>
+                  <TableCell><strong>Equipo</strong></TableCell>
+                  <TableCell align="right"><strong>Leads</strong></TableCell>
+                  <TableCell align="right"><strong>Convertidos</strong></TableCell>
+                  <TableCell align="right"><strong>Tasa Conv.</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedEquipos.map((equipo, index) => (
+                  <TableRow key={equipo.equipoId} hover>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{equipo.equipoNombre}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight="medium" color="secondary">
+                        {equipo.cantidadLeads ?? equipo.cantidad ?? equipo.cantidadSolicitudes ?? 0}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2">
+                        {equipo.cantidadConvertidos ?? equipo.convertidos ?? equipo.cantidadConvertida ?? 0}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip
+                        label={`${equipo.tasaConversion?.toFixed(1) ?? '0.0'}%`}
+                        size="small"
+                        color={(equipo.tasaConversion ?? 0) >= 30 ? 'success' : 'default'}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {sortedEquipos.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center">
+                      No hay datos de equipos
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+
+        {/* Tab Productos */}
+        {tabValue === 1 && (
           <TableContainer>
             <Table size="small">
               <TableHead>
@@ -59,18 +116,24 @@ export const ProductosInteresTables = ({ data }: ProductosInteresTablesProps) =>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{producto.productoNombre}</TableCell>
                     <TableCell align="right">
-                      <Chip label={producto.cantidadLeads} size="small" color="primary" variant="outlined" />
+                      <Typography variant="body2" fontWeight="medium" color="primary">
+                        {producto.cantidadLeads ?? producto.cantidad ?? producto.cantidadSolicitudes ?? 0}
+                      </Typography>
                     </TableCell>
-                    <TableCell align="right">{producto.cantidadConvertidos}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2">
+                        {producto.cantidadConvertidos ?? producto.convertidos ?? producto.cantidadConvertida ?? 0}
+                      </Typography>
+                    </TableCell>
                     <TableCell align="right">
                       <Chip
-                        label={`${producto.tasaConversion.toFixed(1)}%`}
+                        label={`${producto.tasaConversion?.toFixed(1) ?? '0.0'}%`}
                         size="small"
-                        color={producto.tasaConversion >= 30 ? 'success' : 'default'}
+                        color={(producto.tasaConversion ?? 0) >= 30 ? 'success' : 'default'}
                       />
                     </TableCell>
                     <TableCell align="right">
-                      ${producto.valorEstimadoTotal.toLocaleString()}
+                      ${(producto.valorEstimadoTotal ?? 0).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -78,49 +141,6 @@ export const ProductosInteresTables = ({ data }: ProductosInteresTablesProps) =>
                   <TableRow>
                     <TableCell colSpan={6} align="center">
                       No hay datos de productos
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-
-        {/* Tab Equipos */}
-        {tabValue === 1 && (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell><strong>#</strong></TableCell>
-                  <TableCell><strong>Equipo</strong></TableCell>
-                  <TableCell align="right"><strong>Leads</strong></TableCell>
-                  <TableCell align="right"><strong>Convertidos</strong></TableCell>
-                  <TableCell align="right"><strong>Tasa Conv.</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {sortedEquipos.map((equipo, index) => (
-                  <TableRow key={equipo.equipoId} hover>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{equipo.equipoNombre}</TableCell>
-                    <TableCell align="right">
-                      <Chip label={equipo.cantidadLeads} size="small" color="secondary" variant="outlined" />
-                    </TableCell>
-                    <TableCell align="right">{equipo.cantidadConvertidos}</TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        label={`${equipo.tasaConversion.toFixed(1)}%`}
-                        size="small"
-                        color={equipo.tasaConversion >= 30 ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {sortedEquipos.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      No hay datos de equipos
                     </TableCell>
                   </TableRow>
                 )}

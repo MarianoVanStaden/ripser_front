@@ -54,7 +54,7 @@ export const EmbudoVentasChart = ({ data }: EmbudoVentasChartProps) => {
                     {estadoLabels[item.estadoLead] || item.estadoLead}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {item.cantidad} ({item.porcentaje.toFixed(1)}%)
+                    {item.cantidad} ({item.porcentaje?.toFixed(1) ?? '0.0'}%)
                   </Typography>
                 </Box>
                 <Box

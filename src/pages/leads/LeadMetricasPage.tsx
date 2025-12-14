@@ -29,6 +29,7 @@ import type {
   LeadMetricasResponseDTO,
   LeadMetricasRequestParams
 } from '../../api/services/leadMetricasApi';
+import { parametroSistemaApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
@@ -37,7 +38,7 @@ import { DistribucionGeograficaTable } from '../../components/metricas/Distribuc
 import { ProductosInteresTables } from '../../components/metricas/ProductosInteresTables';
 import { RankingVendedoresTable } from '../../components/metricas/RankingVendedoresTable';
 import { TendenciasTemporalesChart } from '../../components/metricas/TendenciasTemporalesChart';
-import { exportarMetricasExcel, generarNombreArchivo } from '../../utils/metricasExportUtils';
+import { exportarMetricasExcel, exportarMetricasPDF, generarNombreArchivo } from '../../utils/metricasExportUtils';
 
 // Configurar dayjs en español
 dayjs.locale('es');
@@ -56,11 +57,51 @@ export const LeadMetricasPage = () => {
   const [metricas, setMetricas] = useState<LeadMetricasResponseDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [metaMensualLeads, setMetaMensualLeads] = useState<number>(30); // Valor por defecto para empresa mediana
+  const [metaPresupuestoMensual, setMetaPresupuestoMensual] = useState<number>(1000000); // Meta de facturación mensual
 
   // Cargar métricas al montar y cuando cambian los filtros
   useEffect(() => {
     loadMetricas();
+    loadParametrosMeta();
   }, [sucursalFiltro]);
+
+  // Auto-refresh cuando la página recibe el foco (usuario vuelve después de convertir un lead)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Recargar métricas cuando el usuario vuelve a la pestaña
+      if (document.visibilityState === 'visible') {
+        loadMetricas();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [fechaInicio, fechaFin, sucursalFiltro, usuarioAsignadoId]);
+
+  const loadParametrosMeta = async () => {
+    try {
+      const paramMeta = await parametroSistemaApi.getByClave('META_MENSUAL_LEADS');
+      if (paramMeta && paramMeta.valor) {
+        setMetaMensualLeads(Number(paramMeta.valor));
+      }
+    } catch (err) {
+      // Si no existe el parámetro, usar valor por defecto (30 para empresa mediana)
+      console.log('Parámetro META_MENSUAL_LEADS no configurado, usando valor por defecto');
+    }
+
+    try {
+      const paramPresupuesto = await parametroSistemaApi.getByClave('META_PRESUPUESTO_MENSUAL');
+      if (paramPresupuesto && paramPresupuesto.valor) {
+        setMetaPresupuestoMensual(Number(paramPresupuesto.valor));
+      }
+    } catch (err) {
+      // Si no existe el parámetro, usar valor por defecto
+      console.log('Parámetro META_PRESUPUESTO_MENSUAL no configurado, usando valor por defecto');
+    }
+  };
 
   const loadMetricas = async () => {
     if (!fechaInicio || !fechaFin) {
@@ -85,7 +126,16 @@ export const LeadMetricasPage = () => {
         params.usuarioAsignadoId = usuarioAsignadoId;
       }
 
+      console.log('📤 PARÁMETROS ENVIADOS AL BACKEND:', params);
+
       const data = await leadMetricasApi.obtenerMetricasCompletas(params);
+      console.log('📊 Métricas recibidas del backend:', {
+        tiempoConversion: data.tiempoConversion,
+        presupuestoVsRealizado: data.presupuestoVsRealizado,
+        tasaConversion: data.tasaConversion,
+        metricasPorPrioridad: data.metricasPorPrioridad
+      });
+      console.log('🎯 Métricas por Prioridad detalladas:', JSON.stringify(data.metricasPorPrioridad, null, 2));
       setMetricas(data);
     } catch (err) {
       console.error('Error al cargar métricas:', err);
@@ -97,13 +147,27 @@ export const LeadMetricasPage = () => {
 
   const handleExportar = () => {
     if (!metricas) return;
-    
+
     try {
       const nombreArchivo = generarNombreArchivo('xlsx');
-      exportarMetricasExcel(metricas, nombreArchivo);
-    } catch (err) {
-      console.error('Error al exportar métricas:', err);
-      setError('Error al exportar las métricas.');
+      exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual);
+      setError(null); // Limpiar errores previos si fue exitoso
+    } catch (err: any) {
+      console.error('Error al exportar métricas a Excel:', err);
+      setError(`Error al exportar a Excel: ${err.message || 'Verifique que los datos estén completos.'}`);
+    }
+  };
+
+  const handleExportarPDF = () => {
+    if (!metricas) return;
+
+    try {
+      const nombreArchivo = generarNombreArchivo('pdf');
+      exportarMetricasPDF(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual);
+      setError(null); // Limpiar errores previos si fue exitoso
+    } catch (err: any) {
+      console.error('Error al exportar PDF:', err);
+      setError(`Error al exportar a PDF: ${err.message || 'Verifique que los datos estén completos.'}`);
     }
   };
 
@@ -135,7 +199,7 @@ export const LeadMetricasPage = () => {
               <DatePicker
                 label="Fecha Inicio"
                 value={fechaInicio}
-                onChange={(newValue) => setFechaInicio(newValue)}
+                onChange={(newValue) => setFechaInicio(newValue as Dayjs | null)}
                 slotProps={{
                   textField: {
                     fullWidth: true,
@@ -148,7 +212,7 @@ export const LeadMetricasPage = () => {
               <DatePicker
                 label="Fecha Fin"
                 value={fechaFin}
-                onChange={(newValue) => setFechaFin(newValue)}
+                onChange={(newValue) => setFechaFin(newValue as Dayjs | null)}
                 slotProps={{
                   textField: {
                     fullWidth: true,
@@ -178,13 +242,30 @@ export const LeadMetricasPage = () => {
                 >
                   Actualizar
                 </Button>
+              </Stack>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Stack direction="row" spacing={1}>
                 <Button
                   variant="outlined"
                   startIcon={<DownloadIcon />}
                   onClick={handleExportar}
                   disabled={!metricas || loading}
+                  fullWidth
+                  sx={{ flex: 1 }}
                 >
-                  Exportar
+                  Excel
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExportarPDF}
+                  disabled={!metricas || loading}
+                  fullWidth
+                  sx={{ flex: 1 }}
+                  color="error"
+                >
+                  PDF
                 </Button>
               </Stack>
             </Grid>
@@ -216,18 +297,28 @@ export const LeadMetricasPage = () => {
                     Tasa de Conversión
                   </Typography>
                   <Typography variant="h3" component="div" color="primary">
-                    {metricas.tasaConversion.tasaConversion.toFixed(1)}%
+                    {metricas.tasaConversion?.tasaConversion?.toFixed(1) ?? '0.0'}%
                   </Typography>
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2">
-                      {metricas.tasaConversion.leadsConvertidos} de {metricas.tasaConversion.totalLeads} leads convertidos
+                      {metricas.tasaConversion?.leadsConvertidos ?? 0} de {metricas.tasaConversion?.totalLeads ?? 0} leads convertidos
                     </Typography>
                     <Typography
                       variant="body2"
-                      color={metricas.tasaConversion.variacionPorcentual >= 0 ? 'success.main' : 'error.main'}
+                      color={
+                        !metricas.tasaConversion?.variacionPorcentual || metricas.tasaConversion?.variacionPorcentual === 0
+                          ? 'text.secondary'
+                          : metricas.tasaConversion.variacionPorcentual > 0
+                          ? 'success.main'
+                          : 'error.main'
+                      }
                     >
-                      {metricas.tasaConversion.variacionPorcentual >= 0 ? '↑' : '↓'}{' '}
-                      {Math.abs(metricas.tasaConversion.variacionPorcentual).toFixed(1)}% vs mes anterior
+                      {!metricas.tasaConversion?.variacionPorcentual || metricas.tasaConversion?.variacionPorcentual === 0
+                        ? '→'
+                        : metricas.tasaConversion.variacionPorcentual > 0
+                        ? '↑'
+                        : '↓'}{' '}
+                      {Math.abs(metricas.tasaConversion?.variacionPorcentual ?? 0).toFixed(1)}% vs mes anterior
                     </Typography>
                   </Box>
                 </CardContent>
@@ -242,42 +333,162 @@ export const LeadMetricasPage = () => {
                     Tiempo Promedio de Conversión
                   </Typography>
                   <Typography variant="h3" component="div" color="secondary">
-                    {metricas.tiempoConversion.promedioTiempoConversion.toFixed(0)} días
+                    {metricas.tiempoConversion?.promedioGeneral && metricas.tiempoConversion.promedioGeneral > 0
+                      ? metricas.tiempoConversion.promedioGeneral.toFixed(0)
+                      : '0'}{' '}
+                    días
                   </Typography>
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2">
-                      Min: {metricas.tiempoConversion.tiempoConversionMinimo} días
+                      Min: {metricas.tiempoConversion?.minimoTiempo ?? 0} días
                       {' | '}
-                      Max: {metricas.tiempoConversion.tiempoConversionMaximo} días
+                      Max: {metricas.tiempoConversion?.maximoTiempo ?? 0} días
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      color={metricas.tiempoConversion.variacionPorcentual <= 0 ? 'success.main' : 'warning.main'}
-                    >
-                      {metricas.tiempoConversion.variacionPorcentual >= 0 ? '↑' : '↓'}{' '}
-                      {Math.abs(metricas.tiempoConversion.variacionPorcentual).toFixed(1)}% vs mes anterior
+                    {metricas.tiempoConversion?.promedioGeneral && metricas.tiempoConversion.promedioGeneral > 0 ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Mediana: {metricas.tiempoConversion.medianaGeneral.toFixed(0)} días
+                      </Typography>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        → Sin datos del mes anterior
+                      </Typography>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Presupuesto vs Meta */}
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography color="text.secondary" gutterBottom>
+                    Cumplimiento de Meta de Ventas
+                  </Typography>
+                  <Typography
+                    variant="h3"
+                    component="div"
+                    color={
+                      ((metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) / metaPresupuestoMensual * 100) >= 100
+                        ? 'success.main'
+                        : ((metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) / metaPresupuestoMensual * 100) >= 70
+                          ? 'warning.main'
+                          : 'error.main'
+                    }
+                  >
+                    {metaPresupuestoMensual > 0
+                      ? ((metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) / metaPresupuestoMensual * 100).toFixed(0)
+                      : '0'}%
+                  </Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      Realizado: ${(metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0).toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2">
+                      Meta mensual: ${metaPresupuestoMensual.toLocaleString()}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      {metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 0} de {metricas.presupuestoVsRealizado?.cantidadPresupuestosEstimados ?? 0} presupuestos convertidos
                     </Typography>
                   </Box>
                 </CardContent>
               </Card>
             </Grid>
 
-            {/* Presupuesto vs Realizado */}
+            {/* Meta de Leads */}
             <Grid item xs={12} md={4}>
               <Card>
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
-                    Cumplimiento de Objetivos
+                    Cumplimiento de Meta de Leads
                   </Typography>
-                  <Typography variant="h3" component="div" color="success.main">
-                    {metricas.presupuestoVsRealizado.porcentajeCumplimiento.toFixed(0)}%
+                  <Typography
+                    variant="h3"
+                    component="div"
+                    color={
+                      ((metricas.tasaConversion?.totalLeads ?? 0) / metaMensualLeads * 100) >= 100
+                        ? 'success.main'
+                        : ((metricas.tasaConversion?.totalLeads ?? 0) / metaMensualLeads * 100) >= 70
+                          ? 'warning.main'
+                          : 'error.main'
+                    }
+                  >
+                    {metaMensualLeads > 0
+                      ? ((metricas.tasaConversion?.totalLeads ?? 0) / metaMensualLeads * 100).toFixed(0)
+                      : '0'}%
                   </Typography>
                   <Box sx={{ mt: 2 }}>
                     <Typography variant="body2">
-                      Estimado: ${metricas.presupuestoVsRealizado.valorEstimadoTotal.toLocaleString()}
+                      Leads generados: {metricas.tasaConversion?.totalLeads ?? 0}
                     </Typography>
                     <Typography variant="body2">
-                      Realizado: ${metricas.presupuestoVsRealizado.valorRealizado.toLocaleString()}
+                      Meta mensual: {metaMensualLeads} leads
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      Faltan {Math.max(0, metaMensualLeads - (metricas.tasaConversion?.totalLeads ?? 0))} leads para cumplir la meta
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Valor Promedio por Conversión */}
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography color="text.secondary" gutterBottom>
+                    Valor Promedio por Conversión
+                  </Typography>
+                  <Typography variant="h3" component="div" color="info.main">
+                    ${(
+                      (metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 0) > 0
+                        ? (metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0) /
+                          (metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 1)
+                        : 0
+                    ).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      Conversiones: {metricas.presupuestoVsRealizado?.cantidadPresupuestosRealizados ?? 0}
+                    </Typography>
+                    <Typography variant="body2">
+                      Total facturado: ${(metricas.presupuestoVsRealizado?.valorRealizadoTotal ?? 0).toLocaleString()}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      Ticket promedio de venta
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Leads en Pipeline Activo */}
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography color="text.secondary" gutterBottom>
+                    Leads en Pipeline Activo
+                  </Typography>
+                  <Typography variant="h3" component="div" color="warning.main">
+                    {(() => {
+                      const totalLeads = metricas.tasaConversion?.totalLeads ?? 0;
+                      const convertidos = metricas.tasaConversion?.leadsConvertidos ?? 0;
+                      // Contar leads perdidos y descartados del embudo
+                      const perdidosDescartados = metricas.embudoVentas
+                        .filter(e => ['PERDIDO', 'DESCARTADO'].includes(e.estadoLead))
+                        .reduce((sum, e) => sum + e.cantidad, 0);
+                      return totalLeads - convertidos - perdidosDescartados;
+                    })()}
+                  </Typography>
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      Total leads: {metricas.tasaConversion?.totalLeads ?? 0}
+                    </Typography>
+                    <Typography variant="body2">
+                      Convertidos: {metricas.tasaConversion?.leadsConvertidos ?? 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      Leads siendo trabajados actualmente
                     </Typography>
                   </Box>
                 </CardContent>

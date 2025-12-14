@@ -45,7 +45,9 @@ export const ConvertLeadPage = () => {
   const [lead, setLead] = useState<LeadDTO | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<any[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<{type: 'producto' | 'receta', id: number, nombre: string, precio?: number} | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{type: 'producto' | 'receta', id: number, nombre: string, precio: number} | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Array<{type: 'producto' | 'receta', id: number, nombre: string, precio: number, cantidad: number}>>([]);
+  const [cantidadActual, setCantidadActual] = useState<number>(1);
 
   const [conversionData, setConversionData] = useState<ConversionLeadRequest>({
     productoCompradoId: undefined,
@@ -75,31 +77,21 @@ export const ConvertLeadPage = () => {
       setRecetas(recetasData);
 
       // Pre-seleccionar producto/receta si está disponible
-      if (leadData.productoInteresId) {
-        const producto = productosData.find(p => p.id === leadData.productoInteresId);
-        if (producto) {
-          const selected = { type: 'producto' as const, id: producto.id, nombre: producto.nombre, precio: producto.precio };
-          setSelectedProduct(selected);
-          
-          // Calcular monto automáticamente
-          const cantidad = leadData.cantidadProductoInteres || 1;
-          const monto = (producto.precio || 0) * cantidad;
-          setConversionData((prev) => ({
-            ...prev,
-            productoCompradoId: producto.id,
-            montoConversion: monto
-          }));
-        }
-      } else if (leadData.recetaInteresId) {
-        // Cargar receta completa para obtener el precio
+      if (leadData.recetaInteresId || leadData.equipoFabricadoInteresId) {
+        // Priorizar equipos/recetas
         try {
-          const recetaCompleta = await recetaFabricacionApi.findById(leadData.recetaInteresId);
+          const recetaId = leadData.recetaInteresId || leadData.equipoFabricadoInteresId;
+          const recetaCompleta = await recetaFabricacionApi.findById(recetaId!);
           const precio = recetaCompleta.precioVenta || 0;
-          const selected = { type: 'receta' as const, id: recetaCompleta.id, nombre: recetaCompleta.nombre, precio };
+          const cantidad = leadData.cantidadRecetaInteres || leadData.cantidadEquipoInteres || 1;
+          const selected = { type: 'receta' as const, id: recetaCompleta.id, nombre: recetaCompleta.nombre, precio: precio };
           setSelectedProduct(selected);
+          setCantidadActual(cantidad);
+          
+          // Agregar al array de items seleccionados
+          setSelectedItems([{ ...selected, cantidad }]);
           
           // Calcular monto automáticamente
-          const cantidad = leadData.cantidadRecetaInteres || 1;
           const monto = precio * cantidad;
           setConversionData((prev) => ({
             ...prev,
@@ -108,6 +100,26 @@ export const ConvertLeadPage = () => {
           }));
         } catch (err) {
           console.error('Error cargando receta completa:', err);
+        }
+      } else if (leadData.productoInteresId) {
+        const producto = productosData.find(p => p.id === leadData.productoInteresId);
+        if (producto) {
+          const cantidad = leadData.cantidadProductoInteres || 1;
+          const precio = producto.precio || 0;
+          const selected = { type: 'producto' as const, id: producto.id, nombre: producto.nombre, precio: precio };
+          setSelectedProduct(selected);
+          setCantidadActual(cantidad);
+          
+          // Agregar al array de items seleccionados
+          setSelectedItems([{ ...selected, cantidad }]);
+          
+          // Calcular monto automáticamente
+          const monto = precio * cantidad;
+          setConversionData((prev) => ({
+            ...prev,
+            productoCompradoId: producto.id,
+            montoConversion: monto
+          }));
         }
       }
     } catch (err) {
@@ -484,7 +496,8 @@ export const ConvertLeadPage = () => {
                   <Grid item xs={12}>
                     <Autocomplete
                       options={[
-                        ...productos.map(p => ({ type: 'producto' as const, id: p.id, nombre: p.nombre, precio: p.precio || 0 }))
+                        ...recetas.map(r => ({ type: 'receta' as const, id: r.id, nombre: `🔧 ${r.nombre}`, precio: r.precioVenta || 0 })),
+                        ...productos.map(p => ({ type: 'producto' as const, id: p.id, nombre: `📦 ${p.nombre}`, precio: p.precio || 0 }))
                       ]}
                       getOptionLabel={(option) => `${option.nombre} - $${(option.precio || 0).toLocaleString('es-AR')}`}
                       value={selectedProduct}
@@ -492,63 +505,148 @@ export const ConvertLeadPage = () => {
                       onChange={(_, newValue) => {
                         setSelectedProduct(newValue);
                         if (newValue) {
-                          // Calcular monto basado en cantidad del lead
-                          const cantidad = newValue.type === 'producto' 
-                            ? (lead?.cantidadProductoInteres || 1)
-                            : (lead?.cantidadRecetaInteres || lead?.cantidadEquipoInteres || 1);
-                          const monto = (newValue.precio || 0) * cantidad;
-                          
-                          setConversionData(prev => ({
-                            ...prev,
-                            productoCompradoId: newValue.id,
-                            montoConversion: monto
-                          }));
-                        } else {
-                          setConversionData(prev => ({
-                            ...prev,
-                            productoCompradoId: undefined,
-                            montoConversion: undefined
-                          }));
+                          // Mantener cantidad actual
+                          setCantidadActual(1);
                         }
                       }}
                       renderInput={(params) => (
                         <TextField
                           {...params}
-                          label="Producto/Equipo Comprado (Opcional)"
-                          helperText="Seleccione el producto o equipo que compró el cliente. El monto se calculará automáticamente."
+                          label="Seleccionar Producto/Equipo"
+                          helperText="Seleccione el producto o equipo que compró el cliente. Los equipos aparecen con 🔧 y productos con 📦."
                         />
                       )}
                     />
                   </Grid>
+
+                  {selectedProduct && (
+                    <>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          type="number"
+                          label="Cantidad"
+                          value={cantidadActual}
+                          onChange={(e) => {
+                            const newCantidad = Math.max(1, Number(e.target.value));
+                            setCantidadActual(newCantidad);
+                          }}
+                          inputProps={{ min: 1 }}
+                          helperText="Cantidad de unidades"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          fullWidth
+                          sx={{ height: '56px' }}
+                          onClick={() => {
+                            if (selectedProduct) {
+                              const newItem = {
+                                ...selectedProduct,
+                                cantidad: cantidadActual,
+                                precio: selectedProduct.precio || 0
+                              };
+                              
+                              // Verificar si ya existe
+                              const existingIndex = selectedItems.findIndex(
+                                item => item.id === selectedProduct.id && item.type === selectedProduct.type
+                              );
+                              
+                              if (existingIndex >= 0) {
+                                // Actualizar cantidad del existente
+                                const updated = [...selectedItems];
+                                updated[existingIndex].cantidad += cantidadActual;
+                                setSelectedItems(updated);
+                              } else {
+                                // Agregar nuevo
+                                setSelectedItems([...selectedItems, newItem]);
+                              }
+                              
+                              // Calcular monto total
+                              const totalMonto = [...selectedItems, newItem].reduce(
+                                (sum, item) => sum + (item.precio * item.cantidad),
+                                0
+                              );
+                              
+                              setConversionData(prev => ({
+                                ...prev,
+                                montoConversion: totalMonto
+                              }));
+                              
+                              // Reset
+                              setSelectedProduct(null);
+                              setCantidadActual(1);
+                            }
+                          }}
+                        >
+                          + Agregar
+                        </Button>
+                      </Grid>
+                    </>
+                  )}
 
                   <Grid item xs={12}>
                     <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                       <Typography variant="subtitle2" gutterBottom>
                         Resumen de Conversión:
                       </Typography>
-                      {selectedProduct && (
+                      {selectedItems.length > 0 ? (
                         <>
-                          <Typography variant="body2">
-                            • Producto: <strong>{selectedProduct.nombre}</strong>
-                          </Typography>
-                          <Typography variant="body2">
-                            • Precio unitario: <strong>${(selectedProduct.precio || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
-                          </Typography>
-                          <Typography variant="body2">
-                            • Cantidad: <strong>
-                              {selectedProduct.type === 'producto' 
-                                ? (lead?.cantidadProductoInteres || 1)
-                                : (lead?.cantidadRecetaInteres || lead?.cantidadEquipoInteres || 1)}
-                            </strong>
-                          </Typography>
-                          <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
-                            Monto Total: ${(conversionData.montoConversion || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          {selectedItems.map((item, index) => (
+                            <Box 
+                              key={`${item.type}-${item.id}-${index}`} 
+                              sx={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                mb: 1,
+                                p: 1,
+                                bgcolor: 'white',
+                                borderRadius: 1
+                              }}
+                            >
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2">
+                                  {item.type === 'receta' ? '🔧' : '📦'} <strong>{item.nombre.replace('🔧 ', '').replace('📦 ', '')}</strong>
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  ${item.precio.toLocaleString('es-AR', { minimumFractionDigits: 2 })} x {item.cantidad} unidades
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" fontWeight="bold">
+                                  ${(item.precio * item.cantidad).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                </Typography>
+                                <Button
+                                  size="small"
+                                  color="error"
+                                  onClick={() => {
+                                    const updated = selectedItems.filter((_, i) => i !== index);
+                                    setSelectedItems(updated);
+                                    const totalMonto = updated.reduce(
+                                      (sum, it) => sum + (it.precio * it.cantidad),
+                                      0
+                                    );
+                                    setConversionData(prev => ({
+                                      ...prev,
+                                      montoConversion: totalMonto || undefined
+                                    }));
+                                  }}
+                                >
+                                  ✕
+                                </Button>
+                              </Box>
+                            </Box>
+                          ))}
+                          <Typography variant="h6" color="primary" sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                            Total: ${(conversionData.montoConversion || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                           </Typography>
                         </>
-                      )}
-                      {!selectedProduct && (
+                      ) : (
                         <Typography variant="body2" color="text.secondary">
-                          Seleccione un producto para calcular el monto automáticamente.
+                          Seleccione productos o equipos para agregar al pedido.
                         </Typography>
                       )}
                     </Box>

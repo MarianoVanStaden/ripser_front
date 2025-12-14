@@ -18,7 +18,10 @@ interface DistribucionGeograficaTableProps {
 
 export const DistribucionGeograficaTable = ({ data }: DistribucionGeograficaTableProps) => {
   // Ordenar por total de leads descendente
-  const sortedData = [...data].sort((a, b) => b.totalLeads - a.totalLeads);
+  const sortedData = [...data].sort((a, b) => (b.totalLeads || b.cantidad || 0) - (a.totalLeads || a.cantidad || 0));
+
+  console.log('🗺️ Distribución Geográfica - Datos recibidos:', data.slice(0, 3));
+  console.log('🗺️ Ejemplo de dato completo:', JSON.stringify(data[0], null, 2));
 
   return (
     <Card>
@@ -42,18 +45,24 @@ export const DistribucionGeograficaTable = ({ data }: DistribucionGeograficaTabl
                 <TableRow key={row.provincia} hover>
                   <TableCell>{row.provincia}</TableCell>
                   <TableCell align="right">
-                    <Chip label={row.totalLeads} size="small" color="primary" variant="outlined" />
+                    <Typography variant="body2" fontWeight="medium">
+                      {row.totalLeads ?? row.cantidad ?? 0}
+                    </Typography>
                   </TableCell>
-                  <TableCell align="right">{row.leadsConvertidos}</TableCell>
+                  <TableCell align="right">
+                    <Typography variant="body2">
+                      {row.leadsConvertidos ?? row.convertidos ?? 0}
+                    </Typography>
+                  </TableCell>
                   <TableCell align="right">
                     <Chip
-                      label={`${row.tasaConversion.toFixed(1)}%`}
+                      label={`${row.tasaConversion?.toFixed(1) ?? '0.0'}%`}
                       size="small"
-                      color={row.tasaConversion >= 30 ? 'success' : 'default'}
+                      color={(row.tasaConversion ?? 0) >= 30 ? 'success' : 'default'}
                     />
                   </TableCell>
                   <TableCell align="right">
-                    ${row.valorEstimadoTotal.toLocaleString()}
+                    ${(row.valorEstimadoTotal ?? 0).toLocaleString()}
                   </TableCell>
                 </TableRow>
               ))}

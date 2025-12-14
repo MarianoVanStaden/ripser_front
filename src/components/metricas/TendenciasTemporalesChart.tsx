@@ -6,6 +6,11 @@ interface TendenciasTemporalesChartProps {
 }
 
 export const TendenciasTemporalesChart = ({ data }: TendenciasTemporalesChartProps) => {
+  console.log('📈 TendenciasTemporalesChart - Datos recibidos:', {
+    leadsPorMes: data.leadsPorMes,
+    conversionesPorMes: data.conversionesPorMes
+  });
+  
   const maxLeads = Math.max(...data.leadsPorMes.map(d => d.cantidad), 1);
   const maxConversiones = Math.max(...data.conversionesPorMes.map(d => d.cantidad), 1);
 
@@ -52,7 +57,7 @@ export const TendenciasTemporalesChart = ({ data }: TendenciasTemporalesChartPro
                         cursor: 'pointer'
                       }
                     }}
-                    title={`${item.mes}: ${item.cantidad} leads`}
+                    title={`${item.mesNombre || item.mes}: ${item.cantidad} leads`}
                   />
                   <Typography
                     variant="caption"
@@ -65,7 +70,19 @@ export const TendenciasTemporalesChart = ({ data }: TendenciasTemporalesChartPro
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {item.mes.split(' ')[0].slice(0, 3)}
+                    {item.mesNombre ? item.mesNombre.split(' ')[0]?.slice(0, 3) : item.mes}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: '0.55rem',
+                      textAlign: 'center',
+                      color: 'text.disabled',
+                      fontWeight: 'bold',
+                      mt: 0.5
+                    }}
+                  >
+                    {item.mesNombre ? item.mesNombre.split(' ')[1] : ''}
                   </Typography>
                 </Box>
               );
@@ -109,7 +126,7 @@ export const TendenciasTemporalesChart = ({ data }: TendenciasTemporalesChartPro
                         cursor: 'pointer'
                       }
                     }}
-                    title={`${item.mes}: ${item.cantidad} conversiones`}
+                    title={`${item.mesNombre || item.mes}: ${item.cantidad} conversiones`}
                   />
                   <Typography
                     variant="caption"
@@ -122,7 +139,19 @@ export const TendenciasTemporalesChart = ({ data }: TendenciasTemporalesChartPro
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {item.mes.split(' ')[0].slice(0, 3)}
+                    {item.mesNombre ? item.mesNombre.split(' ')[0]?.slice(0, 3) : item.mes}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: '0.55rem',
+                      textAlign: 'center',
+                      color: 'text.disabled',
+                      fontWeight: 'bold',
+                      mt: 0.5
+                    }}
+                  >
+                    {item.mesNombre ? item.mesNombre.split(' ')[1] : ''}
                   </Typography>
                 </Box>
               );

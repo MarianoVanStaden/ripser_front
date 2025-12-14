@@ -1,15 +1,23 @@
 import api from '../config';
-import type { Cliente } from '../../types';
+import type { Cliente, TipoCliente, EstadoCliente } from '../../types';
 
 const BASE_PATH = '/api/clientes';
 
 // A payload type for creating/updating that makes most fields optional
 type ClientePayload = Partial<Omit<Cliente, 'id' | 'fechaAlta' | 'fechaActualizacion'>>;
 
+// Interfaz de parámetros de filtro
+export interface ClienteFilterParams {
+  sucursalId?: number | null;
+  tipo?: TipoCliente;
+  estado?: EstadoCliente;
+  term?: string; // Para búsqueda
+}
+
 export const clienteApi = {
-  // Get all clients
-  getAll: async (): Promise<Cliente[]> => {
-    const response = await api.get<Cliente[]>(BASE_PATH);
+  // Get all clients with optional filters
+  getAll: async (params?: ClienteFilterParams): Promise<Cliente[]> => {
+    const response = await api.get<Cliente[]>(BASE_PATH, { params });
     return response.data;
   },
 

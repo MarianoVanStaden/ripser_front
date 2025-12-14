@@ -1,10 +1,16 @@
 import api from '../config';
 import type { Presupuesto, LegacyCreatePresupuestoRequest, PresupuestoStatus } from '../../types';
 
+// Interfaz de parámetros de filtro
+export interface PresupuestoFilterParams {
+  sucursalId?: number | null;
+  estado?: PresupuestoStatus;
+}
+
 export const presupuestoApi = {
-  // Get all presupuestos
-  getAll: async (): Promise<Presupuesto[]> => {
-    const response = await api.get('/api/presupuestos');
+  // Get all presupuestos with optional filters
+  getAll: async (params?: PresupuestoFilterParams): Promise<Presupuesto[]> => {
+    const response = await api.get('/api/presupuestos', { params });
     return response.data;
   },
 

@@ -308,12 +308,10 @@ export const LeadsTablePage = () => {
 
   const estadosDisponibles: EstadoLeadEnum[] = [
     EstadoLeadEnum.PRIMER_CONTACTO,
-    EstadoLeadEnum.EN_SEGUIMIENTO,
-    EstadoLeadEnum.CALIFICADO,
-    EstadoLeadEnum.PROPUESTA_ENVIADA,
-    EstadoLeadEnum.NEGOCIACION,
+    EstadoLeadEnum.MOSTRO_INTERES,
+    EstadoLeadEnum.CLIENTE_POTENCIAL,
+    EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
     EstadoLeadEnum.CONVERTIDO,
-    EstadoLeadEnum.PERDIDO,
     EstadoLeadEnum.DESCARTADO
   ];
 

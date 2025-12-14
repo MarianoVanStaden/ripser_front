@@ -37,9 +37,11 @@ import {
 import { useNavigate } from 'react-router-dom';
 import type { Cliente, TipoCliente, EstadoCliente } from '../../types';
 import { clienteApi } from '../../api/services/clienteApi';
+import { useTenant } from '../../context/TenantContext';
 
 const ClientesPage: React.FC = () => {
   const navigate = useNavigate();
+  const { sucursalFiltro } = useTenant();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +55,14 @@ const ClientesPage: React.FC = () => {
 
   useEffect(() => {
     loadClientes();
-  }, []);
+  }, [sucursalFiltro]); // Agregar dependencia sucursalFiltro
 
   const loadClientes = async () => {
     try {
       setLoading(true);
-      const data = await clienteApi.getAll();
+      const data = await clienteApi.getAll({
+        sucursalId: sucursalFiltro
+      });
       setClientes(data);
     } catch (err) {
       setError('Error al cargar los clientes');
@@ -75,7 +79,10 @@ const ClientesPage: React.FC = () => {
     }
     try {
       setLoading(true);
-      const results = await clienteApi.search(searchTerm);
+      const results = await clienteApi.getAll({
+        sucursalId: sucursalFiltro,
+        term: searchTerm
+      });
       setClientes(results);
     } catch (err) {
       setError('Error al buscar clientes');
@@ -194,6 +201,12 @@ const ClientesPage: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {sucursalFiltro && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Mostrando clientes filtrados por sucursal seleccionada
         </Alert>
       )}
 

@@ -31,7 +31,11 @@
       "Bash(cmd.exe /c \"dir /B src\\types\")",
       "Bash(cmd.exe /c \"dir /B C:\\Users\\maria\")",
       "Bash(cmd.exe /c \"dir /S /B C:\\Users\\maria\\ripser_back\\src\\main\\java\\com\\ripser_back\\*Lead*.java\")",
-      "Bash(cmd.exe /c \"dir /B C:\\Users\\maria\\ripser_back\\src\\main\\java\\com\\ripser_back\")"
+      "Bash(cmd.exe /c \"dir /B C:\\Users\\maria\\ripser_back\\src\\main\\java\\com\\ripser_back\")",
+      "Bash(cmd.exe /c \"dir /S /B C:\\Users\\maria\\ripser_back\\*LeadMetricasService*.java\")",
+      "Bash(cmd.exe /c \"cd C:\\Users\\maria\\ripser_back && dir /S /B *LeadMetricas*.java\")",
+      "Bash(cmd.exe /c \"cd /d C:\\Users\\maria\\ripser_back && mvn clean compile\")",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

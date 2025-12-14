@@ -237,6 +237,69 @@ const SettingsPage: React.FC = () => {
         </Alert>
       )}
 
+      {/* Ayuda Rápida - Parámetros de Métricas */}
+      {parameters.length === 0 || !parameters.find(p => p.clave === 'META_MENSUAL_LEADS') || !parameters.find(p => p.clave === 'META_PRESUPUESTO_MENSUAL') ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            📊 Configuración Inicial Recomendada
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Para usar el dashboard de métricas de leads, se recomienda crear los siguientes parámetros:
+          </Typography>
+          <Box sx={{ ml: 2, mb: 2 }}>
+            <Typography variant="body2" fontWeight="600">• META_MENSUAL_LEADS</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Meta de leads nuevos por mes (ej: 30 para empresa mediana)
+            </Typography>
+            <br/>
+            <Typography variant="body2" fontWeight="600" sx={{ mt: 1 }}>• META_PRESUPUESTO_MENSUAL</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Meta de facturación mensual en pesos (ej: 1000000 para $1,000,000/mes)
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {!parameters.find(p => p.clave === 'META_MENSUAL_LEADS') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'META_MENSUAL_LEADS',
+                    valor: '30',
+                    descripcion: 'Meta mensual de leads nuevos para la empresa. Usado en el cálculo de cumplimiento de objetivos en el dashboard de métricas.',
+                    tipo: 'INTEGER',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear META_MENSUAL_LEADS
+              </Button>
+            )}
+            {!parameters.find(p => p.clave === 'META_PRESUPUESTO_MENSUAL') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'META_PRESUPUESTO_MENSUAL',
+                    valor: '1000000',
+                    descripcion: 'Meta mensual de facturación en pesos para el dashboard de métricas de leads. Define el objetivo de ventas mensual.',
+                    tipo: 'DECIMAL',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear META_PRESUPUESTO_MENSUAL
+              </Button>
+            )}
+          </Box>
+        </Alert>
+      ) : null}
+
       {/* Parámetros agrupados por categoría */}
       <Box>
         {Object.entries(categorizedParameters).map(([category, categoryParameters]) => (

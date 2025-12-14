@@ -1,10 +1,16 @@
 import api from '../config';
 import type { Factura } from '../../types';
 
+// Interfaz de parámetros de filtro
+export interface FacturaFilterParams {
+  sucursalId?: number | null;
+  estado?: string;
+}
+
 export const facturaApi = {
-  // Get all facturas
-  getAll: async (): Promise<Factura[]> => {
-    const response = await api.get('/api/facturas');
+  // Get all facturas with optional filters
+  getAll: async (params?: FacturaFilterParams): Promise<Factura[]> => {
+    const response = await api.get('/api/facturas', { params });
     return response.data;
   },
 

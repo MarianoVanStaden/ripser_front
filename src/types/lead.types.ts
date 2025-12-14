@@ -8,7 +8,6 @@ export const CanalEnum = {
   TELEFONO: 'TELEFONO',
   EMAIL: 'EMAIL',
   WHATSAPP: 'WHATSAPP',
-  REDES_SOCIALES: 'REDES_SOCIALES',
   REFERIDO: 'REFERIDO',
   FACEBOOK: 'FACEBOOK',
   INSTAGRAM: 'INSTAGRAM'
@@ -18,14 +17,9 @@ export type CanalEnum = typeof CanalEnum[keyof typeof CanalEnum];
 
 export const EstadoLeadEnum = {
   PRIMER_CONTACTO: 'PRIMER_CONTACTO',
-  EN_SEGUIMIENTO: 'EN_SEGUIMIENTO',
-  CALIFICADO: 'CALIFICADO',
-  PROPUESTA_ENVIADA: 'PROPUESTA_ENVIADA',
-  NEGOCIACION: 'NEGOCIACION',
   CONVERTIDO: 'CONVERTIDO',
   PERDIDO: 'PERDIDO',
   DESCARTADO: 'DESCARTADO',
-  // Legacy states for backward compatibility
   MOSTRO_INTERES: 'MOSTRO_INTERES',
   CLIENTE_POTENCIAL: 'CLIENTE_POTENCIAL',
   CLIENTE_POTENCIAL_CALIFICADO: 'CLIENTE_POTENCIAL_CALIFICADO',
@@ -205,14 +199,9 @@ export interface ValidationErrors {
 // Constantes
 export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: '#3B82F6', // Azul
-  EN_SEGUIMIENTO: '#8B5CF6', // Púrpura
-  CALIFICADO: '#10B981', // Verde
-  PROPUESTA_ENVIADA: '#F59E0B', // Amarillo
-  NEGOCIACION: '#F97316', // Naranja
   CONVERTIDO: '#059669', // Verde oscuro
   PERDIDO: '#EF4444', // Rojo
   DESCARTADO: '#6B7280', // Gris
-  // Legacy states
   MOSTRO_INTERES: '#8B5CF6', // Púrpura
   CLIENTE_POTENCIAL: '#F59E0B', // Amarillo
   CLIENTE_POTENCIAL_CALIFICADO: '#10B981', // Verde
@@ -221,14 +210,8 @@ export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
 
 export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: 'Primer Contacto',
-  EN_SEGUIMIENTO: 'En Seguimiento',
-  CALIFICADO: 'Calificado',
-  PROPUESTA_ENVIADA: 'Propuesta Enviada',
-  NEGOCIACION: 'Negociación',
   CONVERTIDO: 'Convertido',
-  PERDIDO: 'Perdido',
   DESCARTADO: 'Descartado',
-  // Legacy states
   MOSTRO_INTERES: 'Mostró Interés',
   CLIENTE_POTENCIAL: 'Cliente Potencial',
   CLIENTE_POTENCIAL_CALIFICADO: 'Cliente Potencial Calificado',
@@ -252,7 +235,6 @@ export const CANAL_LABELS: Record<CanalEnum, string> = {
   TELEFONO: 'Teléfono',
   EMAIL: 'Email',
   WHATSAPP: 'WhatsApp',
-  REDES_SOCIALES: 'Redes Sociales',
   REFERIDO: 'Referido',
   FACEBOOK: 'Facebook',
   INSTAGRAM: 'Instagram'
@@ -263,7 +245,6 @@ export const CANAL_ICONS: Record<CanalEnum, string> = {
   TELEFONO: '📞',
   EMAIL: '📧',
   WHATSAPP: '💬',
-  REDES_SOCIALES: '📱',
   REFERIDO: '🤝',
   FACEBOOK: '📘',
   INSTAGRAM: '📸'

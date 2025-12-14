@@ -1,10 +1,18 @@
 import api from '../config';
 import type { Venta } from '../../types';
 
+// Interfaz de parámetros de filtro
+export interface VentaFilterParams {
+  sucursalId?: number | null;
+  estado?: string;
+  fechaInicio?: string;
+  fechaFin?: string;
+}
+
 export const ventaApi = {
-  // Get all ventas
-  getAll: async (): Promise<Venta[]> => {
-    const response = await api.get('/ventas');
+  // Get all ventas with optional filters
+  getAll: async (params?: VentaFilterParams): Promise<Venta[]> => {
+    const response = await api.get('/ventas', { params });
     return response.data;
   },
 

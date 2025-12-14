@@ -39,51 +39,67 @@ export interface MetricaPorCanalDTO {
   totalLeads: number;
   leadsConvertidos: number;
   tasaConversion: number;
-  promedioTiempoConversion: number;
+  promedioTiempoConversion?: number; // Opcional - puede no venir del backend
+  valorTotalGenerado?: number;       // Valor total generado por este canal
 }
 
 // DTO: Métricas por Prioridad
 export interface MetricaPorPrioridadDTO {
   prioridad: string;
-  totalLeads: number;
-  leadsConvertidos: number;
-  tasaConversion: number;
-  promedioValorEstimado: number;
+  cantidad: number;           // Total de leads con esta prioridad
+  porcentaje: number;         // Porcentaje del total
+  convertidos: number;        // Leads convertidos
+  tasaConversion: number;     // Tasa de conversión (%)
+  promedioValorEstimado?: number; // Opcional - valor promedio estimado
 }
 
 // DTO: Tiempo de Conversión
 export interface TiempoConversionDTO {
-  promedioTiempoConversion: number;
-  tiempoConversionMinimo: number;
-  tiempoConversionMaximo: number;
-  promedioMesAnterior: number;
-  variacionPorcentual: number;
+  promedioGeneral: number;
+  medianaGeneral: number;
+  minimoTiempo: number;
+  maximoTiempo: number;
+  promedioPorCanal: Record<string, number>;
+  promedioPorPrioridad: Record<string, number>;
 }
 
 // DTO: Distribución Geográfica
 export interface MetricaGeograficaDTO {
   provincia: string;
-  totalLeads: number;
-  leadsConvertidos: number;
+  totalLeads?: number;        // Alias: cantidad
+  cantidad?: number;          // Nombre usado por backend
+  leadsConvertidos?: number;  // Alias: convertidos
+  convertidos?: number;       // Nombre usado por backend
   tasaConversion: number;
-  valorEstimadoTotal: number;
+  porcentaje?: number;
+  valorEstimadoTotal?: number;
+  valorTotalGenerado?: number;
 }
 
 // DTO: Productos de Interés
 export interface ProductoInteresItemDTO {
   productoId: number;
   productoNombre: string;
-  cantidadLeads: number;
-  cantidadConvertidos: number;
+  cantidadLeads?: number;         // Alias
+  cantidad?: number;              // Alias
+  cantidadSolicitudes?: number;   // Nombre real del backend
+  cantidadConvertidos?: number;   // Alias
+  convertidos?: number;           // Alias
+  cantidadConvertida?: number;    // Nombre real del backend
   tasaConversion: number;
-  valorEstimadoTotal: number;
+  valorEstimadoTotal?: number;
+  valorTotalGenerado?: number;
 }
 
 export interface EquipoInteresItemDTO {
   equipoId: number;
   equipoNombre: string;
-  cantidadLeads: number;
-  cantidadConvertidos: number;
+  cantidadLeads?: number;         // Alias
+  cantidad?: number;              // Alias
+  cantidadSolicitudes?: number;   // Nombre real del backend
+  cantidadConvertidos?: number;   // Alias
+  convertidos?: number;           // Alias
+  cantidadConvertida?: number;    // Nombre real del backend
   tasaConversion: number;
 }
 
@@ -105,8 +121,10 @@ export interface MetricaPorVendedorDTO {
 
 // DTO: Tendencias Temporales
 export interface TendenciaMensualDTO {
-  mes: string; // "Enero 2024", "Febrero 2024", etc.
+  mes: string;        // "2025-12", "2025-11", etc. (formato año-mes)
+  mesNombre?: string; // "Diciembre 2025", "Noviembre 2025", etc. (nombre legible)
   cantidad: number;
+  tasaConversion?: number | null;
 }
 
 export interface TendenciasTemporalesDTO {
@@ -116,10 +134,12 @@ export interface TendenciasTemporalesDTO {
 
 // DTO: Presupuesto vs Realizado
 export interface PresupuestoVsRealizadoDTO {
-  valorEstimadoTotal: number;
-  valorRealizado: number;
+  presupuestoEstimadoTotal: number;
+  valorRealizadoTotal: number;
+  tasaRealizacion: number;
+  cantidadPresupuestosEstimados: number;
+  cantidadPresupuestosRealizados: number;
   diferencia: number;
-  porcentajeCumplimiento: number;
 }
 
 // DTO: Respuesta Principal con todas las métricas

@@ -257,7 +257,6 @@ export type PreferenciaContacto = 'TELEFONO' | 'EMAIL' | 'WHATSAPP';
 | TELEFONO | 📞 | Teléfono |
 | EMAIL | 📧 | Email |
 | WHATSAPP | 💬 | WhatsApp |
-| REDES_SOCIALES | 📱 | Redes Sociales |
 | REFERIDO | 🤝 | Referido |
 | FACEBOOK | 📘 | Facebook |
 | INSTAGRAM | 📸 | Instagram |
