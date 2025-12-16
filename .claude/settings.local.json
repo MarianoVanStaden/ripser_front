@@ -35,7 +35,9 @@
       "Bash(cmd.exe /c \"dir /S /B C:\\Users\\maria\\ripser_back\\*LeadMetricasService*.java\")",
       "Bash(cmd.exe /c \"cd C:\\Users\\maria\\ripser_back && dir /S /B *LeadMetricas*.java\")",
       "Bash(cmd.exe /c \"cd /d C:\\Users\\maria\\ripser_back && mvn clean compile\")",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cmd.exe /c \"dir /S /B C:\\Users\\maria\\ripser_back\\*Usuario*.java 2>nul | findstr /I controller\")",
+      "Bash(cmd.exe /c \"cd /d C:\\Users\\maria\\ripser_back && dir /S /B src\\main\\java\\com\\ripser_back\\*Admin*.java\")"
     ],
     "deny": [],
     "ask": []

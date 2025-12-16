@@ -328,7 +328,7 @@ export const LeadsTablePage = () => {
       {/* Header compacto */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" component="h1">
-          📊 Gestión de Leads - Vista Compacta
+          📊 Gestión de Leads
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Typography variant="body2" color="text.secondary">
