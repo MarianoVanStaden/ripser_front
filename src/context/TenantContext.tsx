@@ -16,6 +16,7 @@ interface TenantContextType {
   setEmpresaActual: (empresa: Empresa | null) => void;
   setSucursalActual: (sucursal: Sucursal | null) => void;
   cambiarTenant: (empresaId: number, sucursalId?: number) => Promise<void>;
+  cambiarSucursal: (sucursalId: number | null) => Promise<void>;
   loading: boolean;
   // Campos para filtrado temporal
   sucursalFiltro: number | null;
@@ -52,6 +53,48 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [empresaActual, setEmpresaActual] = useState<Empresa | null>(null);
   const [sucursalActual, setSucursalActual] = useState<Sucursal | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Sincronizar estados con localStorage cuando cambian
+  useEffect(() => {
+    const checkLocalStorage = () => {
+      const storedEmpresaId = localStorage.getItem('empresaId');
+      const storedSucursalId = localStorage.getItem('sucursalId');
+      const storedSuperAdmin = localStorage.getItem('esSuperAdmin');
+
+      if (storedEmpresaId && parseInt(storedEmpresaId) !== empresaId) {
+        console.log('🔄 Sincronizando empresaId desde localStorage:', storedEmpresaId);
+        setEmpresaId(parseInt(storedEmpresaId));
+      }
+
+      if (storedSucursalId && parseInt(storedSucursalId) !== sucursalId) {
+        console.log('🔄 Sincronizando sucursalId desde localStorage:', storedSucursalId);
+        setSucursalId(parseInt(storedSucursalId));
+      }
+
+      if (storedSuperAdmin && (storedSuperAdmin === 'true') !== esSuperAdmin) {
+        console.log('🔄 Sincronizando esSuperAdmin desde localStorage:', storedSuperAdmin);
+        setEsSuperAdmin(storedSuperAdmin === 'true');
+      }
+    };
+
+    // Escuchar evento custom desde AuthContext
+    const handleTenantUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('🔔 Evento tenant-context-updated recibido:', customEvent.detail);
+      checkLocalStorage();
+    };
+
+    window.addEventListener('tenant-context-updated', handleTenantUpdate);
+
+    // Revisar localStorage inmediatamente y periódicamente
+    checkLocalStorage();
+    const interval = setInterval(checkLocalStorage, 500);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('tenant-context-updated', handleTenantUpdate);
+    };
+  }, [empresaId, sucursalId, esSuperAdmin]);
 
   // Estados para filtrado temporal
   const [sucursalFiltro, setSucursalFiltroState] = useState<number | null>(() => {
@@ -100,13 +143,68 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setUsuarioEmpresa(relacionActual);
             setRolActual(relacionActual.rol);
 
-            // Cargar sucursal desde localStorage o usar defecto
+            // Lógica mejorada para inicializar sucursal con validación
             const savedSucursal = localStorage.getItem('sucursalFiltro');
-            if (savedSucursal) {
-              setSucursalFiltroState(parseInt(savedSucursal));
-            } else if (relacionActual.sucursalDefectoId) {
-              setSucursalFiltroState(relacionActual.sucursalDefectoId);
-              localStorage.setItem('sucursalFiltro', relacionActual.sucursalDefectoId.toString());
+            let sucursalSeleccionada: number | null = null;
+
+            // Cargar sucursales disponibles primero para validar
+            try {
+              const sucursalesDisponibles = await sucursalService.getByEmpresa(empresaId);
+              const activas = sucursalesDisponibles.filter(s => s.estado === 'ACTIVO');
+              console.log('🏢 Sucursales activas cargadas:', activas.map(s => s.id));
+
+              // Si hay sucursal guardada, validar que esté en la lista de disponibles
+              if (savedSucursal) {
+                const savedSucursalId = parseInt(savedSucursal);
+                const isValid = activas.some(s => s.id === savedSucursalId);
+
+                if (isValid) {
+                  console.log('✅ Sucursal guardada validada:', savedSucursal);
+                  sucursalSeleccionada = savedSucursalId;
+                } else {
+                  console.log('⚠️ Sucursal guardada inválida (ID:', savedSucursalId, ') - no está en sucursales disponibles');
+                  localStorage.removeItem('sucursalFiltro');
+                }
+              }
+
+              // Si no hay sucursal válida guardada, intentar con la asignada directamente al usuario
+              if (sucursalSeleccionada === null && relacionActual.sucursalId) {
+                console.log('📍 Usuario asignado a sucursal específica:', relacionActual.sucursalId);
+                sucursalSeleccionada = relacionActual.sucursalId;
+              }
+              // Si no, intentar con la sucursal por defecto
+              else if (sucursalSeleccionada === null && relacionActual.sucursalDefectoId) {
+                console.log('📍 Usando sucursal por defecto:', relacionActual.sucursalDefectoId);
+                sucursalSeleccionada = relacionActual.sucursalDefectoId;
+              }
+              // Si no, auto-seleccionar según lógica de empresa
+              else if (sucursalSeleccionada === null) {
+                console.log('📍 No hay sucursal asignada, seleccionando automáticamente');
+                if (activas.length === 1) {
+                  // Solo hay una sucursal, seleccionarla automáticamente
+                  console.log('📍 Solo hay una sucursal activa, seleccionándola automáticamente:', activas[0].id);
+                  sucursalSeleccionada = activas[0].id;
+                } else if (activas.length > 1) {
+                  // Hay múltiples sucursales, buscar la principal
+                  const principal = activas.find(s => s.esPrincipal);
+                  if (principal) {
+                    console.log('📍 Seleccionando sucursal principal:', principal.id);
+                    sucursalSeleccionada = principal.id;
+                  } else {
+                    console.log('📍 Seleccionando primera sucursal activa:', activas[0].id);
+                    sucursalSeleccionada = activas[0].id;
+                  }
+                }
+              }
+
+              // Aplicar la sucursal seleccionada
+              if (sucursalSeleccionada !== null) {
+                console.log('✅ Sucursal final seleccionada:', sucursalSeleccionada);
+                setSucursalFiltroState(sucursalSeleccionada);
+                localStorage.setItem('sucursalFiltro', sucursalSeleccionada.toString());
+              }
+            } catch (err) {
+              console.error('❌ Error al cargar sucursales para auto-selección:', err);
             }
           } else {
             console.log('⚠️ No se encontró relación para empresa:', empresaId);
@@ -167,6 +265,9 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       setLoading(true);
 
+      // Detectar si solo cambia la sucursal (mismo empresaId)
+      const soloSucursal = newEmpresaId === empresaId;
+
       // Call select-tenant API endpoint using authApi
       const data = await authApi.selectTenant({
         empresaId: newEmpresaId,
@@ -187,8 +288,10 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       localStorage.setItem('empresaId', newEmpresaId.toString());
       if (newSucursalId) {
         localStorage.setItem('sucursalId', newSucursalId.toString());
+        localStorage.setItem('sucursalFiltro', newSucursalId.toString());
       } else {
         localStorage.removeItem('sucursalId');
+        localStorage.removeItem('sucursalFiltro');
       }
 
       // IMPORTANTE: También actualizar esSuperAdmin del nuevo token
@@ -200,10 +303,69 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setEmpresaId(newEmpresaId);
       setSucursalId(newSucursalId || null);
 
-      // Reload page to refresh all data with new tenant context
-      window.location.reload();
+      // Si solo cambia la sucursal, actualizar el filtro sin recargar
+      if (soloSucursal) {
+        console.log('✅ Cambio de sucursal sin reload - actualizando filtro a:', newSucursalId);
+        setSucursalFiltroState(newSucursalId || null);
+        setLoading(false);
+        // No recargar la página, solo actualizar el estado
+      } else {
+        // Si cambia la empresa, sí necesitamos recargar para limpiar datos
+        console.log('🔄 Cambio de empresa - recargando página');
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error al cambiar tenant:', error);
+      throw error;
+    } finally {
+      if (!loading) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Método simplificado para cambiar solo la sucursal (sin recargar)
+  const cambiarSucursal = async (newSucursalId: number | null) => {
+    if (!empresaId) {
+      console.error('No hay empresa activa para cambiar sucursal');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🔄 Cambiando sucursal a:', newSucursalId);
+
+      // Call select-tenant API endpoint using authApi
+      const data = await authApi.selectTenant({
+        empresaId: empresaId,
+        sucursalId: newSucursalId || undefined
+      });
+
+      // Update tokens
+      const newToken = data.accessToken || (data as any).token;
+      if (newToken) {
+        localStorage.setItem('auth_token', newToken);
+        setAuthToken(newToken);
+      }
+      if (data.refreshToken) {
+        localStorage.setItem('auth_refresh_token', data.refreshToken);
+      }
+
+      // Update sucursal info
+      if (newSucursalId) {
+        localStorage.setItem('sucursalId', newSucursalId.toString());
+        localStorage.setItem('sucursalFiltro', newSucursalId.toString());
+      } else {
+        localStorage.removeItem('sucursalId');
+        localStorage.removeItem('sucursalFiltro');
+      }
+
+      setSucursalId(newSucursalId);
+      setSucursalFiltroState(newSucursalId);
+
+      console.log('✅ Sucursal cambiada exitosamente sin reload');
+    } catch (error) {
+      console.error('Error al cambiar sucursal:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -220,6 +382,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setEmpresaActual,
       setSucursalActual,
       cambiarTenant,
+      cambiarSucursal,
       loading,
       // Valores para filtrado temporal
       sucursalFiltro,

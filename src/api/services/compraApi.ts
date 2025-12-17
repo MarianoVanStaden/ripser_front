@@ -1,5 +1,11 @@
 import api from '../config';
-import type { Compra, CreateCompraDTO, CompraDTO} from '../../types';
+import type {
+  Compra,
+  CreateCompraDTO,
+  CompraDTO,
+  RecepcionCompraDTO,
+  RecepcionResponseDTO,
+} from '../../types';
 
 export const compraApi = {
   // Get all compras
@@ -27,9 +33,13 @@ export const compraApi = {
   },
 
   // Get total compras for proveedor in date range (fechaInicio, fechaFin as ISO string)
-  getTotalProveedor: async (proveedorId: number, fechaInicio: string, fechaFin: string): Promise<string> => {
+  getTotalProveedor: async (
+    proveedorId: number,
+    fechaInicio: string,
+    fechaFin: string
+  ): Promise<string> => {
     const response = await api.get(`/api/compras/total-proveedor/${proveedorId}`, {
-      params: { fechaInicio, fechaFin }
+      params: { fechaInicio, fechaFin },
     });
     return response.data;
   },
@@ -49,6 +59,40 @@ export const compraApi = {
   // Delete compra
   delete: async (id: number): Promise<void> => {
     await api.delete(`/api/compras/${id}`);
+  },
+
+  // ============================================
+  // NUEVOS MÉTODOS: Recepción con Distribución
+  // ============================================
+
+  // Recibir compra con distribución por depósito
+  recibirCompra: async (data: RecepcionCompraDTO): Promise<RecepcionResponseDTO> => {
+    const response = await api.post<RecepcionResponseDTO>(
+      `/api/compras/${data.compraId}/recibir`,
+      data
+    );
+    return response.data;
+  },
+
+  // Recibir compra parcialmente
+  recibirParcial: async (data: RecepcionCompraDTO): Promise<RecepcionResponseDTO> => {
+    const response = await api.post<RecepcionResponseDTO>(
+      `/api/compras/${data.compraId}/recibir-parcial`,
+      data
+    );
+    return response.data;
+  },
+
+  // Obtener compras pendientes de recepción
+  getPendientesRecepcion: async (): Promise<CompraDTO[]> => {
+    const response = await api.get<CompraDTO[]>('/api/compras/pendientes-recepcion');
+    return response.data;
+  },
+
+  // Obtener detalle de recepciones de una compra
+  getRecepciones: async (compraId: number): Promise<any[]> => {
+    const response = await api.get(`/api/compras/${compraId}/recepciones`);
+    return response.data;
   },
 };
 

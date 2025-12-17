@@ -469,7 +469,7 @@ export const LeadsTablePage = () => {
                   Prior.
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '15%', minWidth: 150, display: { xs: 'none', xl: 'table-cell' } }}>Interés</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '12%', minWidth: 120, display: { xs: 'none', lg: 'table-cell' } }}>Interés</TableCell>
               <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '6%', minWidth: 70, display: { xs: 'none', md: 'table-cell' } }}>Rec.</TableCell>
               <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '7%', minWidth: 80, display: { xs: 'none', lg: 'table-cell' } }}>
                 <TableSortLabel
@@ -478,15 +478,6 @@ export const LeadsTablePage = () => {
                   onClick={() => handleRequestSort('fechaPrimerContacto')}
                 >
                   1er Cont.
-                </TableSortLabel>
-              </TableCell>
-              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '7%', minWidth: 80, display: { xs: 'none', xl: 'table-cell' } }}>
-                <TableSortLabel
-                  active={orderBy === 'fechaUltimoContacto'}
-                  direction={orderBy === 'fechaUltimoContacto' ? order : 'asc'}
-                  onClick={() => handleRequestSort('fechaUltimoContacto')}
-                >
-                  Últ. Cont.
                 </TableSortLabel>
               </TableCell>
               <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '4%', minWidth: 50 }}>
@@ -504,7 +495,7 @@ export const LeadsTablePage = () => {
           <TableBody>
             {processedLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+                <TableCell colSpan={11} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="text.secondary">
                     No se encontraron leads con los filtros seleccionados
                   </Typography>
@@ -547,25 +538,17 @@ export const LeadsTablePage = () => {
                       onUpdate={handleUpdatePriority}
                     />
                   </TableCell>
-                  <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 200, display: { xs: 'none', xl: 'table-cell' } }}>
+                  <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 150, display: { xs: 'none', lg: 'table-cell' } }}>
                     {lead.productoInteresNombre ? (
-                      <Typography variant="caption" display="block" noWrap>
-                        📦 {lead.productoInteresNombre}
-                        {lead.cantidadProductoInteres && ` (${lead.cantidadProductoInteres})`}
+                      <Typography variant="caption" display="block" noWrap title={lead.productoInteresNombre}>
+                        {lead.productoInteresNombre}
                       </Typography>
-                    ) : (lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre) ? (
-                      <Typography variant="caption" display="block" noWrap>
-                        🔧 {lead.modeloRecetaInteres || lead.modeloEquipoInteres || ''}
-                        {(lead.colorRecetaInteres || lead.colorEquipoInteres) && ` | ${(lead.colorRecetaInteres || lead.colorEquipoInteres)?.replace(/_/g, ' ')}`}
-                        {(lead.medidaRecetaInteres || lead.medidaEquipoInteres) && ` | ${lead.medidaRecetaInteres || lead.medidaEquipoInteres}`}
-                        {(lead.cantidadRecetaInteres || lead.cantidadEquipoInteres) && (
-                          <Box component="span" sx={{ color: 'success.main', fontWeight: 'bold', ml: 0.5 }}>
-                            ({lead.cantidadRecetaInteres || lead.cantidadEquipoInteres})
-                          </Box>
-                        )}
+                    ) : (lead.modeloRecetaInteres || lead.modeloEquipoInteres) ? (
+                      <Typography variant="caption" display="block" noWrap title={lead.modeloRecetaInteres || lead.modeloEquipoInteres}>
+                        {lead.modeloRecetaInteres || lead.modeloEquipoInteres}
                       </Typography>
                     ) : lead.equipoInteresadoNombre ? (
-                      <Typography variant="caption" display="block" noWrap>
+                      <Typography variant="caption" display="block" noWrap title={lead.equipoInteresadoNombre}>
                         {lead.equipoInteresadoNombre}
                       </Typography>
                     ) : '-'}
@@ -575,9 +558,6 @@ export const LeadsTablePage = () => {
                   </TableCell>
                   <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem', display: { xs: 'none', lg: 'table-cell' } }}>
                     {formatearFecha(lead.fechaPrimerContacto)}
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem', display: { xs: 'none', xl: 'table-cell' } }}>
-                    {formatearFecha(lead.fechaUltimoContacto)}
                   </TableCell>
                   <TableCell align="center" sx={{ py: 0.75, fontSize: '0.875rem' }}>
                     {calcularDias(lead.fechaPrimerContacto) || '-'}

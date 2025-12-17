@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { sucursalService } from '../../services/sucursalService';
 import { empresaService } from '../../services/empresaService';
 import type { Sucursal, Empresa, CreateSucursalDTO, EstadoSucursal } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import '../Admin/EmpresasPage.css'; // Reuse styles
 
 export const SucursalesPage: React.FC = () => {
+  const { esSuperAdmin } = useAuth();
+  const { empresaId: userEmpresaId } = useTenant();
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [selectedEmpresa, setSelectedEmpresa] = useState<number | null>(null);
@@ -22,7 +26,7 @@ export const SucursalesPage: React.FC = () => {
 
   useEffect(() => {
     loadEmpresas();
-  }, []);
+  }, [userEmpresaId, esSuperAdmin]);
 
   useEffect(() => {
     if (selectedEmpresa) {
@@ -33,9 +37,19 @@ export const SucursalesPage: React.FC = () => {
   const loadEmpresas = async () => {
     try {
       const data = await empresaService.getActive();
-      setEmpresas(data);
-      if (data.length > 0 && !selectedEmpresa) {
-        setSelectedEmpresa(data[0].id);
+
+      // Si no es SUPER_ADMIN, filtrar solo su empresa
+      let empresasFiltradas = data;
+      if (!esSuperAdmin && userEmpresaId) {
+        empresasFiltradas = data.filter(e => e.id === userEmpresaId);
+      }
+
+      setEmpresas(empresasFiltradas);
+
+      // Auto-seleccionar la empresa del usuario o la primera
+      if (empresasFiltradas.length > 0 && !selectedEmpresa) {
+        const defaultEmpresa = userEmpresaId && empresasFiltradas.find(e => e.id === userEmpresaId);
+        setSelectedEmpresa(defaultEmpresa ? defaultEmpresa.id : empresasFiltradas[0].id);
       }
     } catch (err) {
       console.error('Error loading empresas:', err);
@@ -127,19 +141,25 @@ export const SucursalesPage: React.FC = () => {
       <div className="page-header">
         <h1>Gestión de Sucursales</h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <select
-            className="form-control"
-            style={{ width: '250px' }}
-            value={selectedEmpresa || ''}
-            onChange={(e) => setSelectedEmpresa(parseInt(e.target.value))}
-          >
-            <option value="">Seleccione empresa</option>
-            {empresas.map((empresa) => (
-              <option key={empresa.id} value={empresa.id}>
-                {empresa.nombre}
-              </option>
-            ))}
-          </select>
+          {esSuperAdmin ? (
+            <select
+              className="form-control"
+              style={{ width: '250px' }}
+              value={selectedEmpresa || ''}
+              onChange={(e) => setSelectedEmpresa(parseInt(e.target.value))}
+            >
+              <option value="">Seleccione empresa</option>
+              {empresas.map((empresa) => (
+                <option key={empresa.id} value={empresa.id}>
+                  {empresa.nombre}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+              {empresas.find(e => e.id === selectedEmpresa)?.nombre || 'Mi Empresa'}
+            </div>
+          )}
           <button
             className="btn btn-primary"
             onClick={handleCreate}
@@ -200,12 +220,14 @@ export const SucursalesPage: React.FC = () => {
                         Marcar Principal
                       </button>
                     )}
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDelete(sucursal.id)}
-                    >
-                      Eliminar
-                    </button>
+                    {esSuperAdmin && (
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDelete(sucursal.id)}
+                      >
+                        Eliminar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

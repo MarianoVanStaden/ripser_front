@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, FormControl, Select, MenuItem, Typography, Chip } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, FormControl, Select, MenuItem, Typography, Chip, CircularProgress } from '@mui/material';
 import { Business as BusinessIcon } from '@mui/icons-material';
 import type { Sucursal } from '../../types';
 
@@ -8,6 +8,7 @@ interface SucursalSelectorProps {
   sucursalActual: number | null;
   sucursalDefecto: number | null;
   onChange: (sucursalId: number | null) => void;
+  onChangeBackend?: (sucursalId: number | null) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -16,13 +17,31 @@ const SucursalSelector: React.FC<SucursalSelectorProps> = ({
   sucursalActual,
   sucursalDefecto,
   onChange,
+  onChangeBackend,
   disabled = false,
 }) => {
+  const [loading, setLoading] = useState(false);
+
   // No mostrar si no hay sucursales
   if (sucursales.length === 0) return null;
 
-  // No mostrar si solo hay una sucursal y no está deshabilitado
-  if (sucursales.length === 1 && !disabled) return null;
+  const handleChange = async (sucursalId: number | null) => {
+    // Si hay un callback de backend, usarlo
+    if (onChangeBackend) {
+      setLoading(true);
+      try {
+        await onChangeBackend(sucursalId);
+        // El backend ya actualiza el estado
+      } catch (error) {
+        console.error('Error al cambiar sucursal en backend:', error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Solo actualización local
+      onChange(sucursalId);
+    }
+  };
 
   return (
     <Box sx={{ px: 2, py: 1.5 }}>
@@ -41,9 +60,10 @@ const SucursalSelector: React.FC<SucursalSelectorProps> = ({
       <FormControl fullWidth size="small">
         <Select
           value={sucursalActual ?? ''}
-          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-          disabled={disabled}
+          onChange={(e) => handleChange(e.target.value ? Number(e.target.value) : null)}
+          disabled={disabled || loading}
           displayEmpty
+          startAdornment={loading ? <CircularProgress size={16} sx={{ mr: 1 }} /> : undefined}
           sx={{
             bgcolor: 'rgba(255,255,255,0.05)',
             color: '#fff',

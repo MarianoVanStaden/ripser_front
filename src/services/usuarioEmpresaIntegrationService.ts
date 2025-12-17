@@ -41,22 +41,18 @@ export const usuarioEmpresaIntegrationService = {
 
       console.log(`User created successfully with ID: ${createdUsuario.id}`);
 
-      // Step 2: Assign to empresa
+      // Step 2: Assign to empresa with sucursal defecto
       const usuarioEmpresa = await usuarioEmpresaService.assign({
         usuarioId: createdUsuario.id,
         empresaId: data.empresaId,
         sucursalId: data.sucursalId,
+        sucursalDefectoId: data.sucursalDefectoId,
         rol: data.rolEmpresa,
         observaciones: data.observaciones
       });
 
       console.log(`User assigned to empresa successfully with assignment ID: ${usuarioEmpresa.id}`);
-
-      // Step 3: Set default sucursal if specified and different from assigned sucursal
-      if (data.sucursalDefectoId && data.sucursalDefectoId !== data.sucursalId) {
-        await usuarioEmpresaService.update(usuarioEmpresa.id, {
-          sucursalDefectoId: data.sucursalDefectoId
-        });
+      if (data.sucursalDefectoId) {
         console.log(`Default sucursal set to: ${data.sucursalDefectoId}`);
       }
 

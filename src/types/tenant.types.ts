@@ -101,6 +101,7 @@ export interface AsignarUsuarioDTO {
   usuarioId: number;
   empresaId: number;
   sucursalId?: number;
+  sucursalDefectoId?: number;
   rol: RolEmpresa;
   observaciones?: string;
 }

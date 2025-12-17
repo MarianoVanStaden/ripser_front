@@ -70,6 +70,7 @@ const navigation: NavigationSection[] = [
     title: 'VENTAS',
     modulo: 'VENTAS',
     items: [
+      { text: 'Dashboard de Ventas', icon: <BarChartIcon />, path: '/ventas/dashboard' },
       { text: 'Presupuestos', icon: <AssignmentIcon />, path: '/ventas/presupuestos' },
       { text: 'Notas de Pedido', icon: <AssignmentIcon />, path: '/ventas/notas-pedido' },
       { text: 'Facturación', icon: <AssignmentIcon />, path: '/ventas/facturacion' },
@@ -116,6 +117,11 @@ const navigation: NavigationSection[] = [
       { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/entregas' },
       { text: 'Entregas de Equipos', icon: <LocalShippingIcon />, path: '/logistica/entregas-equipos' },
+      { text: 'Depósitos', icon: <LocalShippingIcon />, path: '/logistica/depositos' },
+      { text: 'Inventario Depósito', icon: <LocalShippingIcon />, path: '/logistica/inventario-deposito' },
+      { text: 'Ubicación Equipos', icon: <LocalShippingIcon />, path: '/logistica/ubicacion-equipos' },
+      { text: 'Auditoría Movimientos', icon: <LocalShippingIcon />, path: '/logistica/auditoria' },
+      { text: 'Transferencias', icon: <SwapHorizIcon />, path: '/logistica/transferencias' },
     ],
   },
   {
@@ -182,11 +188,26 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { tienePermiso } = usePermisos();
   const { user, esSuperAdmin, logout } = useAuth();
-  const { sucursalFiltro, setSucursalFiltro, sucursales, canSelectSucursal, usuarioEmpresa } = useTenant();
+  const { sucursalFiltro, setSucursalFiltro, sucursales, canSelectSucursal, usuarioEmpresa, cambiarSucursal } = useTenant();
   const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
 
+  // Rutas que solo pueden ver los SUPER_ADMIN
+  const superAdminOnlyPaths = ['/admin/tenant-selector'];
+
   // Filtrar las secciones según los permisos del usuario
-  const seccionesFiltradas = navigation.filter((section) => tienePermiso(section.modulo));
+  const seccionesFiltradas = navigation
+    .filter((section) => tienePermiso(section.modulo))
+    .map((section) => {
+      // Si es la sección de ADMIN, filtrar items según el rol
+      if (section.modulo === 'ADMIN' && !esSuperAdmin) {
+        return {
+          ...section,
+          items: section.items.filter(item => !superAdminOnlyPaths.includes(item.path))
+        };
+      }
+      return section;
+    })
+    .filter((section) => section.items.length > 0); // Eliminar secciones sin items
 
   const handleLogoutClick = () => {
     setOpenLogoutDialog(true);
@@ -286,6 +307,7 @@ const Sidebar: React.FC = () => {
                 sucursalActual={sucursalFiltro}
                 sucursalDefecto={usuarioEmpresa?.sucursalDefectoId ?? null}
                 onChange={setSucursalFiltro}
+                onChangeBackend={cambiarSucursal}
               />
             </Box>
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />

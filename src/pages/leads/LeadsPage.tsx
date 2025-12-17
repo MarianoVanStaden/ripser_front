@@ -218,46 +218,19 @@ export const LeadsPage = () => {
                     <LeadStatusBadge status={lead.estadoLead} />
                   </TableCell>
                   <TableCell>
-                    {lead.productoInteresNombre && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="body2" fontWeight="bold">
-                          📦 {lead.productoInteresNombre}
-                        </Typography>
-                        {lead.cantidadProductoInteres && (
-                          <Typography variant="caption" color="primary.main">
-                            Cantidad: {lead.cantidadProductoInteres}
-                          </Typography>
-                        )}
-                      </Box>
-                    )}
-                    {(lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre) && (
-                      <Box>
-                        <Typography variant="body2" fontWeight="bold" color="primary.main">
-                          🔧 RECETA: {lead.recetaInteresNombre || lead.equipoFabricadoInteresNombre}
-                        </Typography>
-                        {(lead.modeloRecetaInteres || lead.modeloEquipoInteres) && (
-                          <Typography variant="caption" display="block">
-                            Modelo: {lead.modeloRecetaInteres || lead.modeloEquipoInteres}
-                          </Typography>
-                        )}
-                        {(lead.colorRecetaInteres || lead.colorEquipoInteres) && (
-                          <Typography variant="caption" display="block">
-                            Color: {(lead.colorRecetaInteres || lead.colorEquipoInteres)?.replace(/_/g, ' ')}
-                          </Typography>
-                        )}
-                        {(lead.medidaRecetaInteres || lead.medidaEquipoInteres) && (
-                          <Typography variant="caption" display="block">
-                            Medida: {lead.medidaRecetaInteres || lead.medidaEquipoInteres}
-                          </Typography>
-                        )}
-                        {(lead.cantidadRecetaInteres || lead.cantidadEquipoInteres) && (
-                          <Typography variant="caption" color="success.main" display="block" fontWeight="bold">
-                            Cantidad: {lead.cantidadRecetaInteres || lead.cantidadEquipoInteres}
-                          </Typography>
-                        )}
-                      </Box>
-                    )}
-                    {!lead.productoInteresNombre && !lead.recetaInteresNombre && !lead.equipoFabricadoInteresNombre && (lead.equipoInteresadoNombre || '-')}
+                    {lead.productoInteresNombre ? (
+                      <Typography variant="body2" noWrap title={lead.productoInteresNombre}>
+                        {lead.productoInteresNombre}
+                      </Typography>
+                    ) : (lead.modeloRecetaInteres || lead.modeloEquipoInteres) ? (
+                      <Typography variant="body2" noWrap title={lead.modeloRecetaInteres || lead.modeloEquipoInteres}>
+                        {lead.modeloRecetaInteres || lead.modeloEquipoInteres}
+                      </Typography>
+                    ) : lead.equipoInteresadoNombre ? (
+                      <Typography variant="body2" noWrap title={lead.equipoInteresadoNombre}>
+                        {lead.equipoInteresadoNombre}
+                      </Typography>
+                    ) : '-'}
                   </TableCell>
                   <TableCell align="center">
                     <RecordatorioStatusBadge recordatorios={lead.recordatorios} />

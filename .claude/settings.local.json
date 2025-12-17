@@ -37,7 +37,11 @@
       "Bash(cmd.exe /c \"cd /d C:\\Users\\maria\\ripser_back && mvn clean compile\")",
       "Bash(find:*)",
       "Bash(cmd.exe /c \"dir /S /B C:\\Users\\maria\\ripser_back\\*Usuario*.java 2>nul | findstr /I controller\")",
-      "Bash(cmd.exe /c \"cd /d C:\\Users\\maria\\ripser_back && dir /S /B src\\main\\java\\com\\ripser_back\\*Admin*.java\")"
+      "Bash(cmd.exe /c \"cd /d C:\\Users\\maria\\ripser_back && dir /S /B src\\main\\java\\com\\ripser_back\\*Admin*.java\")",
+      "Bash(wc:*)",
+      "Bash(cmd.exe /c \"dir /B c:\\Users\\maria\\Documents\\GitHub\\ripser_front\\src\\components\\Logistica\")",
+      "Bash(cmd.exe /c \"dir /B ..\\ripser_back\")",
+      "Bash(cmd.exe /c \"npx tsc --noEmit 2>&1 | findstr /C:error || echo No errors found\")"
     ],
     "deny": [],
     "ask": []

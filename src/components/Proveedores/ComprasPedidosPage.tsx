@@ -55,6 +55,7 @@ import {
   Refresh as RefreshIcon,
   Print as PrintIcon,
   GetApp as GetAppIcon,
+  Inventory as InventoryIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -63,14 +64,15 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { supplierApi } from '../../api/services/supplierApi';
 import { compraApi} from '../../api/services/compraApi';
-import type { ProveedorDTO, CompraDTO, CreateCompraDTO } from '../../types';
+import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO, RecepcionItemDTO, Deposito, DistribucionDepositoItem } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
+import { depositoApi } from '../../api/services/depositoApi';
+
 import type { OrdenCompra, ProductoDTO, CategoriaProducto} from '../../types';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
-dayjs.locale('es');
 class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
   state = { hasError: false };
 
@@ -121,6 +123,24 @@ const ComprasPedidosPage: React.FC = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [ordenToDelete, setOrdenToDelete] = useState<OrdenCompra | null>(null);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState('');
+
+  // Reception dialog states
+  const [openRecepcionDialog, setOpenRecepcionDialog] = useState(false);
+  const [ordenToReceive, setOrdenToReceive] = useState<OrdenCompra | null>(null);
+  const [depositos, setDepositos] = useState<Deposito[]>([]);
+  const [recepcionItems, setRecepcionItems] = useState<Array<{
+    detalleCompraId: number;
+    productoId: number;
+    productoNombre: string;
+    cantidadCompra: number;
+    depositoId: number | '';
+    cantidadRecibida: number;
+    observaciones: string;
+  }>>([]);
+  const [recepcionObservaciones, setRecepcionObservaciones] = useState('');
+  const [recepcionLoading, setRecepcionLoading] = useState(false);
+  const [recepcionSuccess, setRecepcionSuccess] = useState<string | null>(null);
+  const [recepcionError, setRecepcionError] = useState<string | null>(null);
 
 const [newOrden, setNewOrden] = useState({
   supplierId: '',
@@ -258,6 +278,99 @@ const loadCategorias = async () => {
   } catch (err: any) {
     console.error('Error loading categorías:', err);
     // No mostramos error porque las categorías son opcionales
+  }
+};
+
+const loadDepositos = async () => {
+  try {
+    const response = await depositoApi.getAll();
+    const data = Array.isArray(response) ? response : response?.content || [];
+    setDepositos(data);
+  } catch (err: any) {
+    console.error('Error loading depósitos:', err);
+  }
+};
+
+// Handle opening the reception dialog
+const handleOpenRecepcion = async (orden: OrdenCompra) => {
+  setOrdenToReceive(orden);
+  setRecepcionError(null);
+  setRecepcionSuccess(null);
+  
+  // Load depósitos if not already loaded
+  if (depositos.length === 0) {
+    await loadDepositos();
+  }
+  
+  // Initialize reception items from the order items
+  const items = orden.items.map((item) => ({
+    detalleCompraId: item.id || 0,
+    productoId: item.productoId ? parseInt(item.productoId.toString()) : 0,
+    productoNombre: item.nombreProductoTemporal || item.descripcion || `Producto ${item.productoId}`,
+    cantidadCompra: item.cantidad,
+    depositoId: '' as number | '',
+    cantidadRecibida: item.cantidad,
+    observaciones: '',
+  }));
+  
+  setRecepcionItems(items);
+  setRecepcionObservaciones('');
+  setOpenRecepcionDialog(true);
+};
+
+// Handle reception submission
+const handleSubmitRecepcion = async () => {
+  if (!ordenToReceive) return;
+  
+  // Validate all items have a depot selected
+  const itemsSinDeposito = recepcionItems.filter(item => !item.depositoId);
+  if (itemsSinDeposito.length > 0) {
+    setRecepcionError('Debe seleccionar un depósito para todos los productos');
+    return;
+  }
+  
+  // Validate all items have quantity > 0
+  const itemsSinCantidad = recepcionItems.filter(item => item.cantidadRecibida <= 0);
+  if (itemsSinCantidad.length > 0) {
+    setRecepcionError('La cantidad recibida debe ser mayor a 0 para todos los productos');
+    return;
+  }
+  
+  setRecepcionLoading(true);
+  setRecepcionError(null);
+  
+  try {
+    const recepcionData: RecepcionCompraDTO = {
+      compraId: ordenToReceive.id,
+      fechaRecepcion: dayjs().toISOString(),
+      recepciones: recepcionItems.map(item => ({
+        detalleCompraId: item.detalleCompraId,
+        productoId: item.productoId,
+        depositoId: item.depositoId as number,
+        cantidadRecibida: item.cantidadRecibida,
+        esRecepcionParcial: item.cantidadRecibida < item.cantidadCompra,
+        observaciones: item.observaciones,
+      })),
+      observaciones: recepcionObservaciones,
+    };
+    
+    const response = await compraApi.recibirCompra(recepcionData);
+    
+    if (response.success) {
+      setRecepcionSuccess('Compra recibida correctamente. ' + (response.movimientosCreados || 0) + ' movimientos de stock creados.');
+      // Reload data after successful reception
+      setTimeout(() => {
+        setOpenRecepcionDialog(false);
+        loadCompras();
+      }, 2000);
+    } else {
+      setRecepcionError(response.message || 'Error al recibir la compra');
+    }
+  } catch (err: any) {
+    console.error('Error al recibir compra:', err);
+    setRecepcionError(err.response?.data?.message || err.message || 'Error al procesar la recepción');
+  } finally {
+    setRecepcionLoading(false);
   }
 };
 
@@ -1161,6 +1274,17 @@ const handleDeleteCompra = async (id: number) => {
                     >
                       <DeleteIcon />
                     </IconButton>
+                    {/* Recibir button - only show for CONFIRMADA or EN_TRANSITO orders */}
+                    {(orden.estado === 'CONFIRMADA' || orden.estado === 'EN_TRANSITO') && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenRecepcion(orden)}
+                        color="success"
+                        title="Recibir Compra"
+                      >
+                        <InventoryIcon />
+                      </IconButton>
+                    )}
                     <IconButton
                       size="small"
                       onClick={() => handleExportarOrdenPDF(orden)}
@@ -1813,6 +1937,178 @@ const handleDeleteCompra = async (id: number) => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Recepción de Compra Dialog */}
+        <Dialog
+          open={openRecepcionDialog}
+          onClose={() => !recepcionLoading && setOpenRecepcionDialog(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <InventoryIcon color="success" />
+              <Typography variant="h6">
+                Recibir Compra {ordenToReceive?.numero}
+              </Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            {recepcionError && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRecepcionError(null)}>
+                {recepcionError}
+              </Alert>
+            )}
+            {recepcionSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                {recepcionSuccess}
+              </Alert>
+            )}
+            
+            {ordenToReceive && (
+              <Box sx={{ pt: 1 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Información de la Compra
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Proveedor</Typography>
+                      <Typography variant="body1" fontWeight="medium">
+                        {ordenToReceive.proveedor?.razonSocial || proveedores.find(p => p.id.toString() === ordenToReceive.supplierId)?.razonSocial || '-'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Fecha Compra</Typography>
+                      <Typography variant="body1">
+                        {dayjs(ordenToReceive.fechaCreacion).format('DD/MM/YYYY')}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">Total</Typography>
+                      <Typography variant="body1" fontWeight="medium">
+                        ${ordenToReceive.total?.toLocaleString() || '0'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                  Productos a Recibir
+                </Typography>
+                
+                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.100' }}>
+                        <TableCell>Producto</TableCell>
+                        <TableCell align="center">Cant. Comprada</TableCell>
+                        <TableCell align="center" sx={{ minWidth: 180 }}>Depósito *</TableCell>
+                        <TableCell align="center" sx={{ minWidth: 120 }}>Cant. Recibida *</TableCell>
+                        <TableCell>Observaciones</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {recepcionItems.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="medium">
+                              {item.productoNombre}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip label={item.cantidadCompra} size="small" />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              select
+                              fullWidth
+                              size="small"
+                              value={item.depositoId}
+                              onChange={(e) => {
+                                const updated = [...recepcionItems];
+                                updated[index].depositoId = e.target.value ? parseInt(e.target.value) : '';
+                                setRecepcionItems(updated);
+                              }}
+                              error={!item.depositoId}
+                              disabled={recepcionLoading}
+                            >
+                              <MenuItem value="">Seleccionar...</MenuItem>
+                              {depositos.filter(d => d.id != null).map((dep) => (
+                                <MenuItem key={dep.id} value={dep.id}>
+                                  {dep.nombre}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              type="number"
+                              fullWidth
+                              size="small"
+                              value={item.cantidadRecibida}
+                              onChange={(e) => {
+                                const updated = [...recepcionItems];
+                                updated[index].cantidadRecibida = parseInt(e.target.value) || 0;
+                                setRecepcionItems(updated);
+                              }}
+                              inputProps={{ min: 0, max: item.cantidadCompra }}
+                              error={item.cantidadRecibida <= 0}
+                              disabled={recepcionLoading}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              value={item.observaciones}
+                              onChange={(e) => {
+                                const updated = [...recepcionItems];
+                                updated[index].observaciones = e.target.value;
+                                setRecepcionItems(updated);
+                              }}
+                              placeholder="Opcional"
+                              disabled={recepcionLoading}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  label="Observaciones Generales"
+                  value={recepcionObservaciones}
+                  onChange={(e) => setRecepcionObservaciones(e.target.value)}
+                  disabled={recepcionLoading}
+                  sx={{ mt: 1 }}
+                />
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button
+              onClick={() => setOpenRecepcionDialog(false)}
+              disabled={recepcionLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleSubmitRecepcion}
+              disabled={recepcionLoading || recepcionItems.some(i => !i.depositoId || i.cantidadRecibida <= 0)}
+              startIcon={recepcionLoading ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
+            >
+              {recepcionLoading ? 'Procesando...' : 'Confirmar Recepción'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
       </Box>
     </LocalizationProvider>
     </ErrorBoundary>

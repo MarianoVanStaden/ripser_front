@@ -41,6 +41,7 @@ import {
   Business as BusinessIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import usuarioAdminApi, { type UsuarioDTO, type TipoRol } from '../../api/services/usuarioAdminApi';
 import { useAuth } from '../../context/AuthContext';
@@ -77,15 +78,30 @@ const UsersPage: React.FC = () => {
   const [confirmSuperAdminDialogOpen, setConfirmSuperAdminDialogOpen] = useState(false);
   const [confirmSaveDialogOpen, setConfirmSaveDialogOpen] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [createdUserInfo, setCreatedUserInfo] = useState<{ username: string; role: string; isEdit: boolean } | null>(null);
   const [editingUser, setEditingUser] = useState<UsuarioWithEmpresa | null>(null);
   const [userToDelete, setUserToDelete] = useState<UsuarioWithEmpresa | null>(null);
+  const [viewingUser, setViewingUser] = useState<UsuarioWithEmpresa | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Empresa and Sucursal data
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [allSucursales, setAllSucursales] = useState<Sucursal[]>([]); // Para el modal de vista
+
+  // Helper functions to get names
+  const getEmpresaName = (empresaId: number): string => {
+    const empresa = empresas.find(e => e.id === empresaId);
+    return empresa?.nombre || `Empresa ID: ${empresaId}`;
+  };
+
+  const getSucursalName = (sucursalId: number): string => {
+    // Buscar en todas las sucursales cargadas
+    const sucursal = allSucursales.find(s => s.id === sucursalId) || sucursales.find(s => s.id === sucursalId);
+    return sucursal?.nombre || `Sucursal ID: ${sucursalId}`;
+  };
 
   // Enhanced form data with empresa assignment
   const [formData, setFormData] = useState<CreateUsuarioWithEmpresaDTO>({
@@ -208,10 +224,26 @@ const UsersPage: React.FC = () => {
     try {
       setLoading(true);
 
-      // Load empresas for Super Admin
+      // Load empresas for Super Admin or current empresa for ADMIN_EMPRESA
       if (esSuperAdmin) {
         const empresasData = await empresaService.getActive();
         setEmpresas(empresasData);
+
+        // Load all sucursales for all empresas (for viewing user details)
+        const allSucursalesPromises = empresasData.map(emp =>
+          sucursalService.getByEmpresa(emp.id).catch(() => [])
+        );
+        const allSucursalesArrays = await Promise.all(allSucursalesPromises);
+        const flatSucursales = allSucursalesArrays.flat();
+        setAllSucursales(flatSucursales);
+      } else if (currentEmpresaId) {
+        // Load current empresa info
+        const currentEmpresa = await empresaService.getById(currentEmpresaId);
+        setEmpresas([currentEmpresa]);
+
+        // Load sucursales for current empresa
+        const sucursalesData = await sucursalService.getByEmpresa(currentEmpresaId);
+        setAllSucursales(sucursalesData);
       }
 
       // Load users with empresa assignments (filtered by empresaId for ADMIN_EMPRESA)
@@ -304,6 +336,8 @@ const UsersPage: React.FC = () => {
   const createUser = async () => {
     try {
       const rolOption = getRolEmpresaOption(formData.rolEmpresa);
+
+      console.log('📝 Datos del formulario a enviar:', formData);
 
       // Create new user with empresa assignment
       const result = await usuarioEmpresaIntegrationService.createUsuarioWithEmpresa(formData);
@@ -496,6 +530,11 @@ const UsersPage: React.FC = () => {
     setUserToDelete(null);
   };
 
+  const handleView = (user: UsuarioWithEmpresa) => {
+    setViewingUser(user);
+    setViewDialogOpen(true);
+  };
+
   // Get role label and color
   const getRoleInfo = (role: TipoRol) => {
     return availableRoles.find(r => r.value === role) || { label: role, color: '#757575' };
@@ -635,12 +674,21 @@ const UsersPage: React.FC = () => {
                         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Nunca'}
                       </TableCell>
                       <TableCell align="center">
-                        <IconButton onClick={() => handleEdit(user)} size="small" color="primary">
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleDeleteClick(user.id)} size="small" color="error">
-                          <DeleteIcon />
-                        </IconButton>
+                        <Tooltip title="Ver detalles">
+                          <IconButton onClick={() => handleView(user)} size="small" color="info">
+                            <VisibilityIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Editar">
+                          <IconButton onClick={() => handleEdit(user)} size="small" color="primary">
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar">
+                          <IconButton onClick={() => handleDeleteClick(user.id)} size="small" color="error">
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))
@@ -800,7 +848,15 @@ const UsersPage: React.FC = () => {
                     <InputLabel>Sucursal Asignada *</InputLabel>
                     <Select
                       value={formData.sucursalId || ''}
-                      onChange={(e) => setFormData({ ...formData, sucursalId: e.target.value as number })}
+                      onChange={(e) => {
+                        const sucursalId = e.target.value as number;
+                        // Cuando se asigna una sucursal, también establecerla como defecto
+                        setFormData({
+                          ...formData,
+                          sucursalId,
+                          sucursalDefectoId: sucursalId
+                        });
+                      }}
                       label="Sucursal Asignada *"
                     >
                       {sucursales.map(sucursal => (
@@ -810,7 +866,7 @@ const UsersPage: React.FC = () => {
                       ))}
                     </Select>
                     <FormHelperText>
-                      Este rol requiere asignación a una sucursal específica
+                      Esta sucursal será asignada y configurada como predeterminada
                     </FormHelperText>
                   </FormControl>
                 )}
@@ -887,11 +943,14 @@ const UsersPage: React.FC = () => {
               <Typography variant="body2" sx={{ mb: 1 }}>
                 <strong>Email:</strong> {formData.email}
               </Typography>
-              {formData.nombre && (
+              {(formData.nombre || formData.apellido) && (
                 <Typography variant="body2" sx={{ mb: 1 }}>
                   <strong>Nombre:</strong> {formData.nombre} {formData.apellido}
                 </Typography>
               )}
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Empresa:</strong> {getEmpresaName(formData.empresaId)}
+              </Typography>
               <Typography variant="body2" sx={{ mb: 1 }}>
                 <strong>Rol:</strong>{' '}
                 <Chip
@@ -905,8 +964,13 @@ const UsersPage: React.FC = () => {
                 />
               </Typography>
               {formData.sucursalId && (
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>Sucursal:</strong> {getSucursalName(formData.sucursalId)}
+                </Typography>
+              )}
+              {formData.sucursalDefectoId && formData.sucursalDefectoId !== formData.sucursalId && (
                 <Typography variant="body2">
-                  <strong>Sucursal ID:</strong> {formData.sucursalId}
+                  <strong>Sucursal por Defecto:</strong> {getSucursalName(formData.sucursalDefectoId)}
                 </Typography>
               )}
             </Box>
@@ -1108,6 +1172,241 @@ const UsersPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setSuccessDialogOpen(false)} variant="contained" color="success">
             Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View User Dialog (Read-only) */}
+      <Dialog
+        open={viewDialogOpen}
+        onClose={() => setViewDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#1976d2', color: 'white' }}>
+          <VisibilityIcon />
+          Detalles del Usuario
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          {viewingUser && (
+            <Box>
+              {/* Basic Information */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                  <PersonIcon />
+                  Información Básica
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Nombre de Usuario
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 0.5 }}>
+                      {viewingUser.username}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Email
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 0.5 }}>
+                      {viewingUser.email}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Nombre Completo
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 0.5 }}>
+                      {viewingUser.nombre || viewingUser.apellido
+                        ? `${viewingUser.nombre || ''} ${viewingUser.apellido || ''}`.trim()
+                        : 'No especificado'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Estado
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip
+                        label={viewingUser.enabled ? 'Activo' : 'Inactivo'}
+                        color={viewingUser.enabled ? 'success' : 'error'}
+                        size="small"
+                      />
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Fecha de Creación
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 0.5 }}>
+                      {viewingUser.createdAt ? new Date(viewingUser.createdAt).toLocaleString() : 'No disponible'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Último Acceso
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 0.5 }}>
+                      {viewingUser.lastLoginAt ? new Date(viewingUser.lastLoginAt).toLocaleString() : 'Nunca'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* System Roles */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                  <SecurityIcon />
+                  Roles del Sistema
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {viewingUser.roles && viewingUser.roles.length > 0 ? (
+                    viewingUser.roles.map((role) => {
+                      const roleInfo = getRoleInfo(role);
+                      return (
+                        <Chip
+                          key={role}
+                          label={roleInfo.label}
+                          sx={{
+                            bgcolor: roleInfo.color,
+                            color: 'white',
+                            fontWeight: 600,
+                          }}
+                        />
+                      );
+                    })
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Sin roles asignados
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Empresa Assignments */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                  <BusinessIcon />
+                  Asignaciones a Empresas
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                {viewingUser.usuarioEmpresas && viewingUser.usuarioEmpresas.length > 0 ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {viewingUser.usuarioEmpresas.map((ue) => {
+                      const rolOption = getRolEmpresaOption(ue.rol);
+                      return (
+                        <Box
+                          key={ue.id}
+                          sx={{
+                            p: 2,
+                            bgcolor: '#f5f5f5',
+                            borderRadius: 1,
+                            border: '1px solid #e0e0e0',
+                          }}
+                        >
+                          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Rol en Empresa
+                              </Typography>
+                              <Box sx={{ mt: 0.5 }}>
+                                <Chip
+                                  label={rolOption?.label || ue.rol}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: rolOption?.color || '#757575',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                  }}
+                                />
+                              </Box>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Estado
+                              </Typography>
+                              <Box sx={{ mt: 0.5 }}>
+                                <Chip
+                                  label={ue.esActivo ? 'Activo' : 'Inactivo'}
+                                  color={ue.esActivo ? 'success' : 'error'}
+                                  size="small"
+                                />
+                              </Box>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Empresa
+                              </Typography>
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {getEmpresaName(ue.empresaId)}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Sucursal Asignada
+                              </Typography>
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {ue.sucursalId ? getSucursalName(ue.sucursalId) : 'No asignada'}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Sucursal por Defecto
+                              </Typography>
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {ue.sucursalDefectoId ? getSucursalName(ue.sucursalDefectoId) : 'No configurada'}
+                              </Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Fecha de Asignación
+                              </Typography>
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {ue.fechaAsignacion ? new Date(ue.fechaAsignacion).toLocaleDateString() : 'No disponible'}
+                              </Typography>
+                            </Box>
+                            {ue.observaciones && (
+                              <Box sx={{ gridColumn: '1 / -1' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                  Observaciones
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                  {ue.observaciones}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                ) : (
+                  <Alert severity="info">
+                    Este usuario no tiene asignaciones a empresas.
+                  </Alert>
+                )}
+              </Box>
+
+              {/* Additional Info */}
+              {(viewingUser.updatedAt) && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                    Última Actualización
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {new Date(viewingUser.updatedAt).toLocaleString()}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setViewDialogOpen(false)} variant="contained" color="primary">
+            Cerrar
           </Button>
         </DialogActions>
       </Dialog>

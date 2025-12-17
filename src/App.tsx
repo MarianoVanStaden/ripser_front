@@ -25,6 +25,7 @@ import { LeadFormPage } from './pages/leads/LeadFormPage';
 import { LeadDetailPage } from './pages/leads/LeadDetailPage';
 import { ConvertLeadPage } from './pages/leads/ConvertLeadPage';
 import { LeadMetricasPage } from './pages/leads/LeadMetricasPage';
+import { VentasDashboard } from './pages/ventas/VentasDashboard';
 import NotasPedidoPage from './components/Ventas/NotasPedidoPage';
 import PresupuestosPage from './components/Ventas/PresupuestosPage';
 import OpcionesFinanciamientoPage from './components/Ventas/OpcionesFinanciamientoPage';
@@ -74,6 +75,13 @@ import {
   DashboardFabricacion
 } from './components/Fabricacion';
 import ReportesEstadosPage from './components/Fabricacion/ReportesEstadosPage';
+import {
+  DepositosPage,
+  InventarioDepositoPage,
+  UbicacionEquiposPage,
+  AuditoriaPage,
+  TransferenciasPage
+} from './components/Logistica/Depositos';
 
 
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -85,7 +93,7 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -93,12 +101,36 @@ const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
       </Box>
     );
   }
-  
+
   if (!user) {
     console.warn('⚠️ PrivateRoute: No user found, redirecting to login');
     return <Navigate to="/login" replace />;
   }
-  
+
+  return <>{children}</>;
+};
+
+const SuperAdminRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
+  const { user, esSuperAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Typography>Cargando...</Typography>
+      </Box>
+    );
+  }
+
+  if (!user) {
+    console.warn('⚠️ SuperAdminRoute: No user found, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!esSuperAdmin) {
+    console.warn('⚠️ SuperAdminRoute: User is not super admin, redirecting to dashboard');
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -132,8 +164,10 @@ function App() {
               {/* Multi-Tenant Admin */}
               <Route path="admin/empresas" element={<PrivateRoute><EmpresasPage /></PrivateRoute>} />
               <Route path="admin/sucursales" element={<PrivateRoute><SucursalesPage /></PrivateRoute>} />
-              <Route path="admin/tenant-selector" element={<PrivateRoute><TenantSelector /></PrivateRoute>} />
+              {/* Selector de contexto - Solo SUPER_ADMIN */}
+              <Route path="admin/tenant-selector" element={<SuperAdminRoute><TenantSelector /></SuperAdminRoute>} />
               {/* VENTAS Module */}
+              <Route path="ventas/dashboard" element={<PrivateRoute><VentasDashboard /></PrivateRoute>} />
               <Route path="ventas/notas-pedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
               <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
               {/* Financing routes (aliases to match sidebar paths) */}
@@ -190,6 +224,12 @@ function App() {
               <Route path="logistica/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
               <Route path="logistica/entregas" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
               <Route path="logistica/entregas-equipos" element={<PrivateRoute><EntregasEquiposPage /></PrivateRoute>} />
+              {/* Warehouse Management */}
+              <Route path="logistica/depositos" element={<PrivateRoute><DepositosPage /></PrivateRoute>} />
+              <Route path="logistica/inventario-deposito" element={<PrivateRoute><InventarioDepositoPage /></PrivateRoute>} />
+              <Route path="logistica/ubicacion-equipos" element={<PrivateRoute><UbicacionEquiposPage /></PrivateRoute>} />
+              <Route path="logistica/auditoria" element={<PrivateRoute><AuditoriaPage /></PrivateRoute>} />
+              <Route path="logistica/transferencias" element={<PrivateRoute><TransferenciasPage /></PrivateRoute>} />
               {/* TALLER Module */}
               <Route path="taller/trabajos" element={<PrivateRoute><TrabajosRealizadosPage /></PrivateRoute>} />
               <Route path="taller/ordenes" element={<PrivateRoute><OrdenesServicioPage /></PrivateRoute>} />

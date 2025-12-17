@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { empresaService } from '../../services/empresaService';
 import type { Empresa, CreateEmpresaDTO, EstadoEmpresa } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import './EmpresasPage.css';
 
 export const EmpresasPage: React.FC = () => {
+  const { esSuperAdmin } = useAuth();
+  const { empresaId } = useTenant();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -16,13 +20,20 @@ export const EmpresasPage: React.FC = () => {
 
   useEffect(() => {
     loadEmpresas();
-  }, []);
+  }, [empresaId, esSuperAdmin]);
 
   const loadEmpresas = async () => {
     try {
       setLoading(true);
       const data = await empresaService.getAll();
-      setEmpresas(data);
+
+      // Si no es SUPER_ADMIN, filtrar solo su empresa
+      if (!esSuperAdmin && empresaId) {
+        const filtered = data.filter(e => e.id === empresaId);
+        setEmpresas(filtered);
+      } else {
+        setEmpresas(data);
+      }
     } catch (err) {
       console.error('Error loading empresas:', err);
       setError('Error al cargar empresas');
@@ -118,9 +129,11 @@ export const EmpresasPage: React.FC = () => {
     <div className="empresas-page">
       <div className="page-header">
         <h1>Gestión de Empresas</h1>
-        <button className="btn btn-primary" onClick={handleCreate}>
-          <i className="icon-plus"></i> Nueva Empresa
-        </button>
+        {esSuperAdmin && (
+          <button className="btn btn-primary" onClick={handleCreate}>
+            <i className="icon-plus"></i> Nueva Empresa
+          </button>
+        )}
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -165,31 +178,35 @@ export const EmpresasPage: React.FC = () => {
                       Editar
                     </button>
 
-                    {empresa.estado === 'ACTIVO' ? (
-                      <button
-                        className="btn btn-sm btn-warning"
-                        onClick={() => handleSuspend(empresa.id)}
-                        title="Suspender"
-                      >
-                        Suspender
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-sm btn-success"
-                        onClick={() => handleReactivate(empresa.id)}
-                        title="Reactivar"
-                      >
-                        Reactivar
-                      </button>
-                    )}
+                    {esSuperAdmin && (
+                      <>
+                        {empresa.estado === 'ACTIVO' ? (
+                          <button
+                            className="btn btn-sm btn-warning"
+                            onClick={() => handleSuspend(empresa.id)}
+                            title="Suspender"
+                          >
+                            Suspender
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleReactivate(empresa.id)}
+                            title="Reactivar"
+                          >
+                            Reactivar
+                          </button>
+                        )}
 
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDelete(empresa.id)}
-                      title="Eliminar"
-                    >
-                      Eliminar
-                    </button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(empresa.id)}
+                          title="Eliminar"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
