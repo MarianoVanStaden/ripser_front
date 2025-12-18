@@ -12,8 +12,8 @@ interface EmpresaConRol extends Empresa {
 }
 
 export const TenantSelector: React.FC = () => {
-  const { empresaId, sucursalId, cambiarTenant, esSuperAdmin } = useTenant();
-  const { user } = useAuth();
+  const { empresaId, sucursalId, cambiarTenant } = useTenant();
+  const { user, esSuperAdmin } = useAuth();
   const [empresas, setEmpresas] = useState<EmpresaConRol[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [selectedEmpresa, setSelectedEmpresa] = useState<number | null>(empresaId);
@@ -34,13 +34,24 @@ export const TenantSelector: React.FC = () => {
   }, [selectedEmpresa]);
 
   const loadEmpresas = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('❌ TenantSelector: No user found, cannot load empresas');
+      return;
+    }
+
+    console.log('🔍 TenantSelector loadEmpresas:', {
+      userId: user.id,
+      username: user.username,
+      esSuperAdmin,
+      userRoles: user.roles
+    });
 
     try {
       if (esSuperAdmin) {
         // Super Admin: Load ALL empresas
-        console.log('🔑 Super Admin: Loading all empresas...');
+        console.log('🔑 Super Admin: Loading ALL empresas...');
         const data = await empresaService.getActive();
+        console.log(`✅ Loaded ${data.length} empresas for SuperAdmin`);
         setEmpresas(data);
       } else {
         // Regular user: Load only assigned empresas

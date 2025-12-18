@@ -173,6 +173,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => axios.interceptors.response.eject(interceptor);
   }, []);
 
+  // 🔥 FIX: Escuchar eventos del TenantContext para actualizar esSuperAdmin
+  useEffect(() => {
+    const handleTenantUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const detail = customEvent.detail;
+
+      if (detail && detail.esSuperAdmin !== undefined) {
+        console.log('🔑 AuthContext: Actualizando esSuperAdmin desde TenantContext:', detail.esSuperAdmin);
+        setEsSuperAdmin(detail.esSuperAdmin);
+      }
+    };
+
+    window.addEventListener('tenant-context-updated', handleTenantUpdate);
+    return () => window.removeEventListener('tenant-context-updated', handleTenantUpdate);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{

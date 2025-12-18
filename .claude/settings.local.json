@@ -41,7 +41,8 @@
       "Bash(wc:*)",
       "Bash(cmd.exe /c \"dir /B c:\\Users\\maria\\Documents\\GitHub\\ripser_front\\src\\components\\Logistica\")",
       "Bash(cmd.exe /c \"dir /B ..\\ripser_back\")",
-      "Bash(cmd.exe /c \"npx tsc --noEmit 2>&1 | findstr /C:error || echo No errors found\")"
+      "Bash(cmd.exe /c \"npx tsc --noEmit 2>&1 | findstr /C:error || echo No errors found\")",
+      "Bash(cmd.exe /c \"type c:\\Users\\maria\\Documents\\GitHub\\ripser_front\\src\\context\\AuthContext.tsx | findstr /C:export\")"
     ],
     "deny": [],
     "ask": []

@@ -143,6 +143,17 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             setUsuarioEmpresa(relacionActual);
             setRolActual(relacionActual.rol);
 
+            // 🔥 FIX: Detectar automáticamente si es SuperAdmin basado en el rol
+            if (relacionActual.rol === 'SUPER_ADMIN') {
+              console.log('🔑 Usuario tiene rol SUPER_ADMIN, actualizando esSuperAdmin a true');
+              setEsSuperAdmin(true);
+              localStorage.setItem('esSuperAdmin', 'true');
+              // Disparar evento para sincronizar con AuthContext
+              window.dispatchEvent(new CustomEvent('tenant-context-updated', {
+                detail: { empresaId, sucursalId, esSuperAdmin: true }
+              }));
+            }
+
             // Lógica mejorada para inicializar sucursal con validación
             const savedSucursal = localStorage.getItem('sucursalFiltro');
             let sucursalSeleccionada: number | null = null;

@@ -85,7 +85,7 @@ const navigation: NavigationSection[] = [
     title: 'CLIENTES',
     modulo: 'CLIENTES',
     items: [
-      { text: 'Gestión Leads', icon: <BarChartIcon />, path: '/leads/table' },
+      { text: 'Gestión Leads', icon: <PeopleIcon />, path: '/leads/table' },
       { text: 'Gestión Clientes', icon: <PeopleIcon />, path: '/clientes/gestion' },
       { text: 'Carpeta Cliente', icon: <PeopleIcon />, path: '/clientes/carpeta' },
       { text: 'Agenda Visitas', icon: <PeopleIcon />, path: '/clientes/agenda' },

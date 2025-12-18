@@ -6,7 +6,7 @@ import { useTenant } from '../../context/TenantContext';
 import './EmpresasPage.css';
 
 export const EmpresasPage: React.FC = () => {
-  const { esSuperAdmin } = useAuth();
+  const { esSuperAdmin, user } = useAuth();
   const { empresaId } = useTenant();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,23 +19,33 @@ export const EmpresasPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('🏢 EmpresasPage mounted:', {
+      esSuperAdmin,
+      empresaId,
+      username: user?.username,
+      userRoles: user?.roles
+    });
     loadEmpresas();
   }, [empresaId, esSuperAdmin]);
 
   const loadEmpresas = async () => {
     try {
       setLoading(true);
+      console.log('📥 EmpresasPage: Loading empresas...', { esSuperAdmin, empresaId });
       const data = await empresaService.getAll();
+      console.log(`📊 Empresas loaded from API: ${data.length} total`);
 
       // Si no es SUPER_ADMIN, filtrar solo su empresa
       if (!esSuperAdmin && empresaId) {
         const filtered = data.filter(e => e.id === empresaId);
+        console.log(`🔒 Regular user: Filtered to ${filtered.length} empresa(s)`);
         setEmpresas(filtered);
       } else {
+        console.log(`🔑 SuperAdmin: Showing all ${data.length} empresas`);
         setEmpresas(data);
       }
     } catch (err) {
-      console.error('Error loading empresas:', err);
+      console.error('❌ Error loading empresas:', err);
       setError('Error al cargar empresas');
     } finally {
       setLoading(false);
