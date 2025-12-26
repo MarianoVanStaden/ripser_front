@@ -80,7 +80,24 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // Escuchar evento custom desde AuthContext
     const handleTenantUpdate = (event: Event) => {
       const customEvent = event as CustomEvent;
-      console.log('🔔 Evento tenant-context-updated recibido:', customEvent.detail);
+      const detail = customEvent.detail;
+      console.log('🔔 Evento tenant-context-updated recibido:', detail);
+      
+      // If event has empresaId, save it to localStorage and update state
+      if (detail?.empresaId) {
+        console.log('💾 Guardando empresaId desde evento:', detail.empresaId);
+        localStorage.setItem('empresaId', detail.empresaId.toString());
+        setEmpresaId(detail.empresaId);
+      }
+      if (detail?.sucursalId) {
+        localStorage.setItem('sucursalId', detail.sucursalId.toString());
+        setSucursalId(detail.sucursalId);
+      }
+      if (detail?.esSuperAdmin !== undefined) {
+        localStorage.setItem('esSuperAdmin', detail.esSuperAdmin.toString());
+        setEsSuperAdmin(detail.esSuperAdmin);
+      }
+      
       checkLocalStorage();
     };
 

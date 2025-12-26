@@ -12,6 +12,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ScrollToTopButton from './ScrollToTopButton';
 import CommandPalette from './CommandPalette'; // Make sure this component exists
+import { TenantRequiredRoute } from '../Tenant';
 //import { TenantDebugPanel } from '../Debug'; // Panel de debugging para desarrollo
 
 
@@ -48,7 +49,9 @@ const Layout: React.FC = () => {
         sx={{ flexGrow: 1, p: 3 }}
       >
         <Toolbar />
-        <Outlet />
+        <TenantRequiredRoute>
+          <Outlet />
+        </TenantRequiredRoute>
       </Box>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <Fab

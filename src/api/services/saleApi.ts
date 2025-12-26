@@ -4,7 +4,7 @@ import type { Sale, CreateSaleRequest } from '../../types';
 export const saleApi = {
   // Get all sales
   getAll: async (): Promise<Sale[]> => {
-    const response = await api.get('/api//ventas');
+    const response = await api.get('/api/ventas');
     return response.data;
   },
 
@@ -16,7 +16,7 @@ export const saleApi = {
 
   // Create new sale
   create: async (sale: CreateSaleRequest): Promise<Sale> => {
-    const response = await api.post('/api//ventas', sale);
+    const response = await api.post('/api/ventas', sale);
     return response.data;
   },
 

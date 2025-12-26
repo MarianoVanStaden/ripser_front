@@ -150,7 +150,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
 export const VentasDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { sucursalFiltro, sucursales } = useTenant();
+  const { empresaId, sucursalFiltro, sucursales } = useTenant();
 
   // State
   const [loading, setLoading] = useState(true);
@@ -179,7 +179,7 @@ export const VentasDashboard = () => {
     }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [sucursalFiltro, user?.id]);
+  }, [empresaId, sucursalFiltro, user?.id]); // Re-fetch when tenant or sucursal changes
 
   const loadDashboardData = async () => {
     try {

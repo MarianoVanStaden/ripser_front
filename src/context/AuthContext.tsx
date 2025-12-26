@@ -101,14 +101,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Save multi-tenant data BEFORE setting user/token
       // This ensures TenantContext can read them immediately
+      // 🔥 FIX: Only overwrite empresaId/sucursalId if provided in response
+      // This preserves SuperAdmin context selection across re-login
       if (res.empresaId) {
         localStorage.setItem("empresaId", res.empresaId.toString());
+      } else {
+        // Keep existing empresaId if present (e.g., SuperAdmin re-login)
+        console.log('ℹ️ Login response has no empresaId, keeping existing value:', localStorage.getItem("empresaId"));
       }
       if (res.sucursalId) {
         localStorage.setItem("sucursalId", res.sucursalId.toString());
+      } else {
+        // Keep existing sucursalId if present
+        console.log('ℹ️ Login response has no sucursalId, keeping existing value:', localStorage.getItem("sucursalId"));
       }
       if (res.esSuperAdmin !== undefined) {
         localStorage.setItem("esSuperAdmin", res.esSuperAdmin.toString());
+      } else {
+        // Keep existing esSuperAdmin if present
+        console.log('ℹ️ Login response has no esSuperAdmin, keeping existing value:', localStorage.getItem("esSuperAdmin"));
       }
 
       // Now set token and user
@@ -125,12 +136,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthToken(access);
 
       // Dispatch custom event to force TenantContext reload
-      console.log('🔔 Disparando evento tenant-context-updated');
+      // 🔥 FIX: Use actual values from localStorage to preserve SuperAdmin context
+      const finalEmpresaId = res.empresaId || localStorage.getItem('empresaId');
+      const finalSucursalId = res.sucursalId || localStorage.getItem('sucursalId');
+      const finalEsSuperAdmin = res.esSuperAdmin !== undefined ? res.esSuperAdmin : (localStorage.getItem('esSuperAdmin') === 'true');
+
+      console.log('🔔 Disparando evento tenant-context-updated', {
+        empresaId: finalEmpresaId,
+        sucursalId: finalSucursalId,
+        esSuperAdmin: finalEsSuperAdmin
+      });
       window.dispatchEvent(new CustomEvent('tenant-context-updated', {
         detail: {
-          empresaId: res.empresaId,
-          sucursalId: res.sucursalId,
-          esSuperAdmin: res.esSuperAdmin
+          empresaId: finalEmpresaId ? parseInt(finalEmpresaId.toString()) : undefined,
+          sucursalId: finalSucursalId ? parseInt(finalSucursalId.toString()) : undefined,
+          esSuperAdmin: finalEsSuperAdmin
         }
       }));
     } catch (error: any) {
@@ -164,8 +184,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Only logout on 401 if it's NOT a token_expired error (those are handled in config.ts)
         // This prevents double-logout when refresh fails
         if (error.response?.status === 401 && error.response?.data?.error !== 'token_expired') {
-          console.warn('⚠️ AuthContext: 401 error (non token_expired), logging out...');
-          logout();
+          console.warn('⚠️ AuthContext: 401 error (non token_expired), clearing auth...');
+          // 🔥 FIX: Don't call logout() here, which would clear empresaId/sucursalId
+          // Instead, manually clear only auth tokens to preserve SuperAdmin context
+          setToken(null);
+          setUser(null);
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_refresh_token');
+          localStorage.removeItem('auth_user');
+          delete axios.defaults.headers.common.Authorization;
+          setAuthToken(null);
+          // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin here!
+          // ❌ DON'T call setEsSuperAdmin(false) here to preserve the flag
         }
         return Promise.reject(error);
       }

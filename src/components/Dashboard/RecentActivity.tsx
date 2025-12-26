@@ -8,6 +8,7 @@ import BuildIcon from '@mui/icons-material/Build';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import WarningIcon from '@mui/icons-material/Warning';
 import { clientApi, productApi, saleApi } from '../../api/services';
+import { useTenant } from '../../context/TenantContext';
 
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
@@ -57,6 +58,7 @@ const getTypeLabel = (type: ActivityType): string => {
 };
 
 export const RecentActivity: React.FC = () => {
+  const { empresaId } = useTenant();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -155,7 +157,7 @@ export const RecentActivity: React.FC = () => {
       }
     };
     fetchRecent();
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 
   if (loading) return <CircularProgress size={24} sx={{ mt: 2 }} />;
   if (!activities.length) return <Typography variant="body2" color="text.secondary">No recent activity</Typography>;

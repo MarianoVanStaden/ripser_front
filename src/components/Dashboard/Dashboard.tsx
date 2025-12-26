@@ -47,6 +47,7 @@ import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
 import BackendSetupDialog from '../BackendSetupDialog/BackendSetupDialog';
 import { useAuth } from "../../context/AuthContext";
+import { useTenant } from "../../context/TenantContext";
 import AdminDashboard from './AdminDashboard';
 import VendedorDashboard from './VendedorDashboard';
 import ProduccionDashboard from './ProduccionDashboard';
@@ -184,6 +185,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const { empresaId } = useTenant();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
@@ -202,7 +204,7 @@ const Dashboard: React.FC = () => {
     checkConnection();
     fetchDashboardData();
     loadMetaVentas();
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 
   const loadMetaVentas = async () => {
     try {
@@ -534,10 +536,16 @@ const Dashboard: React.FC = () => {
               >
                 ¡Hola, {user.username}! 👋
               </Typography>
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
+              <Box
+                component="div"
+                sx={{ 
+                  fontSize: { xs: '0.9rem', sm: '1rem' },
+                  color: 'text.secondary',
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 1
+                }}
               >
                 Bienvenido de vuelta al panel de control
                 {user.roles && user.roles.length > 0 && (
@@ -546,10 +554,10 @@ const Dashboard: React.FC = () => {
                     size="small"
                     color="primary"
                     variant="outlined"
-                    sx={{ ml: 1, height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                    sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
                   />
                 )}
-              </Typography>
+              </Box>
             </Box>
           )}
           {!user && (

@@ -47,14 +47,16 @@ api.interceptors.request.use(
     if (token) {
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
-      console.log('Attaching token to request:', token.substring(0, 10) + '...', config.url);
+      console.log('🔑 Attaching token to request:', token.substring(0, 10) + '...', config.url);
       if (!printedJwtInfo) {
         const payload = decodeJwtPayload(token);
         if (payload) {
           const roles = payload.roles || payload.authorities || payload.scope || payload.scopes;
-          console.log('[JWT]', {
+          console.log('[JWT Payload]', {
             sub: payload.sub || payload.username || payload.user_name,
             roles,
+            empresaId: payload.empresaId || payload.empresa_id || 'NOT IN TOKEN',
+            sucursalId: payload.sucursalId || payload.sucursal_id || 'NOT IN TOKEN',
             exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : undefined,
           });
         }
@@ -65,10 +67,25 @@ api.interceptors.request.use(
     }
 
     // Attach X-Empresa-Id header for multi-tenant support (required after tenant selection)
+    // Some endpoints don't require tenant context (auth, empresa selection, etc.)
+    const urlPath = config.url || '';
+    const endpointsWithoutTenant = [
+      '/api/auth/',
+      '/api/empresas',
+      '/api/admin/empresas',
+      '/api/select-tenant',
+      '/api/usuario-empresa/',
+      '/api/sucursales/activas'
+    ];
+    const requiresTenant = !endpointsWithoutTenant.some(ep => urlPath.includes(ep));
+    
     if (empresaId) {
       config.headers = config.headers || {};
       (config.headers as any)['X-Empresa-Id'] = empresaId;
-      console.log('Attaching X-Empresa-Id:', empresaId, 'to request:', config.url);
+      console.log('🏢 Attaching X-Empresa-Id:', empresaId, 'to request:', config.url);
+    } else if (requiresTenant) {
+      // Only warn for endpoints that actually need tenant context
+      console.warn('⚠️ No empresaId in localStorage for request:', config.url);
     }
 
     return config;
@@ -141,17 +158,21 @@ api.interceptors.response.use(
         localStorage.removeItem('auth_user');
         setAuthToken(null);
         printedJwtInfo = false;
-        
+        // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin on refresh failure!
+        // Let the user re-login and preserve their context selection
+
         if (window.location.pathname !== '/login') {
           console.log('🚪 Redirecting to login page...');
           window.location.href = '/login';
         }
-        
+
         return Promise.reject(refreshErr);
       }
     }
 
     // Handle other 401 errors (invalid token, etc.)
+    // 🔥 FIX: Don't clear empresaId/sucursalId on auth errors during validation
+    // to preserve SuperAdmin context selection across token refreshes
     if (
       status === 401 &&
       !originalRequest?._retry &&
@@ -163,7 +184,9 @@ api.interceptors.response.use(
       localStorage.removeItem('auth_refresh_token');
       localStorage.removeItem('auth_user');
       setAuthToken(null);
-      
+      // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin here!
+      // Let the user re-login and preserve their context selection
+
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

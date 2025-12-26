@@ -34,6 +34,8 @@ import RegistroVentasPage from './components/Ventas/RegistroVentasPage';
 import FacturacionPage from './components/Ventas/FacturacionPage';
 import InformesVentasPage from './components/Ventas/InformesVentasPage';
 import NotasCreditoPage from './components/Ventas/NotasCreditoPage';
+import { ChequesPage } from './components/Cheques';
+import { BancosPage } from './components/Bancos';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
@@ -161,6 +163,7 @@ function App() {
               <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
               <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
               <Route path="admin/flujo-caja" element={<PrivateRoute><FlujoCajaPage /></PrivateRoute>} />
+              <Route path="admin/bancos" element={<PrivateRoute><BancosPage /></PrivateRoute>} />
               {/* Multi-Tenant Admin */}
               <Route path="admin/empresas" element={<PrivateRoute><EmpresasPage /></PrivateRoute>} />
               <Route path="admin/sucursales" element={<PrivateRoute><SucursalesPage /></PrivateRoute>} />
@@ -177,7 +180,8 @@ function App() {
               <Route path="ventas/facturacion" element={<PrivateRoute><FacturacionPage /></PrivateRoute>} />
               <Route path="ventas/notas-credito" element={<PrivateRoute><NotasCreditoPage /></PrivateRoute>} />
               <Route path="ventas/informes" element={<PrivateRoute><InformesVentasPage /></PrivateRoute>} />
-             
+              <Route path="ventas/cheques" element={<PrivateRoute><ChequesPage /></PrivateRoute>} />
+
               {/* CLIENTES Module */}
               <Route path="clientes/gestion" element={<PrivateRoute><ClientesPage /></PrivateRoute>} />
               <Route path="clientes/nuevo" element={<PrivateRoute><ClienteFormPage /></PrivateRoute>} />

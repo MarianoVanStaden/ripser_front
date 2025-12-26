@@ -49,6 +49,7 @@ import {
 } from '@mui/icons-material';
 // Ensure we import named APIs from the barrel; there is no default export for clienteApi
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
+import { useTenant } from '../../context/TenantContext';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import { generateSalesReportPDF, generateSaleDetailPDF } from '../../utils/pdfExportUtils';
 import {
@@ -81,6 +82,7 @@ ChartJS.register(
 );
 
 const InformeVentasPage = () => {
+  const { empresaId } = useTenant();
   const [sales, setSales] = useState([]);
   const [clients, setClients] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
@@ -105,7 +107,7 @@ const InformeVentasPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 const testUsuarioExistence = (usuariosData) => {
   console.log('=== TESTING USUARIO EXISTENCE ===');
   console.log('Total usuarios:', usuariosData.length);

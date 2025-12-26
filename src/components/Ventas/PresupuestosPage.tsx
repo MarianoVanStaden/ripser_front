@@ -53,6 +53,7 @@ import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento, ColorEquipo, MedidaEquipo, Lead } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
 import { useAuth } from "../../context/AuthContext";
+import { useTenant } from "../../context/TenantContext";
 import SuccessDialog from "../common/SuccessDialog";
 import { generarPresupuestoPDF } from "../../services/pdfService";
 
@@ -137,6 +138,7 @@ const computeIva = (presupuesto: DocumentoComercial): number => {
 
 const PresupuestosPage: React.FC = () => {
   const { user } = useAuth();
+  const { empresaId } = useTenant();
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -309,7 +311,7 @@ const PresupuestosPage: React.FC = () => {
       setLoading(false);
       console.log("Loading complete, loading:", false);
     }
-  }, [fetchFinanciamientoOptions]);
+  }, [fetchFinanciamientoOptions, empresaId]); // Re-fetch when tenant changes
 
   useEffect(() => {
     fetchData();

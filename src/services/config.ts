@@ -52,13 +52,13 @@ apiClient.interceptors.response.use(
       // Handle specific status codes
       switch (status) {
         case 401:
-          // Clear all authentication data
+          // Clear authentication data but preserve tenant context
+          // 🔥 FIX: Don't clear empresaId/sucursalId/esSuperAdmin on 401
+          // to preserve SuperAdmin context selection across re-login
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_refresh_token');
           localStorage.removeItem('auth_user');
-          localStorage.removeItem('empresaId');
-          localStorage.removeItem('sucursalId');
-          localStorage.removeItem('esSuperAdmin');
+          // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin here!
           window.location.href = '/login';
           break;
         case 409:

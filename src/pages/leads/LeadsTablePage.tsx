@@ -38,6 +38,7 @@ import { CanalBadge } from '../../components/leads/CanalBadge';
 import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
 import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
 import { useTenant } from '../../context/TenantContext';
+import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'nombre' | 'telefono' | 'provincia' | 'canal' | 'estadoLead' | 'prioridad' | 'dias' | 'fechaPrimerContacto' | 'fechaUltimoContacto';
@@ -45,6 +46,10 @@ type OrderBy = 'nombre' | 'telefono' | 'provincia' | 'canal' | 'estadoLead' | 'p
 export const LeadsTablePage = () => {
   const navigate = useNavigate();
   const { sucursalFiltro } = useTenant();
+  
+  // Hook para verificar si SuperAdmin necesita seleccionar contexto
+  const { showModal, closeModal } = useSuperAdminContextCheck();
+  
   const [leads, setLeads] = useState<LeadDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -633,6 +638,14 @@ export const LeadsTablePage = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      
+      {/* Modal de advertencia para SuperAdmin sin contexto de empresa */}
+      <SuperAdminContextModal 
+        autoOpen={showModal} 
+        onClose={closeModal}
+        customMessage="Para gestionar leads correctamente, necesitas seleccionar una empresa. 
+          Esto asegura que los leads se registren y filtren según el contexto de la empresa seleccionada."
+      />
     </Box>
   );
 };

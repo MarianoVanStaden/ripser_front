@@ -42,9 +42,11 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { opcionFinanciamientoApi, documentoApi } from '../../api/services';
+import { useTenant } from '../../context/TenantContext';
 import type { OpcionFinanciamientoDTO, MetodoPago, DocumentoComercial } from '../../types';
 
 const OpcionesFinanciamientoPage: React.FC = () => {
+  const { empresaId } = useTenant();
   const [opciones, setOpciones] = useState<OpcionFinanciamientoDTO[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoComercial[]>([]);
   const [selectedDocumentoId, setSelectedDocumentoId] = useState<number | null>(null);
@@ -70,7 +72,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
 
   useEffect(() => {
     loadDocumentos();
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 
   useEffect(() => {
     if (selectedDocumentoId) {

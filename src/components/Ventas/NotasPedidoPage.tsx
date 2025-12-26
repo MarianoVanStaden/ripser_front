@@ -42,6 +42,7 @@ import {
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
+import { useTenant } from "../../context/TenantContext";
 import type {
   DocumentoComercial,
   EstadoDocumento,
@@ -73,6 +74,7 @@ const initialConvertForm: ConvertFormData = {
 
 const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
+  const { empresaId } = useTenant();
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,7 +175,7 @@ const NotasPedidoPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 
   useEffect(() => {
     fetchData();

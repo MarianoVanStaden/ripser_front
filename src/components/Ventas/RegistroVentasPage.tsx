@@ -45,12 +45,14 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
+import { useTenant } from '../../context/TenantContext';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 
 const RegistroVentasPage: React.FC = () => {
   const navigate = useNavigate();
+  const { empresaId } = useTenant();
   const [sales, setSales] = useState<Venta[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -90,7 +92,7 @@ const RegistroVentasPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 
   const loadData = async (): Promise<void> => {
     try {

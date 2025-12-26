@@ -62,6 +62,7 @@ import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import type {
   Cliente,
   Usuario,
@@ -149,6 +150,7 @@ type NotaCartItem = {
 const FacturacionPage = () => {
   const [activeTab, setActiveTab] = useState(0);
   const { user } = useAuth();
+  const { empresaId } = useTenant();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -275,7 +277,7 @@ const FacturacionPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 
   useEffect(() => {
     if (user?.id && !selectedUsuarioId) {

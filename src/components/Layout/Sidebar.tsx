@@ -77,6 +77,7 @@ const navigation: NavigationSection[] = [
       { text: 'Notas de Crédito', icon: <AssignmentIcon />, path: '/ventas/notas-credito' },
       { text: 'Registro Ventas', icon: <AssignmentIcon />, path: '/ventas/registro' },
       { text: 'Informes', icon: <AssignmentIcon />, path: '/ventas/informes' },
+      { text: 'Cheques', icon: <AccountBalanceIcon />, path: '/ventas/cheques' },
       { text: 'Opción Financiamiento Particular', icon: <AssignmentIcon />, path: '/ventas/opciones-financiamiento' },
       { text: 'Configuración Financiamiento', icon: <SettingsIcon />, path: '/ventas/configuracion-financiamiento' },
     ],
@@ -173,6 +174,7 @@ const navigation: NavigationSection[] = [
     modulo: 'ADMIN',
     items: [
       { text: 'Flujo de Caja', icon: <BarChartIcon />, path: '/admin/flujo-caja' },
+      { text: 'Bancos', icon: <AccountBalanceIcon />, path: '/admin/bancos' },
       { text: 'Empresas', icon: <BusinessIcon />, path: '/admin/empresas' },
       { text: 'Sucursales', icon: <AccountBalanceIcon />, path: '/admin/sucursales' },
       { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },

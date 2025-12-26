@@ -13,6 +13,7 @@ import {
 import dayjs from 'dayjs';
 import api from '../../api/config';
 import { documentoApi } from '../../api/services';
+import { useTenant } from '../../context/TenantContext';
 import type { DocumentoComercial, EquipoFabricadoDTO } from '../../types';
 
 interface NotaCreditoForm {
@@ -35,6 +36,7 @@ interface SuccessData {
 
 const NotasCreditoPage: React.FC = () => {
   const theme = useTheme();
+  const { empresaId } = useTenant();
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
   const [equiposFactura, setEquiposFactura] = useState<EquipoFabricadoDTO[]>([]);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<DocumentoComercial | null>(null);
@@ -84,7 +86,7 @@ const NotasCreditoPage: React.FC = () => {
 
   useEffect(() => {
     loadFacturas();
-  }, []);
+  }, [empresaId]); // Re-fetch when tenant changes
 
   const loadFacturas = async () => {
     try {

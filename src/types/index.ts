@@ -2830,3 +2830,190 @@ export interface ReconciliacionProductoDTO {
   diferencia: number;
   corregido: boolean;
 }
+
+// ============================================
+// MÓDULO DE GESTIÓN DE CHEQUES
+// ============================================
+
+// ==================== BANCOS ====================
+
+// Entidad Banco - Coincide con BancoDTO del backend
+export interface Banco {
+  id: number;
+  empresaId: number;
+  codigo: string;
+  nombre: string;
+  nombreCorto?: string;
+  cbu?: string;
+  alias?: string;
+  numeroCuenta?: string;
+  tipoCuenta?: string;
+  swift?: string;
+  sitioWeb?: string;
+  telefono?: string;
+  direccion?: string;
+  observaciones?: string;
+  activo: boolean;
+  creadoPorId?: number;
+  modificadoPorId?: number;
+  fechaAlta: string;
+  fechaActualizacion?: string;
+  fechaBaja?: string;
+}
+
+// DTO para crear/actualizar bancos - Coincide con CreateBancoDTO del backend
+export interface BancoCreateDTO {
+  codigo: string;
+  nombre: string;
+  nombreCorto?: string;
+  cbu?: string;
+  alias?: string;
+  numeroCuenta?: string;
+  tipoCuenta?: string;
+  swift?: string;
+  sitioWeb?: string;
+  telefono?: string;
+  direccion?: string;
+  observaciones?: string;
+  activo?: boolean;
+}
+
+// ==================== CHEQUES ====================
+
+// Tipo de cheque (Backend: TipoCheque enum)
+export type TipoChequeType = 'PROPIO' | 'TERCEROS';
+
+// Estado del cheque (Backend: EstadoCheque enum)
+export type EstadoChequeType =
+  | 'EN_CARTERA'    // Cheque en cartera, pendiente de cobro
+  | 'DEPOSITADO'    // Cheque depositado en banco
+  | 'COBRADO'       // Cheque cobrado exitosamente
+  | 'RECHAZADO'     // Cheque rechazado
+  | 'ANULADO';      // Cheque anulado
+
+// Entidad Cheque - Coincide con ChequeDTO del backend
+export interface Cheque {
+  id: number;
+  empresaId: number;
+  sucursalId?: number;
+
+  // Información del cheque
+  numeroCheque: string;
+  bancoId: number;  // Relación con Banco
+  bancoNombre?: string;  // Nombre del banco desde el DTO
+  titular: string;
+  cuitTitular?: string;
+  monto: number;
+  fechaEmision: string;
+  fechaCobro: string;
+  fechaDeposito?: string;
+  fechaCobrado?: string;
+  fechaRechazo?: string;
+
+  // Estado y tipo
+  estado: EstadoChequeType;
+  tipo: TipoChequeType;
+
+  // Relaciones (solo IDs y nombres)
+  clienteId?: number;
+  clienteNombre?: string;
+  proveedorId?: number;
+  proveedorNombre?: string;
+
+  // Información adicional
+  observaciones?: string;
+  motivoRechazo?: string;
+  numeroCuenta?: string;
+  cbu?: string;
+  endosado?: boolean;
+  endosadoA?: string;
+
+  // Auditoría
+  creadoPorId?: number;
+  modificadoPorId?: number;
+  fechaAlta?: string;
+  fechaActualizacion?: string;
+  fechaBaja?: string;
+
+  // Información calculada (del backend)
+  vencido?: boolean;
+  puedeDepositarse?: boolean;
+  puedeCobrarse?: boolean;
+  diasParaCobro?: number;
+}
+
+// DTO para crear cheques (coincide con CreateChequeDTO del backend)
+export interface ChequeCreateDTO {
+  numeroCheque: string;
+  bancoId: number;  // Relación con Banco
+  titular: string;
+  cuitTitular?: string;
+  monto: number;
+  fechaEmision: string;  // LocalDate format: YYYY-MM-DD
+  fechaCobro: string;    // LocalDate format: YYYY-MM-DD
+  estado: EstadoChequeType;
+  tipo: TipoChequeType;
+  clienteId?: number;
+  proveedorId?: number;
+  sucursalId?: number;
+  observaciones?: string;
+  numeroCuenta?: string;
+  cbu?: string;
+  endosado?: boolean;
+  endosadoA?: string;
+}
+
+// DTO para actualizar cheques (coincide con UpdateChequeDTO del backend)
+export interface ChequeUpdateDTO {
+  numeroCheque: string;
+  bancoId: number;  // Relación con Banco
+  titular: string;
+  cuitTitular?: string;
+  monto: number;
+  fechaEmision: string;
+  fechaCobro: string;
+  clienteId?: number;
+  proveedorId?: number;
+  sucursalId?: number;
+  observaciones?: string;
+  numeroCuenta?: string;
+  cbu?: string;
+  endosado?: boolean;
+  endosadoA?: string;
+}
+
+// DTO para cambio de estado (coincide con CambioEstadoChequeDTO del backend)
+export interface CambioEstadoChequeDTO {
+  nuevoEstado: EstadoChequeType;
+  motivo?: string;
+  observaciones?: string;
+  fechaDeposito?: string;
+  fechaCobrado?: string;
+  fechaRechazo?: string;
+  motivoRechazo?: string;
+}
+
+// DTO para historial de cambios de estado
+export interface HistorialEstadoChequeDTO {
+  id: number;
+  chequeId: number;
+  estadoAnterior: EstadoChequeType;
+  estadoNuevo: EstadoChequeType;
+  motivo?: string;
+  observaciones?: string;
+  usuarioId?: number;
+  usuarioNombre?: string;
+  fechaCambio: string;
+}
+
+// Parámetros de filtro para búsqueda de cheques
+export interface ChequeFilterParams {
+  numeroCheque?: string;
+  banco?: string;
+  tipo?: TipoChequeType;
+  estado?: EstadoChequeType;
+  clienteId?: number;
+  proveedorId?: number;
+  fechaDesde?: string;
+  fechaHasta?: string;
+}
