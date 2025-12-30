@@ -234,8 +234,8 @@ const Dashboard: React.FC = () => {
       setError(null);
 
       // 🔍 DEBUG: Log current empresaId before making API calls
-      const currentEmpresaId = localStorage.getItem('empresaId');
-      console.log('🔍 Dashboard fetchDashboardData - empresaId from localStorage:', currentEmpresaId, 'from context:', empresaId);
+      const currentEmpresaId = sessionStorage.getItem('empresaId');
+      console.log('🔍 Dashboard fetchDashboardData - empresaId from sessionStorage:', currentEmpresaId, 'from context:', empresaId);
 
       const [clients, products, allDocumentos, lowStock] = await Promise.all([
         clientApi.getAll().catch((err) => {

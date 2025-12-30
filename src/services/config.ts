@@ -15,7 +15,7 @@ apiClient.interceptors.request.use(
   (config) => {
     // Use consistent token storage key
     const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-    const empresaId = localStorage.getItem('empresaId');
+    const empresaId = sessionStorage.getItem('empresaId');
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

@@ -42,7 +42,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = authToken || localStorage.getItem('auth_token');
-    const empresaId = localStorage.getItem('empresaId');
+    const empresaId = sessionStorage.getItem('empresaId');
 
     if (token) {
       config.headers = config.headers || {};

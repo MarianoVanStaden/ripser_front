@@ -14,7 +14,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    const tenantId = localStorage.getItem('tenantId') || localStorage.getItem('empresaId');
+    const tenantId = localStorage.getItem('tenantId') || sessionStorage.getItem('empresaId');
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

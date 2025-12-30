@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const validateToken = async () => {
       const t = localStorage.getItem("auth_token");
       const u = localStorage.getItem("auth_user");
-      const superAdmin = localStorage.getItem("esSuperAdmin");
+      const superAdmin = sessionStorage.getItem("esSuperAdmin");
 
       console.log('🔍 Validando token almacenado:', {
         hasToken: !!t,
@@ -104,22 +104,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 🔥 FIX: Only overwrite empresaId/sucursalId if provided in response
       // This preserves SuperAdmin context selection across re-login
       if (res.empresaId) {
-        localStorage.setItem("empresaId", res.empresaId.toString());
+        sessionStorage.setItem("empresaId", res.empresaId.toString());
       } else {
         // Keep existing empresaId if present (e.g., SuperAdmin re-login)
-        console.log('ℹ️ Login response has no empresaId, keeping existing value:', localStorage.getItem("empresaId"));
+        console.log('ℹ️ Login response has no empresaId, keeping existing value:', sessionStorage.getItem("empresaId"));
       }
       if (res.sucursalId) {
-        localStorage.setItem("sucursalId", res.sucursalId.toString());
+        sessionStorage.setItem("sucursalId", res.sucursalId.toString());
       } else {
         // Keep existing sucursalId if present
-        console.log('ℹ️ Login response has no sucursalId, keeping existing value:', localStorage.getItem("sucursalId"));
+        console.log('ℹ️ Login response has no sucursalId, keeping existing value:', sessionStorage.getItem("sucursalId"));
       }
       if (res.esSuperAdmin !== undefined) {
-        localStorage.setItem("esSuperAdmin", res.esSuperAdmin.toString());
+        sessionStorage.setItem("esSuperAdmin", res.esSuperAdmin.toString());
       } else {
         // Keep existing esSuperAdmin if present
-        console.log('ℹ️ Login response has no esSuperAdmin, keeping existing value:', localStorage.getItem("esSuperAdmin"));
+        console.log('ℹ️ Login response has no esSuperAdmin, keeping existing value:', sessionStorage.getItem("esSuperAdmin"));
       }
 
       // Now set token and user
@@ -136,10 +136,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthToken(access);
 
       // Dispatch custom event to force TenantContext reload
-      // 🔥 FIX: Use actual values from localStorage to preserve SuperAdmin context
-      const finalEmpresaId = res.empresaId || localStorage.getItem('empresaId');
-      const finalSucursalId = res.sucursalId || localStorage.getItem('sucursalId');
-      const finalEsSuperAdmin = res.esSuperAdmin !== undefined ? res.esSuperAdmin : (localStorage.getItem('esSuperAdmin') === 'true');
+      // 🔥 FIX: Use actual values from sessionStorage to preserve SuperAdmin context
+      const finalEmpresaId = res.empresaId || sessionStorage.getItem('empresaId');
+      const finalSucursalId = res.sucursalId || sessionStorage.getItem('sucursalId');
+      const finalEsSuperAdmin = res.esSuperAdmin !== undefined ? res.esSuperAdmin : (sessionStorage.getItem('esSuperAdmin') === 'true');
 
       console.log('🔔 Disparando evento tenant-context-updated', {
         empresaId: finalEmpresaId,
@@ -167,12 +167,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("auth_refresh_token");
-    // Clear multi-tenant data
-    localStorage.removeItem("empresaId");
-    localStorage.removeItem("sucursalId");
-    localStorage.removeItem("esSuperAdmin");
+    // Clear multi-tenant data (now in sessionStorage for tab isolation)
+    sessionStorage.removeItem("empresaId");
+    sessionStorage.removeItem("sucursalId");
+    sessionStorage.removeItem("esSuperAdmin");
     // Clear sucursal filter to prevent cross-user contamination
-    localStorage.removeItem("sucursalFiltro");
+    sessionStorage.removeItem("sucursalFiltro");
     delete axios.defaults.headers.common.Authorization;
     setAuthToken(null);
   };
@@ -194,7 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('auth_user');
           delete axios.defaults.headers.common.Authorization;
           setAuthToken(null);
-          // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin here!
+          // ❌ DON'T clear sessionStorage tenant data here!
           // ❌ DON'T call setEsSuperAdmin(false) here to preserve the flag
         }
         return Promise.reject(error);

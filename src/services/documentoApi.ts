@@ -2,7 +2,7 @@ import { apiClient } from './apiClient';
 
 export const createPresupuesto = async (data: any) => {
   try {
-    const empresaId = localStorage.getItem('empresaId') || localStorage.getItem('tenantId');
+    const empresaId = sessionStorage.getItem('empresaId') || localStorage.getItem('tenantId');
     
     const payload = {
       ...data,
