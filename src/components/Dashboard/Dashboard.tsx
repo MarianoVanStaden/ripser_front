@@ -232,6 +232,11 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+
+      // 🔍 DEBUG: Log current empresaId before making API calls
+      const currentEmpresaId = localStorage.getItem('empresaId');
+      console.log('🔍 Dashboard fetchDashboardData - empresaId from localStorage:', currentEmpresaId, 'from context:', empresaId);
+
       const [clients, products, allDocumentos, lowStock] = await Promise.all([
         clientApi.getAll().catch((err) => {
           throw new Error(`clientApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
@@ -246,6 +251,30 @@ const Dashboard: React.FC = () => {
           throw new Error(`productApi.getLowStock failed: ${err.response?.status} ${err.response?.data}`);
         }),
       ]);
+
+      // 🔍 DEBUG: Log what data was returned
+      console.log('🔍 Dashboard data received:', {
+        clientsCount: clients.length,
+        firstClientIds: clients.slice(0, 3).map((c: any) => ({ id: c.id, nombre: c.nombre })),
+        productsCount: products.content?.length || products.length,
+        documentosCount: allDocumentos.length,
+        firstDocumentosIds: allDocumentos.slice(0, 3).map((d: any) => ({
+          id: d.id,
+          numero: d.numeroDocumento,
+          clienteId: d.clienteId,
+          clienteNombre: d.clienteNombre
+        })),
+        lowStockCount: lowStock.length,
+      });
+
+      // 🔍 DEBUG: Check if these clients belong to empresa 2
+      if (clients.length > 0) {
+        console.log('⚠️ VERIFY: Are these clients from empresa 2?', clients.slice(0, 5).map((c: any) => ({
+          id: c.id,
+          nombre: c.nombre,
+          empresaId: c.empresaId || 'NOT IN RESPONSE'
+        })));
+      }
 
       // Filter only invoices (FAC-), exclude order notes (NP-)
       const sales = allDocumentos.filter((doc: any) => {
@@ -538,7 +567,7 @@ const Dashboard: React.FC = () => {
               </Typography>
               <Box
                 component="div"
-                sx={{ 
+                sx={{
                   fontSize: { xs: '0.9rem', sm: '1rem' },
                   color: 'text.secondary',
                   display: 'flex',
@@ -548,6 +577,13 @@ const Dashboard: React.FC = () => {
                 }}
               >
                 Bienvenido de vuelta al panel de control
+                {/* 🔍 DEBUG: Show current empresaId */}
+                <Chip
+                  label={`Empresa ID: ${empresaId || 'No seleccionada'}`}
+                  size="small"
+                  color={empresaId === 2 ? 'success' : 'warning'}
+                  sx={{ ml: 1 }}
+                />
                 {user.roles && user.roles.length > 0 && (
                   <Chip
                     label={user.roles[0]}
