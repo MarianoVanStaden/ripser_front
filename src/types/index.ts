@@ -2733,6 +2733,10 @@ export interface ItemRecepcionDTO {
   id: number; // ID del TransferenciaItem
   cantidadRecibida: number;
   observaciones?: string;
+  distribucionDepositos?: Array<{
+    depositoId: number;
+    cantidad: number;
+  }>;
 }
 
 // Auditoría de Movimientos Completa

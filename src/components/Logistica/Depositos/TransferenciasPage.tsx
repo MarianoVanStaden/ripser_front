@@ -28,6 +28,10 @@ import {
   CircularProgress,
   Tooltip,
   TablePagination,
+  Switch,
+  FormControlLabel,
+  Collapse,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -38,6 +42,9 @@ import {
   Delete as DeleteIcon,
   LocalShipping as ShippingIcon,
   Refresh as RefreshIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -106,6 +113,34 @@ const TransferenciasPage: React.FC = () => {
   const [stocksDisponibles, setStocksDisponibles] = useState<StockDeposito[]>([]);
   const [equiposDisponibles, setEquiposDisponibles] = useState<EquipoFabricadoDTO[]>([]);
   const [selectedItemType, setSelectedItemType] = useState<'PRODUCTO' | 'EQUIPO'>('PRODUCTO');
+
+  // Estados para recepción mejorada
+  interface ItemRecepcion {
+    detalleId: number;
+    productoId?: number;
+    equipoFabricadoId?: number;
+    nombreItem: string;
+    cantidadSolicitada: number;
+    cantidadRecibida: number;
+    distribuciones: Array<{
+      depositoId: number;
+      depositoNombre: string;
+      cantidad: number;
+    }>;
+    observaciones: string;
+  }
+
+  const [recepcionData, setRecepcionData] = useState<{
+    fechaRecepcion: Dayjs;
+    items: ItemRecepcion[];
+    usarDistribucionMultiple: boolean;
+  }>({
+    fechaRecepcion: dayjs(),
+    items: [],
+    usarDistribucionMultiple: false,
+  });
+
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadData();
@@ -208,6 +243,62 @@ const TransferenciasPage: React.FC = () => {
     }
   };
 
+  // Inicializar datos de recepción cuando se abre el diálogo
+  const inicializarRecepcion = (transferencia: TransferenciaDepositoDTO) => {
+    const items: ItemRecepcion[] = transferencia.items.map(item => ({
+      detalleId: item.id!,
+      productoId: item.productoId,
+      equipoFabricadoId: item.equipoFabricadoId,
+      nombreItem: item.productoId
+        ? `${item.productoNombre} (${item.productoCodigo})`
+        : `Equipo: ${item.equipoNumero}`,
+      cantidadSolicitada: item.cantidadSolicitada,
+      cantidadRecibida: item.cantidadSolicitada, // Por defecto, recibir todo
+      distribuciones: [],
+      observaciones: '',
+    }));
+
+    setRecepcionData({
+      fechaRecepcion: dayjs(),
+      items,
+      usarDistribucionMultiple: false,
+    });
+  };
+
+  const resetRecepcionData = () => {
+    setRecepcionData({
+      fechaRecepcion: dayjs(),
+      items: [],
+      usarDistribucionMultiple: false,
+    });
+    setExpandedItems(new Set());
+  };
+
+  const validarDistribuciones = (items: ItemRecepcion[]): string[] => {
+    const errores: string[] = [];
+
+    items.forEach((item) => {
+      if (item.cantidadRecibida === 0) return;
+
+      const sumaDistribuciones = item.distribuciones.reduce((sum, d) => sum + d.cantidad, 0);
+
+      if (sumaDistribuciones !== item.cantidadRecibida) {
+        errores.push(
+          `${item.nombreItem}: suma de distribuciones (${sumaDistribuciones}) ≠ cantidad recibida (${item.cantidadRecibida})`
+        );
+      }
+
+      // Validar depósitos duplicados
+      const depositosIds = item.distribuciones.map(d => d.depositoId);
+      const duplicados = depositosIds.filter((id, idx) => depositosIds.indexOf(id) !== idx);
+      if (duplicados.length > 0) {
+        errores.push(`${item.nombreItem}: depósito duplicado`);
+      }
+    });
+
+    return errores;
+  };
+
   const handleConfirmarEnvio = async (id: number) => {
     if (!window.confirm('¿Confirmar envío de esta transferencia? Esta acción descontará el stock del depósito origen.')) {
       return;
@@ -229,23 +320,47 @@ const TransferenciasPage: React.FC = () => {
   const handleConfirmarRecepcion = async () => {
     if (!selectedTransferencia) return;
 
+    // Validar que al menos un item tenga cantidad > 0
+    const tieneItemsRecibidos = recepcionData.items.some(item => item.cantidadRecibida > 0);
+    if (!tieneItemsRecibidos) {
+      setError('Debe recibir al menos un item');
+      return;
+    }
+
+    // Validar distribuciones si están habilitadas
+    if (recepcionData.usarDistribucionMultiple) {
+      const erroresDistribucion = validarDistribuciones(recepcionData.items);
+      if (erroresDistribucion.length > 0) {
+        setError(erroresDistribucion.join(', '));
+        return;
+      }
+    }
+
     try {
       setLoading(true);
 
       const dto: ConfirmarRecepcionDTO = {
         transferenciaId: selectedTransferencia.id!,
-        fechaRecepcion: dayjs().toISOString(),
+        fechaRecepcion: recepcionData.fechaRecepcion.toISOString(),
         usuarioRecepcionId: user?.id || 0,
-        items: selectedTransferencia.items.map(item => ({
-          id: item.id!,
-          cantidadRecibida: item.cantidadSolicitada,
-          observaciones: '',
-        })),
+        items: recepcionData.items.map(item => ({
+          id: item.detalleId,
+          cantidadRecibida: item.cantidadRecibida,
+          observaciones: item.observaciones,
+          // Si hay distribuciones, incluirlas
+          distribucionDepositos: recepcionData.usarDistribucionMultiple && item.distribuciones.length > 0
+            ? item.distribuciones.map(d => ({
+                depositoId: d.depositoId,
+                cantidad: d.cantidad
+              }))
+            : undefined
+        }))
       };
 
       await transferenciaApi.confirmarRecepcion(dto);
       setSuccess('Recepción confirmada correctamente');
       setReceiveDialogOpen(false);
+      resetRecepcionData();
       setSelectedTransferencia(null);
       await loadData();
     } catch (err: any) {
@@ -545,6 +660,7 @@ const TransferenciasPage: React.FC = () => {
                                   color="success"
                                   onClick={() => {
                                     setSelectedTransferencia(transferencia);
+                                    inicializarRecepcion(transferencia);
                                     setReceiveDialogOpen(true);
                                   }}
                                 >
@@ -911,31 +1027,312 @@ const TransferenciasPage: React.FC = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Diálogo: Confirmar Recepción */}
-        <Dialog open={receiveDialogOpen} onClose={() => setReceiveDialogOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Confirmar Recepción</DialogTitle>
+        {/* Diálogo: Confirmar Recepción Mejorado */}
+        <Dialog
+          open={receiveDialogOpen}
+          onClose={() => {
+            setReceiveDialogOpen(false);
+            resetRecepcionData();
+          }}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">
+                Confirmar Recepción - {selectedTransferencia?.numero}
+              </Typography>
+              {selectedTransferencia && (
+                <Typography variant="body2" color="text.secondary">
+                  {selectedTransferencia.depositoOrigenNombre} → {selectedTransferencia.depositoDestinoNombre}
+                </Typography>
+              )}
+            </Box>
+          </DialogTitle>
           <DialogContent>
-            <Alert severity="info" sx={{ mt: 2 }}>
-              ¿Confirmar la recepción de esta transferencia en el depósito destino? Esta acción
-              actualizará el stock y no podrá deshacerse.
-            </Alert>
-            {selectedTransferencia && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="body2" gutterBottom>
-                  <strong>Transferencia:</strong> {selectedTransferencia.numero}
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  <strong>Depósito Destino:</strong> {selectedTransferencia.depositoDestinoNombre}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Items:</strong> {selectedTransferencia.items.length}
-                </Typography>
+            <Box sx={{ mt: 2 }}>
+              {/* Toggle para distribución multi-depósito */}
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={recepcionData.usarDistribucionMultiple}
+                      onChange={(e) =>
+                        setRecepcionData(prev => ({
+                          ...prev,
+                          usarDistribucionMultiple: e.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="Habilitar distribución a múltiples depósitos"
+                />
+                <DateTimePicker
+                  label="Fecha de Recepción"
+                  value={recepcionData.fechaRecepcion}
+                  onChange={(newValue) =>
+                    setRecepcionData(prev => ({
+                      ...prev,
+                      fechaRecepcion: newValue || dayjs(),
+                    }))
+                  }
+                  slotProps={{ textField: { size: 'small', sx: { width: 250 } } }}
+                />
               </Box>
-            )}
+
+              <Divider sx={{ mb: 2 }} />
+
+              {/* Tabla de Items */}
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell width={40}></TableCell>
+                      <TableCell>Producto/Equipo</TableCell>
+                      <TableCell align="center" width={120}>Solicitada</TableCell>
+                      <TableCell align="center" width={120}>A Recibir</TableCell>
+                      <TableCell align="center" width={100}>Diferencia</TableCell>
+                      <TableCell width={200}>Observaciones</TableCell>
+                      {recepcionData.usarDistribucionMultiple && (
+                        <TableCell align="center" width={120}>Distribución</TableCell>
+                      )}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {recepcionData.items.map((item, index) => (
+                      <React.Fragment key={index}>
+                        <TableRow>
+                          <TableCell>
+                            {recepcionData.usarDistribucionMultiple && (
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  const newExpanded = new Set(expandedItems);
+                                  if (newExpanded.has(index)) {
+                                    newExpanded.delete(index);
+                                  } else {
+                                    newExpanded.add(index);
+                                  }
+                                  setExpandedItems(newExpanded);
+                                }}
+                              >
+                                {expandedItems.has(index) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                              </IconButton>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">{item.nombreItem}</Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip label={item.cantidadSolicitada} size="small" />
+                          </TableCell>
+                          <TableCell align="center">
+                            <TextField
+                              type="number"
+                              size="small"
+                              value={item.cantidadRecibida}
+                              onChange={(e) => {
+                                const valor = parseInt(e.target.value) || 0;
+                                const newItems = [...recepcionData.items];
+                                newItems[index].cantidadRecibida = Math.max(0, Math.min(valor, item.cantidadSolicitada));
+                                setRecepcionData(prev => ({ ...prev, items: newItems }));
+                              }}
+                              inputProps={{
+                                min: 0,
+                                max: item.cantidadSolicitada,
+                                style: { textAlign: 'center' }
+                              }}
+                              sx={{ width: 80 }}
+                              error={item.cantidadRecibida > item.cantidadSolicitada}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={item.cantidadRecibida - item.cantidadSolicitada}
+                              size="small"
+                              color={
+                                item.cantidadRecibida === item.cantidadSolicitada
+                                  ? 'success'
+                                  : item.cantidadRecibida < item.cantidadSolicitada
+                                  ? 'warning'
+                                  : 'error'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              fullWidth
+                              placeholder="Observaciones..."
+                              value={item.observaciones}
+                              onChange={(e) => {
+                                const newItems = [...recepcionData.items];
+                                newItems[index].observaciones = e.target.value;
+                                setRecepcionData(prev => ({ ...prev, items: newItems }));
+                              }}
+                            />
+                          </TableCell>
+                          {recepcionData.usarDistribucionMultiple && (
+                            <TableCell align="center">
+                              {item.distribuciones.length > 0 && (
+                                <Chip
+                                  label={`${item.distribuciones.reduce((sum, d) => sum + d.cantidad, 0)} / ${item.cantidadRecibida}`}
+                                  size="small"
+                                  color={
+                                    item.distribuciones.reduce((sum, d) => sum + d.cantidad, 0) === item.cantidadRecibida
+                                      ? 'success'
+                                      : 'warning'
+                                  }
+                                  icon={
+                                    item.distribuciones.reduce((sum, d) => sum + d.cantidad, 0) !== item.cantidadRecibida
+                                      ? <WarningIcon />
+                                      : undefined
+                                  }
+                                />
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                        {/* Panel de distribución expandible */}
+                        {recepcionData.usarDistribucionMultiple && (
+                          <TableRow>
+                            <TableCell colSpan={7} sx={{ p: 0, borderBottom: expandedItems.has(index) ? 1 : 0 }}>
+                              <Collapse in={expandedItems.has(index)}>
+                                <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Distribución por Depósito - {item.nombreItem}
+                                  </Typography>
+                                  <Grid container spacing={2}>
+                                    {item.distribuciones.map((dist, distIndex) => (
+                                      <Grid item xs={12} md={6} key={distIndex}>
+                                        <Card variant="outlined">
+                                          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                            <Grid container spacing={2} alignItems="center">
+                                              <Grid item xs={7}>
+                                                <FormControl fullWidth size="small">
+                                                  <InputLabel>Depósito</InputLabel>
+                                                  <Select
+                                                    value={dist.depositoId}
+                                                    label="Depósito"
+                                                    onChange={(e) => {
+                                                      const deposito = depositos.find(d => d.id === e.target.value);
+                                                      const newItems = [...recepcionData.items];
+                                                      newItems[index].distribuciones[distIndex] = {
+                                                        depositoId: e.target.value as number,
+                                                        depositoNombre: deposito?.nombre || '',
+                                                        cantidad: dist.cantidad,
+                                                      };
+                                                      setRecepcionData(prev => ({ ...prev, items: newItems }));
+                                                    }}
+                                                  >
+                                                    {depositos.map(d => (
+                                                      <MenuItem key={d.id} value={d.id}>
+                                                        {d.nombre}
+                                                      </MenuItem>
+                                                    ))}
+                                                  </Select>
+                                                </FormControl>
+                                              </Grid>
+                                              <Grid item xs={3}>
+                                                <TextField
+                                                  type="number"
+                                                  size="small"
+                                                  label="Cantidad"
+                                                  value={dist.cantidad}
+                                                  onChange={(e) => {
+                                                    const valor = parseInt(e.target.value) || 0;
+                                                    const newItems = [...recepcionData.items];
+                                                    newItems[index].distribuciones[distIndex].cantidad = Math.max(0, valor);
+                                                    setRecepcionData(prev => ({ ...prev, items: newItems }));
+                                                  }}
+                                                  inputProps={{ min: 0 }}
+                                                  fullWidth
+                                                />
+                                              </Grid>
+                                              <Grid item xs={2}>
+                                                <IconButton
+                                                  size="small"
+                                                  color="error"
+                                                  onClick={() => {
+                                                    const newItems = [...recepcionData.items];
+                                                    newItems[index].distribuciones.splice(distIndex, 1);
+                                                    setRecepcionData(prev => ({ ...prev, items: newItems }));
+                                                  }}
+                                                >
+                                                  <DeleteIcon />
+                                                </IconButton>
+                                              </Grid>
+                                            </Grid>
+                                          </CardContent>
+                                        </Card>
+                                      </Grid>
+                                    ))}
+                                    <Grid item xs={12}>
+                                      <Button
+                                        size="small"
+                                        startIcon={<AddIcon />}
+                                        onClick={() => {
+                                          const newItems = [...recepcionData.items];
+                                          newItems[index].distribuciones.push({
+                                            depositoId: 0,
+                                            depositoNombre: '',
+                                            cantidad: 0,
+                                          });
+                                          setRecepcionData(prev => ({ ...prev, items: newItems }));
+                                        }}
+                                      >
+                                        Agregar Depósito
+                                      </Button>
+                                      <Typography variant="caption" sx={{ ml: 2 }} color={
+                                        item.distribuciones.reduce((sum, d) => sum + d.cantidad, 0) === item.cantidadRecibida
+                                          ? 'success.main'
+                                          : 'warning.main'
+                                      }>
+                                        Total distribuido: {item.distribuciones.reduce((sum, d) => sum + d.cantidad, 0)} / {item.cantidadRecibida}
+                                      </Typography>
+                                    </Grid>
+                                  </Grid>
+                                </Box>
+                              </Collapse>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* Resumen */}
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="info">
+                  <Typography variant="body2">
+                    <strong>Resumen:</strong>{' '}
+                    {recepcionData.items.filter(i => i.cantidadRecibida !== i.cantidadSolicitada).length} de{' '}
+                    {recepcionData.items.length} items con diferencias
+                  </Typography>
+                  {recepcionData.usarDistribucionMultiple && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      <strong>Nota:</strong> La distribución a múltiples depósitos requiere que la suma de cantidades distribuidas sea igual a la cantidad recibida para cada item.
+                    </Typography>
+                  )}
+                </Alert>
+              </Box>
+            </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setReceiveDialogOpen(false)}>Cancelar</Button>
-            <Button variant="contained" color="success" onClick={handleConfirmarRecepcion} disabled={loading}>
+            <Button onClick={() => {
+              setReceiveDialogOpen(false);
+              resetRecepcionData();
+            }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleConfirmarRecepcion}
+              disabled={loading || recepcionData.items.length === 0}
+            >
               Confirmar Recepción
             </Button>
           </DialogActions>
