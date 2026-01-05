@@ -31,6 +31,12 @@ import {
   InputAdornment,
   Tooltip,
   Badge,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -41,13 +47,23 @@ import {
   TrendingUp as TrendingUpIcon,
   History as HistoryIcon,
   Add as AddIcon,
+  FileDownload as FileDownloadIcon,
+  TableChart as TableChartIcon,
+  PictureAsPdf as PictureAsPdfIcon,
+  FilterList as FilterListIcon,
+  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import { stockDepositoApi } from '../../../api/services/stockDepositoApi';
 import { depositoApi } from '../../../api/services/depositoApi';
 import { productApi } from '../../../api/services/productApi';
 import { movimientoStockDepositoApi } from '../../../api/services/movimientosApi';
 import { usePermisos } from '../../../hooks/usePermisos';
+import { useAuth } from '../../../context/AuthContext';
 import type { StockDeposito, Deposito, Producto, MovimientoStockDeposito, StockDepositoCreateDTO } from '../../../types';
+import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
+import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
+import dayjs from 'dayjs';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -66,6 +82,7 @@ function TabPanel(props: TabPanelProps) {
 
 const InventarioDepositoPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
+  const { user } = useAuth();
 
   // State management
   const [stockItems, setStockItems] = useState<StockDeposito[]>([]);
@@ -84,6 +101,11 @@ const InventarioDepositoPage: React.FC = () => {
   const [productoFilter, setProductoFilter] = useState<string>('all');
   const [alertFilter, setAlertFilter] = useState<string>('all'); // all, bajo, sobre
 
+  // Advanced filters
+  const [cantidadMin, setCantidadMin] = useState<number | ''>('');
+  const [cantidadMax, setCantidadMax] = useState<number | ''>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
   // Dialog states
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [ajusteDialogOpen, setAjusteDialogOpen] = useState(false);
@@ -91,6 +113,10 @@ const InventarioDepositoPage: React.FC = () => {
   const [historialDialogOpen, setHistorialDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockDeposito | null>(null);
   const [movimientos, setMovimientos] = useState<MovimientoStockDeposito[]>([]);
+
+  // Export menu state
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+  const exportMenuOpen = Boolean(exportAnchorEl);
 
   // Transfer form
   const [transferForm, setTransferForm] = useState({
@@ -172,9 +198,13 @@ const InventarioDepositoPage: React.FC = () => {
         (alertFilter === 'bajo' && item.bajoMinimo) ||
         (alertFilter === 'sobre' && item.sobreMaximo);
 
-      return matchesSearch && matchesAlert;
+      // Advanced filters
+      const matchesCantidadMin = cantidadMin === '' || item.cantidad >= cantidadMin;
+      const matchesCantidadMax = cantidadMax === '' || item.cantidad <= cantidadMax;
+
+      return matchesSearch && matchesAlert && matchesCantidadMin && matchesCantidadMax;
     });
-  }, [filteredByView, searchTerm, alertFilter]);
+  }, [filteredByView, searchTerm, alertFilter, cantidadMin, cantidadMax]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -191,6 +221,47 @@ const InventarioDepositoPage: React.FC = () => {
       productosConStock,
     };
   }, [stockItems]);
+
+  // Chart data
+  const stockPorDeposito = useMemo(() => {
+    const depositoMap = new Map<number, { nombre: string; cantidad: number }>();
+
+    stockItems.forEach((item) => {
+      const existing = depositoMap.get(item.depositoId);
+      if (existing) {
+        existing.cantidad += item.cantidad;
+      } else {
+        depositoMap.set(item.depositoId, {
+          nombre: item.depositoNombre,
+          cantidad: item.cantidad,
+        });
+      }
+    });
+
+    return Array.from(depositoMap.values());
+  }, [stockItems]);
+
+  const top10Productos = useMemo(() => {
+    const productoMap = new Map<number, { nombre: string; cantidad: number }>();
+
+    stockItems.forEach((item) => {
+      const existing = productoMap.get(item.productoId);
+      if (existing) {
+        existing.cantidad += item.cantidad;
+      } else {
+        productoMap.set(item.productoId, {
+          nombre: item.productoNombre,
+          cantidad: item.cantidad,
+        });
+      }
+    });
+
+    return Array.from(productoMap.values())
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 10);
+  }, [stockItems]);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
 
   // Get stock distribution for a product
   const getStockDistribution = (productoId: number) => {
@@ -330,6 +401,166 @@ const InventarioDepositoPage: React.FC = () => {
     return <Chip label="Normal" size="small" color="success" />;
   };
 
+  // Export functions
+  const handleExportExcel = () => {
+    try {
+      // Preparar filtros aplicados
+      const filtrosAplicados: Record<string, any> = {};
+
+      if (tabValue === 0 && depositoFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoFilter);
+        filtrosAplicados['Depósito'] = deposito?.nombre || depositoFilter;
+      }
+
+      if (tabValue === 1 && productoFilter !== 'all') {
+        const producto = productos.find(p => p.id.toString() === productoFilter);
+        filtrosAplicados['Producto'] = producto?.nombre || productoFilter;
+      }
+
+      if (searchTerm) {
+        filtrosAplicados['Búsqueda'] = searchTerm;
+      }
+
+      if (alertFilter !== 'all') {
+        filtrosAplicados['Filtro de Alertas'] =
+          alertFilter === 'bajo' ? 'Solo Bajo Mínimo' : 'Solo Sobre Máximo';
+      }
+
+      // Preparar datos para exportación
+      const dataParaExportar = prepareTableDataForExport(filteredStockItems, [
+        { key: 'productoNombre', header: 'Producto' },
+        { key: 'productoCodigo', header: 'Código' },
+        { key: 'depositoNombre', header: 'Depósito' },
+        { key: 'cantidad', header: 'Cantidad', format: 'number' },
+        { key: 'stockMinimo', header: 'Stock Mínimo', format: 'number' },
+        { key: 'stockMaximo', header: 'Stock Máximo', format: 'number' },
+        {
+          key: 'bajoMinimo',
+          header: 'Estado',
+          transform: (_, row) =>
+            row.bajoMinimo ? 'Bajo Mínimo' :
+            row.sobreMaximo ? 'Sobre Máximo' : 'Normal'
+        },
+      ]);
+
+      // Preparar estadísticas
+      const estadisticas = [
+        { 'Métrica': 'Total Items', 'Valor': stats.totalItems },
+        { 'Métrica': 'Productos con Stock', 'Valor': stats.productosConStock },
+        { 'Métrica': 'Depósitos con Stock', 'Valor': stats.depositosConStock },
+        { 'Métrica': 'Alertas Bajo Mínimo', 'Valor': stats.alertasBajo },
+        { 'Métrica': 'Alertas Sobre Máximo', 'Valor': stats.alertasSobre },
+      ];
+
+      exportToExcel({
+        fileName: `inventario-depositos-${dayjs().format('YYYY-MM-DD')}`,
+        metadata: {
+          title: 'Inventario por Depósito',
+          generatedBy: user?.nombre || 'Usuario',
+          generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+          filters: filtrosAplicados,
+        },
+        sheets: [
+          {
+            name: 'Estadísticas',
+            data: estadisticas,
+          },
+          {
+            name: 'Inventario',
+            data: dataParaExportar,
+          },
+        ],
+      });
+
+      setSuccess('Archivo Excel exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar a Excel:', error);
+      setError('Error al exportar a Excel');
+    }
+  };
+
+  const handleExportPDF = () => {
+    try {
+      // Preparar filtros aplicados
+      const filtrosAplicados: Record<string, any> = {};
+
+      if (tabValue === 0 && depositoFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoFilter);
+        filtrosAplicados['Depósito'] = deposito?.nombre || depositoFilter;
+      }
+
+      if (tabValue === 1 && productoFilter !== 'all') {
+        const producto = productos.find(p => p.id.toString() === productoFilter);
+        filtrosAplicados['Producto'] = producto?.nombre || productoFilter;
+      }
+
+      if (searchTerm) {
+        filtrosAplicados['Búsqueda'] = searchTerm;
+      }
+
+      if (alertFilter !== 'all') {
+        filtrosAplicados['Filtro de Alertas'] =
+          alertFilter === 'bajo' ? 'Solo Bajo Mínimo' : 'Solo Sobre Máximo';
+      }
+
+      // Preparar datos para exportación
+      const { headers, rows } = prepareTableDataForPDF(filteredStockItems, [
+        { key: 'productoNombre', header: 'Producto' },
+        { key: 'productoCodigo', header: 'Código' },
+        { key: 'depositoNombre', header: 'Depósito' },
+        { key: 'cantidad', header: 'Cantidad', format: 'number' },
+        { key: 'stockMinimo', header: 'Mínimo', format: 'number' },
+        { key: 'stockMaximo', header: 'Máximo', format: 'number' },
+        {
+          key: 'bajoMinimo',
+          header: 'Estado',
+          transform: (_, row) =>
+            row.bajoMinimo ? 'Bajo Mínimo' :
+            row.sobreMaximo ? 'Sobre Máximo' : 'Normal'
+        },
+      ]);
+
+      // Preparar estadísticas
+      const statsRows = [
+        ['Total Items', stats.totalItems.toString()],
+        ['Productos con Stock', stats.productosConStock.toString()],
+        ['Depósitos con Stock', stats.depositosConStock.toString()],
+        ['Alertas Bajo Mínimo', stats.alertasBajo.toString()],
+        ['Alertas Sobre Máximo', stats.alertasSobre.toString()],
+      ];
+
+      exportToPDF({
+        fileName: `inventario-depositos-${dayjs().format('YYYY-MM-DD')}`,
+        title: 'Inventario por Depósito',
+        orientation: 'landscape',
+        metadata: {
+          generatedBy: user?.nombre || 'Usuario',
+          generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+          filters: filtrosAplicados,
+        },
+        tables: [
+          {
+            headers: ['Métrica', 'Valor'],
+            rows: statsRows,
+            title: 'Estadísticas Generales',
+          },
+          {
+            headers,
+            rows,
+            title: 'Detalle de Inventario',
+            showFooter: true,
+            footerText: `Total de registros: ${filteredStockItems.length}`,
+          },
+        ],
+      });
+
+      setSuccess('Archivo PDF exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar a PDF:', error);
+      setError('Error al exportar a PDF');
+    }
+  };
+
   if (!tienePermiso('LOGISTICA')) {
     return (
       <Box sx={{ p: 3 }}>
@@ -348,10 +579,49 @@ const InventarioDepositoPage: React.FC = () => {
             Inventario por Depósito
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreateDialog}>
-          Asignar Stock a Depósito
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            onClick={(e) => setExportAnchorEl(e.currentTarget)}
+          >
+            Exportar
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreateDialog}>
+            Asignar Stock a Depósito
+          </Button>
+        </Box>
       </Box>
+
+      {/* Export Menu */}
+      <Menu
+        anchorEl={exportAnchorEl}
+        open={exportMenuOpen}
+        onClose={() => setExportAnchorEl(null)}
+      >
+        <MenuItem
+          onClick={() => {
+            handleExportExcel();
+            setExportAnchorEl(null);
+          }}
+        >
+          <ListItemIcon>
+            <TableChartIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Exportar a Excel</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleExportPDF();
+            setExportAnchorEl(null);
+          }}
+        >
+          <ListItemIcon>
+            <PictureAsPdfIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Exportar a PDF</ListItemText>
+        </MenuItem>
+      </Menu>
 
       {/* Alerts */}
       {error && (
@@ -422,6 +692,57 @@ const InventarioDepositoPage: React.FC = () => {
                   <TrendingUpIcon fontSize="large" />
                 </Badge>
               </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Charts */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Distribución de Stock por Depósito
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={stockPorDeposito}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="cantidad"
+                  >
+                    {stockPorDeposito.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Top 10 Productos con Más Stock
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={top10Productos}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="nombre" angle={-45} textAnchor="end" height={100} />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Bar dataKey="cantidad" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </Grid>
@@ -509,6 +830,57 @@ const InventarioDepositoPage: React.FC = () => {
           </Grid>
         </CardContent>
       </Card>
+
+      {/* Advanced Filters */}
+      <Accordion sx={{ mb: 3 }} expanded={showAdvancedFilters} onChange={() => setShowAdvancedFilters(!showAdvancedFilters)}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FilterListIcon />
+            <Typography>Filtros Avanzados</Typography>
+            {(cantidadMin !== '' || cantidadMax !== '') && (
+              <Chip label="Activo" size="small" color="primary" />
+            )}
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Cantidad Mínima"
+                value={cantidadMin}
+                onChange={(e) => setCantidadMin(e.target.value === '' ? '' : parseInt(e.target.value))}
+                inputProps={{ min: 0 }}
+                helperText="Mostrar productos con cantidad mayor o igual"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Cantidad Máxima"
+                value={cantidadMax}
+                onChange={(e) => setCantidadMax(e.target.value === '' ? '' : parseInt(e.target.value))}
+                inputProps={{ min: 0 }}
+                helperText="Mostrar productos con cantidad menor o igual"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setCantidadMin('');
+                  setCantidadMax('');
+                }}
+              >
+                Limpiar Filtros Avanzados
+              </Button>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
 
       {/* Content */}
       <TabPanel value={tabValue} index={0}>

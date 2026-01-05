@@ -42,7 +42,10 @@
       "Bash(cmd.exe /c \"dir /B c:\\Users\\maria\\Documents\\GitHub\\ripser_front\\src\\components\\Logistica\")",
       "Bash(cmd.exe /c \"dir /B ..\\ripser_back\")",
       "Bash(cmd.exe /c \"npx tsc --noEmit 2>&1 | findstr /C:error || echo No errors found\")",
-      "Bash(cmd.exe /c \"type c:\\Users\\maria\\Documents\\GitHub\\ripser_front\\src\\context\\AuthContext.tsx | findstr /C:export\")"
+      "Bash(cmd.exe /c \"type c:\\Users\\maria\\Documents\\GitHub\\ripser_front\\src\\context\\AuthContext.tsx | findstr /C:export\")",
+      "Bash(cmd.exe /c \"if not exist src\\\\utils mkdir src\\\\utils\")",
+      "Bash(cmd.exe /c \"dir /S /B c:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_front\\\\src\\\\*presupuesto*.tsx 2>nul | findstr /I pdf\")",
+      "Bash(cmd.exe /c \"dir /S /B c:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_front\\\\src\\\\components\\\\*Presupuesto*.tsx\")"
     ],
     "deny": [],
     "ask": []

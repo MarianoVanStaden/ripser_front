@@ -32,6 +32,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  ButtonGroup,
 } from '@mui/material';
 import {
   History as HistoryIcon,
@@ -40,6 +44,9 @@ import {
   GetApp as GetAppIcon,
   Timeline as TimelineIcon,
   Visibility as VisibilityIcon,
+  FileDownload as FileDownloadIcon,
+  TableChart as TableChartIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -49,6 +56,7 @@ import { movimientoStockDepositoApi, movimientoEquipoApi } from '../../../api/se
 import { depositoApi } from '../../../api/services/depositoApi';
 import { productApi } from '../../../api/services/productApi';
 import { usePermisos } from '../../../hooks/usePermisos';
+import { useAuth } from '../../../context/AuthContext';
 import type {
   MovimientoEquipo,
   Deposito,
@@ -56,6 +64,9 @@ import type {
   TipoMovimientoStockDeposito,
   TipoMovimientoEquipo,
 } from '../../../types';
+import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
+import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
+import dayjs from 'dayjs';
 
 // Extended interface to handle both backend response formats
 interface MovimientoStockAuditoria {
@@ -113,6 +124,7 @@ function TabPanel(props: TabPanelProps) {
 
 const AuditoriaPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
+  const { user } = useAuth();
 
   // State management - use the flexible type for stock movements
   const [movimientosStock, setMovimientosStock] = useState<MovimientoStockAuditoria[]>([]);
@@ -121,6 +133,7 @@ const AuditoriaPage: React.FC = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Tab state
   const [tabValue, setTabValue] = useState(0);
@@ -141,6 +154,10 @@ const AuditoriaPage: React.FC = () => {
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
   const [selectedEquipoNumero, setSelectedEquipoNumero] = useState<string>('');
   const [timelineMovimientos, setTimelineMovimientos] = useState<MovimientoEquipo[]>([]);
+
+  // Export menu state
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+  const exportMenuOpen = Boolean(exportAnchorEl);
 
   useEffect(() => {
     if (tienePermiso('LOGISTICA')) {
@@ -179,6 +196,37 @@ const AuditoriaPage: React.FC = () => {
       setError('Error al cargar los datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Predefined date ranges
+  const setDateRange = (range: 'today' | 'week' | 'month' | 'quarter') => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    switch (range) {
+      case 'today':
+        setFechaInicio(today);
+        setFechaFin(now);
+        break;
+      case 'week':
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - 7);
+        setFechaInicio(weekStart);
+        setFechaFin(now);
+        break;
+      case 'month':
+        const monthStart = new Date(today);
+        monthStart.setDate(today.getDate() - 30);
+        setFechaInicio(monthStart);
+        setFechaFin(now);
+        break;
+      case 'quarter':
+        const quarterStart = new Date(today);
+        quarterStart.setDate(today.getDate() - 90);
+        setFechaInicio(quarterStart);
+        setFechaFin(now);
+        break;
     }
   };
 
@@ -297,6 +345,237 @@ const AuditoriaPage: React.FC = () => {
     }
   };
 
+  // Export functions
+  const handleExportExcel = () => {
+    try {
+      const filtrosAplicados: Record<string, any> = {};
+
+      if (fechaInicio) {
+        filtrosAplicados['Fecha Inicio'] = dayjs(fechaInicio).format('DD/MM/YYYY');
+      }
+      if (fechaFin) {
+        filtrosAplicados['Fecha Fin'] = dayjs(fechaFin).format('DD/MM/YYYY');
+      }
+
+      if (depositoOrigenFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoOrigenFilter);
+        filtrosAplicados['Depósito Origen'] = deposito?.nombre || depositoOrigenFilter;
+      }
+
+      if (depositoDestinoFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoDestinoFilter);
+        filtrosAplicados['Depósito Destino'] = deposito?.nombre || depositoDestinoFilter;
+      }
+
+      if (tabValue === 0) {
+        // Exportar movimientos de stock
+        if (tipoMovimientoStockFilter !== 'all') {
+          filtrosAplicados['Tipo de Movimiento'] = tipoMovimientoStockFilter;
+        }
+        if (productoFilter !== 'all') {
+          const producto = productos.find(p => p.id.toString() === productoFilter);
+          filtrosAplicados['Producto'] = producto?.nombre || productoFilter;
+        }
+
+        const dataParaExportar = prepareTableDataForExport(filteredMovimientosStock, [
+          {
+            key: 'fechaMovimiento',
+            header: 'Fecha',
+            format: 'datetime',
+            transform: (_, row) => getMovFecha(row)
+          },
+          { key: 'productoNombre', header: 'Producto' },
+          { key: 'productoCodigo', header: 'Código' },
+          {
+            key: 'tipoMovimiento',
+            header: 'Tipo',
+            transform: (_, row) => getMovTipo(row)
+          },
+          { key: 'depositoOrigenNombre', header: 'Origen' },
+          { key: 'depositoDestinoNombre', header: 'Destino' },
+          { key: 'cantidad', header: 'Cantidad', format: 'number' },
+          { key: 'usuarioNombre', header: 'Usuario' },
+          {
+            key: 'documentoReferencia',
+            header: 'Referencia',
+            transform: (_, row) => getMovReferencia(row)
+          },
+        ]);
+
+        exportToExcel({
+          fileName: `auditoria-movimientos-stock-${dayjs().format('YYYY-MM-DD')}`,
+          metadata: {
+            title: 'Auditoría de Movimientos de Stock',
+            generatedBy: user?.nombre || 'Usuario',
+            generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+            filters: filtrosAplicados,
+          },
+          sheets: [
+            {
+              name: 'Movimientos',
+              data: dataParaExportar,
+            },
+          ],
+        });
+      } else {
+        // Exportar movimientos de equipos
+        if (tipoMovimientoEquipoFilter !== 'all') {
+          filtrosAplicados['Tipo de Movimiento'] = tipoMovimientoEquipoFilter;
+        }
+        if (numeroHeladeraFilter) {
+          filtrosAplicados['Número de Heladera'] = numeroHeladeraFilter;
+        }
+
+        const dataParaExportar = prepareTableDataForExport(filteredMovimientosEquipo, [
+          { key: 'fechaMovimiento', header: 'Fecha', format: 'datetime' },
+          { key: 'equipoNumeroHeladera', header: 'Nº Heladera' },
+          { key: 'equipoModelo', header: 'Modelo' },
+          { key: 'tipoMovimiento', header: 'Tipo' },
+          { key: 'depositoOrigenNombre', header: 'Origen' },
+          { key: 'depositoDestinoNombre', header: 'Destino' },
+          { key: 'ubicacionInterna', header: 'Ubicación Interna' },
+          { key: 'usuarioNombre', header: 'Usuario' },
+          { key: 'observaciones', header: 'Observaciones' },
+        ]);
+
+        exportToExcel({
+          fileName: `auditoria-movimientos-equipos-${dayjs().format('YYYY-MM-DD')}`,
+          metadata: {
+            title: 'Auditoría de Movimientos de Equipos',
+            generatedBy: user?.nombre || 'Usuario',
+            generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+            filters: filtrosAplicados,
+          },
+          sheets: [
+            {
+              name: 'Movimientos',
+              data: dataParaExportar,
+            },
+          ],
+        });
+      }
+
+      setSuccess('Archivo Excel exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar a Excel:', error);
+      setError('Error al exportar a Excel');
+    }
+  };
+
+  const handleExportPDF = () => {
+    try {
+      const filtrosAplicados: Record<string, any> = {};
+
+      if (fechaInicio) {
+        filtrosAplicados['Fecha Inicio'] = dayjs(fechaInicio).format('DD/MM/YYYY');
+      }
+      if (fechaFin) {
+        filtrosAplicados['Fecha Fin'] = dayjs(fechaFin).format('DD/MM/YYYY');
+      }
+
+      if (depositoOrigenFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoOrigenFilter);
+        filtrosAplicados['Depósito Origen'] = deposito?.nombre || depositoOrigenFilter;
+      }
+
+      if (depositoDestinoFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoDestinoFilter);
+        filtrosAplicados['Depósito Destino'] = deposito?.nombre || depositoDestinoFilter;
+      }
+
+      if (tabValue === 0) {
+        // Exportar movimientos de stock
+        if (tipoMovimientoStockFilter !== 'all') {
+          filtrosAplicados['Tipo de Movimiento'] = tipoMovimientoStockFilter;
+        }
+        if (productoFilter !== 'all') {
+          const producto = productos.find(p => p.id.toString() === productoFilter);
+          filtrosAplicados['Producto'] = producto?.nombre || productoFilter;
+        }
+
+        const { headers, rows } = prepareTableDataForPDF(filteredMovimientosStock, [
+          {
+            key: 'fechaMovimiento',
+            header: 'Fecha',
+            format: 'datetime',
+            transform: (_, row) => getMovFecha(row)
+          },
+          { key: 'productoNombre', header: 'Producto' },
+          {
+            key: 'tipoMovimiento',
+            header: 'Tipo',
+            transform: (_, row) => getMovTipo(row)
+          },
+          { key: 'depositoOrigenNombre', header: 'Origen' },
+          { key: 'depositoDestinoNombre', header: 'Destino' },
+          { key: 'cantidad', header: 'Cant.', format: 'number' },
+          { key: 'usuarioNombre', header: 'Usuario' },
+        ]);
+
+        exportToPDF({
+          fileName: `auditoria-movimientos-stock-${dayjs().format('YYYY-MM-DD')}`,
+          title: 'Auditoría de Movimientos de Stock',
+          orientation: 'landscape',
+          metadata: {
+            generatedBy: user?.nombre || 'Usuario',
+            generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+            filters: filtrosAplicados,
+          },
+          tables: [
+            {
+              headers,
+              rows,
+              showFooter: true,
+              footerText: `Total de registros: ${filteredMovimientosStock.length}`,
+            },
+          ],
+        });
+      } else {
+        // Exportar movimientos de equipos
+        if (tipoMovimientoEquipoFilter !== 'all') {
+          filtrosAplicados['Tipo de Movimiento'] = tipoMovimientoEquipoFilter;
+        }
+        if (numeroHeladeraFilter) {
+          filtrosAplicados['Número de Heladera'] = numeroHeladeraFilter;
+        }
+
+        const { headers, rows } = prepareTableDataForPDF(filteredMovimientosEquipo, [
+          { key: 'fechaMovimiento', header: 'Fecha', format: 'datetime' },
+          { key: 'equipoNumeroHeladera', header: 'Nº Heladera' },
+          { key: 'equipoModelo', header: 'Modelo' },
+          { key: 'tipoMovimiento', header: 'Tipo' },
+          { key: 'depositoOrigenNombre', header: 'Origen' },
+          { key: 'depositoDestinoNombre', header: 'Destino' },
+          { key: 'usuarioNombre', header: 'Usuario' },
+        ]);
+
+        exportToPDF({
+          fileName: `auditoria-movimientos-equipos-${dayjs().format('YYYY-MM-DD')}`,
+          title: 'Auditoría de Movimientos de Equipos',
+          orientation: 'landscape',
+          metadata: {
+            generatedBy: user?.nombre || 'Usuario',
+            generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+            filters: filtrosAplicados,
+          },
+          tables: [
+            {
+              headers,
+              rows,
+              showFooter: true,
+              footerText: `Total de registros: ${filteredMovimientosEquipo.length}`,
+            },
+          ],
+        });
+      }
+
+      setSuccess('Archivo PDF exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar a PDF:', error);
+      setError('Error al exportar a PDF');
+    }
+  };
+
   if (!tienePermiso('LOGISTICA')) {
     return (
       <Box sx={{ p: 3 }}>
@@ -316,12 +595,54 @@ const AuditoriaPage: React.FC = () => {
               Auditoría de Movimientos
             </Typography>
           </Box>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            onClick={(e) => setExportAnchorEl(e.currentTarget)}
+          >
+            Exportar
+          </Button>
         </Box>
+
+        {/* Export Menu */}
+        <Menu
+          anchorEl={exportAnchorEl}
+          open={exportMenuOpen}
+          onClose={() => setExportAnchorEl(null)}
+        >
+          <MenuItem
+            onClick={() => {
+              handleExportExcel();
+              setExportAnchorEl(null);
+            }}
+          >
+            <ListItemIcon>
+              <TableChartIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Exportar a Excel</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleExportPDF();
+              setExportAnchorEl(null);
+            }}
+          >
+            <ListItemIcon>
+              <PictureAsPdfIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Exportar a PDF</ListItemText>
+          </MenuItem>
+        </Menu>
 
         {/* Alerts */}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+        {success && (
+          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+            {success}
           </Alert>
         )}
 
@@ -406,6 +727,17 @@ const AuditoriaPage: React.FC = () => {
                   onChange={(newValue) => setFechaFin(newValue)}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="caption" display="block" gutterBottom>
+                  Rangos Predefinidos:
+                </Typography>
+                <ButtonGroup variant="outlined" size="small">
+                  <Button onClick={() => setDateRange('today')}>Hoy</Button>
+                  <Button onClick={() => setDateRange('week')}>Última Semana</Button>
+                  <Button onClick={() => setDateRange('month')}>Último Mes</Button>
+                  <Button onClick={() => setDateRange('quarter')}>Último Trimestre</Button>
+                </ButtonGroup>
               </Grid>
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth>

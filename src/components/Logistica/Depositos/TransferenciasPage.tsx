@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -32,6 +32,9 @@ import {
   FormControlLabel,
   Collapse,
   Divider,
+  Menu,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -45,6 +48,9 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Warning as WarningIcon,
+  FileDownload as FileDownloadIcon,
+  TableChart as TableChartIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -62,6 +68,23 @@ import type {
   StockDeposito,
   EquipoFabricadoDTO,
 } from '../../../types';
+import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
+import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip as RechartsTooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line,
+} from 'recharts';
 
 dayjs.locale('es');
 
@@ -141,6 +164,10 @@ const TransferenciasPage: React.FC = () => {
   });
 
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+
+  // Export menu state
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+  const exportMenuOpen = Boolean(exportAnchorEl);
 
   useEffect(() => {
     loadData();
@@ -297,6 +324,134 @@ const TransferenciasPage: React.FC = () => {
     });
 
     return errores;
+  };
+
+  // Export functions
+  const handleExportExcel = () => {
+    try {
+      const filtrosAplicados: Record<string, any> = {};
+
+      if (estadoFilter !== 'all') {
+        filtrosAplicados['Estado'] = estadoFilter;
+      }
+      if (depositoFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoFilter);
+        filtrosAplicados['Depósito'] = deposito?.nombre || depositoFilter;
+      }
+
+      const dataParaExportar = prepareTableDataForExport(filteredTransferencias, [
+        {
+          key: 'numeroTransferencia',
+          header: 'Número',
+          transform: (_, row) => `#${row.id}`
+        },
+        { key: 'fechaTransferencia', header: 'Fecha', format: 'datetime' },
+        { key: 'depositoOrigenNombre', header: 'Origen' },
+        { key: 'depositoDestinoNombre', header: 'Destino' },
+        {
+          key: 'items',
+          header: 'Productos/Equipos',
+          transform: (items) => items?.length || 0
+        },
+        { key: 'estado', header: 'Estado' },
+        { key: 'usuarioCreadorNombre', header: 'Creado Por' },
+        { key: 'observaciones', header: 'Observaciones' },
+      ]);
+
+      // Preparar datos de items por transferencia
+      const detalleItems = filteredTransferencias.flatMap(trans =>
+        trans.items.map(item => ({
+          'Transferencia': `#${trans.id}`,
+          'Fecha': dayjs(trans.fechaTransferencia).format('DD/MM/YYYY HH:mm'),
+          'Tipo': item.productoId ? 'Producto' : 'Equipo',
+          'Item': item.productoId ? item.productoNombre : item.equipoNumero,
+          'Código': item.productoCodigo || '-',
+          'Cantidad Solicitada': item.cantidadSolicitada,
+          'Cantidad Recibida': item.cantidadRecibida || '-',
+          'Estado': trans.estado,
+        }))
+      );
+
+      exportToExcel({
+        fileName: `transferencias-${dayjs().format('YYYY-MM-DD')}`,
+        metadata: {
+          title: 'Transferencias entre Depósitos',
+          generatedBy: user?.nombre || 'Usuario',
+          generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+          filters: filtrosAplicados,
+        },
+        sheets: [
+          {
+            name: 'Resumen',
+            data: dataParaExportar,
+          },
+          {
+            name: 'Detalle de Items',
+            data: detalleItems,
+          },
+        ],
+      });
+
+      setSuccess('Archivo Excel exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar a Excel:', error);
+      setError('Error al exportar a Excel');
+    }
+  };
+
+  const handleExportPDF = () => {
+    try {
+      const filtrosAplicados: Record<string, any> = {};
+
+      if (estadoFilter !== 'all') {
+        filtrosAplicados['Estado'] = estadoFilter;
+      }
+      if (depositoFilter !== 'all') {
+        const deposito = depositos.find(d => d.id.toString() === depositoFilter);
+        filtrosAplicados['Depósito'] = deposito?.nombre || depositoFilter;
+      }
+
+      const { headers, rows } = prepareTableDataForPDF(filteredTransferencias, [
+        {
+          key: 'id',
+          header: 'Nº',
+          transform: (id) => `#${id}`
+        },
+        { key: 'fechaTransferencia', header: 'Fecha', format: 'datetime' },
+        { key: 'depositoOrigenNombre', header: 'Origen' },
+        { key: 'depositoDestinoNombre', header: 'Destino' },
+        {
+          key: 'items',
+          header: 'Items',
+          transform: (items) => items?.length || 0
+        },
+        { key: 'estado', header: 'Estado' },
+      ]);
+
+      exportToPDF({
+        fileName: `transferencias-${dayjs().format('YYYY-MM-DD')}`,
+        title: 'Transferencias entre Depósitos',
+        orientation: 'landscape',
+        metadata: {
+          generatedBy: user?.nombre || 'Usuario',
+          generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
+          filters: filtrosAplicados,
+        },
+        tables: [
+          {
+            headers,
+            rows,
+            showFooter: true,
+            footerText: `Total de transferencias: ${filteredTransferencias.length}`,
+          },
+        ],
+      });
+
+      setSuccess('Archivo PDF exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar a PDF:', error);
+      setError('Error al exportar a PDF');
+    }
   };
 
   const handleConfirmarEnvio = async (id: number) => {
@@ -490,6 +645,85 @@ const TransferenciasPage: React.FC = () => {
     page * rowsPerPage + rowsPerPage
   );
 
+  // Metrics calculations
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+
+  const transferenciasPorEstado = useMemo(() => {
+    const estadoMap = new Map<EstadoTransferencia, number>();
+    transferencias.forEach((t) => {
+      const count = estadoMap.get(t.estado) || 0;
+      estadoMap.set(t.estado, count + 1);
+    });
+
+    return [
+      { name: 'Pendiente', value: estadoMap.get('PENDIENTE') || 0, estado: 'PENDIENTE' },
+      { name: 'En Tránsito', value: estadoMap.get('EN_TRANSITO') || 0, estado: 'EN_TRANSITO' },
+      { name: 'Recibida', value: estadoMap.get('RECIBIDA') || 0, estado: 'RECIBIDA' },
+      { name: 'Cancelada', value: estadoMap.get('CANCELADA') || 0, estado: 'CANCELADA' },
+    ].filter((item) => item.value > 0);
+  }, [transferencias]);
+
+  const transferenciasUltimosMeses = useMemo(() => {
+    const monthMap = new Map<string, number>();
+    const now = dayjs();
+
+    // Inicializar últimos 6 meses
+    for (let i = 5; i >= 0; i--) {
+      const month = now.subtract(i, 'month').format('MMM YYYY');
+      monthMap.set(month, 0);
+    }
+
+    transferencias.forEach((t) => {
+      const month = dayjs(t.fechaTransferencia).format('MMM YYYY');
+      if (monthMap.has(month)) {
+        monthMap.set(month, (monthMap.get(month) || 0) + 1);
+      }
+    });
+
+    return Array.from(monthMap.entries()).map(([month, count]) => ({
+      month,
+      count,
+    }));
+  }, [transferencias]);
+
+  const depositosConMasMovimientos = useMemo(() => {
+    const depositoMap = new Map<number, { nombre: string; salidas: number; entradas: number }>();
+
+    transferencias.forEach((t) => {
+      // Contabilizar salidas
+      if (!depositoMap.has(t.depositoOrigenId)) {
+        depositoMap.set(t.depositoOrigenId, {
+          nombre: t.depositoOrigenNombre,
+          salidas: 0,
+          entradas: 0,
+        });
+      }
+      const origen = depositoMap.get(t.depositoOrigenId)!;
+      origen.salidas += 1;
+
+      // Contabilizar entradas
+      if (!depositoMap.has(t.depositoDestinoId)) {
+        depositoMap.set(t.depositoDestinoId, {
+          nombre: t.depositoDestinoNombre,
+          salidas: 0,
+          entradas: 0,
+        });
+      }
+      const destino = depositoMap.get(t.depositoDestinoId)!;
+      destino.entradas += 1;
+    });
+
+    return Array.from(depositoMap.values())
+      .map((d) => ({
+        nombre: d.nombre,
+        salidas: d.salidas,
+        entradas: d.entradas,
+        total: d.salidas + d.entradas,
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+  }, [transferencias]);
+
   if (loading && transferencias.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -509,6 +743,13 @@ const TransferenciasPage: React.FC = () => {
           <Box display="flex" gap={2}>
             <Button
               variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={(e) => setExportAnchorEl(e.currentTarget)}
+            >
+              Exportar
+            </Button>
+            <Button
+              variant="outlined"
               startIcon={<RefreshIcon />}
               onClick={loadData}
               disabled={loading}
@@ -525,17 +766,174 @@ const TransferenciasPage: React.FC = () => {
           </Box>
         </Box>
 
+        {/* Export Menu */}
+        <Menu
+          anchorEl={exportAnchorEl}
+          open={exportMenuOpen}
+          onClose={() => setExportAnchorEl(null)}
+        >
+          <MenuItem
+            onClick={() => {
+              handleExportExcel();
+              setExportAnchorEl(null);
+            }}
+          >
+            <ListItemIcon>
+              <TableChartIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Exportar a Excel</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleExportPDF();
+              setExportAnchorEl(null);
+            }}
+          >
+            <ListItemIcon>
+              <PictureAsPdfIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Exportar a PDF</ListItemText>
+          </MenuItem>
+        </Menu>
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
-
         {success && (
           <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
             {success}
           </Alert>
         )}
+
+        {/* Statistics Cards */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Total Transferencias
+                </Typography>
+                <Typography variant="h4">{transferencias.length}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Pendientes
+                </Typography>
+                <Typography variant="h4" color="warning.main">
+                  {transferencias.filter((t) => t.estado === 'PENDIENTE').length}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  En Tránsito
+                </Typography>
+                <Typography variant="h4" color="info.main">
+                  {transferencias.filter((t) => t.estado === 'EN_TRANSITO').length}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Recibidas
+                </Typography>
+                <Typography variant="h4" color="success.main">
+                  {transferencias.filter((t) => t.estado === 'RECIBIDA').length}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Charts */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Transferencias por Estado
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={transferenciasPorEstado}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {transferenciasPorEstado.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Transferencias Últimos 6 Meses
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={transferenciasUltimosMeses}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" angle={-45} textAnchor="end" height={80} />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#8884d8"
+                      strokeWidth={2}
+                      name="Transferencias"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Top 5 Depósitos con Más Movimientos
+                </Typography>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={depositosConMasMovimientos} layout="horizontal">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="nombre" type="category" width={100} />
+                    <RechartsTooltip />
+                    <Legend />
+                    <Bar dataKey="salidas" fill="#FF8042" name="Salidas" />
+                    <Bar dataKey="entradas" fill="#00C49F" name="Entradas" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
         {/* Filtros */}
         <Card sx={{ mb: 3 }}>
