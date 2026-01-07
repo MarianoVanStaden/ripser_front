@@ -1717,14 +1717,35 @@ const handleDeleteCompra = async (id: number) => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {selectedOrden.items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.descripcion}</TableCell>
-                          <TableCell align="right">{item.cantidad}</TableCell>
-                          <TableCell align="right">${item.precioUnitario.toLocaleString()}</TableCell>
-                          <TableCell align="right">${item.subtotal.toLocaleString()}</TableCell>
-                        </TableRow>
-                      ))}
+                      {selectedOrden.items.map((item) => {
+                        // Try to find the product from the productos array if we have a productoId
+                        const producto = item.productoId ? productos.find(p => p.id === Number(item.productoId)) : null;
+                        const productName = item.nombreProductoTemporal || item.nombre || item.productoNombre || producto?.nombre || item.descripcion || 'Producto sin nombre';
+                        const productCode = item.codigoProductoTemporal || item.codigo || producto?.codigo || '';
+                        
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="medium">
+                                {productName}
+                              </Typography>
+                              {productCode && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Código: {productCode}
+                                </Typography>
+                              )}
+                              {item.descripcionProductoTemporal && item.descripcionProductoTemporal !== productName && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {item.descripcionProductoTemporal}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="right">{item.cantidad}</TableCell>
+                            <TableCell align="right">${item.precioUnitario.toLocaleString()}</TableCell>
+                            <TableCell align="right">${item.subtotal.toLocaleString()}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                       <TableRow>
                         <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>

@@ -111,18 +111,25 @@ const navigation: NavigationSection[] = [
     title: 'LOGÍSTICA',
     modulo: 'LOGISTICA',
     items: [
-      { text: 'Gestión Stock', icon: <LocalShippingIcon />, path: '/logistica/stock' },
-      { text: 'Stock de Equipos', icon: <LocalShippingIcon />, path: '/logistica/stock-equipos' },
-      { text: 'Inventario', icon: <LocalShippingIcon />, path: '/logistica/inventario' },
-      { text: 'Tareas de Recuento', icon: <LocalShippingIcon />, path: '/logistica/recuentos' },
-      { text: 'Armado Viajes', icon: <LocalShippingIcon />, path: '/logistica/viajes' },
-      { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/entregas' },
-      { text: 'Entregas de Equipos', icon: <LocalShippingIcon />, path: '/logistica/entregas-equipos' },
-      { text: 'Depósitos', icon: <LocalShippingIcon />, path: '/logistica/depositos' },
-      { text: 'Inventario Depósito', icon: <LocalShippingIcon />, path: '/logistica/inventario-deposito' },
-      { text: 'Ubicación Equipos', icon: <LocalShippingIcon />, path: '/logistica/ubicacion-equipos' },
-      { text: 'Auditoría Movimientos', icon: <LocalShippingIcon />, path: '/logistica/auditoria' },
-      { text: 'Transferencias', icon: <SwapHorizIcon />, path: '/logistica/transferencias' },
+      // INVENTARIO - Gestión de stock, productos y conteo SIDEBAR
+      { text: 'Gestión Stock', icon: <AssignmentIcon />, path: '/logistica/stock' },
+      { text: 'Inventario por Depósito', icon: <AssignmentIcon />, path: '/logistica/inventario/depositos' },
+      { text: 'Stock de Equipos', icon: <AssignmentIcon />, path: '/logistica/inventario/stock-equipos' },
+      { text: 'Ubicación Equipos', icon: <AssignmentIcon />, path: '/logistica/inventario/ubicaciones' },
+      { text: 'Tareas de Recuento', icon: <AssignmentIcon />, path: '/logistica/inventario/recuentos' },
+            // MOVIMIENTOS - Trazabilidad
+      { text: 'Auditoría', icon: <AssignmentIcon />, path: '/logistica/movimientos/auditoria' },
+      { text: 'Transferencias', icon: <SwapHorizIcon />, path: '/logistica/movimientos/transferencias' },
+    ],
+  },
+    {
+    title: 'TRANSPORTE',
+    modulo: 'TRANSPORTE',
+    items: [
+            // DISTRIBUCIÓN - Logística de salida
+      { text: 'Armado de Viajes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes' },
+      { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
+      { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
     ],
   },
   {
@@ -180,6 +187,7 @@ const navigation: NavigationSection[] = [
       { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
+      { text: 'Gestión Depósitos', icon: <SettingsIcon />, path: '/logistica/configuracion/depositos' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
     ],
   },

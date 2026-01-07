@@ -75,4 +75,15 @@ export const stockDepositoApi = {
       params: { productoId, depositoOrigenId, depositoDestinoId, cantidad }
     });
   },
+
+  reconciliar: async (productoId: number): Promise<{
+    productoId: number;
+    stockTotal: number;
+    stockAsignado: number;
+    stockDisponible: number;
+    sincronizado: boolean;
+  }> => {
+    const response = await api.post(`/api/stock-deposito/reconciliar/${productoId}`);
+    return response.data;
+  },
 };

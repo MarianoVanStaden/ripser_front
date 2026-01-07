@@ -110,11 +110,17 @@ const UbicacionEquiposPage: React.FC = () => {
   });
 
   const [createForm, setCreateForm] = useState({
-    equipoFabricadoId: '' as number | '',
+    equiposSeleccionados: [] as string[], // Array de numeroHeladera
     depositoId: '' as number | '',
     ubicacionInterna: '',
     observaciones: '',
   });
+
+  // Estado para búsqueda de equipos en el diálogo de creación
+  const [equipoSearchType, setEquipoSearchType] = useState<TipoEquipo | ''>('');
+  const [equipoSearchTerm, setEquipoSearchTerm] = useState('');
+  const [equiposSearchResults, setEquiposSearchResults] = useState<EquipoFabricadoDTO[]>([]);
+  const [searchingEquipos, setSearchingEquipos] = useState(false);
 
   useEffect(() => {
     if (tienePermiso('LOGISTICA')) {
@@ -129,17 +135,17 @@ const UbicacionEquiposPage: React.FC = () => {
       const [ubicacionesResponse, depositosResponse, equiposResponse] = await Promise.all([
         ubicacionEquipoApi.getAll(),
         depositoApi.getActivos(),
-        equipoFabricadoApi.findAll(0, 10000),
+        equipoFabricadoApi.findAll(0, 1000), // Reducido para mejor rendimiento
       ]);
       // Handle paginated responses
-      const ubicacionesData = Array.isArray(ubicacionesResponse) 
-        ? ubicacionesResponse 
+      const ubicacionesData = Array.isArray(ubicacionesResponse)
+        ? ubicacionesResponse
         : (ubicacionesResponse as any)?.content || [];
-      const depositosData = Array.isArray(depositosResponse) 
-        ? depositosResponse 
+      const depositosData = Array.isArray(depositosResponse)
+        ? depositosResponse
         : (depositosResponse as any)?.content || [];
-      const equiposData = Array.isArray(equiposResponse) 
-        ? equiposResponse 
+      const equiposData = Array.isArray(equiposResponse)
+        ? equiposResponse
         : (equiposResponse as any)?.content || [];
       setUbicaciones(ubicacionesData);
       setDepositos(depositosData);
@@ -268,38 +274,131 @@ const UbicacionEquiposPage: React.FC = () => {
 
   const handleOpenCreateDialog = () => {
     setCreateForm({
-      equipoFabricadoId: '' as number | '',
+      equiposSeleccionados: [],
       depositoId: '' as number | '',
       ubicacionInterna: '',
       observaciones: '',
     });
+    setEquipoSearchType('');
+    setEquipoSearchTerm('');
+    setEquiposSearchResults([]);
     setCreateDialogOpen(true);
   };
 
+  const handleSearchEquipos = async () => {
+    if (!equipoSearchType) {
+      setError('Debe seleccionar un tipo de equipo');
+      return;
+    }
+
+    if (!equipoSearchTerm.trim()) {
+      setError('Debe ingresar un término de búsqueda');
+      return;
+    }
+
+    try {
+      setSearchingEquipos(true);
+      setError(null);
+
+      // Obtener equipos por tipo
+      const response = await equipoFabricadoApi.findByTipo(equipoSearchType as TipoEquipo);
+
+      // La respuesta puede ser un array directamente o un objeto con content
+      const equiposPorTipo = Array.isArray(response) ? response : (response as any)?.content || [];
+
+      // Filtrar localmente por el término de búsqueda
+      const searchLower = equipoSearchTerm.toLowerCase();
+      const ubicacionesIds = new Set(ubicaciones.map((u) => u.equipoFabricadoId));
+
+      const filteredResults = equiposPorTipo.filter((equipo: any) => {
+        // Solo equipos disponibles
+        if (equipo.estadoAsignacion !== 'DISPONIBLE') {
+          return false;
+        }
+
+        // Excluir equipos que ya tienen ubicación
+        if (equipo.id != null && ubicacionesIds.has(equipo.id)) {
+          return false;
+        }
+
+        // Filtrar por término de búsqueda (número de heladera o modelo)
+        const matchesSearch =
+          equipo.numeroHeladera?.toLowerCase().includes(searchLower) ||
+          equipo.modelo?.toLowerCase().includes(searchLower);
+
+        return matchesSearch;
+      });
+
+      setEquiposSearchResults(filteredResults);
+
+      if (filteredResults.length === 0) {
+        setError('No se encontraron equipos sin ubicación que coincidan con la búsqueda');
+      }
+    } catch (err: any) {
+      console.error('❌ Error searching equipos:', err);
+      setError('Error al buscar equipos');
+      setEquiposSearchResults([]);
+    } finally {
+      setSearchingEquipos(false);
+    }
+  };
+
   const handleCreate = async () => {
-    if (!createForm.equipoFabricadoId || !createForm.depositoId) {
-      setError('Debe seleccionar equipo y depósito');
+    if (createForm.equiposSeleccionados.length === 0 || !createForm.depositoId) {
+      setError('Debe seleccionar al menos un equipo y un depósito');
       return;
     }
 
     try {
       setLoading(true);
-      await ubicacionEquipoApi.create({
-        equipoFabricadoId: Number(createForm.equipoFabricadoId),
-        depositoId: Number(createForm.depositoId),
-        ubicacionInterna: createForm.ubicacionInterna,
-        observaciones: createForm.observaciones,
-      });
-      setSuccess('Ubicación registrada correctamente');
-      await loadData();
-      setCreateDialogOpen(false);
-    } catch (err: any) {
-      console.error('Error creating location:', err);
-      if (err.response?.status === 409) {
-        setError('Este equipo ya tiene una ubicación asignada');
-      } else {
-        setError('Error al registrar la ubicación');
+      let exitosos = 0;
+      let errores = 0;
+
+      // Crear ubicación para cada equipo seleccionado
+      for (const numeroHeladera of createForm.equiposSeleccionados) {
+        try {
+          // Buscar el equipo por número para obtener el ID
+          const equipo = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera);
+
+          // Si el equipo tiene id null, usar el numeroHeladera directamente
+          if (equipo.id == null) {
+            await ubicacionEquipoApi.create({
+              equipoFabricadoId: numeroHeladera as any, // Workaround para backend
+              depositoId: Number(createForm.depositoId),
+              ubicacionInterna: createForm.ubicacionInterna,
+              observaciones: createForm.observaciones,
+            });
+          } else {
+            await ubicacionEquipoApi.create({
+              equipoFabricadoId: equipo.id,
+              depositoId: Number(createForm.depositoId),
+              ubicacionInterna: createForm.ubicacionInterna,
+              observaciones: createForm.observaciones,
+            });
+          }
+          exitosos++;
+        } catch (err: any) {
+          console.error(`❌ Error creando ubicación para ${numeroHeladera}:`, err);
+          errores++;
+        }
       }
+
+      // Mensaje de resultado
+      if (exitosos > 0 && errores === 0) {
+        setSuccess(`Se registraron ${exitosos} ubicaciones correctamente`);
+      } else if (exitosos > 0 && errores > 0) {
+        setError(`Se registraron ${exitosos} ubicaciones, pero ${errores} fallaron`);
+      } else {
+        setError('No se pudo registrar ninguna ubicación');
+      }
+
+      await loadData();
+      if (exitosos > 0) {
+        setCreateDialogOpen(false);
+      }
+    } catch (err: any) {
+      console.error('❌ Error general:', err);
+      setError('Error al registrar las ubicaciones');
     } finally {
       setLoading(false);
     }
@@ -829,67 +928,197 @@ const UbicacionEquiposPage: React.FC = () => {
       </Dialog>
 
       {/* Create Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Registrar Ubicación de Equipo</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Grid container spacing={2}>
+            {/* Búsqueda de Equipos */}
             <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Equipo</InputLabel>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                1. Buscar Equipo
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth required>
+                <InputLabel>Tipo de Equipo</InputLabel>
                 <Select
-                  value={createForm.equipoFabricadoId}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, equipoFabricadoId: Number(e.target.value) })
-                  }
-                  label="Equipo"
+                  value={equipoSearchType}
+                  onChange={(e) => {
+                    setEquipoSearchType(e.target.value as TipoEquipo);
+                    setEquiposSearchResults([]);
+                    setCreateForm({ ...createForm, equiposSeleccionados: [] });
+                  }}
+                  label="Tipo de Equipo"
                 >
-                  {equiposSinUbicacion
-                    .filter((equipo) => equipo.id != null)
-                    .map((equipo) => (
-                      <MenuItem key={equipo.id} value={equipo.id}>
-                        {equipo.numeroHeladera} - {equipo.modelo}
-                      </MenuItem>
-                    ))}
+                  <MenuItem value="HELADERA">Heladera</MenuItem>
+                  <MenuItem value="COOLBOX">Cool Box</MenuItem>
+                  <MenuItem value="EXHIBIDOR">Exhibidor</MenuItem>
+                  <MenuItem value="OTRO">Otro</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Depósito</InputLabel>
-                <Select
-                  value={createForm.depositoId}
-                  onChange={(e) => setCreateForm({ ...createForm, depositoId: Number(e.target.value) })}
-                  label="Depósito"
-                >
-                  {depositos
-                    .filter((deposito) => deposito.id != null)
-                    .map((deposito) => (
-                      <MenuItem key={deposito.id} value={deposito.id}>
-                        {deposito.nombre}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={5}>
               <TextField
                 fullWidth
-                label="Ubicación Interna"
-                value={createForm.ubicacionInterna}
-                onChange={(e) => setCreateForm({ ...createForm, ubicacionInterna: e.target.value })}
-                placeholder="Ej: Pasillo A - Estante 3"
+                label="Buscar por Número o Modelo"
+                value={equipoSearchTerm}
+                onChange={(e) => setEquipoSearchTerm(e.target.value)}
+                placeholder="Ingrese número de heladera o modelo..."
+                onKeyPress={(e) => e.key === 'Enter' && handleSearchEquipos()}
+                disabled={!equipoSearchType}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
               />
             </Grid>
-            <Grid item xs={12}>
-              <TextField
+            <Grid item xs={12} sm={3}>
+              <Button
                 fullWidth
-                label="Observaciones"
-                value={createForm.observaciones}
-                onChange={(e) => setCreateForm({ ...createForm, observaciones: e.target.value })}
-                multiline
-                rows={3}
-              />
+                variant="outlined"
+                onClick={handleSearchEquipos}
+                disabled={!equipoSearchType || !equipoSearchTerm.trim() || searchingEquipos}
+                sx={{ height: '56px' }}
+              >
+                {searchingEquipos ? <CircularProgress size={24} /> : 'Buscar'}
+              </Button>
             </Grid>
+
+            {/* Resultados de búsqueda */}
+            {equiposSearchResults.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Seleccionar Equipos ({createForm.equiposSeleccionados.length} seleccionados)
+                </Typography>
+                <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell padding="checkbox">
+                          <Tooltip title="Seleccionar todos">
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                if (createForm.equiposSeleccionados.length === equiposSearchResults.length) {
+                                  setCreateForm({ ...createForm, equiposSeleccionados: [] });
+                                } else {
+                                  setCreateForm({
+                                    ...createForm,
+                                    equiposSeleccionados: equiposSearchResults.map((e) => e.numeroHeladera),
+                                  });
+                                }
+                              }}
+                            >
+                              {createForm.equiposSeleccionados.length === equiposSearchResults.length ? (
+                                <SearchIcon />
+                              ) : (
+                                <AddIcon />
+                              )}
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>Número</TableCell>
+                        <TableCell>Modelo</TableCell>
+                        <TableCell>Color</TableCell>
+                        <TableCell>Medida</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {equiposSearchResults.map((equipo, index) => {
+                        const isSelected = createForm.equiposSeleccionados.includes(equipo.numeroHeladera);
+                        return (
+                          <TableRow
+                            key={equipo.numeroHeladera || index}
+                            hover
+                            selected={isSelected}
+                            onClick={() => {
+                              if (isSelected) {
+                                setCreateForm({
+                                  ...createForm,
+                                  equiposSeleccionados: createForm.equiposSeleccionados.filter(
+                                    (n) => n !== equipo.numeroHeladera
+                                  ),
+                                });
+                              } else {
+                                setCreateForm({
+                                  ...createForm,
+                                  equiposSeleccionados: [...createForm.equiposSeleccionados, equipo.numeroHeladera],
+                                });
+                              }
+                            }}
+                            sx={{ cursor: 'pointer' }}
+                          >
+                            <TableCell padding="checkbox">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {}}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </TableCell>
+                            <TableCell>{equipo.numeroHeladera}</TableCell>
+                            <TableCell>{equipo.modelo}</TableCell>
+                            <TableCell>{equipo.color || '-'}</TableCell>
+                            <TableCell>{equipo.medida || '-'}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Grid>
+            )}
+
+            {/* Datos de ubicación */}
+            {createForm.equiposSeleccionados.length > 0 && (
+              <>
+                <Grid item xs={12} sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                    2. Datos de Ubicación
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Depósito</InputLabel>
+                    <Select
+                      value={createForm.depositoId}
+                      onChange={(e) => setCreateForm({ ...createForm, depositoId: Number(e.target.value) })}
+                      label="Depósito"
+                    >
+                      {depositos
+                        .filter((deposito) => deposito.id != null)
+                        .map((deposito) => (
+                          <MenuItem key={deposito.id} value={deposito.id}>
+                            {deposito.nombre}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Ubicación Interna"
+                    value={createForm.ubicacionInterna}
+                    onChange={(e) => setCreateForm({ ...createForm, ubicacionInterna: e.target.value })}
+                    placeholder="Ej: Pasillo A - Estante 3"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Observaciones"
+                    value={createForm.observaciones}
+                    onChange={(e) => setCreateForm({ ...createForm, observaciones: e.target.value })}
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
+              </>
+            )}
           </Grid>
         </DialogContent>
         <DialogActions>
@@ -897,9 +1126,9 @@ const UbicacionEquiposPage: React.FC = () => {
           <Button
             onClick={handleCreate}
             variant="contained"
-            disabled={!createForm.equipoFabricadoId || !createForm.depositoId}
+            disabled={createForm.equiposSeleccionados.length === 0 || !createForm.depositoId}
           >
-            Registrar
+            Registrar ({createForm.equiposSeleccionados.length})
           </Button>
         </DialogActions>
       </Dialog>

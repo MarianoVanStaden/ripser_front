@@ -2486,6 +2486,7 @@ export type Modulo =
   | 'LOGISTICA'
   | 'TALLER'
   | 'PRODUCCION'
+  | 'TRANSPORTE'
   | 'GARANTIAS'
   | 'RRHH'
   | 'ADMIN';

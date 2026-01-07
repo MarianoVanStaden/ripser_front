@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -31,6 +32,7 @@ import {
   Switch,
   FormControlLabel,
   TablePagination,
+  Link,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
@@ -67,6 +69,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const StockPage: React.FC = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Producto[]>([]);
   const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
@@ -349,10 +352,49 @@ const StockPage: React.FC = () => {
 
   return (
     <Box p={3}>
+      {/* Deprecation Banner */}
+      <Alert
+        severity="warning"
+        sx={{ mb: 3 }}
+        icon={<WarningIcon />}
+      >
+        <Box>
+          <Typography variant="subtitle2" fontWeight="bold">
+            ⚠️ Sistema de Stock Global Deprecado
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Este módulo usa el sistema de stock global <strong>sin depósitos</strong>,
+            que no refleja la ubicación física de los productos.
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            <strong>Se recomienda usar el nuevo</strong>{' '}
+            <Link
+              component="button"
+              onClick={() => navigate('/logistica/inventario/depositos')}
+              sx={{ fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              Sistema de Inventario por Depósito
+            </Link>
+            {' '}para una gestión más precisa y auditable.
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<InventoryIcon />}
+              onClick={() => navigate('/logistica/inventario/depositos')}
+              size="small"
+            >
+              Ir a Inventario por Depósito
+            </Button>
+          </Box>
+        </Box>
+      </Alert>
+
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1}>
           <InventoryIcon />
-          Gestión de Stock
+          Gestión de Stock (Legacy)
         </Typography>
         <Button
           variant="outlined"

@@ -62,6 +62,7 @@ import { useAuth } from '../../../context/AuthContext';
 import type { StockDeposito, Deposito, Producto, MovimientoStockDeposito, StockDepositoCreateDTO } from '../../../types';
 import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
 import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
+import { calcularStockDisponible, calcularStockAsignado, validarAsignacionStock, formatearErrorBackend, detectarDesincronizacion } from '../../../utils/stockCalculations';
 import dayjs from 'dayjs';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -91,6 +92,12 @@ const InventarioDepositoPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Synchronization detection state
+  const [desincronizados, setDesincronizados] = useState<Array<{
+    producto: Producto;
+    diferencia: number;
+  }>>([]);
 
   // Tab state
   const [tabValue, setTabValue] = useState(0);
@@ -154,11 +161,11 @@ const InventarioDepositoPage: React.FC = () => {
         productApi.getAll(0, 10000),
       ]);
       // Handle paginated responses
-      const stockData = Array.isArray(stockResponse) 
-        ? stockResponse 
+      const stockData = Array.isArray(stockResponse)
+        ? stockResponse
         : (stockResponse as any)?.content || [];
-      const depositosData = Array.isArray(depositosResponse) 
-        ? depositosResponse 
+      const depositosData = Array.isArray(depositosResponse)
+        ? depositosResponse
         : (depositosResponse as any)?.content || [];
       setStockItems(stockData);
       setDepositos(depositosData);
@@ -171,6 +178,28 @@ const InventarioDepositoPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Verificar sincronización entre stock total y depósitos
+  const verificarSincronizacion = () => {
+    const problemas: typeof desincronizados = [];
+
+    productos.forEach(producto => {
+      const result = detectarDesincronizacion(producto, stockItems);
+      if (!result.sincronizado) {
+        problemas.push({ producto, diferencia: result.diferencia });
+      }
+    });
+
+    setDesincronizados(problemas);
+  };
+
+  // Effect to verify synchronization after data loads
+  useEffect(() => {
+    if (productos.length > 0 && stockItems.length > 0) {
+      verificarSincronizacion();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productos, stockItems]);
 
   // Filter by view (tab)
   const filteredByView = useMemo(() => {
@@ -311,7 +340,23 @@ const InventarioDepositoPage: React.FC = () => {
       setTransferDialogOpen(false);
     } catch (err: any) {
       console.error('Error transferring stock:', err);
-      setError('Error al realizar la transferencia');
+      const errorMsg = formatearErrorBackend(err);
+      switch (err.response?.status) {
+        case 400:
+          setError(`Validación fallida: ${errorMsg}`);
+          break;
+        case 403:
+          setError('No tiene permisos para esta operación. Verifique que esté en la empresa correcta.');
+          break;
+        case 404:
+          setError(`Recurso no encontrado: ${errorMsg}`);
+          break;
+        case 409:
+          setError(`Conflicto: ${errorMsg}`);
+          break;
+        default:
+          setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -334,7 +379,23 @@ const InventarioDepositoPage: React.FC = () => {
       setAjusteDialogOpen(false);
     } catch (err: any) {
       console.error('Error adjusting stock:', err);
-      setError('Error al realizar el ajuste');
+      const errorMsg = formatearErrorBackend(err);
+      switch (err.response?.status) {
+        case 400:
+          setError(`Validación fallida: ${errorMsg}`);
+          break;
+        case 403:
+          setError('No tiene permisos para esta operación. Verifique que esté en la empresa correcta.');
+          break;
+        case 404:
+          setError(`Recurso no encontrado: ${errorMsg}`);
+          break;
+        case 409:
+          setError(`Conflicto: ${errorMsg}`);
+          break;
+        default:
+          setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -357,6 +418,21 @@ const InventarioDepositoPage: React.FC = () => {
       return;
     }
 
+    // Validar stock disponible
+    const producto = productos.find(p => p.id === createForm.productoId);
+    if (!producto) {
+      setError('Producto no encontrado');
+      return;
+    }
+
+    const stockDisponible = calcularStockDisponible(producto, stockItems);
+    const validation = validarAsignacionStock(createForm.cantidad, stockDisponible);
+
+    if (!validation.valid) {
+      setError(validation.error || 'Cantidad inválida');
+      return;
+    }
+
     try {
       setLoading(true);
       await stockDepositoApi.create(createForm);
@@ -365,10 +441,11 @@ const InventarioDepositoPage: React.FC = () => {
       setCreateDialogOpen(false);
     } catch (err: any) {
       console.error('Error creating stock:', err);
+      const errorMsg = formatearErrorBackend(err);
       if (err.response?.status === 409) {
-        setError('Ya existe stock para este producto en el depósito seleccionado');
+        setError(`Ya existe stock para este producto en el depósito seleccionado. ${errorMsg}`);
       } else {
-        setError('Error al crear el stock');
+        setError(`Error al crear el stock: ${errorMsg}`);
       }
     } finally {
       setLoading(false);
@@ -632,6 +709,21 @@ const InventarioDepositoPage: React.FC = () => {
       {success && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
           {success}
+        </Alert>
+      )}
+
+      {/* Desynchronization Alert */}
+      {desincronizados.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+            ⚠️ {desincronizados.length} producto(s) con problemas de sincronización
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            El stock total no coincide con la suma de los depósitos. Esto puede causar errores al asignar stock.
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, fontWeight: 'medium' }}>
+            Se recomienda usar la herramienta de Reconciliación para corregir estas inconsistencias.
+          </Typography>
         </Alert>
       )}
 

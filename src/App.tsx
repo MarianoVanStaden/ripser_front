@@ -82,7 +82,8 @@ import {
   InventarioDepositoPage,
   UbicacionEquiposPage,
   AuditoriaPage,
-  TransferenciasPage
+  TransferenciasPage,
+  ReconciliacionStockPage
 } from './components/Logistica/Depositos';
 
 
@@ -220,20 +221,43 @@ function App() {
               <Route path="rrhh/capacitaciones" element={<PrivateRoute><CapacitacionesPage /></PrivateRoute>} />
               <Route path="rrhh/sueldos" element={<PrivateRoute><SueldosPage /></PrivateRoute>} />
               <Route path="rrhh/legajos" element={<PrivateRoute><LegajosPage /></PrivateRoute>} />
-              {/* LOGÍSTICA Module */}
+              {/* LOGÍSTICA Module - Reorganizado en submódulos */}
+
+              {/* INVENTARIO - Gestión de stock, productos y conteo */}
               <Route path="logistica/stock" element={<PrivateRoute><StockPage /></PrivateRoute>} />
-              <Route path="logistica/stock-equipos" element={<PrivateRoute><StockEquiposPage /></PrivateRoute>} />
-              <Route path="logistica/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
-              <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
-              <Route path="logistica/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
-              <Route path="logistica/entregas" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
-              <Route path="logistica/entregas-equipos" element={<PrivateRoute><EntregasEquiposPage /></PrivateRoute>} />
-              {/* Warehouse Management */}
-              <Route path="logistica/depositos" element={<PrivateRoute><DepositosPage /></PrivateRoute>} />
-              <Route path="logistica/inventario-deposito" element={<PrivateRoute><InventarioDepositoPage /></PrivateRoute>} />
-              <Route path="logistica/ubicacion-equipos" element={<PrivateRoute><UbicacionEquiposPage /></PrivateRoute>} />
-              <Route path="logistica/auditoria" element={<PrivateRoute><AuditoriaPage /></PrivateRoute>} />
-              <Route path="logistica/transferencias" element={<PrivateRoute><TransferenciasPage /></PrivateRoute>} />
+              <Route path="logistica/inventario/depositos" element={<PrivateRoute><InventarioDepositoPage /></PrivateRoute>} />
+              <Route path="logistica/inventario/stock-equipos" element={<PrivateRoute><StockEquiposPage /></PrivateRoute>} />
+              <Route path="logistica/inventario/ubicaciones" element={<PrivateRoute><UbicacionEquiposPage /></PrivateRoute>} />
+              <Route path="logistica/inventario/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
+              <Route path="logistica/inventario/reconciliacion" element={<PrivateRoute><ReconciliacionStockPage /></PrivateRoute>} />
+              <Route path="logistica/inventario/stock-productos" element={<PrivateRoute><StockPage /></PrivateRoute>} />
+
+              {/* DISTRIBUCIÓN - Logística de salida y última milla */}
+              <Route path="logistica/distribucion/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
+              <Route path="logistica/distribucion/entregas-productos" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
+              <Route path="logistica/distribucion/entregas-equipos" element={<PrivateRoute><EntregasEquiposPage /></PrivateRoute>} />
+
+              {/* MOVIMIENTOS - Trazabilidad y transferencias internas */}
+              <Route path="logistica/movimientos/transferencias" element={<PrivateRoute><TransferenciasPage /></PrivateRoute>} />
+              <Route path="logistica/movimientos/auditoria" element={<PrivateRoute><AuditoriaPage /></PrivateRoute>} />
+
+              {/* CONFIGURACIÓN - Administración de infraestructura */}
+              <Route path="logistica/configuracion/depositos" element={<PrivateRoute><DepositosPage /></PrivateRoute>} />
+
+              {/* REDIRECTS LEGACY - Mantener URLs antiguas funcionando */}
+              <Route path="logistica/stock" element={<Navigate to="/logistica/inventario/stock-productos" replace />} />
+              <Route path="logistica/stock-equipos" element={<Navigate to="/logistica/inventario/stock-equipos" replace />} />
+              <Route path="logistica/inventario" element={<Navigate to="/logistica/inventario/recuentos" replace />} />
+              <Route path="logistica/recuentos" element={<Navigate to="/logistica/inventario/recuentos" replace />} />
+              <Route path="logistica/viajes" element={<Navigate to="/logistica/distribucion/viajes" replace />} />
+              <Route path="logistica/entregas" element={<Navigate to="/logistica/distribucion/entregas-productos" replace />} />
+              <Route path="logistica/entregas-equipos" element={<Navigate to="/logistica/distribucion/entregas-equipos" replace />} />
+              <Route path="logistica/depositos" element={<Navigate to="/logistica/configuracion/depositos" replace />} />
+              <Route path="logistica/inventario-deposito" element={<Navigate to="/logistica/inventario/depositos" replace />} />
+              <Route path="logistica/ubicacion-equipos" element={<Navigate to="/logistica/inventario/ubicaciones" replace />} />
+              <Route path="logistica/auditoria" element={<Navigate to="/logistica/movimientos/auditoria" replace />} />
+              <Route path="logistica/transferencias" element={<Navigate to="/logistica/movimientos/transferencias" replace />} />
+              <Route path="logistica/reconciliacion" element={<Navigate to="/logistica/inventario/reconciliacion" replace />} />
               {/* TALLER Module */}
               <Route path="taller/trabajos" element={<PrivateRoute><TrabajosRealizadosPage /></PrivateRoute>} />
               <Route path="taller/ordenes" element={<PrivateRoute><OrdenesServicioPage /></PrivateRoute>} />
