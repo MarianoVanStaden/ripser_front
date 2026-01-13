@@ -64,12 +64,11 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { supplierApi } from '../../api/services/supplierApi';
 import { compraApi} from '../../api/services/compraApi';
-import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO, RecepcionItemDTO, Deposito, DistribucionDepositoItem } from '../../types';
+import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
-import { depositoApi } from '../../api/services/depositoApi';
 
 import type { OrdenCompra, ProductoDTO, CategoriaProducto} from '../../types';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
@@ -127,13 +126,11 @@ const ComprasPedidosPage: React.FC = () => {
   // Reception dialog states
   const [openRecepcionDialog, setOpenRecepcionDialog] = useState(false);
   const [ordenToReceive, setOrdenToReceive] = useState<OrdenCompra | null>(null);
-  const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [recepcionItems, setRecepcionItems] = useState<Array<{
     detalleCompraId: number;
     productoId: number;
     productoNombre: string;
     cantidadCompra: number;
-    depositoId: number | '';
     cantidadRecibida: number;
     observaciones: string;
   }>>([]);
@@ -281,38 +278,24 @@ const loadCategorias = async () => {
   }
 };
 
-const loadDepositos = async () => {
-  try {
-    const response = await depositoApi.getAll();
-    const data = Array.isArray(response) ? response : response?.content || [];
-    setDepositos(data);
-  } catch (err: any) {
-    console.error('Error loading depósitos:', err);
-  }
-};
-
 // Handle opening the reception dialog
 const handleOpenRecepcion = async (orden: OrdenCompra) => {
   setOrdenToReceive(orden);
   setRecepcionError(null);
   setRecepcionSuccess(null);
-  
-  // Load depósitos if not already loaded
-  if (depositos.length === 0) {
-    await loadDepositos();
-  }
-  
+
+  // Ya no es necesario cargar depósitos - el backend asigna automáticamente al depósito principal
+
   // Initialize reception items from the order items
   const items = orden.items.map((item) => ({
     detalleCompraId: item.id || 0,
     productoId: item.productoId ? parseInt(item.productoId.toString()) : 0,
     productoNombre: item.nombreProductoTemporal || item.descripcion || `Producto ${item.productoId}`,
     cantidadCompra: item.cantidad,
-    depositoId: '' as number | '',
     cantidadRecibida: item.cantidad,
     observaciones: '',
   }));
-  
+
   setRecepcionItems(items);
   setRecepcionObservaciones('');
   setOpenRecepcionDialog(true);
@@ -321,24 +304,17 @@ const handleOpenRecepcion = async (orden: OrdenCompra) => {
 // Handle reception submission
 const handleSubmitRecepcion = async () => {
   if (!ordenToReceive) return;
-  
-  // Validate all items have a depot selected
-  const itemsSinDeposito = recepcionItems.filter(item => !item.depositoId);
-  if (itemsSinDeposito.length > 0) {
-    setRecepcionError('Debe seleccionar un depósito para todos los productos');
-    return;
-  }
-  
+
   // Validate all items have quantity > 0
   const itemsSinCantidad = recepcionItems.filter(item => item.cantidadRecibida <= 0);
   if (itemsSinCantidad.length > 0) {
     setRecepcionError('La cantidad recibida debe ser mayor a 0 para todos los productos');
     return;
   }
-  
+
   setRecepcionLoading(true);
   setRecepcionError(null);
-  
+
   try {
     const recepcionData: RecepcionCompraDTO = {
       compraId: ordenToReceive.id,
@@ -346,29 +322,55 @@ const handleSubmitRecepcion = async () => {
       recepciones: recepcionItems.map(item => ({
         detalleCompraId: item.detalleCompraId,
         productoId: item.productoId,
-        depositoId: item.depositoId as number,
+        // NO incluir depositoId - backend lo asigna automáticamente al depósito principal
         cantidadRecibida: item.cantidadRecibida,
         esRecepcionParcial: item.cantidadRecibida < item.cantidadCompra,
         observaciones: item.observaciones,
       })),
       observaciones: recepcionObservaciones,
     };
-    
+
     const response = await compraApi.recibirCompra(recepcionData);
-    
+
     if (response.success) {
-      setRecepcionSuccess('Compra recibida correctamente. ' + (response.movimientosCreados || 0) + ' movimientos de stock creados.');
+      setRecepcionSuccess(
+        `✅ Compra recibida correctamente. ${response.movimientosCreados || 0} movimientos de stock creados en el depósito principal.`
+      );
       // Reload data after successful reception
       setTimeout(() => {
         setOpenRecepcionDialog(false);
         loadCompras();
-      }, 2000);
+      }, 2500);
     } else {
       setRecepcionError(response.message || 'Error al recibir la compra');
     }
   } catch (err: any) {
     console.error('Error al recibir compra:', err);
-    setRecepcionError(err.response?.data?.message || err.message || 'Error al procesar la recepción');
+
+    // El backend devuelve errores como 409 CONFLICT con estructura:
+    // { error: "Invalid state", message: "..." }
+
+    if (err.response?.status === 409 && err.response?.data?.error === 'Invalid state') {
+      // Mostrar mensaje personalizado del backend directamente
+      const backendMessage = err.response.data.message;
+
+      // Agregar contexto adicional para el usuario
+      if (backendMessage.includes('depósito principal configurado')) {
+        setRecepcionError(
+          `⚠️ ${backendMessage}\n\nPor favor, contacte al administrador para configurar un depósito como principal en Logística > Depósitos.`
+        );
+      } else if (backendMessage.includes('múltiples depósitos')) {
+        setRecepcionError(
+          `⚠️ ${backendMessage}\n\nPor favor, contacte al administrador para corregir la configuración en Logística > Depósitos.`
+        );
+      } else {
+        setRecepcionError(`⚠️ ${backendMessage}`);
+      }
+    } else {
+      // Otros errores genéricos
+      const errorMessage = err.response?.data?.message || err.message || 'Error al procesar la recepción';
+      setRecepcionError(errorMessage);
+    }
   } finally {
     setRecepcionLoading(false);
   }
@@ -1985,7 +1987,18 @@ const handleDeleteCompra = async (id: number) => {
                 {recepcionSuccess}
               </Alert>
             )}
-            
+
+            {/* NUEVO: Mensaje informativo sobre asignación automática */}
+            <Alert severity="info" sx={{ mb: 2 }} icon={<InventoryIcon />}>
+              <Typography variant="body2" fontWeight="medium" gutterBottom>
+                Asignación Automática de Stock
+              </Typography>
+              <Typography variant="body2">
+                El stock de esta compra ingresará automáticamente al <strong>depósito principal</strong> de la empresa.
+                Desde allí podrás realizar transferencias a otros depósitos según sea necesario.
+              </Typography>
+            </Alert>
+
             {ordenToReceive && (
               <Box sx={{ pt: 1 }}>
                 <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
@@ -2017,14 +2030,13 @@ const handleDeleteCompra = async (id: number) => {
                 <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
                   Productos a Recibir
                 </Typography>
-                
+
                 <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ bgcolor: 'grey.100' }}>
                         <TableCell>Producto</TableCell>
                         <TableCell align="center">Cant. Comprada</TableCell>
-                        <TableCell align="center" sx={{ minWidth: 180 }}>Depósito *</TableCell>
                         <TableCell align="center" sx={{ minWidth: 120 }}>Cant. Recibida *</TableCell>
                         <TableCell>Observaciones</TableCell>
                       </TableRow>
@@ -2039,28 +2051,6 @@ const handleDeleteCompra = async (id: number) => {
                           </TableCell>
                           <TableCell align="center">
                             <Chip label={item.cantidadCompra} size="small" />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              select
-                              fullWidth
-                              size="small"
-                              value={item.depositoId}
-                              onChange={(e) => {
-                                const updated = [...recepcionItems];
-                                updated[index].depositoId = e.target.value ? parseInt(e.target.value) : '';
-                                setRecepcionItems(updated);
-                              }}
-                              error={!item.depositoId}
-                              disabled={recepcionLoading}
-                            >
-                              <MenuItem value="">Seleccionar...</MenuItem>
-                              {depositos.filter(d => d.id != null).map((dep) => (
-                                <MenuItem key={dep.id} value={dep.id}>
-                                  {dep.nombre}
-                                </MenuItem>
-                              ))}
-                            </TextField>
                           </TableCell>
                           <TableCell>
                             <TextField
@@ -2122,7 +2112,7 @@ const handleDeleteCompra = async (id: number) => {
               variant="contained"
               color="success"
               onClick={handleSubmitRecepcion}
-              disabled={recepcionLoading || recepcionItems.some(i => !i.depositoId || i.cantidadRecibida <= 0)}
+              disabled={recepcionLoading || recepcionItems.some(i => i.cantidadRecibida <= 0)}
               startIcon={recepcionLoading ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
             >
               {recepcionLoading ? 'Procesando...' : 'Confirmar Recepción'}

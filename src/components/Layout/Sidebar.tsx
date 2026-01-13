@@ -122,7 +122,7 @@ const navigation: NavigationSection[] = [
       { text: 'Transferencias', icon: <SwapHorizIcon />, path: '/logistica/movimientos/transferencias' },
     ],
   },
-    {
+  {
     title: 'TRANSPORTE',
     modulo: 'TRANSPORTE',
     items: [

@@ -55,7 +55,8 @@
       "Bash(cmd.exe /c \"type C:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_back\\\\src\\\\main\\\\java\\\\com\\\\ripser_back\\\\services\\\\StockDepositoService.java\")",
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_back\\\\src\\\\main\\\\java\\\\com\\\\ripser_back\\\\services && type StockDepositoService.java\")",
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_back\\\\src\\\\main\\\\java\\\\com\\\\ripser_back\\\\services\\\\impl && dir /B | findstr /I Stock\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && cat {}')"
     ],
     "deny": [],
     "ask": []

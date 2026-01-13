@@ -364,7 +364,16 @@ const ChequesPage: React.FC = () => {
                           </Tooltip>
                         )}
                         {cheque.endosado && (
-                          <Chip label="Endosado" size="small" variant="outlined" />
+                          <Tooltip title="Ver cadena de endosos">
+                            <Chip
+                              label="Endosado"
+                              size="small"
+                              variant="outlined"
+                              color="secondary"
+                              onClick={() => handleOpenDetail(cheque)}
+                              sx={{ cursor: 'pointer' }}
+                            />
+                          </Tooltip>
                         )}
                       </Box>
                     </TableCell>

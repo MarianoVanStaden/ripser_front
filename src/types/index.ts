@@ -2662,7 +2662,7 @@ export interface RecepcionCompraDTO {
 export interface RecepcionItemDTO {
   detalleCompraId: number;
   productoId: number;
-  depositoId: number;
+  depositoId?: number; // Opcional - Backend asigna automáticamente al depósito principal
   cantidadRecibida: number;
   esRecepcionParcial: boolean;
   observaciones?: string;
@@ -3021,4 +3021,48 @@ export interface ChequeFilterParams {
   proveedorId?: number;
   fechaDesde?: string;
   fechaHasta?: string;
+}
+
+// ==================== ENDORSEMENT TYPES ====================
+
+export interface EndosoChequeCreateDTO {
+  chequeId: number;
+  proveedorDestinoId: number;
+  observaciones?: string;
+}
+
+export interface EndosoChequeDTO {
+  id: number;
+  chequeId: number;
+  chequeNumero: string;
+  chequeMonto: number;
+  proveedorOrigenId?: number;
+  proveedorOrigenNombre?: string;
+  proveedorDestinoId: number;
+  proveedorDestinoNombre: string;
+  fechaEndoso: string;
+  observaciones?: string;
+  nivel: number;
+  usuarioId?: number;
+  usuarioNombre?: string;
+}
+
+export interface CadenaEndososDTO {
+  chequeId: number;
+  chequeNumero: string;
+  chequeMonto: number;
+  clienteOrigenNombre?: string;
+  totalEndosos: number;
+  endosos: EndosoChequeDTO[];
+}
+
+export interface ChequeDisponibleEndosoDTO {
+  id: number;
+  numeroCheque: string;
+  bancoNombre: string;
+  monto: number;
+  fechaCobro: string;
+  clienteNombre?: string;
+  estado: EstadoChequeType;
+  diasParaCobro?: number;
 }

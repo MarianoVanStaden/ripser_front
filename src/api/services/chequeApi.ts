@@ -7,7 +7,11 @@ import type {
   ChequeFilterParams,
   HistorialEstadoChequeDTO,
   EstadoChequeType,
-  TipoChequeType
+  TipoChequeType,
+  EndosoChequeCreateDTO,
+  EndosoChequeDTO,
+  CadenaEndososDTO,
+  ChequeDisponibleEndosoDTO
 } from '../../types';
 
 // Interface para respuestas paginadas
@@ -263,6 +267,53 @@ export const chequeApi = {
     const response = await api.get('/api/cheques/estadisticas/count-por-estado', { 
       params: { estado } 
     });
+    return response.data;
+  },
+
+  // ==================== ENDORSEMENT OPERATIONS ====================
+
+  /**
+   * POST /api/cheques/{id}/endosar
+   * Endosa un cheque a un proveedor
+   */
+  endosar: async (id: number, endosoData: EndosoChequeCreateDTO): Promise<EndosoChequeDTO> => {
+    const response = await api.post(`/api/cheques/${id}/endosar`, endosoData);
+    return response.data;
+  },
+
+  /**
+   * GET /api/cheques/{id}/endosos
+   * Lista todos los endosos de un cheque específico
+   */
+  getEndosos: async (id: number): Promise<EndosoChequeDTO[]> => {
+    const response = await api.get(`/api/cheques/${id}/endosos`);
+    return response.data;
+  },
+
+  /**
+   * GET /api/cheques/{id}/cadena-endosos
+   * Obtiene la cadena completa de endosos con información detallada
+   */
+  getCadenaEndosos: async (id: number): Promise<CadenaEndososDTO> => {
+    const response = await api.get(`/api/cheques/${id}/cadena-endosos`);
+    return response.data;
+  },
+
+  /**
+   * GET /api/cheques/disponibles-endoso
+   * Encuentra cheques disponibles para endosar (TERCEROS en RECIBIDO o EN_CARTERA)
+   */
+  getChequesDisponiblesEndoso: async (): Promise<ChequeDisponibleEndosoDTO[]> => {
+    const response = await api.get('/api/cheques/disponibles-endoso');
+    return response.data;
+  },
+
+  /**
+   * GET /api/cheques/proveedor/{proveedorId}/endosados
+   * Lista cheques endosados a un proveedor específico
+   */
+  getChequesByProveedorEndoso: async (proveedorId: number): Promise<Cheque[]> => {
+    const response = await api.get(`/api/cheques/proveedor/${proveedorId}/endosados`);
     return response.data;
   },
 };

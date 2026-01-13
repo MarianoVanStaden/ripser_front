@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -12,11 +12,15 @@ import {
   TextField,
   Box,
   Chip,
+  CircularProgress,
 } from '@mui/material';
+import { SwapHoriz as SwapHorizIcon } from '@mui/icons-material';
 import { chequeApi } from '../../api/services/chequeApi';
-import type { Cheque, CambioEstadoChequeDTO } from '../../types';
+import type { Cheque, CambioEstadoChequeDTO, CadenaEndososDTO } from '../../types';
 import ChequeEstadoChip from './ChequeEstadoChip';
 import ChequeTipoChip from './ChequeTipoChip';
+import ChequeEndososChain from './ChequeEndososChain';
+import EndosarChequeDialog from './EndosarChequeDialog';
 
 interface Props {
   open: boolean;
@@ -32,6 +36,39 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [showRechazoInput, setShowRechazoInput] = useState(false);
   const [showAnulacionInput, setShowAnulacionInput] = useState(false);
+  const [endososChain, setEndososChain] = useState<CadenaEndososDTO | null>(null);
+  const [loadingEndosos, setLoadingEndosos] = useState(false);
+  const [showEndosarDialog, setShowEndosarDialog] = useState(false);
+
+  // Load endorsement chain when dialog opens
+  useEffect(() => {
+    if (open && cheque && cheque.tipo === 'TERCEROS') {
+      loadEndosos();
+    }
+  }, [open, cheque]);
+
+  const loadEndosos = async () => {
+    if (!cheque) return;
+    try {
+      setLoadingEndosos(true);
+      const chain = await chequeApi.getCadenaEndosos(cheque.id);
+      console.log('Cadena de endosos recibida:', chain);
+      console.log('Total endosos:', chain.totalEndosos);
+      console.log('Array endosos:', chain.endosos);
+      setEndososChain(chain);
+    } catch (err) {
+      console.error('Error loading endorsement chain:', err);
+      // Don't show critical error, just don't load the chain
+    } finally {
+      setLoadingEndosos(false);
+    }
+  };
+
+  const handleEndosarSuccess = async () => {
+    setShowEndosarDialog(false);
+    await loadEndosos();
+    onUpdate();
+  };
 
   if (!cheque) return null;
 
@@ -128,6 +165,7 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
   };
 
   return (
+    <>
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Detalle del Cheque</DialogTitle>
       <DialogContent>
@@ -313,6 +351,42 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             </Grid>
           )}
 
+          {/* Sección de endosos - solo para TERCEROS */}
+          {cheque.tipo === 'TERCEROS' && (
+            <>
+              <Grid item xs={12}>
+                <Divider />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    Endosos
+                    {endososChain && endososChain.totalEndosos > 0 && (
+                      <Chip
+                        label={`${endososChain.totalEndosos} endoso${endososChain.totalEndosos > 1 ? 's' : ''}`}
+                        size="small"
+                        color="primary"
+                      />
+                    )}
+                  </Typography>
+                </Box>
+
+                {loadingEndosos ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : (
+                  <ChequeEndososChain
+                    chequeId={cheque.id}
+                    cadenaEndosos={endososChain || undefined}
+                    loading={loadingEndosos}
+                  />
+                )}
+              </Grid>
+            </>
+          )}
+
           {/* Input para motivo de rechazo */}
           {showRechazoInput && (
             <Grid item xs={12}>
@@ -428,11 +502,37 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             Anular
           </Button>
         )}
+
+        {/* Botón de Endosar - solo para TERCEROS en RECIBIDO o EN_CARTERA */}
+        {cheque.tipo === 'TERCEROS' &&
+         (cheque.estado === 'RECIBIDO' || cheque.estado === 'EN_CARTERA') &&
+         !showRechazoInput &&
+         !showAnulacionInput && (
+          <Button
+            onClick={() => setShowEndosarDialog(true)}
+            variant="contained"
+            color="secondary"
+            disabled={loading}
+            startIcon={<SwapHorizIcon />}
+          >
+            Endosar
+          </Button>
+        )}
+
         <Button onClick={onClose} disabled={loading}>
           Cerrar
         </Button>
       </DialogActions>
     </Dialog>
+
+    {/* Dialog de Endoso */}
+    <EndosarChequeDialog
+      open={showEndosarDialog}
+      cheque={cheque}
+      onClose={() => setShowEndosarDialog(false)}
+      onSuccess={handleEndosarSuccess}
+    />
+  </>
   );
 };
 
