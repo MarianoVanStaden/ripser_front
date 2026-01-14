@@ -3066,3 +3066,147 @@ export interface ChequeDisponibleEndosoDTO {
   estado: EstadoChequeType;
   diasParaCobro?: number;
 }
+
+// ============================================
+// MÓDULO DE RECONCILIACIÓN DE STOCK V2
+// ============================================
+
+// Estado de reconciliación (Backend: EstadoReconciliacion enum)
+export type EstadoReconciliacionType = 
+  | 'EN_PROCESO'            // Reconciliación en proceso de ajuste
+  | 'PENDIENTE_APROBACION'  // Esperando aprobación
+  | 'APROBADA'              // Reconciliación completada y aplicada
+  | 'CANCELADA';            // Reconciliación cancelada
+
+// DTO para iniciar reconciliación
+export interface IniciarReconciliacionDTO {
+  periodo: string; // Formato: "Enero 2024" o "YYYY-MM"
+  observaciones?: string;
+}
+
+// DTO básico de reconciliación
+export interface ReconciliacionStockDTO {
+  id: number;
+  empresaId: number;
+  codigoReconciliacion: string;
+  periodo: string;
+  fechaInicio: string;
+  fechaFinalizacion?: string;
+  estado: EstadoReconciliacionType;
+  observaciones?: string;
+  totalProductosRevisados?: number;
+  totalDiferenciasEncontradas?: number;
+  totalAjustesAplicados?: number;
+}
+
+// DTO detallado de reconciliación (incluye ajustes)
+export interface ReconciliacionDetalladaDTO extends ReconciliacionStockDTO {
+  ajustes: AjusteStockDepositoDTO[];
+  diferencias?: DiferenciaProductoDTO[];
+}
+
+// DTO para registrar ajuste de stock por depósito
+export interface AjusteStockDepositoRequestDTO {
+  depositoId: number;
+  productoId: number;
+  cantidadContada: number;
+  observaciones?: string;
+}
+
+// DTO de respuesta de ajuste de stock
+export interface AjusteStockDepositoDTO {
+  id: number;
+  reconciliacionId: number;
+  depositoId: number;
+  depositoNombre: string;
+  productoId: number;
+  productoNombre: string;
+  productoSku?: string;
+  stockSistema: number;
+  cantidadContada: number;
+  diferencia: number;
+  observaciones?: string;
+  fechaRegistro: string;
+  usuarioId?: number;
+  usuarioNombre?: string;
+}
+
+// DTO de diferencia por producto
+export interface DiferenciaProductoDTO {
+  productoId: number;
+  productoNombre: string;
+  productoSku?: string;
+  stockGlobalSistema: number;
+  stockGlobalContado: number;
+  diferencia: number;
+  porcentajeDiferencia: number;
+  detallesPorDeposito: DetalleDiferenciaDepositoDTO[];
+}
+
+// DTO de detalle de diferencia por depósito
+export interface DetalleDiferenciaDepositoDTO {
+  depositoId: number;
+  depositoNombre: string;
+  stockSistema: number;
+  cantidadContada: number;
+  diferencia: number;
+  ajusteRegistrado: boolean;
+}
+
+// DTO de diferencias completo
+export interface ReconciliacionDiferenciasDTO {
+  reconciliacionId: number;
+  mesAnio: string;
+  estado: EstadoReconciliacionType;
+  totalProductosEvaluados: number;
+  productosConDiferencia: number;
+  productosSinDiferencia: number;
+  diferencias: DiferenciaProductoDTO[];
+  resumen: ResumenDiferenciasDTO;
+}
+
+// Resumen de diferencias
+export interface ResumenDiferenciasDTO {
+  totalDiferenciaPositiva: number; // Sobrante
+  totalDiferenciaNegativa: number; // Faltante
+  diferenciaNetaUnidades: number;
+  // valorDiferenciaPositiva?: number; // Si se calcula valor monetario
+  // valorDiferenciaNegativa?: number;
+  // valorDiferenciaNetaMonto?: number;
+}
+
+// DTO para aprobar reconciliación
+export interface AprobacionReconciliacionDTO {
+  aplicarAjustes: boolean;
+  observacionesAprobacion?: string;
+}
+
+// DTO de respuesta de aprobación
+export interface ReconciliacionAprobacionDTO {
+  reconciliacionId: number;
+  estado: EstadoReconciliacionType;
+  fechaAprobacion: string;
+  ajustesAplicados: number;
+  mensaje: string;
+}
+
+// DTO para cancelar reconciliación
+export interface CancelarReconciliacionDTO {
+  motivo: string;
+}
+
+// DTO para distribución manual de compra
+export interface DistribucionManualDTO {
+  depositos: DistribucionDepositoDTO[];
+  observaciones?: string;
+}
+
+export interface DistribucionDepositoDTO {
+  depositoId: number;
+  detalles: DistribucionDetalleDTO[];
+}
+
+export interface DistribucionDetalleDTO {
+  productoId: number;
+  cantidad: number;
+}

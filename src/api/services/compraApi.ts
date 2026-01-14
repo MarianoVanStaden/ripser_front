@@ -5,6 +5,7 @@ import type {
   CompraDTO,
   RecepcionCompraDTO,
   RecepcionResponseDTO,
+  DistribucionManualDTO,
 } from '../../types';
 
 export const compraApi = {
@@ -93,6 +94,17 @@ export const compraApi = {
   getRecepciones: async (compraId: number): Promise<any[]> => {
     const response = await api.get(`/api/compras/${compraId}/recepciones`);
     return response.data;
+  },
+
+  // ============================================
+  // DISTRIBUCIÓN MANUAL DE STOCK
+  // ============================================
+
+  /**
+   * Distribuir stock manualmente desde una compra recibida a múltiples depósitos
+   */
+  distribuirManual: async (compraId: number, data: DistribucionManualDTO): Promise<void> => {
+    await api.post(`/api/compras/${compraId}/distribuir-manual`, data);
   },
 };
 

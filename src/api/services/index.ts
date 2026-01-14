@@ -36,3 +36,4 @@ export { transferenciaApi } from "./transferenciaApi";
 export { auditoriaApi } from "./auditoriaApi";
 export { bancoApi } from "./bancoApi";
 export { chequeApi } from "./chequeApi";
+export { reconciliacionApi } from "./reconciliacionApi";

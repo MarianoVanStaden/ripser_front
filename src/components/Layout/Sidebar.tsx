@@ -36,6 +36,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import BusinessIcon from '@mui/icons-material/Business';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import SyncIcon from '@mui/icons-material/Sync';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -116,7 +117,9 @@ const navigation: NavigationSection[] = [
       { text: 'Inventario por Depósito', icon: <AssignmentIcon />, path: '/logistica/inventario/depositos' },
       { text: 'Stock de Equipos', icon: <AssignmentIcon />, path: '/logistica/inventario/stock-equipos' },
       { text: 'Ubicación Equipos', icon: <AssignmentIcon />, path: '/logistica/inventario/ubicaciones' },
+      { text: 'Recuento Manual', icon: <AssignmentIcon />, path: '/logistica/inventario' },
       { text: 'Tareas de Recuento', icon: <AssignmentIcon />, path: '/logistica/inventario/recuentos' },
+      { text: 'Reconciliación Stock', icon: <SyncIcon />, path: '/logistica/inventario/reconciliacion' },
             // MOVIMIENTOS - Trazabilidad
       { text: 'Auditoría', icon: <AssignmentIcon />, path: '/logistica/movimientos/auditoria' },
       { text: 'Transferencias', icon: <SwapHorizIcon />, path: '/logistica/movimientos/transferencias' },

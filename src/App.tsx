@@ -231,7 +231,7 @@ function App() {
               <Route path="logistica/inventario/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
               <Route path="logistica/inventario/reconciliacion" element={<PrivateRoute><ReconciliacionStockPage /></PrivateRoute>} />
               <Route path="logistica/inventario/stock-productos" element={<PrivateRoute><StockPage /></PrivateRoute>} />
-
+              
               {/* DISTRIBUCIÓN - Logística de salida y última milla */}
               <Route path="logistica/distribucion/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
               <Route path="logistica/distribucion/entregas-productos" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
@@ -247,7 +247,7 @@ function App() {
               {/* REDIRECTS LEGACY - Mantener URLs antiguas funcionando */}
               <Route path="logistica/stock" element={<Navigate to="/logistica/inventario/stock-productos" replace />} />
               <Route path="logistica/stock-equipos" element={<Navigate to="/logistica/inventario/stock-equipos" replace />} />
-              <Route path="logistica/inventario" element={<Navigate to="/logistica/inventario/recuentos" replace />} />
+              <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
               <Route path="logistica/recuentos" element={<Navigate to="/logistica/inventario/recuentos" replace />} />
               <Route path="logistica/viajes" element={<Navigate to="/logistica/distribucion/viajes" replace />} />
               <Route path="logistica/entregas" element={<Navigate to="/logistica/distribucion/entregas-productos" replace />} />
