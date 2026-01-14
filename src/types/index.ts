@@ -3131,48 +3131,44 @@ export interface AjusteStockDepositoDTO {
   usuarioNombre?: string;
 }
 
-// DTO de diferencia por producto
-export interface DiferenciaProductoDTO {
-  productoId: number;
-  productoNombre: string;
-  productoSku?: string;
-  stockGlobalSistema: number;
-  stockGlobalContado: number;
-  diferencia: number;
-  porcentajeDiferencia: number;
-  detallesPorDeposito: DetalleDiferenciaDepositoDTO[];
-}
+// Tipo de diferencia
+export type TipoDiferenciaType = 'SOBRANTE' | 'FALTANTE' | 'SIN_DIFERENCIA';
 
 // DTO de detalle de diferencia por depósito
 export interface DetalleDiferenciaDepositoDTO {
   depositoId: number;
   depositoNombre: string;
   stockSistema: number;
-  cantidadContada: number;
-  diferencia: number;
+  cantidadContada: number | null;
+  diferencia: number | null;
   ajusteRegistrado: boolean;
 }
 
-// DTO de diferencias completo
-export interface ReconciliacionDiferenciasDTO {
-  reconciliacionId: number;
-  mesAnio: string;
-  estado: EstadoReconciliacionType;
-  totalProductosEvaluados: number;
-  productosConDiferencia: number;
-  productosSinDiferencia: number;
-  diferencias: DiferenciaProductoDTO[];
-  resumen: ResumenDiferenciasDTO;
+// DTO de diferencia por producto (respuesta real del backend)
+export interface DiferenciaProductoDTO {
+  productoId: number;
+  productoNombre: string;
+  productoCodigo?: string;
+  stockGeneralInicial: number;      // Stock en Producto.stockActual
+  sumaDepositosInicial: number;     // Suma de todos los depósitos al iniciar
+  sumaDepositosAjustada: number;    // Suma después de ajustes
+  diferencia: number;               // sumaDepositosAjustada - stockGeneralInicial
+  tipoDiferencia: TipoDiferenciaType;
+  detallesPorDeposito: DetalleDiferenciaDepositoDTO[];
 }
 
-// Resumen de diferencias
-export interface ResumenDiferenciasDTO {
-  totalDiferenciaPositiva: number; // Sobrante
-  totalDiferenciaNegativa: number; // Faltante
-  diferenciaNetaUnidades: number;
-  // valorDiferenciaPositiva?: number; // Si se calcula valor monetario
-  // valorDiferenciaNegativa?: number;
-  // valorDiferenciaNetaMonto?: number;
+// DTO de diferencias completo (respuesta real del backend)
+export interface ReconciliacionDiferenciasDTO {
+  reconciliacionId: number;
+  codigoReconciliacion: string;
+  periodo: string;
+  totalProductos: number;
+  productosConDiferencias: number;
+  productosSinDiferencias: number;
+  totalDiferenciaPositiva: number;  // Sobrante total
+  totalDiferenciaNegativa: number;  // Faltante total
+  totalDiferenciaAbsoluta: number;
+  diferencias: DiferenciaProductoDTO[];
 }
 
 // DTO para aprobar reconciliación

@@ -57,15 +57,12 @@ import {
 import { reconciliacionApi } from '../../../api/services/reconciliacionApi';
 import { depositoApi } from '../../../api/services/depositoApi';
 import { productApi } from '../../../api/services/productApi';
-import { stockDepositoApi } from '../../../api/services/stockDepositoApi';
-import { usePermisos } from '../../../hooks/usePermisos';
 import type {
   ReconciliacionStockDTO,
   ReconciliacionDetalladaDTO,
   ReconciliacionDiferenciasDTO,
   Deposito,
   Producto,
-  StockDeposito,
   EstadoReconciliacionType,
 } from '../../../types';
 import dayjs from 'dayjs';
@@ -99,8 +96,6 @@ const getEstadoLabel = (estado: EstadoReconciliacionType): string => {
 };
 
 const ReconciliacionStockPage: React.FC = () => {
-  const { tienePermiso } = usePermisos();
-
   // Tab state
   const [tabValue, setTabValue] = useState(0);
 
@@ -110,7 +105,6 @@ const ReconciliacionStockPage: React.FC = () => {
   const [historial, setHistorial] = useState<ReconciliacionStockDTO[]>([]);
   const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [stockDepositos, setStockDepositos] = useState<StockDeposito[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -148,53 +142,60 @@ const ReconciliacionStockPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [activa, depositosData, productosData, stockData] = await Promise.all([
-        reconciliacionApi.getActiva(),
-        depositoApi.getAll(),
-        productApi.getAll(),
-        stockDepositoApi.getAll(),
-      ]);
+      // Load deposits
+      const depositosResponse = await depositoApi.getAll();
+      const depositosData = Array.isArray(depositosResponse) 
+        ? depositosResponse 
+        : (depositosResponse as any)?.content || [];
+      setDepositos(depositosData);
 
-      setReconciliacionActiva(activa);
-      // Handle case where API returns paginated response or array
-      setDepositos(Array.isArray(depositosData) ? depositosData : (depositosData as any)?.content || []);
-      setProductos(Array.isArray(productosData) ? productosData : (productosData as any)?.content || []);
-      setStockDepositos(Array.isArray(stockData) ? stockData : (stockData as any)?.content || []);
+      // Load products
+      const productosResponse = await productApi.getAll();
+      const productosData = Array.isArray(productosResponse)
+        ? productosResponse
+        : (productosResponse as any)?.content || [];
+      setProductos(productosData);
 
-      // If there's an active reconciliation, load differences
-      if (activa && activa.id) {
-        try {
-          const difs = await reconciliacionApi.getDiferencias(activa.id);
-          setDiferencias(difs);
-        } catch (err) {
-          console.warn('Could not load differences:', err);
+      // Check for active reconciliation
+      try {
+        const activa = await reconciliacionApi.getActiva();
+        setReconciliacionActiva(activa);
+        
+        // If active, load differences
+        if (activa?.id) {
+          try {
+            const difs = await reconciliacionApi.getDiferencias(activa.id);
+            console.log('Diferencias response:', difs);
+            setDiferencias(difs);
+          } catch (err) {
+            console.error('Error loading diferencias:', err);
+          }
         }
-      } else {
-        setDiferencias(null);
+      } catch {
+        setReconciliacionActiva(null);
       }
+
+      // Load history
+      try {
+        const hist = await reconciliacionApi.getHistorial();
+        const histData = Array.isArray(hist) ? hist : (hist as any)?.content || [];
+        setHistorial(histData);
+      } catch {
+        setHistorial([]);
+      }
+
     } catch (err: any) {
-      console.error('Error loading data:', err);
-      setError(`Error al cargar los datos: ${formatearErrorBackend(err)}`);
+      setError(formatearErrorBackend(err));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadHistorial = useCallback(async () => {
-    try {
-      const response = await reconciliacionApi.getHistorial(0, 20);
-      setHistorial(response.content);
-    } catch (err: any) {
-      console.error('Error loading historial:', err);
-    }
-  }, []);
-
   useEffect(() => {
     loadData();
-    loadHistorial();
-  }, [loadData, loadHistorial]);
+  }, [loadData]);
 
-  // Auto-hide notifications
+  // Clear messages
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(null), 5000);
@@ -202,129 +203,126 @@ const ReconciliacionStockPage: React.FC = () => {
     }
   }, [success]);
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), 8000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
-  // Handlers
+  // Actions
   const handleIniciarReconciliacion = async () => {
     try {
       setLoadingAction(true);
-      const payload = {
+      setError(null);
+
+      await reconciliacionApi.iniciar({
         periodo,
         observaciones: observaciones || undefined,
-      };
-      console.log('Enviando payload iniciar:', payload);
-      await reconciliacionApi.iniciar(payload);
+      });
+
       setSuccess('Reconciliación iniciada correctamente');
       setOpenIniciarDialog(false);
+      setPeriodo(dayjs().format('MMMM YYYY'));
       setObservaciones('');
       await loadData();
-      await loadHistorial();
     } catch (err: any) {
-      console.error('Error iniciar reconciliación:', err.response?.data);
-      setError(`Error al iniciar reconciliación: ${formatearErrorBackend(err)}`);
+      setError(formatearErrorBackend(err));
     } finally {
       setLoadingAction(false);
     }
   };
 
   const handleRegistrarAjuste = async () => {
-    if (!reconciliacionActiva) return;
-    
+    if (!reconciliacionActiva?.id) return;
+
     try {
       setLoadingAction(true);
+      setError(null);
+
       await reconciliacionApi.ajustarDeposito(reconciliacionActiva.id, {
         depositoId: ajusteForm.depositoId,
         productoId: ajusteForm.productoId,
         cantidadContada: ajusteForm.cantidadContada,
         observaciones: ajusteForm.observaciones || undefined,
       });
+
       setSuccess('Ajuste registrado correctamente');
       setOpenAjusteDialog(false);
       setAjusteForm({ depositoId: 0, productoId: 0, cantidadContada: 0, observaciones: '' });
       await loadData();
     } catch (err: any) {
-      setError(`Error al registrar ajuste: ${formatearErrorBackend(err)}`);
+      setError(formatearErrorBackend(err));
     } finally {
       setLoadingAction(false);
     }
   };
 
-  const handleAprobar = async () => {
-    if (!reconciliacionActiva) return;
+  const handleAprobarReconciliacion = async () => {
+    if (!reconciliacionActiva?.id) return;
 
     try {
       setLoadingAction(true);
+      setError(null);
+
       await reconciliacionApi.aprobar(reconciliacionActiva.id, {
         aplicarAjustes,
         observacionesAprobacion: observacionesAprobacion || undefined,
       });
+
       setSuccess('Reconciliación aprobada correctamente');
       setOpenAprobarDialog(false);
       setAplicarAjustes(true);
       setObservacionesAprobacion('');
       await loadData();
-      await loadHistorial();
     } catch (err: any) {
-      setError(`Error al aprobar reconciliación: ${formatearErrorBackend(err)}`);
+      setError(formatearErrorBackend(err));
     } finally {
       setLoadingAction(false);
     }
   };
 
-  const handleCancelar = async () => {
-    if (!reconciliacionActiva) return;
+  const handleCancelarReconciliacion = async () => {
+    if (!reconciliacionActiva?.id) return;
 
     try {
       setLoadingAction(true);
+      setError(null);
+
       await reconciliacionApi.cancelar(reconciliacionActiva.id, {
         motivo: motivoCancelacion,
       });
+
       setSuccess('Reconciliación cancelada');
       setOpenCancelarDialog(false);
       setMotivoCancelacion('');
       await loadData();
-      await loadHistorial();
     } catch (err: any) {
-      setError(`Error al cancelar: ${formatearErrorBackend(err)}`);
+      setError(formatearErrorBackend(err));
     } finally {
       setLoadingAction(false);
     }
   };
 
-  const handleVerDetalle = async (reconciliacion: ReconciliacionStockDTO) => {
-    try {
-      const detalle = await reconciliacionApi.getById(reconciliacion.id);
-      setSelectedReconciliacion(detalle);
-      setOpenDetalleDialog(true);
-    } catch (err: any) {
-      setError(`Error al cargar detalle: ${formatearErrorBackend(err)}`);
-    }
-  };
-
-  // Get stock from system for a product in a deposit
-  const getStockSistema = (productoId: number, depositoId: number): number => {
-    const stock = stockDepositos.find(
-      s => s.productoId === productoId && s.depositoId === depositoId
-    );
-    return stock?.cantidad || 0;
+  const handleVerDetalle = async (rec: ReconciliacionStockDTO) => {
+    setSelectedReconciliacion(rec);
+    setOpenDetalleDialog(true);
   };
 
   // Filter differences
-  const filteredDiferencias = diferencias?.diferencias?.filter(item =>
-    item.productoNombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.productoSku?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const filteredDiferencias = diferencias?.diferencias?.filter(item => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      item.productoNombre.toLowerCase().includes(term) ||
+      (item.productoCodigo && item.productoCodigo.toLowerCase().includes(term))
+    );
+  }) || [];
 
-  const steps = ['Iniciar Reconciliación', 'Registrar Recuentos', 'Revisar Diferencias', 'Aprobar y Aplicar'];
-  const activeStep = reconciliacionActiva 
-    ? (reconciliacionActiva.estado === 'EN_PROCESO' ? 1 : 
-       reconciliacionActiva.estado === 'PENDIENTE_APROBACION' ? 2 : 3)
-    : 0;
+  // Get step index based on state
+  const getStepIndex = (estado?: EstadoReconciliacionType): number => {
+    switch (estado) {
+      case 'EN_PROCESO': return 1;
+      case 'PENDIENTE_APROBACION': return 2;
+      case 'APROBADA': return 3;
+      default: return 0;
+    }
+  };
+
+  const steps = ['Sin iniciar', 'En proceso', 'Revisión', 'Aprobada'];
 
   if (loading) {
     return (
@@ -337,27 +335,22 @@ const ReconciliacionStockPage: React.FC = () => {
   return (
     <Box p={3}>
       {/* Header */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-          <SyncIcon />
-          Reconciliación de Stock
-        </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box display="flex" alignItems="center" gap={2}>
+          <SyncIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+          <Typography variant="h4">Reconciliación de Stock</Typography>
+        </Box>
         <Box display="flex" gap={1}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => { loadData(); loadHistorial(); }}
-            disabled={loading}
-          >
-            Actualizar
-          </Button>
+          <Tooltip title="Actualizar">
+            <IconButton onClick={loadData} disabled={loading}>
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
           {!reconciliacionActiva && (
             <Button
               variant="contained"
-              color="primary"
               startIcon={<AddIcon />}
               onClick={() => setOpenIniciarDialog(true)}
-              disabled={!tienePermiso('LOGISTICA')}
             >
               Iniciar Reconciliación
             </Button>
@@ -365,56 +358,44 @@ const ReconciliacionStockPage: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Notifications */}
+      {/* Messages */}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+        <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>
           {success}
         </Alert>
       )}
 
-      {/* Stepper */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Stepper activeStep={activeStep} alternativeLabel>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </CardContent>
-      </Card>
-
       {/* Tabs */}
-      <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2 }}>
-        <Tab label="Reconciliación Activa" icon={<PlayArrowIcon />} iconPosition="start" />
-        <Tab label="Historial" icon={<HistoryIcon />} iconPosition="start" />
-      </Tabs>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
+          <Tab label="Reconciliación Activa" icon={<PlayArrowIcon />} iconPosition="start" />
+          <Tab label="Historial" icon={<HistoryIcon />} iconPosition="start" />
+        </Tabs>
+      </Box>
 
-      {/* Tab 0: Active Reconciliation */}
+      {/* Tab: Active Reconciliation */}
       {tabValue === 0 && (
         <>
           {!reconciliacionActiva ? (
             <Card>
               <CardContent>
-                <Box display="flex" flexDirection="column" alignItems="center" py={4}>
+                <Box textAlign="center" py={4}>
                   <SyncIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
                     No hay reconciliación activa
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" mb={2}>
-                    Inicie una nueva reconciliación para comenzar el proceso de recuento de stock.
+                  <Typography variant="body2" color="text.secondary" mb={3}>
+                    Inicia una nueva reconciliación para comparar el stock del sistema con el inventario físico
                   </Typography>
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => setOpenIniciarDialog(true)}
-                    disabled={!tienePermiso('LOGISTICA')}
                   >
                     Iniciar Reconciliación
                   </Button>
@@ -423,155 +404,156 @@ const ReconciliacionStockPage: React.FC = () => {
             </Card>
           ) : (
             <>
-              {/* Active reconciliation info */}
+              {/* Progress Stepper */}
+              <Card sx={{ mb: 3 }}>
+                <CardContent>
+                  <Stepper activeStep={getStepIndex(reconciliacionActiva.estado)} alternativeLabel>
+                    {steps.map((label) => (
+                      <Step key={label}>
+                        <StepLabel>{label}</StepLabel>
+                      </Step>
+                    ))}
+                  </Stepper>
+                </CardContent>
+              </Card>
+
+              {/* Active Reconciliation Info */}
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                     <Box>
                       <Typography variant="h6" gutterBottom>
-                        Reconciliación: {reconciliacionActiva.periodo}
+                        {reconciliacionActiva.codigoReconciliacion || `Reconciliación #${reconciliacionActiva.id}`}
                       </Typography>
-                      <Box display="flex" gap={2} mb={1}>
-                        <Chip
-                          label={getEstadoLabel(reconciliacionActiva.estado)}
-                          color={getEstadoColor(reconciliacionActiva.estado)}
-                        />
-                        <Typography variant="body2" color="text.secondary">
-                          Iniciada: {dayjs(reconciliacionActiva.fechaInicio).format('DD/MM/YYYY HH:mm')}
-                        </Typography>
-                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Período: {reconciliacionActiva.periodo}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Iniciada: {dayjs(reconciliacionActiva.fechaInicio).format('DD/MM/YYYY HH:mm')}
+                      </Typography>
                       {reconciliacionActiva.observaciones && (
                         <Typography variant="body2" color="text.secondary">
-                          {reconciliacionActiva.observaciones}
+                          Observaciones: {reconciliacionActiva.observaciones}
                         </Typography>
                       )}
                     </Box>
-                    <Box display="flex" gap={1}>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        startIcon={<EditIcon />}
-                        onClick={() => setOpenAjusteDialog(true)}
-                        disabled={reconciliacionActiva.estado !== 'EN_PROCESO'}
-                      >
-                        Registrar Ajuste
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<DoneAllIcon />}
-                        onClick={() => setOpenAprobarDialog(true)}
-                        disabled={reconciliacionActiva.estado === 'APROBADA' || reconciliacionActiva.estado === 'CANCELADA'}
-                      >
-                        Aprobar
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<CancelIcon />}
-                        onClick={() => setOpenCancelarDialog(true)}
-                        disabled={reconciliacionActiva.estado === 'APROBADA' || reconciliacionActiva.estado === 'CANCELADA'}
-                      >
-                        Cancelar
-                      </Button>
+                    <Box display="flex" gap={1} alignItems="center">
+                      <Chip
+                        label={getEstadoLabel(reconciliacionActiva.estado)}
+                        color={getEstadoColor(reconciliacionActiva.estado)}
+                      />
+                      {reconciliacionActiva.estado === 'EN_PROCESO' && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            onClick={() => setOpenAjusteDialog(true)}
+                            size="small"
+                          >
+                            Registrar Ajuste
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<DoneAllIcon />}
+                            onClick={() => setOpenAprobarDialog(true)}
+                            size="small"
+                          >
+                            Aprobar
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<CancelIcon />}
+                            onClick={() => setOpenCancelarDialog(true)}
+                            size="small"
+                          >
+                            Cancelar
+                          </Button>
+                        </>
+                      )}
+                      {reconciliacionActiva.estado === 'PENDIENTE_APROBACION' && (
+                        <>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<DoneAllIcon />}
+                            onClick={() => setOpenAprobarDialog(true)}
+                            size="small"
+                          >
+                            Aprobar
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<CancelIcon />}
+                            onClick={() => setOpenCancelarDialog(true)}
+                            size="small"
+                          >
+                            Cancelar
+                          </Button>
+                        </>
+                      )}
                     </Box>
                   </Box>
                 </CardContent>
               </Card>
 
-              {/* Summary cards */}
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={4}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Ajustes Registrados
-                      </Typography>
-                      <Typography variant="h4">
-                        {reconciliacionActiva.ajustes?.length || 0}
-                      </Typography>
-                    </CardContent>
-                  </Card>
+              {/* Summary Cards - Colores suaves */}
+              {diferencias && (
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{ bgcolor: 'grey.50', border: '1px solid', borderColor: 'grey.300' }}>
+                      <CardContent>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          Total Productos
+                        </Typography>
+                        <Typography variant="h4">
+                          {diferencias.totalProductos}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'primary.light' }}>
+                      <CardContent>
+                        <Typography variant="subtitle2" color="primary.main">
+                          Con Diferencias
+                        </Typography>
+                        <Typography variant="h4" color="primary.main">
+                          {diferencias.productosConDiferencias}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{ bgcolor: 'rgba(237, 108, 2, 0.08)', border: '1px solid', borderColor: 'warning.light' }}>
+                      <CardContent>
+                        <Typography variant="subtitle2" color="warning.dark">
+                          Sobrante Total
+                        </Typography>
+                        <Typography variant="h4" color="warning.dark">
+                          +{diferencias.totalDiferenciaPositiva}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Card sx={{ bgcolor: 'rgba(211, 47, 47, 0.08)', border: '1px solid', borderColor: 'error.light' }}>
+                      <CardContent>
+                        <Typography variant="subtitle2" color="error.main">
+                          Faltante Total
+                        </Typography>
+                        <Typography variant="h4" color="error.main">
+                          -{diferencias.totalDiferenciaNegativa}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Card sx={{ bgcolor: diferencias?.productosConDiferencia ? 'warning.light' : 'success.light' }}>
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Productos con Diferencia
-                      </Typography>
-                      <Typography variant="h4" color={diferencias?.productosConDiferencia ? 'warning.main' : 'success.main'}>
-                        {diferencias?.productosConDiferencia || 0}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Total Productos Evaluados
-                      </Typography>
-                      <Typography variant="h4">
-                        {diferencias?.totalProductosEvaluados || 0}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-
-              {/* Registered adjustments */}
-              {reconciliacionActiva.ajustes && reconciliacionActiva.ajustes.length > 0 && (
-                <Card sx={{ mb: 3 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Ajustes Registrados
-                    </Typography>
-                    <TableContainer>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Depósito</TableCell>
-                            <TableCell>Producto</TableCell>
-                            <TableCell align="right">Stock Sistema</TableCell>
-                            <TableCell align="right">Cantidad Contada</TableCell>
-                            <TableCell align="right">Diferencia</TableCell>
-                            <TableCell>Fecha</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {reconciliacionActiva.ajustes.map((ajuste) => (
-                            <TableRow key={ajuste.id}>
-                              <TableCell>{ajuste.depositoNombre}</TableCell>
-                              <TableCell>
-                                <Typography variant="body2">{ajuste.productoNombre}</Typography>
-                                {ajuste.productoSku && (
-                                  <Typography variant="caption" color="text.secondary">
-                                    {ajuste.productoSku}
-                                  </Typography>
-                                )}
-                              </TableCell>
-                              <TableCell align="right">{ajuste.stockSistema}</TableCell>
-                              <TableCell align="right">{ajuste.cantidadContada}</TableCell>
-                              <TableCell align="right">
-                                <Chip
-                                  label={ajuste.diferencia}
-                                  color={ajuste.diferencia === 0 ? 'success' : ajuste.diferencia > 0 ? 'warning' : 'error'}
-                                  size="small"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                {dayjs(ajuste.fechaRegistro).format('DD/MM/YYYY HH:mm')}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
               )}
 
-              {/* Differences */}
+              {/* Differences List */}
               {diferencias && diferencias.diferencias && diferencias.diferencias.length > 0 && (
                 <Card>
                   <CardContent>
@@ -579,26 +561,12 @@ const ReconciliacionStockPage: React.FC = () => {
                       <Typography variant="h6">
                         Diferencias Detectadas
                       </Typography>
-                      {diferencias.resumen && (
-                        <Box display="flex" gap={2}>
-                          <Chip
-                            label={`Sobrante: ${diferencias.resumen.totalDiferenciaPositiva}`}
-                            color="warning"
-                            size="small"
-                          />
-                          <Chip
-                            label={`Faltante: ${diferencias.resumen.totalDiferenciaNegativa}`}
-                            color="error"
-                            size="small"
-                          />
-                        </Box>
-                      )}
                     </Box>
 
                     {/* Search */}
                     <TextField
                       fullWidth
-                      placeholder="Buscar por nombre o SKU..."
+                      placeholder="Buscar por nombre o código..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       size="small"
@@ -612,14 +580,36 @@ const ReconciliacionStockPage: React.FC = () => {
                       }}
                     />
 
-                    {/* Differences list */}
-                    <List>
+                    {/* Differences list with expandable details */}
+                    <List disablePadding>
                       {filteredDiferencias.map((item) => (
                         <React.Fragment key={item.productoId}>
                           <ListItemButton
                             onClick={() => setExpandedProducto(
                               expandedProducto === item.productoId ? null : item.productoId
                             )}
+                            sx={{
+                              bgcolor: item.tipoDiferencia === 'FALTANTE' 
+                                ? 'rgba(211, 47, 47, 0.04)' 
+                                : item.tipoDiferencia === 'SOBRANTE' 
+                                  ? 'rgba(237, 108, 2, 0.04)' 
+                                  : 'rgba(46, 125, 50, 0.04)',
+                              '&:hover': {
+                                bgcolor: item.tipoDiferencia === 'FALTANTE' 
+                                  ? 'rgba(211, 47, 47, 0.08)' 
+                                  : item.tipoDiferencia === 'SOBRANTE' 
+                                    ? 'rgba(237, 108, 2, 0.08)' 
+                                    : 'rgba(46, 125, 50, 0.08)',
+                              },
+                              borderRadius: 1,
+                              mb: 0.5,
+                              border: '1px solid',
+                              borderColor: item.tipoDiferencia === 'FALTANTE' 
+                                ? 'rgba(211, 47, 47, 0.2)' 
+                                : item.tipoDiferencia === 'SOBRANTE' 
+                                  ? 'rgba(237, 108, 2, 0.2)' 
+                                  : 'rgba(46, 125, 50, 0.2)',
+                            }}
                           >
                             <ListItemText
                               primary={
@@ -627,24 +617,39 @@ const ReconciliacionStockPage: React.FC = () => {
                                   <Typography variant="subtitle2">
                                     {item.productoNombre}
                                   </Typography>
-                                  {item.productoSku && (
+                                  {item.productoCodigo && (
                                     <Typography variant="caption" color="text.secondary">
-                                      ({item.productoSku})
+                                      ({item.productoCodigo})
                                     </Typography>
                                   )}
                                 </Box>
                               }
                               secondary={
-                                <Box display="flex" gap={2} mt={0.5}>
-                                  <Typography variant="body2">
-                                    Sistema: {item.stockGlobalSistema}
+                                <Box display="flex" gap={2} mt={0.5} alignItems="center">
+                                  <Typography variant="body2" color="text.secondary">
+                                    Stock General: <strong>{item.stockGeneralInicial}</strong>
                                   </Typography>
-                                  <Typography variant="body2">
-                                    Contado: {item.stockGlobalContado}
+                                  <Typography variant="body2" color="text.secondary">
+                                    Suma Depósitos: <strong>{item.sumaDepositosAjustada}</strong>
                                   </Typography>
                                   <Chip
-                                    label={`Diferencia: ${item.diferencia}`}
-                                    color={item.diferencia > 0 ? 'warning' : 'error'}
+                                    label={`Dif: ${item.diferencia > 0 ? '+' : ''}${item.diferencia}`}
+                                    color={
+                                      item.tipoDiferencia === 'FALTANTE' ? 'error' : 
+                                      item.tipoDiferencia === 'SOBRANTE' ? 'warning' : 'success'
+                                    }
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                  <Chip
+                                    label={
+                                      item.tipoDiferencia === 'FALTANTE' ? 'Faltante' : 
+                                      item.tipoDiferencia === 'SOBRANTE' ? 'Sobrante' : 'OK'
+                                    }
+                                    color={
+                                      item.tipoDiferencia === 'FALTANTE' ? 'error' : 
+                                      item.tipoDiferencia === 'SOBRANTE' ? 'warning' : 'success'
+                                    }
                                     size="small"
                                   />
                                 </Box>
@@ -653,44 +658,64 @@ const ReconciliacionStockPage: React.FC = () => {
                             {expandedProducto === item.productoId ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                           </ListItemButton>
                           <Collapse in={expandedProducto === item.productoId}>
-                            <Box sx={{ pl: 4, pr: 2, pb: 2 }}>
-                              <Typography variant="subtitle2" gutterBottom>
+                            <Box sx={{ pl: 2, pr: 2, pb: 2, pt: 1, bgcolor: 'background.paper', borderRadius: 1, mb: 1 }}>
+                              <Typography variant="subtitle2" gutterBottom color="text.secondary">
                                 Detalle por Depósito:
                               </Typography>
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell>Depósito</TableCell>
-                                    <TableCell align="right">Stock Sistema</TableCell>
-                                    <TableCell align="right">Contado</TableCell>
-                                    <TableCell align="right">Diferencia</TableCell>
-                                    <TableCell>Estado</TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {item.detallesPorDeposito?.map((detalle) => (
-                                    <TableRow key={detalle.depositoId}>
-                                      <TableCell>{detalle.depositoNombre}</TableCell>
-                                      <TableCell align="right">{detalle.stockSistema}</TableCell>
-                                      <TableCell align="right">{detalle.cantidadContada}</TableCell>
-                                      <TableCell align="right">
-                                        <Chip
-                                          label={detalle.diferencia}
-                                          color={detalle.diferencia === 0 ? 'success' : detalle.diferencia > 0 ? 'warning' : 'error'}
-                                          size="small"
-                                        />
-                                      </TableCell>
-                                      <TableCell>
-                                        {detalle.ajusteRegistrado ? (
-                                          <Chip label="Ajustado" color="success" size="small" />
-                                        ) : (
-                                          <Chip label="Pendiente" color="default" size="small" />
-                                        )}
-                                      </TableCell>
+                              <TableContainer component={Paper} variant="outlined">
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow sx={{ bgcolor: 'grey.50' }}>
+                                      <TableCell>Depósito</TableCell>
+                                      <TableCell align="right">Stock Sistema</TableCell>
+                                      <TableCell align="right">Contado</TableCell>
+                                      <TableCell align="right">Diferencia</TableCell>
+                                      <TableCell>Estado</TableCell>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+                                  </TableHead>
+                                  <TableBody>
+                                    {item.detallesPorDeposito && item.detallesPorDeposito.length > 0 ? (
+                                      item.detallesPorDeposito.map((detalle) => (
+                                        <TableRow key={detalle.depositoId}>
+                                          <TableCell>{detalle.depositoNombre}</TableCell>
+                                          <TableCell align="right">{detalle.stockSistema}</TableCell>
+                                          <TableCell align="right">
+                                            {detalle.cantidadContada !== null ? detalle.cantidadContada : '-'}
+                                          </TableCell>
+                                          <TableCell align="right">
+                                            {detalle.diferencia !== null ? (
+                                              <Chip
+                                                label={detalle.diferencia > 0 ? `+${detalle.diferencia}` : detalle.diferencia}
+                                                color={
+                                                  detalle.diferencia === 0 ? 'success' : 
+                                                  detalle.diferencia > 0 ? 'warning' : 'error'
+                                                }
+                                                size="small"
+                                                variant="outlined"
+                                              />
+                                            ) : '-'}
+                                          </TableCell>
+                                          <TableCell>
+                                            {detalle.ajusteRegistrado ? (
+                                              <Chip label="Ajustado" color="success" size="small" variant="outlined" />
+                                            ) : (
+                                              <Chip label="Pendiente" color="default" size="small" variant="outlined" />
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))
+                                    ) : (
+                                      <TableRow>
+                                        <TableCell colSpan={5} align="center">
+                                          <Typography variant="body2" color="text.secondary">
+                                            No hay detalle por depósito disponible
+                                          </Typography>
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </TableContainer>
                             </Box>
                           </Collapse>
                           <Divider />
@@ -705,42 +730,44 @@ const ReconciliacionStockPage: React.FC = () => {
         </>
       )}
 
-      {/* Tab 1: History */}
+      {/* Tab: History */}
       {tabValue === 1 && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Historial de Reconciliaciones
             </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Mes/Año</TableCell>
-                    <TableCell>Fecha Inicio</TableCell>
-                    <TableCell>Fecha Fin</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell>Productos</TableCell>
-                    <TableCell>Con Diferencia</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {historial.length === 0 ? (
+            {historial.length === 0 ? (
+              <Box textAlign="center" py={4}>
+                <HistoryIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                <Typography color="text.secondary">
+                  No hay reconciliaciones anteriores
+                </Typography>
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table>
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <Typography variant="body2" color="text.secondary" py={2}>
-                          No hay reconciliaciones en el historial
-                        </Typography>
-                      </TableCell>
+                      <TableCell>Código</TableCell>
+                      <TableCell>Período</TableCell>
+                      <TableCell>Fecha Inicio</TableCell>
+                      <TableCell>Fecha Fin</TableCell>
+                      <TableCell>Estado</TableCell>
+                      <TableCell align="right">Acciones</TableCell>
                     </TableRow>
-                  ) : (
-                    historial.map((rec) => (
+                  </TableHead>
+                  <TableBody>
+                    {historial.map((rec) => (
                       <TableRow key={rec.id}>
+                        <TableCell>{rec.codigoReconciliacion || `#${rec.id}`}</TableCell>
                         <TableCell>{rec.periodo}</TableCell>
                         <TableCell>{dayjs(rec.fechaInicio).format('DD/MM/YYYY')}</TableCell>
                         <TableCell>
-                          {rec.fechaFinalizacion ? dayjs(rec.fechaFinalizacion).format('DD/MM/YYYY') : '-'}
+                          {rec.fechaFinalizacion 
+                            ? dayjs(rec.fechaFinalizacion).format('DD/MM/YYYY')
+                            : '-'
+                          }
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -749,49 +776,50 @@ const ReconciliacionStockPage: React.FC = () => {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>{rec.totalProductosRevisados || '-'}</TableCell>
-                        <TableCell>{rec.totalDiferenciasEncontradas || '-'}</TableCell>
-                        <TableCell align="center">
+                        <TableCell align="right">
                           <Tooltip title="Ver detalle">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleVerDetalle(rec)}
-                            >
+                            <IconButton onClick={() => handleVerDetalle(rec)} size="small">
                               <VisibilityIcon />
                             </IconButton>
                           </Tooltip>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </CardContent>
         </Card>
       )}
 
       {/* Dialog: Iniciar Reconciliación */}
       <Dialog open={openIniciarDialog} onClose={() => setOpenIniciarDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Iniciar Nueva Reconciliación</DialogTitle>
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            Iniciar Nueva Reconciliación
+            <IconButton onClick={() => setOpenIniciarDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 1 }}>
+          <Box sx={{ pt: 2 }}>
             <TextField
               fullWidth
               label="Período"
-              placeholder="Ej: Enero 2026"
               value={periodo}
               onChange={(e) => setPeriodo(e.target.value)}
+              placeholder="ej: Enero 2026"
               sx={{ mb: 2 }}
-              helperText="Ingrese el período de la reconciliación (ej: Enero 2026)"
             />
             <TextField
               fullWidth
-              label="Observaciones (opcional)"
-              multiline
-              rows={3}
+              label="Observaciones"
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
+              multiline
+              rows={3}
             />
           </Box>
         </DialogContent>
@@ -802,64 +830,64 @@ const ReconciliacionStockPage: React.FC = () => {
             onClick={handleIniciarReconciliacion}
             disabled={loadingAction || !periodo}
           >
-            {loadingAction ? <CircularProgress size={20} /> : 'Iniciar'}
+            {loadingAction ? <CircularProgress size={24} /> : 'Iniciar'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog: Registrar Ajuste */}
       <Dialog open={openAjusteDialog} onClose={() => setOpenAjusteDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Registrar Ajuste de Stock</DialogTitle>
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            Registrar Ajuste de Stock
+            <IconButton onClick={() => setOpenAjusteDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <FormControl fullWidth>
+          <Box sx={{ pt: 2 }}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Depósito</InputLabel>
               <Select
                 value={ajusteForm.depositoId}
-                onChange={(e) => setAjusteForm({ ...ajusteForm, depositoId: Number(e.target.value) })}
+                onChange={(e) => setAjusteForm({ ...ajusteForm, depositoId: e.target.value as number })}
                 label="Depósito"
               >
-                {depositos?.map((dep) => (
-                  <MenuItem key={dep.id} value={dep.id}>
-                    {dep.nombre}
-                  </MenuItem>
+                {depositos.map((dep) => (
+                  <MenuItem key={dep.id} value={dep.id}>{dep.nombre}</MenuItem>
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth>
+            <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Producto</InputLabel>
               <Select
                 value={ajusteForm.productoId}
-                onChange={(e) => setAjusteForm({ ...ajusteForm, productoId: Number(e.target.value) })}
+                onChange={(e) => setAjusteForm({ ...ajusteForm, productoId: e.target.value as number })}
                 label="Producto"
               >
-                {productos?.map((prod) => (
+                {productos.map((prod) => (
                   <MenuItem key={prod.id} value={prod.id}>
                     {prod.nombre} {prod.codigo ? `(${prod.codigo})` : ''}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-            {ajusteForm.depositoId > 0 && ajusteForm.productoId > 0 && (
-              <Alert severity="info">
-                Stock actual en sistema: {getStockSistema(ajusteForm.productoId, ajusteForm.depositoId)}
-              </Alert>
-            )}
             <TextField
               fullWidth
-              label="Cantidad Contada"
               type="number"
+              label="Cantidad Contada"
               value={ajusteForm.cantidadContada}
-              onChange={(e) => setAjusteForm({ ...ajusteForm, cantidadContada: Number(e.target.value) })}
-              inputProps={{ min: 0 }}
+              onChange={(e) => setAjusteForm({ ...ajusteForm, cantidadContada: parseInt(e.target.value) || 0 })}
+              sx={{ mb: 2 }}
             />
             <TextField
               fullWidth
-              label="Observaciones (opcional)"
-              multiline
-              rows={2}
+              label="Observaciones"
               value={ajusteForm.observaciones}
               onChange={(e) => setAjusteForm({ ...ajusteForm, observaciones: e.target.value })}
+              multiline
+              rows={2}
             />
           </Box>
         </DialogContent>
@@ -870,38 +898,44 @@ const ReconciliacionStockPage: React.FC = () => {
             onClick={handleRegistrarAjuste}
             disabled={loadingAction || !ajusteForm.depositoId || !ajusteForm.productoId}
           >
-            {loadingAction ? <CircularProgress size={20} /> : 'Registrar'}
+            {loadingAction ? <CircularProgress size={24} /> : 'Registrar'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog: Aprobar Reconciliación */}
       <Dialog open={openAprobarDialog} onClose={() => setOpenAprobarDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Aprobar Reconciliación</DialogTitle>
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            Aprobar Reconciliación
+            <IconButton onClick={() => setOpenAprobarDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Al aprobar la reconciliación, se aplicarán los ajustes de stock registrados al sistema.
-              Esta acción no se puede deshacer.
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Al aprobar la reconciliación, se pueden aplicar los ajustes de stock registrados.
             </Alert>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Aplicar Ajustes</InputLabel>
               <Select
-                value={aplicarAjustes ? 'true' : 'false'}
-                onChange={(e) => setAplicarAjustes(e.target.value === 'true')}
+                value={aplicarAjustes ? 'si' : 'no'}
+                onChange={(e) => setAplicarAjustes(e.target.value === 'si')}
                 label="Aplicar Ajustes"
               >
-                <MenuItem value="true">Sí, aplicar todos los ajustes</MenuItem>
-                <MenuItem value="false">No, solo marcar como aprobada</MenuItem>
+                <MenuItem value="si">Sí, aplicar ajustes al stock</MenuItem>
+                <MenuItem value="no">No, solo cerrar reconciliación</MenuItem>
               </Select>
             </FormControl>
             <TextField
               fullWidth
-              label="Observaciones de Aprobación (opcional)"
-              multiline
-              rows={3}
+              label="Observaciones de Aprobación"
               value={observacionesAprobacion}
               onChange={(e) => setObservacionesAprobacion(e.target.value)}
+              multiline
+              rows={3}
             />
           </Box>
         </DialogContent>
@@ -910,29 +944,36 @@ const ReconciliacionStockPage: React.FC = () => {
           <Button
             variant="contained"
             color="success"
-            onClick={handleAprobar}
+            onClick={handleAprobarReconciliacion}
             disabled={loadingAction}
           >
-            {loadingAction ? <CircularProgress size={20} /> : 'Aprobar'}
+            {loadingAction ? <CircularProgress size={24} /> : 'Aprobar'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dialog: Cancelar Reconciliación */}
       <Dialog open={openCancelarDialog} onClose={() => setOpenCancelarDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Cancelar Reconciliación</DialogTitle>
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            Cancelar Reconciliación
+            <IconButton onClick={() => setOpenCancelarDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <Alert severity="error" sx={{ mb: 2 }}>
-              Al cancelar, se descartarán todos los ajustes registrados.
+          <Box sx={{ pt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Esta acción cancelará la reconciliación actual. Los ajustes registrados no se aplicarán.
             </Alert>
             <TextField
               fullWidth
               label="Motivo de Cancelación"
-              multiline
-              rows={3}
               value={motivoCancelacion}
               onChange={(e) => setMotivoCancelacion(e.target.value)}
+              multiline
+              rows={3}
               required
             />
           </Box>
@@ -942,10 +983,10 @@ const ReconciliacionStockPage: React.FC = () => {
           <Button
             variant="contained"
             color="error"
-            onClick={handleCancelar}
+            onClick={handleCancelarReconciliacion}
             disabled={loadingAction || !motivoCancelacion}
           >
-            {loadingAction ? <CircularProgress size={20} /> : 'Cancelar Reconciliación'}
+            {loadingAction ? <CircularProgress size={24} /> : 'Cancelar Reconciliación'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -954,18 +995,41 @@ const ReconciliacionStockPage: React.FC = () => {
       <Dialog open={openDetalleDialog} onClose={() => setOpenDetalleDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">
-              Detalle de Reconciliación: {selectedReconciliacion?.periodo}
-            </Typography>
-            <IconButton onClick={() => setOpenDetalleDialog(false)}>
+            Detalle de Reconciliación
+            <IconButton onClick={() => setOpenDetalleDialog(false)} size="small">
               <CloseIcon />
             </IconButton>
           </Box>
         </DialogTitle>
         <DialogContent>
           {selectedReconciliacion && (
-            <Box>
-              <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Box sx={{ pt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Código</Typography>
+                  <Typography variant="body1">
+                    {selectedReconciliacion.codigoReconciliacion || `#${selectedReconciliacion.id}`}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Período</Typography>
+                  <Typography variant="body1">{selectedReconciliacion.periodo}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Fecha Inicio</Typography>
+                  <Typography variant="body1">
+                    {dayjs(selectedReconciliacion.fechaInicio).format('DD/MM/YYYY HH:mm')}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">Fecha Fin</Typography>
+                  <Typography variant="body1">
+                    {selectedReconciliacion.fechaFinalizacion 
+                      ? dayjs(selectedReconciliacion.fechaFinalizacion).format('DD/MM/YYYY HH:mm')
+                      : '-'
+                    }
+                  </Typography>
+                </Grid>
                 <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">Estado</Typography>
                   <Chip
@@ -974,65 +1038,19 @@ const ReconciliacionStockPage: React.FC = () => {
                     size="small"
                   />
                 </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Fecha Inicio</Typography>
-                  <Typography>{dayjs(selectedReconciliacion.fechaInicio).format('DD/MM/YYYY HH:mm')}</Typography>
-                </Grid>
-                {selectedReconciliacion.fechaFinalizacion && (
-                  <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary">Fecha Fin</Typography>
-                    <Typography>{dayjs(selectedReconciliacion.fechaFinalizacion).format('DD/MM/YYYY HH:mm')}</Typography>
-                  </Grid>
-                )}
                 {selectedReconciliacion.observaciones && (
                   <Grid item xs={12}>
                     <Typography variant="body2" color="text.secondary">Observaciones</Typography>
-                    <Typography>{selectedReconciliacion.observaciones}</Typography>
+                    <Typography variant="body1">{selectedReconciliacion.observaciones}</Typography>
                   </Grid>
                 )}
               </Grid>
-
-              {(selectedReconciliacion as ReconciliacionDetalladaDTO).ajustes && 
-               (selectedReconciliacion as ReconciliacionDetalladaDTO).ajustes.length > 0 && (
-                <>
-                  <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                    Ajustes Realizados
-                  </Typography>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Depósito</TableCell>
-                          <TableCell>Producto</TableCell>
-                          <TableCell align="right">Sistema</TableCell>
-                          <TableCell align="right">Contado</TableCell>
-                          <TableCell align="right">Diferencia</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(selectedReconciliacion as ReconciliacionDetalladaDTO).ajustes.map((ajuste) => (
-                          <TableRow key={ajuste.id}>
-                            <TableCell>{ajuste.depositoNombre}</TableCell>
-                            <TableCell>{ajuste.productoNombre}</TableCell>
-                            <TableCell align="right">{ajuste.stockSistema}</TableCell>
-                            <TableCell align="right">{ajuste.cantidadContada}</TableCell>
-                            <TableCell align="right">
-                              <Chip
-                                label={ajuste.diferencia}
-                                color={ajuste.diferencia === 0 ? 'success' : ajuste.diferencia > 0 ? 'warning' : 'error'}
-                                size="small"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </>
-              )}
             </Box>
           )}
         </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDetalleDialog(false)}>Cerrar</Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
