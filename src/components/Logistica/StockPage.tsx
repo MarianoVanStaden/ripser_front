@@ -352,49 +352,10 @@ const StockPage: React.FC = () => {
 
   return (
     <Box p={3}>
-      {/* Deprecation Banner */}
-      <Alert
-        severity="warning"
-        sx={{ mb: 3 }}
-        icon={<WarningIcon />}
-      >
-        <Box>
-          <Typography variant="subtitle2" fontWeight="bold">
-            ⚠️ Sistema de Stock Global Deprecado
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Este módulo usa el sistema de stock global <strong>sin depósitos</strong>,
-            que no refleja la ubicación física de los productos.
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            <strong>Se recomienda usar el nuevo</strong>{' '}
-            <Link
-              component="button"
-              onClick={() => navigate('/logistica/inventario/depositos')}
-              sx={{ fontWeight: 'bold', cursor: 'pointer' }}
-            >
-              Sistema de Inventario por Depósito
-            </Link>
-            {' '}para una gestión más precisa y auditable.
-          </Typography>
-          <Box sx={{ mt: 2 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<InventoryIcon />}
-              onClick={() => navigate('/logistica/inventario/depositos')}
-              size="small"
-            >
-              Ir a Inventario por Depósito
-            </Button>
-          </Box>
-        </Box>
-      </Alert>
-
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1}>
           <InventoryIcon />
-          Gestión de Stock (Legacy)
+          Gestión de Stock
         </Typography>
         <Button
           variant="outlined"

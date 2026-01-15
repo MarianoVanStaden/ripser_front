@@ -6,6 +6,8 @@ import type {
   EstadoTransferencia,
 } from '../../types';
 
+const BASE_URL = '/api/transferencias';
+
 export const transferenciaApi = {
   // Obtener todas las transferencias
   getAll: async (params?: {
@@ -16,7 +18,7 @@ export const transferenciaApi = {
     fechaDesde?: string;
     fechaHasta?: string;
   }): Promise<TransferenciaDepositoDTO[]> => {
-    const response = await api.get<TransferenciaDepositoDTO[]>('/transferencias', {
+    const response = await api.get<TransferenciaDepositoDTO[]>(BASE_URL, {
       params,
     });
     return response.data;
@@ -24,34 +26,34 @@ export const transferenciaApi = {
 
   // Obtener transferencia por ID
   getById: async (id: number): Promise<TransferenciaDepositoDTO> => {
-    const response = await api.get<TransferenciaDepositoDTO>(`/transferencias/${id}`);
+    const response = await api.get<TransferenciaDepositoDTO>(`${BASE_URL}/${id}`);
     return response.data;
   },
 
   // Crear nueva transferencia
   create: async (data: TransferenciaCreateDTO): Promise<TransferenciaDepositoDTO> => {
-    const response = await api.post<TransferenciaDepositoDTO>('/transferencias', data);
+    const response = await api.post<TransferenciaDepositoDTO>(BASE_URL, data);
     return response.data;
   },
 
   // Confirmar envío (cambiar estado a EN_TRANSITO)
   confirmarEnvio: async (id: number): Promise<void> => {
-    await api.post(`/transferencias/${id}/enviar`);
+    await api.post(`${BASE_URL}/${id}/enviar`);
   },
 
   // Confirmar recepción (cambiar estado a RECIBIDA)
   confirmarRecepcion: async (data: ConfirmarRecepcionDTO): Promise<void> => {
-    await api.post(`/transferencias/${data.transferenciaId}/recibir`, data);
+    await api.post(`${BASE_URL}/${data.transferenciaId}/recibir`, data);
   },
 
   // Cancelar transferencia
   cancelar: async (id: number, motivo: string): Promise<void> => {
-    await api.post(`/transferencias/${id}/cancelar`, { motivo });
+    await api.post(`${BASE_URL}/${id}/cancelar`, { motivo });
   },
 
   // Obtener transferencias pendientes de recepción
   getPendientes: async (depositoId?: number): Promise<TransferenciaDepositoDTO[]> => {
-    const response = await api.get<TransferenciaDepositoDTO[]>('/transferencias', {
+    const response = await api.get<TransferenciaDepositoDTO[]>(BASE_URL, {
       params: {
         estado: 'EN_TRANSITO',
         depositoDestinoId: depositoId,
@@ -70,7 +72,7 @@ export const transferenciaApi = {
         ? { depositoOrigenId: depositoId }
         : { depositoDestinoId: depositoId };
 
-    const response = await api.get<TransferenciaDepositoDTO[]>('/transferencias', {
+    const response = await api.get<TransferenciaDepositoDTO[]>(BASE_URL, {
       params,
     });
     return response.data;
@@ -83,7 +85,7 @@ export const transferenciaApi = {
     depositoId?: number;
     estado?: EstadoTransferencia;
   }): Promise<TransferenciaDepositoDTO[]> => {
-    const response = await api.get<TransferenciaDepositoDTO[]>('/transferencias', {
+    const response = await api.get<TransferenciaDepositoDTO[]>(BASE_URL, {
       params,
     });
     return response.data;

@@ -145,6 +145,19 @@ const InventarioDepositoPage: React.FC = () => {
     stockMaximo: 0,
   });
 
+  // Stock insuficiente modal
+  const [stockInsuficienteDialogOpen, setStockInsuficienteDialogOpen] = useState(false);
+  const [stockDisponibleInfo, setStockDisponibleInfo] = useState<{
+    producto: Producto | null;
+    stockTotal: number;
+    stockAsignado: number;
+    stockDisponible: number;
+  }>({ producto: null, stockTotal: 0, stockAsignado: 0, stockDisponible: 0 });
+
+  // Para saber si se quiere mantener la configuración existente
+  const [usarConfigExistente, setUsarConfigExistente] = useState(true);
+  const [configExistente, setConfigExistente] = useState<{ stockMinimo: number; stockMaximo: number } | null>(null);
+
   useEffect(() => {
     if (tienePermiso('LOGISTICA')) {
       loadData();
@@ -409,7 +422,46 @@ const InventarioDepositoPage: React.FC = () => {
       stockMinimo: 0,
       stockMaximo: 0,
     });
+    setStockDisponibleInfo({ producto: null, stockTotal: 0, stockAsignado: 0, stockDisponible: 0 });
+    setConfigExistente(null);
+    setUsarConfigExistente(true);
     setCreateDialogOpen(true);
+  };
+
+  const handleProductoChange = (productoId: number) => {
+    const producto = productos.find(p => p.id === productoId);
+    if (!producto) return;
+
+    const stockTotal = producto.stockActual || 0;
+    const stockAsignado = calcularStockAsignado(producto.id, stockItems);
+    const stockDisponible = calcularStockDisponible(producto, stockItems);
+
+    setStockDisponibleInfo({ producto, stockTotal, stockAsignado, stockDisponible });
+
+    // Buscar si el producto ya tiene configuración de min/max en algún depósito
+    const stockExistente = stockItems.find(s => s.productoId === productoId);
+    if (stockExistente && (stockExistente.stockMinimo > 0 || stockExistente.stockMaximo > 0)) {
+      setConfigExistente({
+        stockMinimo: stockExistente.stockMinimo || 0,
+        stockMaximo: stockExistente.stockMaximo || 0
+      });
+      setUsarConfigExistente(true);
+      // Pre-cargar los valores existentes
+      setCreateForm(prev => ({
+        ...prev,
+        productoId,
+        stockMinimo: stockExistente.stockMinimo || 0,
+        stockMaximo: stockExistente.stockMaximo || 0
+      }));
+    } else {
+      setConfigExistente(null);
+      setCreateForm(prev => ({ ...prev, productoId, stockMinimo: 0, stockMaximo: 0 }));
+    }
+
+    // Si no hay stock disponible, mostrar modal informativo
+    if (stockDisponible <= 0) {
+      setStockInsuficienteDialogOpen(true);
+    }
   };
 
   const handleCreate = async () => {
@@ -435,18 +487,39 @@ const InventarioDepositoPage: React.FC = () => {
 
     try {
       setLoading(true);
-      await stockDepositoApi.create(createForm);
-      setSuccess('Stock creado correctamente');
+      
+      // Verificar si ya existe stock de este producto en este depósito
+      const stockExistente = stockItems.find(
+        s => s.productoId === createForm.productoId && s.depositoId === createForm.depositoId
+      );
+
+      if (stockExistente) {
+        // Ya existe: actualizar sumando la cantidad nueva
+        const nuevaCantidad = stockExistente.cantidad + createForm.cantidad;
+        await stockDepositoApi.ajustar(stockExistente.id, nuevaCantidad);
+        
+        // Si se cambiaron los límites, actualizar también
+        if (createForm.stockMinimo !== stockExistente.stockMinimo || 
+            createForm.stockMaximo !== stockExistente.stockMaximo) {
+          await stockDepositoApi.update(stockExistente.id, {
+            stockMinimo: createForm.stockMinimo,
+            stockMaximo: createForm.stockMaximo
+          });
+        }
+        
+        setSuccess(`Stock actualizado: +${createForm.cantidad} unidades agregadas (Total: ${nuevaCantidad})`);
+      } else {
+        // No existe: crear nuevo registro
+        await stockDepositoApi.create(createForm);
+        setSuccess('Stock asignado correctamente');
+      }
+      
       await loadData();
       setCreateDialogOpen(false);
     } catch (err: any) {
-      console.error('Error creating stock:', err);
+      console.error('Error creating/updating stock:', err);
       const errorMsg = formatearErrorBackend(err);
-      if (err.response?.status === 409) {
-        setError(`Ya existe stock para este producto en el depósito seleccionado. ${errorMsg}`);
-      } else {
-        setError(`Error al crear el stock: ${errorMsg}`);
-      }
+      setError(`Error al asignar el stock: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -1224,7 +1297,7 @@ const InventarioDepositoPage: React.FC = () => {
                 <InputLabel>Producto</InputLabel>
                 <Select
                   value={createForm.productoId}
-                  onChange={(e) => setCreateForm({ ...createForm, productoId: Number(e.target.value) })}
+                  onChange={(e) => handleProductoChange(Number(e.target.value))}
                   label="Producto"
                 >
                   {productos.map((producto) => (
@@ -1235,6 +1308,64 @@ const InventarioDepositoPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
+
+            {/* Mostrar información de stock disponible */}
+            {createForm.productoId > 0 && stockDisponibleInfo.producto && (
+              <Grid item xs={12}>
+                <Alert 
+                  severity={stockDisponibleInfo.stockDisponible > 0 ? 'info' : 'warning'}
+                  sx={{ py: 1 }}
+                >
+                  <Box>
+                    <Typography variant="body2">
+                      <strong>Stock Total:</strong> {stockDisponibleInfo.stockTotal} | 
+                      <strong> Ya Asignado:</strong> {stockDisponibleInfo.stockAsignado} | 
+                      <strong> Disponible para asignar:</strong>{' '}
+                      <Chip 
+                        label={stockDisponibleInfo.stockDisponible} 
+                        size="small" 
+                        color={stockDisponibleInfo.stockDisponible > 0 ? 'success' : 'error'}
+                        sx={{ ml: 0.5 }}
+                      />
+                    </Typography>
+                  </Box>
+                </Alert>
+              </Grid>
+            )}
+
+            {/* Mostrar configuración existente si la hay */}
+            {configExistente && (
+              <Grid item xs={12}>
+                <Alert severity="info" sx={{ py: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">
+                      Este producto ya tiene configuración de límites: 
+                      <strong> Mín: {configExistente.stockMinimo}</strong> | 
+                      <strong> Máx: {configExistente.stockMaximo}</strong>
+                    </Typography>
+                    <Button 
+                      size="small" 
+                      variant={usarConfigExistente ? 'contained' : 'outlined'}
+                      onClick={() => {
+                        if (!usarConfigExistente) {
+                          // Restaurar configuración existente
+                          setCreateForm(prev => ({
+                            ...prev,
+                            stockMinimo: configExistente.stockMinimo,
+                            stockMaximo: configExistente.stockMaximo
+                          }));
+                        }
+                        setUsarConfigExistente(!usarConfigExistente);
+                      }}
+                      sx={{ ml: 2, minWidth: 120 }}
+                    >
+                      {usarConfigExistente ? 'Usar existente' : 'Personalizar'}
+                    </Button>
+                  </Box>
+                </Alert>
+              </Grid>
+            )}
+
             <Grid item xs={12}>
               <FormControl fullWidth>
                 <InputLabel>Depósito</InputLabel>
@@ -1242,23 +1373,75 @@ const InventarioDepositoPage: React.FC = () => {
                   value={createForm.depositoId}
                   onChange={(e) => setCreateForm({ ...createForm, depositoId: Number(e.target.value) })}
                   label="Depósito"
+                  disabled={stockDisponibleInfo.stockDisponible <= 0}
                 >
-                  {depositos.map((deposito) => (
-                    <MenuItem key={deposito.id} value={deposito.id}>
-                      {deposito.nombre}
-                    </MenuItem>
-                  ))}
+                  {depositos.map((deposito) => {
+                    const stockEnDeposito = stockItems.find(
+                      s => s.productoId === createForm.productoId && s.depositoId === deposito.id
+                    );
+                    return (
+                      <MenuItem key={deposito.id} value={deposito.id}>
+                        {deposito.nombre}
+                        {stockEnDeposito && (
+                          <Chip 
+                            label={`Ya tiene: ${stockEnDeposito.cantidad}`} 
+                            size="small" 
+                            color="info" 
+                            sx={{ ml: 1 }} 
+                          />
+                        )}
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>
+
+            {/* Mostrar aviso si el depósito ya tiene stock (se sumará) */}
+            {createForm.productoId > 0 && createForm.depositoId > 0 && (() => {
+              const stockEnDeposito = stockItems.find(
+                s => s.productoId === createForm.productoId && s.depositoId === createForm.depositoId
+              );
+              if (stockEnDeposito) {
+                return (
+                  <Grid item xs={12}>
+                    <Alert severity="success" icon={<AddIcon />}>
+                      <Typography variant="body2">
+                        Este depósito ya tiene <strong>{stockEnDeposito.cantidad}</strong> unidades. 
+                        Se agregarán <strong>{createForm.cantidad}</strong> más.
+                        <br />
+                        <strong>Nuevo total: {stockEnDeposito.cantidad + createForm.cantidad}</strong>
+                      </Typography>
+                    </Alert>
+                  </Grid>
+                );
+              }
+              return null;
+            })()}
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 type="number"
-                label="Cantidad Inicial"
+                label={stockItems.find(
+                  s => s.productoId === createForm.productoId && s.depositoId === createForm.depositoId
+                ) ? "Cantidad a Agregar" : "Cantidad Inicial"}
                 value={createForm.cantidad}
-                onChange={(e) => setCreateForm({ ...createForm, cantidad: Number(e.target.value) })}
-                inputProps={{ min: 0 }}
+                onChange={(e) => {
+                  const value = Math.min(
+                    Math.max(0, Number(e.target.value)),
+                    stockDisponibleInfo.stockDisponible
+                  );
+                  setCreateForm({ ...createForm, cantidad: value });
+                }}
+                inputProps={{ min: 0, max: stockDisponibleInfo.stockDisponible }}
+                disabled={stockDisponibleInfo.stockDisponible <= 0}
+                error={createForm.cantidad > stockDisponibleInfo.stockDisponible}
+                helperText={
+                  stockDisponibleInfo.stockDisponible > 0
+                    ? `Máximo disponible: ${stockDisponibleInfo.stockDisponible}`
+                    : 'No hay stock disponible para asignar'
+                }
               />
             </Grid>
             <Grid item xs={6}>
@@ -1267,8 +1450,12 @@ const InventarioDepositoPage: React.FC = () => {
                 type="number"
                 label="Stock Mínimo"
                 value={createForm.stockMinimo}
-                onChange={(e) => setCreateForm({ ...createForm, stockMinimo: Number(e.target.value) })}
+                onChange={(e) => {
+                  setCreateForm({ ...createForm, stockMinimo: Number(e.target.value) });
+                  if (configExistente) setUsarConfigExistente(false);
+                }}
                 inputProps={{ min: 0 }}
+                disabled={usarConfigExistente && configExistente !== null}
               />
             </Grid>
             <Grid item xs={6}>
@@ -1277,8 +1464,12 @@ const InventarioDepositoPage: React.FC = () => {
                 type="number"
                 label="Stock Máximo"
                 value={createForm.stockMaximo}
-                onChange={(e) => setCreateForm({ ...createForm, stockMaximo: Number(e.target.value) })}
+                onChange={(e) => {
+                  setCreateForm({ ...createForm, stockMaximo: Number(e.target.value) });
+                  if (configExistente) setUsarConfigExistente(false);
+                }}
                 inputProps={{ min: 0 }}
+                disabled={usarConfigExistente && configExistente !== null}
               />
             </Grid>
           </Grid>
@@ -1288,9 +1479,94 @@ const InventarioDepositoPage: React.FC = () => {
           <Button
             onClick={handleCreate}
             variant="contained"
-            disabled={!createForm.productoId || !createForm.depositoId}
+            disabled={!createForm.productoId || !createForm.depositoId || stockDisponibleInfo.stockDisponible <= 0 || createForm.cantidad <= 0}
           >
-            Crear
+            {stockItems.find(
+              s => s.productoId === createForm.productoId && s.depositoId === createForm.depositoId
+            ) ? 'Agregar al Stock Existente' : 'Asignar Stock'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal Stock Insuficiente */}
+      <Dialog
+        open={stockInsuficienteDialogOpen}
+        onClose={() => setStockInsuficienteDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="warning" />
+          Stock No Disponible para Asignación
+        </DialogTitle>
+        <DialogContent>
+          {stockDisponibleInfo.producto && (
+            <Box>
+              <Alert severity="warning" sx={{ mb: 3 }}>
+                <Typography variant="body1">
+                  No hay unidades disponibles de <strong>{stockDisponibleInfo.producto.nombre}</strong> para asignar a depósitos.
+                </Typography>
+              </Alert>
+              
+              <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Detalle del Stock:
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={4}>
+                    <Box textAlign="center">
+                      <Typography variant="h5" color="primary">
+                        {stockDisponibleInfo.stockTotal}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Stock Total
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Box textAlign="center">
+                      <Typography variant="h5" color="error">
+                        {stockDisponibleInfo.stockAsignado}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Ya Asignado
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Box textAlign="center">
+                      <Typography variant="h5" color={stockDisponibleInfo.stockDisponible > 0 ? 'success.main' : 'text.disabled'}>
+                        {stockDisponibleInfo.stockDisponible}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Disponible
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              <Typography variant="body2" color="text.secondary">
+                Para asignar stock a un depósito, primero debe:
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+                <li>
+                  <Typography variant="body2" color="text.secondary">
+                    Registrar compras o ingresos del producto en <strong>Gestión de Stock</strong>
+                  </Typography>
+                </li>
+                <li>
+                  <Typography variant="body2" color="text.secondary">
+                    O transferir unidades desde otro depósito que tenga excedentes
+                  </Typography>
+                </li>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStockInsuficienteDialogOpen(false)} variant="contained">
+            Entendido
           </Button>
         </DialogActions>
       </Dialog>

@@ -118,14 +118,22 @@ const ReconciliacionStockPage: React.FC = () => {
   const [openCancelarDialog, setOpenCancelarDialog] = useState(false);
   const [openDetalleDialog, setOpenDetalleDialog] = useState(false);
   const [selectedReconciliacion, setSelectedReconciliacion] = useState<ReconciliacionStockDTO | null>(null);
+  const [selectedReconciliacionDetalle, setSelectedReconciliacionDetalle] = useState<ReconciliacionDetalladaDTO | null>(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [detalleTabValue, setDetalleTabValue] = useState(0);
 
   // Form states
   const [periodo, setPeriodo] = useState(dayjs().format('MMMM YYYY'));
   const [observaciones, setObservaciones] = useState('');
-  const [ajusteForm, setAjusteForm] = useState({
-    depositoId: 0,
-    productoId: 0,
-    cantidadContada: 0,
+  const [ajusteForm, setAjusteForm] = useState<{
+    depositoId: number | '';
+    productoId: number | '';
+    cantidadFisicaContada: number | '';
+    observaciones: string;
+  }>({
+    depositoId: '',
+    productoId: '',
+    cantidadFisicaContada: '',
     observaciones: '',
   });
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
@@ -228,21 +236,28 @@ const ReconciliacionStockPage: React.FC = () => {
 
   const handleRegistrarAjuste = async () => {
     if (!reconciliacionActiva?.id) return;
+    if (ajusteForm.depositoId === '' || ajusteForm.productoId === '' || ajusteForm.cantidadFisicaContada === '') {
+      setError('Por favor complete todos los campos requeridos');
+      return;
+    }
 
     try {
       setLoadingAction(true);
       setError(null);
 
-      await reconciliacionApi.ajustarDeposito(reconciliacionActiva.id, {
-        depositoId: ajusteForm.depositoId,
-        productoId: ajusteForm.productoId,
-        cantidadContada: ajusteForm.cantidadContada,
+      const requestData = {
+        productoId: ajusteForm.productoId as number,
+        depositoId: ajusteForm.depositoId as number,
+        cantidadFisicaContada: ajusteForm.cantidadFisicaContada as number,
         observaciones: ajusteForm.observaciones || undefined,
-      });
+      };
+      console.log('Sending ajuste request:', requestData);
+
+      await reconciliacionApi.ajustarDeposito(reconciliacionActiva.id, requestData);
 
       setSuccess('Ajuste registrado correctamente');
       setOpenAjusteDialog(false);
-      setAjusteForm({ depositoId: 0, productoId: 0, cantidadContada: 0, observaciones: '' });
+      setAjusteForm({ depositoId: '', productoId: '', cantidadFisicaContada: '', observaciones: '' });
       await loadData();
     } catch (err: any) {
       setError(formatearErrorBackend(err));
@@ -258,12 +273,16 @@ const ReconciliacionStockPage: React.FC = () => {
       setLoadingAction(true);
       setError(null);
 
-      await reconciliacionApi.aprobar(reconciliacionActiva.id, {
+      const requestData = {
         aplicarAjustes,
-        observacionesAprobacion: observacionesAprobacion || undefined,
-      });
+        observaciones: observacionesAprobacion || undefined,
+      };
+      console.log('Sending aprobar request:', requestData);
 
-      setSuccess('Reconciliación aprobada correctamente');
+      const resultado = await reconciliacionApi.aprobar(reconciliacionActiva.id, requestData);
+
+      // Mostrar mensaje del backend
+      setSuccess(resultado.mensaje || 'Reconciliación aprobada correctamente');
       setOpenAprobarDialog(false);
       setAplicarAjustes(true);
       setObservacionesAprobacion('');
@@ -299,7 +318,29 @@ const ReconciliacionStockPage: React.FC = () => {
 
   const handleVerDetalle = async (rec: ReconciliacionStockDTO) => {
     setSelectedReconciliacion(rec);
+    setSelectedReconciliacionDetalle(null);
+    setDetalleTabValue(0);
     setOpenDetalleDialog(true);
+    
+    // Cargar detalle completo con ajustes
+    try {
+      setLoadingDetalle(true);
+      const detalle = await reconciliacionApi.getById(rec.id);
+      console.log('Detalle reconciliación cargado:', detalle);
+      console.log('Ajustes en detalle:', detalle?.ajustes);
+      
+      // Normalizar: el backend devuelve ajustesDepositos, no ajustes
+      if (detalle.ajustesDepositos && detalle.ajustesDepositos.length > 0) {
+        console.log('Usando ajustesDepositos del backend:', detalle.ajustesDepositos);
+      }
+      
+      setSelectedReconciliacionDetalle(detalle);
+    } catch (err) {
+      console.error('Error cargando detalle:', err);
+      // Si falla, al menos tenemos los datos básicos
+    } finally {
+      setLoadingDetalle(false);
+    }
   };
 
   // Filter differences
@@ -437,7 +478,7 @@ const ReconciliacionStockPage: React.FC = () => {
                         </Typography>
                       )}
                     </Box>
-                    <Box display="flex" gap={1} alignItems="center">
+                    <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
                       <Chip
                         label={getEstadoLabel(reconciliacionActiva.estado)}
                         color={getEstadoColor(reconciliacionActiva.estado)}
@@ -474,6 +515,14 @@ const ReconciliacionStockPage: React.FC = () => {
                       )}
                       {reconciliacionActiva.estado === 'PENDIENTE_APROBACION' && (
                         <>
+                          <Button
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            onClick={() => setOpenAjusteDialog(true)}
+                            size="small"
+                          >
+                            Registrar Ajuste
+                          </Button>
                           <Button
                             variant="contained"
                             color="success"
@@ -854,6 +903,7 @@ const ReconciliacionStockPage: React.FC = () => {
                 onChange={(e) => setAjusteForm({ ...ajusteForm, depositoId: e.target.value as number })}
                 label="Depósito"
               >
+                <MenuItem value="" disabled><em>Seleccionar depósito...</em></MenuItem>
                 {depositos.map((dep) => (
                   <MenuItem key={dep.id} value={dep.id}>{dep.nombre}</MenuItem>
                 ))}
@@ -866,6 +916,7 @@ const ReconciliacionStockPage: React.FC = () => {
                 onChange={(e) => setAjusteForm({ ...ajusteForm, productoId: e.target.value as number })}
                 label="Producto"
               >
+                <MenuItem value="" disabled><em>Seleccionar producto...</em></MenuItem>
                 {productos.map((prod) => (
                   <MenuItem key={prod.id} value={prod.id}>
                     {prod.nombre} {prod.codigo ? `(${prod.codigo})` : ''}
@@ -876,9 +927,9 @@ const ReconciliacionStockPage: React.FC = () => {
             <TextField
               fullWidth
               type="number"
-              label="Cantidad Contada"
-              value={ajusteForm.cantidadContada}
-              onChange={(e) => setAjusteForm({ ...ajusteForm, cantidadContada: parseInt(e.target.value) || 0 })}
+              label="Cantidad Física Contada"
+              value={ajusteForm.cantidadFisicaContada}
+              onChange={(e) => setAjusteForm({ ...ajusteForm, cantidadFisicaContada: e.target.value === '' ? '' : parseInt(e.target.value) })}
               sx={{ mb: 2 }}
             />
             <TextField
@@ -896,7 +947,7 @@ const ReconciliacionStockPage: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleRegistrarAjuste}
-            disabled={loadingAction || !ajusteForm.depositoId || !ajusteForm.productoId}
+            disabled={loadingAction || ajusteForm.depositoId === '' || ajusteForm.productoId === '' || ajusteForm.cantidadFisicaContada === ''}
           >
             {loadingAction ? <CircularProgress size={24} /> : 'Registrar'}
           </Button>
@@ -991,65 +1042,364 @@ const ReconciliacionStockPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog: Ver Detalle */}
-      <Dialog open={openDetalleDialog} onClose={() => setOpenDetalleDialog(false)} maxWidth="md" fullWidth>
+      {/* Dialog: Ver Detalle - Versión mejorada con auditoría */}
+      <Dialog open={openDetalleDialog} onClose={() => setOpenDetalleDialog(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            Detalle de Reconciliación
+            <Box display="flex" alignItems="center" gap={2}>
+              <HistoryIcon color="primary" />
+              <Typography variant="h6">
+                Detalle de Reconciliación {selectedReconciliacion?.codigoReconciliacion || `#${selectedReconciliacion?.id}`}
+              </Typography>
+              {selectedReconciliacion && (
+                <Chip
+                  label={getEstadoLabel(selectedReconciliacion.estado)}
+                  color={getEstadoColor(selectedReconciliacion.estado)}
+                  size="small"
+                />
+              )}
+            </Box>
             <IconButton onClick={() => setOpenDetalleDialog(false)} size="small">
               <CloseIcon />
             </IconButton>
           </Box>
         </DialogTitle>
-        <DialogContent>
-          {selectedReconciliacion && (
-            <Box sx={{ pt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Código</Typography>
-                  <Typography variant="body1">
-                    {selectedReconciliacion.codigoReconciliacion || `#${selectedReconciliacion.id}`}
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Período</Typography>
-                  <Typography variant="body1">{selectedReconciliacion.periodo}</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Fecha Inicio</Typography>
-                  <Typography variant="body1">
-                    {dayjs(selectedReconciliacion.fechaInicio).format('DD/MM/YYYY HH:mm')}
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Fecha Fin</Typography>
-                  <Typography variant="body1">
-                    {selectedReconciliacion.fechaFinalizacion 
-                      ? dayjs(selectedReconciliacion.fechaFinalizacion).format('DD/MM/YYYY HH:mm')
-                      : '-'
-                    }
-                  </Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Estado</Typography>
-                  <Chip
-                    label={getEstadoLabel(selectedReconciliacion.estado)}
-                    color={getEstadoColor(selectedReconciliacion.estado)}
-                    size="small"
-                  />
-                </Grid>
-                {selectedReconciliacion.observaciones && (
-                  <Grid item xs={12}>
-                    <Typography variant="body2" color="text.secondary">Observaciones</Typography>
-                    <Typography variant="body1">{selectedReconciliacion.observaciones}</Typography>
+        <DialogContent dividers>
+          {selectedReconciliacion && (() => {
+            // Normalizar: el backend devuelve ajustesDepositos, no ajustes
+            const ajustesArray = selectedReconciliacionDetalle?.ajustesDepositos 
+              || selectedReconciliacionDetalle?.ajustes 
+              || [];
+            
+            return (
+            <Box>
+              {/* Tabs para organizar información */}
+              <Tabs 
+                value={detalleTabValue} 
+                onChange={(_, newValue) => setDetalleTabValue(newValue)}
+                sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+              >
+                <Tab label="Información General" />
+                <Tab 
+                  label={`Ajustes Realizados (${ajustesArray.length})`} 
+                  disabled={loadingDetalle}
+                />
+                <Tab label="Estadísticas" />
+              </Tabs>
+
+              {/* Tab 0: Información General */}
+              {detalleTabValue === 0 && (
+                <Box>
+                  <Grid container spacing={3}>
+                    {/* Información básica */}
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                        📋 Datos de la Reconciliación
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">Código</Typography>
+                      <Typography variant="body1" fontWeight="medium">
+                        {selectedReconciliacion.codigoReconciliacion || `#${selectedReconciliacion.id}`}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">Período</Typography>
+                      <Typography variant="body1" fontWeight="medium">{selectedReconciliacion.periodo}</Typography>
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">Fecha Inicio</Typography>
+                      <Typography variant="body1">
+                        {dayjs(selectedReconciliacion.fechaInicio).format('DD/MM/YYYY HH:mm')}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <Typography variant="body2" color="text.secondary">Fecha Finalización</Typography>
+                      <Typography variant="body1">
+                        {selectedReconciliacion.fechaFinalizacion 
+                          ? dayjs(selectedReconciliacion.fechaFinalizacion).format('DD/MM/YYYY HH:mm')
+                          : <Chip label="En curso" size="small" color="info" variant="outlined" />
+                        }
+                      </Typography>
+                    </Grid>
+
+                    {/* Información de auditoría de usuarios */}
+                    {(selectedReconciliacionDetalle?.usuarioInicioNombre || selectedReconciliacionDetalle?.usuarioAprobacionNombre) && (
+                      <>
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                            👤 Auditoría de Usuarios
+                          </Typography>
+                        </Grid>
+                        {selectedReconciliacionDetalle?.usuarioInicioNombre && (
+                          <Grid item xs={6} md={3}>
+                            <Typography variant="body2" color="text.secondary">Iniciada por</Typography>
+                            <Chip 
+                              label={selectedReconciliacionDetalle.usuarioInicioNombre} 
+                              size="small" 
+                              variant="outlined"
+                              color="primary"
+                            />
+                          </Grid>
+                        )}
+                        {selectedReconciliacionDetalle?.usuarioAprobacionNombre && (
+                          <Grid item xs={6} md={3}>
+                            <Typography variant="body2" color="text.secondary">Aprobada por</Typography>
+                            <Chip 
+                              label={selectedReconciliacionDetalle.usuarioAprobacionNombre} 
+                              size="small" 
+                              variant="outlined"
+                              color="success"
+                            />
+                          </Grid>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Observaciones */}
+                    {selectedReconciliacion.observaciones && (
+                      <Grid item xs={12}>
+                        <Divider sx={{ my: 1 }} />
+                        <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                          📝 Observaciones
+                        </Typography>
+                        <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                          <Typography variant="body2">{selectedReconciliacion.observaciones}</Typography>
+                        </Paper>
+                      </Grid>
+                    )}
+
+                    {/* Resumen rápido */}
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                        📊 Resumen Rápido
+                      </Typography>
+                      <Box display="flex" gap={2} flexWrap="wrap">
+                        <Paper variant="outlined" sx={{ p: 2, minWidth: 140, textAlign: 'center' }}>
+                          <Typography variant="h4" color="primary">
+                            {selectedReconciliacion.totalProductosRevisados ?? '-'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Productos Revisados
+                          </Typography>
+                        </Paper>
+                        <Paper variant="outlined" sx={{ p: 2, minWidth: 140, textAlign: 'center' }}>
+                          <Typography variant="h4" color="warning.main">
+                            {selectedReconciliacion.totalDiferenciasEncontradas ?? '-'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Diferencias Encontradas
+                          </Typography>
+                        </Paper>
+                        <Paper variant="outlined" sx={{ p: 2, minWidth: 140, textAlign: 'center' }}>
+                          <Typography variant="h4" color="success.main">
+                            {selectedReconciliacion.totalAjustesAplicados ?? ajustesArray.length ?? '-'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Ajustes Aplicados
+                          </Typography>
+                        </Paper>
+                      </Box>
+                    </Grid>
                   </Grid>
-                )}
-              </Grid>
+                </Box>
+              )}
+
+              {/* Tab 1: Ajustes Realizados */}
+              {detalleTabValue === 1 && (
+                <Box>
+                  {loadingDetalle ? (
+                    <Box display="flex" justifyContent="center" py={4}>
+                      <CircularProgress />
+                    </Box>
+                  ) : ajustesArray.length > 0 ? (
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'grey.100' }}>
+                            <TableCell><strong>Producto</strong></TableCell>
+                            <TableCell><strong>Depósito</strong></TableCell>
+                            <TableCell align="right"><strong>Cant. Anterior</strong></TableCell>
+                            <TableCell align="right"><strong>Cant. Contada</strong></TableCell>
+                            <TableCell align="right"><strong>Diferencia</strong></TableCell>
+                            <TableCell><strong>Usuario</strong></TableCell>
+                            <TableCell><strong>Fecha Ajuste</strong></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {ajustesArray.map((ajuste) => (
+                            <TableRow key={ajuste.id} hover>
+                              <TableCell>
+                                <Box>
+                                  <Typography variant="body2" fontWeight="medium">
+                                    {ajuste.productoNombre}
+                                  </Typography>
+                                  {ajuste.productoCodigo && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {ajuste.productoCodigo}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </TableCell>
+                              <TableCell>{ajuste.depositoNombre}</TableCell>
+                              <TableCell align="right">{ajuste.cantidadAnterior}</TableCell>
+                              <TableCell align="right">{ajuste.cantidadFisicaContada}</TableCell>
+                              <TableCell align="right">
+                                <Chip
+                                  label={ajuste.diferencia > 0 ? `+${ajuste.diferencia}` : ajuste.diferencia}
+                                  size="small"
+                                  color={ajuste.diferencia > 0 ? 'success' : ajuste.diferencia < 0 ? 'error' : 'default'}
+                                  variant="outlined"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">
+                                  {ajuste.usuarioAjusteNombre || '-'}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="body2">
+                                  {ajuste.fechaAjuste 
+                                    ? dayjs(ajuste.fechaAjuste).format('DD/MM/YYYY HH:mm')
+                                    : '-'
+                                  }
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  ) : (
+                    <Alert severity="info">
+                      No se registraron ajustes en esta reconciliación.
+                    </Alert>
+                  )}
+                </Box>
+              )}
+
+              {/* Tab 2: Estadísticas */}
+              {detalleTabValue === 2 && (
+                <Box>
+                  <Grid container spacing={3}>
+                    {/* Estadísticas de ajustes */}
+                    {ajustesArray.length > 0 ? (
+                      <>
+                        <Grid item xs={12}>
+                          <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                            📈 Análisis de Ajustes
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Paper variant="outlined" sx={{ p: 2 }}>
+                            <Typography variant="h5" color="success.main">
+                              {ajustesArray.filter(a => a.diferencia > 0).length}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Ajustes Positivos (Sobrantes)
+                            </Typography>
+                            <Typography variant="caption" color="success.main">
+                              Total: +{ajustesArray
+                                .filter(a => a.diferencia > 0)
+                                .reduce((sum, a) => sum + a.diferencia, 0)} unidades
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Paper variant="outlined" sx={{ p: 2 }}>
+                            <Typography variant="h5" color="error.main">
+                              {ajustesArray.filter(a => a.diferencia < 0).length}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Ajustes Negativos (Faltantes)
+                            </Typography>
+                            <Typography variant="caption" color="error.main">
+                              Total: {ajustesArray
+                                .filter(a => a.diferencia < 0)
+                                .reduce((sum, a) => sum + a.diferencia, 0)} unidades
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Paper variant="outlined" sx={{ p: 2 }}>
+                            <Typography variant="h5" color="info.main">
+                              {ajustesArray.filter(a => a.diferencia === 0).length}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Sin Diferencia
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Verificaciones correctas
+                            </Typography>
+                          </Paper>
+                        </Grid>
+
+                        {/* Depósitos afectados */}
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                            🏭 Depósitos Afectados
+                          </Typography>
+                          <Box display="flex" gap={1} flexWrap="wrap">
+                            {[...new Set(ajustesArray.map(a => a.depositoNombre))].map(deposito => {
+                              const ajustesDeposito = ajustesArray.filter(a => a.depositoNombre === deposito);
+                              return (
+                                <Chip
+                                  key={deposito}
+                                  label={`${deposito} (${ajustesDeposito.length} ajustes)`}
+                                  variant="outlined"
+                                  color="primary"
+                                />
+                              );
+                            })}
+                          </Box>
+                        </Grid>
+
+                        {/* Timeline de ajustes */}
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold' }}>
+                            ⏰ Cronología de Ajustes
+                          </Typography>
+                          <Paper variant="outlined" sx={{ p: 2, maxHeight: 200, overflow: 'auto' }}>
+                            {[...ajustesArray]
+                              .sort((a, b) => new Date(a.fechaAjuste).getTime() - new Date(b.fechaAjuste).getTime())
+                              .map((ajuste) => (
+                                <Box key={ajuste.id} sx={{ display: 'flex', gap: 2, mb: 1, alignItems: 'center' }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ minWidth: 120 }}>
+                                    {dayjs(ajuste.fechaAjuste).format('DD/MM HH:mm:ss')}
+                                  </Typography>
+                                  <Chip size="small" label={ajuste.diferencia > 0 ? `+${ajuste.diferencia}` : ajuste.diferencia} 
+                                    color={ajuste.diferencia > 0 ? 'success' : ajuste.diferencia < 0 ? 'error' : 'default'}
+                                    sx={{ minWidth: 60 }}
+                                  />
+                                  <Typography variant="body2">
+                                    {ajuste.productoNombre} en {ajuste.depositoNombre}
+                                  </Typography>
+                                </Box>
+                              ))
+                            }
+                          </Paper>
+                        </Grid>
+                      </>
+                    ) : (
+                      <Grid item xs={12}>
+                        <Alert severity="info">
+                          No hay ajustes registrados para mostrar estadísticas.
+                        </Alert>
+                      </Grid>
+                    )}
+                  </Grid>
+                </Box>
+              )}
             </Box>
-          )}
+          );
+          })()}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDetalleDialog(false)}>Cerrar</Button>
+          <Button onClick={() => setOpenDetalleDialog(false)} variant="outlined">Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>

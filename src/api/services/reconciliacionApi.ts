@@ -47,7 +47,22 @@ export const reconciliacionApi = {
   },
 
   /**
+   * Finalizar revisión - cambia estado a PENDIENTE_APROBACION
+   */
+  finalizarRevision: async (
+    reconciliacionId: number,
+    observaciones?: string
+  ): Promise<ReconciliacionDiferenciasDTO> => {
+    const response = await api.post<ReconciliacionDiferenciasDTO>(
+      `${BASE_URL}/${reconciliacionId}/finalizar-revision`,
+      observaciones ? { observaciones } : {}
+    );
+    return response.data;
+  },
+
+  /**
    * Aprobar reconciliación y aplicar ajustes
+   * Se puede aprobar desde EN_PROCESO o PENDIENTE_APROBACION
    */
   aprobar: async (
     reconciliacionId: number,
@@ -95,6 +110,14 @@ export const reconciliacionApi = {
    */
   getById: async (id: number): Promise<ReconciliacionDetalladaDTO> => {
     const response = await api.get<ReconciliacionDetalladaDTO>(`${BASE_URL}/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Obtener ajustes de una reconciliación
+   */
+  getAjustes: async (reconciliacionId: number): Promise<AjusteStockDepositoDTO[]> => {
+    const response = await api.get<AjusteStockDepositoDTO[]>(`${BASE_URL}/${reconciliacionId}/ajustes`);
     return response.data;
   },
 

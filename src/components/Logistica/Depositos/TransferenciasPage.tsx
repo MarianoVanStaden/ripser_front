@@ -58,6 +58,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { transferenciaApi, depositoApi, stockDepositoApi, equipoFabricadoApi } from '../../../api/services';
+import { ubicacionEquipoApi } from '../../../api/services/ubicacionEquipoApi';
 import { useAuth } from '../../../context/AuthContext';
 import type {
   TransferenciaDepositoDTO,
@@ -108,7 +109,10 @@ const TransferenciasPage: React.FC = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [envioDialogOpen, setEnvioDialogOpen] = useState(false);
   const [selectedTransferencia, setSelectedTransferencia] = useState<TransferenciaDepositoDTO | null>(null);
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
 
   // Form para crear transferencia
   const [newTransferencia, setNewTransferencia] = useState<{
@@ -134,6 +138,7 @@ const TransferenciasPage: React.FC = () => {
 
   // Estados para selección de productos/equipos
   const [stocksDisponibles, setStocksDisponibles] = useState<StockDeposito[]>([]);
+  const [stocksDestino, setStocksDestino] = useState<StockDeposito[]>([]); // Stock en depósito destino
   const [equiposDisponibles, setEquiposDisponibles] = useState<EquipoFabricadoDTO[]>([]);
   const [selectedItemType, setSelectedItemType] = useState<'PRODUCTO' | 'EQUIPO'>('PRODUCTO');
 
@@ -176,21 +181,34 @@ const TransferenciasPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [transferenciasData, depositosData] = await Promise.all([
-        transferenciaApi.getAll({ empresaId: user?.empresaId }),
-        depositoApi.getAll(),
-      ]);
+      
+      // Cargar depósitos primero (siempre necesarios)
+      try {
+        const depositosData = await depositoApi.getAll();
+        const depositosArray = Array.isArray(depositosData) 
+          ? depositosData 
+          : (depositosData as any)?.content || [];
+        setDepositos(depositosArray.filter((d: any) => d.activo));
+      } catch (errDepositos) {
+        console.error('Error loading depositos:', errDepositos);
+      }
 
-      // Handle paginated or array responses
-      const transferenciasArray = Array.isArray(transferenciasData) 
-        ? transferenciasData 
-        : (transferenciasData as any)?.content || [];
-      const depositosArray = Array.isArray(depositosData) 
-        ? depositosData 
-        : (depositosData as any)?.content || [];
+      // Cargar transferencias (puede fallar si el endpoint no existe aún)
+      try {
+        const transferenciasData = await transferenciaApi.getAll({ empresaId: user?.empresaId });
+        const transferenciasArray = Array.isArray(transferenciasData) 
+          ? transferenciasData 
+          : (transferenciasData as any)?.content || [];
+        setTransferencias(transferenciasArray);
+      } catch (errTransferencias: any) {
+        console.error('Error loading transferencias:', errTransferencias);
+        // Si es 403/404, el endpoint puede no estar implementado en el backend
+        if (errTransferencias.response?.status === 403 || errTransferencias.response?.status === 404) {
+          console.warn('Endpoint de transferencias no disponible o sin permisos');
+          setTransferencias([]);
+        }
+      }
 
-      setTransferencias(transferenciasArray);
-      setDepositos(depositosArray.filter((d: any) => d.activo));
       setError(null);
     } catch (err) {
       console.error('Error loading data:', err);
@@ -212,21 +230,46 @@ const TransferenciasPage: React.FC = () => {
     }
   };
 
+  const loadStocksDestino = async (depositoId: number) => {
+    try {
+      const stocksData = await stockDepositoApi.getByDeposito(depositoId);
+      const stocksArray = Array.isArray(stocksData) 
+        ? stocksData 
+        : (stocksData as any)?.content || [];
+      setStocksDestino(stocksArray);
+    } catch (err) {
+      console.error('Error loading stocks destino:', err);
+      setStocksDestino([]);
+    }
+  };
+
   const loadEquiposDisponibles = async (depositoId: number) => {
     try {
-      // Llamar al API que obtenga equipos en un depósito específico
-      // Por ahora usamos un filtro local
-      const equipos = await equipoFabricadoApi.findAll(0, 1000);
-      const equiposArray = Array.isArray(equipos) 
-        ? equipos 
-        : equipos?.content || [];
+      // Obtener ubicaciones de equipos en el depósito de origen
+      const ubicaciones = await ubicacionEquipoApi.getByDeposito(depositoId);
+      
+      // Obtener los IDs de equipos ubicados en este depósito
+      const equiposEnDeposito = ubicaciones.map(u => ({
+        id: u.equipoFabricadoId,
+        numeroHeladera: u.equipoNumeroHeladera,
+        modelo: u.equipoModelo,
+        tipo: u.equipoTipo
+      }));
+      
+      // Convertir a formato EquipoFabricadoDTO para el selector
       setEquiposDisponibles(
-        equiposArray.filter(
-          (e: any) => e.estado === 'COMPLETADO' && !e.asignado
-        )
+        equiposEnDeposito.map(e => ({
+          id: e.id,
+          numeroHeladera: e.numeroHeladera,
+          modelo: e.modelo,
+          tipo: e.tipo,
+          estado: 'COMPLETADO',
+          estadoAsignacion: 'DISPONIBLE'
+        } as any))
       );
     } catch (err) {
-      console.error('Error loading equipos:', err);
+      console.error('Error loading equipos disponibles:', err);
+      setEquiposDisponibles([]);
     }
   };
 
@@ -238,6 +281,30 @@ const TransferenciasPage: React.FC = () => {
 
     if (newTransferencia.items.length === 0) {
       setError('Debe agregar al menos un ítem a la transferencia');
+      return;
+    }
+
+    // Validar que ningún item exceda el stock disponible
+    const itemsConExceso = newTransferencia.items.filter(item => {
+      if (item.tipo === 'PRODUCTO' && item.productoId) {
+        const stockOrigen = stocksDisponibles.find(s => s.productoId === item.productoId);
+        return (item.cantidad || 0) > (stockOrigen?.cantidad || 0);
+      }
+      return false;
+    });
+
+    if (itemsConExceso.length > 0) {
+      setError('No puede transferir más unidades de las disponibles en el depósito de origen');
+      return;
+    }
+
+    // Validar que todos los items tengan cantidad válida (mayor a 0)
+    const itemsSinCantidad = newTransferencia.items.filter(item => 
+      item.tipo === 'PRODUCTO' && (!item.cantidad || item.cantidad <= 0)
+    );
+
+    if (itemsSinCantidad.length > 0) {
+      setError('Todos los productos deben tener una cantidad mayor a 0');
       return;
     }
 
@@ -253,7 +320,7 @@ const TransferenciasPage: React.FC = () => {
         items: newTransferencia.items.map(item => ({
           productoId: item.productoId,
           equipoFabricadoId: item.equipoFabricadoId,
-          cantidad: item.cantidad,
+          cantidadSolicitada: item.cantidad, // Backend espera cantidadSolicitada
         })),
       };
 
@@ -454,15 +521,19 @@ const TransferenciasPage: React.FC = () => {
     }
   };
 
-  const handleConfirmarEnvio = async (id: number) => {
-    if (!window.confirm('¿Confirmar envío de esta transferencia? Esta acción descontará el stock del depósito origen.')) {
-      return;
-    }
+  const handleOpenEnvioDialog = (transferencia: TransferenciaDepositoDTO) => {
+    setSelectedTransferencia(transferencia);
+    setEnvioDialogOpen(true);
+  };
+
+  const handleConfirmarEnvio = async () => {
+    if (!selectedTransferencia) return;
 
     try {
       setLoading(true);
-      await transferenciaApi.confirmarEnvio(id);
+      await transferenciaApi.confirmarEnvio(selectedTransferencia.id!);
       setSuccess('Transferencia enviada correctamente');
+      setEnvioDialogOpen(false);
       await loadData();
     } catch (err: any) {
       console.error('Error confirming envío:', err);
@@ -526,14 +597,24 @@ const TransferenciasPage: React.FC = () => {
     }
   };
 
-  const handleCancelarTransferencia = async (id: number) => {
-    const motivo = window.prompt('Ingrese el motivo de la cancelación:');
-    if (!motivo) return;
+  const handleOpenCancelDialog = (transferencia: TransferenciaDepositoDTO) => {
+    setSelectedTransferencia(transferencia);
+    setMotivoCancelacion('');
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelarTransferencia = async () => {
+    if (!selectedTransferencia || !motivoCancelacion.trim()) {
+      setError('Debe ingresar un motivo de cancelación');
+      return;
+    }
 
     try {
       setLoading(true);
-      await transferenciaApi.cancelar(id, motivo);
+      await transferenciaApi.cancelar(selectedTransferencia.id!, motivoCancelacion);
       setSuccess('Transferencia cancelada correctamente');
+      setCancelDialogOpen(false);
+      setMotivoCancelacion('');
       await loadData();
     } catch (err: any) {
       console.error('Error cancelling transferencia:', err);
@@ -564,6 +645,7 @@ const TransferenciasPage: React.FC = () => {
           {
             tipo: 'EQUIPO',
             equipoFabricadoId: undefined,
+            cantidad: 1, // Los equipos siempre tienen cantidad 1
           },
         ],
       }));
@@ -616,6 +698,7 @@ const TransferenciasPage: React.FC = () => {
       items: [],
     });
     setStocksDisponibles([]);
+    setStocksDestino([]);
     setEquiposDisponibles([]);
   };
 
@@ -1033,7 +1116,7 @@ const TransferenciasPage: React.FC = () => {
                                 <IconButton
                                   size="small"
                                   color="primary"
-                                  onClick={() => handleConfirmarEnvio(transferencia.id!)}
+                                  onClick={() => handleOpenEnvioDialog(transferencia)}
                                 >
                                   <SendIcon />
                                 </IconButton>
@@ -1042,7 +1125,7 @@ const TransferenciasPage: React.FC = () => {
                                 <IconButton
                                   size="small"
                                   color="error"
-                                  onClick={() => handleCancelarTransferencia(transferencia.id!)}
+                                  onClick={() => handleOpenCancelDialog(transferencia)}
                                 >
                                   <CancelIcon />
                                 </IconButton>
@@ -1069,7 +1152,7 @@ const TransferenciasPage: React.FC = () => {
                                 <IconButton
                                   size="small"
                                   color="error"
-                                  onClick={() => handleCancelarTransferencia(transferencia.id!)}
+                                  onClick={() => handleOpenCancelDialog(transferencia)}
                                 >
                                   <CancelIcon />
                                 </IconButton>
@@ -1150,12 +1233,16 @@ const TransferenciasPage: React.FC = () => {
                     <Select
                       value={newTransferencia.depositoDestinoId}
                       label="Depósito Destino"
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const depositoId = e.target.value as number;
                         setNewTransferencia(prev => ({
                           ...prev,
-                          depositoDestinoId: e.target.value as number,
-                        }))
-                      }
+                          depositoDestinoId: depositoId,
+                        }));
+                        if (depositoId) {
+                          loadStocksDestino(depositoId);
+                        }
+                      }}
                       disabled={!newTransferencia.depositoOrigenId}
                     >
                       {depositos
@@ -1223,7 +1310,14 @@ const TransferenciasPage: React.FC = () => {
                   </Box>
                 </Box>
 
-                {newTransferencia.items.map((item, index) => (
+                {newTransferencia.items.map((item, index) => {
+                  // Obtener info de stock en origen y destino para este producto
+                  const stockOrigen = stocksDisponibles.find(s => s.productoId === item.productoId);
+                  const stockDestino = stocksDestino.find(s => s.productoId === item.productoId);
+                  const depositoOrigenNombre = depositos.find(d => d.id === newTransferencia.depositoOrigenId)?.nombre;
+                  const depositoDestinoNombre = depositos.find(d => d.id === newTransferencia.depositoDestinoId)?.nombre;
+                  
+                  return (
                   <Card key={index} sx={{ mb: 2, p: 2 }}>
                     <Grid container spacing={2} alignItems="center">
                       <Grid item xs={12} md={item.tipo === 'PRODUCTO' ? 5 : 8}>
@@ -1258,19 +1352,29 @@ const TransferenciasPage: React.FC = () => {
                       </Grid>
 
                       {item.tipo === 'PRODUCTO' && (
-                        <Grid item xs={12} md={5}>
+                        <Grid item xs={12} md={3}>
                           <TextField
                             label="Cantidad"
                             type="number"
                             size="small"
                             value={item.cantidad || 1}
-                            onChange={(e) =>
-                              handleUpdateItem(index, 'cantidad', parseInt(e.target.value))
-                            }
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              const maxStock = stockOrigen?.cantidad || 0;
+                              // Limitar al máximo disponible
+                              const limitedValue = Math.min(Math.max(1, value), maxStock);
+                              handleUpdateItem(index, 'cantidad', limitedValue);
+                            }}
                             inputProps={{
                               min: 1,
-                              max: stocksDisponibles.find(s => s.productoId === item.productoId)?.cantidad || 999,
+                              max: stockOrigen?.cantidad || 0,
                             }}
+                            error={(item.cantidad || 0) > (stockOrigen?.cantidad || 0)}
+                            helperText={
+                              (item.cantidad || 0) > (stockOrigen?.cantidad || 0)
+                                ? `Máximo disponible: ${stockOrigen?.cantidad || 0}`
+                                : `Disponible: ${stockOrigen?.cantidad || 0}`
+                            }
                             fullWidth
                           />
                         </Grid>
@@ -1285,9 +1389,78 @@ const TransferenciasPage: React.FC = () => {
                           <DeleteIcon />
                         </IconButton>
                       </Grid>
+
+                      {/* Mostrar información de stock en ambos depósitos */}
+                      {item.tipo === 'PRODUCTO' && item.productoId && (
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 1 }} />
+                          <Box display="flex" gap={3} flexWrap="wrap" alignItems="center">
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                Stock en {depositoOrigenNombre || 'Origen'}:
+                              </Typography>
+                              <Chip 
+                                label={stockOrigen?.cantidad ?? 0} 
+                                size="small" 
+                                color={stockOrigen && stockOrigen.cantidad > 0 ? 'success' : 'error'}
+                                sx={{ ml: 1 }}
+                              />
+                            </Box>
+                            {newTransferencia.depositoDestinoId && (
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  Stock en {depositoDestinoNombre || 'Destino'}:
+                                </Typography>
+                                <Chip 
+                                  label={stockDestino?.cantidad ?? 0} 
+                                  size="small" 
+                                  color="info"
+                                  variant="outlined"
+                                  sx={{ ml: 1 }}
+                                />
+                              </Box>
+                            )}
+                            {item.cantidad && stockOrigen && (() => {
+                              const stockRestante = (stockOrigen?.cantidad || 0) - (item.cantidad || 0);
+                              const esExceso = stockRestante < 0;
+                              return (
+                              <Box>
+                                <Typography variant="caption" color={esExceso ? 'error' : 'text.secondary'}>
+                                  Después de transferir:
+                                </Typography>
+                                <Chip 
+                                  label={`${depositoOrigenNombre}: ${stockRestante}`} 
+                                  size="small" 
+                                  color={esExceso ? 'error' : 'warning'}
+                                  variant={esExceso ? 'filled' : 'outlined'}
+                                  sx={{ ml: 1 }}
+                                />
+                                <Chip 
+                                  label={`${depositoDestinoNombre}: ${(stockDestino?.cantidad ?? 0) + (item.cantidad || 0)}`} 
+                                  size="small" 
+                                  color="success"
+                                  variant="outlined"
+                                  sx={{ ml: 1 }}
+                                />
+                                {esExceso && (
+                                  <Chip 
+                                    icon={<WarningIcon />}
+                                    label="Stock insuficiente" 
+                                    size="small" 
+                                    color="error"
+                                    sx={{ ml: 1 }}
+                                  />
+                                )}
+                              </Box>
+                              );
+                            })()}
+                          </Box>
+                        </Grid>
+                      )}
                     </Grid>
                   </Card>
-                ))}
+                  );
+                })}
 
                 {newTransferencia.items.length === 0 && (
                   <Alert severity="info">
@@ -1732,6 +1905,137 @@ const TransferenciasPage: React.FC = () => {
               disabled={loading || recepcionData.items.length === 0}
             >
               Confirmar Recepción
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Modal de Confirmación de Envío */}
+        <Dialog
+          open={envioDialogOpen}
+          onClose={() => setEnvioDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" alignItems="center" gap={1}>
+              <SendIcon color="primary" />
+              <Typography variant="h6">Confirmar Envío de Transferencia</Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Box sx={{ pt: 1 }}>
+              {selectedTransferencia && (
+                <>
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Está a punto de confirmar el envío de la transferencia <strong>{selectedTransferencia.numero}</strong>.
+                  </Alert>
+                  
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Detalles de la transferencia:
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Origen:</Typography>
+                        <Typography variant="body1" fontWeight="medium">
+                          {selectedTransferencia.depositoOrigenNombre}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Typography variant="body2" color="text.secondary">Destino:</Typography>
+                        <Typography variant="body1" fontWeight="medium">
+                          {selectedTransferencia.depositoDestinoNombre}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">Items:</Typography>
+                        <Typography variant="body1">
+                          {selectedTransferencia.items?.length || 0} producto(s)
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  <Alert severity="warning" icon={<WarningIcon />}>
+                    <strong>Importante:</strong> Esta acción descontará el stock del depósito de origen. 
+                    Una vez enviada, solo podrá cancelarse o confirmar su recepción.
+                  </Alert>
+                </>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEnvioDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleConfirmarEnvio}
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
+            >
+              Confirmar Envío
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Modal de Cancelación de Transferencia */}
+        <Dialog
+          open={cancelDialogOpen}
+          onClose={() => {
+            setCancelDialogOpen(false);
+            setMotivoCancelacion('');
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" alignItems="center" gap={1}>
+              <CancelIcon color="error" />
+              <Typography variant="h6">Cancelar Transferencia</Typography>
+            </Box>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Box sx={{ pt: 1 }}>
+              {selectedTransferencia && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  Está a punto de cancelar la transferencia <strong>{selectedTransferencia.numero}</strong> 
+                  {' '}de <strong>{selectedTransferencia.depositoOrigenNombre}</strong> hacia{' '}
+                  <strong>{selectedTransferencia.depositoDestinoNombre}</strong>.
+                  Esta acción no se puede deshacer.
+                </Alert>
+              )}
+              <TextField
+                label="Motivo de cancelación"
+                multiline
+                rows={3}
+                fullWidth
+                required
+                value={motivoCancelacion}
+                onChange={(e) => setMotivoCancelacion(e.target.value)}
+                placeholder="Ingrese el motivo por el cual se cancela esta transferencia..."
+                helperText="Este campo es obligatorio"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => {
+                setCancelDialogOpen(false);
+                setMotivoCancelacion('');
+              }}
+            >
+              Volver
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleCancelarTransferencia}
+              disabled={loading || !motivoCancelacion.trim()}
+              startIcon={loading ? <CircularProgress size={20} /> : <CancelIcon />}
+            >
+              Confirmar Cancelación
             </Button>
           </DialogActions>
         </Dialog>

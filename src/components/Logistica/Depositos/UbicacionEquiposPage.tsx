@@ -308,7 +308,9 @@ const UbicacionEquiposPage: React.FC = () => {
 
       // Filtrar localmente por el término de búsqueda
       const searchLower = equipoSearchTerm.toLowerCase();
+      // Crear Sets tanto para IDs como para números de heladera para filtrar equipos ya ubicados
       const ubicacionesIds = new Set(ubicaciones.map((u) => u.equipoFabricadoId));
+      const ubicacionesNumeros = new Set(ubicaciones.map((u) => u.equipoNumeroHeladera?.toLowerCase()));
 
       const filteredResults = equiposPorTipo.filter((equipo: any) => {
         // Solo equipos disponibles
@@ -316,8 +318,13 @@ const UbicacionEquiposPage: React.FC = () => {
           return false;
         }
 
-        // Excluir equipos que ya tienen ubicación
+        // Excluir equipos que ya tienen ubicación (verificar por ID y por número de heladera)
         if (equipo.id != null && ubicacionesIds.has(equipo.id)) {
+          return false;
+        }
+        
+        // También verificar por número de heladera (para casos donde el ID es null)
+        if (equipo.numeroHeladera && ubicacionesNumeros.has(equipo.numeroHeladera.toLowerCase())) {
           return false;
         }
 
@@ -407,11 +414,16 @@ const UbicacionEquiposPage: React.FC = () => {
   const handleOpenHistorial = async (ubicacion: UbicacionEquipo) => {
     setSelectedUbicacion(ubicacion);
     try {
-      const movimientosData = await movimientoEquipoApi.getByEquipo(ubicacion.equipoFabricadoId);
+      const response = await movimientoEquipoApi.getByEquipo(ubicacion.equipoFabricadoId);
+      // Asegurar que movimientosData sea siempre un array
+      const movimientosData = Array.isArray(response) 
+        ? response 
+        : (response as any)?.content || [];
       setMovimientos(movimientosData);
       setHistorialDialogOpen(true);
     } catch (err) {
       console.error('Error loading movements:', err);
+      setMovimientos([]); // Resetear a array vacío en caso de error
       setError('Error al cargar el historial');
     }
   };

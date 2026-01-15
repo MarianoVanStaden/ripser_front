@@ -1579,8 +1579,6 @@ export interface Viaje {
   updatedAt?: string;
 }
 
-export type EstadoViaje = 'PLANIFICADO' | 'EN_CURSO' | 'COMPLETADO' | 'CANCELADO';
-
 export interface ViajeCreateDTO {
   fechaViaje: string;
   destino: string;
@@ -2717,7 +2715,7 @@ export interface TransferenciaCreateDTO {
   items: Array<{
     productoId?: number;
     equipoFabricadoId?: number;
-    cantidad?: number; // Solo para productos
+    cantidadSolicitada?: number; // Solo para productos
   }>;
   observaciones?: string;
   usuarioSolicitudId: number;
@@ -3101,15 +3099,37 @@ export interface ReconciliacionStockDTO {
 
 // DTO detallado de reconciliación (incluye ajustes)
 export interface ReconciliacionDetalladaDTO extends ReconciliacionStockDTO {
-  ajustes: AjusteStockDepositoDTO[];
+  ajustes?: AjusteStockDepositoDTO[];           // Campo legacy
+  ajustesDepositos?: AjusteStockDepositoDTO[];  // Campo real del backend
+  detalles?: ReconciliacionDetalleProductoDTO[];
   diferencias?: DiferenciaProductoDTO[];
+  usuarioInicioId?: number;
+  usuarioInicioNombre?: string;
+  usuarioAprobacionId?: number;
+  usuarioAprobacionNombre?: string;
+}
+
+// DTO de detalle de producto en reconciliación
+export interface ReconciliacionDetalleProductoDTO {
+  id: number;
+  reconciliacionId: number;
+  productoId: number;
+  productoNombre: string;
+  productoCodigo?: string;
+  stockInicialSistema?: number;
+  stockFinalSistema?: number;
+  cantidadContada?: number;
+  diferencia?: number;
+  ajustado?: boolean;
 }
 
 // DTO para registrar ajuste de stock por depósito
 export interface AjusteStockDepositoRequestDTO {
-  depositoId: number;
   productoId: number;
-  cantidadContada: number;
+  depositoId: number;
+  cantidadFisicaContada: number;
+  tipoAjuste?: 'AJUSTE_POSITIVO' | 'AJUSTE_NEGATIVO' | 'SIN_CAMBIO';
+  motivo?: string;
   observaciones?: string;
 }
 
@@ -3117,18 +3137,22 @@ export interface AjusteStockDepositoRequestDTO {
 export interface AjusteStockDepositoDTO {
   id: number;
   reconciliacionId: number;
-  depositoId: number;
-  depositoNombre: string;
+  reconciliacionCodigo?: string;
   productoId: number;
   productoNombre: string;
-  productoSku?: string;
-  stockSistema: number;
-  cantidadContada: number;
+  productoCodigo?: string;
+  depositoId: number;
+  depositoNombre: string;
+  cantidadAnterior: number;
+  cantidadFisicaContada: number;
   diferencia: number;
+  tipoAjuste?: string;
+  usuarioAjusteId?: number;
+  usuarioAjusteNombre?: string;
+  fechaAjuste: string;
   observaciones?: string;
-  fechaRegistro: string;
-  usuarioId?: number;
-  usuarioNombre?: string;
+  motivo?: string;
+  empresaId?: number;
 }
 
 // Tipo de diferencia
@@ -3171,18 +3195,21 @@ export interface ReconciliacionDiferenciasDTO {
   diferencias: DiferenciaProductoDTO[];
 }
 
-// DTO para aprobar reconciliación
+// DTO para aprobar reconciliación (request)
 export interface AprobacionReconciliacionDTO {
-  aplicarAjustes: boolean;
-  observacionesAprobacion?: string;
+  aplicarAjustes?: boolean;  // Por defecto true
+  observaciones?: string;
 }
 
 // DTO de respuesta de aprobación
 export interface ReconciliacionAprobacionDTO {
   reconciliacionId: number;
-  estado: EstadoReconciliacionType;
+  codigoReconciliacion?: string;
   fechaAprobacion: string;
-  ajustesAplicados: number;
+  usuarioAprobacionNombre?: string;
+  totalAjustesAplicados?: number;
+  productosAjustados?: number;
+  ajustesAplicadosAlStock: boolean;  // Indica si se aplicaron ajustes al stock
   mensaje: string;
 }
 
