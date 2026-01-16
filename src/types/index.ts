@@ -2105,7 +2105,7 @@ export interface OpcionFinanciamiento {
   ordenPresentacion?: number;
 }
 
-export interface Presupuesto {
+export interface PresupuestoSimple {
   id: number;
   numeroDocumento: string;
   clienteNombre: string;
@@ -3232,4 +3232,112 @@ export interface DistribucionDepositoDTO {
 export interface DistribucionDetalleDTO {
   productoId: number;
   cantidad: number;
+}
+
+// ==================== FLUJO DE CAJA MEJORADO ====================
+
+// Movimiento de flujo de caja con información mejorada
+export interface FlujoCajaMovimientoEnhanced {
+  id: number;
+  fecha: string;
+  tipo: 'INGRESO' | 'EGRESO';
+  origen: 'CLIENTE' | 'PROVEEDOR';
+  entidad: string;
+  concepto: string;
+  importe: number;
+  numeroComprobante?: string;
+
+  // Campos mejorados
+  metodoPago?: MetodoPago;
+  chequeId?: number;
+  chequeNumero?: string;
+  chequeEstado?: EstadoChequeType;
+  documentoComercialId?: number;
+}
+
+// Agregación de datos por método de pago
+export interface PaymentMethodAggregation {
+  metodoPago: MetodoPago;
+  totalIngresos: number;
+  totalEgresos: number;
+  flujoNeto: number;
+  cantidadMovimientos: number;
+  porcentajeDelTotal: number;
+}
+
+// Agregación de estados de cheques
+export interface ChequeStatusAggregation {
+  estado: EstadoChequeType;
+  cantidad: number;
+  montoTotal: number;
+}
+
+// Datos de evolución temporal
+export interface TimeSeriesData {
+  fecha: string; // YYYY-MM-DD
+  ingresos: number;
+  egresos: number;
+  flujoNeto: number;
+}
+
+// Respuesta mejorada del endpoint de flujo de caja
+export interface FlujoCajaResponseEnhanced {
+  // Datos básicos
+  totalIngresos: number;
+  totalEgresos: number;
+  flujoNeto: number;
+  totalMovimientos: number;
+  movimientos: FlujoCajaMovimientoEnhanced[];
+
+  // Agregaciones calculadas en backend (opcionales si el backend no las soporta aún)
+  desglosePorMetodoPago?: PaymentMethodAggregation[];
+  desgloseCheques?: ChequeStatusAggregation[];
+  evolucionTemporal?: TimeSeriesData[];
+}
+
+// KPIs calculados del flujo de caja
+export interface FlujoCajaKPIs {
+  // Básicos
+  totalIngresos: number;
+  totalEgresos: number;
+  flujoNeto: number;
+  totalMovimientos: number;
+
+  // Avanzados
+  ticketPromedio: number;
+  medianaTransaccion: number;
+  mayorIngreso: {
+    importe: number;
+    entidad: string;
+    metodoPago?: MetodoPago;
+    fecha: string;
+  };
+  mayorEgreso: {
+    importe: number;
+    entidad: string;
+    metodoPago?: MetodoPago;
+    fecha: string;
+  };
+
+  // Análisis por método de pago
+  metodoPagoMasUsado: {
+    metodo: MetodoPago;
+    cantidad: number;
+    porcentaje: number;
+  };
+
+  // Análisis temporal
+  tendenciaSemanal?: number; // % change from previous week
+  promedioIngresoDiario: number;
+  promedioEgresoDiario: number;
+
+  // Cheques (opcional)
+  chequesEnCartera?: {
+    cantidad: number;
+    monto: number;
+  };
+  chequesVencidos?: {
+    cantidad: number;
+    monto: number;
+  };
 }

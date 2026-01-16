@@ -56,7 +56,12 @@
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_back\\\\src\\\\main\\\\java\\\\com\\\\ripser_back\\\\services && type StockDepositoService.java\")",
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_back\\\\src\\\\main\\\\java\\\\com\\\\ripser_back\\\\services\\\\impl && dir /B | findstr /I Stock\")",
       "Bash(ls:*)",
-      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && cat {}')"
+      "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && cat {}')",
+      "Bash(if [ -d \"c:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_front\\\\src\\\\config\" ])",
+      "Bash(then echo \"exists\")",
+      "Bash(else echo \"not exists\")",
+      "Bash(fi)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

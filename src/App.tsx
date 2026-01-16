@@ -39,7 +39,7 @@ import { BancosPage } from './components/Bancos';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
-import FlujoCajaPage from './components/Admin/FlujoCajaPage';
+import FlujoCajaPage from './components/Admin/FlujoCaja/FlujoCajaPage';
 import { EmpresasPage } from './components/Admin/EmpresasPage';
 import { SucursalesPage } from './components/Admin/SucursalesPage';
 import { TenantSelector } from './components/Tenant';
