@@ -41,7 +41,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { proveedorApi } from '../../api/services/proveedorApi';
 import { cuentaCorrienteProveedorApi } from '../../api/services/cuentaCorrienteProveedorApi';
-import type { CuentaCorrienteProveedor, TipoMovimiento } from '../../types';
+import type { CuentaCorrienteProveedor, TipoMovimiento, MetodoPago } from '../../types';
 import { generateCuentaCorrienteProveedorPDF } from '../../utils/pdfExportUtils';
 
 dayjs.locale('es');
@@ -68,7 +68,8 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
     tipo: 'DEBITO' as TipoMovimiento,
     importe: 0,
     concepto: '',
-    numeroComprobante: ''
+    numeroComprobante: '',
+    metodoPago: 'EFECTIVO' as MetodoPago,
   });
 
   // Pagination states
@@ -149,6 +150,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
         importe: newMovimiento.importe,
         concepto: newMovimiento.concepto,
         numeroComprobante: newMovimiento.numeroComprobante || undefined,
+        metodoPago: newMovimiento.metodoPago,
       };
 
       await cuentaCorrienteProveedorApi.create(payload);
@@ -157,7 +159,8 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
         tipo: 'DEBITO',
         importe: 0,
         concepto: '',
-        numeroComprobante: ''
+        numeroComprobante: '',
+        metodoPago: 'EFECTIVO',
       });
       setOpenMovimientoDialog(false);
 
@@ -528,6 +531,24 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
                 onChange={(e) => setNewMovimiento({ ...newMovimiento, numeroComprobante: e.target.value })}
                 margin="normal"
               />
+
+              <TextField
+                fullWidth
+                select
+                label="Método de Pago"
+                value={newMovimiento.metodoPago}
+                onChange={(e) => setNewMovimiento({ ...newMovimiento, metodoPago: e.target.value as MetodoPago })}
+                margin="normal"
+                required
+              >
+                <MenuItem value="EFECTIVO">💵 Efectivo</MenuItem>
+                <MenuItem value="TRANSFERENCIA_BANCARIA">🏦 Transferencia Bancaria</MenuItem>
+                <MenuItem value="CHEQUE">📝 Cheque</MenuItem>
+                <MenuItem value="TARJETA_CREDITO">💳 Tarjeta de Crédito</MenuItem>
+                <MenuItem value="TARJETA_DEBITO">💳 Tarjeta de Débito</MenuItem>
+                <MenuItem value="MERCADO_PAGO">📱 Mercado Pago</MenuItem>
+                <MenuItem value="FINANCIACION_PROPIA">📋 Financiación Propia</MenuItem>
+              </TextField>
             </Box>
           </DialogContent>
           <DialogActions>

@@ -1,10 +1,8 @@
 import api from '../config';
 import type {
-  FlujoCajaMovimientoEnhanced,
   FlujoCajaResponseEnhanced,
-  PaymentMethodAggregation,
-  ChequeStatusAggregation,
-  TimeSeriesData,
+  SaldoPorMetodoPagoDTO,
+  ResumenChequesDTO,
 } from '../../types';
 
 // Mantener interfaces legacy para compatibilidad
@@ -29,7 +27,7 @@ export interface FlujoCajaResponse {
 
 export const adminFlujoCajaApi = {
   /**
-   * Fetches cash flow data with optional date filters.
+   * Fetches basic cash flow data (legacy endpoint).
    * @param fechaDesde Start date in YYYY-MM-DD format (optional)
    * @param fechaHasta End date in YYYY-MM-DD format (optional)
    * @returns Promise<FlujoCajaResponse> - Basic response for backward compatibility
@@ -47,11 +45,10 @@ export const adminFlujoCajaApi = {
   },
 
   /**
-   * Fetches enhanced cash flow data with payment method details and aggregations.
-   * This endpoint expects backend support for metodoPago field and aggregations.
-   * @param fechaDesde Start date in YYYY-MM-DD format (optional)
-   * @param fechaHasta End date in YYYY-MM-DD format (optional)
-   * @returns Promise<FlujoCajaResponseEnhanced> - Enhanced response with payment methods
+   * Fetches enhanced cash flow data with payment method breakdown, cheque summary, and daily evolution.
+   * @param fechaDesde Start date in YYYY-MM-DD format (optional, default: 3 months ago)
+   * @param fechaHasta End date in YYYY-MM-DD format (optional, default: today)
+   * @returns Promise<FlujoCajaResponseEnhanced> - Complete response with saldos, cheques, and evolution
    */
   getFlujoCajaEnhanced: async (
     fechaDesde?: string,
@@ -65,6 +62,24 @@ export const adminFlujoCajaApi = {
     const url = `/api/admin/flujo-caja/enhanced${queryString ? `?${queryString}` : ''}`;
 
     const response = await api.get(url);
+    return response.data;
+  },
+
+  /**
+   * Fetches current balances grouped by payment method.
+   * @returns Promise<SaldoPorMetodoPagoDTO[]> - Array of balances per payment method
+   */
+  getSaldosPorMetodoPago: async (): Promise<SaldoPorMetodoPagoDTO[]> => {
+    const response = await api.get('/api/admin/flujo-caja/saldos');
+    return response.data;
+  },
+
+  /**
+   * Fetches cheque summary by status.
+   * @returns Promise<ResumenChequesDTO> - Summary of cheques by status
+   */
+  getResumenCheques: async (): Promise<ResumenChequesDTO> => {
+    const response = await api.get('/api/admin/flujo-caja/cheques/resumen');
     return response.data;
   },
 };

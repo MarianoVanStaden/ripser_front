@@ -163,15 +163,23 @@ const PaymentMethodCard: React.FC<PaymentMethodCardProps> = ({ data, totalGenera
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Flujo Neto */}
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" fontWeight="bold">
-            Flujo Neto:
+        {/* Saldo / Flujo Neto - Destacado */}
+        <Box
+          sx={{
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: data.flujoNeto >= 0 ? 'success.lighter' : 'error.lighter',
+            border: `1px solid ${data.flujoNeto >= 0 ? 'success.light' : 'error.light'}`,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" textAlign="center" mb={0.5}>
+            Saldo Disponible
           </Typography>
           <Typography
-            variant="h6"
+            variant="h5"
             fontWeight="bold"
             color={data.flujoNeto >= 0 ? 'success.main' : 'error.main'}
+            textAlign="center"
           >
             {data.flujoNeto >= 0 ? '+' : ''}
             {formatCurrency(data.flujoNeto)}

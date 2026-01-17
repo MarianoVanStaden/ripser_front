@@ -34,7 +34,7 @@ interface FlujoCajaMovimientosTableProps {
 
 const FlujoCajaMovimientosTable: React.FC<FlujoCajaMovimientosTableProps> = ({
   movimientos,
-  loading = false,
+  loading: _loading = false,
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);

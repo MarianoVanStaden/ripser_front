@@ -84,6 +84,8 @@ export interface CreateMovimientoPayload {
   numeroComprobante?: string;
   documentoComercialId?: number;
   opcionFinanciamientoId?: number;
+  metodoPago?: MetodoPago;
+  chequeId?: number;
 }
 
 
@@ -147,6 +149,8 @@ export interface CuentaCorriente {
   documentoComercial?: DocumentoComercial;
   opcionFinanciamientoId?: number;
   opcionFinanciamiento?: OpcionFinanciamientoDTO;
+  metodoPago?: MetodoPago;
+  chequeId?: number;
 }
 
 // Client related enums
@@ -1758,6 +1762,8 @@ export interface CuentaCorrienteProveedor {
   numeroComprobante?: string;
   saldo: number;
   compraId?: number;
+  metodoPago?: MetodoPago;
+  chequeId?: number;
 }
 
 export interface CreateMovimientoProveedorPayload {
@@ -1768,6 +1774,8 @@ export interface CreateMovimientoProveedorPayload {
   concepto: string;
   numeroComprobante?: string;
   compraId?: number;
+  metodoPago?: MetodoPago;
+  chequeId?: number;
 }
 
 export interface ProductoTerminado {
@@ -3248,14 +3256,25 @@ export interface FlujoCajaMovimientoEnhanced {
   numeroComprobante?: string;
 
   // Campos mejorados
-  metodoPago?: MetodoPago;
-  chequeId?: number;
-  chequeNumero?: string;
-  chequeEstado?: EstadoChequeType;
+  metodoPago?: MetodoPago | null;
+  chequeId?: number | null;
+  chequeNumero?: string | null;
+  chequeEstado?: EstadoChequeType | null;
+  chequeFechaCobro?: string | null;
   documentoComercialId?: number;
 }
 
-// Agregación de datos por método de pago
+// Saldo por método de pago (del backend)
+export interface SaldoPorMetodoPagoDTO {
+  metodoPago: MetodoPago;
+  ingresos: number;
+  egresos: number;
+  saldo: number;
+  porcentaje: number;
+  cantidadMovimientos: number;
+}
+
+// Agregación de datos por método de pago (para compatibilidad frontend)
 export interface PaymentMethodAggregation {
   metodoPago: MetodoPago;
   totalIngresos: number;
@@ -3265,14 +3284,42 @@ export interface PaymentMethodAggregation {
   porcentajeDelTotal: number;
 }
 
-// Agregación de estados de cheques
+// Resumen por estado de cheque
+export interface ChequeEstadoResumenDTO {
+  cantidad: number;
+  monto: number;
+}
+
+// Resumen completo de cheques del backend
+export interface ResumenChequesDTO {
+  enCartera: ChequeEstadoResumenDTO;
+  depositados: ChequeEstadoResumenDTO;
+  cobrados: ChequeEstadoResumenDTO;
+  rechazados: ChequeEstadoResumenDTO;
+  porVencer7Dias: ChequeEstadoResumenDTO;
+  emitidos: ChequeEstadoResumenDTO;
+  anulados: ChequeEstadoResumenDTO;
+  totalEnCartera: number;
+  totalPorCobrar: number;
+  chequesVencidos: number;
+}
+
+// Agregación de estados de cheques (para compatibilidad frontend)
 export interface ChequeStatusAggregation {
   estado: EstadoChequeType;
   cantidad: number;
   montoTotal: number;
 }
 
-// Datos de evolución temporal
+// Evolución diaria del backend
+export interface EvolucionDiariaDTO {
+  fecha: string;
+  ingresos: number;
+  egresos: number;
+  saldo: number;
+}
+
+// Datos de evolución temporal (para compatibilidad frontend)
 export interface TimeSeriesData {
   fecha: string; // YYYY-MM-DD
   ingresos: number;
@@ -3280,16 +3327,22 @@ export interface TimeSeriesData {
   flujoNeto: number;
 }
 
-// Respuesta mejorada del endpoint de flujo de caja
+// Respuesta mejorada del endpoint de flujo de caja (del backend)
 export interface FlujoCajaResponseEnhanced {
   // Datos básicos
   totalIngresos: number;
   totalEgresos: number;
   flujoNeto: number;
   totalMovimientos: number;
+  fechaCorte?: string;
   movimientos: FlujoCajaMovimientoEnhanced[];
 
-  // Agregaciones calculadas en backend (opcionales si el backend no las soporta aún)
+  // Datos del backend mejorado
+  saldosPorMetodoPago?: SaldoPorMetodoPagoDTO[];
+  resumenCheques?: ResumenChequesDTO;
+  evolucionDiaria?: EvolucionDiariaDTO[];
+
+  // Campos legacy para compatibilidad
   desglosePorMetodoPago?: PaymentMethodAggregation[];
   desgloseCheques?: ChequeStatusAggregation[];
   evolucionTemporal?: TimeSeriesData[];
@@ -3331,12 +3384,16 @@ export interface FlujoCajaKPIs {
   promedioIngresoDiario: number;
   promedioEgresoDiario: number;
 
-  // Cheques (opcional)
+  // Cheques (del resumen de backend)
   chequesEnCartera?: {
     cantidad: number;
     monto: number;
   };
   chequesVencidos?: {
+    cantidad: number;
+    monto: number;
+  };
+  chequesPorVencer7Dias?: {
     cantidad: number;
     monto: number;
   };

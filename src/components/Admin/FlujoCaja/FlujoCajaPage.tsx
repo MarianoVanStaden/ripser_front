@@ -19,13 +19,23 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { adminFlujoCajaApi } from '../../../api/services/adminFlujoCajaApi';
-import type { FlujoCajaMovimientoEnhanced, MetodoPago } from '../../../types';
+import type {
+  FlujoCajaResponseEnhanced,
+  MetodoPago,
+  PaymentMethodAggregation,
+  ChequeStatusAggregation,
+  TimeSeriesData,
+  ResumenChequesDTO,
+} from '../../../types';
 import {
   aggregateByPaymentMethod,
   aggregateChequeStatus,
   prepareTimeSeriesData,
-  calculateKPIs,
   getOptimalGranularity,
+  convertSaldosToAggregation,
+  convertResumenChequesToAggregation,
+  convertEvolucionToTimeSeries,
+  calculateKPIsFromBackend,
 } from '../../../utils/flujoCajaUtils';
 import { generateFlujoCajaPDF } from '../../../utils/pdfExportUtils';
 import FlujoCajaKPICards from './components/FlujoCajaKPICards';
@@ -37,15 +47,15 @@ dayjs.locale('es');
 
 const FlujoCajaPage: React.FC = () => {
   // State
-  const [movimientos, setMovimientos] = useState<FlujoCajaMovimientoEnhanced[]>([]);
+  const [rawData, setRawData] = useState<FlujoCajaResponseEnhanced | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(3, 'month'));
   const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
   const [activeFilter, setActiveFilter] = useState<string>('last3months');
-  const [selectedMetodoPago, setSelectedMetodoPago] = useState<MetodoPago | 'ALL'>('ALL');
+  const [_selectedMetodoPago, setSelectedMetodoPago] = useState<MetodoPago | 'ALL'>('ALL');
 
-  // Load data on mount and when filters change
+  // Load data on mount
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,31 +69,12 @@ const FlujoCajaPage: React.FC = () => {
       const fechaDesdeStr = fechaDesde ? fechaDesde.format('YYYY-MM-DD') : undefined;
       const fechaHastaStr = fechaHasta ? fechaHasta.format('YYYY-MM-DD') : undefined;
 
-      // Intentar usar endpoint mejorado, si falla usar el básico
-      try {
-        const response = await adminFlujoCajaApi.getFlujoCajaEnhanced(
-          fechaDesdeStr,
-          fechaHastaStr
-        );
-        setMovimientos(response.movimientos);
-      } catch (enhancedError) {
-        console.warn('Enhanced endpoint not available, falling back to basic endpoint');
-        // Fallback al endpoint básico
-        const basicResponse = await adminFlujoCajaApi.getFlujoCaja(
-          fechaDesdeStr,
-          fechaHastaStr
-        );
-        // Convertir a formato mejorado (sin metodoPago)
-        setMovimientos(
-          basicResponse.movimientos.map((mov) => ({
-            ...mov,
-            metodoPago: undefined,
-            chequeId: undefined,
-            chequeNumero: undefined,
-            chequeEstado: undefined,
-          }))
-        );
-      }
+      // Usar endpoint mejorado
+      const response = await adminFlujoCajaApi.getFlujoCajaEnhanced(
+        fechaDesdeStr,
+        fechaHastaStr
+      );
+      setRawData(response);
     } catch (err) {
       console.error('Error loading flujo de caja:', err);
       setError('Error al cargar el flujo de caja. Verifique la conexión con el servidor.');
@@ -93,46 +84,63 @@ const FlujoCajaPage: React.FC = () => {
   };
 
   // Computed data with useMemo for performance
-  const paymentMethodData = useMemo(() => {
-    return aggregateByPaymentMethod(movimientos);
-  }, [movimientos]);
+  const movimientos = useMemo(() => {
+    return rawData?.movimientos || [];
+  }, [rawData]);
 
-  const chequeStatusData = useMemo(() => {
+  // Usar datos del backend si están disponibles, sino calcular en frontend
+  const paymentMethodData: PaymentMethodAggregation[] = useMemo(() => {
+    if (rawData?.saldosPorMetodoPago && rawData.saldosPorMetodoPago.length > 0) {
+      return convertSaldosToAggregation(rawData.saldosPorMetodoPago);
+    }
+    return aggregateByPaymentMethod(movimientos);
+  }, [rawData, movimientos]);
+
+  const chequeStatusData: ChequeStatusAggregation[] = useMemo(() => {
+    if (rawData?.resumenCheques) {
+      return convertResumenChequesToAggregation(rawData.resumenCheques);
+    }
     return aggregateChequeStatus(movimientos);
-  }, [movimientos]);
+  }, [rawData, movimientos]);
+
+  const resumenCheques: ResumenChequesDTO | undefined = useMemo(() => {
+    return rawData?.resumenCheques;
+  }, [rawData]);
 
   const granularity = useMemo(() => {
     return getOptimalGranularity(fechaDesde, fechaHasta);
   }, [fechaDesde, fechaHasta]);
 
-  const timeSeriesData = useMemo(() => {
+  const timeSeriesData: TimeSeriesData[] = useMemo(() => {
+    if (rawData?.evolucionDiaria && rawData.evolucionDiaria.length > 0) {
+      return convertEvolucionToTimeSeries(rawData.evolucionDiaria);
+    }
     return prepareTimeSeriesData(movimientos, granularity);
-  }, [movimientos, granularity]);
+  }, [rawData, movimientos, granularity]);
 
-  const totalIngresos = useMemo(() => {
-    return movimientos
-      .filter((m) => m.tipo === 'INGRESO')
-      .reduce((sum, m) => sum + m.importe, 0);
-  }, [movimientos]);
-
-  const totalEgresos = useMemo(() => {
-    return movimientos
-      .filter((m) => m.tipo === 'EGRESO')
-      .reduce((sum, m) => sum + m.importe, 0);
-  }, [movimientos]);
-
-  const flujoNeto = totalIngresos - totalEgresos;
+  const totalIngresos = rawData?.totalIngresos || 0;
+  const totalEgresos = rawData?.totalEgresos || 0;
+  const flujoNeto = rawData?.flujoNeto || 0;
+  const totalMovimientos = rawData?.totalMovimientos || 0;
 
   const kpis = useMemo(() => {
-    const response = {
-      totalIngresos,
-      totalEgresos,
-      flujoNeto,
-      totalMovimientos: movimientos.length,
-      movimientos,
-    };
-    return calculateKPIs(response, paymentMethodData, chequeStatusData);
-  }, [totalIngresos, totalEgresos, flujoNeto, movimientos, paymentMethodData, chequeStatusData]);
+    if (!rawData) {
+      return {
+        totalIngresos: 0,
+        totalEgresos: 0,
+        flujoNeto: 0,
+        totalMovimientos: 0,
+        ticketPromedio: 0,
+        medianaTransaccion: 0,
+        mayorIngreso: { importe: 0, entidad: '', fecha: '' },
+        mayorEgreso: { importe: 0, entidad: '', fecha: '' },
+        metodoPagoMasUsado: { metodo: 'EFECTIVO' as MetodoPago, cantidad: 0, porcentaje: 0 },
+        promedioIngresoDiario: 0,
+        promedioEgresoDiario: 0,
+      };
+    }
+    return calculateKPIsFromBackend(rawData);
+  }, [rawData]);
 
   const totalGeneral = totalIngresos + totalEgresos;
 
@@ -149,7 +157,7 @@ const FlujoCajaPage: React.FC = () => {
           totalIngresos,
           totalEgresos,
           flujoNeto,
-          totalMovimientos: movimientos.length,
+          totalMovimientos,
         }
       );
     } catch (err) {
@@ -194,9 +202,12 @@ const FlujoCajaPage: React.FC = () => {
               Flujo de Caja - Dashboard Profesional
             </Typography>
             <Typography variant="body2" color="text.secondary" mt={0.5}>
-              {movimientos.length} movimientos
+              {totalMovimientos} movimientos
               {fechaDesde && fechaHasta && (
                 <> | {fechaDesde.format('DD/MM/YYYY')} - {fechaHasta.format('DD/MM/YYYY')}</>
+              )}
+              {rawData?.fechaCorte && (
+                <> | Corte: {dayjs(rawData.fechaCorte).format('DD/MM/YYYY HH:mm')}</>
               )}
             </Typography>
           </Box>
@@ -218,6 +229,17 @@ const FlujoCajaPage: React.FC = () => {
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+
+        {/* Alerta de cheques por vencer */}
+        {resumenCheques && resumenCheques.porVencer7Dias.cantidad > 0 && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <Typography variant="body2">
+              <strong>Atención:</strong> Tienes {resumenCheques.porVencer7Dias.cantidad} cheque(s)
+              por vencer en los próximos 7 días por un total de
+              <strong> ${resumenCheques.porVencer7Dias.monto.toLocaleString('es-AR')}</strong>
+            </Typography>
           </Alert>
         )}
 
@@ -319,7 +341,7 @@ const FlujoCajaPage: React.FC = () => {
               label="Desde"
               value={fechaDesde}
               onChange={(newValue) => {
-                setFechaDesde(newValue);
+                setFechaDesde(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}
               slotProps={{ textField: { size: 'small' } }}
@@ -328,7 +350,7 @@ const FlujoCajaPage: React.FC = () => {
               label="Hasta"
               value={fechaHasta}
               onChange={(newValue) => {
-                setFechaHasta(newValue);
+                setFechaHasta(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}
               slotProps={{ textField: { size: 'small' } }}
@@ -380,17 +402,17 @@ const FlujoCajaPage: React.FC = () => {
         <Alert severity="info" sx={{ mt: 4 }}>
           <Typography variant="body2">
             <strong>Nota:</strong> Este dashboard muestra el flujo de caja completo con desglose
-            por método de pago.
+            por método de pago y saldos en tiempo real.
           </Typography>
           <Box component="ul" sx={{ mt: 1, mb: 0 }}>
             <Typography component="li" variant="body2">
-              <strong>Ingresos:</strong> Pagos recibidos de clientes
+              <strong>Saldos:</strong> Muestran cuánto tienes disponible por cada método de pago (Ingresos - Egresos)
             </Typography>
             <Typography component="li" variant="body2">
-              <strong>Egresos:</strong> Pagos realizados a proveedores
+              <strong>Cheques:</strong> Incluye resumen de estados (En cartera, Depositados, Cobrados, etc.)
             </Typography>
             <Typography component="li" variant="body2">
-              <strong>Métodos de Pago:</strong> Efectivo, Transferencia, Cheques, Tarjetas, etc.
+              <strong>Métodos:</strong> Efectivo, Transferencia, Cheques, Tarjetas, Cuenta Corriente, etc.
             </Typography>
           </Box>
         </Alert>

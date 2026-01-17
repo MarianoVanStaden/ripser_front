@@ -29,7 +29,7 @@ import {
   TrendingDown as TrendingDownIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import type { CuentaCorriente, CreateCuentaCorrienteRequest, TipoMovimiento } from '../../types';
+import type { CuentaCorriente, CreateCuentaCorrienteRequest, TipoMovimiento, MetodoPago } from '../../types';
 import { cuentaCorrienteApiWithFallback as cuentaCorrienteApi } from '../../api/services/apiWithFallback';
 
 interface CuentaCorrienteTabProps {
@@ -44,13 +44,14 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
-  const [formData, setFormData] = useState<CreateCuentaCorrienteRequest>({
+  const [formData, setFormData] = useState<CreateCuentaCorrienteRequest & { metodoPago: MetodoPago }>({
     clienteId,
     fecha: dayjs().format('YYYY-MM-DD'),
     tipo: 'DEBITO',
     importe: 0,
     concepto: '',
     numeroComprobante: '',
+    metodoPago: 'EFECTIVO',
   });
 
   useEffect(() => {
@@ -88,7 +89,7 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
     setError(null);
   };
 
-  const handleInputChange = (field: keyof CreateCuentaCorrienteRequest) => (
+  const handleInputChange = (field: keyof (CreateCuentaCorrienteRequest & { metodoPago: MetodoPago })) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const value = field === 'importe' ? Number(event.target.value) : event.target.value;
@@ -344,6 +345,23 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
                 onChange={handleInputChange('numeroComprobante')}
                 placeholder="Ej: FAC-001, REC-123, etc."
               />
+
+              <TextField
+                select
+                label="Método de Pago"
+                value={formData.metodoPago}
+                onChange={handleInputChange('metodoPago')}
+                required
+                fullWidth
+              >
+                <MenuItem value="EFECTIVO">💵 Efectivo</MenuItem>
+                <MenuItem value="TRANSFERENCIA_BANCARIA">🏦 Transferencia Bancaria</MenuItem>
+                <MenuItem value="CHEQUE">📝 Cheque</MenuItem>
+                <MenuItem value="TARJETA_CREDITO">💳 Tarjeta de Crédito</MenuItem>
+                <MenuItem value="TARJETA_DEBITO">💳 Tarjeta de Débito</MenuItem>
+                <MenuItem value="MERCADO_PAGO">📱 Mercado Pago</MenuItem>
+                <MenuItem value="FINANCIACION_PROPIA">📋 Financiación Propia</MenuItem>
+              </TextField>
             </Box>
           </DialogContent>
           <DialogActions>

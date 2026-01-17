@@ -21,8 +21,12 @@ import {
 } from 'chart.js';
 import type { ChartData } from 'chart.js';
 import dayjs from 'dayjs';
+import weekOfYear from 'dayjs/plugin/weekOfYear';
 import type { TimeSeriesData } from '../../../../types';
 import { lineChartOptions, chartColors } from '../../../../config/chartConfig';
+
+// Extender dayjs con el plugin de semana
+dayjs.extend(weekOfYear);
 
 // Registrar componentes de Chart.js
 ChartJS.register(

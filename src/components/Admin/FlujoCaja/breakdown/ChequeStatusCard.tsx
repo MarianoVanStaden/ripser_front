@@ -32,7 +32,7 @@ const ChequeStatusCard: React.FC<ChequeStatusCardProps> = ({ data }) => {
   const navigate = useNavigate();
 
   const handleViewCheques = () => {
-    navigate('/admin/cheques');
+    navigate('/ventas/cheques');
   };
 
   const totalCheques = data.reduce((sum, item) => sum + item.cantidad, 0);

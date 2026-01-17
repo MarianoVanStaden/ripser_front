@@ -8,6 +8,9 @@ import type {
   TimeSeriesData,
   MetodoPago,
   EstadoChequeType,
+  SaldoPorMetodoPagoDTO,
+  ResumenChequesDTO,
+  EvolucionDiariaDTO,
 } from '../types';
 import {
   MoneyOutlined as CashIcon,
@@ -283,7 +286,7 @@ export const calculateKPIs = (
   const mayorIngreso = {
     importe: mayorIngresoMov.importe,
     entidad: mayorIngresoMov.entidad,
-    metodoPago: mayorIngresoMov.metodoPago,
+    metodoPago: mayorIngresoMov.metodoPago ?? undefined,
     fecha: mayorIngresoMov.fecha,
   };
 
@@ -297,7 +300,7 @@ export const calculateKPIs = (
   const mayorEgreso = {
     importe: mayorEgresoMov.importe,
     entidad: mayorEgresoMov.entidad,
-    metodoPago: mayorEgresoMov.metodoPago,
+    metodoPago: mayorEgresoMov.metodoPago ?? undefined,
     fecha: mayorEgresoMov.fecha,
   };
 
@@ -419,4 +422,199 @@ export const formatCurrency = (amount: number): string => {
  */
 export const formatPercentage = (percentage: number): string => {
   return `${percentage.toFixed(1)}%`;
+};
+
+// ==================== FUNCIONES DE CONVERSIÓN BACKEND → FRONTEND ====================
+
+/**
+ * Convierte saldosPorMetodoPago del backend a PaymentMethodAggregation del frontend
+ */
+export const convertSaldosToAggregation = (
+  saldos: SaldoPorMetodoPagoDTO[]
+): PaymentMethodAggregation[] => {
+  return saldos.map((saldo) => ({
+    metodoPago: saldo.metodoPago,
+    totalIngresos: saldo.ingresos,
+    totalEgresos: saldo.egresos,
+    flujoNeto: saldo.saldo,
+    cantidadMovimientos: saldo.cantidadMovimientos,
+    porcentajeDelTotal: saldo.porcentaje,
+  }));
+};
+
+/**
+ * Convierte resumenCheques del backend a ChequeStatusAggregation[] del frontend
+ */
+export const convertResumenChequesToAggregation = (
+  resumen: ResumenChequesDTO
+): ChequeStatusAggregation[] => {
+  const result: ChequeStatusAggregation[] = [];
+
+  if (resumen.enCartera.cantidad > 0) {
+    result.push({
+      estado: 'EN_CARTERA',
+      cantidad: resumen.enCartera.cantidad,
+      montoTotal: resumen.enCartera.monto,
+    });
+  }
+
+  if (resumen.depositados.cantidad > 0) {
+    result.push({
+      estado: 'DEPOSITADO',
+      cantidad: resumen.depositados.cantidad,
+      montoTotal: resumen.depositados.monto,
+    });
+  }
+
+  if (resumen.cobrados.cantidad > 0) {
+    result.push({
+      estado: 'COBRADO',
+      cantidad: resumen.cobrados.cantidad,
+      montoTotal: resumen.cobrados.monto,
+    });
+  }
+
+  if (resumen.rechazados.cantidad > 0) {
+    result.push({
+      estado: 'RECHAZADO',
+      cantidad: resumen.rechazados.cantidad,
+      montoTotal: resumen.rechazados.monto,
+    });
+  }
+
+  if (resumen.anulados.cantidad > 0) {
+    result.push({
+      estado: 'ANULADO',
+      cantidad: resumen.anulados.cantidad,
+      montoTotal: resumen.anulados.monto,
+    });
+  }
+
+  return result;
+};
+
+/**
+ * Convierte evolucionDiaria del backend a TimeSeriesData[] del frontend
+ */
+export const convertEvolucionToTimeSeries = (
+  evolucion: EvolucionDiariaDTO[]
+): TimeSeriesData[] => {
+  return evolucion.map((item) => ({
+    fecha: item.fecha,
+    ingresos: item.ingresos,
+    egresos: item.egresos,
+    flujoNeto: item.saldo,
+  }));
+};
+
+/**
+ * Calcula KPIs mejorados usando datos del backend
+ */
+export const calculateKPIsFromBackend = (
+  response: FlujoCajaResponseEnhanced
+): FlujoCajaKPIs => {
+  const movimientos = response.movimientos;
+  const saldos = response.saldosPorMetodoPago || [];
+  const resumenCheques = response.resumenCheques;
+
+  // KPIs básicos
+  const totalIngresos = response.totalIngresos;
+  const totalEgresos = response.totalEgresos;
+  const flujoNeto = response.flujoNeto;
+  const totalMovimientos = response.totalMovimientos;
+
+  // Ticket promedio
+  const ticketPromedio = totalMovimientos > 0
+    ? (totalIngresos + totalEgresos) / totalMovimientos
+    : 0;
+
+  // Mediana
+  const importes = movimientos.map((m) => m.importe).sort((a, b) => a - b);
+  const medianaTransaccion = importes.length > 0
+    ? importes[Math.floor(importes.length / 2)]
+    : 0;
+
+  // Mayor ingreso
+  const ingresos = movimientos.filter((m) => m.tipo === 'INGRESO');
+  const mayorIngresoMov = ingresos.length > 0
+    ? ingresos.reduce((max, mov) => (mov.importe > max.importe ? mov : max), ingresos[0])
+    : { importe: 0, entidad: '', metodoPago: undefined, fecha: '' };
+
+  const mayorIngreso = {
+    importe: mayorIngresoMov.importe,
+    entidad: mayorIngresoMov.entidad || '',
+    metodoPago: mayorIngresoMov.metodoPago || undefined,
+    fecha: mayorIngresoMov.fecha || '',
+  };
+
+  // Mayor egreso
+  const egresos = movimientos.filter((m) => m.tipo === 'EGRESO');
+  const mayorEgresoMov = egresos.length > 0
+    ? egresos.reduce((max, mov) => (mov.importe > max.importe ? mov : max), egresos[0])
+    : { importe: 0, entidad: '', metodoPago: undefined, fecha: '' };
+
+  const mayorEgreso = {
+    importe: mayorEgresoMov.importe,
+    entidad: mayorEgresoMov.entidad || '',
+    metodoPago: mayorEgresoMov.metodoPago || undefined,
+    fecha: mayorEgresoMov.fecha || '',
+  };
+
+  // Método de pago más usado (desde saldos del backend)
+  let metodoPagoMasUsado = {
+    metodo: 'EFECTIVO' as MetodoPago,
+    cantidad: 0,
+    porcentaje: 0,
+  };
+
+  if (saldos.length > 0) {
+    const maxMethod = saldos.reduce(
+      (max, s) => (s.cantidadMovimientos > max.cantidadMovimientos ? s : max),
+      saldos[0]
+    );
+
+    metodoPagoMasUsado = {
+      metodo: maxMethod.metodoPago,
+      cantidad: maxMethod.cantidadMovimientos,
+      porcentaje: maxMethod.porcentaje,
+    };
+  }
+
+  // Promedios diarios
+  const fechas = movimientos.map((m) => dayjs(m.fecha).format('YYYY-MM-DD'));
+  const fechasUnicas = Array.from(new Set(fechas));
+  const diasConMovimientos = fechasUnicas.length || 1;
+
+  const promedioIngresoDiario = totalIngresos / diasConMovimientos;
+  const promedioEgresoDiario = totalEgresos / diasConMovimientos;
+
+  // Cheques (desde resumen del backend)
+  const chequesEnCartera = resumenCheques
+    ? { cantidad: resumenCheques.enCartera.cantidad, monto: resumenCheques.enCartera.monto }
+    : undefined;
+
+  const chequesVencidos = resumenCheques && resumenCheques.chequesVencidos > 0
+    ? { cantidad: 0, monto: resumenCheques.chequesVencidos }
+    : undefined;
+
+  const chequesPorVencer7Dias = resumenCheques
+    ? { cantidad: resumenCheques.porVencer7Dias.cantidad, monto: resumenCheques.porVencer7Dias.monto }
+    : undefined;
+
+  return {
+    totalIngresos,
+    totalEgresos,
+    flujoNeto,
+    totalMovimientos,
+    ticketPromedio,
+    medianaTransaccion,
+    mayorIngreso,
+    mayorEgreso,
+    metodoPagoMasUsado,
+    promedioIngresoDiario,
+    promedioEgresoDiario,
+    chequesEnCartera,
+    chequesVencidos,
+    chequesPorVencer7Dias,
+  };
 };

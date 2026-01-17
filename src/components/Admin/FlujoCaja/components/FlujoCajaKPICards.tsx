@@ -6,7 +6,6 @@ import {
   AttachMoney as AttachMoneyIcon,
   Receipt as ReceiptIcon,
   ShowChart as ShowChartIcon,
-  Payment as PaymentIcon,
   MonetizationOn as MonetizationOnIcon,
 } from '@mui/icons-material';
 import type { FlujoCajaKPIs } from '../../../../types';
