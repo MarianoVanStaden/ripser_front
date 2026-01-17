@@ -24,6 +24,8 @@ import {
   Collapse,
   Stack,
   Divider,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   LocalShipping as ShippingIcon,
@@ -47,6 +49,10 @@ interface FacturaConEquipos {
 }
 
 const EntregasEquiposPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [facturasConEquipos, setFacturasConEquipos] = useState<FacturaConEquipos[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -234,17 +240,32 @@ const EntregasEquiposPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight="600" display="flex" alignItems="center" gap={1}>
-          <ShippingIcon fontSize="large" />
-          Entregas de Equipos Pendientes
+    <Box p={{ xs: 1, sm: 2, md: 3 }}>
+      <Box 
+        display="flex" 
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between" 
+        alignItems={{ xs: 'stretch', sm: 'center' }} 
+        gap={2}
+        mb={3}
+      >
+        <Typography 
+          variant={isMobile ? 'h5' : 'h4'} 
+          fontWeight="600" 
+          display="flex" 
+          alignItems="center" 
+          gap={1}
+        >
+          <ShippingIcon fontSize={isMobile ? 'medium' : 'large'} />
+          {isMobile ? 'Entregas Pendientes' : 'Entregas de Equipos Pendientes'}
         </Typography>
         <Button
           variant="outlined"
           startIcon={<ShippingIcon />}
           onClick={loadFacturasConEquiposPorEntregar}
           disabled={loading}
+          fullWidth={isMobile}
+          size={isMobile ? 'small' : 'medium'}
         >
           Actualizar
         </Button>
@@ -270,39 +291,58 @@ const EntregasEquiposPage: React.FC = () => {
         <Stack spacing={2}>
           {facturasConEquipos.map(({ factura, equiposPorEntregar, expanded }) => (
             <Card key={factura.id} variant="outlined">
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+                <Box 
+                  display="flex" 
+                  flexDirection={{ xs: 'column', sm: 'row' }}
+                  justifyContent="space-between" 
+                  alignItems={{ xs: 'stretch', sm: 'center' }}
+                  gap={{ xs: 2, sm: 1 }}
+                >
                   <Box flex={1}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                      <Typography variant="h6">
+                    <Stack 
+                      direction={{ xs: 'column', sm: 'row' }} 
+                      spacing={{ xs: 1, sm: 2 }} 
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                      flexWrap="wrap"
+                    >
+                      <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight="bold">
                         {factura.numeroDocumento || `FAC-${factura.id}`}
                       </Typography>
-                      <Chip
-                        icon={<PersonIcon />}
-                        label={factura.clienteNombre}
-                        size="small"
-                        variant="outlined"
-                      />
-                      <Chip
-                        icon={<EquipoIcon />}
-                        label={`${equiposPorEntregar.length} equipo(s) por entregar`}
-                        color="warning"
-                        size="small"
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        Fecha: {dayjs(factura.fechaEmision).format('DD/MM/YYYY')}
+                      <Box display="flex" flexWrap="wrap" gap={1}>
+                        <Chip
+                          icon={<PersonIcon />}
+                          label={isMobile ? (factura.clienteNombre?.split(' ')[0] || 'Cliente') : factura.clienteNombre}
+                          size="small"
+                          variant="outlined"
+                        />
+                        <Chip
+                          icon={<EquipoIcon />}
+                          label={`${equiposPorEntregar.length} equipo(s)`}
+                          color="warning"
+                          size="small"
+                        />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        {dayjs(factura.fechaEmision).format('DD/MM/YYYY')}
                       </Typography>
                     </Stack>
                   </Box>
-                  <Stack direction="row" spacing={1}>
+                  <Stack 
+                    direction={{ xs: 'row', sm: 'row' }} 
+                    spacing={1}
+                    justifyContent={{ xs: 'space-between', sm: 'flex-end' }}
+                  >
                     <Button
                       variant="contained"
                       color="success"
                       size="small"
                       startIcon={<CheckIcon />}
                       onClick={() => handleOpenConfirmDialog(factura)}
+                      fullWidth={isMobile}
+                      sx={{ flex: isMobile ? 1 : 'none' }}
                     >
-                      Confirmar Entrega
+                      {isMobile ? 'Confirmar' : 'Confirmar Entrega'}
                     </Button>
                     <IconButton
                       size="small"
@@ -318,42 +358,73 @@ const EntregasEquiposPage: React.FC = () => {
                   <Typography variant="subtitle2" gutterBottom>
                     Equipos a entregar:
                   </Typography>
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>N° Equipo</TableCell>
-                          <TableCell>Tipo</TableCell>
-                          <TableCell>Modelo</TableCell>
-                          <TableCell>Color</TableCell>
-                          <TableCell>Medida</TableCell>
-                          <TableCell>Estado</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {equiposPorEntregar.map(equipo => (
-                          <TableRow key={equipo.id}>
-                            <TableCell>
-                              <Typography variant="body2" fontWeight="600">
-                                #{equipo.numeroHeladera || equipo.id}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>{equipo.tipo}</TableCell>
-                            <TableCell>{equipo.modelo}</TableCell>
-                            <TableCell>{equipo.color || '-'}</TableCell>
-                            <TableCell>{equipo.medida || '-'}</TableCell>
-                            <TableCell>
+                  {isMobile ? (
+                    /* Vista de cards para móvil */
+                    <Stack spacing={1}>
+                      {equiposPorEntregar.map(equipo => (
+                        <Card key={equipo.id} variant="outlined" sx={{ bgcolor: 'grey.50' }}>
+                          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                              <Box>
+                                <Typography variant="subtitle2" fontWeight="bold">
+                                  #{equipo.numeroHeladera || equipo.id}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {equipo.tipo} - {equipo.modelo}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {equipo.color || '-'} | {equipo.medida || '-'}
+                                </Typography>
+                              </Box>
                               <Chip
                                 label={equipo.estadoAsignacion}
                                 color={getEstadoColor(equipo.estadoAsignacion) as any}
                                 size="small"
                               />
-                            </TableCell>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Stack>
+                  ) : (
+                    /* Vista de tabla para desktop/tablet */
+                    <TableContainer sx={{ overflowX: 'auto' }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>N° Equipo</TableCell>
+                            <TableCell>Tipo</TableCell>
+                            <TableCell>Modelo</TableCell>
+                            {!isTablet && <TableCell>Color</TableCell>}
+                            {!isTablet && <TableCell>Medida</TableCell>}
+                            <TableCell>Estado</TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                          {equiposPorEntregar.map(equipo => (
+                            <TableRow key={equipo.id}>
+                              <TableCell>
+                                <Typography variant="body2" fontWeight="600">
+                                  #{equipo.numeroHeladera || equipo.id}
+                                </Typography>
+                              </TableCell>
+                              <TableCell>{equipo.tipo}</TableCell>
+                              <TableCell>{equipo.modelo}</TableCell>
+                              {!isTablet && <TableCell>{equipo.color || '-'}</TableCell>}
+                              {!isTablet && <TableCell>{equipo.medida || '-'}</TableCell>}
+                              <TableCell>
+                                <Chip
+                                  label={equipo.estadoAsignacion}
+                                  color={getEstadoColor(equipo.estadoAsignacion) as any}
+                                  size="small"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
                 </Collapse>
               </CardContent>
             </Card>
@@ -362,7 +433,13 @@ const EntregasEquiposPage: React.FC = () => {
       )}
 
       {/* Confirm Delivery Dialog */}
-      <Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={confirmDialog} 
+        onClose={() => setConfirmDialog(false)} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>Confirmar Entrega de Equipos</DialogTitle>
         <DialogContent>
           {selectedFactura && (
@@ -387,6 +464,7 @@ const EntregasEquiposPage: React.FC = () => {
                 onChange={(e) => setReceptorNombre(e.target.value)}
                 margin="normal"
                 required
+                size={isMobile ? 'small' : 'medium'}
               />
               <TextField
                 fullWidth
@@ -394,6 +472,7 @@ const EntregasEquiposPage: React.FC = () => {
                 value={receptorDni}
                 onChange={(e) => setReceptorDni(e.target.value)}
                 margin="normal"
+                size={isMobile ? 'small' : 'medium'}
               />
               <TextField
                 fullWidth
@@ -404,6 +483,7 @@ const EntregasEquiposPage: React.FC = () => {
                 multiline
                 rows={3}
                 placeholder="Notas sobre la entrega..."
+                size={isMobile ? 'small' : 'medium'}
               />
 
               <Alert severity="warning" sx={{ mt: 2 }}>

@@ -33,6 +33,8 @@ export const getPaymentMethodLabel = (metodo: MetodoPago): string => {
     TARJETA_CREDITO: 'Tarjeta Crédito',
     TARJETA_DEBITO: 'Tarjeta Débito',
     FINANCIACION_PROPIA: 'Financiación',
+    MERCADO_PAGO: 'Mercado Pago',
+    CUENTA_CORRIENTE: 'Cuenta Corriente',
     OTRO: 'Otro',
   };
   return labels[metodo] || metodo;
@@ -49,6 +51,8 @@ export const getPaymentMethodIcon = (metodo: MetodoPago) => {
     TARJETA_CREDITO: CreditCardIcon,
     TARJETA_DEBITO: DebitCardIcon,
     FINANCIACION_PROPIA: FinanciacionIcon,
+    MERCADO_PAGO: DebitCardIcon, // Icono de pago similar a tarjeta
+    CUENTA_CORRIENTE: BankIcon, // Icono de banco/cuenta
     OTRO: OtherIcon,
   };
   return icons[metodo] || OtherIcon;
@@ -65,6 +69,8 @@ export const getPaymentMethodColor = (metodo: MetodoPago): string => {
     TARJETA_CREDITO: '#9C27B0', // morado
     TARJETA_DEBITO: '#00BCD4', // cyan
     FINANCIACION_PROPIA: '#FFC107', // amarillo
+    MERCADO_PAGO: '#00B1EA', // celeste (color de Mercado Pago)
+    CUENTA_CORRIENTE: '#795548', // marrón
     OTRO: '#9E9E9E', // gris
   };
   return colors[metodo] || '#9E9E9E';

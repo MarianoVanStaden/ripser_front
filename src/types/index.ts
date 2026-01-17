@@ -1420,7 +1420,7 @@ export interface Venta {
   updatedAt?: string;
   detalleVentas: DetalleVenta[];
 }
-export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE'| 'FINANCIACION_PROPIA' | 'OTRO';
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE'| 'FINANCIACION_PROPIA' | 'CUENTA_CORRIENTE' | 'MERCADO_PAGO' | 'OTRO';
 
 // Enums para equipos fabricados
 export type ColorEquipo =
@@ -1762,8 +1762,6 @@ export interface CuentaCorrienteProveedor {
   numeroComprobante?: string;
   saldo: number;
   compraId?: number;
-  metodoPago?: MetodoPago;
-  chequeId?: number;
 }
 
 export interface CreateMovimientoProveedorPayload {
@@ -1774,8 +1772,6 @@ export interface CreateMovimientoProveedorPayload {
   concepto: string;
   numeroComprobante?: string;
   compraId?: number;
-  metodoPago?: MetodoPago;
-  chequeId?: number;
 }
 
 export interface ProductoTerminado {

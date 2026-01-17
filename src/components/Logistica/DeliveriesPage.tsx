@@ -30,6 +30,10 @@ import {
   Tab,
   Badge,
   TablePagination,
+  useTheme,
+  useMediaQuery,
+  Stack,
+  Divider,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -106,6 +110,10 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const DeliveriesPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
@@ -531,9 +539,21 @@ const DeliveriesPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 1, sm: 2, md: 3 }}>
+      <Box 
+        display="flex" 
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between" 
+        alignItems={{ xs: 'stretch', sm: 'center' }} 
+        gap={2}
+        mb={3}
+      >
+        <Typography 
+          variant={isMobile ? 'h5' : 'h4'} 
+          display="flex" 
+          alignItems="center" 
+          gap={1}
+        >
           <DeliveryIcon />
           Control de Entregas
         </Typography>
@@ -541,6 +561,7 @@ const DeliveriesPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
+          fullWidth={isMobile}
         >
           Nueva Entrega
         </Button>
@@ -553,17 +574,17 @@ const DeliveriesPage: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
                 <Badge badgeContent={pendingDeliveries.length} color="warning">
-                  <ScheduleIcon color="warning" />
+                  <ScheduleIcon color="warning" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 </Badge>
                 <Box>
-                  <Typography variant="h4">{pendingDeliveries.length}</Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant={isMobile ? 'h5' : 'h4'}>{pendingDeliveries.length}</Typography>
+                  <Typography variant="caption" color="text.secondary">
                     Pendientes
                   </Typography>
                 </Box>
@@ -572,14 +593,14 @@ const DeliveriesPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <CheckIcon color="success" />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
+                <CheckIcon color="success" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
-                  <Typography variant="h4">{deliveredCount}</Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant={isMobile ? 'h5' : 'h4'}>{deliveredCount}</Typography>
+                  <Typography variant="caption" color="text.secondary">
                     Entregados
                   </Typography>
                 </Box>
@@ -588,16 +609,16 @@ const DeliveriesPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
                 <Badge badgeContent={unassignedDeliveries.length} color="error">
-                  <CancelIcon color="error" />
+                  <CancelIcon color="error" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 </Badge>
                 <Box>
-                  <Typography variant="h4">{unassignedDeliveries.length}</Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant={isMobile ? 'h5' : 'h4'}>{unassignedDeliveries.length}</Typography>
+                  <Typography variant="caption" color="text.secondary">
                     Sin Asignar
                   </Typography>
                 </Box>
@@ -618,8 +639,14 @@ const DeliveriesPage: React.FC = () => {
       {/* Tab Panel 0: All Deliveries */}
       <TabPanel value={tabValue} index={0}>
         {/* Filters */}
-        <Box display="flex" gap={2} mb={3} alignItems="center">
-          <FormControl sx={{ minWidth: 150 }}>
+        <Box 
+          display="flex" 
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          gap={2} 
+          mb={3} 
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+        >
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size={isMobile ? 'small' : 'medium'}>
             <InputLabel>Estado</InputLabel>
             <Select
               value={statusFilter}
@@ -638,166 +665,271 @@ const DeliveriesPage: React.FC = () => {
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
             InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 200 }}
+            size={isMobile ? 'small' : 'medium'}
+            sx={{ minWidth: { xs: '100%', sm: 200 } }}
           />
         </Box>
 
-        {/* Deliveries Table */}
+        {/* Deliveries Table/Cards */}
         <Card>
-          <CardContent>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Cliente</TableCell>
-                    <TableCell>Orden</TableCell>
-                    <TableCell>Dirección</TableCell>
-                    <TableCell>Fecha Programada</TableCell>
-                    <TableCell>Viaje</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedDeliveries.map((delivery) => (
-                    <TableRow key={delivery.id}>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <ClientIcon sx={{ fontSize: 16 }} />
-                          {getClientName(delivery)}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <OrderIcon sx={{ fontSize: 16 }} />
-                          {getVentaNumero(delivery)}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <LocationIcon sx={{ fontSize: 16 }} />
-                          <Typography variant="body2" sx={{ maxWidth: 200 }} noWrap>
-                            {delivery.direccionEntrega}
+          <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+            {/* Mobile Card View */}
+            {isMobile ? (
+              <Stack spacing={2}>
+                {paginatedDeliveries.map((delivery) => (
+                  <Card key={delivery.id} variant="outlined">
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                        <Box flex={1}>
+                          <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                            <ClientIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {getClientName(delivery)}
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" color="primary.main" display="block">
+                            {getVentaNumero(delivery)}
                           </Typography>
                         </Box>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(delivery.fechaEntrega).toLocaleString()}
-                      </TableCell>
-                      <TableCell>{getTripNumber(delivery.viajeId)}</TableCell>
-                      <TableCell>{getStatusChip(delivery.estado)}</TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          onClick={() => handleViewDetails(delivery)}
-                          size="small"
-                          title="Ver detalles"
-                        >
-                          <ViewIcon />
+                        {getStatusChip(delivery.estado)}
+                      </Box>
+                      
+                      <Divider sx={{ my: 1 }} />
+                      
+                      <Box display="flex" alignItems="flex-start" gap={1} mb={1}>
+                        <LocationIcon sx={{ fontSize: 14, mt: 0.3 }} color="action" />
+                        <Typography variant="caption" color="text.secondary">
+                          {delivery.direccionEntrega}
+                        </Typography>
+                      </Box>
+                      
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                        <Typography variant="caption" color="text.secondary">
+                          📅 {new Date(delivery.fechaEntrega).toLocaleDateString()}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {getTripNumber(delivery.viajeId)}
+                        </Typography>
+                      </Box>
+                      
+                      <Divider sx={{ my: 1 }} />
+                      
+                      <Box display="flex" justifyContent="flex-end" gap={0.5} flexWrap="wrap">
+                        <IconButton onClick={() => handleViewDetails(delivery)} size="small">
+                          <ViewIcon fontSize="small" />
                         </IconButton>
-
                         {delivery.estado === 'PENDIENTE' && (
                           <>
-                            <IconButton
-                              onClick={() => openConfirmDialog(delivery.id)}
-                              size="small"
-                              title="Confirmar entrega"
-                              color="success"
-                            >
-                              <CheckIcon />
+                            <IconButton onClick={() => openConfirmDialog(delivery.id)} size="small" color="success">
+                              <CheckIcon fontSize="small" />
                             </IconButton>
-
-                            <IconButton
-                              onClick={() => openRejectDialog(delivery.id)}
-                              size="small"
-                              title="Marcar como no entregada"
-                              color="error"
-                            >
-                              <CancelIcon />
+                            <IconButton onClick={() => openRejectDialog(delivery.id)} size="small" color="error">
+                              <CancelIcon fontSize="small" />
                             </IconButton>
-
                             <IconButton onClick={() => handleEdit(delivery)} size="small">
-                              <EditIcon />
+                              <EditIcon fontSize="small" />
                             </IconButton>
-
                             <IconButton onClick={() => handleDelete(delivery.id)} size="small">
-                              <DeleteIcon />
+                              <DeleteIcon fontSize="small" />
                             </IconButton>
                           </>
                         )}
-
                         {delivery.estado !== 'PENDIENTE' && (
                           <IconButton onClick={() => handleEdit(delivery)} size="small">
-                            <EditIcon />
+                            <EditIcon fontSize="small" />
                           </IconButton>
                         )}
-                      </TableCell>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              /* Desktop/Tablet Table View */
+              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                <Table size={isTablet ? 'small' : 'medium'}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Cliente</TableCell>
+                      <TableCell>Orden</TableCell>
+                      {!isTablet && <TableCell>Dirección</TableCell>}
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Viaje</TableCell>
+                      <TableCell>Estado</TableCell>
+                      <TableCell align="center">Acciones</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                component="div"
-                count={filteredDeliveries.length}
-                page={page}
-                onPageChange={handleChangePage}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[5, 10, 25, 50, 100]}
-                labelRowsPerPage="Filas por página:"
-                labelDisplayedRows={({ from, to, count }) =>
-                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-                }
-              />
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedDeliveries.map((delivery) => (
+                      <TableRow key={delivery.id}>
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <ClientIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="body2" noWrap sx={{ maxWidth: { sm: 120, md: 200 } }}>
+                              {getClientName(delivery)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" noWrap>
+                            {getVentaNumero(delivery)}
+                          </Typography>
+                        </TableCell>
+                        {!isTablet && (
+                          <TableCell>
+                            <Typography variant="body2" sx={{ maxWidth: 200 }} noWrap>
+                              {delivery.direccionEntrega}
+                            </Typography>
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <Typography variant="body2" noWrap>
+                            {new Date(delivery.fechaEntrega).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>{getTripNumber(delivery.viajeId)}</TableCell>
+                        <TableCell>{getStatusChip(delivery.estado)}</TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" justifyContent="center" flexWrap="nowrap">
+                            <IconButton onClick={() => handleViewDetails(delivery)} size="small">
+                              <ViewIcon fontSize="small" />
+                            </IconButton>
+                            {delivery.estado === 'PENDIENTE' && (
+                              <>
+                                <IconButton onClick={() => openConfirmDialog(delivery.id)} size="small" color="success">
+                                  <CheckIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton onClick={() => openRejectDialog(delivery.id)} size="small" color="error">
+                                  <CancelIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton onClick={() => handleEdit(delivery)} size="small">
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton onClick={() => handleDelete(delivery.id)} size="small">
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </>
+                            )}
+                            {delivery.estado !== 'PENDIENTE' && (
+                              <IconButton onClick={() => handleEdit(delivery)} size="small">
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+            <TablePagination
+              component="div"
+              count={filteredDeliveries.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={isMobile ? [5, 10, 25] : [5, 10, 25, 50, 100]}
+              labelRowsPerPage={isMobile ? '' : 'Filas por página:'}
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+              sx={{
+                '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
+                '.MuiTablePagination-displayedRows': { fontSize: { xs: '0.75rem', sm: '0.875rem' } },
+              }}
+            />
           </CardContent>
         </Card>
       </TabPanel>
 
       {/* Tab Panel 1: Pending Deliveries */}
       <TabPanel value={tabValue} index={1}>
-        <Typography variant="h6" gutterBottom>
+        <Typography variant={isMobile ? 'subtitle1' : 'h6'} gutterBottom>
           Entregas Pendientes de Asignación
         </Typography>
         <Card>
-          <CardContent>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Cliente</TableCell>
-                    <TableCell>Orden</TableCell>
-                    <TableCell>Dirección</TableCell>
-                    <TableCell>Fecha Programada</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {pendingDeliveries.map((delivery) => (
-                    <TableRow key={delivery.id}>
-                      <TableCell>{getClientName(delivery)}</TableCell>
-                      <TableCell>{getVentaNumero(delivery)}</TableCell>
-                      <TableCell>{delivery.direccionEntrega}</TableCell>
-                      <TableCell>{new Date(delivery.fechaEntrega).toLocaleString()}</TableCell>
-                      <TableCell align="center">
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => handleEdit(delivery)}
-                        >
-                          Asignar a Viaje
-                        </Button>
-                      </TableCell>
+          <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+            {isMobile ? (
+              <Stack spacing={2}>
+                {pendingDeliveries.map((delivery) => (
+                  <Card key={delivery.id} variant="outlined">
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                        {getClientName(delivery)}
+                      </Typography>
+                      <Typography variant="caption" color="primary.main" display="block" mb={1}>
+                        {getVentaNumero(delivery)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                        📍 {delivery.direccionEntrega}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block" mb={2}>
+                        📅 {new Date(delivery.fechaEntrega).toLocaleDateString()}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        fullWidth
+                        onClick={() => handleEdit(delivery)}
+                      >
+                        Asignar a Viaje
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                <Table size={isTablet ? 'small' : 'medium'}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Cliente</TableCell>
+                      <TableCell>Orden</TableCell>
+                      {!isTablet && <TableCell>Dirección</TableCell>}
+                      <TableCell>Fecha</TableCell>
+                      <TableCell align="center">Acciones</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {pendingDeliveries.map((delivery) => (
+                      <TableRow key={delivery.id}>
+                        <TableCell>
+                          <Typography variant="body2" noWrap sx={{ maxWidth: { sm: 120, md: 200 } }}>
+                            {getClientName(delivery)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>{getVentaNumero(delivery)}</TableCell>
+                        {!isTablet && <TableCell>{delivery.direccionEntrega}</TableCell>}
+                        <TableCell>{new Date(delivery.fechaEntrega).toLocaleDateString()}</TableCell>
+                        <TableCell align="center">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => handleEdit(delivery)}
+                          >
+                            Asignar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </CardContent>
         </Card>
       </TabPanel>
 
       {/* Delivery Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog 
+        open={dialogOpen} 
+        onClose={() => setDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <DeliveryIcon />
@@ -806,14 +938,14 @@ const DeliveriesPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <Box display="flex" gap={2}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2}>
               <Autocomplete
                 options={facturas}
                 getOptionLabel={(factura) => `${factura.numeroDocumento || `FAC-${factura.id}`} - ${factura.clienteNombre || 'Sin cliente'}`}
                 value={facturas.find(f => f.id.toString() === formData.ventaId) || null}
                 onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
                 renderInput={(params) => (
-                  <TextField {...params} label="Factura (Opcional)" />
+                  <TextField {...params} label="Factura (Opcional)" size={isMobile ? 'small' : 'medium'} />
                 )}
                 sx={{ flex: 1 }}
               />
@@ -824,7 +956,7 @@ const DeliveriesPage: React.FC = () => {
                 value={trips.find(t => t.id.toString() === formData.viajeId) || null}
                 onChange={(_, value) => setFormData({ ...formData, viajeId: value?.id.toString() || '' })}
                 renderInput={(params) => (
-                  <TextField {...params} label="Viaje (Opcional)" />
+                  <TextField {...params} label="Viaje (Opcional)" size={isMobile ? 'small' : 'medium'} />
                 )}
                 sx={{ flex: 1 }}
               />
@@ -905,6 +1037,7 @@ const DeliveriesPage: React.FC = () => {
         onClose={() => setDetailsDialogOpen(false)} 
         maxWidth="md" 
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
@@ -1094,6 +1227,7 @@ const DeliveriesPage: React.FC = () => {
         onClose={() => setConfirmDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
@@ -1160,6 +1294,7 @@ const DeliveriesPage: React.FC = () => {
         onClose={() => setRejectDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>

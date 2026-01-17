@@ -30,6 +30,10 @@ import {
   ListItem,
   ListItemText,
   TablePagination,
+  useTheme,
+  useMediaQuery,
+  Stack,
+  Divider,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -55,6 +59,10 @@ import { documentoApi } from '../../api/services/documentoApi';
 import { clienteApi } from '../../api/services/clienteApi';
 
 const TripsPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
   const [drivers, setDrivers] = useState<Empleado[]>([]);
@@ -501,9 +509,21 @@ Opciones:
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 1, sm: 2, md: 3 }}>
+      <Box 
+        display="flex" 
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between" 
+        alignItems={{ xs: 'stretch', sm: 'center' }} 
+        gap={2}
+        mb={3}
+      >
+        <Typography 
+          variant={isMobile ? 'h5' : 'h4'} 
+          display="flex" 
+          alignItems="center" 
+          gap={1}
+        >
           <TruckIcon />
           Armado de Viajes
         </Typography>
@@ -511,6 +531,7 @@ Opciones:
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
+          fullWidth={isMobile}
         >
           Nuevo Viaje
         </Button>
@@ -523,17 +544,17 @@ Opciones:
       )}
 
       {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <ScheduleIcon color="info" />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
+                <ScheduleIcon color="info" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
-                  <Typography variant="h4">
+                  <Typography variant={isMobile ? 'h5' : 'h4'}>
                     {trips.filter(t => t.estado === 'PLANIFICADO').length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary">
                     Planificados
                   </Typography>
                 </Box>
@@ -542,16 +563,16 @@ Opciones:
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <RouteIcon color="warning" />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
+                <RouteIcon color="warning" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
-                  <Typography variant="h4">
+                  <Typography variant={isMobile ? 'h5' : 'h4'}>
                     {trips.filter(t => t.estado === 'EN_CURSO').length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary">
                     En Curso
                   </Typography>
                 </Box>
@@ -560,16 +581,16 @@ Opciones:
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <CheckIcon color="success" />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
+                <CheckIcon color="success" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
-                  <Typography variant="h4">
+                  <Typography variant={isMobile ? 'h5' : 'h4'}>
                     {trips.filter(t => t.estado === 'COMPLETADO').length}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="caption" color="text.secondary">
                     Completados
                   </Typography>
                 </Box>
@@ -578,14 +599,14 @@ Opciones:
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <TruckIcon color="primary" />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
+                <TruckIcon color="primary" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
-                  <Typography variant="h4">{vehicles.length}</Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant={isMobile ? 'h5' : 'h4'}>{vehicles.length}</Typography>
+                  <Typography variant="caption" color="text.secondary">
                     Vehículos
                   </Typography>
                 </Box>
@@ -596,8 +617,14 @@ Opciones:
       </Grid>
 
       {/* Filters */}
-      <Box display="flex" gap={2} mb={3} alignItems="center">
-        <FormControl sx={{ minWidth: 150 }}>
+      <Box 
+        display="flex" 
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        gap={2} 
+        mb={3} 
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+      >
+        <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size={isMobile ? 'small' : 'medium'}>
           <InputLabel>Estado</InputLabel>
           <Select
             value={statusFilter}
@@ -612,173 +639,278 @@ Opciones:
         </FormControl>
       </Box>
 
-      {/* Trips Table */}
+      {/* Trips Table/Cards */}
       <Card>
-        <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Clientes</TableCell>
-                  <TableCell>Facturas</TableCell>
-                  <TableCell>Conductor</TableCell>
-                  <TableCell>Vehículo</TableCell>
-                  <TableCell>Destino</TableCell>
-                  <TableCell>Fecha</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Entregas</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedTrips.map((trip) => {
-                  const tripDeliveries = getTripDeliveries(trip.id);
-                  const facturas = getFacturasByTrip(trip.id);
-                  const clientes = getClientesByTrip(trip.id);
+        <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+          {/* Mobile Card View */}
+          {isMobile ? (
+            <Stack spacing={2}>
+              {paginatedTrips.map((trip) => {
+                const tripDeliveries = getTripDeliveries(trip.id);
+                const facturas = getFacturasByTrip(trip.id);
+                const clientes = getClientesByTrip(trip.id);
 
-                  return (
-                    <TableRow key={trip.id}>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="bold">
-                          #{trip.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        {clientes.length > 0 ? (
-                          <Box>
-                            {clientes.map((clienteNombre, idx) => (
-                              <Box key={idx} mb={idx < clientes.length - 1 ? 0.5 : 0}>
-                                <Typography variant="body2">
-                                  👤 {clienteNombre}
-                                </Typography>
-                              </Box>
-                            ))}
-                            {clientes.length > 1 && (
-                              <Chip
-                                label={`${clientes.length} clientes`}
-                                size="small"
-                                color="default"
-                                sx={{ mt: 0.5 }}
-                              />
-                            )}
-                          </Box>
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">
-                            Sin clientes
+                return (
+                  <Card key={trip.id} variant="outlined">
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            Viaje #{trip.id}
                           </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {facturas.length > 0 ? (
-                          <Box>
-                            {facturas.map((factura, idx) => (
-                              <Box key={factura.id} mb={idx < facturas.length - 1 ? 0.5 : 0}>
-                                <Typography variant="body2" fontWeight="bold" color="primary.main">
-                                  📄 {factura.numeroDocumento}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  ${factura.total.toLocaleString()}
-                                </Typography>
-                              </Box>
-                            ))}
-                            {facturas.length > 1 && (
-                              <Chip
-                                label={`${facturas.length} facturas`}
-                                size="small"
-                                color="primary"
-                                sx={{ mt: 0.5 }}
-                              />
-                            )}
-                          </Box>
-                        ) : (
                           <Typography variant="caption" color="text.secondary">
-                            Sin facturas
+                            {new Date(trip.fechaViaje).toLocaleDateString()}
                           </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <DriverIcon sx={{ fontSize: 16 }} />
-                          {getDriverName(trip.conductorId)}
                         </Box>
-                      </TableCell>
-                      <TableCell>{getVehicleInfo(trip.vehiculoId)}</TableCell>
-                      <TableCell>{trip.destino}</TableCell>
-                      <TableCell>
-                        {new Date(trip.fechaViaje).toLocaleString()}
-                      </TableCell>
-                      <TableCell>{getStatusChip(trip.estado)}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {tripDeliveries.length} entregas
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          onClick={() => handleViewDetails(trip)}
-                          size="small"
-                          title="Ver detalles"
-                        >
-                          <MapIcon />
-                        </IconButton>
+                        {getStatusChip(trip.estado)}
+                      </Box>
+                      
+                      <Divider sx={{ my: 1 }} />
+                      
+                      <Stack spacing={1} mb={1}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <DriverIcon sx={{ fontSize: 16 }} color="action" />
+                          <Typography variant="body2" noWrap>
+                            {getDriverName(trip.conductorId)}
+                          </Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <TruckIcon sx={{ fontSize: 16 }} color="action" />
+                          <Typography variant="caption" noWrap>
+                            {getVehicleInfo(trip.vehiculoId)}
+                          </Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <LocationIcon sx={{ fontSize: 16 }} color="action" />
+                          <Typography variant="caption" noWrap>
+                            {trip.destino}
+                          </Typography>
+                        </Box>
+                      </Stack>
 
+                      {clientes.length > 0 && (
+                        <Box mb={1}>
+                          <Typography variant="caption" color="text.secondary">Clientes:</Typography>
+                          <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
+                            {clientes.slice(0, 2).map((cliente, idx) => (
+                              <Chip key={idx} label={cliente} size="small" variant="outlined" />
+                            ))}
+                            {clientes.length > 2 && (
+                              <Chip label={`+${clientes.length - 2}`} size="small" color="default" />
+                            )}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {facturas.length > 0 && (
+                        <Box mb={1}>
+                          <Typography variant="caption" color="text.secondary">Facturas:</Typography>
+                          <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
+                            {facturas.slice(0, 2).map((factura) => (
+                              <Chip 
+                                key={factura.id} 
+                                label={factura.numeroDocumento} 
+                                size="small" 
+                                color="primary" 
+                                variant="outlined" 
+                              />
+                            ))}
+                            {facturas.length > 2 && (
+                              <Chip label={`+${facturas.length - 2}`} size="small" color="primary" />
+                            )}
+                          </Box>
+                        </Box>
+                      )}
+
+                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                        📦 {tripDeliveries.length} entregas
+                      </Typography>
+                      
+                      <Divider sx={{ my: 1 }} />
+                      
+                      <Box display="flex" justifyContent="flex-end" gap={0.5} flexWrap="wrap">
+                        <IconButton onClick={() => handleViewDetails(trip)} size="small">
+                          <MapIcon fontSize="small" />
+                        </IconButton>
                         {trip.estado === 'PLANIFICADO' && (
-                          <IconButton
-                            onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')}
-                            size="small"
-                            title="Iniciar viaje"
-                            color="success"
-                          >
-                            <StartIcon />
+                          <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
+                            <StartIcon fontSize="small" />
                           </IconButton>
                         )}
-
                         {trip.estado === 'EN_CURSO' && (
-                          <IconButton
-                            onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')}
-                            size="small"
-                            title="Completar viaje"
-                            color="primary"
-                          >
-                            <StopIcon />
+                          <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
+                            <StopIcon fontSize="small" />
                           </IconButton>
                         )}
-
                         <IconButton onClick={() => handleEdit(trip)} size="small">
-                          <EditIcon />
+                          <EditIcon fontSize="small" />
                         </IconButton>
-
                         {trip.estado === 'PLANIFICADO' && (
                           <IconButton onClick={() => handleDelete(trip.id)} size="small">
-                            <DeleteIcon />
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <TablePagination
-              component="div"
-              count={filteredTrips.length}
-              page={page}
-              onPageChange={handleChangePage}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              rowsPerPageOptions={[5, 10, 25, 50, 100]}
-              labelRowsPerPage="Filas por página:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-              }
-            />
-          </TableContainer>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </Stack>
+          ) : (
+            /* Desktop/Tablet Table View */
+            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+              <Table size={isTablet ? 'small' : 'medium'}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Clientes</TableCell>
+                    {!isTablet && <TableCell>Facturas</TableCell>}
+                    <TableCell>Conductor</TableCell>
+                    {!isTablet && <TableCell>Vehículo</TableCell>}
+                    <TableCell>Destino</TableCell>
+                    <TableCell>Fecha</TableCell>
+                    <TableCell>Estado</TableCell>
+                    <TableCell>Entregas</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedTrips.map((trip) => {
+                    const tripDeliveries = getTripDeliveries(trip.id);
+                    const facturas = getFacturasByTrip(trip.id);
+                    const clientes = getClientesByTrip(trip.id);
+
+                    return (
+                      <TableRow key={trip.id}>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="bold">
+                            #{trip.id}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {clientes.length > 0 ? (
+                            <Box>
+                              <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                                👤 {clientes[0]}
+                              </Typography>
+                              {clientes.length > 1 && (
+                                <Chip
+                                  label={`+${clientes.length - 1}`}
+                                  size="small"
+                                  color="default"
+                                />
+                              )}
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">
+                              Sin clientes
+                            </Typography>
+                          )}
+                        </TableCell>
+                        {!isTablet && (
+                          <TableCell>
+                            {facturas.length > 0 ? (
+                              <Box>
+                                <Typography variant="body2" fontWeight="bold" color="primary.main" noWrap>
+                                  📄 {facturas[0]?.numeroDocumento}
+                                </Typography>
+                                {facturas.length > 1 && (
+                                  <Chip
+                                    label={`+${facturas.length - 1}`}
+                                    size="small"
+                                    color="primary"
+                                  />
+                                )}
+                              </Box>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">
+                                Sin facturas
+                              </Typography>
+                            )}
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <Typography variant="body2" noWrap sx={{ maxWidth: { sm: 100, md: 150 } }}>
+                            {getDriverName(trip.conductorId)}
+                          </Typography>
+                        </TableCell>
+                        {!isTablet && <TableCell>{getVehicleInfo(trip.vehiculoId)}</TableCell>}
+                        <TableCell>
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 100 }}>
+                            {trip.destino}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" noWrap>
+                            {new Date(trip.fechaViaje).toLocaleDateString()}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>{getStatusChip(trip.estado)}</TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {tripDeliveries.length}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" justifyContent="center" flexWrap="nowrap">
+                            <IconButton onClick={() => handleViewDetails(trip)} size="small">
+                              <MapIcon fontSize="small" />
+                            </IconButton>
+                            {trip.estado === 'PLANIFICADO' && (
+                              <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
+                                <StartIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                            {trip.estado === 'EN_CURSO' && (
+                              <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
+                                <StopIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                            <IconButton onClick={() => handleEdit(trip)} size="small">
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            {trip.estado === 'PLANIFICADO' && (
+                              <IconButton onClick={() => handleDelete(trip.id)} size="small">
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+          <TablePagination
+            component="div"
+            count={filteredTrips.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={isMobile ? [5, 10, 25] : [5, 10, 25, 50, 100]}
+            labelRowsPerPage={isMobile ? '' : 'Filas por página:'}
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+            sx={{
+              '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
+              '.MuiTablePagination-displayedRows': { fontSize: { xs: '0.75rem', sm: '0.875rem' } },
+            }}
+          />
         </CardContent>
       </Card>
 
       {/* Trip Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog 
+        open={dialogOpen} 
+        onClose={() => setDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <TruckIcon />
@@ -811,10 +943,11 @@ Opciones:
               onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
               fullWidth
               required
-              helperText="Ingresa el destino principal del viaje. Puedes agregar entregas con diferentes facturas abajo."
+              size={isMobile ? 'small' : 'medium'}
+              helperText="Ingresa el destino principal del viaje."
             />
 
-            <Box display="flex" gap={2}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2}>
               <Autocomplete
                 options={drivers}
                 getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
@@ -825,7 +958,8 @@ Opciones:
                     {...params} 
                     label="Conductor" 
                     required 
-                    helperText={drivers.length === 0 ? '⚠️ No hay empleados cargados' : `${drivers.length} empleados disponibles`}
+                    size={isMobile ? 'small' : 'medium'}
+                    helperText={drivers.length === 0 ? '⚠️ No hay empleados cargados' : `${drivers.length} disponibles`}
                   />
                 )}
                 noOptionsText="No hay conductores disponibles"
@@ -843,7 +977,8 @@ Opciones:
                       {...params}
                       label="Vehículo"
                       required
-                      helperText={vehicles.length === 0 ? '⚠️ No hay vehículos cargados' : `${vehicles.length} vehículos disponibles`}
+                      size={isMobile ? 'small' : 'medium'}
+                      helperText={vehicles.length === 0 ? '⚠️ No hay vehículos' : `${vehicles.length} disponibles`}
                     />
                   )}
                   noOptionsText="No hay vehículos disponibles"
@@ -859,7 +994,7 @@ Opciones:
               </Box>
             </Box>
 
-            <Box display="flex" gap={2}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2}>
               <TextField
                 label="Fecha del Viaje"
                 type="datetime-local"
@@ -867,10 +1002,11 @@ Opciones:
                 onChange={(e) => setFormData({ ...formData, fechaViaje: e.target.value })}
                 fullWidth
                 required
+                size={isMobile ? 'small' : 'medium'}
                 InputLabelProps={{ shrink: true }}
               />
 
-              <FormControl fullWidth>
+              <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
                 <InputLabel>Estado</InputLabel>
                 <Select
                   value={formData.estado}
@@ -890,7 +1026,8 @@ Opciones:
               onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
               fullWidth
               multiline
-              rows={3}
+              rows={isMobile ? 2 : 3}
+              size={isMobile ? 'small' : 'medium'}
             />
 
             {/* Deliveries Section */}
@@ -1102,11 +1239,14 @@ Opciones:
         onClose={() => setDetailsDialogOpen(false)}
         maxWidth="lg"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <MapIcon />
-            Detalles del Viaje #{selectedTrip?.id}
+            <Typography variant={isMobile ? 'subtitle1' : 'h6'}>
+              Detalles del Viaje #{selectedTrip?.id}
+            </Typography>
           </Box>
         </DialogTitle>
         <DialogContent>
