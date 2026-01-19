@@ -15,20 +15,22 @@ import { TenantRequiredRoute } from '../Tenant';
 
 
 
+const drawerWidth = 240;
+
 const Layout: React.FC = () => {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Open by default on desktop
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  const handleMobileToggle = () => {
-    setMobileOpen(prev => !prev);
+  const handleSidebarToggle = () => {
+    setSidebarOpen(prev => !prev);
   };
 
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
       <Sidebar
-        mobileOpen={mobileOpen}
-        onMobileToggle={handleMobileToggle}
+        open={sidebarOpen}
+        onToggle={handleSidebarToggle}
       />
       <Box
         component="main"
@@ -36,8 +38,9 @@ const Layout: React.FC = () => {
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
           pt: { xs: 2, sm: 2.5, md: 3 },
-          width: { xs: '100%', md: `calc(100% - 240px)` },
-          ml: { md: '24px' },
+          width: { xs: '100%', md: sidebarOpen ? `calc(100% - ${drawerWidth}px)` : '100%' },
+          ml: { md: sidebarOpen ? `${drawerWidth}px` : 0 },
+          transition: 'margin-left 225ms cubic-bezier(0.4, 0, 0.6, 1), width 225ms cubic-bezier(0.4, 0, 0.6, 1)',
           minHeight: '100vh',
           boxSizing: 'border-box',
         }}

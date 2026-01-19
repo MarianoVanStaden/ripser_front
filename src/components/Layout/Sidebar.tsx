@@ -204,11 +204,11 @@ const navigation: NavigationSection[] = [
 ];
 
 interface SidebarProps {
-  mobileOpen?: boolean;
-  onMobileToggle?: () => void;
+  open?: boolean;
+  onToggle?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
@@ -252,8 +252,9 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileToggle })
 
   const handleNavigation = (path: string) => {
     navigate(path);
-    if (isMobile && onMobileToggle) {
-      onMobileToggle();
+    // Close sidebar after navigation on mobile, keep open on desktop
+    if (isMobile && onToggle) {
+      onToggle();
     }
   };
 
@@ -263,14 +264,12 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileToggle })
         <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
           Ripser
         </Typography>
-        {isMobile && (
-          <IconButton
-            onClick={onMobileToggle}
-            sx={{ color: '#fff' }}
-          >
-            <CloseIcon />
-          </IconButton>
-        )}
+        <IconButton
+          onClick={onToggle}
+          sx={{ color: '#fff' }}
+        >
+          <CloseIcon />
+        </IconButton>
       </Toolbar>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
 
@@ -439,76 +438,56 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileToggle })
 
   return (
     <>
-      {/* Mobile AppBar with hamburger menu */}
-      {isMobile && (
-        <AppBar
-          position="fixed"
-          sx={{
-            bgcolor: '#212A3E',
-            boxShadow: 1,
-          }}
-        >
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              aria-label="abrir menu"
-              edge="start"
-              onClick={onMobileToggle}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-              Ripser
-            </Typography>
-          </Toolbar>
-        </AppBar>
-      )}
+      {/* AppBar with hamburger menu - visible on all devices */}
+      <AppBar
+        position="fixed"
+        sx={{
+          bgcolor: '#212A3E',
+          boxShadow: 1,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="abrir menu"
+            edge="start"
+            onClick={onToggle}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            Ripser
+          </Typography>
+        </Toolbar>
+      </AppBar>
 
-      {/* Mobile Drawer - temporary, slides in from left */}
-      {isMobile ? (
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={onMobileToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile
-          }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-              background: '#212A3E',
-              color: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-            },
-          }}
-        >
-          {drawerContent}
-        </Drawer>
-      ) : (
-        /* Desktop Drawer - permanent */
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', md: 'block' },
+      {/* Collapsible Drawer - same behavior on all devices */}
+      <Drawer
+        variant={isMobile ? "temporary" : "persistent"}
+        open={open}
+        onClose={onToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile
+        }}
+        sx={{
+          width: open ? drawerWidth : 0,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
             width: drawerWidth,
-            flexShrink: 0,
-            [`& .MuiDrawer-paper`]: {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-              background: '#212A3E',
-              color: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-            },
-          }}
-        >
-          {drawerContent}
-        </Drawer>
-      )}
+            boxSizing: 'border-box',
+            background: '#212A3E',
+            color: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            top: { xs: 0, md: '64px' }, // Below AppBar on desktop
+            height: { xs: '100%', md: 'calc(100% - 64px)' },
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
 
       {/* Logout Confirmation Dialog */}
       <Dialog
