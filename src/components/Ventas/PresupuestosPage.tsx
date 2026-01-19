@@ -1094,7 +1094,10 @@ const PresupuestosPage: React.FC = () => {
                 fullWidth
                 options={[
                   ...clientes.map(c => ({ type: 'cliente' as const, id: c.id, nombre: c.nombre, apellido: c.apellido || '' })),
-                  ...leads.map(l => ({ type: 'lead' as const, id: l.id, nombre: l.nombre, apellido: l.apellido || '' }))
+                  // Filtrar leads que ya fueron convertidos a cliente (deben usar sus datos de cliente)
+                  ...leads
+                    .filter(l => l.estadoLead !== 'CONVERTIDO')
+                    .map(l => ({ type: 'lead' as const, id: l.id, nombre: l.nombre, apellido: l.apellido || '' }))
                 ]}
                 getOptionKey={(option) => `${option.type}-${option.id}`}
                 getOptionLabel={(option) => {
