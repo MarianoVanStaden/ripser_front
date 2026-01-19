@@ -3,12 +3,10 @@ import {
   Box,
   CssBaseline,
   Toolbar,
-  useTheme,
-  useMediaQuery,
   Fab,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import ScrollToTopButton from './ScrollToTopButton';
 import CommandPalette from './CommandPalette'; // Make sure this component exists
@@ -18,36 +16,33 @@ import { TenantRequiredRoute } from '../Tenant';
 
 
 const Layout: React.FC = () => {
-  const theme = useTheme();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    if (isMobile) {
-      setMobileOpen(false);
-    }
+  const handleMobileToggle = () => {
+    setMobileOpen(prev => !prev);
   };
 
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <Sidebar 
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        onNavigate={handleNavigation}
+      <Sidebar
+        mobileOpen={mobileOpen}
+        onMobileToggle={handleMobileToggle}
       />
       <Box
         component="main"
-        sx={{ flexGrow: 1, p: 3 }}
+        sx={{
+          flexGrow: 1,
+          p: { xs: 1.5, sm: 2, md: 3 },
+          pt: { xs: 2, sm: 2.5, md: 3 },
+          width: { xs: '100%', md: `calc(100% - 240px)` },
+          ml: { md: '24px' },
+          minHeight: '100vh',
+          boxSizing: 'border-box',
+        }}
       >
+        {/* Spacer for AppBar on mobile or Toolbar on desktop */}
         <Toolbar />
         <TenantRequiredRoute>
           <Outlet />

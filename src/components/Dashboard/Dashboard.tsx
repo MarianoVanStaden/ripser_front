@@ -515,9 +515,8 @@ const Dashboard: React.FC = () => {
       <Box
         sx={{
           width: '100%',
-          px: { xs: 2, sm: 3, md: 4 },
-          py: { xs: 2, sm: 3, md: 4 },
-          maxWidth: '100%',
+          maxWidth: 1600,
+          mx: 'auto',
         }}
       >
         {specificDashboard}
@@ -530,20 +529,19 @@ const Dashboard: React.FC = () => {
     <Box
       sx={{
         width: '100%',
-        px: { xs: 2, sm: 3, md: 4 },
-        py: { xs: 2, sm: 3, md: 4 },
-        maxWidth: '100%',
+        maxWidth: 1600,
+        mx: 'auto',
       }}
     >
       {/* Header responsive */}
       <Box
         sx={{
           display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          alignItems: { xs: 'flex-start', md: 'center' },
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
           justifyContent: 'space-between',
-          rowGap: 2,
-          mb: { xs: 3, sm: 4 },
+          gap: 2,
+          mb: { xs: 2, sm: 3 },
         }}
       >
         {/* Welcome Section */}
@@ -774,22 +772,22 @@ const Dashboard: React.FC = () => {
 
             {/* Tab 0: Overview */}
             {tabValue === 0 && (
-              <Box sx={{ p: 3 }}>
-                <Grid container spacing={3}>
+              <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+                <Grid container spacing={{ xs: 2, sm: 3 }}>
                   {/* Recent Sales */}
                   <Grid item xs={12} lg={7}>
-                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                       <ShippingIcon color="primary" />
                       Ventas Recientes
                     </Typography>
-                    <TableContainer>
-                      <Table size="small">
+                    <TableContainer sx={{ overflowX: 'auto' }}>
+                      <Table size="small" sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
                         <TableHead>
                           <TableRow>
                             <TableCell><strong>Nº Documento</strong></TableCell>
-                            <TableCell><strong>Cliente</strong></TableCell>
+                            <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}><strong>Cliente</strong></TableCell>
                             <TableCell align="right"><strong>Total</strong></TableCell>
-                            <TableCell><strong>Fecha</strong></TableCell>
+                            <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Fecha</strong></TableCell>
                             <TableCell align="center"><strong>Estado</strong></TableCell>
                           </TableRow>
                         </TableHead>
@@ -806,17 +804,17 @@ const Dashboard: React.FC = () => {
                             recentSales.map((sale) => (
                               <TableRow key={sale.id} hover>
                                 <TableCell>
-                                  <Typography variant="body2" fontWeight="500">
+                                  <Typography variant="body2" fontWeight="500" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                                     {sale.numeroDocumento}
                                   </Typography>
                                 </TableCell>
-                                <TableCell>{sale.clienteNombre}</TableCell>
+                                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{sale.clienteNombre}</TableCell>
                                 <TableCell align="right">
                                   <Typography variant="body2" fontWeight="600" color="success.main">
                                     ${sale.total.toLocaleString()}
                                   </Typography>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                                   <Typography variant="caption">
                                     {new Date(sale.fecha).toLocaleDateString()}
                                   </Typography>

@@ -19,7 +19,10 @@ import {
   DialogActions,
   Button,
   Chip,
-  Avatar
+  Avatar,
+  useTheme,
+  useMediaQuery,
+  AppBar,
 } from '@mui/material';
 import './Sidebar.css';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -38,7 +41,8 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import SyncIcon from '@mui/icons-material/Sync';
 import LogoutIcon from '@mui/icons-material/Logout';
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
@@ -131,8 +135,11 @@ const navigation: NavigationSection[] = [
     items: [
             // DISTRIBUCIÓN - Logística de salida
       { text: 'Armado de Viajes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes' },
+      { text: 'Armado de Viajes 2', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes-v2' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
+      { text: 'Entregas 2', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-v2' },
       { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
+      { text: 'Entregas Equipos 2', icon: <LocalShippingIcon />, path: '/logistica/distribucion/equipos-v2' },
     ],
   },
   {
@@ -196,7 +203,14 @@ const navigation: NavigationSection[] = [
   },
 ];
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileToggle?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileToggle }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const navigate = useNavigate();
   const { tienePermiso } = usePermisos();
@@ -236,191 +250,265 @@ const Sidebar: React.FC = () => {
     setOpenLogoutDialog(false);
   };
 
-  return (
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (isMobile && onMobileToggle) {
+      onMobileToggle();
+    }
+  };
+
+  const drawerContent = (
     <>
-      <Drawer
-        variant="permanent"
+      <Toolbar sx={{ justifyContent: 'space-between' }}>
+        <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
+          Ripser
+        </Typography>
+        {isMobile && (
+          <IconButton
+            onClick={onMobileToggle}
+            sx={{ color: '#fff' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        )}
+      </Toolbar>
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+
+      {/* User Profile Section */}
+      <Box sx={{ p: 2, bgcolor: 'rgba(0,184,169,0.05)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Avatar
+            sx={{
+              width: 40,
+              height: 40,
+              bgcolor: '#00B8A9',
+              fontSize: '1rem',
+            }}
+          >
+            {user?.username?.charAt(0).toUpperCase() || 'U'}
+          </Avatar>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {user?.username || 'Usuario'}
+            </Typography>
+            {esSuperAdmin && (
+              <Chip
+                icon={<AdminPanelSettingsIcon sx={{ fontSize: '0.875rem' }} />}
+                label="Super Admin"
+                size="small"
+                sx={{
+                  mt: 0.5,
+                  height: 20,
+                  fontSize: '0.65rem',
+                  bgcolor: '#FF6B6B',
+                  color: '#fff',
+                  fontWeight: 700,
+                  '& .MuiChip-icon': {
+                    color: '#fff',
+                    fontSize: '0.875rem',
+                  },
+                }}
+              />
+            )}
+          </Box>
+        </Box>
+      </Box>
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+
+      {/* Selector de Sucursal */}
+      {canSelectSucursal && sucursales.length > 0 && (
+        <>
+          <Box sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
+            <SucursalSelector
+              sucursales={sucursales}
+              sucursalActual={sucursalFiltro}
+              sucursalDefecto={usuarioEmpresa?.sucursalDefectoId ?? null}
+              onChange={setSucursalFiltro}
+              onChangeBackend={cambiarSucursal}
+            />
+          </Box>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+        </>
+      )}
+
+      {/* Scrollable menu section */}
+      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <List>
+          {seccionesFiltradas.map((section, idx) => (
+            <React.Fragment key={section.title}>
+              {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
+              <ListSubheader
+                sx={{
+                  bgcolor: 'inherit',
+                  color: '#00B8A9',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  pl: 2,
+                  py: 1,
+                  position: 'relative'
+                }}
+              >
+                {section.title}
+              </ListSubheader>
+              {section.items.map(item => (
+                <ListItem
+                  key={item.text}
+                  disablePadding
+                  sx={{
+                    background: location.pathname === item.path ? 'rgba(0,184,169,0.08)' : 'inherit',
+                    borderRadius: 1,
+                    mb: 0.5,
+                  }}
+                >
+                  <ListItemButton
+                    onClick={() => handleNavigation(item.path)}
+                    selected={location.pathname === item.path}
+                    sx={{
+                      color: location.pathname === item.path ? '#00B8A9' : '#fff',
+                      '&:hover': { background: 'rgba(0,184,169,0.15)' },
+                      borderRadius: 1,
+                      minHeight: 48, // Touch-friendly height for mobile
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
+                    <ListItemText primary={item.text} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </React.Fragment>
+          ))}
+        </List>
+      </Box>
+
+      {/* Fixed bottom section with logout button */}
+      <Box
         sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { 
-            width: drawerWidth, 
-            boxSizing: 'border-box', 
-            background: '#212A3E', 
-            color: '#fff',
-            display: 'flex',
-            flexDirection: 'column',
+          position: 'relative',
+          height: 56,
+          overflow: 'hidden',
+          '&:hover .logout-button': {
+            transform: 'translateY(0)',
+            opacity: 1,
           },
         }}
       >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
-            Ripser
-          </Typography>
-        </Toolbar>
-        <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+        <Tooltip title="Cerrar sesión" placement="top" arrow>
+          <IconButton
+            className="logout-button"
+            onClick={handleLogoutClick}
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '100%',
+              borderRadius: 0,
+              bgcolor: 'rgba(244, 67, 54, 0.08)',
+              color: '#f44336',
+              transform: isMobile ? 'translateY(0)' : 'translateY(100%)',
+              opacity: isMobile ? 1 : 0,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              '&:hover': {
+                bgcolor: 'rgba(244, 67, 54, 0.15)',
+              },
+            }}
+          >
+            <LogoutIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
-        {/* User Profile Section */}
-        <Box sx={{ p: 2, bgcolor: 'rgba(0,184,169,0.05)' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar
-              sx={{
-                width: 40,
-                height: 40,
-                bgcolor: '#00B8A9',
-                fontSize: '1rem',
-              }}
-            >
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
-            </Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {user?.username || 'Usuario'}
-              </Typography>
-              {esSuperAdmin && (
-                <Chip
-                  icon={<AdminPanelSettingsIcon sx={{ fontSize: '0.875rem' }} />}
-                  label="Super Admin"
-                  size="small"
-                  sx={{
-                    mt: 0.5,
-                    height: 20,
-                    fontSize: '0.65rem',
-                    bgcolor: '#FF6B6B',
-                    color: '#fff',
-                    fontWeight: 700,
-                    '& .MuiChip-icon': {
-                      color: '#fff',
-                      fontSize: '0.875rem',
-                    },
-                  }}
-                />
-              )}
-            </Box>
-          </Box>
-        </Box>
-        <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+      {/* Copyright */}
+      <Box p={2} pt={1}>
+        <Typography variant="caption" color="#aaa">
+          © {new Date().getFullYear()} Ripser
+        </Typography>
+      </Box>
+    </>
+  );
 
-        {/* Selector de Sucursal */}
-        {canSelectSucursal && sucursales.length > 0 && (
-          <>
-            <Box sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
-              <SucursalSelector
-                sucursales={sucursales}
-                sucursalActual={sucursalFiltro}
-                sucursalDefecto={usuarioEmpresa?.sucursalDefectoId ?? null}
-                onChange={setSucursalFiltro}
-                onChangeBackend={cambiarSucursal}
-              />
-            </Box>
-            <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-          </>
-        )}
-
-        {/* Scrollable menu section */}
-        <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-          <List>
-            {seccionesFiltradas.map((section, idx) => (
-              <React.Fragment key={section.title}>
-                {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-                <ListSubheader
-                  sx={{
-                    bgcolor: 'inherit',
-                    color: '#00B8A9',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    pl: 2,
-                    py: 1,
-                    position: 'relative'
-                  }}
-                >
-                  {section.title}
-                </ListSubheader>
-                {section.items.map(item => (
-                  <ListItem
-                    key={item.text}
-                    disablePadding
-                    sx={{
-                      background: location.pathname === item.path ? 'rgba(0,184,169,0.08)' : 'inherit',
-                      borderRadius: 1,
-                      mb: 0.5,
-                    }}
-                  >
-                    <ListItemButton
-                      component={Link}
-                      to={item.path}
-                      selected={location.pathname === item.path}
-                      sx={{
-                        color: location.pathname === item.path ? '#00B8A9' : '#fff',
-                        '&:hover': { background: 'rgba(0,184,169,0.15)' },
-                        borderRadius: 1,
-                      }}
-                    >
-                      <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
-                      <ListItemText primary={item.text} />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </React.Fragment>
-            ))}
-          </List>
-        </Box>
-
-        {/* Fixed bottom section with minimal logout button */}
-        <Box
+  return (
+    <>
+      {/* Mobile AppBar with hamburger menu */}
+      {isMobile && (
+        <AppBar
+          position="fixed"
           sx={{
-            position: 'relative',
-            height: 56,
-            overflow: 'hidden',
-            '&:hover .logout-button': {
-              transform: 'translateY(0)',
-              opacity: 1,
+            bgcolor: '#212A3E',
+            boxShadow: 1,
+          }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="abrir menu"
+              edge="start"
+              onClick={onMobileToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+              Ripser
+            </Typography>
+          </Toolbar>
+        </AppBar>
+      )}
+
+      {/* Mobile Drawer - temporary, slides in from left */}
+      {isMobile ? (
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={onMobileToggle}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile
+          }}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              background: '#212A3E',
+              color: '#fff',
+              display: 'flex',
+              flexDirection: 'column',
             },
           }}
         >
-          <Tooltip title="Cerrar sesión" placement="top" arrow>
-            <IconButton
-              className="logout-button"
-              onClick={handleLogoutClick}
-              sx={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: '100%',
-                borderRadius: 0,
-                bgcolor: 'rgba(244, 67, 54, 0.08)',
-                color: '#f44336',
-                transform: 'translateY(100%)',
-                opacity: 0,
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  bgcolor: 'rgba(244, 67, 54, 0.15)',
-                },
-              }}
-            >
-              <LogoutIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        {/* Copyright */}
-        <Box p={2} pt={1}>
-          <Typography variant="caption" color="#aaa">
-            © {new Date().getFullYear()} Ripser
-          </Typography>
-        </Box>
-      </Drawer>
+          {drawerContent}
+        </Drawer>
+      ) : (
+        /* Desktop Drawer - permanent */
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            width: drawerWidth,
+            flexShrink: 0,
+            [`& .MuiDrawer-paper`]: {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              background: '#212A3E',
+              color: '#fff',
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+      )}
 
       {/* Logout Confirmation Dialog */}
       <Dialog
@@ -431,7 +519,8 @@ const Sidebar: React.FC = () => {
         PaperProps={{
           sx: {
             borderRadius: 2,
-            minWidth: 400,
+            minWidth: isMobile ? 'auto' : 400,
+            mx: 2,
           },
         }}
       >
@@ -444,15 +533,15 @@ const Sidebar: React.FC = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button 
-            onClick={handleLogoutCancel} 
+          <Button
+            onClick={handleLogoutCancel}
             color="inherit"
             variant="outlined"
           >
             Cancelar
           </Button>
-          <Button 
-            onClick={handleLogoutConfirm} 
+          <Button
+            onClick={handleLogoutConfirm}
             color="error"
             variant="contained"
             autoFocus
