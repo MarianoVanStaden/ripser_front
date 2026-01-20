@@ -9,7 +9,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
-  Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore,
+  Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -79,6 +79,12 @@ const EquiposList: React.FC = () => {
   }>({ open: false, equipoId: null, equipo: null });
 
   const [completarDialog, setCompletarDialog] = useState<{
+    open: boolean;
+    equipoId: number | null;
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipoId: null, equipo: null });
+
+  const [iniciarDialog, setIniciarDialog] = useState<{
     open: boolean;
     equipoId: number | null;
     equipo: EquipoFabricadoListDTO | null;
@@ -282,6 +288,54 @@ const EquiposList: React.FC = () => {
     }
   };
 
+  const handleIniciarFabricacion = async () => {
+    // WORKAROUND: Backend returns id: null, use numeroHeladera as identifier
+    const equipo = iniciarDialog.equipo;
+
+    if (!equipo || !equipo.numeroHeladera) {
+      console.error('❌ No equipo or numeroHeladera available in iniciarDialog:', iniciarDialog);
+      setSnackbar({
+        open: true,
+        message: '❌ Error: No se pudo identificar el equipo (falta numeroHeladera)',
+        severity: 'error',
+      });
+      return;
+    }
+
+    console.log('🔄 Iniciando fabricación de equipo con numeroHeladera:', equipo.numeroHeladera);
+    console.log('📦 Equipo completo:', equipo);
+    console.warn('⚠️ USANDO WORKAROUND: Backend devuelve id: null, usando numeroHeladera como identificador');
+
+    try {
+      // Try to use numeroHeladera endpoint instead of ID
+      await equipoFabricadoApi.iniciarFabricacionPorNumero(equipo.numeroHeladera);
+      console.log('✅ Fabricación iniciada exitosamente');
+      setSnackbar({
+        open: true,
+        message: '✅ Fabricación iniciada correctamente. Stock descontado.',
+        severity: 'success',
+      });
+
+      setIniciarDialog({ open: false, equipoId: null, equipo: null });
+      loadEquipos(); // Refresh the list
+    } catch (error: any) {
+      console.error('❌ Error al iniciar fabricación:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data?.error ||
+                          error.message ||
+                          'Error al iniciar fabricación';
+
+      setSnackbar({
+        open: true,
+        message: `❌ Error: ${errorMessage}`,
+        severity: 'error',
+      });
+    }
+  };
+
   const handleCancelar = async () => {
     if (!cancelDialog.equipoId) return;
 
@@ -416,7 +470,8 @@ const EquiposList: React.FC = () => {
       headerName: 'Estado Fab.',
       width: 120,
       renderCell: (params: GridRenderCellParams) => {
-        const colorMap: Record<EstadoFabricacion, 'info' | 'success' | 'error'> = {
+        const colorMap: Record<EstadoFabricacion, 'warning' | 'info' | 'success' | 'error'> = {
+          PENDIENTE: 'warning',
           EN_PROCESO: 'info',
           COMPLETADO: 'success',
           CANCELADO: 'error',
@@ -510,7 +565,7 @@ const EquiposList: React.FC = () => {
               <IconButton
                 size="small"
                 color="info"
-                onClick={() => navigate(`/fabricacion/equipos/${params.row.id}`)}
+                onClick={() => navigate(`/fabricacion/equipos/${params.row.numeroHeladera}`)}
               >
                 <Visibility fontSize="small" />
               </IconButton>
@@ -521,12 +576,29 @@ const EquiposList: React.FC = () => {
                   size="small"
                   color="primary"
                   disabled={!canEdit}
-                  onClick={() => navigate(`/fabricacion/equipos/editar/${params.row.id}`)}
+                  onClick={() => navigate(`/fabricacion/equipos/editar/${params.row.numeroHeladera}`)}
                 >
                   <Edit fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
+            {params.row.estado === 'PENDIENTE' && (
+              <Tooltip title="Iniciar Fabricación">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() =>
+                    setIniciarDialog({
+                      open: true,
+                      equipoId: params.row.id,
+                      equipo: params.row,
+                    })
+                  }
+                >
+                  <PlayArrow fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             {params.row.estado === 'EN_PROCESO' && (
               <Tooltip title="Completar">
                 <IconButton
@@ -697,6 +769,26 @@ const EquiposList: React.FC = () => {
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'warning.lighter' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.main', color: 'white' }}>
+                    <Pending fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="warning.main">
+                      {equipos.filter(e => e.estado === 'PENDIENTE').length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Pendientes
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
             <Card sx={{ height: '100%', bgcolor: 'info.lighter' }}>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -855,6 +947,7 @@ const EquiposList: React.FC = () => {
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="PENDIENTE">Pendiente</MenuItem>
             <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
             <MenuItem value="COMPLETADO">Completado</MenuItem>
             <MenuItem value="CANCELADO">Cancelado</MenuItem>
@@ -1326,6 +1419,61 @@ const EquiposList: React.FC = () => {
             startIcon={<CheckCircle />}
           >
             Confirmar Completado
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Iniciar Fabricación Dialog */}
+      <Dialog
+        open={iniciarDialog.open}
+        onClose={() => setIniciarDialog({ open: false, equipoId: null, equipo: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          <PlayArrow sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+          <Typography variant="h6">¿Iniciar Fabricación?</Typography>
+        </DialogTitle>
+        <DialogContent>
+          {iniciarDialog.equipo && (
+            <>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Número:</strong> {iniciarDialog.equipo.numeroHeladera}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Tipo:</strong> {iniciarDialog.equipo.tipo}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Modelo:</strong> {iniciarDialog.equipo.modelo}
+                </Typography>
+                {iniciarDialog.equipo.responsableNombre && (
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Responsable:</strong> {iniciarDialog.equipo.responsableNombre}
+                  </Typography>
+                )}
+              </Box>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Al iniciar la fabricación, se validará y descontará el stock de componentes necesarios.
+                El estado cambiará a EN_PROCESO.
+              </Alert>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setIniciarDialog({ open: false, equipoId: null, equipo: null })}
+            color="inherit"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleIniciarFabricacion}
+            variant="contained"
+            color="primary"
+            startIcon={<PlayArrow />}
+          >
+            Iniciar Fabricación
           </Button>
         </DialogActions>
       </Dialog>

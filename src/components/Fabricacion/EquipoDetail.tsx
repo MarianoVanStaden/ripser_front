@@ -9,7 +9,7 @@ import {
   TimelineContent, TimelineDot, TimelineOppositeContent,
 } from '@mui/lab';
 import {
-  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History,
+  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History, PlayArrow,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -23,7 +23,7 @@ import type { EquipoFabricadoDTO, HistorialEstadoEquipo } from '../../types';
 
 const EquipoDetail: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id: numeroHeladera } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<EquipoFabricadoDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [clientes, setClientes] = useState<any[]>([]);
@@ -54,17 +54,22 @@ const EquipoDetail: React.FC = () => {
   }>({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
-    if (id) {
+    if (numeroHeladera) {
       loadEquipo();
       loadClientes();
+    }
+  }, [numeroHeladera]);
+
+  useEffect(() => {
+    if (equipo?.id) {
       loadHistorial();
     }
-  }, [id]);
+  }, [equipo?.id]);
 
   const loadEquipo = async () => {
     try {
       setLoading(true);
-      const data = await equipoFabricadoApi.findById(Number(id));
+      const data = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera!);
       setEquipo(data);
     } catch (error) {
       console.error('Error loading equipo:', error);
@@ -79,9 +84,10 @@ const EquipoDetail: React.FC = () => {
   };
 
   const loadHistorial = async () => {
+    if (!equipo?.id) return; // Wait until equipo is loaded to get the real ID
     try {
       setLoadingHistorial(true);
-      const data = await historialEstadoEquipoApi.getByEquipoId(Number(id));
+      const data = await historialEstadoEquipoApi.getByEquipoId(equipo.id);
       setHistorial(data);
     } catch (error) {
       console.error('Error loading historial:', error);
@@ -101,6 +107,27 @@ const loadClientes = async () => {
       });
     } catch (error) {
       console.error('Error loading clientes:', error);
+    }
+  };
+
+  const handleIniciarFabricacion = async () => {
+    if (!equipo?.id) return;
+
+    try {
+      await equipoFabricadoApi.iniciarFabricacion(equipo.id);
+      setSnackbar({
+        open: true,
+        message: '✅ Fabricación iniciada correctamente. Stock descontado.',
+        severity: 'success',
+      });
+      loadEquipo(); // Refresh the equipment data
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
+      setSnackbar({
+        open: true,
+        message: `❌ Error al iniciar fabricación: ${errorMessage}`,
+        severity: 'error',
+      });
     }
   };
 
@@ -265,10 +292,11 @@ const loadClientes = async () => {
   }
 
   const estadoColor = {
+    PENDIENTE: 'warning',
     EN_PROCESO: 'info',
     COMPLETADO: 'success',
     CANCELADO: 'error',
-  }[equipo.estado] as 'info' | 'success' | 'error';
+  }[equipo.estado] as 'warning' | 'info' | 'success' | 'error';
 
   return (
     <Box p={3}>
@@ -284,6 +312,16 @@ const loadClientes = async () => {
           {equipo.asignado && <Chip label="Asignado" color="success" />}
         </Box>
         <Stack direction="row" spacing={2}>
+          {equipo.estado === 'PENDIENTE' && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PlayArrow />}
+              onClick={handleIniciarFabricacion}
+            >
+              Iniciar Fabricación
+            </Button>
+          )}
           {equipo.estado === 'EN_PROCESO' && (
             <Button
               variant="outlined"

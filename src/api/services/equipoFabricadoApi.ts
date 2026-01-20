@@ -124,6 +124,36 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  // Iniciar fabricación (PENDIENTE → EN_PROCESO)
+  iniciarFabricacion: async (equipoId: number): Promise<EquipoFabricadoDTO> => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/iniciar-fabricacion`
+    );
+    return response.data;
+  },
+
+  // WORKAROUND: Use numeroHeladera instead of ID when backend returns id: null
+  iniciarFabricacionPorNumero: async (numeroHeladera: string) => {
+    console.log(`🚀 API Call (workaround): GET equipo by numeroHeladera and PATCH iniciar-fabricacion`);
+    console.log(`   Step 1: GET /api/equipos-fabricados/numero/${numeroHeladera}`);
+
+    // First get the equipo by numeroHeladera to get the real ID
+    const equipoResponse = await api.get<EquipoFabricadoDTO>(`/api/equipos-fabricados/numero/${numeroHeladera}`);
+    console.log('   Response from GET:', equipoResponse.data);
+
+    const equipoId = equipoResponse.data.id;
+    if (!equipoId) {
+      throw new Error(`Equipo ${numeroHeladera} no tiene ID en la respuesta del backend`);
+    }
+
+    console.log(`   Step 2: PATCH /api/equipos-fabricados/${equipoId}/iniciar-fabricacion`);
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/iniciar-fabricacion`
+    );
+    console.log('✅ API Response:', response.data);
+    return response.data;
+  },
+
   // WORKAROUND: Use numeroHeladera instead of ID when backend returns id: null
   completarFabricacionPorNumero: async (numeroHeladera: string) => {
     console.log(`🚀 API Call (workaround): GET equipo by numeroHeladera and PATCH completar`);

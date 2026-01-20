@@ -2369,7 +2369,7 @@ export interface EquipoFabricadoUpdateDTO {
   responsableId?: number;
   clienteId?: number;
 }
-export type EstadoFabricacion = 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
+export type EstadoFabricacion = 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
 
 // Response for batch equipment creation
 export interface EquipoCreationResponseDTO {

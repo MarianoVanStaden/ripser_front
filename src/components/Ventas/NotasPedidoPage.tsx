@@ -30,6 +30,8 @@ import {
   Select,
   TablePagination,
   Snackbar,
+  Autocomplete,
+  InputAdornment,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -38,6 +40,7 @@ import {
   Send as SendIcon,
   Receipt as ReceiptIcon,
   CheckCircle as CheckCircleIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
@@ -337,7 +340,7 @@ const NotasPedidoPage: React.FC = () => {
               color: detalle.color,
               // Don't send numeroHeladera - let backend auto-generate it
               cantidad: cantidadFaltante,
-              estado: 'EN_PROCESO' as any,
+              estado: 'PENDIENTE' as any,
             };
 
             console.log('📝 Datos del equipo a crear:', equipoData);
@@ -880,35 +883,64 @@ const NotasPedidoPage: React.FC = () => {
         <DialogTitle>Convertir Presupuesto a Nota de Pedido</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
-            <TextField
+            <Autocomplete
               fullWidth
-              select
-              label="Presupuesto Pendiente"
-              value={convertForm.presupuestoId}
-              onChange={(e) => handlePresupuestoSelect(e.target.value)}
-              margin="normal"
-              required
-              error={!convertForm.presupuestoId && formLoading}
-              helperText="Seleccione un presupuesto pendiente para convertir"
-            >
-              <MenuItem value="">Seleccionar presupuesto</MenuItem>
-              {presupuestos.map((presupuesto) => (
-                <MenuItem key={presupuesto.id} value={presupuesto.id.toString()}>
-                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                    <Typography component="span" variant="body2">
-                      {presupuesto.numeroDocumento} - {presupuesto.clienteNombre || presupuesto.leadNombre} - 
-                      ${presupuesto.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              options={presupuestos}
+              value={presupuestos.find(p => p.id.toString() === convertForm.presupuestoId) || null}
+              onChange={(_, newValue) => {
+                handlePresupuestoSelect(newValue ? newValue.id.toString() : '');
+              }}
+              getOptionLabel={(option) => 
+                `${option.numeroDocumento} - ${option.clienteNombre || option.leadNombre} - $${option.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
+              }
+              filterOptions={(options, { inputValue }) => {
+                const searchTerm = inputValue.toLowerCase().trim();
+                if (!searchTerm) return options;
+                return options.filter(option => {
+                  const numero = (option.numeroDocumento || '').toLowerCase();
+                  const cliente = (option.clienteNombre || '').toLowerCase();
+                  const lead = (option.leadNombre || '').toLowerCase();
+                  return numero.includes(searchTerm) || cliente.includes(searchTerm) || lead.includes(searchTerm);
+                });
+              }}
+              renderOption={(props, option) => (
+                <Box component="li" {...props} key={option.id}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                    <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                      {option.numeroDocumento} - {option.clienteNombre || option.leadNombre} - 
+                      ${option.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                     </Typography>
-                    {presupuesto.clienteNombre && (
-                      <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem', ml: 'auto' }} />
+                    {option.clienteNombre && (
+                      <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
-                    {presupuesto.leadNombre && (
-                      <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem', ml: 'auto' }} />
+                    {option.leadNombre && (
+                      <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
                     )}
                   </Box>
-                </MenuItem>
-              ))}
-            </TextField>
+                </Box>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Buscar Presupuesto"
+                  placeholder="Escriba número de presupuesto o nombre de cliente/lead..."
+                  margin="normal"
+                  required
+                  error={!convertForm.presupuestoId && formLoading}
+                  helperText="Busque por número de presupuesto, nombre de cliente o lead"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+              noOptionsText="No se encontraron presupuestos"
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+            />
 
             {selectedPresupuesto && (
               <Paper sx={{ p: 2, mt: 2, bgcolor: "grey.50" }}>

@@ -35,6 +35,8 @@ import {
   FormControlLabel,
   RadioGroup,
   Radio,
+  Autocomplete,
+  InputAdornment,
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
@@ -50,6 +52,7 @@ import {
   AttachMoney as MoneyIcon,
   CreditCard as CreditCardIcon,
   AccountBalance as BankIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 // Real API services
@@ -209,6 +212,9 @@ const FacturacionPage = () => {
   const [pageNotas, setPageNotas] = useState(0);
   const [rowsPerPageNotas, setRowsPerPageNotas] = useState(12);
 
+  // Search filter for Notas de Pedido
+  const [notasSearchTerm, setNotasSearchTerm] = useState('');
+
   // Fabrication confirmation dialog
   const [fabricacionDialogOpen, setFabricacionDialogOpen] = useState(false);
   const [itemPendienteFabricacion, setItemPendienteFabricacion] = useState<{
@@ -323,14 +329,33 @@ const FacturacionPage = () => {
 
   const notaTotalVenta = useMemo(() => notaSubtotal + notaFinancingAdjustment + notaIvaAmount, [notaSubtotal, notaFinancingAdjustment, notaIvaAmount]);
 
-  // Sort and paginate Notas de Pedido
+  // Sort and filter Notas de Pedido
   const sortedNotasPedido = useMemo(() => {
-    return [...notasPedido].sort((a, b) => {
+    let filtered = [...notasPedido];
+
+    // Apply search filter
+    if (notasSearchTerm.trim()) {
+      const searchTerm = notasSearchTerm.toLowerCase().trim();
+      filtered = filtered.filter(nota => {
+        const numero = (nota.numeroDocumento || '').toString().toLowerCase();
+        const cliente = (nota.clienteNombre || '').toLowerCase();
+        const lead = (nota.leadNombre || '').toLowerCase();
+        const total = nota.total?.toString() || '';
+
+        return numero.includes(searchTerm) ||
+               cliente.includes(searchTerm) ||
+               lead.includes(searchTerm) ||
+               total.includes(searchTerm);
+      });
+    }
+
+    // Sort by date (newest first)
+    return filtered.sort((a, b) => {
       const dateA = new Date(a.fecha || a.fechaEmision || 0).getTime();
       const dateB = new Date(b.fecha || b.fechaEmision || 0).getTime();
-      return dateB - dateA; // Descending order (newest first)
+      return dateB - dateA;
     });
-  }, [notasPedido]);
+  }, [notasPedido, notasSearchTerm]);
 
   const paginatedNotasPedido = useMemo(() => {
     return sortedNotasPedido.slice(
@@ -1558,6 +1583,25 @@ const FacturacionPage = () => {
       {/* Tab 1: From Nota de Pedido */}
       {activeTab === 1 && (
         <Box sx={{ width: '100%', maxWidth: '100%' }}>
+          {/* Search field for Notas de Pedido */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Buscar por número de nota, cliente, lead o total..."
+              value={notasSearchTerm}
+              onChange={(e) => setNotasSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              helperText={notasSearchTerm ? `Mostrando ${sortedNotasPedido.length} resultado(s) de ${notasPedido.length} notas` : `Total: ${notasPedido.length} notas de pedido`}
+            />
+          </Box>
+
           {sortedNotasPedido.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>

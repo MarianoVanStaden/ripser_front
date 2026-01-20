@@ -33,6 +33,7 @@ import {
   Select,
   TablePagination,
   Autocomplete,
+  InputAdornment,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -44,6 +45,7 @@ import {
   AttachMoney as MoneyIcon,
   CreditCard as CreditCardIcon,
   AccountBalance as BankIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
@@ -321,9 +323,15 @@ const PresupuestosPage: React.FC = () => {
   const filteredPresupuestos = useMemo(() => {
     return presupuestos.filter((presupuesto) => {
       const clientName = clientes.find(c => c.id === presupuesto.clienteId)?.razonSocial || clientes.find(c => c.id === presupuesto.clienteId)?.nombre || '';
+      const leadName = leads.find(l => l.id === presupuesto.leadId)?.nombre || '';
+      const searchLower = searchTerm.toLowerCase().trim();
+
       const matchesSearch = searchTerm === '' ||
-        presupuesto.numeroDocumento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        clientName.toLowerCase().includes(searchTerm.toLowerCase());
+        presupuesto.numeroDocumento?.toString().toLowerCase().includes(searchLower) ||
+        clientName.toLowerCase().includes(searchLower) ||
+        leadName.toLowerCase().includes(searchLower) ||
+        (presupuesto.total?.toString() || '').includes(searchLower);
+
       const matchesStatus = !statusFilter || presupuesto.estado === statusFilter;
       const matchesClient = clientFilter === 'all' || presupuesto.clienteId?.toString() === clientFilter;
       const fecha = presupuesto.fechaEmision ? new Date(presupuesto.fechaEmision) : null;
@@ -331,7 +339,7 @@ const PresupuestosPage: React.FC = () => {
       const matchesDateTo = !dateToFilter || (fecha && fecha <= new Date(dateToFilter));
       return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
     });
-  }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, clientes]);
+  }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, clientes, leads]);
 
   // Paginate filtered presupuestos
   const paginatedPresupuestos = useMemo(() => {
@@ -868,12 +876,20 @@ const PresupuestosPage: React.FC = () => {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' }, gap: 2 }}>
             <TextField
               fullWidth
-              label="Buscar"
+              label="Buscar Presupuestos"
               variant="outlined"
               size="small"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por número, cliente..."
+              placeholder="Escriba número de presupuesto, cliente o lead..."
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              helperText={searchTerm ? `Mostrando ${filteredPresupuestos.length} de ${presupuestos.length} presupuestos` : `Total: ${presupuestos.length} presupuestos`}
             />
             <FormControl fullWidth size="small">
               <InputLabel>Estado</InputLabel>

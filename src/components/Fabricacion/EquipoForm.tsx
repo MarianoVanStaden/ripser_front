@@ -45,8 +45,8 @@ const schema = yup.object().shape({
 
 const EquipoForm: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const isEdit = Boolean(id);
+  const { id: numeroHeladera } = useParams<{ id: string }>();
+  const isEdit = Boolean(numeroHeladera);
 
   const [loading, setLoading] = useState(false);
   const [recetas, setRecetas] = useState<any[]>([]);
@@ -55,7 +55,7 @@ const EquipoForm: React.FC = () => {
   const [selectedReceta, setSelectedReceta] = useState<any>(null);
   const [selectedResponsable, setSelectedResponsable] = useState<any>(null);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
-  const [estado, setEstado] = useState<EstadoFabricacion>('EN_PROCESO');
+  const [estado, setEstado] = useState<EstadoFabricacion>('PENDIENTE');
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -99,12 +99,12 @@ const EquipoForm: React.FC = () => {
         loadEmpleados(),
         loadClientes(),
       ]);
-      if (isEdit && id) {
-        await loadEquipo(Number(id));
+      if (isEdit && numeroHeladera) {
+        await loadEquipo(numeroHeladera);
       }
     };
     loadData();
-  }, [id, isEdit]);
+  }, [numeroHeladera, isEdit]);
 
   // Auto-fill form fields when recipe is selected
   useEffect(() => {
@@ -158,10 +158,10 @@ const EquipoForm: React.FC = () => {
     }
   };
 
-  const loadEquipo = async (equipoId: number) => {
+  const loadEquipo = async (numeroHeladera: string) => {
     try {
       setLoading(true);
-      const data = await equipoFabricadoApi.findById(equipoId);
+      const data = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera);
       console.log('Loaded equipo data:', data);
       console.log('Available empleados:', empleados);
       console.log('Available clientes:', clientes);
@@ -530,6 +530,7 @@ const EquipoForm: React.FC = () => {
                 onChange={(e) => setEstado(e.target.value as EstadoFabricacion)}
                 fullWidth
               >
+                <MenuItem value="PENDIENTE">Pendiente</MenuItem>
                 <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
                 <MenuItem value="COMPLETADO">Completado</MenuItem>
                 <MenuItem value="CANCELADO">Cancelado</MenuItem>
