@@ -4,7 +4,7 @@ import {
   Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Stack, IconButton, Tooltip, Chip, Alert, CircularProgress,
-  Autocomplete, InputAdornment
+  Autocomplete, InputAdornment, useMediaQuery, useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -26,6 +26,8 @@ import { employeeApi } from '../../api/services/employeeApi';
 import type { Sueldo, Empleado } from '../../types';
 
 const SueldosPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [sueldos, setSueldos] = useState<Sueldo[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -269,16 +271,17 @@ const SueldosPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight="700" color="primary">
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" fontWeight="700" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Sueldos
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenForm()}
-          size="large"
+          size={isMobile ? 'medium' : 'large'}
+          fullWidth={isMobile}
         >
           Nuevo Sueldo
         </Button>
@@ -291,74 +294,74 @@ const SueldosPage: React.FC = () => {
       )}
 
       {/* KPIs */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }} mb={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'success.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h4" fontWeight="700" color="success.main">
+                  <Typography variant="h4" fontWeight="700" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {filteredSueldos.length}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Sueldos Registrados
                   </Typography>
                 </Box>
-                <ReceiptIcon sx={{ fontSize: 48, color: 'success.main', opacity: 0.3 }} />
+                <ReceiptIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'success.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'primary.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h5" fontWeight="700" color="primary.main">
+                  <Typography variant="h5" fontWeight="700" color="primary.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${totalBruto.toLocaleString('es-AR')}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Total Bruto
                   </Typography>
                 </Box>
-                <TrendingUpIcon sx={{ fontSize: 48, color: 'primary.main', opacity: 0.3 }} />
+                <TrendingUpIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'primary.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'error.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h5" fontWeight="700" color="error.main">
+                  <Typography variant="h5" fontWeight="700" color="error.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${totalDescuentos.toLocaleString('es-AR')}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Total Descuentos
                   </Typography>
                 </Box>
-                <TrendingDownIcon sx={{ fontSize: 48, color: 'error.main', opacity: 0.3 }} />
+                <TrendingDownIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'error.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'warning.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h5" fontWeight="700" color="warning.main">
+                  <Typography variant="h5" fontWeight="700" color="warning.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${totalSueldosNeto.toLocaleString('es-AR')}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Total Neto
                   </Typography>
                 </Box>
-                <AccountBalanceIcon sx={{ fontSize: 48, color: 'warning.main', opacity: 0.3 }} />
+                <AccountBalanceIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'warning.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
@@ -408,18 +411,18 @@ const SueldosPage: React.FC = () => {
       {/* Table */}
       <Card sx={{ boxShadow: 3 }}>
         <CardContent>
-          <TableContainer component={Paper} elevation={0}>
-            <Table>
+          <TableContainer component={Paper} elevation={0} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Período</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Sueldo Básico</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Total Bruto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Descuentos</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Sueldo Neto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Estado Pago</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 150 }}>Empleado</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 130 }} align="center">Período</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 110 }} align="right">Sueldo Básico</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 100 }} align="right">Total Bruto</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 100 }} align="right">Descuentos</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 100 }} align="right">Sueldo Neto</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 130 }} align="center">Estado Pago</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 110 }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -526,7 +529,7 @@ const SueldosPage: React.FC = () => {
       </Card>
 
       {/* Detail Dialog */}
-      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth>
+      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (
           <>
             <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
@@ -720,7 +723,7 @@ const SueldosPage: React.FC = () => {
       </Dialog>
 
       {/* Form Dialog */}
-      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="md" fullWidth>
+      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
           <Box display="flex" alignItems="center" gap={2}>
             <MoneyIcon />
@@ -907,7 +910,7 @@ const SueldosPage: React.FC = () => {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth>
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
         <DialogTitle sx={{ bgcolor: 'error.main', color: 'white' }}>
           Confirmar Eliminación
         </DialogTitle>

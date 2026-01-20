@@ -33,6 +33,8 @@ import {
   FormControlLabel,
   TablePagination,
   Link,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
@@ -70,6 +72,8 @@ function TabPanel(props: TabPanelProps) {
 
 const StockPage: React.FC = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [products, setProducts] = useState<Producto[]>([]);
   const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
@@ -351,9 +355,9 @@ const StockPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <InventoryIcon />
           Gestión de Stock
         </Typography>
@@ -361,6 +365,7 @@ const StockPage: React.FC = () => {
           variant="outlined"
           startIcon={<GetAppIcon />}
           onClick={handleExportInventoryPDF}
+          fullWidth={isMobile}
         >
           Exportar PDF
         </Button>
@@ -373,7 +378,7 @@ const StockPage: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={3} sx={{ mb: 3 }}>
+      <Box display="grid" gridTemplateColumns={{ xs: 'repeat(2, 1fr)', sm: 'repeat(auto-fit, minmax(200px, 1fr))' }} gap={{ xs: 2, sm: 3 }} sx={{ mb: 3 }}>
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
@@ -727,7 +732,7 @@ const StockPage: React.FC = () => {
       </TabPanel>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Editar Producto: {selectedProduct?.nombre}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>

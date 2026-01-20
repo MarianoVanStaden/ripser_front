@@ -27,7 +27,9 @@ import {
   Alert,
   CircularProgress,
   Avatar,
-  Divider
+  Divider,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -49,6 +51,8 @@ import { puestoApi } from '../../api/services/puestoApi';
 import type { Empleado, Puesto, EmpleadoCreateDTO } from '../../types';
 
 const EmpleadosPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,18 +232,20 @@ const EmpleadosPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <PersonIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
+          <PersonIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main' }} />
           <Box>
-            <Typography variant="h4">Empleados</Typography>
-            <Typography variant="body2" color="textSecondary">
+            <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+              Empleados
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
               Gestión de personal y empleados
             </Typography>
           </Box>
         </Box>
-        <Box display="flex" gap={2}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Tooltip title="Recargar">
             <IconButton onClick={loadData} color="primary">
               <RefreshIcon />
@@ -249,10 +255,11 @@ const EmpleadosPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenForm()}
+            fullWidth={isMobile}
           >
             Nuevo Empleado
           </Button>
-        </Box>
+        </Stack>
       </Box>
 
       {error && (
@@ -324,17 +331,17 @@ const EmpleadosPage: React.FC = () => {
             </Grid>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Empleado</TableCell>
-                  <TableCell>DNI</TableCell>
-                  <TableCell>Puesto</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Teléfono</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Empleado</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>DNI</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>Puesto</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Email</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Teléfono</TableCell>
+                  <TableCell sx={{ minWidth: 90 }}>Estado</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 120 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -426,8 +433,9 @@ const EmpleadosPage: React.FC = () => {
         onClose={() => setDetailDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 3 }
+          sx: { borderRadius: isMobile ? 0 : 3 }
         }}
       >
         {selectedEmpleado && (
@@ -525,8 +533,9 @@ const EmpleadosPage: React.FC = () => {
         onClose={handleCloseForm}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { borderRadius: isMobile ? 0 : 2 }
         }}
       >
         <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 2.5 }}>

@@ -4,7 +4,7 @@ import {
   TableContainer, TableHead, TableRow, Paper, IconButton, Chip, Dialog,
   DialogTitle, DialogContent, DialogActions, TextField, Grid, FormControl,
   InputLabel, Select, MenuItem, Alert, CircularProgress, Tooltip, Stack,
-  Switch, FormControlLabel, Slider, InputAdornment, Divider
+  Switch, FormControlLabel, Slider, InputAdornment, Divider, useMediaQuery, useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -235,33 +235,45 @@ const ConfiguracionFinanciamiento: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
+    <Box p={{ xs: 2, sm: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <SettingsIcon />
           Configuración de Opciones de Financiamiento
         </Typography>
-        <Stack direction="row" spacing={2}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={loadTemplates}
+            fullWidth
+            sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
           >
             Recargar
           </Button>
-          <Button
-            variant="outlined"
-            color="success"
-            startIcon={<AutoAwesomeIcon />}
-            onClick={handleCreateDefaults}
-            disabled={templates.length > 0}
+          <IconButton
+            onClick={loadTemplates}
+            sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
           >
-            Crear Plantillas por Defecto
-          </Button>
+            <RefreshIcon />
+          </IconButton>
+          {templates.length === 0 && (
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={<AutoAwesomeIcon />}
+              onClick={handleCreateDefaults}
+              fullWidth
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Crear Plantillas por Defecto
+            </Button>
+          )}
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
+            fullWidth
           >
             Nueva Plantilla
           </Button>
@@ -290,17 +302,17 @@ const ConfiguracionFinanciamiento: React.FC = () => {
             Solo las plantillas activas se incluirán como opciones por defecto.
           </Typography>
 
-          <TableContainer component={Paper} variant="outlined">
-            <Table>
+          <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Nombre</TableCell>
-                  <TableCell>Método de Pago</TableCell>
-                  <TableCell align="center">Cuotas</TableCell>
-                  <TableCell align="right">Tasa (%)</TableCell>
-                  <TableCell align="center">Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 60 }}>Orden</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Nombre</TableCell>
+                  <TableCell sx={{ minWidth: 140 }}>Método de Pago</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 70 }}>Cuotas</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 80 }}>Tasa (%)</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 100 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

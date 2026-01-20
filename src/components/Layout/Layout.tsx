@@ -39,8 +39,8 @@ const Layout: React.FC = () => {
           p: { xs: 1.5, sm: 2, md: 3 },
           pt: { xs: 2, sm: 2.5, md: 3 },
           width: { xs: '100%', md: sidebarOpen ? `calc(100% - ${drawerWidth}px)` : '100%' },
-          ml: { md: sidebarOpen ? `${drawerWidth}px` : 0 },
-          transition: 'margin-left 225ms cubic-bezier(0.4, 0, 0.6, 1), width 225ms cubic-bezier(0.4, 0, 0.6, 1)',
+          ml: 0,
+          transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1)',
           minHeight: '100vh',
           boxSizing: 'border-box',
         }}

@@ -27,7 +27,9 @@ import {
   DialogActions,
   Autocomplete,
   InputAdornment,
-  Grid
+  Grid,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -45,6 +47,8 @@ import { employeeApi } from '../../api/services/employeeApi';
 import type { TareaServicio, OrdenServicio, Empleado } from '../../types';
 
 const AsignacionTareasPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [tareas, setTareas] = useState<TareaServicio[]>([]);
   const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -329,10 +333,12 @@ const AsignacionTareasPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Asignación de Tareas</Typography>
-        <Box display="flex" gap={2}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Asignación de Tareas
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Tooltip title="Recargar">
             <IconButton onClick={loadTareas} color="primary">
               <RefreshIcon />
@@ -342,10 +348,11 @@ const AsignacionTareasPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenForm()}
+            fullWidth={isMobile}
           >
             Nueva Tarea
           </Button>
-        </Box>
+        </Stack>
       </Box>
 
       {error && (
@@ -424,17 +431,17 @@ const AsignacionTareasPage: React.FC = () => {
             </Grid>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Orden</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>Empleado</TableCell>
-                  <TableCell align="center">Horas Est.</TableCell>
-                  <TableCell align="center">Horas Reales</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Orden</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Empleado</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 90 }}>Horas Est.</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 90 }}>Horas Reales</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -562,8 +569,9 @@ const AsignacionTareasPage: React.FC = () => {
         onClose={handleCloseForm}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { borderRadius: isMobile ? 0 : 2 }
         }}
       >
         <DialogTitle
@@ -769,9 +777,10 @@ const AsignacionTareasPage: React.FC = () => {
         onClose={handleCancelCompletar}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
-            borderRadius: 3,
+            borderRadius: isMobile ? 0 : 3,
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
           }
         }}

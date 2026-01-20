@@ -24,6 +24,9 @@ import {
   TableRow,
   InputAdornment,
   TablePagination,
+  Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -54,6 +57,8 @@ interface Proveedor {
 }
 
 const CuentaCorrienteProveedoresPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [selectedProveedor, setSelectedProveedor] = useState<Proveedor | null>(null);
   const [movimientos, setMovimientos] = useState<CuentaCorrienteProveedor[]>([]);
@@ -278,19 +283,20 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
-      <Box p={3}>
+      <Box p={{ xs: 2, sm: 3 }}>
         {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" display="flex" alignItems="center">
-            <AccountBalanceIcon sx={{ mr: 2 }} />
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+          <Typography variant="h4" component="h1" display="flex" alignItems="center" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+            <AccountBalanceIcon sx={{ mr: 1 }} />
             Cuenta Corriente Proveedores
           </Typography>
-          <Box display="flex" gap={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
               onClick={handleExportarPDF}
               disabled={!selectedProveedor}
+              fullWidth={isMobile}
             >
               Exportar PDF
             </Button>
@@ -299,10 +305,11 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
               startIcon={<AddIcon />}
               onClick={() => setOpenMovimientoDialog(true)}
               disabled={!selectedProveedor}
+              fullWidth={isMobile}
             >
               Nuevo Movimiento
             </Button>
-          </Box>
+          </Stack>
         </Box>
 
         {error && (
@@ -312,14 +319,14 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
         )}
 
         {/* Summary Cards */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2, mb: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(200px, 1fr))' }, gap: 2, mb: 3 }}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <AccountBalanceIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Saldo Actual</Typography>
+                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>Saldo Actual</Typography>
               </Box>
-              <Typography variant="h4" color={getSaldoTotal() > 0 ? 'error.main' : 'success.main'}>
+              <Typography variant="h4" color={getSaldoTotal() > 0 ? 'error.main' : 'success.main'} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 ${Math.abs(getSaldoTotal()).toLocaleString()}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -329,24 +336,24 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
           </Card>
 
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <TrendingUpIcon color="error" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Débitos</Typography>
+                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>Total Débitos</Typography>
               </Box>
-              <Typography variant="h4" color="error.main">
+              <Typography variant="h4" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 ${getTotalDebitos().toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <TrendingDownIcon color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Créditos</Typography>
+                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>Total Créditos</Typography>
               </Box>
-              <Typography variant="h4" color="success.main">
+              <Typography variant="h4" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 ${getTotalCreditos().toLocaleString()}
               </Typography>
             </CardContent>
@@ -364,7 +371,8 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
               label="Proveedor"
               value={selectedProveedor?.id || ''}
               onChange={(e) => handleProveedorChange(Number(e.target.value))}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
+              size={isMobile ? 'small' : 'medium'}
             >
               <MenuItem value="">Todos los proveedores</MenuItem>
               {proveedores.map((proveedor) => (
@@ -483,7 +491,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
         </TableContainer>
 
         {/* New Movement Dialog */}
-        <Dialog open={openMovimientoDialog} onClose={() => setOpenMovimientoDialog(false)} maxWidth="sm" fullWidth>
+        <Dialog open={openMovimientoDialog} onClose={() => setOpenMovimientoDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
           <DialogTitle>
             Nuevo Movimiento - {selectedProveedor?.razonSocial || selectedProveedor?.nombre}
           </DialogTitle>

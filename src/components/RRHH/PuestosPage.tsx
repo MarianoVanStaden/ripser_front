@@ -26,7 +26,9 @@ import {
   InputAdornment,
   Grid,
   Chip,
-  Divider
+  Divider,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -43,6 +45,8 @@ import { puestoApi } from '../../api/services/puestoApi';
 import type { Puesto } from '../../types';
 
 const PuestosPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -206,10 +210,12 @@ const PuestosPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Puestos de Trabajo</Typography>
-        <Stack direction="row" spacing={2}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Puestos de Trabajo
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Tooltip title="Recargar">
             <IconButton onClick={loadPuestos} color="primary">
               <RefreshIcon />
@@ -219,6 +225,7 @@ const PuestosPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenForm()}
+            fullWidth={isMobile}
           >
             Nuevo Puesto
           </Button>
@@ -232,17 +239,17 @@ const PuestosPage: React.FC = () => {
       )}
 
       {/* Estadísticas Rápidas */}
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <WorkIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <WorkIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="primary.main">
+                  <Typography variant="h4" fontWeight="bold" color="primary.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {filteredPuestos.length}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Total Puestos
                   </Typography>
                 </Box>
@@ -251,16 +258,16 @@ const PuestosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <BusinessIcon sx={{ fontSize: 40, color: 'success.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <BusinessIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'success.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="success.main">
+                  <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {departamentos.length - 1}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Departamentos
                   </Typography>
                 </Box>
@@ -269,18 +276,18 @@ const PuestosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <MoneyIcon sx={{ fontSize: 40, color: 'info.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <MoneyIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'info.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="info.main">
-                    ${filteredPuestos.length > 0 
+                  <Typography variant="h5" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
+                    ${filteredPuestos.length > 0
                       ? Math.round(filteredPuestos.reduce((sum, p) => sum + (p.salarioBase || 0), 0) / filteredPuestos.length).toLocaleString('es-AR')
                       : 0}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Salario Promedio
                   </Typography>
                 </Box>
@@ -289,18 +296,18 @@ const PuestosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <MoneyIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <MoneyIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'warning.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="warning.main">
+                  <Typography variant="h5" fontWeight="bold" color="warning.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${filteredPuestos.length > 0
                       ? Math.max(...filteredPuestos.map(p => p.salarioBase || 0)).toLocaleString('es-AR')
                       : 0}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Salario Máximo
                   </Typography>
                 </Box>
@@ -354,15 +361,15 @@ const PuestosPage: React.FC = () => {
             </Grid>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Nombre</TableCell>
-                  <TableCell>Departamento</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell align="right">Salario Base</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Nombre</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>Departamento</TableCell>
+                  <TableCell sx={{ minWidth: 200 }}>Descripción</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 110 }}>Salario Base</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 110 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -450,7 +457,7 @@ const PuestosPage: React.FC = () => {
       </Card>
 
       {/* Dialog de Detalle */}
-      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="sm" fullWidth>
+      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         {selected && (
           <>
             <DialogTitle sx={{ pb: 1 }}>
@@ -517,7 +524,7 @@ const PuestosPage: React.FC = () => {
       </Dialog>
 
       {/* Dialog de Formulario */}
-      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="sm" fullWidth>
+      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {editingPuesto ? 'Editar Puesto' : 'Nuevo Puesto'}
         </DialogTitle>
@@ -576,7 +583,7 @@ const PuestosPage: React.FC = () => {
       </Dialog>
 
       {/* Dialog de Confirmación de Eliminación */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth>
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>

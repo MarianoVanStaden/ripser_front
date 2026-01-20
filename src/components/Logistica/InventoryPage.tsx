@@ -349,17 +349,36 @@ const InventoryPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-          <AssignmentIcon />
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 3 
+        }}
+      >
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
+          }}
+        >
+          <AssignmentIcon sx={{ fontSize: { xs: 28, md: 35 } }} />
           Inventario y Reposiciones
         </Typography>
-        <Box display="flex" gap={2}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
           <Button
             variant="outlined"
             startIcon={<QrCodeIcon />}
             onClick={handleStartRecount}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Iniciar Recuento
           </Button>
@@ -367,6 +386,8 @@ const InventoryPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleAddAdjustment}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Ajuste Manual
           </Button>

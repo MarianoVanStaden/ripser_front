@@ -27,7 +27,9 @@ import {
   DialogActions,
   InputAdornment,
   Grid,
-  Divider
+  Divider,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -43,6 +45,8 @@ import type { OrdenServicio } from '../../types';
 import dayjs from 'dayjs';
 
 const TrabajosRealizadosPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,9 +151,11 @@ const TrabajosRealizadosPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Trabajos Realizados</Typography>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Trabajos Realizados
+        </Typography>
         <Tooltip title="Recargar">
           <IconButton onClick={loadOrdenes} color="primary">
             <RefreshIcon />
@@ -165,17 +171,17 @@ const TrabajosRealizadosPage: React.FC = () => {
 
       {/* Estadísticas Rápidas */}
       <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <BuildIcon sx={{ fontSize: 40, color: 'success.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <BuildIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'success.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="success.main">
+                  <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {filteredOrdenes.filter(o => o.estado === 'FINALIZADA').length}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Trabajos Finalizados
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    Finalizados
                   </Typography>
                 </Box>
               </Stack>
@@ -183,17 +189,17 @@ const TrabajosRealizadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <BuildIcon sx={{ fontSize: 40, color: 'error.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <BuildIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'error.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="error.main">
+                  <Typography variant="h4" fontWeight="bold" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {filteredOrdenes.filter(o => o.estado === 'CANCELADA').length}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Trabajos Cancelados
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    Cancelados
                   </Typography>
                 </Box>
               </Stack>
@@ -201,16 +207,16 @@ const TrabajosRealizadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <MoneyIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <MoneyIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="primary.main">
+                  <Typography variant="h5" fontWeight="bold" color="primary.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${filteredOrdenes.reduce((sum, o) => sum + (o.total || 0), 0).toLocaleString('es-AR')}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Total Facturado
                   </Typography>
                 </Box>
@@ -219,16 +225,16 @@ const TrabajosRealizadosPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <CalendarIcon sx={{ fontSize: 40, color: 'info.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <CalendarIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'info.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="info.main">
+                  <Typography variant="h4" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {filteredOrdenes.reduce((sum, o) => sum + calcularTotalHoras(o), 0)}h
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Horas Trabajadas
                   </Typography>
                 </Box>
@@ -305,18 +311,18 @@ const TrabajosRealizadosPage: React.FC = () => {
             </Grid>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>N° Orden</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Fecha Finalización</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell align="center">Horas</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>N° Orden</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>Fecha Finalización</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Descripción</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 80 }}>Horas</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 100 }}>Total</TableCell>
+                  <TableCell sx={{ minWidth: 80 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -387,13 +393,13 @@ const TrabajosRealizadosPage: React.FC = () => {
       </Card>
 
       {/* Dialog de Detalles */}
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth fullScreen={isMobile}>
         {selected && (
           <>
             <DialogTitle sx={{ pb: 1 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box display="flex" justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} flexDirection={{ xs: 'column', sm: 'row' }} gap={1}>
                 <Box>
-                  <Typography variant="h5" fontWeight="bold">
+                  <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
                     Trabajo Realizado - {selected.numeroOrden}
                   </Typography>
                   <Typography variant="body2" color="textSecondary" mt={0.5}>
@@ -405,8 +411,8 @@ const TrabajosRealizadosPage: React.FC = () => {
                 <Chip
                   label={selected.estado}
                   color={getEstadoColor(selected.estado)}
-                  size="medium"
-                  sx={{ fontWeight: 'bold', fontSize: '0.9rem', px: 2 }}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{ fontWeight: 'bold', fontSize: { xs: '0.75rem', sm: '0.9rem' }, px: { xs: 1, sm: 2 } }}
                 />
               </Box>
             </DialogTitle>

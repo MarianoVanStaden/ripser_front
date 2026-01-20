@@ -26,6 +26,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  useMediaQuery,
+  useTheme,
+  Stack,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,6 +43,8 @@ import type { ProveedorDTO, CreateProveedorDTO, ProvinciaEnum } from '../../type
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
 
 const SuppliersPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -279,9 +284,9 @@ const SuppliersPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <BusinessIcon />
           Gestión de Proveedores
         </Typography>
@@ -289,6 +294,7 @@ const SuppliersPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
+          fullWidth={isMobile}
         >
           Agregar Proveedor
         </Button>
@@ -366,7 +372,7 @@ const SuppliersPage: React.FC = () => {
       <Card>
         <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
           <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 150 }}>Razón Social</TableCell>
@@ -456,7 +462,7 @@ const SuppliersPage: React.FC = () => {
       </Card>
 
       {/* Supplier Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <BusinessIcon />

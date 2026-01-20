@@ -26,7 +26,9 @@ import {
   Chip,
   Autocomplete,
   InputAdornment,
-  Grid
+  Grid,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,6 +43,8 @@ import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { MaterialUtilizado, ProductoTerminado, OrdenServicio } from '../../types';
 
 const ControlMaterialesPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [materiales, setMateriales] = useState<MaterialUtilizado[]>([]);
   const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
   const [productos, setProductos] = useState<ProductoTerminado[]>([]);
@@ -290,10 +294,12 @@ const ControlMaterialesPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Control de Materiales Utilizados</Typography>
-        <Box display="flex" gap={2}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Control de Materiales
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Tooltip title="Recargar">
             <IconButton onClick={loadMateriales} color="primary">
               <RefreshIcon />
@@ -303,10 +309,11 @@ const ControlMaterialesPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenForm()}
+            fullWidth={isMobile}
           >
             Agregar Material
           </Button>
-        </Box>
+        </Stack>
       </Box>
 
       {error && (
@@ -324,7 +331,7 @@ const ControlMaterialesPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               size="small"
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -340,22 +347,23 @@ const ControlMaterialesPage: React.FC = () => {
               }
               value={ordenFilter === null ? { id: 0, numeroOrden: 'Todas las órdenes' } : ordenes.find(o => o.id === ordenFilter) || null}
               onChange={(_, value: any) => setOrdenFilter(value?.id === 0 ? null : value?.id || null)}
+              sx={{ minWidth: { xs: '100%', sm: 300 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               renderInput={(params) => (
-                <TextField {...params} label="Filtrar por Orden" size="small" sx={{ minWidth: 300 }} />
+                <TextField {...params} label="Filtrar por Orden" size="small" />
               )}
             />
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Orden de Servicio</TableCell>
-                  <TableCell>Producto</TableCell>
-                  <TableCell align="center">Cantidad</TableCell>
-                  <TableCell align="right">Precio Unitario</TableCell>
-                  <TableCell align="right">Subtotal</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Orden de Servicio</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Producto</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 80 }}>Cantidad</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 120 }}>Precio Unitario</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 100 }}>Subtotal</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -416,8 +424,9 @@ const ControlMaterialesPage: React.FC = () => {
         onClose={handleCloseForm}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { borderRadius: isMobile ? 0 : 2 }
         }}
       >
         <DialogTitle

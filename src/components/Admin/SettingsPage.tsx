@@ -28,6 +28,8 @@ import {
   AccordionDetails,
   alpha,
   useTheme,
+  useMediaQuery,
+  Stack,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,6 +43,7 @@ import type { ParametroSistema } from '../../types';
 
 const SettingsPage: React.FC = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [parameters, setParameters] = useState<ParametroSistema[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,22 +184,24 @@ const SettingsPage: React.FC = () => {
   }
 
   return (
-    <Box>
+    <Box p={{ xs: 2, sm: 3 }}>
       {/* Header */}
       <Box
         display="flex"
         justifyContent="space-between"
         alignItems="center"
         mb={3}
+        flexWrap="wrap"
+        gap={2}
         sx={{
           pb: 2,
           borderBottom: `1px solid ${theme.palette.divider}`,
         }}
       >
-        <Box display="flex" alignItems="center" gap={2}>
+        <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
           <Box
             sx={{
-              p: 1.5,
+              p: { xs: 1, sm: 1.5 },
               borderRadius: 2,
               bgcolor: alpha(theme.palette.primary.main, 0.1),
               display: 'flex',
@@ -204,13 +209,13 @@ const SettingsPage: React.FC = () => {
               justifyContent: 'center',
             }}
           >
-            <SettingsIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+            <SettingsIcon sx={{ fontSize: { xs: 24, sm: 28 }, color: 'primary.main' }} />
           </Box>
           <Box>
-            <Typography variant="h5" fontWeight="600">
+            <Typography variant="h5" fontWeight="600" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
               Parámetros del Sistema
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
               Configuración general del sistema
             </Typography>
           </Box>
@@ -220,6 +225,7 @@ const SettingsPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
+          fullWidth={isMobile}
         >
           Nuevo Parámetro
         </Button>
@@ -257,12 +263,13 @@ const SettingsPage: React.FC = () => {
               Meta de facturación mensual en pesos (ej: 1000000 para $1,000,000/mes)
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
             {!parameters.find(p => p.clave === 'META_MENSUAL_LEADS') && (
               <Button
                 variant="outlined"
                 size="small"
                 startIcon={<AddIcon />}
+                fullWidth={isMobile}
                 onClick={() => {
                   setEditingParameter(null);
                   setFormData({
@@ -282,6 +289,7 @@ const SettingsPage: React.FC = () => {
                 variant="outlined"
                 size="small"
                 startIcon={<AddIcon />}
+                fullWidth={isMobile}
                 onClick={() => {
                   setEditingParameter(null);
                   setFormData({
@@ -296,7 +304,7 @@ const SettingsPage: React.FC = () => {
                 Crear META_PRESUPUESTO_MENSUAL
               </Button>
             )}
-          </Box>
+          </Stack>
         </Alert>
       ) : null}
 
@@ -337,15 +345,15 @@ const SettingsPage: React.FC = () => {
             </AccordionSummary>
 
             <AccordionDetails sx={{ p: 0 }}>
-              <TableContainer>
-                <Table size="small">
+              <TableContainer sx={{ overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: { xs: 700, md: 'auto' } }}>
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'grey.50' }}>
-                      <TableCell sx={{ fontWeight: 600, width: '25%' }}>Clave</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: '25%' }}>Valor</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: '35%' }}>Descripción</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: '10%' }}>Tipo</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: '5%' }}>Acciones</TableCell>
+                      <TableCell sx={{ fontWeight: 600, minWidth: 150 }}>Clave</TableCell>
+                      <TableCell sx={{ fontWeight: 600, minWidth: 150 }}>Valor</TableCell>
+                      <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>Descripción</TableCell>
+                      <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>Tipo</TableCell>
+                      <TableCell sx={{ fontWeight: 600, minWidth: 80 }}>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -426,8 +434,9 @@ const SettingsPage: React.FC = () => {
         onClose={() => setDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 3 },
+          sx: { borderRadius: isMobile ? 0 : 3 },
         }}
       >
         <DialogTitle>

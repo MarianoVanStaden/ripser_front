@@ -720,25 +720,46 @@ const InventarioDepositoPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <InventoryIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-          <Typography variant="h4" component="h1">
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 3 
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <InventoryIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'primary.main' }} />
+          <Typography 
+            variant="h4" 
+            component="h1"
+            sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}
+          >
             Inventario por Depósito
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
           <Button
             variant="outlined"
             startIcon={<FileDownloadIcon />}
             onClick={(e) => setExportAnchorEl(e.currentTarget)}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Exportar
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreateDialog}>
-            Asignar Stock a Depósito
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />} 
+            onClick={handleOpenCreateDialog}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            Asignar Stock
           </Button>
         </Box>
       </Box>

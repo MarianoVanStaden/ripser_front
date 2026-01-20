@@ -24,6 +24,9 @@ import {
   TableRow,
   InputAdornment,
   TablePagination,
+  Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,7 +51,9 @@ import { generateCuentaCorrienteClientePDF } from '../../utils/pdfExportUtils';
 dayjs.locale('es');
 
 const CuentaCorrientePage: React.FC = () => {
-  const location = useLocation(); // Use the useLocation hook
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [movimientos, setMovimientos] = useState<CuentaCorriente[]>([]);
@@ -287,19 +292,20 @@ const CuentaCorrientePage: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box p={3}>
+      <Box p={{ xs: 2, sm: 3 }}>
         {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" display="flex" alignItems="center">
-            <AccountBalanceIcon sx={{ mr: 2 }} />
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+          <Typography variant="h4" component="h1" display="flex" alignItems="center" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+            <AccountBalanceIcon sx={{ mr: 1 }} />
             Cuenta Corriente
           </Typography>
-          <Box display="flex" gap={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
               onClick={handleExportarPDF}
               disabled={!selectedCliente}
+              fullWidth={isMobile}
             >
               Exportar PDF
             </Button>
@@ -308,10 +314,11 @@ const CuentaCorrientePage: React.FC = () => {
               startIcon={<AddIcon />}
               onClick={() => setOpenMovimientoDialog(true)}
               disabled={!selectedCliente}
+              fullWidth={isMobile}
             >
               Nuevo Movimiento
             </Button>
-          </Box>
+          </Stack>
         </Box>
 
         {error && (
@@ -321,14 +328,14 @@ const CuentaCorrientePage: React.FC = () => {
         )}
 
         {/* Summary Cards */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2, mb: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fit, minmax(200px, 1fr))' }, gap: 2, mb: 3 }}>
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <AccountBalanceIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Saldo Actual</Typography>
+                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>Saldo Actual</Typography>
               </Box>
-              <Typography variant="h4" color={getSaldoTotal() > 0 ? 'error.main' : 'success.main'}>
+              <Typography variant="h4" color={getSaldoTotal() > 0 ? 'error.main' : 'success.main'} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 ${Math.abs(getSaldoTotal()).toLocaleString()}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -338,24 +345,24 @@ const CuentaCorrientePage: React.FC = () => {
           </Card>
 
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <TrendingUpIcon color="error" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Débitos</Typography>
+                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>Total Débitos</Typography>
               </Box>
-              <Typography variant="h4" color="error.main">
+              <Typography variant="h4" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 ${getTotalDebitos().toLocaleString()}
               </Typography>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box display="flex" alignItems="center" mb={1}>
                 <TrendingDownIcon color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Créditos</Typography>
+                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>Total Créditos</Typography>
               </Box>
-              <Typography variant="h4" color="success.main">
+              <Typography variant="h4" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 ${getTotalCreditos().toLocaleString()}
               </Typography>
             </CardContent>
@@ -373,7 +380,8 @@ const CuentaCorrientePage: React.FC = () => {
               label="Cliente"
               value={selectedCliente?.id || ''}
               onChange={(e) => handleClienteChange(Number(e.target.value))}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
+              size={isMobile ? 'small' : 'medium'}
             >
               <MenuItem value="">Todos los clientes</MenuItem>
               {clientes.map((cliente) => (
@@ -394,7 +402,8 @@ const CuentaCorrientePage: React.FC = () => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
+              size={isMobile ? 'small' : 'medium'}
             />
 
             <TextField
@@ -402,7 +411,8 @@ const CuentaCorrientePage: React.FC = () => {
               label="Tipo"
               value={tipoFilter}
               onChange={(e) => setTipoFilter(e.target.value as TipoMovimiento | '')}
-              sx={{ minWidth: 150 }}
+              sx={{ minWidth: { xs: '48%', sm: 150 }, flex: { xs: '1 1 48%', sm: '0 0 auto' } }}
+              size={isMobile ? 'small' : 'medium'}
             >
               <MenuItem value="">Todos</MenuItem>
               <MenuItem value="DEBITO">Débito</MenuItem>
@@ -413,14 +423,14 @@ const CuentaCorrientePage: React.FC = () => {
               label="Desde"
               value={fechaDesde}
               onChange={setFechaDesde}
-              slotProps={{ textField: { size: 'small' } }}
+              slotProps={{ textField: { size: 'small', sx: { minWidth: { xs: '48%', sm: 150 }, flex: { xs: '1 1 48%', sm: '0 0 auto' } } } }}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
               onChange={setFechaHasta}
-              slotProps={{ textField: { size: 'small' } }}
+              slotProps={{ textField: { size: 'small', sx: { minWidth: { xs: '48%', sm: 150 }, flex: { xs: '1 1 48%', sm: '0 0 auto' } } } }}
             />
 
             <IconButton onClick={loadData}>
@@ -430,16 +440,16 @@ const CuentaCorrientePage: React.FC = () => {
         </Paper>
 
         {/* Movements Table */}
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: { xs: 650, md: 'auto' } }}>
             <TableHead>
               <TableRow>
-                <TableCell>Fecha</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Concepto</TableCell>
-                <TableCell>Comprobante</TableCell>
-                <TableCell align="right">Importe</TableCell>
-                <TableCell align="right">Saldo</TableCell>
+                <TableCell sx={{ minWidth: 100 }}>Fecha</TableCell>
+                <TableCell sx={{ minWidth: 80 }}>Tipo</TableCell>
+                <TableCell sx={{ minWidth: 150 }}>Concepto</TableCell>
+                <TableCell sx={{ minWidth: 100 }}>Comprobante</TableCell>
+                <TableCell align="right" sx={{ minWidth: 100 }}>Importe</TableCell>
+                <TableCell align="right" sx={{ minWidth: 100 }}>Saldo</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -494,7 +504,7 @@ const CuentaCorrientePage: React.FC = () => {
         </TableContainer>
 
         {/* New Movement Dialog */}
-        <Dialog open={openMovimientoDialog} onClose={() => setOpenMovimientoDialog(false)} maxWidth="sm" fullWidth>
+        <Dialog open={openMovimientoDialog} onClose={() => setOpenMovimientoDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
           <DialogTitle>
             Nuevo Movimiento - {selectedCliente?.nombre} {selectedCliente?.apellido}
           </DialogTitle>

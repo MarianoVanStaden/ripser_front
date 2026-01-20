@@ -4,7 +4,7 @@ import {
   Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Stack, IconButton, Tooltip, Chip, Alert, CircularProgress,
-  Autocomplete, FormControlLabel, Switch
+  Autocomplete, FormControlLabel, Switch, useMediaQuery, useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -27,6 +27,8 @@ import DocumentManager from '../shared/DocumentManager';
 import type { Legajo, Empleado, DocumentoLegajo as DocLegajo } from '../../types';
 
 const LegajosPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [legajos, setLegajos] = useState<Legajo[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [empleadosSinLegajo, setEmpleadosSinLegajo] = useState<Empleado[]>([]);
@@ -257,16 +259,17 @@ const LegajosPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight="700" color="primary">
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" fontWeight="700" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Legajos
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenForm()}
-          size="large"
+          size={isMobile ? 'medium' : 'large'}
+          fullWidth={isMobile}
         >
           Nuevo Legajo
         </Button>
@@ -279,74 +282,74 @@ const LegajosPage: React.FC = () => {
       )}
 
       {/* KPIs */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }} mb={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'primary.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h4" fontWeight="700" color="primary.main">
+                  <Typography variant="h4" fontWeight="700" color="primary.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {filteredLegajos.length}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Total Legajos
                   </Typography>
                 </Box>
-                <BadgeIcon sx={{ fontSize: 48, color: 'primary.main', opacity: 0.3 }} />
+                <BadgeIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'primary.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'success.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h4" fontWeight="700" color="success.main">
+                  <Typography variant="h4" fontWeight="700" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {totalActivos}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Activos
                   </Typography>
                 </Box>
-                <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main', opacity: 0.3 }} />
+                <CheckCircleIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'success.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'error.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h4" fontWeight="700" color="error.main">
+                  <Typography variant="h4" fontWeight="700" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {totalInactivos}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Inactivos
                   </Typography>
                 </Box>
-                <CancelIcon sx={{ fontSize: 48, color: 'error.main', opacity: 0.3 }} />
+                <CancelIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'error.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'info.main', boxShadow: 2 }}>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h4" fontWeight="700" color="info.main">
+                  <Typography variant="h4" fontWeight="700" color="info.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {empleadosRegistrados}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Empleados
                   </Typography>
                 </Box>
-                <PersonIcon sx={{ fontSize: 48, color: 'info.main', opacity: 0.3 }} />
+                <PersonIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'info.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
@@ -399,17 +402,17 @@ const LegajosPage: React.FC = () => {
       {/* Table */}
       <Card sx={{ boxShadow: 3 }}>
         <CardContent>
-          <TableContainer component={Paper} elevation={0}>
-            <Table>
+          <TableContainer component={Paper} elevation={0} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Nº Legajo</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Fecha Alta</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Fecha Baja</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Antigüedad</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Estado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Acciones</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 150 }}>Empleado</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 110 }} align="center">Nº Legajo</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 110 }} align="center">Fecha Alta</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 110 }} align="center">Fecha Baja</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 100 }} align="center">Antigüedad</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 90 }} align="center">Estado</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 120 }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -525,7 +528,7 @@ const LegajosPage: React.FC = () => {
       </Card>
 
       {/* Detail Dialog */}
-      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth>
+      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (
           <>
             <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
@@ -713,7 +716,7 @@ const LegajosPage: React.FC = () => {
       </Dialog>
 
       {/* Form Dialog */}
-      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="md" fullWidth>
+      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
           <Box display="flex" alignItems="center" gap={2}>
             <BadgeIcon />

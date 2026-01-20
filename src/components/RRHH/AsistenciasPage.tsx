@@ -39,7 +39,9 @@ import {
   Badge,
   Menu,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -93,9 +95,11 @@ import type { RegistroAsistencia, Empleado } from '../../types';
 import dayjs from 'dayjs';
 
 const AsistenciasPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // Tab state
   const [tabValue, setTabValue] = useState(0);
-  
+
   const [asistencias, setAsistencias] = useState<RegistroAsistencia[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -954,10 +958,12 @@ const AsistenciasPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Asistencias - Sistema Inteligente</Typography>
-        <Stack direction="row" spacing={2}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Asistencias - Sistema Inteligente
+        </Typography>
+        <Stack direction="row" spacing={1}>
           <Tooltip title="Recargar">
             <IconButton onClick={loadData} color="primary">
               <RefreshIcon />
@@ -973,10 +979,15 @@ const AsistenciasPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-          <Tab icon={<CalendarIcon />} label="Resumen Diario" iconPosition="start" />
-          <Tab icon={<ScheduleIcon />} label="Configurar Horarios" iconPosition="start" />
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, overflowX: 'auto' }}>
+        <Tabs
+          value={tabValue}
+          onChange={(_, newValue) => setTabValue(newValue)}
+          variant={isMobile ? 'scrollable' : 'standard'}
+          scrollButtons={isMobile ? 'auto' : false}
+        >
+          <Tab icon={<CalendarIcon />} label={isMobile ? 'Resumen' : 'Resumen Diario'} iconPosition="start" />
+          <Tab icon={<ScheduleIcon />} label={isMobile ? 'Horarios' : 'Configurar Horarios'} iconPosition="start" />
           <Tab icon={<EventBusyIcon />} label="Excepciones" iconPosition="start" />
           <Tab icon={<TrendingUpIcon />} label="Reportes" iconPosition="start" />
         </Tabs>
@@ -986,23 +997,23 @@ const AsistenciasPage: React.FC = () => {
       {tabValue === 0 && (
         <>
           {/* KPIs Inteligentes */}
-          <Grid container spacing={2} mb={3}>
-            <Grid item xs={12} sm={6} md={3}>
+          <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
+            <Grid item xs={6} sm={6} md={3}>
               <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={2}>
-                    <CheckCircleIcon sx={{ fontSize: 40, color: 'success.main' }} />
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                    <CheckCircleIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'success.main' }} />
                     <Box>
-                      <Typography variant="h4" fontWeight="bold" color="success.main">
-                        {filteredAsistencias.filter(a => 
-                          !Array.isArray(excepciones) ? true : !excepciones.find(ex => 
-                            ex.empleadoId === a.empleadoId && 
+                      <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                        {filteredAsistencias.filter(a =>
+                          !Array.isArray(excepciones) ? true : !excepciones.find(ex =>
+                            ex.empleadoId === a.empleadoId &&
                             dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(a.fecha).format('YYYY-MM-DD')
                           )
                         ).length}
                       </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Asistencias Normales
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                        Asist. Normales
                       </Typography>
                     </Box>
                   </Stack>
@@ -1010,19 +1021,19 @@ const AsistenciasPage: React.FC = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={6} sm={6} md={3}>
               <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={2}>
-                    <WarningIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                    <WarningIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'warning.main' }} />
                     <Box>
-                      <Typography variant="h4" fontWeight="bold" color="warning.main">
-                        {Array.isArray(excepciones) ? excepciones.filter(ex => 
-                          ex.tipo === 'LLEGADA_TARDE' && 
+                      <Typography variant="h4" fontWeight="bold" color="warning.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                        {Array.isArray(excepciones) ? excepciones.filter(ex =>
+                          ex.tipo === 'LLEGADA_TARDE' &&
                           dayjs(ex.fecha).isBetween(dayjs(fechaDesde), dayjs(fechaHasta), null, '[]')
                         ).length : 0}
                       </Typography>
-                      <Typography variant="body2" color="textSecondary">
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         Tardanzas
                       </Typography>
                     </Box>
@@ -1031,19 +1042,19 @@ const AsistenciasPage: React.FC = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={6} sm={6} md={3}>
               <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={2}>
-                    <CancelIcon sx={{ fontSize: 40, color: 'error.main' }} />
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                    <CancelIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'error.main' }} />
                     <Box>
-                      <Typography variant="h4" fontWeight="bold" color="error.main">
-                        {Array.isArray(excepciones) ? excepciones.filter(ex => 
-                          ex.tipo === 'INASISTENCIA' && 
+                      <Typography variant="h4" fontWeight="bold" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                        {Array.isArray(excepciones) ? excepciones.filter(ex =>
+                          ex.tipo === 'INASISTENCIA' &&
                           dayjs(ex.fecha).isBetween(dayjs(fechaDesde), dayjs(fechaHasta), null, '[]')
                         ).length : 0}
                       </Typography>
-                      <Typography variant="body2" color="textSecondary">
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         Inasistencias
                       </Typography>
                     </Box>
@@ -1052,18 +1063,18 @@ const AsistenciasPage: React.FC = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={6} sm={6} md={3}>
               <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={2}>
-                    <TrendingUpIcon sx={{ fontSize: 40, color: 'info.main' }} />
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                    <TrendingUpIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'info.main' }} />
                     <Box>
-                      <Typography variant="h4" fontWeight="bold" color="info.main">
+                      <Typography variant="h4" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                         {Array.isArray(excepciones) ? excepciones
                           .filter(ex => ex.tipo === 'HORAS_EXTRAS' && dayjs(ex.fecha).isBetween(dayjs(fechaDesde), dayjs(fechaHasta), null, '[]'))
                           .reduce((sum, ex) => sum + (ex.horasExtras || 0), 0) : 0}h
                       </Typography>
-                      <Typography variant="body2" color="textSecondary">
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         Horas Extras
                       </Typography>
                     </Box>
@@ -1117,18 +1128,18 @@ const AsistenciasPage: React.FC = () => {
                 Solo registre excepciones (tardanzas, inasistencias, etc.) en la pestaña "Excepciones".
               </Alert>
 
-              <TableContainer>
-                <Table>
+              <TableContainer sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Empleado</TableCell>
-                      <TableCell>Fecha</TableCell>
-                      <TableCell align="center">Estado</TableCell>
-                      <TableCell align="center">Entrada</TableCell>
-                      <TableCell align="center">Salida</TableCell>
-                      <TableCell align="center">Horas</TableCell>
-                      <TableCell align="center">Tipo Registro</TableCell>
-                      <TableCell>Observaciones</TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>Empleado</TableCell>
+                      <TableCell sx={{ minWidth: 100 }}>Fecha</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 130 }}>Estado</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 80 }}>Entrada</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 80 }}>Salida</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 70 }}>Horas</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 110 }}>Tipo Registro</TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>Observaciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2213,7 +2224,7 @@ const AsistenciasPage: React.FC = () => {
       </Menu>
 
       {/* Dialog de Configuración de Horarios */}
-      <Dialog open={openConfigDialog} onClose={handleCloseConfigDialog} maxWidth="md" fullWidth>
+      <Dialog open={openConfigDialog} onClose={handleCloseConfigDialog} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {selectedEmpleado 
             ? `Configurar Horario - ${getEmpleadoNombre(selectedEmpleado)}`
@@ -2321,7 +2332,7 @@ const AsistenciasPage: React.FC = () => {
       </Dialog>
 
       {/* Dialog de Excepciones */}
-      <Dialog open={openExcepcionDialog} onClose={handleCloseExcepcionDialog} maxWidth="sm" fullWidth>
+      <Dialog open={openExcepcionDialog} onClose={handleCloseExcepcionDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Registrar Excepción</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 2 }}>

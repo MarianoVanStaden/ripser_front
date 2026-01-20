@@ -34,6 +34,8 @@ import {
   Divider,
   LinearProgress,
   TablePagination,
+  Menu,
+  ListItemButton,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -49,6 +51,8 @@ import {
   Refresh as RefreshIcon,
   DateRange as DateRangeIcon,
   AttachMoney as MoneyIcon,
+  TableChart as TableChartIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -58,6 +62,8 @@ import 'dayjs/locale/es';
 import { proveedorApi } from '../../api/services/proveedorApi';
 import { compraApi } from '../../api/services/compraApi';
 import type { ProveedorDTO, CompraDTO } from '../../types';
+import { exportToPDF } from '../../utils/exportPDF';
+import { exportToExcel } from '../../utils/exportExcel';
 
 dayjs.locale('es');
 
@@ -131,6 +137,10 @@ const HistorialComprasPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Export menu states
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+  const exportMenuOpen = Boolean(exportAnchorEl);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -146,24 +156,27 @@ const HistorialComprasPage: React.FC = () => {
       const comprasData: CompraDTO[] = await compraApi.getAll();
 
       // Map API data to CompraHistorial
-      const comprasWithSuppliers: CompraHistorial[] = comprasData.map(compra => ({
-        id: compra.id,
-        numero: compra.numero || `COMP-${compra.id}`,
-        supplierId: compra.proveedorId,
-        supplier: suppliersData.find(s => s.id === compra.proveedorId),
-        fecha: compra.fechaCreacion || compra.fechaEntrega || '',
-        total: compra.detalles.reduce((sum, item) => sum + item.cantidad * item.costoUnitario, 0),
-        estado: compra.estado,
-        metodoPago: compra.metodoPago || 'Sin método',
-        observaciones: compra.observaciones,
-        items: compra.detalles.map(item => ({
-          id: item.id,
-          descripcion: item.nombreProductoTemporal || item.descripcionProductoTemporal || '',
-          cantidad: item.cantidad,
-          precioUnitario: item.costoUnitario,
-          subtotal: item.cantidad * item.costoUnitario,
-        })),
-      }));
+      const comprasWithSuppliers: CompraHistorial[] = comprasData.map(compra => {
+        const detalles = compra.detalles || [];
+        return {
+          id: compra.id,
+          numero: compra.numero || `COMP-${compra.id}`,
+          supplierId: compra.proveedorId,
+          supplier: suppliersData.find(s => s.id === compra.proveedorId),
+          fecha: compra.fechaCreacion || compra.fechaEntrega || '',
+          total: detalles.reduce((sum, item) => sum + (item.cantidad || 0) * (item.costoUnitario || 0), 0),
+          estado: compra.estado,
+          metodoPago: compra.metodoPago || 'Sin método',
+          observaciones: compra.observaciones,
+          items: detalles.map(item => ({
+            id: item.id,
+            descripcion: item.nombreProductoTemporal || item.descripcionProductoTemporal || 'Sin descripción',
+            cantidad: item.cantidad || 0,
+            precioUnitario: item.costoUnitario || 0,
+            subtotal: (item.cantidad || 0) * (item.costoUnitario || 0),
+          })),
+        };
+      });
 
       setCompras(comprasWithSuppliers);
 
@@ -283,6 +296,66 @@ const HistorialComprasPage: React.FC = () => {
       .slice(0, 5);
   };
 
+  // Export handlers
+  const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
+    setExportAnchorEl(event.currentTarget);
+  };
+
+  const handleExportClose = () => {
+    setExportAnchorEl(null);
+  };
+
+  const handleExportPDF = () => {
+    const columns = ['Fecha', 'Proveedor', 'Items', 'Total', 'Estado'];
+    const rows = filteredCompras.map(compra => [
+      dayjs(compra.fecha).format('DD/MM/YYYY'),
+      compra.supplier?.razonSocial || 'Sin nombre',
+      compra.items.length > 0 
+        ? `${compra.items.length} item(s): ${compra.items.map(i => i.descripcion || 'Sin descripción').join(', ')}`
+        : 'Sin items',
+      `$${compra.total.toLocaleString('es-AR')}`,
+      compra.estado
+    ]);
+
+    exportToPDF({
+      title: 'Historial de Compras',
+      subtitle: `Período: ${fechaDesde?.format('DD/MM/YYYY') || 'Inicio'} - ${fechaHasta?.format('DD/MM/YYYY') || 'Fin'}`,
+      fileName: `historial_compras_${dayjs().format('YYYY-MM-DD')}`,
+      tables: [{
+        headers: columns,
+        rows: rows,
+        footerText: `Total de compras: ${filteredCompras.length} | Monto total: $${getTotalFilteredAmount().toLocaleString('es-AR')}`
+      }]
+    });
+    handleExportClose();
+  };
+
+  const handleExportExcel = () => {
+    const excelData = filteredCompras.map(compra => ({
+      'Fecha': dayjs(compra.fecha).format('DD/MM/YYYY'),
+      'Proveedor': compra.supplier?.razonSocial || 'Sin nombre',
+      'Cantidad Items': compra.items.length,
+      'Detalle Items': compra.items.map(i => `${i.descripcion || 'Sin descripción'} x${i.cantidad}`).join('; '),
+      'Total': compra.total,
+      'Estado': compra.estado
+    }));
+
+    exportToExcel({
+      fileName: `historial_compras_${dayjs().format('YYYY-MM-DD')}`,
+      sheets: [{
+        name: 'Historial de Compras',
+        data: excelData
+      }],
+      metadata: {
+        title: 'Historial de Compras',
+        filters: {
+          'Proveedor': supplierFilter ? suppliers.find(s => s.id?.toString() === supplierFilter)?.razonSocial || 'Todos' : 'Todos'
+        }
+      }
+    });
+    handleExportClose();
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -293,24 +366,64 @@ const HistorialComprasPage: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box p={3}>
+      <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
         {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" display="flex" alignItems="center">
-            <TimelineIcon sx={{ mr: 2 }} />
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 2,
+            mb: 3 
+          }}
+        >
+          <Typography 
+            variant="h4" 
+            component="h1" 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
+            }}
+          >
+            <TimelineIcon sx={{ mr: 1.5, fontSize: { xs: 28, md: 35 } }} />
             Historial de Compras
           </Typography>
-          <Box display="flex" gap={2}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
+              onClick={handleExportClick}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Exportar
             </Button>
+            <Menu
+              anchorEl={exportAnchorEl}
+              open={exportMenuOpen}
+              onClose={handleExportClose}
+            >
+              <MenuItem onClick={handleExportPDF}>
+                <ListItemIcon>
+                  <DownloadIcon fontSize="small" />
+                </ListItemIcon>
+                Exportar a PDF
+              </MenuItem>
+              <MenuItem onClick={handleExportExcel}>
+                <ListItemIcon>
+                  <DownloadIcon fontSize="small" />
+                </ListItemIcon>
+                Exportar a Excel
+              </MenuItem>
+            </Menu>
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
               onClick={loadData}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Actualizar
             </Button>
@@ -384,11 +497,19 @@ const HistorialComprasPage: React.FC = () => {
             </Box>
 
             {/* Filters */}
-            <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
+            <Paper elevation={1} sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Filtros
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: 2, 
+                  flexWrap: 'wrap', 
+                  alignItems: { xs: 'stretch', sm: 'center' } 
+                }}
+              >
                 <TextField
                   label="Buscar"
                   value={searchTerm}
@@ -400,7 +521,8 @@ const HistorialComprasPage: React.FC = () => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{ minWidth: 200 }}
+                  sx={{ minWidth: { xs: '100%', sm: 200 } }}
+                  fullWidth
                 />
 
                 <TextField
@@ -408,7 +530,8 @@ const HistorialComprasPage: React.FC = () => {
                   label="Proveedor"
                   value={supplierFilter}
                   onChange={(e) => setSupplierFilter(e.target.value)}
-                  sx={{ minWidth: 200 }}
+                  sx={{ minWidth: { xs: '100%', sm: 200 } }}
+                  fullWidth
                 >
                   <MenuItem value="">Todos</MenuItem>
                   {suppliers.map((supplier) => (
@@ -423,7 +546,8 @@ const HistorialComprasPage: React.FC = () => {
                   label="Estado"
                   value={estadoFilter}
                   onChange={(e) => setEstadoFilter(e.target.value)}
-                  sx={{ minWidth: 150 }}
+                  sx={{ minWidth: { xs: '100%', sm: 150 } }}
+                  fullWidth
                 >
                   <MenuItem value="">Todos</MenuItem>
                   <MenuItem value="PAGADA">Pagada</MenuItem>
@@ -431,27 +555,29 @@ const HistorialComprasPage: React.FC = () => {
                   <MenuItem value="VENCIDA">Vencida</MenuItem>
                 </TextField>
 
-                <DatePicker
-                  label="Desde"
-                  value={fechaDesde}
-                  onChange={setFechaDesde}
-                  slotProps={{ textField: { size: 'small' } }}
-                />
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, width: { xs: '100%', sm: 'auto' } }}>
+                  <DatePicker
+                    label="Desde"
+                    value={fechaDesde}
+                    onChange={setFechaDesde}
+                    slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                  />
 
-                <DatePicker
-                  label="Hasta"
-                  value={fechaHasta}
-                  onChange={setFechaHasta}
-                  slotProps={{ textField: { size: 'small' } }}
-                />
+                  <DatePicker
+                    label="Hasta"
+                    value={fechaHasta}
+                    onChange={setFechaHasta}
+                    slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                  />
+                </Box>
               </Box>
             </Paper>
 
             {/* Purchases Table */}
             <Card>
-              <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-                <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                  <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+              <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 }, overflowX: 'auto' }}>
+                <TableContainer component={Paper} sx={{ width: '100%' }}>
+                  <Table sx={{ minWidth: 650 }} size="small">
                     <TableHead>
                       <TableRow>
                         <TableCell sx={{ minWidth: 120 }}>Número</TableCell>
@@ -724,34 +850,40 @@ const HistorialComprasPage: React.FC = () => {
                 <Typography variant="h6" gutterBottom>
                   Items Comprados
                 </Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Descripción</TableCell>
-                        <TableCell align="right">Cantidad</TableCell>
-                        <TableCell align="right">Precio Unit.</TableCell>
-                        <TableCell align="right">Subtotal</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedCompra.items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.descripcion}</TableCell>
-                          <TableCell align="right">{item.cantidad}</TableCell>
-                          <TableCell align="right">${item.precioUnitario.toLocaleString()}</TableCell>
-                          <TableCell align="right">${item.subtotal.toLocaleString()}</TableCell>
+                {selectedCompra.items.length === 0 ? (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    No hay items detallados para esta compra.
+                  </Alert>
+                ) : (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Descripción</TableCell>
+                          <TableCell align="right">Cantidad</TableCell>
+                          <TableCell align="right">Precio Unit.</TableCell>
+                          <TableCell align="right">Subtotal</TableCell>
                         </TableRow>
-                      ))}
-                      <TableRow>
-                        <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                          ${selectedCompra.total.toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {selectedCompra.items.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.descripcion}</TableCell>
+                            <TableCell align="right">{item.cantidad}</TableCell>
+                            <TableCell align="right">${item.precioUnitario.toLocaleString()}</TableCell>
+                            <TableCell align="right">${item.subtotal.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow>
+                          <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                            ${selectedCompra.total.toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
               </Box>
             )}
           </DialogContent>

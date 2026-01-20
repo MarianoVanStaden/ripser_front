@@ -29,6 +29,8 @@ import {
   FormControl,
   InputLabel,
   TablePagination,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Inventory2 as Inventory2Icon,
@@ -87,6 +89,8 @@ interface EquipoMovimiento {
 }
 
 const StockEquiposPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [equipos, setEquipos] = useState<EquipoFabricadoDTO[]>([]);
   const [movimientosStock, setMovimientosStock] = useState<MovimientoStock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -497,9 +501,9 @@ const StockEquiposPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <Inventory2Icon />
           Gestión de Stock de Equipos
         </Typography>
@@ -507,6 +511,7 @@ const StockEquiposPage: React.FC = () => {
           variant="outlined"
           startIcon={<GetAppIcon />}
           onClick={handleExportEquiposPDF}
+          fullWidth={isMobile}
         >
           Exportar PDF
         </Button>
@@ -519,7 +524,7 @@ const StockEquiposPage: React.FC = () => {
       )}
 
       {/* Summary Cards */}
-      <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={3} sx={{ mb: 3 }}>
+      <Box display="grid" gridTemplateColumns={{ xs: 'repeat(2, 1fr)', sm: 'repeat(auto-fit, minmax(200px, 1fr))' }} gap={{ xs: 2, sm: 3 }} sx={{ mb: 3 }}>
         <Card>
           <CardContent>
             <Box display="flex" alignItems="center" gap={2}>
@@ -582,11 +587,16 @@ const StockEquiposPage: React.FC = () => {
 
       {/* Tabs */}
       <Card>
-        <CardContent>
-          <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-            <Tab label="Inventario de Equipos" />
-            <Tab label="Registro de Movimientos de Equipos" icon={<HistoryIcon />} iconPosition="end" />
-            <Tab label="Movimientos de Materias Primas" />
+        <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+          <Tabs
+            value={tabValue}
+            onChange={(_, newValue) => setTabValue(newValue)}
+            variant={isMobile ? 'scrollable' : 'standard'}
+            scrollButtons={isMobile ? 'auto' : false}
+          >
+            <Tab label={isMobile ? 'Inventario' : 'Inventario de Equipos'} />
+            <Tab label={isMobile ? 'Mov. Equipos' : 'Registro de Movimientos de Equipos'} icon={isMobile ? undefined : <HistoryIcon />} iconPosition="end" />
+            <Tab label={isMobile ? 'Mov. Mat. Primas' : 'Movimientos de Materias Primas'} />
             <Tab label="Historial de Entregas" icon={<PersonIcon />} iconPosition="end" />
           </Tabs>
         </CardContent>
@@ -1130,7 +1140,7 @@ const StockEquiposPage: React.FC = () => {
       </TabPanel>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Editar Equipo: {selectedEquipo?.numeroHeladera}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>

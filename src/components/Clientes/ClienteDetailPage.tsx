@@ -11,6 +11,8 @@ import {
   CircularProgress,
   Alert,
   Rating,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -61,7 +63,9 @@ function a11yProps(index: number) {
 const ClienteDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,20 +156,20 @@ const ClienteDetailPage: React.FC = () => {
   }
 
   return (
-    <Box>
+    <Box p={{ xs: 2, sm: 3 }}>
       {/* Header */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-        <Box display="flex" alignItems="center">
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
+        <Box display="flex" alignItems="center" flexWrap="wrap" gap={1}>
           <Button
             startIcon={<ArrowBackIcon />}
             onClick={handleBack}
-            sx={{ mr: 2 }}
+            size={isMobile ? 'small' : 'medium'}
           >
-            Volver
+            {isMobile ? '' : 'Volver'}
           </Button>
-          <Box display="flex" alignItems="center" gap={1}>
-            {getTipoIcon(cliente.tipo)}
-            <Typography variant="h4" component="h1">
+          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+            {!isMobile && getTipoIcon(cliente.tipo)}
+            <Typography variant="h4" component="h1" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
               {cliente.nombre}
             </Typography>
             <Chip
@@ -179,15 +183,16 @@ const ClienteDetailPage: React.FC = () => {
           variant="contained"
           startIcon={<EditIcon />}
           onClick={handleEdit}
+          fullWidth={isMobile}
         >
           Editar
         </Button>
       </Box>
 
       {/* Client Info Summary */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box display="flex" flexWrap="wrap" gap={4}>
-          <Box flex="1" minWidth="250px">
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+        <Box display="flex" flexWrap="wrap" gap={{ xs: 2, sm: 4 }}>
+          <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
             <Typography variant="h6" gutterBottom>
               Información General
             </Typography>
@@ -218,7 +223,7 @@ const ClienteDetailPage: React.FC = () => {
             </Box>
           </Box>
 
-          <Box flex="1" minWidth="250px">
+          <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
             <Typography variant="h6" gutterBottom>
               Contacto
             </Typography>
@@ -248,7 +253,7 @@ const ClienteDetailPage: React.FC = () => {
             </Box>
           </Box>
 
-          <Box flex="1" minWidth="250px">
+          <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
             <Typography variant="h6" gutterBottom>
               Información Comercial
             </Typography>
@@ -270,10 +275,16 @@ const ClienteDetailPage: React.FC = () => {
       {/* Tabs */}
       <Paper>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="client tabs">
-            <Tab label="Información Básica" {...a11yProps(0)} />
-            <Tab label="Historial de Contactos" {...a11yProps(1)} />
-            <Tab label="Cuenta Corriente" {...a11yProps(2)} />
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="client tabs"
+            variant={isMobile ? 'scrollable' : 'standard'}
+            scrollButtons={isMobile ? 'auto' : false}
+          >
+            <Tab label={isMobile ? 'Info' : 'Información Básica'} {...a11yProps(0)} />
+            <Tab label={isMobile ? 'Contactos' : 'Historial de Contactos'} {...a11yProps(1)} />
+            <Tab label={isMobile ? 'Cta. Cte.' : 'Cuenta Corriente'} {...a11yProps(2)} />
             <Tab label="Documentos" {...a11yProps(3)} />
           </Tabs>
         </Box>
@@ -285,7 +296,7 @@ const ClienteDetailPage: React.FC = () => {
                 Datos Personales/Empresariales
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={4}>
-                <Box flex="1" minWidth="250px">
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Nombre:</strong> {cliente.nombre}</Typography>
                   {cliente.apellido && (
                     <Typography><strong>Apellido:</strong> {cliente.apellido}</Typography>
@@ -299,7 +310,7 @@ const ClienteDetailPage: React.FC = () => {
                     </Typography>
                   )}
                 </Box>
-                <Box flex="1" minWidth="250px">
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Tipo:</strong> {cliente.tipo === 'PERSONA_FISICA' ? 'Persona Física' : 'Persona Jurídica'}</Typography>
                   <Typography><strong>Estado:</strong> {cliente.estado}</Typography>
                   <Typography><strong>Fecha de Alta:</strong> {new Date(cliente.fechaAlta).toLocaleDateString()}</Typography>
@@ -315,11 +326,11 @@ const ClienteDetailPage: React.FC = () => {
                 Información de Contacto
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={4}>
-                <Box flex="1" minWidth="250px">
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Email:</strong> {cliente.email || 'No especificado'}</Typography>
                   <Typography><strong>Teléfono:</strong> {cliente.telefono || 'No especificado'}</Typography>
                 </Box>
-                <Box flex="1" minWidth="250px">
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Dirección:</strong> {cliente.direccion || 'No especificada'}</Typography>
                   <Typography><strong>Ciudad:</strong> {cliente.ciudad || 'No especificada'}</Typography>
                   <Typography><strong>Provincia:</strong> {cliente.provincia ? PROVINCIA_LABELS[cliente.provincia] : 'No especificada'}</Typography>
@@ -335,11 +346,11 @@ const ClienteDetailPage: React.FC = () => {
                 Información Comercial
               </Typography>
               <Box display="flex" flexWrap="wrap" gap={4}>
-                <Box flex="1" minWidth="250px">
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Límite de Crédito:</strong> ${cliente.limiteCredito?.toLocaleString() || 'N/A'}</Typography>
                   <Typography><strong>Saldo Actual:</strong> ${cliente.saldoActual?.toLocaleString() || '0'}</Typography>
                 </Box>
-                <Box flex="1" minWidth="250px">
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Disponible:</strong> ${((cliente.limiteCredito || 0) - (cliente.saldoActual || 0)).toLocaleString()}</Typography>
                 </Box>
               </Box>

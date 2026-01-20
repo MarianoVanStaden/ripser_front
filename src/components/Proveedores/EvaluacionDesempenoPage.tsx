@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -32,6 +32,9 @@ import {
   CircularProgress,
   Grid,
   Snackbar,
+  Menu,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,6 +43,8 @@ import {
   TrendingUp,
   TrendingDown,
   PictureAsPdf as PdfIcon,
+  TableChart as TableChartIcon,
+  FileDownload as FileDownloadIcon,
 } from '@mui/icons-material';
 import { supplierApiWithFallback } from '../../api/services/apiWithFallback';
 import evaluacionProveedorApi, { CriterioEvaluacion } from '../../api/services/evaluacionProveedorApi';
@@ -49,6 +54,8 @@ import type {
   EstadisticasEvaluacionDTO,
 } from '../../api/services/evaluacionProveedorApi';
 import type { ProveedorDTO } from '../../types';
+import { exportToPDF } from '../../utils/exportPDF';
+import { exportToExcel } from '../../utils/exportExcel';
 
 
 const EvaluacionDesempenoPage = () => {
@@ -72,6 +79,8 @@ const EvaluacionDesempenoPage = () => {
     message: '',
     severity: 'success'
   });
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+  const exportMenuOpen = Boolean(exportAnchorEl);
 
   // Helper to get evaluations for the selected supplier (typed)
   const getSupplierEvaluations = (supplierId: number | ''): EvaluacionProveedorDTO[] => {
@@ -219,6 +228,62 @@ const EvaluacionDesempenoPage = () => {
     return 'error';
   };
 
+  // Export handlers
+  const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
+    setExportAnchorEl(event.currentTarget);
+  };
+
+  const handleExportClose = () => {
+    setExportAnchorEl(null);
+  };
+
+  const handleExportPDF = () => {
+    const supplierName = suppliers.find(s => s.id === selectedSupplier)?.razonSocial || 'Proveedor';
+    const columns = ['Fecha', 'Criterio', 'Calificación', 'Comentario', 'Evaluado Por'];
+    const rows = evaluaciones.map(evaluacion => [
+      evaluacion.fechaEvaluacion ? new Date(evaluacion.fechaEvaluacion).toLocaleDateString('es-AR') : 'N/A',
+      evaluacion.criterio || 'N/A',
+      `${evaluacion.calificacion}/5`,
+      evaluacion.comentario || '',
+      evaluacion.evaluadoPor || 'N/A'
+    ]);
+
+    exportToPDF({
+      title: 'Evaluación de Desempeño',
+      subtitle: `Proveedor: ${supplierName}`,
+      fileName: `evaluacion_${supplierName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
+      tables: [{
+        headers: columns,
+        rows: rows,
+        footerText: `Total de evaluaciones: ${evaluaciones.length} | Calificación general: ${estadisticas?.calificacionGeneral?.toFixed(2) || 'N/A'}`
+      }]
+    });
+    handleExportClose();
+  };
+
+  const handleExportExcel = () => {
+    const supplierName = suppliers.find(s => s.id === selectedSupplier)?.razonSocial || 'Proveedor';
+    const excelData = evaluaciones.map(evaluacion => ({
+      'Fecha': evaluacion.fechaEvaluacion ? new Date(evaluacion.fechaEvaluacion).toLocaleDateString('es-AR') : 'N/A',
+      'Criterio': evaluacion.criterio || 'N/A',
+      'Calificación': evaluacion.calificacion,
+      'Comentario': evaluacion.comentario || '',
+      'Evaluado Por': evaluacion.evaluadoPor || 'N/A'
+    }));
+
+    exportToExcel({
+      fileName: `evaluacion_${supplierName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
+      sheets: [{
+        name: 'Evaluaciones',
+        data: excelData
+      }],
+      metadata: {
+        title: `Evaluación de Desempeño - ${supplierName}`
+      }
+    });
+    handleExportClose();
+  };
+
 
   const renderOverviewTab = () => {
     const supplierName = suppliers.find(s => s.id === selectedSupplier)?.razonSocial || 'este proveedor';
@@ -333,52 +398,51 @@ const EvaluacionDesempenoPage = () => {
     );
   };
 
-  const handleExportPDF = useCallback(async () => {
-    if (!selectedSupplier) {
-      setSnackbar({
-        open: true,
-        message: 'Por favor seleccione un proveedor',
-        severity: 'warning'
-      });
-      return;
-    }
-
-    try {
-      const supplier = suppliers.find(s => s.id === selectedSupplier);
-      if (!supplier) return;
-
-      // TODO: Implement PDF export for supplier evaluations
-      // Similar to other PDF export functions in pdfExportUtils.ts
-      
-      setSnackbar({
-        open: true,
-        message: 'Exportación PDF en desarrollo',
-        severity: 'info'
-      });
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al exportar PDF',
-        severity: 'error'
-      });
-    }
-  }, [selectedSupplier, suppliers]);
-
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4">
+    <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 2 
+        }}
+      >
+        <Typography 
+          variant="h4"
+          sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}
+        >
           Evaluación de Desempeño Proveedor
         </Typography>
         <Button
           variant="outlined"
-          startIcon={<PdfIcon />}
-          onClick={handleExportPDF}
+          startIcon={<FileDownloadIcon />}
+          onClick={handleExportClick}
           disabled={!selectedSupplier}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
-          Exportar PDF
+          Exportar
         </Button>
+        <Menu
+          anchorEl={exportAnchorEl}
+          open={exportMenuOpen}
+          onClose={handleExportClose}
+        >
+          <MenuItem onClick={handleExportPDF}>
+            <ListItemIcon>
+              <PdfIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Exportar a PDF</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={handleExportExcel}>
+            <ListItemIcon>
+              <TableChartIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Exportar a Excel</ListItemText>
+          </MenuItem>
+        </Menu>
       </Box>
 
       <FormControl fullWidth sx={{ mb: 2 }}>

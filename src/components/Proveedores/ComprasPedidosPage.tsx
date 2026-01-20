@@ -1034,34 +1034,55 @@ const handleDeleteCompra = async (id: number) => {
   return (
     <ErrorBoundary>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box p={3}>
+        <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
           {/* Header */}
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h4" component="h1" display="flex" alignItems="center">
-            <ShoppingCartIcon sx={{ mr: 2 }} />
-            Compras y Pedidos
-          </Typography>
-          <Box display="flex" gap={1}>
-            <Button
-              variant="outlined"
-              startIcon={<GetAppIcon />}
-              onClick={handleExportarListaPDF}
-            >
-              Exportar PDF
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => {
-                setIsEditMode(false);
-                setSelectedOrden(null);
-                setOpenOrdenDialog(true);
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'stretch', sm: 'center' },
+              gap: 2,
+              mb: 3 
+            }}
+          >
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
               }}
             >
-              Nueva Orden de Compra
-            </Button>
+              <ShoppingCartIcon sx={{ mr: 1.5, fontSize: { xs: 28, md: 35 } }} />
+              Compras y Pedidos
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
+              <Button
+                variant="outlined"
+                startIcon={<GetAppIcon />}
+                onClick={handleExportarListaPDF}
+                fullWidth
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Exportar PDF
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  setIsEditMode(false);
+                  setSelectedOrden(null);
+                  setOpenOrdenDialog(true);
+                }}
+                fullWidth
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Nueva Orden
+              </Button>
+            </Box>
           </Box>
-        </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>

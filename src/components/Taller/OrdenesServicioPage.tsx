@@ -27,7 +27,9 @@ import {
   DialogActions,
   Autocomplete,
   InputAdornment,
-  Grid
+  Grid,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -46,6 +48,8 @@ import type { OrdenServicio, Cliente, Empleado } from '../../types';
 
 
 const OrdenesServicioPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -269,10 +273,12 @@ const OrdenesServicioPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Órdenes de Servicio</Typography>
-        <Box display="flex" gap={2}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Órdenes de Servicio
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Tooltip title="Recargar">
             <IconButton onClick={loadOrdenes} color="primary">
               <RefreshIcon />
@@ -282,10 +288,11 @@ const OrdenesServicioPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenForm()}
+            fullWidth={isMobile}
           >
             Nueva Orden
           </Button>
-        </Box>
+        </Stack>
       </Box>
 
       {error && (
@@ -303,7 +310,7 @@ const OrdenesServicioPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               size="small"
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -318,7 +325,7 @@ const OrdenesServicioPage: React.FC = () => {
               value={estadoFilter}
               onChange={(e) => setEstadoFilter(e.target.value)}
               size="small"
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
             >
               <MenuItem value="TODOS">Todos</MenuItem>
               <MenuItem value="PENDIENTE">Pendiente</MenuItem>
@@ -328,17 +335,17 @@ const OrdenesServicioPage: React.FC = () => {
             </TextField>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>N° Orden</TableCell>
-                  <TableCell>Cliente</TableCell>
-                  <TableCell>Fecha Creación</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>N° Orden</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Cliente</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Fecha Creación</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
+                  <TableCell align="right" sx={{ minWidth: 80 }}>Total</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -438,7 +445,7 @@ const OrdenesServicioPage: React.FC = () => {
       </Card>
       
       {/* Dialog de Detalles */}
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth fullScreen={isMobile}>
         {selected && (
           <>
             <DialogTitle sx={{ pb: 1 }}>
@@ -741,8 +748,9 @@ const OrdenesServicioPage: React.FC = () => {
         onClose={handleCloseForm}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 2 }
+          sx: { borderRadius: isMobile ? 0 : 2 }
         }}
       >
         <DialogTitle

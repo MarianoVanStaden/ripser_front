@@ -31,6 +31,8 @@ import {
   Tooltip,
   FormHelperText,
   Divider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -64,6 +66,8 @@ const availableRoles = [
 ];
 
 const UsersPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // Context hooks
   const { esSuperAdmin } = useAuth();
   const { empresaId: currentEmpresaId } = useTenant();
@@ -549,16 +553,17 @@ const UsersPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-          <PersonIcon />
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          <PersonIcon sx={{ fontSize: { xs: 24, sm: 35 } }} />
           Gestión de Usuarios
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
+          fullWidth={isMobile}
         >
           Agregar Usuario
         </Button>
@@ -581,17 +586,17 @@ const UsersPage: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Usuarios Registrados ({users.length})
           </Typography>
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Usuario</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Roles del Sistema</TableCell>
-                  <TableCell>Roles en Empresas</TableCell>
-                  <TableCell align="center">Estado</TableCell>
-                  <TableCell>Último Acceso</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Usuario</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Email</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Roles del Sistema</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Roles en Empresas</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 90 }}>Estado</TableCell>
+                  <TableCell sx={{ minWidth: 140 }}>Último Acceso</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 110 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -700,7 +705,7 @@ const UsersPage: React.FC = () => {
       </Card>
 
       {/* User Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <SecurityIcon />
@@ -923,6 +928,7 @@ const UsersPage: React.FC = () => {
         onClose={handleCancelSave}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#1976d2' }}>
           <CheckCircleIcon color="primary" />
@@ -1001,6 +1007,7 @@ const UsersPage: React.FC = () => {
         onClose={handleCancelSuperAdmin}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#d32f2f' }}>
           <SecurityIcon color="error" />
@@ -1047,6 +1054,7 @@ const UsersPage: React.FC = () => {
         onClose={handleCancelDelete}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#d32f2f' }}>
           <WarningIcon color="error" />
@@ -1127,6 +1135,7 @@ const UsersPage: React.FC = () => {
         onClose={() => setSuccessDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#388e3c' }}>
           <PersonIcon color="success" />
@@ -1182,6 +1191,7 @@ const UsersPage: React.FC = () => {
         onClose={() => setViewDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: '#1976d2', color: 'white' }}>
           <VisibilityIcon />

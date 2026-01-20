@@ -295,9 +295,16 @@ export const VentasDashboard = () => {
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: { xs: 'flex-start', md: 'center' }, 
+          justifyContent: 'space-between', 
+          gap: 2,
+          mb: 1 
+        }}>
           <Box>
-            <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
               <SpeedIcon fontSize="large" />
               Dashboard de Ventas
             </Typography>
@@ -305,26 +312,35 @@ export const VentasDashboard = () => {
               Bienvenido, {user?.nombre || user?.username} - {sucursalNombre}
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Chip
-              icon={<BusinessIcon />}
-              label={sucursalNombre}
-              color="primary"
-              variant="outlined"
-            />
-            <Tooltip title="Última actualización">
+          <Stack 
+            direction={{ xs: 'column', sm: 'row' }} 
+            spacing={1} 
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 1 }}>
               <Chip
-                icon={<ScheduleIcon />}
-                label={dayjs(lastRefresh).format('HH:mm:ss')}
-                size="small"
+                icon={<BusinessIcon />}
+                label={sucursalNombre}
+                color="primary"
                 variant="outlined"
               />
-            </Tooltip>
+              <Tooltip title="Última actualización">
+                <Chip
+                  icon={<ScheduleIcon />}
+                  label={dayjs(lastRefresh).format('HH:mm:ss')}
+                  size="small"
+                  variant="outlined"
+                />
+              </Tooltip>
+            </Box>
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
               onClick={handleRefresh}
               disabled={loading}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Actualizar
             </Button>

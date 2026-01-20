@@ -374,24 +374,45 @@ const ReconciliacionStockPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <SyncIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-          <Typography variant="h4">Reconciliación de Stock</Typography>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 3 
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <SyncIcon sx={{ fontSize: { xs: 28, md: 32 }, color: 'primary.main' }} />
+          <Typography 
+            variant="h4"
+            sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}
+          >
+            Reconciliación de Stock
+          </Typography>
         </Box>
-        <Box display="flex" gap={1}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, alignItems: 'stretch' }}>
           <Tooltip title="Actualizar">
-            <IconButton onClick={loadData} disabled={loading}>
+            <Button
+              variant="outlined"
+              onClick={loadData}
+              disabled={loading}
+              sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+            >
               <RefreshIcon />
-            </IconButton>
+            </Button>
           </Tooltip>
           {!reconciliacionActiva && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => setOpenIniciarDialog(true)}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Iniciar Reconciliación
             </Button>

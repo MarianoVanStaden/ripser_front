@@ -5,7 +5,7 @@ import {
   DialogContent, DialogActions, TextField, Grid, Alert, CircularProgress,
   Chip, Stack, FormControl, InputLabel, Select, MenuItem, OutlinedInput,
   Checkbox, ListItemText, FormControlLabel, Switch, Tooltip, InputAdornment,
-  IconButton as MuiIconButton, Pagination
+  IconButton as MuiIconButton, Pagination, useMediaQuery, useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,6 +31,8 @@ import type {
 import dayjs from 'dayjs';
 
 const UsuariosPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // State
   const [usuarios, setUsuarios] = useState<UsuarioDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -254,17 +256,18 @@ const UsuariosPage: React.FC = () => {
   };
 
   return (
-    <Box p={3}>
+    <Box p={{ xs: 2, sm: 3 }}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-          <PeopleIcon fontSize="large" />
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          <PeopleIcon sx={{ fontSize: { xs: 24, sm: 35 } }} />
           Gestión de Usuarios
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setCreateDialogOpen(true)}
+          fullWidth={isMobile}
         >
           Nuevo Usuario
         </Button>
@@ -296,17 +299,17 @@ const UsuariosPage: React.FC = () => {
             </Box>
           ) : (
             <>
-              <TableContainer component={Paper} variant="outlined">
-                <Table>
+              <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Username</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Roles</TableCell>
-                      <TableCell align="center">Estado</TableCell>
-                      <TableCell align="center">Bloqueado</TableCell>
-                      <TableCell>Creado</TableCell>
-                      <TableCell align="center">Acciones</TableCell>
+                      <TableCell sx={{ minWidth: 120 }}>Username</TableCell>
+                      <TableCell sx={{ minWidth: 180 }}>Email</TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>Roles</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 100 }}>Estado</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 120 }}>Bloqueado</TableCell>
+                      <TableCell sx={{ minWidth: 130 }}>Creado</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 110 }}>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -426,7 +429,7 @@ const UsuariosPage: React.FC = () => {
       </Card>
 
       {/* Create User Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>Crear Nuevo Usuario</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -530,7 +533,7 @@ const UsuariosPage: React.FC = () => {
       </Dialog>
 
       {/* Edit User Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>Editar Usuario: {selectedUser?.username}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -611,7 +614,7 @@ const UsuariosPage: React.FC = () => {
       </Dialog>
 
       {/* Change Password Dialog */}
-      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Cambiar Contraseña: {selectedUser?.username}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -669,7 +672,7 @@ const UsuariosPage: React.FC = () => {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullScreen={isMobile}>
         <DialogTitle>Eliminar Usuario</DialogTitle>
         <DialogContent>
           <Typography>

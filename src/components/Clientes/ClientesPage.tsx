@@ -21,6 +21,8 @@ import {
   CircularProgress,
   Rating,
   TablePagination,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,6 +44,8 @@ import { useTenant } from '../../context/TenantContext';
 const ClientesPage: React.FC = () => {
   const navigate = useNavigate();
   const { sucursalFiltro } = useTenant();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -179,24 +183,19 @@ const ClientesPage: React.FC = () => {
       }}
     >
       {/* Header */}
-      <Grid container alignItems="center" justifyContent="space-between" mb={3} spacing={2}>
-        <Grid item xs={12} sm="auto">
-          <Typography variant="h4" component="h1" sx={{ whiteSpace: 'nowrap' }}>
-            Gestión de Clientes
-          </Typography>
-        </Grid>
-        <Grid item xs={12} sm="auto">
-          <Box textAlign={{ xs: 'left', sm: 'right' }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/clientes/nuevo')}
-            >
-              Nuevo Cliente
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" component="h1" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Gestión de Clientes
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/clientes/nuevo')}
+          fullWidth={isMobile}
+        >
+          Nuevo Cliente
+        </Button>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -273,7 +272,8 @@ const ClientesPage: React.FC = () => {
       value={tipoFilter}
       onChange={(e) => setTipoFilter(e.target.value as TipoCliente | '')}
       sx={{
-        minWidth: 160,
+        minWidth: { xs: '48%', sm: 160 },
+        flex: { xs: '1 1 48%', sm: '0 0 auto' },
         '& .MuiOutlinedInput-root': { borderRadius: 999 },
       }}
     >
@@ -290,7 +290,8 @@ const ClientesPage: React.FC = () => {
       value={estadoFilter}
       onChange={(e) => setEstadoFilter(e.target.value as EstadoCliente | '')}
       sx={{
-        minWidth: 160,
+        minWidth: { xs: '48%', sm: 160 },
+        flex: { xs: '1 1 48%', sm: '0 0 auto' },
         '& .MuiOutlinedInput-root': { borderRadius: 999 },
       }}
     >
@@ -302,18 +303,20 @@ const ClientesPage: React.FC = () => {
     </TextField>
 
     {/* Botones */}
-    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={{ ml: { xs: 0, sm: 'auto' }, display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, mt: { xs: 1, sm: 0 } }}>
       <Button
         variant="contained"
         size="small"
         startIcon={<SearchIcon />}
         onClick={handleSearch}
         disabled={loading}
+        fullWidth={isMobile}
         sx={{
           borderRadius: 999,
           px: 2.2,
           textTransform: 'none',
           fontWeight: 600,
+          flex: { xs: 1, sm: 'none' },
         }}
       >
         Buscar
@@ -329,6 +332,7 @@ const ClientesPage: React.FC = () => {
           textTransform: 'none',
           color: 'text.secondary',
           '&:hover': { backgroundColor: 'action.hover' },
+          flex: { xs: 1, sm: 'none' },
         }}
       >
         Limpiar
@@ -459,13 +463,13 @@ const ClientesPage: React.FC = () => {
       )}
 
       {/* Dialog Detalle */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>Detalles del Cliente</DialogTitle>
         <DialogContent>
           {selectedCliente && (
             <Box>
-              <Box display="flex" flexWrap="wrap" gap={4} mb={3}>
-                <Box flex="1" minWidth="250px">
+              <Box display="flex" flexWrap="wrap" gap={{ xs: 2, sm: 4 }} mb={3}>
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography variant="subtitle2" gutterBottom>
                     Información General
                   </Typography>
@@ -474,7 +478,7 @@ const ClientesPage: React.FC = () => {
                   <Typography><strong>CUIT:</strong> {selectedCliente.cuit || 'N/A'}</Typography>
                   <Typography><strong>Estado:</strong> {selectedCliente.estado}</Typography>
                 </Box>
-                <Box flex="1" minWidth="250px">
+                <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography variant="subtitle2" gutterBottom>
                     Contacto
                   </Typography>

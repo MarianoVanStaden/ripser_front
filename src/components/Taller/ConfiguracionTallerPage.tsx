@@ -11,7 +11,9 @@ import {
   Stack,
   InputAdornment,
   Paper,
-  Divider
+  Divider,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -22,6 +24,8 @@ import { parametroSistemaApi } from '../../api/services/parametroSistemaApi';
 import type { ParametroSistema } from '../../types';
 
 const ConfiguracionTallerPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [valorHora, setValorHora] = useState<string>('');
   const [parametroId, setParametroId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,12 +107,14 @@ const ConfiguracionTallerPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" alignItems="center" mb={3}>
-        <SettingsIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
+        <SettingsIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main', mr: { xs: 1, sm: 2 } }} />
         <Box>
-          <Typography variant="h4">Configuración del Taller</Typography>
-          <Typography variant="body2" color="textSecondary" mt={0.5}>
+          <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+            Configuración del Taller
+          </Typography>
+          <Typography variant="body2" color="textSecondary" mt={0.5} sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
             Configure los parámetros del módulo de taller
           </Typography>
         </Box>
@@ -127,17 +133,17 @@ const ConfiguracionTallerPage: React.FC = () => {
       )}
 
       <Card>
-        <CardContent sx={{ p: 4 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
           <Box display="flex" alignItems="center" mb={3}>
-            <MoneyIcon sx={{ fontSize: 32, color: 'primary.main', mr: 1.5 }} />
-            <Typography variant="h5" fontWeight="600">
+            <MoneyIcon sx={{ fontSize: { xs: 24, sm: 32 }, color: 'primary.main', mr: 1.5 }} />
+            <Typography variant="h5" fontWeight="600" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
               Cálculo de Mano de Obra
             </Typography>
           </Box>
 
           <Divider sx={{ mb: 3 }} />
 
-          <Paper elevation={0} sx={{ p: 3, bgcolor: 'info.50', mb: 3, borderLeft: '4px solid', borderColor: 'info.main' }}>
+          <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, bgcolor: 'info.50', mb: 3, borderLeft: '4px solid', borderColor: 'info.main' }}>
             <Typography variant="body2" color="textSecondary" gutterBottom>
               <strong>¿Cómo funciona el cálculo?</strong>
             </Typography>
@@ -188,11 +194,12 @@ const ConfiguracionTallerPage: React.FC = () => {
               </Typography>
             </Paper>
 
-            <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+            <Stack direction={{ xs: 'column-reverse', sm: 'row' }} justifyContent="flex-end" spacing={2} mt={2}>
               <Button
                 variant="outlined"
                 onClick={loadParametro}
                 disabled={saving}
+                fullWidth={isMobile}
               >
                 Cancelar
               </Button>
@@ -202,15 +209,16 @@ const ConfiguracionTallerPage: React.FC = () => {
                 onClick={handleSave}
                 disabled={saving}
                 size="large"
+                fullWidth={isMobile}
               >
                 {saving ? 'Guardando...' : 'Guardar Configuración'}
               </Button>
-            </Box>
+            </Stack>
           </Stack>
         </CardContent>
       </Card>
 
-      <Paper elevation={0} sx={{ p: 3, mt: 3, bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
+      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mt: 3, bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
         <Typography variant="body2" fontWeight="600" gutterBottom>
           ⚠️ Nota Importante
         </Typography>

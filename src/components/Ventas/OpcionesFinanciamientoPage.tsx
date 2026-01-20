@@ -391,33 +391,45 @@ const OpcionesFinanciamientoPage: React.FC = () => {
   return (
     <Box p={{ xs: 2, sm: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <PaymentIcon />
           Opciones de Financiamiento
         </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={loadOpciones}
             disabled={!selectedDocumentoId}
+            sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
           >
             Recargar
           </Button>
-          <Button
-            variant="outlined"
-            color="success"
-            startIcon={<CalculateIcon />}
-            onClick={handleCreateDefaultOptions}
-            disabled={!selectedDocumentoId || opciones.length > 0}
+          <IconButton
+            onClick={loadOpciones}
+            disabled={!selectedDocumentoId}
+            sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
           >
-            Crear Opciones por Defecto
-          </Button>
+            <RefreshIcon />
+          </IconButton>
+          {opciones.length === 0 && selectedDocumentoId && (
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={<CalculateIcon />}
+              onClick={handleCreateDefaultOptions}
+              fullWidth
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Crear Opciones por Defecto
+            </Button>
+          )}
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
             disabled={!selectedDocumentoId}
+            fullWidth
           >
             Nueva Opción
           </Button>

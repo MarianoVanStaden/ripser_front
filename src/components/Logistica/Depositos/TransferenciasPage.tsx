@@ -817,17 +817,36 @@ const TransferenciasPage: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
-      <Box sx={{ p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-            <ShippingIcon />
-            Transferencias entre Depósitos
+      <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 2,
+            mb: 3 
+          }}
+        >
+          <Typography 
+            variant="h4" 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
+            }}
+          >
+            <ShippingIcon sx={{ fontSize: { xs: 28, md: 35 } }} />
+            Transferencias
           </Typography>
-          <Box display="flex" gap={2}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
             <Button
               variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={(e) => setExportAnchorEl(e.currentTarget)}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Exportar
             </Button>
@@ -836,6 +855,8 @@ const TransferenciasPage: React.FC = () => {
               startIcon={<RefreshIcon />}
               onClick={loadData}
               disabled={loading}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
               Actualizar
             </Button>
@@ -843,8 +864,10 @@ const TransferenciasPage: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => setCreateDialogOpen(true)}
+              fullWidth
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
-              Nueva Transferencia
+              Nueva
             </Button>
           </Box>
         </Box>

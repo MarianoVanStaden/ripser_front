@@ -27,6 +27,8 @@ import {
   FormControlLabel,
   FormGroup,
   Chip,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -101,6 +103,8 @@ const mockRoles: Role[] = [
 ];
 
 const RolesPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -219,16 +223,17 @@ const RolesPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" display="flex" alignItems="center" gap={1}>
-          <ShieldIcon />
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          <ShieldIcon sx={{ fontSize: { xs: 24, sm: 35 } }} />
           Roles y Permisos
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
+          fullWidth={isMobile}
         >
           Agregar Rol
         </Button>
@@ -242,15 +247,15 @@ const RolesPage: React.FC = () => {
 
       <Card>
         <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Rol</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>Permisos</TableCell>
-                  <TableCell>Fecha Creación</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Rol</TableCell>
+                  <TableCell sx={{ minWidth: 200 }}>Descripción</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Permisos</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Fecha Creación</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 100 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -303,7 +308,7 @@ const RolesPage: React.FC = () => {
       </Card>
 
       {/* Role Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <SecurityIcon />

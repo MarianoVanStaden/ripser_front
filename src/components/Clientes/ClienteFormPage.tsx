@@ -13,6 +13,9 @@ import {
   FormLabel,
   Rating,
   Divider,
+  useMediaQuery,
+  useTheme,
+  Stack,
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -28,6 +31,8 @@ const ClienteFormPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,11 +187,11 @@ const ClienteFormPage: React.FC = () => {
   return (
     <Box sx={{ maxWidth: 'lg', mx: 'auto', p: { xs: 2, md: 3 } }}>
       {/* Header */}
-      <Box display="flex" alignItems="center" mb={3}>
-        <Button startIcon={<ArrowBackIcon />} onClick={handleCancel} sx={{ mr: 2 }}>
-          Volver
+      <Box display="flex" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
+        <Button startIcon={<ArrowBackIcon />} onClick={handleCancel} size={isMobile ? 'small' : 'medium'}>
+          {isMobile ? '' : 'Volver'}
         </Button>
-        <Typography variant="h4">{isEdit ? 'Editar Cliente' : 'Nuevo Cliente'}</Typography>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>{isEdit ? 'Editar Cliente' : 'Nuevo Cliente'}</Typography>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -398,12 +403,13 @@ const ClienteFormPage: React.FC = () => {
           </Grid>
 
           {/* Botones */}
-          <Box display="flex" justifyContent="flex-end" gap={2} mt={3}>
+          <Stack direction={{ xs: 'column-reverse', sm: 'row' }} justifyContent="flex-end" spacing={2} mt={3}>
             <Button
               variant="outlined"
               onClick={handleCancel}
               startIcon={<CancelIcon />}
               disabled={loading}
+              fullWidth={isMobile}
             >
               Cancelar
             </Button>
@@ -412,10 +418,11 @@ const ClienteFormPage: React.FC = () => {
               type="submit"
               startIcon={<SaveIcon />}
               disabled={loading}
+              fullWidth={isMobile}
             >
               {loading ? 'Guardando...' : isEdit ? 'Actualizar' : 'Crear Cliente'}
             </Button>
-          </Box>
+          </Stack>
         </Paper>
       </form>
     </Box>

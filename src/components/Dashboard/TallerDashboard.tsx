@@ -136,13 +136,20 @@ const TallerDashboard: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
+    <Box sx={{ p: { xs: 0, sm: 1 } }}>
+      <Typography 
+        variant="h4" 
+        gutterBottom 
+        sx={{ 
+          mb: 3,
+          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
+        }}
+      >
         Dashboard de Taller
       </Typography>
 
       {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
@@ -253,11 +260,20 @@ const TallerDashboard: React.FC = () => {
       </Grid>
 
       {/* Main Content */}
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
         {/* Órdenes Urgentes */}
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+            <Typography 
+              variant="h6" 
+              gutterBottom 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                fontSize: { xs: '1rem', sm: '1.25rem' }
+              }}
+            >
               <AssignmentIcon color="primary" />
               Órdenes Prioritarias
             </Typography>
@@ -321,8 +337,17 @@ const TallerDashboard: React.FC = () => {
 
         {/* Indicadores de Rendimiento */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
+            <Typography 
+              variant="h6" 
+              gutterBottom 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                fontSize: { xs: '1rem', sm: '1.25rem' }
+              }}
+            >
               <TrendingUpIcon color="primary" />
               Rendimiento del Mes
             </Typography>

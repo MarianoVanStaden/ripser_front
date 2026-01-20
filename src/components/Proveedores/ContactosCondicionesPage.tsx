@@ -178,11 +178,28 @@ const ContactosCondicionesPage: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box p={3}>
+      <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
         {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" display="flex" alignItems="center">
-            <BusinessIcon sx={{ mr: 2 }} />
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: 2,
+            mb: 3 
+          }}
+        >
+          <Typography 
+            variant="h4" 
+            component="h1" 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
+            }}
+          >
+            <BusinessIcon sx={{ mr: 1.5, fontSize: { xs: 28, md: 35 } }} />
             Contactos de Proveedores
           </Typography>
         </Box>
@@ -193,9 +210,9 @@ const ContactosCondicionesPage: React.FC = () => {
           </Alert>
         )}
 
-        <Box sx={{ display: 'flex', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
           {/* Proveedores List */}
-          <Paper elevation={2} sx={{ width: 350, p: 2 }}>
+          <Paper elevation={2} sx={{ width: { xs: '100%', md: 350 }, minWidth: { md: 300 }, flexShrink: 0, p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Proveedores
             </Typography>

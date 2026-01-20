@@ -29,7 +29,9 @@ import {
   Autocomplete,
   MenuItem,
   FormControlLabel,
-  Switch
+  Switch,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -52,6 +54,8 @@ import type { Licencia, Empleado, TipoLicencia, EstadoLicencia } from '../../typ
 import dayjs from 'dayjs';
 
 const LicenciasPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [licencias, setLicencias] = useState<Licencia[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -377,10 +381,12 @@ const LicenciasPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Gestión de Licencias</Typography>
-        <Stack direction="row" spacing={2}>
+    <Box p={{ xs: 2, sm: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+          Gestión de Licencias
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Tooltip title="Recargar">
             <IconButton onClick={loadData} color="primary">
               <RefreshIcon />
@@ -390,6 +396,7 @@ const LicenciasPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenForm()}
+            fullWidth={isMobile}
           >
             Nueva Licencia
           </Button>
@@ -403,17 +410,17 @@ const LicenciasPage: React.FC = () => {
       )}
 
       {/* Estadísticas Rápidas */}
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <PendingIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <PendingIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'warning.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="warning.main">
+                  <Typography variant="h4" fontWeight="bold" color="warning.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {totalSolicitadas}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Solicitadas
                   </Typography>
                 </Box>
@@ -422,16 +429,16 @@ const LicenciasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <ApproveIcon sx={{ fontSize: 40, color: 'success.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <ApproveIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'success.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="success.main">
+                  <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {totalAprobadas}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Aprobadas
                   </Typography>
                 </Box>
@@ -440,16 +447,16 @@ const LicenciasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <RejectIcon sx={{ fontSize: 40, color: 'error.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <RejectIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'error.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="error.main">
+                  <Typography variant="h4" fontWeight="bold" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {totalRechazadas}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Rechazadas
                   </Typography>
                 </Box>
@@ -458,16 +465,16 @@ const LicenciasPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <CalendarIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
+                <CalendarIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main' }} />
                 <Box>
-                  <Typography variant="h4" fontWeight="bold" color="primary.main">
+                  <Typography variant="h4" fontWeight="bold" color="primary.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {totalDiasLicencia}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                     Días Totales
                   </Typography>
                 </Box>
@@ -551,17 +558,17 @@ const LicenciasPage: React.FC = () => {
             </Grid>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 850, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Empleado</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell>Período</TableCell>
-                  <TableCell align="center">Días</TableCell>
-                  <TableCell align="center">Goce Haber</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Empleado</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Tipo</TableCell>
+                  <TableCell sx={{ minWidth: 180 }}>Período</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 70 }}>Días</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 100 }}>Goce Haber</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 130 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -670,7 +677,7 @@ const LicenciasPage: React.FC = () => {
       </Card>
 
       {/* Dialog de Formulario */}
-      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="sm" fullWidth>
+      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {editingLicencia ? 'Editar Licencia' : 'Nueva Licencia'}
         </DialogTitle>
@@ -788,7 +795,7 @@ const LicenciasPage: React.FC = () => {
       </Dialog>
 
       {/* Dialog de Aprobación/Rechazo */}
-      <Dialog open={openApproval} onClose={() => setOpenApproval(false)} maxWidth="xs" fullWidth>
+      <Dialog open={openApproval} onClose={() => setOpenApproval(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {approvalAction === 'APROBADA' ? 'Aprobar Licencia' : 'Rechazar Licencia'}
         </DialogTitle>
@@ -820,7 +827,7 @@ const LicenciasPage: React.FC = () => {
       </Dialog>
 
       {/* Dialog de Confirmación de Eliminación */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth>
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>

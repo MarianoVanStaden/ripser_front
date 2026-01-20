@@ -31,6 +31,7 @@ import {
   Divider,
   alpha,
   useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -51,6 +52,7 @@ import SuccessDialog from '../common/SuccessDialog';
 
 const CreditosPage: React.FC = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [creditos, setCreditos] = useState<CreditoCliente[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,7 +230,7 @@ const CreditosPage: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
+    <Box p={{ xs: 2, sm: 3 }}>
       {/* Header */}
       <Box
         display="flex"
@@ -237,6 +239,8 @@ const CreditosPage: React.FC = () => {
         mb={3}
         pb={2}
         borderBottom={`1px solid ${theme.palette.divider}`}
+        flexWrap="wrap"
+        gap={2}
       >
         <Box display="flex" alignItems="center" gap={2}>
           <Box
@@ -244,7 +248,7 @@ const CreditosPage: React.FC = () => {
               p: 1.5,
               borderRadius: 2,
               bgcolor: alpha(theme.palette.success.main, 0.1),
-              display: 'flex',
+              display: { xs: 'none', sm: 'flex' },
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -252,10 +256,10 @@ const CreditosPage: React.FC = () => {
             <CreditIcon sx={{ fontSize: 28, color: 'success.main' }} />
           </Box>
           <Box>
-            <Typography variant="h5" fontWeight="600">
+            <Typography variant="h5" fontWeight="600" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               Créditos de Clientes
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
               Gestión de notas de crédito y saldos a favor
             </Typography>
           </Box>
@@ -265,6 +269,7 @@ const CreditosPage: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setCreateDialogOpen(true)}
+          fullWidth={isMobile}
         >
           Nuevo Crédito
         </Button>
@@ -278,78 +283,78 @@ const CreditosPage: React.FC = () => {
 
       {/* Statistics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={6} md={2}>
           <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Total Créditos
               </Typography>
-              <Typography variant="h4" fontWeight="600">
+              <Typography variant="h4" fontWeight="600" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 {stats.total}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={6} md={2}>
           <Card sx={{ bgcolor: alpha(theme.palette.warning.main, 0.05) }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Pendientes
               </Typography>
-              <Typography variant="h4" fontWeight="600" color="warning.main">
+              <Typography variant="h4" fontWeight="600" color="warning.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 {stats.pendientes}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={6} md={2}>
           <Card sx={{ bgcolor: alpha(theme.palette.success.main, 0.05) }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Aplicados
               </Typography>
-              <Typography variant="h4" fontWeight="600" color="success.main">
+              <Typography variant="h4" fontWeight="600" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 {stats.aplicados}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={6} md={2}>
           <Card sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Anulados
               </Typography>
-              <Typography variant="h4" fontWeight="600" color="error.main">
+              <Typography variant="h4" fontWeight="600" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                 {stats.anulados}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={6} md={2}>
           <Card sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Importe Total
               </Typography>
-              <Typography variant="h6" fontWeight="600" color="info.main">
+              <Typography variant="h6" fontWeight="600" color="info.main" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 ${stats.importeTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={6} md={2}>
           <Card sx={{ bgcolor: alpha(theme.palette.warning.main, 0.05) }}>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Pendiente
               </Typography>
-              <Typography variant="h6" fontWeight="600" color="warning.main">
+              <Typography variant="h6" fontWeight="600" color="warning.main" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 ${stats.importePendiente.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </Typography>
             </CardContent>
@@ -398,18 +403,18 @@ const CreditosPage: React.FC = () => {
 
       {/* Creditos Table */}
       <Card>
-        <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
+        <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'grey.50' }}>
-                  <TableCell sx={{ fontWeight: 600 }}>N° Nota</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Fecha</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Cliente</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Importe</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Motivo</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Estado</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }} align="center">
+                  <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>N° Nota</TableCell>
+                  <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>Fecha</TableCell>
+                  <TableCell sx={{ fontWeight: 600, minWidth: 120 }}>Cliente</TableCell>
+                  <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>Importe</TableCell>
+                  <TableCell sx={{ fontWeight: 600, minWidth: 120 }}>Motivo</TableCell>
+                  <TableCell sx={{ fontWeight: 600, minWidth: 100 }}>Estado</TableCell>
+                  <TableCell sx={{ fontWeight: 600, minWidth: 100 }} align="center">
                     Acciones
                   </TableCell>
                 </TableRow>
@@ -498,6 +503,7 @@ const CreditosPage: React.FC = () => {
         onClose={() => setCreateDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
@@ -554,12 +560,13 @@ const CreditosPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Details Dialog */
+      {/* Details Dialog */}
       <Dialog
         open={detailsDialogOpen}
         onClose={() => setDetailsDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>Detalles del Crédito</DialogTitle>
         <DialogContent>
@@ -625,7 +632,6 @@ const CreditosPage: React.FC = () => {
           <Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
-}
 
       {/* Anular Dialog */}
       <Dialog
@@ -633,6 +639,7 @@ const CreditosPage: React.FC = () => {
         onClose={() => setAnularDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
