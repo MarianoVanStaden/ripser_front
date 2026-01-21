@@ -29,7 +29,9 @@ import {
   Avatar,
   Divider,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,7 +50,25 @@ import {
 } from '@mui/icons-material';
 import { employeeApi } from '../../api/services/employeeApi';
 import { puestoApi } from '../../api/services/puestoApi';
+import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
+import DocumentManager from '../shared/DocumentManager';
 import type { Empleado, Puesto, EmpleadoCreateDTO } from '../../types';
+
+// Categorías de documentos para empleados
+const CATEGORIAS_EMPLEADO = [
+  'DNI',
+  'CUIT',
+  'CV',
+  'CERTIFICADO_TRABAJO',
+  'RECIBO_SUELDO',
+  'LICENCIA_CONDUCIR',
+  'CERTIFICADO_MEDICO',
+  'ALTA_AFIP',
+  'CONTRATO',
+  'CERTIFICADO',
+  'FOTO',
+  'OTROS',
+];
 
 const EmpleadosPage: React.FC = () => {
   const theme = useTheme();
@@ -64,6 +84,7 @@ const EmpleadosPage: React.FC = () => {
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
   const [editingEmpleado, setEditingEmpleado] = useState<Empleado | null>(null);
+  const [detailTabValue, setDetailTabValue] = useState(0);
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -109,6 +130,7 @@ const EmpleadosPage: React.FC = () => {
 
   const handleOpenDetail = (empleado: Empleado) => {
     setSelectedEmpleado(empleado);
+    setDetailTabValue(0);
     setDetailDialogOpen(true);
   };
 
@@ -431,7 +453,7 @@ const EmpleadosPage: React.FC = () => {
       <Dialog
         open={detailDialogOpen}
         onClose={() => setDetailDialogOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         fullScreen={isMobile}
         PaperProps={{
@@ -440,7 +462,7 @@ const EmpleadosPage: React.FC = () => {
       >
         {selectedEmpleado && (
           <>
-            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', pb: 3 }}>
+            <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', pb: 2 }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <Avatar sx={{ bgcolor: 'white', color: 'primary.main', width: 56, height: 56 }}>
                   {selectedEmpleado.nombre[0]}{selectedEmpleado.apellido[0]}
@@ -461,52 +483,93 @@ const EmpleadosPage: React.FC = () => {
                 </Box>
               </Box>
             </DialogTitle>
-            <DialogContent sx={{ pt: 3 }}>
-              <Stack spacing={2.5}>
-                <Box>
-                  <Typography variant="caption" color="textSecondary" fontWeight="600" display="block" mb={1}>
-                    INFORMACIÓN PERSONAL
-                  </Typography>
-                  <Stack spacing={1.5}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <BadgeIcon color="action" />
-                      <Typography><strong>DNI:</strong> {selectedEmpleado.dni}</Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <EmailIcon color="action" />
-                      <Typography><strong>Email:</strong> {selectedEmpleado.email || '-'}</Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <PhoneIcon color="action" />
-                      <Typography><strong>Teléfono:</strong> {selectedEmpleado.telefono || '-'}</Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <HomeIcon color="action" />
-                      <Typography><strong>Dirección:</strong> {selectedEmpleado.direccion || '-'}</Typography>
-                    </Box>
-                  </Stack>
-                </Box>
+            <Tabs
+              value={detailTabValue}
+              onChange={(_, newValue) => setDetailTabValue(newValue)}
+              sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
+            >
+              <Tab label="Información" />
+              <Tab label="Documentos" />
+            </Tabs>
+            <DialogContent sx={{ pt: 3, minHeight: 400 }}>
+              {detailTabValue === 0 && (
+                <Stack spacing={2.5}>
+                  <Box>
+                    <Typography variant="caption" color="textSecondary" fontWeight="600" display="block" mb={1}>
+                      INFORMACIÓN PERSONAL
+                    </Typography>
+                    <Stack spacing={1.5}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <BadgeIcon color="action" />
+                        <Typography><strong>DNI:</strong> {selectedEmpleado.dni}</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <EmailIcon color="action" />
+                        <Typography><strong>Email:</strong> {selectedEmpleado.email || '-'}</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <PhoneIcon color="action" />
+                        <Typography><strong>Teléfono:</strong> {selectedEmpleado.telefono || '-'}</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <HomeIcon color="action" />
+                        <Typography><strong>Dirección:</strong> {selectedEmpleado.direccion || '-'}</Typography>
+                      </Box>
+                    </Stack>
+                  </Box>
 
-                <Divider />
+                  <Divider />
 
-                <Box>
-                  <Typography variant="caption" color="textSecondary" fontWeight="600" display="block" mb={1}>
-                    INFORMACIÓN LABORAL
-                  </Typography>
-                  <Stack spacing={1.5}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <WorkIcon color="action" />
-                      <Typography><strong>Puesto:</strong> {selectedEmpleado.puesto?.nombre || '-'}</Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <AttachMoneyIcon color="action" />
-                      <Typography><strong>Salario:</strong> ${selectedEmpleado.salario?.toLocaleString('es-AR') || '0'}</Typography>
-                    </Box>
-                    <Typography><strong>Fecha Nacimiento:</strong> {selectedEmpleado.fechaNacimiento || '-'}</Typography>
-                    <Typography><strong>Fecha Ingreso:</strong> {selectedEmpleado.fechaIngreso || '-'}</Typography>
-                  </Stack>
-                </Box>
-              </Stack>
+                  <Box>
+                    <Typography variant="caption" color="textSecondary" fontWeight="600" display="block" mb={1}>
+                      INFORMACIÓN LABORAL
+                    </Typography>
+                    <Stack spacing={1.5}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <WorkIcon color="action" />
+                        <Typography><strong>Puesto:</strong> {selectedEmpleado.puesto?.nombre || '-'}</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <AttachMoneyIcon color="action" />
+                        <Typography><strong>Salario:</strong> ${selectedEmpleado.salario?.toLocaleString('es-AR') || '0'}</Typography>
+                      </Box>
+                      <Typography><strong>Fecha Nacimiento:</strong> {selectedEmpleado.fechaNacimiento || '-'}</Typography>
+                      <Typography><strong>Fecha Ingreso:</strong> {selectedEmpleado.fechaIngreso || '-'}</Typography>
+                    </Stack>
+                  </Box>
+                </Stack>
+              )}
+
+              {detailTabValue === 1 && (
+                <DocumentManager
+                  entityId={selectedEmpleado.id}
+                  entityType="empleado"
+                  categorias={CATEGORIAS_EMPLEADO}
+                  onUpload={async (file, categoria, descripcion) => {
+                    await documentoEmpleadoApi.upload(selectedEmpleado.id, file, categoria, descripcion);
+                  }}
+                  onDownload={async (id, fileName) => {
+                    await documentoEmpleadoApi.downloadAndSave(selectedEmpleado.id, id, fileName);
+                  }}
+                  onDelete={async (id) => {
+                    await documentoEmpleadoApi.delete(selectedEmpleado.id, id);
+                  }}
+                  onLoad={async (empleadoId) => {
+                    const docs = await documentoEmpleadoApi.getByEmpleadoId(empleadoId);
+                    // Mapear los campos del DTO a la estructura esperada por DocumentManager
+                    return docs.map(doc => ({
+                      id: doc.id,
+                      nombreArchivo: doc.nombreOriginal,
+                      tipoArchivo: doc.mimeType || '',
+                      tamanioBytes: doc.sizeBytes,
+                      descripcion: doc.descripcion,
+                      categoria: doc.categoria,
+                      fechaSubida: doc.fechaSubida,
+                      subidoPor: doc.subidoPor || ''
+                    }));
+                  }}
+                />
+              )}
             </DialogContent>
             <DialogActions sx={{ px: 3, py: 2, bgcolor: 'grey.50' }}>
               <Button onClick={() => setDetailDialogOpen(false)} variant="outlined">

@@ -1346,6 +1346,23 @@ export interface DocumentoCliente {
   subidoPor: string;
 }
 
+export interface DocumentoEmpleado {
+  id: number;
+  empleadoId: number;
+  nombreEmpleado?: string;
+  nombreOriginal: string;
+  extension?: string;
+  mimeType?: string;
+  sizeBytes: number;
+  sizeLegible?: string;
+  categoria: string;
+  categoriaDescripcion?: string;
+  descripcion?: string;
+  fechaSubida: string;
+  subidoPor?: string;
+  urlDescarga?: string;
+}
+
 export interface UploadDocumentoRequest {
   file: File;
   categoria: string;

@@ -33,11 +33,20 @@ import {
 import dayjs from 'dayjs';
 import type { DocumentoLegajo, DocumentoCliente } from '../../types';
 
-type Documento = DocumentoLegajo | DocumentoCliente;
+type Documento = DocumentoLegajo | DocumentoCliente | {
+  id: number;
+  nombreArchivo: string;
+  tipoArchivo: string;
+  tamanioBytes: number;
+  descripcion?: string;
+  categoria: string;
+  fechaSubida: string;
+  subidoPor: string;
+};
 
 interface DocumentManagerProps {
   entityId: number;
-  entityType: 'legajo' | 'cliente';
+  entityType: 'legajo' | 'cliente' | 'empleado';
   categorias: string[];
   onUpload: (file: File, categoria: string, descripcion?: string) => Promise<void>;
   onDownload: (id: number, fileName: string) => Promise<void>;
