@@ -61,7 +61,8 @@
       "Bash(then echo \"exists\")",
       "Bash(else echo \"not exists\")",
       "Bash(fi)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

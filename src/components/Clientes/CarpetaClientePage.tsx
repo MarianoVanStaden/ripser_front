@@ -47,17 +47,22 @@ import {
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
-import type { Cliente } from '../../types';
+import { documentoClienteApi } from '../../api/services/documentoClienteApi';
+import type { Cliente, DocumentoCliente } from '../../types';
 
-interface DocumentoCliente {
-  id: number;
-  nombre: string;
-  tipo: 'DNI' | 'CUIL' | 'CUIT' | 'LICENCIA' | 'COMPROBANTE' | 'CONTRATO' | 'OTRO';
-  url: string;
-  fechaSubida: string;
-  tamano: number;
-  descripcion?: string;
-}
+// Categorías de documentos para clientes
+const CATEGORIAS_CLIENTE = [
+  { value: 'DNI', label: 'DNI' },
+  { value: 'CUIT', label: 'CUIT/CUIL' },
+  { value: 'CONTRATO', label: 'Contrato' },
+  { value: 'FACTURA', label: 'Factura' },
+  { value: 'REMITO', label: 'Remito' },
+  { value: 'COMPROBANTE', label: 'Comprobante' },
+  { value: 'PRESUPUESTO', label: 'Presupuesto' },
+  { value: 'ORDEN_COMPRA', label: 'Orden de Compra' },
+  { value: 'CERTIFICADO', label: 'Certificado' },
+  { value: 'OTROS', label: 'Otros' },
+];
 
 interface NotaCliente {
   id: number;
@@ -101,7 +106,15 @@ const CarpetaClientePage: React.FC = () => {
   const [openUploadDialog, setOpenUploadDialog] = useState(false);
   const [openNotaDialog, setOpenNotaDialog] = useState(false);
   const [newNota, setNewNota] = useState({ titulo: '', contenido: '', importante: false });
-  
+
+  // Estados para upload de documentos
+  const [loadingDocumentos, setLoadingDocumentos] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadCategoria, setUploadCategoria] = useState('');
+  const [uploadDescripcion, setUploadDescripcion] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
   // Paginación para documentos
   const [pageDocumentos, setPageDocumentos] = useState(0);
   const [rowsPerPageDocumentos, setRowsPerPageDocumentos] = useState(6);
@@ -110,37 +123,7 @@ const CarpetaClientePage: React.FC = () => {
   const [pageNotas, setPageNotas] = useState(0);
   const [rowsPerPageNotas, setRowsPerPageNotas] = useState(5);
 
-  // Mock data for documents and notes
-  const mockDocumentos: DocumentoCliente[] = [
-    {
-      id: 1,
-      nombre: 'DNI_Juan_Perez.pdf',
-      tipo: 'DNI',
-      url: '/documents/dni_juan_perez.pdf',
-      fechaSubida: '2024-01-15',
-      tamano: 2048000,
-      descripcion: 'DNI del cliente'
-    },
-    {
-      id: 2,
-      nombre: 'Contrato_Servicio_2024.pdf',
-      tipo: 'CONTRATO',
-      url: '/documents/contrato_juan_2024.pdf',
-      fechaSubida: '2024-01-20',
-      tamano: 5120000,
-      descripcion: 'Contrato de servicio anual'
-    },
-    {
-      id: 3,
-      nombre: 'Comprobante_Domicilio.pdf',
-      tipo: 'COMPROBANTE',
-      url: '/documents/comprobante_domicilio.pdf',
-      fechaSubida: '2024-02-01',
-      tamano: 1024000,
-      descripcion: 'Comprobante de domicilio actualizado'
-    }
-  ];
-
+  // Mock data for notes (documentos ahora se cargan desde la API)
   const mockNotas: NotaCliente[] = [
     {
       id: 1,
@@ -170,9 +153,24 @@ const CarpetaClientePage: React.FC = () => {
 
   useEffect(() => {
     loadCliente();
-    setDocumentos(mockDocumentos);
+    loadDocumentos();
     setNotas(mockNotas);
   }, [id]);
+
+  const loadDocumentos = async () => {
+    if (!id) return;
+
+    try {
+      setLoadingDocumentos(true);
+      const docs = await documentoClienteApi.getByClienteId(parseInt(id));
+      setDocumentos(docs);
+    } catch (err) {
+      console.error('Error loading documentos:', err);
+      setDocumentos([]);
+    } finally {
+      setLoadingDocumentos(false);
+    }
+  };
 
   const loadCliente = async () => {
     if (!id) return;
@@ -194,10 +192,65 @@ const CarpetaClientePage: React.FC = () => {
     setTabValue(newValue);
   };
 
-  const handleUploadDocument = () => {
-    // Mock implementation - would integrate with file upload service
-    console.log('Upload document');
-    setOpenUploadDialog(false);
+  const handleUploadDocument = async () => {
+    if (!id || !selectedFile || !uploadCategoria) {
+      return;
+    }
+
+    try {
+      setUploading(true);
+      await documentoClienteApi.upload(
+        parseInt(id),
+        selectedFile,
+        uploadCategoria,
+        uploadDescripcion || undefined
+      );
+      setSuccessMessage('Documento subido exitosamente');
+      setOpenUploadDialog(false);
+      resetUploadForm();
+      await loadDocumentos();
+    } catch (err) {
+      console.error('Error uploading documento:', err);
+      setError('Error al subir el documento');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const resetUploadForm = () => {
+    setSelectedFile(null);
+    setUploadCategoria('');
+    setUploadDescripcion('');
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0]);
+    }
+  };
+
+  const handleDownloadDocument = async (doc: DocumentoCliente) => {
+    try {
+      await documentoClienteApi.downloadAndSave(doc.id, doc.nombreArchivo);
+    } catch (err) {
+      console.error('Error downloading documento:', err);
+      setError('Error al descargar el documento');
+    }
+  };
+
+  const handleDeleteDocument = async (doc: DocumentoCliente) => {
+    if (!window.confirm(`¿Está seguro que desea eliminar el documento "${doc.nombreArchivo}"?`)) {
+      return;
+    }
+
+    try {
+      await documentoClienteApi.delete(doc.id);
+      setSuccessMessage('Documento eliminado exitosamente');
+      await loadDocumentos();
+    } catch (err) {
+      console.error('Error deleting documento:', err);
+      setError('Error al eliminar el documento');
+    }
   };
 
   const handleSaveNota = () => {
@@ -218,8 +271,8 @@ const CarpetaClientePage: React.FC = () => {
   // Ordenar documentos alfabéticamente por nombre
   const sortedDocumentos = useMemo(() => {
     return [...documentos].sort((a, b) => {
-      const nombreA = a.nombre?.toLowerCase() || '';
-      const nombreB = b.nombre?.toLowerCase() || '';
+      const nombreA = a.nombreArchivo?.toLowerCase() || '';
+      const nombreB = b.nombreArchivo?.toLowerCase() || '';
       return nombreA.localeCompare(nombreB);
     });
   }, [documentos]);
@@ -467,6 +520,12 @@ const CarpetaClientePage: React.FC = () => {
 
         {/* Tab 2: Documents */}
         <TabPanel value={tabValue} index={1}>
+          {successMessage && (
+            <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
+              {successMessage}
+            </Alert>
+          )}
+
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
             <Typography variant="h6">
               Documentos del Cliente ({sortedDocumentos.length})
@@ -480,44 +539,65 @@ const CarpetaClientePage: React.FC = () => {
             </Button>
           </Box>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2, mb: 2 }}>
-            {paginatedDocumentos.map((doc) => (
-              <Card key={doc.id}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" mb={2}>
-                    {getDocumentIcon(doc.tipo)}
-                    <Box ml={1}>
-                      <Typography variant="subtitle2" noWrap>
-                        {doc.nombre}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {doc.tipo} • {formatFileSize(doc.tamano)}
-                      </Typography>
+          {loadingDocumentos ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : paginatedDocumentos.length === 0 ? (
+            <Alert severity="info">
+              No hay documentos cargados para este cliente
+            </Alert>
+          ) : (
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 2, mb: 2 }}>
+              {paginatedDocumentos.map((doc) => (
+                <Card key={doc.id}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" mb={2}>
+                      {getDocumentIcon(doc.categoria)}
+                      <Box ml={1}>
+                        <Typography variant="subtitle2" noWrap>
+                          {doc.nombreArchivo}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {doc.categoria} • {formatFileSize(doc.tamanioBytes)}
+                        </Typography>
+                      </Box>
                     </Box>
-                  </Box>
 
-                  {doc.descripcion && (
-                    <Typography variant="body2" color="text.secondary" mb={2}>
-                      {doc.descripcion}
+                    {doc.descripcion && (
+                      <Typography variant="body2" color="text.secondary" mb={2}>
+                        {doc.descripcion}
+                      </Typography>
+                    )}
+
+                    <Typography variant="caption" display="block" mb={2}>
+                      Subido el {new Date(doc.fechaSubida).toLocaleDateString()}
+                      {doc.subidoPor && ` por ${doc.subidoPor}`}
                     </Typography>
-                  )}
 
-                  <Typography variant="caption" display="block" mb={2}>
-                    Subido el {new Date(doc.fechaSubida).toLocaleDateString()}
-                  </Typography>
-
-                  <Box display="flex" justifyContent="space-between">
-                    <IconButton size="small" color="primary">
-                      <DownloadIcon />
-                    </IconButton>
-                    <IconButton size="small" color="error">
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
+                    <Box display="flex" justifyContent="space-between">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleDownloadDocument(doc)}
+                        title="Descargar"
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteDocument(doc)}
+                        title="Eliminar"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          )}
 
           <TablePagination
             component="div"
@@ -600,52 +680,90 @@ const CarpetaClientePage: React.FC = () => {
       </Paper>
 
       {/* Upload Document Dialog */}
-      <Dialog open={openUploadDialog} onClose={() => setOpenUploadDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openUploadDialog}
+        onClose={() => {
+          setOpenUploadDialog(false);
+          resetUploadForm();
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Subir Documento</DialogTitle>
         <DialogContent>
           <Box pt={2}>
             <TextField
               fullWidth
               select
-              label="Tipo de Documento"
+              label="Categoría de Documento"
+              value={uploadCategoria}
+              onChange={(e) => setUploadCategoria(e.target.value)}
               margin="normal"
+              required
             >
-              <MenuItem value="DNI">DNI</MenuItem>
-              <MenuItem value="CUIL">CUIL</MenuItem>
-              <MenuItem value="CUIT">CUIT</MenuItem>
-              <MenuItem value="LICENCIA">Licencia</MenuItem>
-              <MenuItem value="COMPROBANTE">Comprobante</MenuItem>
-              <MenuItem value="CONTRATO">Contrato</MenuItem>
-              <MenuItem value="OTRO">Otro</MenuItem>
+              {CATEGORIAS_CLIENTE.map((cat) => (
+                <MenuItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </MenuItem>
+              ))}
             </TextField>
             <TextField
               fullWidth
-              label="Descripción"
+              label="Descripción (opcional)"
+              value={uploadDescripcion}
+              onChange={(e) => setUploadDescripcion(e.target.value)}
               margin="normal"
               multiline
               rows={3}
             />
             <Box
               border="2px dashed"
-              borderColor="grey.300"
+              borderColor={selectedFile ? 'primary.main' : 'grey.300'}
               borderRadius={1}
               p={3}
               textAlign="center"
               mt={2}
+              sx={{
+                cursor: 'pointer',
+                '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+              }}
+              component="label"
             >
-              <AttachFileIcon sx={{ fontSize: 48, color: 'grey.400' }} />
-              <Typography variant="body2" color="text.secondary">
-                Arrastra y suelta un archivo aquí o haz clic para seleccionar
+              <input
+                type="file"
+                hidden
+                onChange={handleFileChange}
+              />
+              <AttachFileIcon sx={{ fontSize: 48, color: selectedFile ? 'primary.main' : 'grey.400' }} />
+              <Typography variant="body2" color={selectedFile ? 'primary.main' : 'text.secondary'}>
+                {selectedFile
+                  ? selectedFile.name
+                  : 'Haz clic para seleccionar un archivo'}
               </Typography>
+              {selectedFile && (
+                <Typography variant="caption" color="text.secondary">
+                  {formatFileSize(selectedFile.size)}
+                </Typography>
+              )}
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenUploadDialog(false)}>
+          <Button
+            onClick={() => {
+              setOpenUploadDialog(false);
+              resetUploadForm();
+            }}
+            disabled={uploading}
+          >
             Cancelar
           </Button>
-          <Button variant="contained" onClick={handleUploadDocument}>
-            Subir
+          <Button
+            variant="contained"
+            onClick={handleUploadDocument}
+            disabled={!selectedFile || !uploadCategoria || uploading}
+          >
+            {uploading ? <CircularProgress size={24} /> : 'Subir'}
           </Button>
         </DialogActions>
       </Dialog>
