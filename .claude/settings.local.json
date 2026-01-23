@@ -62,7 +62,8 @@
       "Bash(else echo \"not exists\")",
       "Bash(fi)",
       "Bash(node -e:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

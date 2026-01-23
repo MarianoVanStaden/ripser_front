@@ -39,6 +39,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import type { RecetaFabricacionListDTO, TipoEquipo } from '../../types';
+import SuccessDialog from '../common/SuccessDialog';
 const RecetasList: React.FC = () => {
   const navigate = useNavigate();
   const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
@@ -64,6 +65,10 @@ const RecetasList: React.FC = () => {
     open: boolean;
     recetaId: number | null;
   }>({ open: false, recetaId: null });
+
+  // Success Dialog for deletion
+  const [deleteSuccessDialogOpen, setDeleteSuccessDialogOpen] = useState(false);
+  const [deletedRecetaName, setDeletedRecetaName] = useState<string>('');
 
   // Group recetas by tipo
   const recetasPorTipo = useMemo(() => {
@@ -156,14 +161,16 @@ const RecetasList: React.FC = () => {
     if (!deleteDialog.recetaId) return;
 
     try {
+      // Find the receta to get its name before deleting
+      const recetaToDelete = recetas.find(r => r.id === deleteDialog.recetaId);
+      const recetaName = recetaToDelete?.nombre || 'Receta';
+
       // Como no hay endpoint de delete, desactivamos
       await recetaFabricacionApi.deactivate(deleteDialog.recetaId);
-      setSnackbar({
-        open: true,
-        message: 'Receta eliminada (desactivada) correctamente',
-        severity: 'success',
-      });
+
       setDeleteDialog({ open: false, recetaId: null });
+      setDeletedRecetaName(recetaName);
+      setDeleteSuccessDialogOpen(true);
       loadRecetas();
     } catch (error) {
       console.error('Error deleting receta:', error);
@@ -447,6 +454,22 @@ const RecetasList: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Success Dialog - Eliminación */}
+      <SuccessDialog
+        open={deleteSuccessDialogOpen}
+        onClose={() => {
+          setDeleteSuccessDialogOpen(false);
+          setDeletedRecetaName('');
+        }}
+        title="¡Receta Eliminada Exitosamente!"
+        message={`La receta "${deletedRecetaName}" ha sido desactivada correctamente`}
+        details={[
+          { label: 'Receta', value: deletedRecetaName },
+          { label: 'Estado', value: 'Desactivada' },
+        ]}
+        actions={[]}
+      />
     </Box>
   );
 };

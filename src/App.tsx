@@ -59,11 +59,8 @@ import StockEquiposPage from './components/Logistica/StockEquiposPage';
 import InventoryPage from './components/Logistica/InventoryPage';
 import RecountTasksPage from './components/Logistica/RecountTasksPage';
 import TripsPage from './components/Logistica/TripsPage';
-import TripsPage2 from './components/Logistica/TripsPage2';
 import DeliveriesPage from './components/Logistica/DeliveriesPage';
-import DeliveriesPage2 from './components/Logistica/DeliveriesPage2';
 import EntregasEquiposPage from './components/Logistica/EntregasEquiposPage';
-import EntregasEquiposPage2 from './components/Logistica/EntregasEquiposPage2';
 import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
 import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
@@ -237,11 +234,8 @@ function App() {
               
               {/* DISTRIBUCIÓN - Logística de salida y última milla */}
               <Route path="logistica/distribucion/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
-              <Route path="logistica/distribucion/viajes-v2" element={<PrivateRoute><TripsPage2 /></PrivateRoute>} />
               <Route path="logistica/distribucion/entregas-productos" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
-              <Route path="logistica/distribucion/entregas-v2" element={<PrivateRoute><DeliveriesPage2 /></PrivateRoute>} />
               <Route path="logistica/distribucion/entregas-equipos" element={<PrivateRoute><EntregasEquiposPage /></PrivateRoute>} />
-              <Route path="logistica/distribucion/equipos-v2" element={<PrivateRoute><EntregasEquiposPage2 /></PrivateRoute>} />
 
               {/* MOVIMIENTOS - Trazabilidad y transferencias internas */}
               <Route path="logistica/movimientos/transferencias" element={<PrivateRoute><TransferenciasPage /></PrivateRoute>} />

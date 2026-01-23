@@ -8,17 +8,7 @@ import {
   CircularProgress,
   Alert,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   Chip,
   Autocomplete,
@@ -34,6 +24,12 @@ import {
   useMediaQuery,
   Stack,
   Divider,
+  Fab,
+  SwipeableDrawer,
+  Collapse,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -47,12 +43,29 @@ import {
   Cancel as CancelIcon,
   Route as RouteIcon,
   Person as ClientIcon,
-  Assignment as OrderIcon,
   Visibility as ViewIcon,
   Print as PrintIcon,
   Map as MapIcon,
+  Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Refresh as RefreshIcon,
+  Inventory as EquipmentIcon,
 } from '@mui/icons-material';
-import type { EntregaViaje, Viaje, Cliente, Venta, EstadoEntrega, DocumentoComercial, EstadoAsignacionEquipo } from '../../types';
+import type { EntregaViaje, Viaje, Cliente, EstadoEntrega, DocumentoComercial, EstadoAsignacionEquipo } from '../../types';
+import { entregaViajeApi } from '../../api/services/entregaViajeApi';
+import { clienteApi } from '../../api/services/clienteApi';
+import { documentoApi } from '../../api/services/documentoApi';
+import { viajeApi } from '../../api/services/viajeApi';
+
+// Custom hook for responsive breakpoints
+const useResponsive = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  return { isMobile, isTablet, isDesktop };
+};
 
 // Helper function to get color for estadoAsignacion
 const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefined): 'default' | 'warning' | 'info' | 'secondary' | 'success' => {
@@ -73,47 +86,111 @@ const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefi
     DISPONIBLE: 'Disponible',
     RESERVADO: 'Reservado',
     FACTURADO: 'Facturado',
-    EN_TRANSITO: 'En Tránsito',
+    EN_TRANSITO: 'En Transito',
     ENTREGADO: 'Entregado',
   };
   return labelMap[estado] || estado;
 };
-import { entregaViajeApi } from '../../api/services/entregaViajeApi';
-import { clienteApi } from '../../api/services/clienteApi';
-import { documentoApi } from '../../api/services/documentoApi';
-import { viajeApi } from '../../api/services/viajeApi';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
+// Bottom Sheet component for mobile
+interface BottomSheetProps {
+  open: boolean;
+  onClose: () => void;
+  onOpen?: () => void;
+  title: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
 }
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title, children, actions }) => {
+  const { isMobile } = useResponsive();
+
+  if (!isMobile) return null;
 
   return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`delivery-tabpanel-${index}`}
-      aria-labelledby={`delivery-tab-${index}`}
-      {...other}
+    <SwipeableDrawer
+      anchor="bottom"
+      open={open}
+      onClose={onClose}
+      onOpen={onOpen || (() => {})}
+      disableSwipeToOpen
+      PaperProps={{
+        sx: {
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          maxHeight: '95vh',
+          minHeight: '50vh',
+        },
+      }}
     >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
+      <Box
+        sx={{
+          width: 40,
+          height: 4,
+          bgcolor: 'grey.300',
+          borderRadius: 2,
+          mx: 'auto',
+          mt: 1.5,
+          mb: 1,
+        }}
+      />
+
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 2,
+          py: 1,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          position: 'sticky',
+          top: 0,
+          bgcolor: 'background.paper',
+          zIndex: 1,
+        }}
+      >
+        <Typography variant="h6">{title}</Typography>
+        <IconButton onClick={onClose} edge="end">
+          <CloseIcon />
+        </IconButton>
+      </Box>
+
+      <Box sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
+        {children}
+      </Box>
+
+      {actions && (
+        <Box
+          sx={{
+            p: 2,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            position: 'sticky',
+            bottom: 0,
+          }}
+        >
+          {actions}
         </Box>
       )}
-    </div>
+    </SwipeableDrawer>
   );
-}
+};
 
-const DeliveriesPage: React.FC = () => {
+// Predefined rejection reasons
+const REJECTION_REASONS = [
+  'Cliente ausente',
+  'Direccion incorrecta',
+  'Rechazado por cliente',
+  'Horario no disponible',
+  'Zona inaccesible',
+];
+
+const DeliveriesPage2: React.FC = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  
+  const { isMobile, isTablet, isDesktop } = useResponsive();
+
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
@@ -126,6 +203,12 @@ const DeliveriesPage: React.FC = () => {
   const [selectedDelivery, setSelectedDelivery] = useState<EntregaViaje | null>(null);
   const [selectedDeliveryDetails, setSelectedDeliveryDetails] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
+
+  // Expanded card state for mobile
+  const [expandedCard, setExpandedCard] = useState<number | null>(null);
+
+  // Details tab state
+  const [detailsTab, setDetailsTab] = useState(0);
 
   // Estados para modal de confirmar entrega
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -145,7 +228,7 @@ const DeliveriesPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoEntrega>('all');
   const [dateFilter, setDateFilter] = useState('');
 
-  // Pagination states
+  // Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -170,7 +253,6 @@ const DeliveriesPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Load each resource individually to better handle errors
       let deliveriesData: EntregaViaje[] = [];
       let clientsData: Cliente[] = [];
       let facturasData: DocumentoComercial[] = [];
@@ -179,55 +261,37 @@ const DeliveriesPage: React.FC = () => {
 
       try {
         deliveriesData = await entregaViajeApi.getAll();
-        console.log('✅ Entregas cargadas:', deliveriesData.length, deliveriesData);
       } catch (err) {
-        console.error('❌ Error cargando entregas:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Entregas: ${errorMsg}`);
+        errors.push(`Entregas: ${errorMsg}`);
       }
 
       try {
         clientsData = await clienteApi.getAll();
-        console.log('✅ Clientes cargados:', clientsData.length, clientsData);
       } catch (err) {
-        console.error('❌ Error cargando clientes:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Clientes: ${errorMsg}`);
+        errors.push(`Clientes: ${errorMsg}`);
       }
 
       try {
         facturasData = await documentoApi.getByTipo('FACTURA');
-        // Filtrar solo facturas (FAC-), excluir notas de pedido (NP-)
         facturasData = facturasData.filter(f => f.numeroDocumento?.startsWith('FAC-'));
-        console.log('✅ Facturas cargadas:', facturasData.length);
-        console.log('📊 Muestra de facturas:', facturasData.slice(0, 2));
       } catch (err) {
-        console.error('❌ Error cargando facturas:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Facturas: ${errorMsg}`);
+        errors.push(`Facturas: ${errorMsg}`);
       }
 
       try {
         tripsData = await viajeApi.getAll();
-        console.log('✅ Viajes cargados:', tripsData.length, tripsData);
       } catch (err) {
-        console.error('❌ Error cargando viajes:', err);
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Viajes: ${errorMsg}`);
+        errors.push(`Viajes: ${errorMsg}`);
       }
 
-      // Show errors if any
       if (errors.length > 0) {
         setError(errors.join(' | '));
       }
 
-      console.log('✅ Datos cargados:');
-      console.log('   - Entregas:', deliveriesData.length);
-      console.log('   - Facturas:', facturasData.length);
-      console.log('   - Clientes:', clientsData.length);
-      console.log('   - Viajes:', tripsData.length);
-
-      // Ensure all data is in array format - NO enriquecer aquí, usar funciones auxiliares
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setFacturas(Array.isArray(facturasData) ? facturasData : []);
@@ -236,7 +300,6 @@ const DeliveriesPage: React.FC = () => {
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al cargar los datos');
-      console.error('❌ Error general loading data:', err);
     } finally {
       setLoading(false);
     }
@@ -249,12 +312,8 @@ const DeliveriesPage: React.FC = () => {
         new Date(delivery.fechaEntrega).toDateString() === new Date(dateFilter).toDateString();
       return matchesStatus && matchesDate;
     })
-    .sort((a, b) => {
-      // Ordenar por ID de entrega descendente (última entrega primero)
-      return b.id - a.id;
-    });
+    .sort((a, b) => b.id - a.id);
 
-  // Paginate filtered deliveries
   const paginatedDeliveries = filteredDeliveries.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -305,15 +364,13 @@ const DeliveriesPage: React.FC = () => {
 
   const handleViewDetails = async (delivery: EntregaViaje) => {
     setSelectedDelivery(delivery);
+    setDetailsTab(0);
     setDetailsDialogOpen(true);
-    
-    // Load complete details using new API
+
     try {
       const detalles = await entregaViajeApi.getDetalles(delivery.id);
       setSelectedDeliveryDetails(detalles);
-      console.log('📦 Detalles completos de entrega:', detalles);
     } catch (err) {
-      console.error('Error loading delivery details:', err);
       setSelectedDeliveryDetails(null);
     }
   };
@@ -342,43 +399,36 @@ const DeliveriesPage: React.FC = () => {
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al guardar la entrega');
-      console.error('Error saving delivery:', err);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta entrega?')) {
+    if (window.confirm('¿Eliminar esta entrega?')) {
       try {
         await entregaViajeApi.delete(id);
         await loadData();
       } catch (err) {
         const error = err as { response?: { data?: { message?: string } } };
-        setError(error?.response?.data?.message || 'Error al eliminar la entrega');
-        console.error('Error deleting delivery:', err);
+        setError(error?.response?.data?.message || 'Error al eliminar');
       }
     }
   };
 
-  // Abrir modal de confirmación
   const openConfirmDialog = (id: number) => {
     setConfirmDeliveryId(id);
     setReceptorData({ nombre: '', dni: '', observaciones: '' });
     setConfirmDialogOpen(true);
   };
 
-  // Confirmar entrega desde el modal
   const handleConfirmDelivery = async () => {
     if (!confirmDeliveryId) return;
 
     try {
-      // Validar campos requeridos
       if (!receptorData.nombre.trim()) {
         setError('El nombre del receptor es obligatorio');
         return;
       }
 
-      // Use new confirmarEntrega API - creates warranties automatically for facturas
-      // This also changes equipment estado to ENTREGADO
       await entregaViajeApi.confirmarEntrega(
         confirmDeliveryId,
         'ENTREGADA',
@@ -386,67 +436,51 @@ const DeliveriesPage: React.FC = () => {
         receptorData.dni,
         receptorData.observaciones || undefined
       );
-      
-      // Cerrar modal y limpiar
+
       setConfirmDialogOpen(false);
       setConfirmDeliveryId(null);
       setReceptorData({ nombre: '', dni: '', observaciones: '' });
-      
-      // Clear any previous errors and reload data
       setError(null);
       await loadData();
-      
-      // Cerrar dialog de detalles si está abierto
       setDetailsDialogOpen(false);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error?.response?.data?.message || 'Error al marcar como entregado');
-      console.error('Error marking as delivered:', err);
+      setError(error?.response?.data?.message || 'Error al confirmar');
     }
   };
 
-  // Abrir modal de rechazo
   const openRejectDialog = (id: number) => {
     setRejectDeliveryId(id);
     setRejectMotivo('');
     setRejectDialogOpen(true);
   };
 
-  // Rechazar entrega desde el modal
   const handleRejectDelivery = async () => {
     if (!rejectDeliveryId) return;
 
     try {
-      // Validar motivo requerido
       if (!rejectMotivo.trim()) {
-        setError('El motivo del rechazo es obligatorio');
+        setError('El motivo es obligatorio');
         return;
       }
-
-      const observaciones = `RECHAZADO: ${rejectMotivo}`;
 
       await entregaViajeApi.confirmarEntrega(
         rejectDeliveryId,
         'NO_ENTREGADA',
         'N/A',
         'N/A',
-        observaciones
+        `RECHAZADO: ${rejectMotivo}`
       );
-      
-      // Cerrar modal y limpiar
+
       setRejectDialogOpen(false);
       setRejectDeliveryId(null);
       setRejectMotivo('');
-      
       setError(null);
       await loadData();
-      
-      // Cerrar dialog de detalles si está abierto
       setDetailsDialogOpen(false);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error?.response?.data?.message || 'Error al marcar como no entregado');
-      console.error('Error marking as not delivered:', err);
+      setError(error?.response?.data?.message || 'Error al rechazar');
     }
   };
 
@@ -456,69 +490,39 @@ const DeliveriesPage: React.FC = () => {
       ENTREGADA: { label: 'Entregada', color: 'success' as const },
       NO_ENTREGADA: { label: 'No Entregada', color: 'error' as const },
     };
-
     const config = statusConfig[estado];
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
-  // Obtener factura por delivery - Mismo patrón que TripsPage
   const getFacturaByDelivery = (delivery: EntregaViaje): DocumentoComercial | undefined => {
-    // Intentar obtener el ID de la factura/documento desde diferentes fuentes
     let facturaId: number | undefined;
-
-    // Opción 1: documentoComercialId (si el backend devuelve solo el ID)
     // @ts-ignore
-    if (delivery.documentoComercialId) {
-      // @ts-ignore
-      facturaId = delivery.documentoComercialId;
-    }
-    // Opción 2: documentoComercial.id (si el backend devuelve el objeto completo)
+    if (delivery.documentoComercialId) facturaId = delivery.documentoComercialId;
     // @ts-ignore
-    else if (delivery.documentoComercial?.id) {
-      // @ts-ignore
-      facturaId = delivery.documentoComercial.id;
-    }
-    // Opción 3: ventaId (para compatibilidad con versiones antiguas del backend)
-    else if (delivery.ventaId) {
-      facturaId = delivery.ventaId;
-    }
-    // Opción 4: venta.id (si el backend devuelve el objeto venta completo)
-    else if (delivery.venta?.id) {
-      facturaId = delivery.venta.id;
-    }
+    else if (delivery.documentoComercial?.id) facturaId = delivery.documentoComercial.id;
+    else if (delivery.ventaId) facturaId = delivery.ventaId;
+    else if (delivery.venta?.id) facturaId = delivery.venta.id;
 
     if (!facturaId) return undefined;
-
     return facturas.find(f => f.id === facturaId);
   };
 
-  // Obtener nombre del cliente por delivery - Mismo patrón que TripsPage
   const getClientName = (delivery: EntregaViaje): string => {
     const factura = getFacturaByDelivery(delivery);
-
     if (!factura) return 'Sin Factura';
 
-    // Primero intentar con clienteNombre de la factura
-    if (factura.clienteNombre && factura.clienteNombre.trim()) {
-      return factura.clienteNombre;
-    }
+    if (factura.clienteNombre?.trim()) return factura.clienteNombre;
 
-    // Si no, buscar el cliente completo
     const cliente = clients.find(c => c.id === factura.clienteId);
     if (cliente) {
-      // If it's a business (persona jurídica), prioritize razón social
-      if (cliente.razonSocial && cliente.razonSocial.trim()) {
-        return cliente.razonSocial;
-      }
-      // Otherwise, use name and lastname
+      if (cliente.razonSocial?.trim()) return cliente.razonSocial;
       const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
-      return parts.length > 0 ? parts.join(' ') : 'Cliente sin nombre';
+      return parts.length > 0 ? parts.join(' ') : 'Sin nombre';
     }
 
     return 'Cliente no disponible';
   };
 
-  // Obtener número de factura por delivery
   const getVentaNumero = (delivery: EntregaViaje): string => {
     const factura = getFacturaByDelivery(delivery);
     return factura ? (factura.numeroDocumento || `FAC-${factura.id}`) : 'Sin Factura';
@@ -538,20 +542,149 @@ const DeliveriesPage: React.FC = () => {
     );
   }
 
-  return (
-    <Box p={{ xs: 1, sm: 2, md: 3 }}>
-      <Box 
-        display="flex" 
-        flexDirection={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between" 
-        alignItems={{ xs: 'stretch', sm: 'center' }} 
-        gap={2}
-        mb={3}
+  // Mobile Delivery Card Component
+  const MobileDeliveryCard = ({ delivery }: { delivery: EntregaViaje }) => {
+    const isExpanded = expandedCard === delivery.id;
+
+    return (
+      <Card
+        variant="outlined"
+        sx={{
+          transition: 'all 0.2s ease',
+          '&:active': { transform: 'scale(0.98)' }
+        }}
       >
-        <Typography 
-          variant={isMobile ? 'h5' : 'h4'} 
-          display="flex" 
-          alignItems="center" 
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          {/* Header */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            onClick={() => setExpandedCard(isExpanded ? null : delivery.id)}
+            sx={{ cursor: 'pointer' }}
+          >
+            <Box flex={1}>
+              <Typography variant="subtitle2" fontWeight="bold" noWrap sx={{ maxWidth: 200 }}>
+                {getClientName(delivery)}
+              </Typography>
+              <Typography variant="caption" color="primary.main">
+                {getVentaNumero(delivery)}
+              </Typography>
+            </Box>
+            <Box display="flex" alignItems="center" gap={1}>
+              {getStatusChip(delivery.estado)}
+              <IconButton size="small">
+                {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
+          </Box>
+
+          {/* Quick info */}
+          <Box mt={1.5}>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <ScheduleIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                <Typography variant="caption" color="text.secondary">
+                  {new Date(delivery.fechaEntrega).toLocaleDateString('es-AR', {
+                    day: 'numeric',
+                    month: 'short'
+                  })}
+                </Typography>
+              </Box>
+              <Typography variant="caption" color="text.secondary">
+                {getTripNumber(delivery.viajeId)}
+              </Typography>
+            </Stack>
+          </Box>
+
+          {/* Expanded content */}
+          <Collapse in={isExpanded}>
+            <Divider sx={{ my: 1.5 }} />
+
+            <Box display="flex" alignItems="flex-start" gap={1} mb={1.5}>
+              <LocationIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.3 }} />
+              <Typography variant="body2" color="text.secondary">
+                {delivery.direccionEntrega}
+              </Typography>
+            </Box>
+
+            {delivery.observaciones && (
+              <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
+                {delivery.observaciones}
+              </Typography>
+            )}
+
+            {/* Actions */}
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              pt={1.5}
+              borderTop="1px solid"
+              borderColor="divider"
+            >
+              <IconButton
+                onClick={(e) => { e.stopPropagation(); handleViewDetails(delivery); }}
+                sx={{ minWidth: 44, minHeight: 44 }}
+              >
+                <ViewIcon />
+              </IconButton>
+
+              {delivery.estado === 'PENDIENTE' && (
+                <Box display="flex" gap={1}>
+                  <IconButton
+                    onClick={(e) => { e.stopPropagation(); openConfirmDialog(delivery.id); }}
+                    color="success"
+                    sx={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <CheckIcon />
+                  </IconButton>
+                  <IconButton
+                    onClick={(e) => { e.stopPropagation(); openRejectDialog(delivery.id); }}
+                    color="error"
+                    sx={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <CancelIcon />
+                  </IconButton>
+                  <IconButton
+                    onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
+                    sx={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Box>
+              )}
+
+              {delivery.estado !== 'PENDIENTE' && (
+                <IconButton
+                  onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
+                  sx={{ minWidth: 44, minHeight: 44 }}
+                >
+                  <EditIcon />
+                </IconButton>
+              )}
+            </Box>
+          </Collapse>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <Box sx={{ pb: isMobile ? 10 : 3, minHeight: '100vh' }}>
+      {/* Header - Sin card de fondo */}
+      <Box
+        sx={{ mb: 3 }}
+        display="flex"
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        gap={2}
+      >
+        <Typography
+          variant={isMobile ? 'h5' : 'h4'}
+          display="flex"
+          alignItems="center"
           gap={1}
         >
           <DeliveryIcon />
@@ -567,15 +700,16 @@ const DeliveriesPage: React.FC = () => {
         </Button>
       </Box>
 
+      {/* Error Alert */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Grid estático */}
       <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={4}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -593,7 +727,7 @@ const DeliveriesPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={4}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -609,7 +743,7 @@ const DeliveriesPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={4}>
           <Card>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
               <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
@@ -630,346 +764,333 @@ const DeliveriesPage: React.FC = () => {
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-          <Tab label="Todas las Entregas" />
-          <Tab label="Pendientes" />
+        <Tabs
+          value={tabValue}
+          onChange={(_, v) => setTabValue(v)}
+          variant={isMobile ? 'fullWidth' : 'standard'}
+        >
+          <Tab label="Todas" />
+          <Tab
+            label={
+              <Badge badgeContent={pendingDeliveries.length} color="warning" sx={{ '& .MuiBadge-badge': { right: -12, top: 0 } }}>
+                Pendientes
+              </Badge>
+            }
+          />
         </Tabs>
       </Box>
 
-      {/* Tab Panel 0: All Deliveries */}
-      <TabPanel value={tabValue} index={0}>
-        {/* Filters */}
-        <Box 
-          display="flex" 
-          flexDirection={{ xs: 'column', sm: 'row' }}
-          gap={2} 
-          mb={3} 
-          alignItems={{ xs: 'stretch', sm: 'center' }}
-        >
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size={isMobile ? 'small' : 'medium'}>
-            <InputLabel>Estado</InputLabel>
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | EstadoEntrega)}
-            >
-              <MenuItem value="all">Todos</MenuItem>
-              <MenuItem value="PENDIENTE">Pendientes</MenuItem>
-              <MenuItem value="ENTREGADA">Entregadas</MenuItem>
-              <MenuItem value="NO_ENTREGADA">No Entregadas</MenuItem>
-            </Select>
-          </FormControl>
-          
-          <TextField
-            label="Fecha"
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            size={isMobile ? 'small' : 'medium'}
-            sx={{ minWidth: { xs: '100%', sm: 200 } }}
-          />
-        </Box>
-
-        {/* Deliveries Table/Cards */}
-        <Card>
-          <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-            {/* Mobile Card View */}
+      {/* Tab 0: All Deliveries */}
+      {tabValue === 0 && (
+        <>
+          {/* Filters */}
+          <Box mb={2}>
             {isMobile ? (
-              <Stack spacing={2}>
-                {paginatedDeliveries.map((delivery) => (
-                  <Card key={delivery.id} variant="outlined">
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                        <Box flex={1}>
-                          <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                            <ClientIcon sx={{ fontSize: 16 }} />
-                            <Typography variant="subtitle2" fontWeight="bold">
-                              {getClientName(delivery)}
-                            </Typography>
-                          </Box>
-                          <Typography variant="caption" color="primary.main" display="block">
-                            {getVentaNumero(delivery)}
-                          </Typography>
-                        </Box>
-                        {getStatusChip(delivery.estado)}
-                      </Box>
-                      
-                      <Divider sx={{ my: 1 }} />
-                      
-                      <Box display="flex" alignItems="flex-start" gap={1} mb={1}>
-                        <LocationIcon sx={{ fontSize: 14, mt: 0.3 }} color="action" />
-                        <Typography variant="caption" color="text.secondary">
-                          {delivery.direccionEntrega}
-                        </Typography>
-                      </Box>
-                      
-                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                        <Typography variant="caption" color="text.secondary">
-                          📅 {new Date(delivery.fechaEntrega).toLocaleDateString()}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {getTripNumber(delivery.viajeId)}
-                        </Typography>
-                      </Box>
-                      
-                      <Divider sx={{ my: 1 }} />
-                      
-                      <Box display="flex" justifyContent="flex-end" gap={0.5} flexWrap="wrap">
-                        <IconButton onClick={() => handleViewDetails(delivery)} size="small">
-                          <ViewIcon fontSize="small" />
-                        </IconButton>
-                        {delivery.estado === 'PENDIENTE' && (
-                          <>
-                            <IconButton onClick={() => openConfirmDialog(delivery.id)} size="small" color="success">
-                              <CheckIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton onClick={() => openRejectDialog(delivery.id)} size="small" color="error">
-                              <CancelIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton onClick={() => handleEdit(delivery)} size="small">
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton onClick={() => handleDelete(delivery.id)} size="small">
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </>
-                        )}
-                        {delivery.estado !== 'PENDIENTE' && (
-                          <IconButton onClick={() => handleEdit(delivery)} size="small">
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
+              <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1 }}>
+                {[
+                  { value: 'all', label: 'Todos' },
+                  { value: 'PENDIENTE', label: 'Pendientes' },
+                  { value: 'ENTREGADA', label: 'Entregadas' },
+                  { value: 'NO_ENTREGADA', label: 'No Entregadas' },
+                ].map((option) => (
+                  <Chip
+                    key={option.value}
+                    label={option.label}
+                    onClick={() => setStatusFilter(option.value as 'all' | EstadoEntrega)}
+                    color={statusFilter === option.value ? 'primary' : 'default'}
+                    variant={statusFilter === option.value ? 'filled' : 'outlined'}
+                    sx={{ minHeight: 36 }}
+                  />
                 ))}
               </Stack>
             ) : (
-              /* Desktop/Tablet Table View */
-              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                <Table size={isTablet ? 'small' : 'medium'}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Cliente</TableCell>
-                      <TableCell>Orden</TableCell>
-                      {!isTablet && <TableCell>Dirección</TableCell>}
-                      <TableCell>Fecha</TableCell>
-                      <TableCell>Viaje</TableCell>
-                      <TableCell>Estado</TableCell>
-                      <TableCell align="center">Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {paginatedDeliveries.map((delivery) => (
-                      <TableRow key={delivery.id}>
-                        <TableCell>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <ClientIcon sx={{ fontSize: 16 }} />
-                            <Typography variant="body2" noWrap sx={{ maxWidth: { sm: 120, md: 200 } }}>
-                              {getClientName(delivery)}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" noWrap>
-                            {getVentaNumero(delivery)}
-                          </Typography>
-                        </TableCell>
-                        {!isTablet && (
-                          <TableCell>
-                            <Typography variant="body2" sx={{ maxWidth: 200 }} noWrap>
-                              {delivery.direccionEntrega}
-                            </Typography>
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          <Typography variant="body2" noWrap>
-                            {new Date(delivery.fechaEntrega).toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{getTripNumber(delivery.viajeId)}</TableCell>
-                        <TableCell>{getStatusChip(delivery.estado)}</TableCell>
-                        <TableCell align="center">
-                          <Box display="flex" justifyContent="center" flexWrap="nowrap">
-                            <IconButton onClick={() => handleViewDetails(delivery)} size="small">
-                              <ViewIcon fontSize="small" />
-                            </IconButton>
-                            {delivery.estado === 'PENDIENTE' && (
-                              <>
-                                <IconButton onClick={() => openConfirmDialog(delivery.id)} size="small" color="success">
-                                  <CheckIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton onClick={() => openRejectDialog(delivery.id)} size="small" color="error">
-                                  <CancelIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton onClick={() => handleEdit(delivery)} size="small">
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton onClick={() => handleDelete(delivery.id)} size="small">
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </>
-                            )}
-                            {delivery.estado !== 'PENDIENTE' && (
-                              <IconButton onClick={() => handleEdit(delivery)} size="small">
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            )}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <Box display="flex" gap={2} alignItems="center">
+                <FormControl sx={{ minWidth: 150 }} size="small">
+                  <InputLabel>Estado</InputLabel>
+                  <Select
+                    value={statusFilter}
+                    label="Estado"
+                    onChange={(e) => setStatusFilter(e.target.value as 'all' | EstadoEntrega)}
+                  >
+                    <MenuItem value="all">Todos</MenuItem>
+                    <MenuItem value="PENDIENTE">Pendientes</MenuItem>
+                    <MenuItem value="ENTREGADA">Entregadas</MenuItem>
+                    <MenuItem value="NO_ENTREGADA">No Entregadas</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Fecha"
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={{ width: 180 }}
+                />
+              </Box>
             )}
-            <TablePagination
-              component="div"
-              count={filteredDeliveries.length}
-              page={page}
-              onPageChange={handleChangePage}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              rowsPerPageOptions={isMobile ? [5, 10, 25] : [5, 10, 25, 50, 100]}
-              labelRowsPerPage={isMobile ? '' : 'Filas por página:'}
-              labelDisplayedRows={({ from, to, count }) =>
-                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-              }
-              sx={{
-                '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
-                '.MuiTablePagination-displayedRows': { fontSize: { xs: '0.75rem', sm: '0.875rem' } },
-              }}
-            />
-          </CardContent>
-        </Card>
-      </TabPanel>
-
-      {/* Tab Panel 1: Pending Deliveries */}
-      <TabPanel value={tabValue} index={1}>
-        <Typography variant={isMobile ? 'subtitle1' : 'h6'} gutterBottom>
-          Entregas Pendientes de Asignación
-        </Typography>
-        <Card>
-          <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-            {isMobile ? (
-              <Stack spacing={2}>
-                {pendingDeliveries.map((delivery) => (
-                  <Card key={delivery.id} variant="outlined">
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                        {getClientName(delivery)}
-                      </Typography>
-                      <Typography variant="caption" color="primary.main" display="block" mb={1}>
-                        {getVentaNumero(delivery)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                        📍 {delivery.direccionEntrega}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block" mb={2}>
-                        📅 {new Date(delivery.fechaEntrega).toLocaleDateString()}
-                      </Typography>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        fullWidth
-                        onClick={() => handleEdit(delivery)}
-                      >
-                        Asignar a Viaje
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Stack>
-            ) : (
-              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                <Table size={isTablet ? 'small' : 'medium'}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Cliente</TableCell>
-                      <TableCell>Orden</TableCell>
-                      {!isTablet && <TableCell>Dirección</TableCell>}
-                      <TableCell>Fecha</TableCell>
-                      <TableCell align="center">Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {pendingDeliveries.map((delivery) => (
-                      <TableRow key={delivery.id}>
-                        <TableCell>
-                          <Typography variant="body2" noWrap sx={{ maxWidth: { sm: 120, md: 200 } }}>
-                            {getClientName(delivery)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{getVentaNumero(delivery)}</TableCell>
-                        {!isTablet && <TableCell>{delivery.direccionEntrega}</TableCell>}
-                        <TableCell>{new Date(delivery.fechaEntrega).toLocaleDateString()}</TableCell>
-                        <TableCell align="center">
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => handleEdit(delivery)}
-                          >
-                            Asignar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </CardContent>
-        </Card>
-      </TabPanel>
-
-      {/* Delivery Dialog */}
-      <Dialog 
-        open={dialogOpen} 
-        onClose={() => setDialogOpen(false)} 
-        maxWidth="md" 
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <DeliveryIcon />
-            {editingDelivery ? 'Editar Entrega' : 'Nueva Entrega'}
           </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2}>
-              <Autocomplete
-                options={facturas}
-                getOptionLabel={(factura) => `${factura.numeroDocumento || `FAC-${factura.id}`} - ${factura.clienteNombre || 'Sin cliente'}`}
-                value={facturas.find(f => f.id.toString() === formData.ventaId) || null}
-                onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
-                renderInput={(params) => (
-                  <TextField {...params} label="Factura (Opcional)" size={isMobile ? 'small' : 'medium'} />
-                )}
-                sx={{ flex: 1 }}
-              />
 
-              <Autocomplete
-                options={trips}
-                getOptionLabel={(trip) => `Viaje #${trip.id} - ${trip.destino}`}
-                value={trips.find(t => t.id.toString() === formData.viajeId) || null}
-                onChange={(_, value) => setFormData({ ...formData, viajeId: value?.id.toString() || '' })}
-                renderInput={(params) => (
-                  <TextField {...params} label="Viaje (Opcional)" size={isMobile ? 'small' : 'medium'} />
-                )}
-                sx={{ flex: 1 }}
-              />
-            </Box>
+          {/* Delivery List */}
+          {isMobile ? (
+            <Stack spacing={1.5}>
+              {paginatedDeliveries.map((delivery) => (
+                <MobileDeliveryCard key={delivery.id} delivery={delivery} />
+              ))}
+            </Stack>
+          ) : (
+            <Card>
+              <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+                <Paper sx={{ overflowX: 'auto' }}>
+                  <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <Box component="thead">
+                      <Box component="tr" sx={{ bgcolor: 'grey.50' }}>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Cliente</Box>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Factura</Box>
+                        {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Direccion</Box>}
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Fecha</Box>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Viaje</Box>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Estado</Box>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Acciones</Box>
+                      </Box>
+                    </Box>
+                    <Box component="tbody">
+                      {paginatedDeliveries.map((delivery) => (
+                        <Box
+                          component="tr"
+                          key={delivery.id}
+                          sx={{
+                            '&:hover': { bgcolor: 'grey.50' },
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <ClientIcon sx={{ fontSize: 16 }} />
+                              <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                                {getClientName(delivery)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Typography variant="body2">{getVentaNumero(delivery)}</Typography>
+                          </Box>
+                          {!isTablet && (
+                            <Box component="td" sx={{ p: 1.5 }}>
+                              <Typography variant="body2" noWrap sx={{ maxWidth: 180 }}>
+                                {delivery.direccionEntrega}
+                              </Typography>
+                            </Box>
+                          )}
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Typography variant="body2">
+                              {new Date(delivery.fechaEntrega).toLocaleDateString()}
+                            </Typography>
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Typography variant="body2">{getTripNumber(delivery.viajeId)}</Typography>
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            {getStatusChip(delivery.estado)}
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Box display="flex" justifyContent="center" gap={0.5}>
+                              <IconButton onClick={() => handleViewDetails(delivery)} size="small">
+                                <ViewIcon fontSize="small" />
+                              </IconButton>
+                              {delivery.estado === 'PENDIENTE' && (
+                                <>
+                                  <IconButton onClick={() => openConfirmDialog(delivery.id)} size="small" color="success">
+                                    <CheckIcon fontSize="small" />
+                                  </IconButton>
+                                  <IconButton onClick={() => openRejectDialog(delivery.id)} size="small" color="error">
+                                    <CancelIcon fontSize="small" />
+                                  </IconButton>
+                                  <IconButton onClick={() => handleEdit(delivery)} size="small">
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </>
+                              )}
+                            </Box>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                </Paper>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pagination */}
+          <TablePagination
+            component="div"
+            count={filteredDeliveries.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={isMobile ? [5, 10] : [5, 10, 25, 50]}
+            labelRowsPerPage={isMobile ? '' : 'Filas:'}
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+            sx={{
+              '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
+              '.MuiTablePagination-toolbar': { px: isMobile ? 0 : 2 },
+            }}
+          />
+        </>
+      )}
+
+      {/* Tab 1: Pending Deliveries */}
+      {tabValue === 1 && (
+        <>
+          <Typography variant={isMobile ? 'subtitle1' : 'h6'} gutterBottom>
+            Entregas Pendientes de Asignacion
+          </Typography>
+
+          {isMobile ? (
+            <Stack spacing={1.5}>
+              {pendingDeliveries.map((delivery) => (
+                <Card key={delivery.id} variant="outlined">
+                  <CardContent sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                      {getClientName(delivery)}
+                    </Typography>
+                    <Typography variant="caption" color="primary.main" display="block" mb={1}>
+                      {getVentaNumero(delivery)}
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={0.5} mb={1}>
+                      <LocationIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {delivery.direccionEntrega}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" display="block" mb={2}>
+                      {new Date(delivery.fechaEntrega).toLocaleDateString()}
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      fullWidth
+                      onClick={() => handleEdit(delivery)}
+                      sx={{ minHeight: 44 }}
+                    >
+                      Asignar a Viaje
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          ) : (
+            <Card>
+              <CardContent>
+                <Paper sx={{ overflowX: 'auto' }}>
+                  <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <Box component="thead">
+                      <Box component="tr" sx={{ bgcolor: 'grey.50' }}>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left' }}>Cliente</Box>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left' }}>Factura</Box>
+                        {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left' }}>Direccion</Box>}
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'left' }}>Fecha</Box>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'center' }}>Acciones</Box>
+                      </Box>
+                    </Box>
+                    <Box component="tbody">
+                      {pendingDeliveries.map((delivery) => (
+                        <Box component="tr" key={delivery.id} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+                          <Box component="td" sx={{ p: 1.5 }}>{getClientName(delivery)}</Box>
+                          <Box component="td" sx={{ p: 1.5 }}>{getVentaNumero(delivery)}</Box>
+                          {!isTablet && <Box component="td" sx={{ p: 1.5 }}>{delivery.direccionEntrega}</Box>}
+                          <Box component="td" sx={{ p: 1.5 }}>{new Date(delivery.fechaEntrega).toLocaleDateString()}</Box>
+                          <Box component="td" sx={{ p: 1.5, textAlign: 'center' }}>
+                            <Button size="small" variant="outlined" onClick={() => handleEdit(delivery)}>
+                              Asignar
+                            </Button>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                </Paper>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* FAB for mobile */}
+      {isMobile && (
+        <Fab
+          color="primary"
+          onClick={handleAdd}
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            zIndex: 1000,
+            width: 56,
+            height: 56,
+          }}
+        >
+          <AddIcon />
+        </Fab>
+      )}
+
+      {/* Mobile Bottom Sheet for Create/Edit */}
+      {isMobile && (
+        <BottomSheet
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          title={editingDelivery ? 'Editar Entrega' : 'Nueva Entrega'}
+          actions={
+            <Stack direction="row" spacing={1.5}>
+              <Button
+                onClick={() => setDialogOpen(false)}
+                sx={{ flex: 1, minHeight: 48 }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleSave}
+                sx={{ flex: 1, minHeight: 48 }}
+              >
+                {editingDelivery ? 'Actualizar' : 'Crear'}
+              </Button>
+            </Stack>
+          }
+        >
+          <Stack spacing={2.5}>
+            <Autocomplete
+              options={facturas}
+              getOptionLabel={(f) => `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`}
+              value={facturas.find(f => f.id.toString() === formData.ventaId) || null}
+              onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
+              renderInput={(params) => (
+                <TextField {...params} label="Factura" size="medium" InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }} />
+              )}
+            />
+
+            <Autocomplete
+              options={trips}
+              getOptionLabel={(t) => `Viaje #${t.id} - ${t.destino}`}
+              value={trips.find(t => t.id.toString() === formData.viajeId) || null}
+              onChange={(_, value) => setFormData({ ...formData, viajeId: value?.id.toString() || '' })}
+              renderInput={(params) => (
+                <TextField {...params} label="Viaje" size="medium" InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }} />
+              )}
+            />
 
             <TextField
-              label="Dirección de Entrega"
+              label="Direccion de Entrega"
               value={formData.direccionEntrega}
               onChange={(e) => setFormData({ ...formData, direccionEntrega: e.target.value })}
               fullWidth
               required
               multiline
               rows={2}
+              InputProps={{ sx: { minHeight: 80 } }}
             />
 
             <TextField
@@ -980,19 +1101,8 @@ const DeliveriesPage: React.FC = () => {
               fullWidth
               required
               InputLabelProps={{ shrink: true }}
+              InputProps={{ sx: { minHeight: 56 } }}
             />
-
-            <FormControl fullWidth>
-              <InputLabel>Estado</InputLabel>
-              <Select
-                value={formData.estado}
-                onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoEntrega })}
-              >
-                <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                <MenuItem value="ENTREGADA">Entregada</MenuItem>
-                <MenuItem value="NO_ENTREGADA">No Entregada</MenuItem>
-              </Select>
-            </FormControl>
 
             <TextField
               label="Observaciones"
@@ -1000,188 +1110,376 @@ const DeliveriesPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
               fullWidth
               multiline
-              rows={3}
+              rows={2}
             />
+          </Stack>
+        </BottomSheet>
+      )}
 
-            {formData.estado === 'ENTREGADA' && (
-              <>
-                <TextField
-                  label="Nombre del Receptor"
-                  value={formData.receptorNombre}
-                  onChange={(e) => setFormData({ ...formData, receptorNombre: e.target.value })}
-                  fullWidth
-                  placeholder="Nombre de quien recibió"
-                />
-                <TextField
-                  label="DNI del Receptor"
-                  value={formData.receptorDni}
-                  onChange={(e) => setFormData({ ...formData, receptorDni: e.target.value })}
-                  fullWidth
-                  placeholder="DNI de quien recibió"
-                />
-              </>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
-            {editingDelivery ? 'Actualizar' : 'Crear'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Desktop Drawer for Create/Edit */}
+      {!isMobile && (
+        <SwipeableDrawer
+          anchor="right"
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onOpen={() => {}}
+          PaperProps={{ sx: { width: isTablet ? '80%' : 450 } }}
+        >
+          <Box sx={{ p: 3 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Typography variant="h6">
+                {editingDelivery ? 'Editar Entrega' : 'Nueva Entrega'}
+              </Typography>
+              <IconButton onClick={() => setDialogOpen(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
 
-      {/* Delivery Details Dialog */}
-      <Dialog 
-        open={detailsDialogOpen} 
-        onClose={() => setDetailsDialogOpen(false)} 
-        maxWidth="md" 
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <ViewIcon />
-            Detalles de Entrega
+            <Stack spacing={2.5}>
+              <Autocomplete
+                options={facturas}
+                getOptionLabel={(f) => `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`}
+                value={facturas.find(f => f.id.toString() === formData.ventaId) || null}
+                onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
+                renderInput={(params) => <TextField {...params} label="Factura" />}
+              />
+
+              <Autocomplete
+                options={trips}
+                getOptionLabel={(t) => `Viaje #${t.id} - ${t.destino}`}
+                value={trips.find(t => t.id.toString() === formData.viajeId) || null}
+                onChange={(_, value) => setFormData({ ...formData, viajeId: value?.id.toString() || '' })}
+                renderInput={(params) => <TextField {...params} label="Viaje" />}
+              />
+
+              <TextField
+                label="Direccion de Entrega"
+                value={formData.direccionEntrega}
+                onChange={(e) => setFormData({ ...formData, direccionEntrega: e.target.value })}
+                fullWidth
+                required
+                multiline
+                rows={2}
+              />
+
+              <TextField
+                label="Fecha de Entrega"
+                type="datetime-local"
+                value={formData.fechaEntrega}
+                onChange={(e) => setFormData({ ...formData, fechaEntrega: e.target.value })}
+                fullWidth
+                required
+                InputLabelProps={{ shrink: true }}
+              />
+
+              <FormControl fullWidth>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  value={formData.estado}
+                  label="Estado"
+                  onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoEntrega })}
+                >
+                  <MenuItem value="PENDIENTE">Pendiente</MenuItem>
+                  <MenuItem value="ENTREGADA">Entregada</MenuItem>
+                  <MenuItem value="NO_ENTREGADA">No Entregada</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Observaciones"
+                value={formData.observaciones}
+                onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                fullWidth
+                multiline
+                rows={3}
+              />
+
+              <Divider />
+
+              <Box display="flex" gap={2}>
+                <Button onClick={() => setDialogOpen(false)} sx={{ flex: 1 }}>
+                  Cancelar
+                </Button>
+                <Button variant="contained" onClick={handleSave} sx={{ flex: 1 }}>
+                  {editingDelivery ? 'Actualizar' : 'Crear'}
+                </Button>
+              </Box>
+            </Stack>
           </Box>
-        </DialogTitle>
-        <DialogContent>
+        </SwipeableDrawer>
+      )}
+
+      {/* Details Bottom Sheet / Drawer */}
+      {isMobile ? (
+        <BottomSheet
+          open={detailsDialogOpen}
+          onClose={() => { setDetailsDialogOpen(false); setSelectedDeliveryDetails(null); }}
+          title="Detalles de Entrega"
+          actions={
+            selectedDelivery?.estado === 'PENDIENTE' ? (
+              <Stack spacing={1.5}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={<CheckIcon />}
+                  onClick={() => openConfirmDialog(selectedDelivery.id)}
+                  fullWidth
+                  sx={{ minHeight: 48 }}
+                >
+                  Confirmar Entrega
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<CancelIcon />}
+                  onClick={() => openRejectDialog(selectedDelivery.id)}
+                  fullWidth
+                  sx={{ minHeight: 48 }}
+                >
+                  No Entregada
+                </Button>
+              </Stack>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={() => { setDetailsDialogOpen(false); setSelectedDeliveryDetails(null); }}
+                fullWidth
+                sx={{ minHeight: 48 }}
+              >
+                Cerrar
+              </Button>
+            )
+          }
+        >
           {selectedDelivery && (
             <Box>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Card>
+              <Tabs
+                value={detailsTab}
+                onChange={(_, v) => setDetailsTab(v)}
+                variant="fullWidth"
+                sx={{ mb: 2 }}
+              >
+                <Tab label="Info" />
+                <Tab label={`Equipos (${selectedDeliveryDetails?.equipos?.length || 0})`} />
+              </Tabs>
+
+              {detailsTab === 0 && (
+                <Stack spacing={2}>
+                  <Card variant="outlined">
                     <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Información de Entrega
-                      </Typography>
-                      <Box display="flex" flexDirection="column" gap={1}>
-                        <Typography variant="body2">
-                          <strong>Cliente:</strong> {getClientName(selectedDelivery)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Factura:</strong> {getVentaNumero(selectedDelivery)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Viaje:</strong> {getTripNumber(selectedDelivery.viajeId)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Estado:</strong> {getStatusChip(selectedDelivery.estado)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Fecha de Entrega:</strong> {new Date(selectedDelivery.fechaEntrega).toLocaleString()}
-                        </Typography>
+                      <Stack spacing={1.5}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Cliente</Typography>
+                          <Typography variant="body2" fontWeight="medium">{getClientName(selectedDelivery)}</Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Factura</Typography>
+                          <Typography variant="body2">{getVentaNumero(selectedDelivery)}</Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Viaje</Typography>
+                          <Typography variant="body2">{getTripNumber(selectedDelivery.viajeId)}</Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Typography variant="caption" color="text.secondary">Estado:</Typography>
+                          {getStatusChip(selectedDelivery.estado)}
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Fecha</Typography>
+                          <Typography variant="body2">{new Date(selectedDelivery.fechaEntrega).toLocaleString()}</Typography>
+                        </Box>
                         {selectedDelivery.receptorNombre && (
-                          <Typography variant="body2">
-                            <strong>Recibido por:</strong> {selectedDelivery.receptorNombre}
-                          </Typography>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Receptor</Typography>
+                            <Typography variant="body2">{selectedDelivery.receptorNombre}</Typography>
+                          </Box>
                         )}
-                        {selectedDelivery.receptorDni && (
-                          <Typography variant="body2">
-                            <strong>DNI Receptor:</strong> {selectedDelivery.receptorDni}
-                          </Typography>
-                        )}
-                      </Box>
+                      </Stack>
                     </CardContent>
                   </Card>
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <Card>
+
+                  <Card variant="outlined">
                     <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Dirección y Ubicación
-                      </Typography>
-                      <Box display="flex" alignItems="start" gap={1} mb={2}>
-                        <LocationIcon sx={{ fontSize: 20, mt: 0.5 }} />
-                        <Typography variant="body2">
-                          {selectedDelivery.direccionEntrega}
-                        </Typography>
+                      <Box display="flex" alignItems="flex-start" gap={1} mb={2}>
+                        <LocationIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
+                        <Typography variant="body2">{selectedDelivery.direccionEntrega}</Typography>
                       </Box>
                       <Button
                         variant="outlined"
                         startIcon={<MapIcon />}
                         onClick={() => window.open(`https://maps.google.com?q=${encodeURIComponent(selectedDelivery.direccionEntrega)}`, '_blank')}
                         fullWidth
+                        sx={{ minHeight: 44 }}
                       >
-                        Ver en Google Maps
+                        Ver en Maps
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {selectedDelivery.observaciones && (
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="caption" color="text.secondary">Observaciones</Typography>
+                        <Typography variant="body2">{selectedDelivery.observaciones}</Typography>
+                      </CardContent>
+                    </Card>
+                  )}
+                </Stack>
+              )}
+
+              {detailsTab === 1 && (
+                <Stack spacing={1.5}>
+                  {selectedDeliveryDetails?.equipos?.map((equipo: any) => {
+                    let estadoAsignacion = equipo.estadoAsignacion;
+                    if (!estadoAsignacion) {
+                      estadoAsignacion = selectedDelivery.estado === 'ENTREGADA' ? 'ENTREGADO' : 'EN_TRANSITO';
+                    }
+
+                    return (
+                      <Card key={equipo.id} variant="outlined">
+                        <CardContent sx={{ py: 1.5 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight="bold">
+                                #{equipo.numeroHeladera || equipo.id}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {equipo.modelo || 'N/A'} - {equipo.tipo || 'N/A'}
+                              </Typography>
+                              {equipo.color && (
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                  Color: {equipo.color}
+                                </Typography>
+                              )}
+                            </Box>
+                            <Chip
+                              label={getEstadoAsignacionLabel(estadoAsignacion)}
+                              size="small"
+                              color={getEstadoAsignacionColor(estadoAsignacion)}
+                            />
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {(!selectedDeliveryDetails?.equipos || selectedDeliveryDetails.equipos.length === 0) && (
+                    <Box textAlign="center" py={4}>
+                      <EquipmentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                      <Typography color="text.secondary">No hay equipos en esta entrega</Typography>
+                    </Box>
+                  )}
+                </Stack>
+              )}
+            </Box>
+          )}
+        </BottomSheet>
+      ) : (
+        <SwipeableDrawer
+          anchor="right"
+          open={detailsDialogOpen}
+          onClose={() => { setDetailsDialogOpen(false); setSelectedDeliveryDetails(null); }}
+          onOpen={() => {}}
+          PaperProps={{ sx: { width: isTablet ? '90%' : 550 } }}
+        >
+          {selectedDelivery && (
+            <Box sx={{ p: 3 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <ViewIcon color="primary" />
+                  <Typography variant="h6">Detalles de Entrega</Typography>
+                  {getStatusChip(selectedDelivery.estado)}
+                </Box>
+                <IconButton onClick={() => { setDetailsDialogOpen(false); setSelectedDeliveryDetails(null); }}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" gutterBottom>Informacion</Typography>
+                      <Stack spacing={1}>
+                        <Typography variant="body2"><strong>Cliente:</strong> {getClientName(selectedDelivery)}</Typography>
+                        <Typography variant="body2"><strong>Factura:</strong> {getVentaNumero(selectedDelivery)}</Typography>
+                        <Typography variant="body2"><strong>Viaje:</strong> {getTripNumber(selectedDelivery.viajeId)}</Typography>
+                        <Typography variant="body2"><strong>Fecha:</strong> {new Date(selectedDelivery.fechaEntrega).toLocaleString()}</Typography>
+                        {selectedDelivery.receptorNombre && (
+                          <Typography variant="body2"><strong>Receptor:</strong> {selectedDelivery.receptorNombre}</Typography>
+                        )}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" gutterBottom>Direccion</Typography>
+                      <Box display="flex" alignItems="flex-start" gap={1} mb={2}>
+                        <LocationIcon sx={{ fontSize: 18, mt: 0.3, color: 'text.secondary' }} />
+                        <Typography variant="body2">{selectedDelivery.direccionEntrega}</Typography>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<MapIcon />}
+                        onClick={() => window.open(`https://maps.google.com?q=${encodeURIComponent(selectedDelivery.direccionEntrega)}`, '_blank')}
+                        fullWidth
+                      >
+                        Ver en Maps
                       </Button>
                     </CardContent>
                   </Card>
                 </Grid>
-              </Grid>
-              
-              {/* Equipos de la factura (si están disponibles en detalles) */}
-              {selectedDeliveryDetails?.equipos && selectedDeliveryDetails.equipos.length > 0 && (
-                <Card sx={{ mt: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
-                      <LocationIcon />
-                      Equipos a Entregar ({selectedDeliveryDetails.equipos.length})
-                    </Typography>
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>N° Equipo</TableCell>
-                            <TableCell>Modelo</TableCell>
-                            <TableCell>Tipo</TableCell>
-                            <TableCell>Color</TableCell>
-                            <TableCell>Estado</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
+
+                {selectedDeliveryDetails?.equipos?.length > 0 && (
+                  <Grid item xs={12}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Equipos ({selectedDeliveryDetails.equipos.length})
+                        </Typography>
+                        <List dense>
                           {selectedDeliveryDetails.equipos.map((equipo: any) => {
-                            // Infer estadoAsignacion if not provided
                             let estadoAsignacion = equipo.estadoAsignacion;
                             if (!estadoAsignacion) {
-                              // If delivery is confirmed, it should be ENTREGADO, otherwise EN_TRANSITO
                               estadoAsignacion = selectedDelivery.estado === 'ENTREGADA' ? 'ENTREGADO' : 'EN_TRANSITO';
                             }
-                            
                             return (
-                              <TableRow key={equipo.id}>
-                                <TableCell>
-                                  <Typography variant="body2" fontWeight="600">
-                                    #{equipo.numeroHeladera || equipo.id}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell>{equipo.modelo || 'N/A'}</TableCell>
-                                <TableCell>{equipo.tipo || 'N/A'}</TableCell>
-                                <TableCell>{equipo.color || 'N/A'}</TableCell>
-                                <TableCell>
-                                  <Chip
-                                    label={getEstadoAsignacionLabel(estadoAsignacion)}
-                                    size="small"
-                                    color={getEstadoAsignacionColor(estadoAsignacion)}
-                                  />
-                                </TableCell>
-                              </TableRow>
+                              <ListItem key={equipo.id} divider>
+                                <ListItemText
+                                  primary={`#${equipo.numeroHeladera || equipo.id} - ${equipo.modelo || 'N/A'}`}
+                                  secondary={`${equipo.tipo || ''} ${equipo.color ? `| ${equipo.color}` : ''}`}
+                                />
+                                <Chip
+                                  label={getEstadoAsignacionLabel(estadoAsignacion)}
+                                  size="small"
+                                  color={getEstadoAsignacionColor(estadoAsignacion)}
+                                />
+                              </ListItem>
                             );
                           })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
-              )}
+                        </List>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
 
-              {selectedDelivery.observaciones && (
-                <Card sx={{ mt: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Observaciones
-                    </Typography>
-                    <Typography variant="body2">
-                      {selectedDelivery.observaciones}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              )}
+                {selectedDelivery.observaciones && (
+                  <Grid item xs={12}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" gutterBottom>Observaciones</Typography>
+                        <Typography variant="body2">{selectedDelivery.observaciones}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
 
-              {/* Botones de acción rápida si está pendiente */}
               {selectedDelivery.estado === 'PENDIENTE' && (
-                <Box display="flex" gap={2} mt={2}>
+                <Box display="flex" gap={2} mt={3}>
                   <Button
                     variant="contained"
                     color="success"
@@ -1202,146 +1500,256 @@ const DeliveriesPage: React.FC = () => {
                   </Button>
                 </Box>
               )}
+
+              <Box mt={3}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => { setDetailsDialogOpen(false); setSelectedDeliveryDetails(null); }}
+                >
+                  Cerrar
+                </Button>
+              </Box>
             </Box>
           )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            startIcon={<PrintIcon />}
-            onClick={() => window.print()}
-          >
-            Imprimir
-          </Button>
-          <Button onClick={() => {
-            setDetailsDialogOpen(false);
-            setSelectedDeliveryDetails(null);
-          }}>
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </SwipeableDrawer>
+      )}
 
-      {/* Modal de Confirmación de Entrega */}
-      <Dialog 
-        open={confirmDialogOpen} 
-        onClose={() => setConfirmDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <CheckIcon color="success" />
-            Confirmar Entrega
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Alert severity="info" sx={{ mb: 3 }}>
-              Complete los datos del receptor para confirmar la entrega. Los equipos cambiarán a estado <strong>ENTREGADO</strong>.
+      {/* Confirm Delivery Bottom Sheet / Dialog */}
+      {isMobile ? (
+        <BottomSheet
+          open={confirmDialogOpen}
+          onClose={() => setConfirmDialogOpen(false)}
+          title="Confirmar Entrega"
+          actions={
+            <Stack direction="row" spacing={1.5}>
+              <Button onClick={() => setConfirmDialogOpen(false)} sx={{ flex: 1, minHeight: 48 }}>
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleConfirmDelivery}
+                disabled={!receptorData.nombre.trim()}
+                sx={{ flex: 1, minHeight: 48 }}
+              >
+                Confirmar
+              </Button>
+            </Stack>
+          }
+        >
+          <Stack spacing={2}>
+            <Alert severity="info">
+              Los equipos cambiaran a estado <strong>ENTREGADO</strong>.
             </Alert>
-            
+
             <TextField
               label="Nombre del Receptor *"
-              fullWidth
               value={receptorData.nombre}
               onChange={(e) => setReceptorData({ ...receptorData, nombre: e.target.value })}
-              margin="normal"
-              placeholder="Ej: Juan Pérez"
+              fullWidth
               required
+              placeholder="Ej: Juan Perez"
+              InputProps={{ sx: { minHeight: 56 } }}
             />
-            
+
             <TextField
               label="DNI del Receptor"
-              fullWidth
               value={receptorData.dni}
               onChange={(e) => setReceptorData({ ...receptorData, dni: e.target.value })}
-              margin="normal"
+              fullWidth
               placeholder="Ej: 12345678"
+              inputMode="numeric"
+              InputProps={{ sx: { minHeight: 56 } }}
             />
-            
+
             <TextField
               label="Observaciones"
+              value={receptorData.observaciones}
+              onChange={(e) => setReceptorData({ ...receptorData, observaciones: e.target.value })}
+              fullWidth
+              multiline
+              rows={2}
+              placeholder="Notas adicionales..."
+            />
+          </Stack>
+        </BottomSheet>
+      ) : (
+        <SwipeableDrawer
+          anchor="right"
+          open={confirmDialogOpen}
+          onClose={() => setConfirmDialogOpen(false)}
+          onOpen={() => {}}
+          PaperProps={{ sx: { width: 400 } }}
+        >
+          <Box sx={{ p: 3 }}>
+            <Box display="flex" alignItems="center" gap={1} mb={3}>
+              <CheckIcon color="success" />
+              <Typography variant="h6">Confirmar Entrega</Typography>
+            </Box>
+
+            <Alert severity="info" sx={{ mb: 3 }}>
+              Los equipos cambiaran a estado <strong>ENTREGADO</strong>.
+            </Alert>
+
+            <Stack spacing={2}>
+              <TextField
+                label="Nombre del Receptor *"
+                value={receptorData.nombre}
+                onChange={(e) => setReceptorData({ ...receptorData, nombre: e.target.value })}
+                fullWidth
+                required
+              />
+              <TextField
+                label="DNI del Receptor"
+                value={receptorData.dni}
+                onChange={(e) => setReceptorData({ ...receptorData, dni: e.target.value })}
+                fullWidth
+              />
+              <TextField
+                label="Observaciones"
+                value={receptorData.observaciones}
+                onChange={(e) => setReceptorData({ ...receptorData, observaciones: e.target.value })}
+                fullWidth
+                multiline
+                rows={3}
+              />
+
+              <Box display="flex" gap={2} mt={2}>
+                <Button onClick={() => setConfirmDialogOpen(false)} sx={{ flex: 1 }}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleConfirmDelivery}
+                  disabled={!receptorData.nombre.trim()}
+                  sx={{ flex: 1 }}
+                >
+                  Confirmar
+                </Button>
+              </Box>
+            </Stack>
+          </Box>
+        </SwipeableDrawer>
+      )}
+
+      {/* Reject Delivery Bottom Sheet / Dialog */}
+      {isMobile ? (
+        <BottomSheet
+          open={rejectDialogOpen}
+          onClose={() => setRejectDialogOpen(false)}
+          title="Marcar como No Entregada"
+          actions={
+            <Stack direction="row" spacing={1.5}>
+              <Button onClick={() => setRejectDialogOpen(false)} sx={{ flex: 1, minHeight: 48 }}>
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleRejectDelivery}
+                disabled={!rejectMotivo.trim()}
+                sx={{ flex: 1, minHeight: 48 }}
+              >
+                Rechazar
+              </Button>
+            </Stack>
+          }
+        >
+          <Stack spacing={2}>
+            <Alert severity="warning">
+              Indique el motivo por el cual no se pudo entregar.
+            </Alert>
+
+            <Typography variant="subtitle2">Motivos rapidos:</Typography>
+            <Box display="flex" flexWrap="wrap" gap={1}>
+              {REJECTION_REASONS.map((reason) => (
+                <Chip
+                  key={reason}
+                  label={reason}
+                  onClick={() => setRejectMotivo(reason)}
+                  color={rejectMotivo === reason ? 'primary' : 'default'}
+                  variant={rejectMotivo === reason ? 'filled' : 'outlined'}
+                  sx={{ minHeight: 36 }}
+                />
+              ))}
+            </Box>
+
+            <TextField
+              label="Motivo del Rechazo *"
+              value={rejectMotivo}
+              onChange={(e) => setRejectMotivo(e.target.value)}
               fullWidth
               multiline
               rows={3}
-              value={receptorData.observaciones}
-              onChange={(e) => setReceptorData({ ...receptorData, observaciones: e.target.value })}
-              margin="normal"
-              placeholder="Notas adicionales sobre la entrega (opcional)"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDialogOpen(false)}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleConfirmDelivery} 
-            variant="contained" 
-            color="success"
-            startIcon={<CheckIcon />}
-            disabled={!receptorData.nombre.trim()}
-          >
-            Confirmar Entrega
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Modal de Rechazo de Entrega */}
-      <Dialog 
-        open={rejectDialogOpen} 
-        onClose={() => setRejectDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <CancelIcon color="error" />
-            Marcar como No Entregada
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Indique el motivo por el cual la entrega no pudo realizarse.
-            </Alert>
-            
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <strong>Nota:</strong> Los equipos mantendrán su estado actual. Será necesario crear una nueva entrega para volver a intentar la entrega de estos equipos.
-            </Alert>
-            
-            <TextField
-              label="Motivo del Rechazo *"
-              fullWidth
-              multiline
-              rows={4}
-              value={rejectMotivo}
-              onChange={(e) => setRejectMotivo(e.target.value)}
-              margin="normal"
-              placeholder="Ej: Cliente no se encontraba en el domicilio, dirección incorrecta, etc."
               required
+              placeholder="Describa el motivo..."
             />
+          </Stack>
+        </BottomSheet>
+      ) : (
+        <SwipeableDrawer
+          anchor="right"
+          open={rejectDialogOpen}
+          onClose={() => setRejectDialogOpen(false)}
+          onOpen={() => {}}
+          PaperProps={{ sx: { width: 400 } }}
+        >
+          <Box sx={{ p: 3 }}>
+            <Box display="flex" alignItems="center" gap={1} mb={3}>
+              <CancelIcon color="error" />
+              <Typography variant="h6">Marcar como No Entregada</Typography>
+            </Box>
+
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Indique el motivo por el cual no se pudo entregar.
+            </Alert>
+
+            <Stack spacing={2}>
+              <Typography variant="subtitle2">Motivos rapidos:</Typography>
+              <Box display="flex" flexWrap="wrap" gap={1}>
+                {REJECTION_REASONS.map((reason) => (
+                  <Chip
+                    key={reason}
+                    label={reason}
+                    onClick={() => setRejectMotivo(reason)}
+                    color={rejectMotivo === reason ? 'primary' : 'default'}
+                    variant={rejectMotivo === reason ? 'filled' : 'outlined'}
+                  />
+                ))}
+              </Box>
+
+              <TextField
+                label="Motivo del Rechazo *"
+                value={rejectMotivo}
+                onChange={(e) => setRejectMotivo(e.target.value)}
+                fullWidth
+                multiline
+                rows={4}
+                required
+              />
+
+              <Box display="flex" gap={2} mt={2}>
+                <Button onClick={() => setRejectDialogOpen(false)} sx={{ flex: 1 }}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleRejectDelivery}
+                  disabled={!rejectMotivo.trim()}
+                  sx={{ flex: 1 }}
+                >
+                  Rechazar
+                </Button>
+              </Box>
+            </Stack>
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejectDialogOpen(false)}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleRejectDelivery} 
-            variant="contained" 
-            color="error"
-            startIcon={<CancelIcon />}
-            disabled={!rejectMotivo.trim()}
-          >
-            Marcar como No Entregada
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </SwipeableDrawer>
+      )}
     </Box>
   );
 };
 
-export default DeliveriesPage;
+export default DeliveriesPage2;

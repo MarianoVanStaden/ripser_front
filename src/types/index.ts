@@ -3257,24 +3257,72 @@ export interface DistribucionDetalleDTO {
 
 // ==================== FLUJO DE CAJA MEJORADO ====================
 
+// Tipos para movimientos extras
+export type OrigenMovimiento = 'CLIENTE' | 'PROVEEDOR' | 'GASTO_EXTRA' | 'COBRO_EXTRA';
+
+// Categorías de gastos extras (must match backend enum)
+export type CategoriaGastoExtra =
+  | 'VIATICOS'
+  | 'REPARACION_VEHICULO'
+  | 'SERVICE_MANTENIMIENTO'
+  | 'GASTOS_OPERATIVOS'
+  | 'SUELDOS_SALARIOS'
+  | 'SERVICIOS_PUBLICOS'
+  | 'ALQUILER'
+  | 'IMPUESTOS'
+  | 'HONORARIOS_PROFESIONALES'
+  | 'SEGUROS'
+  | 'PUBLICIDAD_MARKETING'
+  | 'GASTOS_BANCARIOS'
+  | 'OTROS';
+
+// Categorías de cobros extras (must match backend enum)
+export type CategoriaCobroExtra =
+  | 'COBRO_MANUAL'
+  | 'AJUSTE_POSITIVO'
+  | 'INGRESO_EXTRAORDINARIO'
+  | 'VENTA_ACTIVO'
+  | 'REEMBOLSO'
+  | 'INTERESES_GANADOS'
+  | 'SUBSIDIO'
+  | 'DONACION'
+  | 'OTROS';
+
+// Estado del movimiento
+export type EstadoMovimiento = 'ACTIVO' | 'ANULADO';
+
 // Movimiento de flujo de caja con información mejorada
 export interface FlujoCajaMovimientoEnhanced {
   id: number;
   fecha: string;
   tipo: 'INGRESO' | 'EGRESO';
-  origen: 'CLIENTE' | 'PROVEEDOR';
+  origen: OrigenMovimiento; // ACTUALIZADO para soportar movimientos extras
   entidad: string;
   concepto: string;
   importe: number;
   numeroComprobante?: string;
 
-  // Campos mejorados
+  // Campos mejorados (cheques)
   metodoPago?: MetodoPago | null;
   chequeId?: number | null;
   chequeNumero?: string | null;
   chequeEstado?: EstadoChequeType | null;
   chequeFechaCobro?: string | null;
   documentoComercialId?: number;
+
+  // Nuevos campos para movimientos extras
+  categoriaGasto?: CategoriaGastoExtra | null;
+  categoriaCobro?: CategoriaCobroExtra | null;
+  responsableNombre?: string | null;
+  estado?: EstadoMovimiento;
+  observaciones?: string | null;
+  movimientoExtraId?: number | null; // Referencia a la entidad MovimientoExtra
+
+  // Audit fields (para movimientos extras) - matching backend naming
+  fechaCreacion?: string; // ISO datetime string from backend
+  fechaActualizacion?: string; // ISO datetime string from backend
+  createdAt?: string; // Alias for fechaCreacion (for backward compatibility)
+  updatedAt?: string; // Alias for fechaActualizacion (for backward compatibility)
 }
 
 // Saldo por método de pago (del backend)
@@ -3410,4 +3458,41 @@ export interface FlujoCajaKPIs {
     cantidad: number;
     monto: number;
   };
+}
+
+// ==================== MOVIMIENTOS EXTRAS ====================
+
+// Tipo de movimiento para el backend (diferente al usado en UI)
+// CREDITO = Ingreso/Cobro Extra
+// DEBITO = Egreso/Gasto Extra
+export type TipoMovimientoBackend = 'CREDITO' | 'DEBITO';
+
+// DTO para crear movimiento extra (estructura que espera el backend)
+export interface CreateMovimientoExtraDTO {
+  sucursalId?: number;
+  tipo: TipoMovimientoBackend; // CREDITO = ingreso, DEBITO = egreso
+  categoriaGasto?: CategoriaGastoExtra;
+  categoriaCobro?: CategoriaCobroExtra;
+  descripcion: string;
+  monto: number; // Backend espera 'monto', no 'importe'
+  fecha: string; // YYYY-MM-DD
+  metodoPago: MetodoPago;
+  numeroComprobante?: string;
+  vehiculoId?: number;
+  empleadoId?: number;
+  clienteId?: number;
+  proveedorId?: number;
+  chequeId?: number;
+  observaciones?: string;
+}
+
+// DTO para actualizar movimiento extra
+export interface UpdateMovimientoExtraDTO extends Partial<CreateMovimientoExtraDTO> {
+  id: number;
+}
+
+// Respuesta de categorías disponibles
+export interface CategoriasDisponiblesDTO {
+  gastosExtras: CategoriaGastoExtra[];
+  cobrosExtras: CategoriaCobroExtra[];
 }

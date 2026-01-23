@@ -135,11 +135,9 @@ const navigation: NavigationSection[] = [
     items: [
             // DISTRIBUCIÓN - Logística de salida
       { text: 'Armado de Viajes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes' },
-      { text: 'Armado de Viajes 2', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes-v2' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
-      { text: 'Entregas 2', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-v2' },
       { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
-      { text: 'Entregas Equipos 2', icon: <LocalShippingIcon />, path: '/logistica/distribucion/equipos-v2' },
+      
     ],
   },
   {

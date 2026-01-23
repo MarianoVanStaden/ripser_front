@@ -22,9 +22,25 @@ import {
 import dayjs from 'dayjs';
 import { legajoApi } from '../../api/services/legajoApi';
 import { employeeApi } from '../../api/services/employeeApi';
-import { documentoLegajoApi } from '../../api/services/documentoLegajoApi';
+import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
 import DocumentManager from '../shared/DocumentManager';
-import type { Legajo, Empleado, DocumentoLegajo as DocLegajo } from '../../types';
+import type { Legajo, Empleado, DocumentoEmpleado } from '../../types';
+
+// Categorías de documentos para empleados (compartidas con EmpleadosPage)
+const CATEGORIAS_EMPLEADO = [
+  'DNI',
+  'CUIT',
+  'CV',
+  'CERTIFICADO_TRABAJO',
+  'RECIBO_SUELDO',
+  'LICENCIA_CONDUCIR',
+  'CERTIFICADO_MEDICO',
+  'ALTA_AFIP',
+  'CONTRATO',
+  'CERTIFICADO',
+  'FOTO',
+  'OTROS',
+];
 
 const LegajosPage: React.FC = () => {
   const theme = useTheme();
@@ -687,20 +703,31 @@ const LegajosPage: React.FC = () => {
                 {/* Documentos */}
                 <Grid item xs={12}>
                   <DocumentManager
-                    entityId={selected.id}
-                    entityType="legajo"
-                    categorias={['CV', 'Contrato', 'Certificado', 'Titulo', 'Constancia', 'DNI', 'Otros']}
+                    entityId={selected.empleado.id}
+                    entityType="empleado"
+                    categorias={CATEGORIAS_EMPLEADO}
                     onUpload={async (file, categoria, descripcion) => {
-                      await documentoLegajoApi.upload(selected.id, file, categoria, descripcion);
+                      await documentoEmpleadoApi.upload(selected.empleado.id, file, categoria, descripcion);
                     }}
                     onDownload={async (id, fileName) => {
-                      await documentoLegajoApi.downloadAndSave(id, fileName);
+                      await documentoEmpleadoApi.downloadAndSave(selected.empleado.id, id, fileName);
                     }}
                     onDelete={async (id) => {
-                      await documentoLegajoApi.delete(id);
+                      await documentoEmpleadoApi.delete(selected.empleado.id, id);
                     }}
-                    onLoad={async (legajoId) => {
-                      return await documentoLegajoApi.getByLegajoId(legajoId);
+                    onLoad={async (empleadoId) => {
+                      const docs = await documentoEmpleadoApi.getByEmpleadoId(empleadoId);
+                      // Mapear los campos del DTO a la estructura esperada por DocumentManager
+                      return docs.map(doc => ({
+                        id: doc.id,
+                        nombreArchivo: doc.nombreOriginal,
+                        tipoArchivo: doc.mimeType || '',
+                        tamanioBytes: doc.sizeBytes,
+                        descripcion: doc.descripcion,
+                        categoria: doc.categoria,
+                        fechaSubida: doc.fechaSubida,
+                        subidoPor: doc.subidoPor || ''
+                      }));
                     }}
                   />
                 </Grid>

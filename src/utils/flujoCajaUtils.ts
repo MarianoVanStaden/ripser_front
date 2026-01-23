@@ -11,6 +11,9 @@ import type {
   SaldoPorMetodoPagoDTO,
   ResumenChequesDTO,
   EvolucionDiariaDTO,
+  OrigenMovimiento,
+  CategoriaGastoExtra,
+  CategoriaCobroExtra,
 } from '../types';
 import {
   MoneyOutlined as CashIcon,
@@ -20,6 +23,11 @@ import {
   Payment as DebitCardIcon,
   AccountBalanceWallet as FinanciacionIcon,
   MoreHoriz as OtherIcon,
+  MoneyOff as MoneyOffIcon,
+  AttachMoney as AttachMoneyIcon,
+  Person as PersonIcon,
+  Business as BusinessIcon,
+  HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 
 /**
@@ -623,4 +631,84 @@ export const calculateKPIsFromBackend = (
     chequesVencidos,
     chequesPorVencer7Dias,
   };
+};
+
+// ==================== MOVIMIENTOS EXTRAS ====================
+
+/**
+ * Obtiene la etiqueta en español para una categoría de gasto extra
+ */
+export const getCategoriaGastoLabel = (categoria: CategoriaGastoExtra): string => {
+  const labels: Record<CategoriaGastoExtra, string> = {
+    VIATICOS: 'Viáticos',
+    REPARACION_VEHICULO: 'Reparación de Vehículo',
+    SERVICE_MANTENIMIENTO: 'Service y Mantenimiento',
+    GASTOS_OPERATIVOS: 'Gastos Operativos',
+    SUELDOS_SALARIOS: 'Sueldos y Salarios',
+    SERVICIOS_PUBLICOS: 'Servicios Públicos',
+    ALQUILER: 'Alquiler',
+    IMPUESTOS: 'Impuestos',
+    HONORARIOS_PROFESIONALES: 'Honorarios Profesionales',
+    SEGUROS: 'Seguros',
+    PUBLICIDAD_MARKETING: 'Publicidad y Marketing',
+    GASTOS_BANCARIOS: 'Gastos Bancarios',
+    OTROS: 'Otros',
+  };
+  return labels[categoria] || categoria;
+};
+
+/**
+ * Obtiene la etiqueta en español para una categoría de cobro extra
+ */
+export const getCategoriaCobroLabel = (categoria: CategoriaCobroExtra): string => {
+  const labels: Record<CategoriaCobroExtra, string> = {
+    COBRO_MANUAL: 'Cobro Manual',
+    AJUSTE_POSITIVO: 'Ajuste Positivo',
+    INGRESO_EXTRAORDINARIO: 'Ingreso Extraordinario',
+    VENTA_ACTIVO: 'Venta de Activo',
+    REEMBOLSO: 'Reembolso',
+    INTERESES_GANADOS: 'Intereses Ganados',
+    SUBSIDIO: 'Subsidio',
+    DONACION: 'Donación',
+    OTROS: 'Otros',
+  };
+  return labels[categoria] || categoria;
+};
+
+/**
+ * Obtiene el icono MUI para un origen de movimiento
+ */
+export const getOrigenIcon = (origen: OrigenMovimiento) => {
+  switch (origen) {
+    case 'CLIENTE':
+      return PersonIcon;
+    case 'PROVEEDOR':
+      return BusinessIcon;
+    case 'GASTO_EXTRA':
+      return MoneyOffIcon;
+    case 'COBRO_EXTRA':
+      return AttachMoneyIcon;
+    default:
+      return HelpOutlineIcon;
+  }
+};
+
+/**
+ * Obtiene la etiqueta en español para un origen de movimiento
+ */
+export const getOrigenLabel = (origen: OrigenMovimiento): string => {
+  const labels: Record<OrigenMovimiento, string> = {
+    CLIENTE: 'Cliente',
+    PROVEEDOR: 'Proveedor',
+    GASTO_EXTRA: 'Gasto Extra',
+    COBRO_EXTRA: 'Cobro Extra',
+  };
+  return labels[origen] || origen;
+};
+
+/**
+ * Obtiene el color para un tipo de movimiento extra
+ */
+export const getCategoriaColor = (tipo: 'GASTO' | 'COBRO'): string => {
+  return tipo === 'GASTO' ? '#f44336' : '#4caf50';
 };

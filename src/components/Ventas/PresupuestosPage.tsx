@@ -1118,7 +1118,16 @@ const PresupuestosPage: React.FC = () => {
                 getOptionKey={(option) => `${option.type}-${option.id}`}
                 getOptionLabel={(option) => {
                   const label = option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre;
-                  return `${label} (${option.type === 'cliente' ? 'Cliente' : 'Lead'})`;
+                  return label;
+                }}
+                filterOptions={(options, { inputValue }) => {
+                  const searchTerm = inputValue.toLowerCase().trim();
+                  if (!searchTerm) return options;
+                  return options.filter(option => {
+                    const nombre = (option.nombre || '').toLowerCase();
+                    const apellido = (option.apellido || '').toLowerCase();
+                    return nombre.includes(searchTerm) || apellido.includes(searchTerm);
+                  });
                 }}
                 value={
                   formData.clienteId
@@ -1144,16 +1153,42 @@ const PresupuestosPage: React.FC = () => {
                   setHasUnsavedChanges(true);
                 }}
                 disabled={readOnly || !!editingPresupuesto}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props} key={`${option.type}-${option.id}`}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                      <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                        {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
+                      </Typography>
+                      {option.type === 'cliente' && (
+                        <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />
+                      )}
+                      {option.type === 'lead' && (
+                        <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
+                      )}
+                    </Box>
+                  </Box>
+                )}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Cliente / Lead"
+                    label="Buscar Cliente / Lead"
+                    placeholder="Escriba nombre o apellido..."
                     margin="normal"
                     required
                     error={!formData.clienteId && !formData.leadId && hasUnsavedChanges}
-                    helperText={!formData.clienteId && !formData.leadId && hasUnsavedChanges ? "Seleccione un cliente o lead" : ""}
+                    helperText={!formData.clienteId && !formData.leadId && hasUnsavedChanges ? "Seleccione un cliente o lead" : "Busque por nombre o apellido"}
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 )}
+                noOptionsText="No se encontraron clientes o leads"
+                isOptionEqualToValue={(option, value) => option.type === value.type && option.id === value.id}
               />
 
               {editingPresupuesto && usuarios.length > 0 && (

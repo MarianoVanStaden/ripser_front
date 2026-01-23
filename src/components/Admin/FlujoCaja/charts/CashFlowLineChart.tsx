@@ -7,6 +7,8 @@ import {
   CircularProgress,
   ToggleButtonGroup,
   ToggleButton,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Chart as ChartJS,
@@ -51,6 +53,8 @@ const CashFlowLineChart: React.FC<CashFlowLineChartProps> = ({
   loading = false,
   defaultGranularity = 'day',
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [granularity, setGranularity] = useState<'day' | 'week' | 'month'>(defaultGranularity);
 
   // Función para formatear las fechas según granularidad
@@ -169,15 +173,24 @@ const CashFlowLineChart: React.FC<CashFlowLineChartProps> = ({
   }
 
   return (
-    <Paper sx={{ p: 3, height: 450 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, height: { xs: 'auto', sm: 450 } }}>
+      <Box
+        display="flex"
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
+        mb={2}
+        gap={{ xs: 2, sm: 0 }}
+      >
         <Box>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant={isMobile ? 'subtitle1' : 'h6'} gutterBottom>
             Evolución del Flujo de Caja
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Tendencia temporal de ingresos y egresos
-          </Typography>
+          {!isMobile && (
+            <Typography variant="body2" color="text.secondary">
+              Tendencia temporal de ingresos y egresos
+            </Typography>
+          )}
         </Box>
         <ToggleButtonGroup
           value={granularity}
@@ -185,20 +198,36 @@ const CashFlowLineChart: React.FC<CashFlowLineChartProps> = ({
           onChange={handleGranularityChange}
           size="small"
           aria-label="granularity"
+          sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}
         >
-          <ToggleButton value="day" aria-label="day">
+          <ToggleButton value="day" aria-label="day" sx={{ flex: { xs: 1, sm: 'initial' } }}>
             Día
           </ToggleButton>
-          <ToggleButton value="week" aria-label="week">
+          <ToggleButton value="week" aria-label="week" sx={{ flex: { xs: 1, sm: 'initial' } }}>
             Semana
           </ToggleButton>
-          <ToggleButton value="month" aria-label="month">
+          <ToggleButton value="month" aria-label="month" sx={{ flex: { xs: 1, sm: 'initial' } }}>
             Mes
           </ToggleButton>
         </ToggleButtonGroup>
       </Box>
-      <Box sx={{ height: 340, position: 'relative', mt: 2 }}>
-        <Line data={chartData} options={lineChartOptions} />
+      <Box
+        sx={{
+          height: { xs: 300, sm: 340 },
+          position: 'relative',
+          mt: 2,
+          width: '100%',
+          overflow: 'hidden',
+        }}
+      >
+        <Line
+          data={chartData}
+          options={{
+            ...lineChartOptions,
+            maintainAspectRatio: false,
+            responsive: true,
+          }}
+        />
       </Box>
     </Paper>
   );

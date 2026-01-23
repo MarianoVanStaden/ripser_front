@@ -61,6 +61,8 @@ const RecetaForm: React.FC = () => {
   // Success Dialog states
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdReceta, setCreatedReceta] = useState<RecetaFabricacionDTO | null>(null);
+  const [editSuccessDialogOpen, setEditSuccessDialogOpen] = useState(false);
+  const [updatedReceta, setUpdatedReceta] = useState<RecetaFabricacionDTO | null>(null);
 
   const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
     resolver: yupResolver(schema),
@@ -143,12 +145,9 @@ const RecetaForm: React.FC = () => {
           precioVenta: data.precioVenta,
           disponibleParaVenta: data.disponibleParaVenta,
         };
-        await recetaFabricacionApi.update(Number(id), updateData);
-        setSnackbar({
-          open: true,
-          message: 'Receta actualizada correctamente',
-          severity: 'success',
-        });
+        const updated = await recetaFabricacionApi.update(Number(id), updateData);
+        setUpdatedReceta(updated);
+        setEditSuccessDialogOpen(true);
       } else {
         // Validate that all detalles have a valid productoId
         const invalidDetalles = detalles.filter(d => !d.productoId || d.productoId === 0);
@@ -475,7 +474,7 @@ const RecetaForm: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      {/* Success Dialog */}
+      {/* Success Dialog - Creación */}
       <SuccessDialog
         open={successDialogOpen}
         onClose={() => {
@@ -516,6 +515,27 @@ const RecetaForm: React.FC = () => {
             variant: 'outlined',
           },
         ]}
+      />
+
+      {/* Success Dialog - Edición */}
+      <SuccessDialog
+        open={editSuccessDialogOpen}
+        onClose={() => {
+          setEditSuccessDialogOpen(false);
+          setUpdatedReceta(null);
+          navigate('/fabricacion/recetas');
+        }}
+        title="¡Receta Actualizada Exitosamente!"
+        message="La receta de fabricación ha sido actualizada correctamente"
+        details={updatedReceta ? [
+          { label: 'Nombre', value: updatedReceta.nombre },
+          { label: 'Tipo de Equipo', value: updatedReceta.tipoEquipo },
+          { label: 'Modelo', value: updatedReceta.modelo || '-' },
+          { label: 'Color', value: updatedReceta.color || '-' },
+          { label: 'Medida', value: updatedReceta.medida || '-' },
+          { label: 'Precio de Venta', value: updatedReceta.precioVenta ? `$${updatedReceta.precioVenta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '-' },
+        ] : []}
+        actions={[]}
       />
     </Box>
   );

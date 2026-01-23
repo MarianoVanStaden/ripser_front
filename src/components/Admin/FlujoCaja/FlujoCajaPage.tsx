@@ -7,11 +7,15 @@ import {
   Button,
   Paper,
   Divider,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   AccountBalance as AccountBalanceIcon,
   Download as DownloadIcon,
   Refresh as RefreshIcon,
+  MoneyOff as MoneyOffIcon,
+  AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -26,6 +30,7 @@ import type {
   ChequeStatusAggregation,
   TimeSeriesData,
   ResumenChequesDTO,
+  FlujoCajaMovimientoEnhanced,
 } from '../../../types';
 import {
   aggregateByPaymentMethod,
@@ -42,10 +47,16 @@ import FlujoCajaKPICards from './components/FlujoCajaKPICards';
 import FlujoCajaCharts from './components/FlujoCajaCharts';
 import FlujoCajaPaymentBreakdown from './components/FlujoCajaPaymentBreakdown';
 import FlujoCajaMovimientosTable from './components/FlujoCajaMovimientosTable';
+import MovimientoExtraDialog from './dialogs/MovimientoExtraDialog';
+import { movimientoExtraApi } from '../../../api/services/movimientoExtraApi';
 
 dayjs.locale('es');
 
 const FlujoCajaPage: React.FC = () => {
+  // Theme and responsive
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   // State
   const [rawData, setRawData] = useState<FlujoCajaResponseEnhanced | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +65,11 @@ const FlujoCajaPage: React.FC = () => {
   const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
   const [activeFilter, setActiveFilter] = useState<string>('last3months');
   const [_selectedMetodoPago, setSelectedMetodoPago] = useState<MetodoPago | 'ALL'>('ALL');
+
+  // Movimientos extras state
+  const [movimientoDialogOpen, setMovimientoDialogOpen] = useState(false);
+  const [editingMovimiento, setEditingMovimiento] = useState<FlujoCajaMovimientoEnhanced | null>(null);
+  const [tipoDialogInicial, setTipoDialogInicial] = useState<'INGRESO' | 'EGRESO'>('EGRESO');
 
   // Load data on mount
   useEffect(() => {
@@ -183,6 +199,25 @@ const FlujoCajaPage: React.FC = () => {
     setActiveFilter(filter);
   };
 
+  const handleEditMovimiento = (movimiento: FlujoCajaMovimientoEnhanced) => {
+    setEditingMovimiento(movimiento);
+    setMovimientoDialogOpen(true);
+  };
+
+  const handleAnularMovimiento = async (movimientoExtraId: number) => {
+    if (!window.confirm('¿Estás seguro de que querés anular este movimiento?')) {
+      return;
+    }
+
+    try {
+      await movimientoExtraApi.anular(movimientoExtraId);
+      await loadData(); // Reload data
+    } catch (err: any) {
+      console.error('Error al anular movimiento:', err);
+      alert('Error al anular el movimiento. Por favor intentá de nuevo.');
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -193,34 +228,87 @@ const FlujoCajaPage: React.FC = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box p={3}>
+      <Box p={{ xs: 2, sm: 3 }}>
         {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box
+          display="flex"
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          justifyContent="space-between"
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          gap={{ xs: 2, sm: 0 }}
+          mb={3}
+        >
           <Box>
-            <Typography variant="h4" component="h1" display="flex" alignItems="center">
-              <AccountBalanceIcon sx={{ mr: 2 }} />
-              Flujo de Caja - Dashboard Profesional
+            <Typography
+              variant={isMobile ? 'h5' : 'h4'}
+              component="h1"
+              display="flex"
+              alignItems="center"
+            >
+              <AccountBalanceIcon sx={{ mr: { xs: 1, sm: 2 } }} />
+              {isMobile ? 'Flujo de Caja' : 'Flujo de Caja - Dashboard Profesional'}
             </Typography>
             <Typography variant="body2" color="text.secondary" mt={0.5}>
               {totalMovimientos} movimientos
               {fechaDesde && fechaHasta && (
                 <> | {fechaDesde.format('DD/MM/YYYY')} - {fechaHasta.format('DD/MM/YYYY')}</>
               )}
-              {rawData?.fechaCorte && (
+              {rawData?.fechaCorte && !isMobile && (
                 <> | Corte: {dayjs(rawData.fechaCorte).format('DD/MM/YYYY HH:mm')}</>
               )}
             </Typography>
           </Box>
-          <Box display="flex" gap={2}>
+          <Box
+            display="flex"
+            flexDirection={{ xs: 'column', sm: 'row' }}
+            gap={2}
+            width={{ xs: '100%', sm: 'auto' }}
+          >
             <Button
               variant="contained"
-              startIcon={<DownloadIcon />}
+              color="error"
+              startIcon={!isMobile && <MoneyOffIcon />}
+              onClick={() => {
+                setEditingMovimiento(null);
+                setTipoDialogInicial('EGRESO');
+                setMovimientoDialogOpen(true);
+              }}
+              fullWidth={isMobile}
+              size={isMobile ? 'medium' : 'medium'}
+            >
+              {isMobile ? 'Gasto Extra' : 'Registrar Gasto Extra'}
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={!isMobile && <AttachMoneyIcon />}
+              onClick={() => {
+                setEditingMovimiento(null);
+                setTipoDialogInicial('INGRESO');
+                setMovimientoDialogOpen(true);
+              }}
+              fullWidth={isMobile}
+              size={isMobile ? 'medium' : 'medium'}
+            >
+              {isMobile ? 'Cobro Extra' : 'Registrar Cobro Extra'}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={!isMobile && <DownloadIcon />}
               onClick={handleExportPDF}
               disabled={movimientos.length === 0}
+              fullWidth={isMobile}
+              size={isMobile ? 'medium' : 'medium'}
             >
-              Exportar PDF
+              {isMobile ? 'Exportar PDF' : 'Exportar PDF'}
             </Button>
-            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData}>
+            <Button
+              variant="outlined"
+              startIcon={!isMobile && <RefreshIcon />}
+              onClick={loadData}
+              fullWidth={isMobile}
+              size={isMobile ? 'medium' : 'medium'}
+            >
               Actualizar
             </Button>
           </Box>
@@ -244,8 +332,8 @@ const FlujoCajaPage: React.FC = () => {
         )}
 
         {/* Date Filters */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" mb={2}>
+        <Paper sx={{ p: { xs: 2, sm: 2 }, mb: 3 }}>
+          <Typography variant={isMobile ? 'subtitle1' : 'h6'} mb={2}>
             Filtros por Fecha
           </Typography>
 
@@ -268,7 +356,7 @@ const FlujoCajaPage: React.FC = () => {
                 handleQuickFilter('lastweek', dayjs().subtract(7, 'day'), dayjs())
               }
             >
-              Última Semana
+              {isMobile ? '7d' : 'Última Semana'}
             </Button>
             <Button
               size="small"
@@ -277,7 +365,7 @@ const FlujoCajaPage: React.FC = () => {
                 handleQuickFilter('last30days', dayjs().subtract(30, 'day'), dayjs())
               }
             >
-              Últimos 30 días
+              {isMobile ? '30d' : 'Últimos 30 días'}
             </Button>
             <Button
               size="small"
@@ -290,7 +378,7 @@ const FlujoCajaPage: React.FC = () => {
                 )
               }
             >
-              Este Mes
+              {isMobile ? 'Mes' : 'Este Mes'}
             </Button>
             <Button
               size="small"
@@ -301,7 +389,7 @@ const FlujoCajaPage: React.FC = () => {
                 handleQuickFilter('lastmonth', lastMonthStart, lastMonthEnd);
               }}
             >
-              Mes Anterior
+              {isMobile ? 'Ant.' : 'Mes Anterior'}
             </Button>
             <Button
               size="small"
@@ -310,7 +398,7 @@ const FlujoCajaPage: React.FC = () => {
                 handleQuickFilter('last3months', dayjs().subtract(3, 'month'), dayjs())
               }
             >
-              Últimos 3 Meses
+              3M
             </Button>
             <Button
               size="small"
@@ -319,7 +407,7 @@ const FlujoCajaPage: React.FC = () => {
                 handleQuickFilter('last6months', dayjs().subtract(6, 'month'), dayjs())
               }
             >
-              Últimos 6 Meses
+              6M
             </Button>
             <Button
               size="small"
@@ -328,7 +416,7 @@ const FlujoCajaPage: React.FC = () => {
                 handleQuickFilter('thisyear', dayjs().startOf('year'), dayjs())
               }
             >
-              Este Año
+              {isMobile ? 'Año' : 'Este Año'}
             </Button>
           </Box>
 
@@ -336,7 +424,14 @@ const FlujoCajaPage: React.FC = () => {
           <Typography variant="subtitle2" color="text.secondary" mb={1.5}>
             Fechas Personalizadas:
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
+              alignItems: { xs: 'stretch', sm: 'center' },
+            }}
+          >
             <DatePicker
               label="Desde"
               value={fechaDesde}
@@ -344,7 +439,7 @@ const FlujoCajaPage: React.FC = () => {
                 setFechaDesde(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}
-              slotProps={{ textField: { size: 'small' } }}
+              slotProps={{ textField: { size: 'small', fullWidth: isMobile } }}
             />
             <DatePicker
               label="Hasta"
@@ -353,9 +448,9 @@ const FlujoCajaPage: React.FC = () => {
                 setFechaHasta(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}
-              slotProps={{ textField: { size: 'small' } }}
+              slotProps={{ textField: { size: 'small', fullWidth: isMobile } }}
             />
-            <Button variant="contained" onClick={loadData}>
+            <Button variant="contained" onClick={loadData} fullWidth={isMobile}>
               Aplicar Filtros
             </Button>
           </Box>
@@ -395,7 +490,12 @@ const FlujoCajaPage: React.FC = () => {
 
         {/* Detailed Table */}
         <Box id="movimientos-table">
-          <FlujoCajaMovimientosTable movimientos={movimientos} loading={loading} />
+          <FlujoCajaMovimientosTable
+            movimientos={movimientos}
+            loading={loading}
+            onEdit={handleEditMovimiento}
+            onAnular={handleAnularMovimiento}
+          />
         </Box>
 
         {/* Info Alert */}
@@ -416,6 +516,22 @@ const FlujoCajaPage: React.FC = () => {
             </Typography>
           </Box>
         </Alert>
+
+        {/* Movimiento Extra Dialog */}
+        <MovimientoExtraDialog
+          open={movimientoDialogOpen}
+          onClose={() => {
+            setMovimientoDialogOpen(false);
+            setEditingMovimiento(null);
+          }}
+          onSuccess={() => {
+            loadData();
+            setMovimientoDialogOpen(false);
+            setEditingMovimiento(null);
+          }}
+          editingMovimiento={editingMovimiento}
+          tipoInicial={tipoDialogInicial}
+        />
       </Box>
     </LocalizationProvider>
   );

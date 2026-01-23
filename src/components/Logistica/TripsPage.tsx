@@ -8,17 +8,7 @@ import {
   CircularProgress,
   Alert,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Paper,
   Chip,
   Autocomplete,
@@ -34,6 +24,15 @@ import {
   useMediaQuery,
   Stack,
   Divider,
+  Fab,
+  SwipeableDrawer,
+  Stepper,
+  Step,
+  StepLabel,
+  Collapse,
+  Badge,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -49,6 +48,12 @@ import {
   CheckCircle as CheckIcon,
   PlayArrow as StartIcon,
   Stop as StopIcon,
+  Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Refresh as RefreshIcon,
+  KeyboardArrowLeft as BackIcon,
+  KeyboardArrowRight as NextIcon,
 } from '@mui/icons-material';
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente } from '../../types';
 import { viajeApi } from '../../api/services/viajeApi';
@@ -58,10 +63,113 @@ import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { documentoApi } from '../../api/services/documentoApi';
 import { clienteApi } from '../../api/services/clienteApi';
 
-const TripsPage: React.FC = () => {
+// Custom hook for responsive breakpoints
+const useResponsive = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md')); // 600-899px
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md')); // >= 900px
+  return { isMobile, isTablet, isDesktop };
+};
+
+// Bottom Sheet component for mobile dialogs
+interface BottomSheetProps {
+  open: boolean;
+  onClose: () => void;
+  onOpen?: () => void;
+  title: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+}
+
+const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title, children, actions }) => {
+  const { isMobile } = useResponsive();
+
+  if (!isMobile) {
+    return null; // Use regular dialog for non-mobile
+  }
+
+  return (
+    <SwipeableDrawer
+      anchor="bottom"
+      open={open}
+      onClose={onClose}
+      onOpen={onOpen || (() => {})}
+      disableSwipeToOpen
+      PaperProps={{
+        sx: {
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          maxHeight: '95vh',
+          minHeight: '50vh',
+        },
+      }}
+    >
+      {/* Handle indicator */}
+      <Box
+        sx={{
+          width: 40,
+          height: 4,
+          bgcolor: 'grey.300',
+          borderRadius: 2,
+          mx: 'auto',
+          mt: 1.5,
+          mb: 1,
+        }}
+      />
+
+      {/* Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 2,
+          py: 1,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          position: 'sticky',
+          top: 0,
+          bgcolor: 'background.paper',
+          zIndex: 1,
+        }}
+      >
+        <Typography variant="h6">{title}</Typography>
+        <IconButton onClick={onClose} edge="end">
+          <CloseIcon />
+        </IconButton>
+      </Box>
+
+      {/* Content */}
+      <Box sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
+        {children}
+      </Box>
+
+      {/* Actions - sticky at bottom */}
+      {actions && (
+        <Box
+          sx={{
+            p: 2,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            position: 'sticky',
+            bottom: 0,
+          }}
+        >
+          {actions}
+        </Box>
+      )}
+    </SwipeableDrawer>
+  );
+};
+
+// Wizard steps for mobile trip creation
+const wizardSteps = ['Información', 'Entregas', 'Confirmar'];
+
+const TripsPage2: React.FC = () => {
+  const theme = useTheme();
+  const { isMobile, isTablet, isDesktop } = useResponsive();
 
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
@@ -78,6 +186,9 @@ const TripsPage: React.FC = () => {
   const [selectedFactura, setSelectedFactura] = useState<DocumentoComercial | null>(null);
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, any>>({});
 
+  // Wizard state for mobile
+  const [activeStep, setActiveStep] = useState(0);
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoViaje>('all');
 
@@ -85,18 +196,24 @@ const TripsPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Expanded cards state for mobile
+  const [expandedCard, setExpandedCard] = useState<number | null>(null);
+
+  // Details tab state
+  const [detailsTab, setDetailsTab] = useState(0);
+
   // Form data
   const [formData, setFormData] = useState({
     fechaViaje: '',
     destino: '',
     conductorId: '',
     vehiculoId: '',
-    facturaId: '', // ID de la factura asociada
+    facturaId: '',
     estado: 'PLANIFICADO' as EstadoViaje,
     observaciones: '',
   });
 
-  // Deliveries for current trip - using a custom type for form state
+  // Deliveries for current trip
   type DeliveryFormState = Partial<EntregaViaje> & {
     fechaProgramada?: string;
     facturaId?: number;
@@ -120,7 +237,6 @@ const TripsPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Load each resource individually to better handle errors
       let tripsData: Viaje[] = [];
       let vehiclesData: Vehiculo[] = [];
       let employeesData: Empleado[] = [];
@@ -133,57 +249,53 @@ const TripsPage: React.FC = () => {
         tripsData = await viajeApi.getAll();
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Viajes: ${errorMsg}`);
+        errors.push(`Viajes: ${errorMsg}`);
       }
 
       try {
         const allVehicles = await vehiculoApi.getAll();
-        // Filter only available vehicles for creating trips
         vehiclesData = allVehicles.filter(v => v.estado === 'DISPONIBLE');
         if (allVehicles.length > 0 && vehiclesData.length === 0) {
-          errors.push(`⚠️ Hay ${allVehicles.length} vehículos pero ninguno está DISPONIBLE`);
+          errors.push(`Hay ${allVehicles.length} vehículos pero ninguno está DISPONIBLE`);
         }
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Vehículos: ${errorMsg}`);
+        errors.push(`Vehículos: ${errorMsg}`);
       }
 
       try {
         employeesData = await employeeApi.getAllList();
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Empleados: ${errorMsg}`);
+        errors.push(`Empleados: ${errorMsg}`);
       }
 
       try {
         deliveriesData = await entregaViajeApi.getAll();
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Entregas: ${errorMsg}`);
+        errors.push(`Entregas: ${errorMsg}`);
       }
 
       try {
         facturasData = await documentoApi.getByTipo('FACTURA');
-        // Filtrar solo facturas (FAC-), excluir notas de pedido (NP-)
         facturasData = facturasData.filter(f => f.numeroDocumento?.startsWith('FAC-'));
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Facturas: ${errorMsg}`);
+        errors.push(`Facturas: ${errorMsg}`);
       }
 
       try {
         clientesData = await clienteApi.getAll();
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
-        errors.push(`❌ Clientes: ${errorMsg}`);
+        errors.push(`Clientes: ${errorMsg}`);
       }
 
-      // Show errors if any
       if (errors.length > 0) {
         setError(errors.join(' | '));
       }
 
-      // Ensure all data is in array format
       setTrips(Array.isArray(tripsData) ? tripsData : []);
       setVehicles(Array.isArray(vehiclesData) ? vehiclesData : []);
       setDrivers(Array.isArray(employeesData) ? employeesData : []);
@@ -194,22 +306,15 @@ const TripsPage: React.FC = () => {
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al cargar los datos');
-      console.error('❌ Error general loading data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredTrips = trips
-    .filter(trip => {
-      return statusFilter === 'all' || trip.estado === statusFilter;
-    })
-    .sort((a, b) => {
-      // Ordenar por ID de viaje descendente (último viaje primero)
-      return b.id - a.id;
-    });
+    .filter(trip => statusFilter === 'all' || trip.estado === statusFilter)
+    .sort((a, b) => b.id - a.id);
 
-  // Paginate filtered trips
   const paginatedTrips = filteredTrips.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -224,7 +329,6 @@ const TripsPage: React.FC = () => {
     setPage(0);
   };
 
-  // Helper to check if a vehicle is currently in use
   const isVehicleInUse = (vehicleId: string): boolean => {
     return trips.some(trip =>
       trip.vehiculoId.toString() === vehicleId &&
@@ -232,7 +336,6 @@ const TripsPage: React.FC = () => {
     );
   };
 
-  // Get trip that is currently using the vehicle
   const getTripUsingVehicle = (vehicleId: string): Viaje | undefined => {
     return trips.find(trip =>
       trip.vehiculoId.toString() === vehicleId &&
@@ -255,6 +358,7 @@ const TripsPage: React.FC = () => {
     });
     setTripDeliveries([]);
     setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '' });
+    setActiveStep(0);
     setDialogOpen(true);
   };
 
@@ -269,36 +373,34 @@ const TripsPage: React.FC = () => {
       observaciones: trip.observaciones || '',
     });
 
-    // Load existing deliveries for this trip
     try {
       const existingDeliveries = await entregaViajeApi.getByViaje(trip.id);
       setTripDeliveries(existingDeliveries);
     } catch (err) {
-      console.error('Error loading deliveries:', err);
       setTripDeliveries([]);
     }
     setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '' });
+    setActiveStep(0);
     setDialogOpen(true);
   };
 
   const handleViewDetails = async (trip: Viaje) => {
     setSelectedTrip(trip);
+    setDetailsTab(0);
     setDetailsDialogOpen(true);
-    
-    // Load complete details for all deliveries using new API
+
     const tripDeliveriesData = getTripDeliveries(trip.id);
     const detailsMap: Record<number, any> = {};
-    
+
     for (const delivery of tripDeliveriesData) {
       try {
         const detalles = await entregaViajeApi.getDetalles(delivery.id);
         detailsMap[delivery.id] = detalles;
-        console.log(`📦 Detalles de entrega #${delivery.id}:`, detalles);
       } catch (err) {
         console.error(`Error loading details for delivery #${delivery.id}:`, err);
       }
     }
-    
+
     setDeliveryDetailsMap(detailsMap);
   };
 
@@ -320,16 +422,14 @@ const TripsPage: React.FC = () => {
         savedTrip = await viajeApi.create(viajeData);
       }
 
-      // Save deliveries for the trip
       if (tripDeliveries.length > 0) {
         for (let i = 0; i < tripDeliveries.length; i++) {
           const delivery = tripDeliveries[i];
           if (!delivery.id) {
-            // Skip if no facturaId
             if (!delivery.facturaId) {
               continue;
             }
-            
+
             try {
               const deliveryPayload: any = {
                 viajeId: savedTrip.id,
@@ -339,13 +439,10 @@ const TripsPage: React.FC = () => {
                 observaciones: delivery.observaciones || '',
                 estado: 'PENDIENTE' as EstadoEntrega,
               };
-              
+
               await entregaViajeApi.create(deliveryPayload);
-              
-              // Small delay between deliveries
               await new Promise(resolve => setTimeout(resolve, 500));
             } catch (deliveryError: any) {
-              // Continue with next delivery even if this one fails
               await new Promise(resolve => setTimeout(resolve, 500));
             }
           }
@@ -360,9 +457,9 @@ const TripsPage: React.FC = () => {
       let errorMessage = error.response?.data?.message || error.message || 'Error al guardar el viaje';
 
       if (errorMessage.includes('no está disponible')) {
-        errorMessage = 'El vehículo seleccionado no está disponible. Por favor, selecciona otro vehículo o cambia el estado del vehículo a DISPONIBLE en la sección de Vehículos.';
+        errorMessage = 'El vehículo seleccionado no está disponible. Por favor, selecciona otro vehículo.';
       } else if (error.response?.status === 403) {
-        errorMessage = 'No tienes permisos para crear viajes o entregas. Contacta al administrador para que te asigne el rol USER o ADMIN.';
+        errorMessage = 'No tienes permisos para crear viajes. Contacta al administrador.';
       }
 
       setError(errorMessage);
@@ -400,7 +497,6 @@ const TripsPage: React.FC = () => {
       } catch (err) {
         const error = err as { response?: { data?: { message?: string } } };
         setError(error?.response?.data?.message || 'Error al eliminar el viaje');
-        console.error('Error deleting trip:', err);
       }
     }
   };
@@ -413,20 +509,11 @@ const TripsPage: React.FC = () => {
       const error = err as { response?: { data?: { message?: string } }; message?: string };
       let errorMessage = error.response?.data?.message || error.message || 'Error al cambiar el estado del viaje';
 
-      // Provide specific error messages
       if (errorMessage.includes('no está disponible')) {
-        const trip = trips.find(t => t.id === id);
-        errorMessage = `No se puede iniciar el viaje porque el vehículo ya está en uso por otro viaje.
-
-Opciones:
-1. Completa o cancela el viaje actual que usa este vehículo
-2. Cambia este viaje para usar otro vehículo disponible
-3. Deja este viaje en estado PLANIFICADO hasta que el vehículo esté disponible`;
+        errorMessage = `No se puede iniciar el viaje porque el vehículo ya está en uso.`;
       }
 
       setError(errorMessage);
-      console.error('Error changing trip status:', err);
-      console.error('Error details:', error.response?.data);
     }
   };
 
@@ -453,31 +540,20 @@ Opciones:
   };
 
   const getTripDeliveries = (tripId: number) => {
-    // Backend now returns both viajeId and viaje object
     return deliveries.filter(d => d.viajeId === tripId);
   };
 
-  // Obtener todas las facturas asociadas a un viaje a través de sus entregas
   const getFacturasByTrip = (tripId: number): DocumentoComercial[] => {
     const tripDeliveries = getTripDeliveries(tripId);
-    
-    // Intentar obtener el ID de la factura/documento desde diferentes fuentes
+
     const facturaIds = tripDeliveries
       .map(d => {
-        // Opción 1: documentoComercialId (si el backend devuelve solo el ID)
         // @ts-ignore
         if (d.documentoComercialId) return d.documentoComercialId;
-        
-        // Opción 2: documentoComercial.id (si el backend devuelve el objeto completo)
         // @ts-ignore
         if (d.documentoComercial?.id) return d.documentoComercial.id;
-        
-        // Opción 3: ventaId (para compatibilidad con versiones antiguas del backend)
         if (d.ventaId) return d.ventaId;
-        
-        // Opción 4: venta.id (si el backend devuelve el objeto venta completo)
         if (d.venta?.id) return d.venta.id;
-        
         return undefined;
       })
       .filter((id): id is number => id !== undefined && id !== null);
@@ -486,11 +562,10 @@ Opciones:
     const foundFacturas = uniqueFacturaIds
       .map(id => facturas.find(f => f.id === id))
       .filter((f): f is DocumentoComercial => f !== undefined);
-    
+
     return foundFacturas;
   };
 
-  // Obtener todos los clientes únicos de un viaje (de las facturas del viaje)
   const getClientesByTrip = (tripId: number): string[] => {
     const tripFacturas = getFacturasByTrip(tripId);
     const clienteNombres = tripFacturas
@@ -498,6 +573,19 @@ Opciones:
       .filter((nombre): nombre is string => nombre !== undefined && nombre !== null && nombre.trim() !== '');
 
     return [...new Set(clienteNombres)];
+  };
+
+  // Wizard navigation
+  const handleNext = () => {
+    setActiveStep((prevStep) => Math.min(prevStep + 1, wizardSteps.length - 1));
+  };
+
+  const handleBack = () => {
+    setActiveStep((prevStep) => Math.max(prevStep - 1, 0));
+  };
+
+  const canProceedStep1 = () => {
+    return formData.destino && formData.conductorId && formData.vehiculoId && formData.fechaViaje;
   };
 
   if (loading) {
@@ -508,20 +596,476 @@ Opciones:
     );
   }
 
-  return (
-    <Box p={{ xs: 1, sm: 2, md: 3 }}>
-      <Box 
-        display="flex" 
-        flexDirection={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between" 
-        alignItems={{ xs: 'stretch', sm: 'center' }} 
-        gap={2}
-        mb={3}
+  // Render wizard step content
+  const renderWizardStep = () => {
+    switch (activeStep) {
+      case 0:
+        return (
+          <Stack spacing={2.5}>
+            <TextField
+              label="Destino"
+              value={formData.destino}
+              onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
+              fullWidth
+              required
+              size="medium"
+              placeholder="Ej: Buenos Aires"
+              InputProps={{ sx: { minHeight: 56 } }}
+            />
+
+            <Autocomplete
+              options={drivers}
+              getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
+              value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
+              onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Conductor"
+                  required
+                  size="medium"
+                  helperText={drivers.length === 0 ? 'No hay conductores' : `${drivers.length} disponibles`}
+                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                />
+              )}
+              noOptionsText="No hay conductores"
+            />
+
+            <Autocomplete
+              options={vehicles}
+              getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
+              value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
+              onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Vehículo"
+                  required
+                  size="medium"
+                  helperText={vehicles.length === 0 ? 'No hay vehículos' : `${vehicles.length} disponibles`}
+                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                />
+              )}
+              noOptionsText="No hay vehículos"
+            />
+
+            {formData.vehiculoId && isVehicleInUse(formData.vehiculoId) && (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                Este vehículo está en uso por el Viaje #{getTripUsingVehicle(formData.vehiculoId)?.id}
+              </Alert>
+            )}
+
+            <TextField
+              label="Fecha y Hora"
+              type="datetime-local"
+              value={formData.fechaViaje}
+              onChange={(e) => setFormData({ ...formData, fechaViaje: e.target.value })}
+              fullWidth
+              required
+              size="medium"
+              InputLabelProps={{ shrink: true }}
+              InputProps={{ sx: { minHeight: 56 } }}
+            />
+
+            <TextField
+              label="Observaciones"
+              value={formData.observaciones}
+              onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+              fullWidth
+              multiline
+              rows={3}
+              size="medium"
+              placeholder="Notas adicionales..."
+            />
+          </Stack>
+        );
+
+      case 1:
+        return (
+          <Stack spacing={2}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Entregas agregadas: {tripDeliveries.length}
+            </Typography>
+
+            {tripDeliveries.length > 0 && (
+              <Stack spacing={1}>
+                {tripDeliveries.map((delivery, index) => (
+                  <Card key={index} variant="outlined">
+                    <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                        <Box flex={1}>
+                          <Typography variant="body2" fontWeight="medium">
+                            {delivery.direccionEntrega}
+                          </Typography>
+                          {delivery.factura && (
+                            <Chip
+                              label={delivery.factura.numeroDocumento}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ mt: 0.5 }}
+                            />
+                          )}
+                        </Box>
+                        {!delivery.id && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleRemoveDelivery(index)}
+                            sx={{ ml: 1 }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            )}
+
+            <Divider />
+
+            <Typography variant="subtitle2">Agregar nueva entrega</Typography>
+
+            <Autocomplete
+              options={facturas}
+              getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
+              value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
+              onChange={(_, value) => {
+                setSelectedDeliveryFactura(value);
+                let direccion = '';
+                if (value) {
+                  const cliente = clientes.find(c => c.id === value.clienteId);
+                  if (cliente) {
+                    const partes = [];
+                    if (cliente.direccion) partes.push(cliente.direccion);
+                    if (cliente.ciudad) partes.push(cliente.ciudad);
+                    direccion = partes.join(', ') || value.clienteNombre || '';
+                  } else {
+                    direccion = value.clienteNombre || '';
+                  }
+                }
+                setNewDelivery({
+                  ...newDelivery,
+                  facturaId: value?.id.toString() || '',
+                  direccionEntrega: direccion
+                });
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Factura"
+                  size="medium"
+                  placeholder="Buscar factura..."
+                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                />
+              )}
+              noOptionsText="No hay facturas"
+            />
+
+            {selectedDeliveryFactura && (
+              <Alert severity="info" sx={{ py: 1 }}>
+                <Typography variant="caption" fontWeight="bold">
+                  {selectedDeliveryFactura.clienteNombre}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  Total: ${selectedDeliveryFactura.total.toLocaleString()} | {selectedDeliveryFactura.detalles.length} items
+                </Typography>
+              </Alert>
+            )}
+
+            <TextField
+              label="Dirección de Entrega"
+              value={newDelivery.direccionEntrega}
+              onChange={(e) => setNewDelivery({ ...newDelivery, direccionEntrega: e.target.value })}
+              fullWidth
+              size="medium"
+              placeholder="Calle 123, Ciudad"
+              InputProps={{ sx: { minHeight: 56 } }}
+            />
+
+            <TextField
+              label="Fecha Programada"
+              type="datetime-local"
+              value={newDelivery.fechaProgramada}
+              onChange={(e) => setNewDelivery({ ...newDelivery, fechaProgramada: e.target.value })}
+              fullWidth
+              size="medium"
+              InputLabelProps={{ shrink: true }}
+              InputProps={{ sx: { minHeight: 56 } }}
+            />
+
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={handleAddDelivery}
+              fullWidth
+              sx={{ minHeight: 48 }}
+            >
+              Agregar Entrega
+            </Button>
+          </Stack>
+        );
+
+      case 2:
+        return (
+          <Stack spacing={2}>
+            <Typography variant="h6">Resumen del Viaje</Typography>
+
+            <Card variant="outlined">
+              <CardContent>
+                <Stack spacing={1.5}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <LocationIcon color="action" fontSize="small" />
+                    <Typography variant="body2">
+                      <strong>Destino:</strong> {formData.destino}
+                    </Typography>
+                  </Box>
+
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <DriverIcon color="action" fontSize="small" />
+                    <Typography variant="body2">
+                      <strong>Conductor:</strong> {getDriverName(parseInt(formData.conductorId))}
+                    </Typography>
+                  </Box>
+
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <TruckIcon color="action" fontSize="small" />
+                    <Typography variant="body2">
+                      <strong>Vehículo:</strong> {getVehicleInfo(parseInt(formData.vehiculoId))}
+                    </Typography>
+                  </Box>
+
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <ScheduleIcon color="action" fontSize="small" />
+                    <Typography variant="body2">
+                      <strong>Fecha:</strong> {formData.fechaViaje ? new Date(formData.fechaViaje).toLocaleString() : 'No definida'}
+                    </Typography>
+                  </Box>
+
+                  <Divider />
+
+                  <Typography variant="body2">
+                    <strong>Entregas:</strong> {tripDeliveries.length}
+                  </Typography>
+
+                  {tripDeliveries.map((delivery, idx) => (
+                    <Typography key={idx} variant="caption" color="text.secondary" sx={{ pl: 2 }}>
+                      • {delivery.direccionEntrega}
+                      {delivery.factura && ` (${delivery.factura.numeroDocumento})`}
+                    </Typography>
+                  ))}
+
+                  {formData.observaciones && (
+                    <>
+                      <Divider />
+                      <Typography variant="body2">
+                        <strong>Notas:</strong> {formData.observaciones}
+                      </Typography>
+                    </>
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Stack>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Mobile Trip Card Component
+  const MobileTripCard = ({ trip }: { trip: Viaje }) => {
+    const tripDeliveriesData = getTripDeliveries(trip.id);
+    const tripFacturas = getFacturasByTrip(trip.id);
+    const tripClientes = getClientesByTrip(trip.id);
+    const isExpanded = expandedCard === trip.id;
+
+    return (
+      <Card
+        variant="outlined"
+        sx={{
+          transition: 'all 0.2s ease',
+          '&:active': { transform: 'scale(0.98)' }
+        }}
       >
-        <Typography 
-          variant={isMobile ? 'h5' : 'h4'} 
-          display="flex" 
-          alignItems="center" 
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          {/* Header */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            onClick={() => setExpandedCard(isExpanded ? null : trip.id)}
+            sx={{ cursor: 'pointer' }}
+          >
+            <Box flex={1}>
+              <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Viaje #{trip.id}
+                </Typography>
+                {getStatusChip(trip.estado)}
+              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {new Date(trip.fechaViaje).toLocaleDateString('es-AR', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short'
+                })}
+              </Typography>
+            </Box>
+            <IconButton size="small">
+              {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Box>
+
+          {/* Quick info */}
+          <Box mt={1.5}>
+            <Stack direction="row" spacing={2} flexWrap="wrap">
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <DriverIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                <Typography variant="caption" noWrap sx={{ maxWidth: 120 }}>
+                  {getDriverName(trip.conductorId)}
+                </Typography>
+              </Box>
+              <Box display="flex" alignItems="center" gap={0.5}>
+                <LocationIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                <Typography variant="caption" noWrap sx={{ maxWidth: 100 }}>
+                  {trip.destino}
+                </Typography>
+              </Box>
+              <Badge badgeContent={tripDeliveriesData.length} color="primary" sx={{ ml: 'auto' }}>
+                <Typography variant="caption" color="text.secondary">Entregas</Typography>
+              </Badge>
+            </Stack>
+          </Box>
+
+          {/* Expanded content */}
+          <Collapse in={isExpanded}>
+            <Divider sx={{ my: 1.5 }} />
+
+            <Stack spacing={1.5}>
+              {/* Vehicle */}
+              <Box display="flex" alignItems="center" gap={1}>
+                <TruckIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="body2">
+                  {getVehicleInfo(trip.vehiculoId)}
+                </Typography>
+              </Box>
+
+              {/* Clients */}
+              {tripClientes.length > 0 && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" gutterBottom>
+                    Clientes:
+                  </Typography>
+                  <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
+                    {tripClientes.map((cliente, idx) => (
+                      <Chip key={idx} label={cliente} size="small" variant="outlined" />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {/* Invoices */}
+              {tripFacturas.length > 0 && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" gutterBottom>
+                    Facturas:
+                  </Typography>
+                  <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
+                    {tripFacturas.map((factura) => (
+                      <Chip
+                        key={factura.id}
+                        label={factura.numeroDocumento}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Stack>
+
+            {/* Actions */}
+            <Box
+              display="flex"
+              justifyContent="flex-end"
+              gap={1}
+              mt={2}
+              pt={1.5}
+              borderTop="1px solid"
+              borderColor="divider"
+            >
+              <IconButton
+                onClick={(e) => { e.stopPropagation(); handleViewDetails(trip); }}
+                size="small"
+                sx={{ minWidth: 44, minHeight: 44 }}
+              >
+                <MapIcon />
+              </IconButton>
+
+              {trip.estado === 'PLANIFICADO' && (
+                <IconButton
+                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_CURSO'); }}
+                  size="small"
+                  color="success"
+                  sx={{ minWidth: 44, minHeight: 44 }}
+                >
+                  <StartIcon />
+                </IconButton>
+              )}
+
+              {trip.estado === 'EN_CURSO' && (
+                <IconButton
+                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'COMPLETADO'); }}
+                  size="small"
+                  color="primary"
+                  sx={{ minWidth: 44, minHeight: 44 }}
+                >
+                  <StopIcon />
+                </IconButton>
+              )}
+
+              <IconButton
+                onClick={(e) => { e.stopPropagation(); handleEdit(trip); }}
+                size="small"
+                sx={{ minWidth: 44, minHeight: 44 }}
+              >
+                <EditIcon />
+              </IconButton>
+
+              {trip.estado === 'PLANIFICADO' && (
+                <IconButton
+                  onClick={(e) => { e.stopPropagation(); handleDelete(trip.id); }}
+                  size="small"
+                  color="error"
+                  sx={{ minWidth: 44, minHeight: 44 }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              )}
+            </Box>
+          </Collapse>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <Box sx={{ pb: isMobile ? 10 : 3, minHeight: '100vh' }}>
+      {/* Header - Sin card de fondo */}
+      <Box
+        sx={{ mb: 3 }}
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+      >
+        <Typography
+          variant={isMobile ? 'h5' : 'h4'}
+          display="flex"
+          alignItems="center"
           gap={1}
         >
           <TruckIcon />
@@ -532,18 +1076,19 @@ Opciones:
           startIcon={<AddIcon />}
           onClick={handleAdd}
           fullWidth={isMobile}
+          sx={{ display: isMobile ? 'none' : 'inline-flex' }}
         >
           Nuevo Viaje
         </Button>
       </Box>
-
+      {/* Error Alert */}
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Grid estático como versión 1 */}
       <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: 3 }}>
         <Grid item xs={6} sm={6} md={3}>
           <Card>
@@ -616,400 +1161,335 @@ Opciones:
         </Grid>
       </Grid>
 
-      {/* Filters */}
-      <Box 
-        display="flex" 
-        flexDirection={{ xs: 'column', sm: 'row' }}
-        gap={2} 
-        mb={3} 
-        alignItems={{ xs: 'stretch', sm: 'center' }}
-      >
-        <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size={isMobile ? 'small' : 'medium'}>
-          <InputLabel>Estado</InputLabel>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | EstadoViaje)}
-          >
-            <MenuItem value="all">Todos</MenuItem>
-            <MenuItem value="PLANIFICADO">Planificados</MenuItem>
-            <MenuItem value="EN_CURSO">En Curso</MenuItem>
-            <MenuItem value="COMPLETADO">Completados</MenuItem>
-            <MenuItem value="CANCELADO">Cancelados</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
-
-      {/* Trips Table/Cards */}
-      <Card>
-        <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
-          {/* Mobile Card View */}
+        {/* Filter - Chips on mobile */}
+        <Box mb={2}>
           {isMobile ? (
-            <Stack spacing={2}>
-              {paginatedTrips.map((trip) => {
-                const tripDeliveries = getTripDeliveries(trip.id);
-                const facturas = getFacturasByTrip(trip.id);
-                const clientes = getClientesByTrip(trip.id);
-
-                return (
-                  <Card key={trip.id} variant="outlined">
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                        <Box>
-                          <Typography variant="subtitle1" fontWeight="bold">
-                            Viaje #{trip.id}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {new Date(trip.fechaViaje).toLocaleDateString()}
-                          </Typography>
-                        </Box>
-                        {getStatusChip(trip.estado)}
-                      </Box>
-                      
-                      <Divider sx={{ my: 1 }} />
-                      
-                      <Stack spacing={1} mb={1}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <DriverIcon sx={{ fontSize: 16 }} color="action" />
-                          <Typography variant="body2" noWrap>
-                            {getDriverName(trip.conductorId)}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <TruckIcon sx={{ fontSize: 16 }} color="action" />
-                          <Typography variant="caption" noWrap>
-                            {getVehicleInfo(trip.vehiculoId)}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <LocationIcon sx={{ fontSize: 16 }} color="action" />
-                          <Typography variant="caption" noWrap>
-                            {trip.destino}
-                          </Typography>
-                        </Box>
-                      </Stack>
-
-                      {clientes.length > 0 && (
-                        <Box mb={1}>
-                          <Typography variant="caption" color="text.secondary">Clientes:</Typography>
-                          <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
-                            {clientes.slice(0, 2).map((cliente, idx) => (
-                              <Chip key={idx} label={cliente} size="small" variant="outlined" />
-                            ))}
-                            {clientes.length > 2 && (
-                              <Chip label={`+${clientes.length - 2}`} size="small" color="default" />
-                            )}
-                          </Box>
-                        </Box>
-                      )}
-
-                      {facturas.length > 0 && (
-                        <Box mb={1}>
-                          <Typography variant="caption" color="text.secondary">Facturas:</Typography>
-                          <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
-                            {facturas.slice(0, 2).map((factura) => (
-                              <Chip 
-                                key={factura.id} 
-                                label={factura.numeroDocumento} 
-                                size="small" 
-                                color="primary" 
-                                variant="outlined" 
-                              />
-                            ))}
-                            {facturas.length > 2 && (
-                              <Chip label={`+${facturas.length - 2}`} size="small" color="primary" />
-                            )}
-                          </Box>
-                        </Box>
-                      )}
-
-                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                        📦 {tripDeliveries.length} entregas
-                      </Typography>
-                      
-                      <Divider sx={{ my: 1 }} />
-                      
-                      <Box display="flex" justifyContent="flex-end" gap={0.5} flexWrap="wrap">
-                        <IconButton onClick={() => handleViewDetails(trip)} size="small">
-                          <MapIcon fontSize="small" />
-                        </IconButton>
-                        {trip.estado === 'PLANIFICADO' && (
-                          <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
-                            <StartIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                        {trip.estado === 'EN_CURSO' && (
-                          <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
-                            <StopIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                        <IconButton onClick={() => handleEdit(trip)} size="small">
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        {trip.estado === 'PLANIFICADO' && (
-                          <IconButton onClick={() => handleDelete(trip.id)} size="small">
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1 }}>
+              {[
+                { value: 'all', label: 'Todos' },
+                { value: 'PLANIFICADO', label: 'Planificados' },
+                { value: 'EN_CURSO', label: 'En Curso' },
+                { value: 'COMPLETADO', label: 'Completados' },
+              ].map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  onClick={() => setStatusFilter(option.value as 'all' | EstadoViaje)}
+                  color={statusFilter === option.value ? 'primary' : 'default'}
+                  variant={statusFilter === option.value ? 'filled' : 'outlined'}
+                  sx={{ minHeight: 36 }}
+                />
+              ))}
             </Stack>
           ) : (
-            /* Desktop/Tablet Table View */
-            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-              <Table size={isTablet ? 'small' : 'medium'}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Clientes</TableCell>
-                    {!isTablet && <TableCell>Facturas</TableCell>}
-                    <TableCell>Conductor</TableCell>
-                    {!isTablet && <TableCell>Vehículo</TableCell>}
-                    <TableCell>Destino</TableCell>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell>Entregas</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedTrips.map((trip) => {
-                    const tripDeliveries = getTripDeliveries(trip.id);
-                    const facturas = getFacturasByTrip(trip.id);
-                    const clientes = getClientesByTrip(trip.id);
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Estado</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Estado"
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | EstadoViaje)}
+              >
+                <MenuItem value="all">Todos</MenuItem>
+                <MenuItem value="PLANIFICADO">Planificados</MenuItem>
+                <MenuItem value="EN_CURSO">En Curso</MenuItem>
+                <MenuItem value="COMPLETADO">Completados</MenuItem>
+                <MenuItem value="CANCELADO">Cancelados</MenuItem>
+              </Select>
+            </FormControl>
+          )}
+        </Box>
 
-                    return (
-                      <TableRow key={trip.id}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
-                            #{trip.id}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {clientes.length > 0 ? (
-                            <Box>
-                              <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
-                                👤 {clientes[0]}
-                              </Typography>
-                              {clientes.length > 1 && (
-                                <Chip
-                                  label={`+${clientes.length - 1}`}
-                                  size="small"
-                                  color="default"
-                                />
-                              )}
-                            </Box>
-                          ) : (
-                            <Typography variant="caption" color="text.secondary">
-                              Sin clientes
-                            </Typography>
-                          )}
-                        </TableCell>
-                        {!isTablet && (
-                          <TableCell>
-                            {facturas.length > 0 ? (
+        {/* Trip List */}
+        {isMobile ? (
+          <Stack spacing={1.5}>
+            {paginatedTrips.map((trip) => (
+              <MobileTripCard key={trip.id} trip={trip} />
+            ))}
+          </Stack>
+        ) : (
+          /* Desktop/Tablet Table */
+          <Card>
+            <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+              <Paper sx={{ overflowX: 'auto' }}>
+                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <Box component="thead">
+                    <Box component="tr" sx={{ bgcolor: 'grey.50' }}>
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>ID</Box>
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Clientes</Box>
+                      {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Facturas</Box>}
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Conductor</Box>
+                      {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Vehículo</Box>}
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Destino</Box>
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Fecha</Box>
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Estado</Box>
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Acciones</Box>
+                    </Box>
+                  </Box>
+                  <Box component="tbody">
+                    {paginatedTrips.map((trip) => {
+                      const tripDeliveriesData = getTripDeliveries(trip.id);
+                      const tripFacturas = getFacturasByTrip(trip.id);
+                      const tripClientes = getClientesByTrip(trip.id);
+
+                      return (
+                        <Box
+                          component="tr"
+                          key={trip.id}
+                          sx={{
+                            '&:hover': { bgcolor: 'grey.50' },
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Typography variant="body2" fontWeight="bold">#{trip.id}</Typography>
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            {tripClientes.length > 0 ? (
                               <Box>
-                                <Typography variant="body2" fontWeight="bold" color="primary.main" noWrap>
-                                  📄 {facturas[0]?.numeroDocumento}
+                                <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                                  {tripClientes[0]}
                                 </Typography>
-                                {facturas.length > 1 && (
-                                  <Chip
-                                    label={`+${facturas.length - 1}`}
-                                    size="small"
-                                    color="primary"
-                                  />
+                                {tripClientes.length > 1 && (
+                                  <Chip label={`+${tripClientes.length - 1}`} size="small" />
                                 )}
                               </Box>
                             ) : (
-                              <Typography variant="caption" color="text.secondary">
-                                Sin facturas
-                              </Typography>
-                            )}
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          <Typography variant="body2" noWrap sx={{ maxWidth: { sm: 100, md: 150 } }}>
-                            {getDriverName(trip.conductorId)}
-                          </Typography>
-                        </TableCell>
-                        {!isTablet && <TableCell>{getVehicleInfo(trip.vehiculoId)}</TableCell>}
-                        <TableCell>
-                          <Typography variant="body2" noWrap sx={{ maxWidth: 100 }}>
-                            {trip.destino}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" noWrap>
-                            {new Date(trip.fechaViaje).toLocaleDateString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{getStatusChip(trip.estado)}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {tripDeliveries.length}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Box display="flex" justifyContent="center" flexWrap="nowrap">
-                            <IconButton onClick={() => handleViewDetails(trip)} size="small">
-                              <MapIcon fontSize="small" />
-                            </IconButton>
-                            {trip.estado === 'PLANIFICADO' && (
-                              <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
-                                <StartIcon fontSize="small" />
-                              </IconButton>
-                            )}
-                            {trip.estado === 'EN_CURSO' && (
-                              <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
-                                <StopIcon fontSize="small" />
-                              </IconButton>
-                            )}
-                            <IconButton onClick={() => handleEdit(trip)} size="small">
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            {trip.estado === 'PLANIFICADO' && (
-                              <IconButton onClick={() => handleDelete(trip.id)} size="small">
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
+                              <Typography variant="caption" color="text.secondary">Sin clientes</Typography>
                             )}
                           </Box>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-          <TablePagination
-            component="div"
-            count={filteredTrips.length}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={isMobile ? [5, 10, 25] : [5, 10, 25, 50, 100]}
-            labelRowsPerPage={isMobile ? '' : 'Filas por página:'}
-            labelDisplayedRows={({ from, to, count }) =>
-              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-            }
-            sx={{
-              '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
-              '.MuiTablePagination-displayedRows': { fontSize: { xs: '0.75rem', sm: '0.875rem' } },
-            }}
-          />
-        </CardContent>
-      </Card>
+                          {!isTablet && (
+                            <Box component="td" sx={{ p: 1.5 }}>
+                              {tripFacturas.length > 0 ? (
+                                <Box>
+                                  <Typography variant="body2" color="primary.main" noWrap>
+                                    {tripFacturas[0]?.numeroDocumento}
+                                  </Typography>
+                                  {tripFacturas.length > 1 && (
+                                    <Chip label={`+${tripFacturas.length - 1}`} size="small" color="primary" />
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="caption" color="text.secondary">Sin facturas</Typography>
+                              )}
+                            </Box>
+                          )}
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                              {getDriverName(trip.conductorId)}
+                            </Typography>
+                          </Box>
+                          {!isTablet && (
+                            <Box component="td" sx={{ p: 1.5 }}>
+                              <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                                {getVehicleInfo(trip.vehiculoId)}
+                              </Typography>
+                            </Box>
+                          )}
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Typography variant="body2" noWrap sx={{ maxWidth: 100 }}>
+                              {trip.destino}
+                            </Typography>
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Typography variant="body2" noWrap>
+                              {new Date(trip.fechaViaje).toLocaleDateString()}
+                            </Typography>
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            {getStatusChip(trip.estado)}
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            <Box display="flex" justifyContent="center" gap={0.5}>
+                              <IconButton onClick={() => handleViewDetails(trip)} size="small">
+                                <MapIcon fontSize="small" />
+                              </IconButton>
+                              {trip.estado === 'PLANIFICADO' && (
+                                <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
+                                  <StartIcon fontSize="small" />
+                                </IconButton>
+                              )}
+                              {trip.estado === 'EN_CURSO' && (
+                                <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
+                                  <StopIcon fontSize="small" />
+                                </IconButton>
+                              )}
+                              <IconButton onClick={() => handleEdit(trip)} size="small">
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              {trip.estado === 'PLANIFICADO' && (
+                                <IconButton onClick={() => handleDelete(trip.id)} size="small">
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              )}
+                            </Box>
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                </Box>
+              </Paper>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Trip Dialog */}
-      <Dialog 
-        open={dialogOpen} 
-        onClose={() => setDialogOpen(false)} 
-        maxWidth="md" 
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <TruckIcon />
-            {editingTrip ? 'Editar Viaje' : 'Nuevo Viaje'}
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {(drivers.length === 0 || vehicles.length === 0) && (
-            <Alert severity="warning" sx={{ mt: 2, mb: 2 }}>
-              <Typography variant="body2" fontWeight="bold" gutterBottom>
-                ⚠️ Faltan datos para crear un viaje
+        {/* Pagination */}
+        <TablePagination
+          component="div"
+          count={filteredTrips.length}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={isMobile ? [5, 10] : [5, 10, 25, 50]}
+          labelRowsPerPage={isMobile ? '' : 'Filas:'}
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          sx={{
+            '.MuiTablePagination-selectLabel': { display: isMobile ? 'none' : 'block' },
+            '.MuiTablePagination-toolbar': { px: isMobile ? 0 : 2 },
+          }}
+        />
+
+      {/* FAB for mobile */}
+      {isMobile && (
+        <Fab
+          color="primary"
+          onClick={handleAdd}
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            zIndex: 1000,
+            width: 56,
+            height: 56,
+          }}
+        >
+          <AddIcon />
+        </Fab>
+      )}
+
+      {/* Mobile Bottom Sheet for Create/Edit */}
+      {isMobile && (
+        <BottomSheet
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          title={editingTrip ? 'Editar Viaje' : 'Nuevo Viaje'}
+          actions={
+            <Stack spacing={1.5}>
+              {/* Stepper */}
+              <Stepper activeStep={activeStep} alternativeLabel>
+                {wizardSteps.map((label) => (
+                  <Step key={label}>
+                    <StepLabel>{label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+
+              {/* Navigation buttons */}
+              <Box display="flex" gap={1}>
+                <Button
+                  onClick={handleBack}
+                  disabled={activeStep === 0}
+                  startIcon={<BackIcon />}
+                  sx={{ flex: 1, minHeight: 48 }}
+                >
+                  Atrás
+                </Button>
+
+                {activeStep < wizardSteps.length - 1 ? (
+                  <Button
+                    variant="contained"
+                    onClick={handleNext}
+                    endIcon={<NextIcon />}
+                    disabled={activeStep === 0 && !canProceedStep1()}
+                    sx={{ flex: 1, minHeight: 48 }}
+                  >
+                    Siguiente
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={handleSave}
+                    sx={{ flex: 1, minHeight: 48 }}
+                  >
+                    {editingTrip ? 'Actualizar' : 'Crear Viaje'}
+                  </Button>
+                )}
+              </Box>
+            </Stack>
+          }
+        >
+          {renderWizardStep()}
+        </BottomSheet>
+      )}
+
+      {/* Desktop Dialog for Create/Edit */}
+      {!isMobile && (
+        <SwipeableDrawer
+          anchor="right"
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onOpen={() => {}}
+          PaperProps={{
+            sx: { width: isTablet ? '80%' : 500 }
+          }}
+        >
+          <Box sx={{ p: 3 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Typography variant="h6">
+                {editingTrip ? 'Editar Viaje' : 'Nuevo Viaje'}
               </Typography>
-              {drivers.length === 0 && (
-                <Typography variant="body2">
-                  • No hay empleados (conductores) cargados. Ve a RRHH → Empleados para agregar.
-                </Typography>
-              )}
-              {vehicles.length === 0 && (
-                <Typography variant="body2">
-                  • No hay vehículos cargados. Debes crear vehículos primero.
-                </Typography>
-              )}
-            </Alert>
-          )}
-          
-          <Box display="flex" flexDirection="column" gap={2} mt={1}>
-            <TextField
-              label="Destino"
-              value={formData.destino}
-              onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
-              fullWidth
-              required
-              size={isMobile ? 'small' : 'medium'}
-              helperText="Ingresa el destino principal del viaje."
-            />
+              <IconButton onClick={() => setDialogOpen(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
 
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2}>
+            <Stack spacing={2.5}>
+              <TextField
+                label="Destino"
+                value={formData.destino}
+                onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
+                fullWidth
+                required
+              />
+
               <Autocomplete
                 options={drivers}
                 getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
                 value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
                 onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
                 renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    label="Conductor" 
-                    required 
-                    size={isMobile ? 'small' : 'medium'}
-                    helperText={drivers.length === 0 ? '⚠️ No hay empleados cargados' : `${drivers.length} disponibles`}
-                  />
+                  <TextField {...params} label="Conductor" required />
                 )}
-                noOptionsText="No hay conductores disponibles"
-                sx={{ flex: 1 }}
               />
 
-              <Box sx={{ flex: 1 }}>
-                <Autocomplete
-                  options={vehicles}
-                  getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
-                  value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
-                  onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Vehículo"
-                      required
-                      size={isMobile ? 'small' : 'medium'}
-                      helperText={vehicles.length === 0 ? '⚠️ No hay vehículos' : `${vehicles.length} disponibles`}
-                    />
-                  )}
-                  noOptionsText="No hay vehículos disponibles"
-                />
-                {formData.vehiculoId && isVehicleInUse(formData.vehiculoId) && formData.estado === 'EN_CURSO' && (
-                  <Alert severity="warning" sx={{ mt: 1 }}>
-                    <Typography variant="caption">
-                      ⚠️ Este vehículo ya está en uso por el Viaje #{getTripUsingVehicle(formData.vehiculoId)?.id}.
-                      No podrás iniciar este viaje hasta que el otro viaje se complete o cancele.
-                    </Typography>
-                  </Alert>
+              <Autocomplete
+                options={vehicles}
+                getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
+                value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
+                onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
+                renderInput={(params) => (
+                  <TextField {...params} label="Vehículo" required />
                 )}
-              </Box>
-            </Box>
+              />
 
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2}>
               <TextField
-                label="Fecha del Viaje"
+                label="Fecha y Hora"
                 type="datetime-local"
                 value={formData.fechaViaje}
                 onChange={(e) => setFormData({ ...formData, fechaViaje: e.target.value })}
                 fullWidth
                 required
-                size={isMobile ? 'small' : 'medium'}
                 InputLabelProps={{ shrink: true }}
               />
 
-              <FormControl fullWidth size={isMobile ? 'small' : 'medium'}>
+              <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select
                   value={formData.estado}
+                  label="Estado"
                   onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoViaje })}
                 >
                   <MenuItem value="PLANIFICADO">Planificado</MenuItem>
@@ -1018,402 +1498,366 @@ Opciones:
                   <MenuItem value="CANCELADO">Cancelado</MenuItem>
                 </Select>
               </FormControl>
-            </Box>
 
-            <TextField
-              label="Observaciones"
-              value={formData.observaciones}
-              onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-              fullWidth
-              multiline
-              rows={isMobile ? 2 : 3}
-              size={isMobile ? 'small' : 'medium'}
-            />
+              <TextField
+                label="Observaciones"
+                value={formData.observaciones}
+                onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                fullWidth
+                multiline
+                rows={3}
+              />
 
-            {/* Deliveries Section */}
-            <Box mt={2}>
-              <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
-                <LocationIcon />
-                Entregas
+              <Divider />
+
+              {/* Deliveries section */}
+              <Typography variant="subtitle1" fontWeight="bold">
+                Entregas ({tripDeliveries.length})
               </Typography>
 
-              {/* Existing Deliveries List */}
-              {tripDeliveries.length > 0 && (
-                <List dense sx={{ mb: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                  {tripDeliveries.map((delivery, index) => (
-                    <ListItem
-                      key={index}
-                      secondaryAction={
-                        !delivery.id && (
-                          <IconButton edge="end" onClick={() => handleRemoveDelivery(index)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        )
-                      }
-                    >
-                      <ListItemText
-                        primary={
-                          <Box>
-                            <Typography variant="body2">{delivery.direccionEntrega}</Typography>
-                            {delivery.factura && (
-                              <Chip
-                                label={`📄 ${delivery.factura.numeroDocumento}`}
-                                size="small"
-                                color="primary"
-                                sx={{ mt: 0.5 }}
-                              />
-                            )}
-                          </Box>
-                        }
-                        secondary={
-                          <>
-                            {delivery.factura && (
-                              <Typography variant="caption" display="block" color="primary.main">
-                                Cliente: {delivery.factura.clienteNombre} | Total: ${delivery.factura.total.toLocaleString()}
-                              </Typography>
-                            )}
-                            {delivery.fechaProgramada && (
-                              <Typography variant="caption" display="block">
-                                Fecha: {new Date(delivery.fechaProgramada).toLocaleString()}
-                              </Typography>
-                            )}
-                            {delivery.observaciones && (
-                              <Typography variant="caption" display="block">
-                                {delivery.observaciones}
-                              </Typography>
-                            )}
-                            {delivery.id && (
-                              <Chip
-                                label={delivery.estado}
-                                size="small"
-                                color={delivery.estado === 'ENTREGADA' ? 'success' : 'default'}
-                                sx={{ mt: 0.5 }}
-                              />
-                            )}
-                          </>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
+              {tripDeliveries.map((delivery, index) => (
+                <Card key={index} variant="outlined">
+                  <CardContent sx={{ py: 1, px: 2 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="body2">{delivery.direccionEntrega}</Typography>
+                      {!delivery.id && (
+                        <IconButton size="small" onClick={() => handleRemoveDelivery(index)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
 
-              {/* Add New Delivery Form */}
-              <Box display="flex" flexDirection="column" gap={2} p={2} bgcolor="grey.50" borderRadius={1}>
-                <Typography variant="subtitle2">Agregar Entrega</Typography>
-
-                {/* Selector de Factura para la entrega */}
-                <Autocomplete
-                  options={facturas}
-                  getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
-                  value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
-                  onChange={(_, value) => {
-                    setSelectedDeliveryFactura(value);
-
-                    // Construir la dirección del cliente
-                    let direccion = '';
-                    if (value) {
-                      // Buscar el cliente correspondiente
-                      const cliente = clientes.find(c => c.id === value.clienteId);
-                      if (cliente) {
-                        const partes = [];
-                        if (cliente.direccion) partes.push(cliente.direccion);
-                        if (cliente.ciudad) partes.push(cliente.ciudad);
-                        direccion = partes.join(', ') || value.clienteNombre || '';
-                      } else {
-                        // Fallback si no se encuentra el cliente
-                        direccion = value.clienteNombre || '';
-                      }
+              <Autocomplete
+                options={facturas}
+                getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
+                value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
+                onChange={(_, value) => {
+                  setSelectedDeliveryFactura(value);
+                  let direccion = '';
+                  if (value) {
+                    const cliente = clientes.find(c => c.id === value.clienteId);
+                    if (cliente) {
+                      const partes = [];
+                      if (cliente.direccion) partes.push(cliente.direccion);
+                      if (cliente.ciudad) partes.push(cliente.ciudad);
+                      direccion = partes.join(', ') || value.clienteNombre || '';
                     }
-
-                    setNewDelivery({
-                      ...newDelivery,
-                      facturaId: value?.id.toString() || '',
-                      direccionEntrega: direccion
-                    });
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Factura (Opcional)"
-                      size="small"
-                      helperText="Selecciona una factura para ver productos y cliente"
-                    />
-                  )}
-                  renderOption={(props, factura) => (
-                    <li {...props}>
-                      <Box>
-                        <Typography variant="body2" fontWeight="bold">
-                          {factura.numeroDocumento} - {factura.clienteNombre}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          ${factura.total.toLocaleString()} | {factura.detalles.length} items
-                        </Typography>
-                      </Box>
-                    </li>
-                  )}
-                  size="small"
-                />
-
-                {/* Mostrar detalles de la factura seleccionada */}
-                {selectedDeliveryFactura && (
-                  <Card sx={{ bgcolor: 'info.lighter', p: 1 }}>
-                    <Typography variant="caption" fontWeight="bold" display="block" gutterBottom>
-                      📦 Items de {selectedDeliveryFactura.numeroDocumento}:
-                    </Typography>
-                    <List dense>
-                      {selectedDeliveryFactura.detalles.map((detalle, idx) => (
-                        <ListItem key={idx} sx={{ py: 0, px: 1 }}>
-                          <ListItemText
-                            primary={
-                              <Box>
-                                <Typography variant="caption">
-                                  • {detalle.tipoItem === 'EQUIPO'
-                                      ? (detalle.recetaNombre || detalle.descripcionEquipo || 'Equipo')
-                                      : (detalle.productoNombre || 'Producto')} x{detalle.cantidad}
-                                </Typography>
-                                {detalle.tipoItem === 'EQUIPO' && detalle.equiposNumerosHeladera && detalle.equiposNumerosHeladera.length > 0 && (
-                                  <Typography variant="caption" color="primary" sx={{ display: 'block', ml: 1 }}>
-                                    Equipos: {detalle.equiposNumerosHeladera.join(', ')}
-                                  </Typography>
-                                )}
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Card>
+                  }
+                  setNewDelivery({
+                    ...newDelivery,
+                    facturaId: value?.id.toString() || '',
+                    direccionEntrega: direccion
+                  });
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Factura" size="small" />
                 )}
+              />
 
-                <TextField
-                  label="Dirección de Entrega"
-                  value={newDelivery.direccionEntrega}
-                  onChange={(e) => setNewDelivery({ ...newDelivery, direccionEntrega: e.target.value })}
-                  fullWidth
-                  size="small"
-                  placeholder="Ej: Calle 123, Ciudad"
-                />
-                <TextField
-                  label="Fecha Programada"
-                  type="datetime-local"
-                  value={newDelivery.fechaProgramada}
-                  onChange={(e) => setNewDelivery({ ...newDelivery, fechaProgramada: e.target.value })}
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="Observaciones"
-                  value={newDelivery.observaciones}
-                  onChange={(e) => setNewDelivery({ ...newDelivery, observaciones: e.target.value })}
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  placeholder="Notas sobre la entrega..."
-                />
+              <TextField
+                label="Dirección de Entrega"
+                value={newDelivery.direccionEntrega}
+                onChange={(e) => setNewDelivery({ ...newDelivery, direccionEntrega: e.target.value })}
+                fullWidth
+                size="small"
+              />
+
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={handleAddDelivery}
+              >
+                Agregar Entrega
+              </Button>
+
+              <Divider />
+
+              <Box display="flex" gap={2}>
                 <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={handleAddDelivery}
-                  size="small"
+                  onClick={() => setDialogOpen(false)}
+                  sx={{ flex: 1 }}
                 >
-                  Agregar Entrega
+                  Cancelar
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleSave}
+                  sx={{ flex: 1 }}
+                >
+                  {editingTrip ? 'Actualizar' : 'Crear'}
                 </Button>
               </Box>
-            </Box>
+            </Stack>
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
-            {editingTrip ? 'Actualizar' : 'Crear'} {tripDeliveries.filter(d => !d.id).length > 0 && `(+${tripDeliveries.filter(d => !d.id).length} entregas)`}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </SwipeableDrawer>
+      )}
 
-      {/* Trip Details Dialog */}
-      <Dialog
-        open={detailsDialogOpen}
-        onClose={() => setDetailsDialogOpen(false)}
-        maxWidth="lg"
-        fullWidth
-        fullScreen={isMobile}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <MapIcon />
-            <Typography variant={isMobile ? 'subtitle1' : 'h6'}>
-              Detalles del Viaje #{selectedTrip?.id}
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
+      {/* Details Bottom Sheet / Dialog */}
+      {isMobile ? (
+        <BottomSheet
+          open={detailsDialogOpen}
+          onClose={() => setDetailsDialogOpen(false)}
+          title={`Viaje #${selectedTrip?.id}`}
+          actions={
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => setDetailsDialogOpen(false)}
+              sx={{ minHeight: 48 }}
+            >
+              Cerrar
+            </Button>
+          }
+        >
           {selectedTrip && (
             <Box>
-              {/* Mostrar información de todas las facturas asociadas */}
-              {getFacturasByTrip(selectedTrip.id).length > 0 && (
-                <Box mb={3}>
-                  <Typography variant="h6" gutterBottom>
-                    📄 Facturas Asociadas ({getFacturasByTrip(selectedTrip.id).length})
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {getFacturasByTrip(selectedTrip.id).map((factura) => (
-                      <Grid item xs={12} md={6} key={factura.id}>
-                        <Card sx={{ bgcolor: 'primary.lighter', border: '1px solid', borderColor: 'primary.main' }}>
-                          <CardContent>
-                            <Typography variant="subtitle1" gutterBottom color="primary.dark" fontWeight="bold">
-                              {factura.numeroDocumento}
-                            </Typography>
-                            <Box display="flex" flexDirection="column" gap={0.5}>
-                              <Typography variant="body2"><strong>Cliente:</strong> {factura.clienteNombre}</Typography>
-                              <Typography variant="body2"><strong>Total:</strong> ${factura.total.toLocaleString()}</Typography>
-                              <Typography variant="body2"><strong>Estado:</strong> {factura.estado}</Typography>
-                            </Box>
-                            <Box mt={1}>
-                              <Typography variant="caption" fontWeight="bold" display="block">Items:</Typography>
-                              {factura.detalles.slice(0, 3).map((detalle, idx) => (
-                                <Box key={idx}>
-                                  <Typography variant="caption" display="block">
-                                    • {detalle.tipoItem === 'EQUIPO'
-                                        ? (detalle.recetaNombre || detalle.descripcionEquipo || 'Equipo')
-                                        : (detalle.productoNombre || 'Producto')} x{detalle.cantidad}
-                                  </Typography>
-                                  {detalle.tipoItem === 'EQUIPO' && detalle.equiposNumerosHeladera && detalle.equiposNumerosHeladera.length > 0 && (
-                                    <Typography variant="caption" color="primary" display="block" sx={{ ml: 1 }}>
-                                      Equipos: {detalle.equiposNumerosHeladera.join(', ')}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              ))}
-                              {factura.detalles.length > 3 && (
-                                <Typography variant="caption" color="text.secondary">
-                                  ... y {factura.detalles.length - 3} más
-                                </Typography>
-                              )}
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
+              <Tabs
+                value={detailsTab}
+                onChange={(_, v) => setDetailsTab(v)}
+                variant="fullWidth"
+                sx={{ mb: 2 }}
+              >
+                <Tab label="Info" />
+                <Tab label={`Entregas (${getTripDeliveries(selectedTrip.id).length})`} />
+                <Tab label={`Facturas (${getFacturasByTrip(selectedTrip.id).length})`} />
+              </Tabs>
 
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Card>
+              {detailsTab === 0 && (
+                <Stack spacing={2}>
+                  <Card variant="outlined">
                     <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Información General
-                      </Typography>
-                      <Box display="flex" flexDirection="column" gap={1}>
-                        <Typography variant="body2">
-                          <strong>Conductor:</strong> {getDriverName(selectedTrip.conductorId)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Vehículo:</strong> {getVehicleInfo(selectedTrip.vehiculoId)}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Destino:</strong> {selectedTrip.destino}
-                        </Typography>
+                      <Stack spacing={1.5}>
                         <Box display="flex" alignItems="center" gap={1}>
-                          <Typography variant="body2">
-                            <strong>Estado:</strong>
-                          </Typography>
+                          <DriverIcon color="action" />
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Conductor</Typography>
+                            <Typography variant="body2">{getDriverName(selectedTrip.conductorId)}</Typography>
+                          </Box>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <TruckIcon color="action" />
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Vehículo</Typography>
+                            <Typography variant="body2">{getVehicleInfo(selectedTrip.vehiculoId)}</Typography>
+                          </Box>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <LocationIcon color="action" />
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Destino</Typography>
+                            <Typography variant="body2">{selectedTrip.destino}</Typography>
+                          </Box>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <ScheduleIcon color="action" />
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Fecha</Typography>
+                            <Typography variant="body2">{new Date(selectedTrip.fechaViaje).toLocaleString()}</Typography>
+                          </Box>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Typography variant="caption" color="text.secondary">Estado:</Typography>
                           {getStatusChip(selectedTrip.estado)}
                         </Box>
-                        <Typography variant="body2">
-                          <strong>Fecha:</strong> {new Date(selectedTrip.fechaViaje).toLocaleString()}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  {selectedTrip.observaciones && (
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="caption" color="text.secondary">Observaciones</Typography>
+                        <Typography variant="body2">{selectedTrip.observaciones}</Typography>
+                      </CardContent>
+                    </Card>
+                  )}
+                </Stack>
+              )}
+
+              {detailsTab === 1 && (
+                <Stack spacing={1.5}>
+                  {getTripDeliveries(selectedTrip.id).map((delivery, index) => {
+                    const detalles = deliveryDetailsMap[delivery.id];
+                    return (
+                      <Card key={delivery.id} variant="outlined">
+                        <CardContent sx={{ py: 1.5 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                            <Typography variant="subtitle2">Entrega #{index + 1}</Typography>
+                            <Chip
+                              label={delivery.estado}
+                              size="small"
+                              color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
+                            />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            {delivery.direccionEntrega}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(delivery.fechaEntrega).toLocaleString()}
+                          </Typography>
+                          {detalles?.equipos?.length > 0 && (
+                            <Box mt={1}>
+                              <Typography variant="caption" color="primary">
+                                {detalles.equipos.length} equipos
+                              </Typography>
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {getTripDeliveries(selectedTrip.id).length === 0 && (
+                    <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
+                      No hay entregas asignadas
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+
+              {detailsTab === 2 && (
+                <Stack spacing={1.5}>
+                  {getFacturasByTrip(selectedTrip.id).map((factura) => (
+                    <Card key={factura.id} variant="outlined">
+                      <CardContent sx={{ py: 1.5 }}>
+                        <Typography variant="subtitle2" color="primary">
+                          {factura.numeroDocumento}
                         </Typography>
-                      </Box>
+                        <Typography variant="body2">{factura.clienteNombre}</Typography>
+                        <Typography variant="body2" fontWeight="bold">
+                          ${factura.total.toLocaleString()}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {factura.detalles.length} items
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {getFacturasByTrip(selectedTrip.id).length === 0 && (
+                    <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
+                      No hay facturas asociadas
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+            </Box>
+          )}
+        </BottomSheet>
+      ) : (
+        /* Desktop Details Dialog */
+        <SwipeableDrawer
+          anchor="right"
+          open={detailsDialogOpen}
+          onClose={() => setDetailsDialogOpen(false)}
+          onOpen={() => {}}
+          PaperProps={{
+            sx: { width: isTablet ? '90%' : 600 }
+          }}
+        >
+          {selectedTrip && (
+            <Box sx={{ p: 3 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <MapIcon color="primary" />
+                  <Typography variant="h6">Viaje #{selectedTrip.id}</Typography>
+                  {getStatusChip(selectedTrip.estado)}
+                </Box>
+                <IconButton onClick={() => setDetailsDialogOpen(false)}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" gutterBottom>Información General</Typography>
+                      <Stack spacing={1}>
+                        <Typography variant="body2"><strong>Conductor:</strong> {getDriverName(selectedTrip.conductorId)}</Typography>
+                        <Typography variant="body2"><strong>Vehículo:</strong> {getVehicleInfo(selectedTrip.vehiculoId)}</Typography>
+                        <Typography variant="body2"><strong>Destino:</strong> {selectedTrip.destino}</Typography>
+                        <Typography variant="body2"><strong>Fecha:</strong> {new Date(selectedTrip.fechaViaje).toLocaleString()}</Typography>
+                      </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Card>
+                  <Card variant="outlined">
                     <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Entregas del Viaje
+                      <Typography variant="subtitle2" gutterBottom>
+                        Entregas ({getTripDeliveries(selectedTrip.id).length})
                       </Typography>
-                      <List>
-                        {getTripDeliveries(selectedTrip.id).map((delivery, index) => {
-                          const detalles = deliveryDetailsMap[delivery.id];
-                          return (
-                          <ListItem key={delivery.id} divider>
+                      <List dense>
+                        {getTripDeliveries(selectedTrip.id).map((delivery, index) => (
+                          <ListItem key={delivery.id} disablePadding>
                             <ListItemText
-                              primary={
-                                <Box display="flex" alignItems="center" gap={1}>
-                                  <LocationIcon sx={{ fontSize: 16 }} />
-                                  <Typography variant="body2" fontWeight="bold">
-                                    Entrega #{index + 1}
-                                  </Typography>
-                                  <Chip
-                                    label={delivery.estado}
-                                    size="small"
-                                    color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
-                                  />
-                                </Box>
-                              }
-                              secondary={
-                                <Box>
-                                  <Typography variant="caption" display="block">
-                                    {delivery.direccionEntrega}
-                                  </Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    {new Date(delivery.fechaEntrega).toLocaleString()}
-                                  </Typography>
-                                  {detalles && detalles.equipos && detalles.equipos.length > 0 && (
-                                    <Box mt={0.5}>
-                                      <Typography variant="caption" fontWeight="bold" color="primary">
-                                        🔧 {detalles.equipos.length} equipos: {' '}
-                                        {detalles.equipos.map((eq: any) => eq.numeroHeladera || `#${eq.id}`).join(', ')}
-                                      </Typography>
-                                    </Box>
-                                  )}
-                                </Box>
-                              }
+                              primary={`Entrega #${index + 1}`}
+                              secondary={delivery.direccionEntrega}
+                            />
+                            <Chip
+                              label={delivery.estado}
+                              size="small"
+                              color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
                             />
                           </ListItem>
-                        );
-                        })}
-                        {getTripDeliveries(selectedTrip.id).length === 0 && (
-                          <ListItem>
-                            <ListItemText
-                              primary="No hay entregas asignadas a este viaje"
-                              secondary="Puede asignar entregas desde el módulo de Control de Entregas"
-                            />
-                          </ListItem>
-                        )}
+                        ))}
                       </List>
                     </CardContent>
                   </Card>
                 </Grid>
+
+                {getFacturasByTrip(selectedTrip.id).length > 0 && (
+                  <Grid item xs={12}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Facturas ({getFacturasByTrip(selectedTrip.id).length})
+                        </Typography>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                          {getFacturasByTrip(selectedTrip.id).map((factura) => (
+                            <Chip
+                              key={factura.id}
+                              label={`${factura.numeroDocumento} - $${factura.total.toLocaleString()}`}
+                              color="primary"
+                              variant="outlined"
+                            />
+                          ))}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {selectedTrip.observaciones && (
+                  <Grid item xs={12}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography variant="subtitle2" gutterBottom>Observaciones</Typography>
+                        <Typography variant="body2">{selectedTrip.observaciones}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
               </Grid>
 
-              {selectedTrip.observaciones && (
-                <Card sx={{ mt: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Observaciones
-                    </Typography>
-                    <Typography variant="body2">
-                      {selectedTrip.observaciones}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              )}
+              <Box mt={3}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={() => setDetailsDialogOpen(false)}
+                >
+                  Cerrar
+                </Button>
+              </Box>
             </Box>
           )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
+        </SwipeableDrawer>
+      )}
     </Box>
   );
 };
 
-export default TripsPage;
+export default TripsPage2;
