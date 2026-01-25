@@ -12,7 +12,6 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
-import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 
 interface KPI {
   label: string;
@@ -24,7 +23,6 @@ interface KPI {
 const DashboardFabricacion: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [equipos, setEquipos] = useState<any[]>([]);
-  const [recetas, setRecetas] = useState<any[]>([]);
   const [fechaInicio, setFechaInicio] = useState(
     dayjs().subtract(30, 'days').format('YYYY-MM-DD')
   );
@@ -37,16 +35,11 @@ const DashboardFabricacion: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [equiposRes, recetasRes] = await Promise.all([
-        equipoFabricadoApi.findAll(0, 1000),
-        recetaFabricacionApi.findAll(0, 1000),
-      ]);
+      const equiposRes = await equipoFabricadoApi.findAll(0, 1000);
 
       const equiposData = equiposRes.content || [];
-      const recetasData = recetasRes.content || [];
 
       setEquipos(equiposData);
-      setRecetas(recetasData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

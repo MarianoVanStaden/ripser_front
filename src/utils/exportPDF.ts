@@ -4,12 +4,12 @@ import dayjs from 'dayjs';
 
 // Colores del diseño Ripser (matching presupuesto style)
 const COLORS = {
-  darkBlue: [20, 66, 114],      // #144272 - Barra superior
-  lightBlue: [205, 226, 239],   // #CDE2EF - Fondo documento
-  white: [255, 255, 255],       // #FFFFFF
-  black: [0, 0, 0],             // #000000
-  darkGray: [64, 64, 64],       // #404040 - Texto encabezado tabla
-  mediumGray: [128, 128, 128],  // #808080 - Bordes
+  darkBlue: [20, 66, 114] as [number, number, number],      // #144272 - Barra superior
+  lightBlue: [205, 226, 239] as [number, number, number],   // #CDE2EF - Fondo documento
+  white: [255, 255, 255] as [number, number, number],       // #FFFFFF
+  black: [0, 0, 0] as [number, number, number],             // #000000
+  darkGray: [64, 64, 64] as [number, number, number],       // #404040 - Texto encabezado tabla
+  mediumGray: [128, 128, 128] as [number, number, number],  // #808080 - Bordes
 };
 
 /**
@@ -154,7 +154,7 @@ export const exportToPDF = (config: PDFExportConfig): void => {
     }
 
     // ===== AGREGAR CADA TABLA =====
-    config.tables.forEach((tableConfig, index) => {
+    config.tables.forEach((tableConfig, _index) => {
       // Verificar si necesitamos una nueva página
       if (currentY > doc.internal.pageSize.height - 40) {
         doc.addPage();

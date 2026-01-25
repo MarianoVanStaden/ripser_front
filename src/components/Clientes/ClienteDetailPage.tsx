@@ -314,7 +314,7 @@ const ClienteDetailPage: React.FC = () => {
                   <Typography><strong>Tipo:</strong> {cliente.tipo === 'PERSONA_FISICA' ? 'Persona Física' : 'Persona Jurídica'}</Typography>
                   <Typography><strong>Estado:</strong> {cliente.estado}</Typography>
                   <Typography><strong>Fecha de Alta:</strong> {new Date(cliente.fechaAlta).toLocaleDateString()}</Typography>
-                  <Typography><strong>Última Actualización:</strong> {new Date(cliente.fechaActualizacion).toLocaleDateString()}</Typography>
+                  <Typography><strong>Última Actualización:</strong> {cliente.fechaActualizacion ? new Date(cliente.fechaActualizacion).toLocaleDateString() : 'N/A'}</Typography>
                 </Box>
               </Box>
             </Box>
@@ -370,7 +370,6 @@ const ClienteDetailPage: React.FC = () => {
           {cliente && (
             <DocumentManager
               entityId={cliente.id}
-              entityType="cliente"
               categorias={['Contrato', 'DNI', 'CUIT', 'Factura', 'Presupuesto', 'Garantia', 'Otros']}
               onUpload={async (file, categoria, descripcion) => {
                 await documentoClienteApi.upload(cliente.id, file, categoria, descripcion);

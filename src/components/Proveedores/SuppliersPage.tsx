@@ -28,7 +28,6 @@ import {
   MenuItem,
   useMediaQuery,
   useTheme,
-  Stack,
 } from '@mui/material';
 import {
   Add as AddIcon,

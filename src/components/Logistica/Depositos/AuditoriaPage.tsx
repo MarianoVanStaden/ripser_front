@@ -42,9 +42,7 @@ import {
   History as HistoryIcon,
   ExpandMore as ExpandMoreIcon,
   FilterList as FilterListIcon,
-  GetApp as GetAppIcon,
   Timeline as TimelineIcon,
-  Visibility as VisibilityIcon,
   FileDownload as FileDownloadIcon,
   TableChart as TableChartIcon,
   PictureAsPdf as PictureAsPdfIcon,
@@ -489,7 +487,7 @@ const AuditoriaPage: React.FC = () => {
           fileName: `auditoria-movimientos-stock-${dayjs().format('YYYY-MM-DD')}`,
           metadata: {
             title: 'Auditoría de Movimientos de Stock',
-            generatedBy: user?.nombre || 'Usuario',
+            generatedBy: user?.username || 'Usuario',
             generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
             filters: filtrosAplicados,
           },
@@ -525,7 +523,7 @@ const AuditoriaPage: React.FC = () => {
           fileName: `auditoria-movimientos-equipos-${dayjs().format('YYYY-MM-DD')}`,
           metadata: {
             title: 'Auditoría de Movimientos de Equipos',
-            generatedBy: user?.nombre || 'Usuario',
+            generatedBy: user?.username || 'Usuario',
             generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
             filters: filtrosAplicados,
           },
@@ -600,7 +598,7 @@ const AuditoriaPage: React.FC = () => {
           title: 'Auditoría de Movimientos de Stock',
           orientation: 'landscape',
           metadata: {
-            generatedBy: user?.nombre || 'Usuario',
+            generatedBy: user?.username || 'Usuario',
             generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
             filters: filtrosAplicados,
           },
@@ -637,7 +635,7 @@ const AuditoriaPage: React.FC = () => {
           title: 'Auditoría de Movimientos de Equipos',
           orientation: 'landscape',
           metadata: {
-            generatedBy: user?.nombre || 'Usuario',
+            generatedBy: user?.username || 'Usuario',
             generatedAt: dayjs().format('DD/MM/YYYY HH:mm:ss'),
             filters: filtrosAplicados,
           },
@@ -883,7 +881,7 @@ const AuditoriaPage: React.FC = () => {
 
         {/* Tabs */}
         <Card sx={{ mb: 3 }}>
-          <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+          <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
             <Tab label="Movimientos de Stock" />
             <Tab label="Movimientos de Equipos" />
           </Tabs>
@@ -903,7 +901,7 @@ const AuditoriaPage: React.FC = () => {
                 <DatePicker
                   label="Fecha Inicio"
                   value={fechaInicio}
-                  onChange={(newValue) => setFechaInicio(newValue)}
+                  onChange={(newValue) => setFechaInicio(newValue as Date | null)}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>
@@ -911,7 +909,7 @@ const AuditoriaPage: React.FC = () => {
                 <DatePicker
                   label="Fecha Fin"
                   value={fechaFin}
-                  onChange={(newValue) => setFechaFin(newValue)}
+                  onChange={(newValue) => setFechaFin(newValue as Date | null)}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>

@@ -87,14 +87,7 @@ import {
 } from './components/Logistica/Depositos';
 
 
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div style={{ padding: '24px', textAlign: 'center' }}>
-    <h2>{title}</h2>
-    <p>Esta página está en desarrollo</p>
-  </div>
-);
-
-const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
+const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -113,7 +106,7 @@ const PrivateRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
   return <>{children}</>;
 };
 
-const SuperAdminRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
+const SuperAdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, esSuperAdmin, loading } = useAuth();
 
   if (loading) {

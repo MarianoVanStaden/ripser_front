@@ -22,7 +22,6 @@ import {
   Chip,
   IconButton,
   InputAdornment,
-  Snackbar,
 } from '@mui/material';
 import {
   Check as CheckIcon,

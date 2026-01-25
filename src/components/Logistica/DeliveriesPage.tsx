@@ -35,21 +35,17 @@ import Grid from '@mui/material/Grid';
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   LocalShipping as DeliveryIcon,
   LocationOn as LocationIcon,
   Schedule as ScheduleIcon,
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
-  Route as RouteIcon,
   Person as ClientIcon,
   Visibility as ViewIcon,
-  Print as PrintIcon,
   Map as MapIcon,
   Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  Refresh as RefreshIcon,
   Inventory as EquipmentIcon,
 } from '@mui/icons-material';
 import type { EntregaViaje, Viaje, Cliente, EstadoEntrega, DocumentoComercial, EstadoAsignacionEquipo } from '../../types';
@@ -188,8 +184,7 @@ const REJECTION_REASONS = [
 ];
 
 const DeliveriesPage2: React.FC = () => {
-  const theme = useTheme();
-  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const { isMobile, isTablet } = useResponsive();
 
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
@@ -402,17 +397,6 @@ const DeliveriesPage2: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Eliminar esta entrega?')) {
-      try {
-        await entregaViajeApi.delete(id);
-        await loadData();
-      } catch (err) {
-        const error = err as { response?: { data?: { message?: string } } };
-        setError(error?.response?.data?.message || 'Error al eliminar');
-      }
-    }
-  };
 
   const openConfirmDialog = (id: number) => {
     setConfirmDeliveryId(id);

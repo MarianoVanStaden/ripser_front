@@ -8,6 +8,7 @@ interface Props {
 
 const ChequeEstadoChip: React.FC<Props> = ({ estado }) => {
   const config = {
+    RECIBIDO: { label: 'Recibido', color: 'secondary' as const },
     EN_CARTERA: { label: 'En Cartera', color: 'primary' as const },
     DEPOSITADO: { label: 'Depositado', color: 'info' as const },
     COBRADO: { label: 'Cobrado', color: 'success' as const },

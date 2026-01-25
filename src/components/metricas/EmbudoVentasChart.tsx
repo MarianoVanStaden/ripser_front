@@ -44,7 +44,7 @@ export const EmbudoVentasChart = ({ data }: EmbudoVentasChartProps) => {
           📊 Embudo de Ventas
         </Typography>
         <Box sx={{ mt: 3 }}>
-          {sortedData.map((item, index) => {
+          {sortedData.map((item) => {
             const width = (item.cantidad / maxCantidad) * 100;
             
             return (

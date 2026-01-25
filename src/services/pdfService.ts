@@ -23,12 +23,12 @@ interface PresupuestoPDFData {
 
 // Colores del diseño original
 const COLORS = {
-  darkBlue: [20, 66, 114],      // #144272 - Barra superior
-  lightBlue: [205, 226, 239],   // #CDE2EF - Fondo celdas
-  white: [255, 255, 255],       // #FFFFFF
-  black: [0, 0, 0],             // #000000
-  darkGray: [64, 64, 64],       // #404040 - Texto encabezado tabla
-  mediumGray: [128, 128, 128],  // #808080 - Bordes
+  darkBlue: [20, 66, 114] as [number, number, number],      // #144272 - Barra superior
+  lightBlue: [205, 226, 239] as [number, number, number],   // #CDE2EF - Fondo celdas
+  white: [255, 255, 255] as [number, number, number],       // #FFFFFF
+  black: [0, 0, 0] as [number, number, number],             // #000000
+  darkGray: [64, 64, 64] as [number, number, number],       // #404040 - Texto encabezado tabla
+  mediumGray: [128, 128, 128] as [number, number, number],  // #808080 - Bordes
 };
 
 /**
@@ -133,39 +133,39 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
   // ===== DATOS DEL CLIENTE EN TABLA =====
   const clienteData = [
     [
-      { content: 'Cliente:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Cliente:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: presupuesto.clienteNombre || cliente.nombre || '', styles: { fillColor: COLORS.white } },
-      { content: 'N°Presupuesto:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'N°Presupuesto:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: presupuesto.numeroDocumento || '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Fecha:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Fecha:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: formatDate(presupuesto.fechaEmision), styles: { fillColor: COLORS.white }, colSpan: 3 }
     ],
     [
-      { content: 'DNI:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'DNI:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.cuit || '', styles: { fillColor: COLORS.white }, colSpan: 3 }
     ],
     [
-      { content: 'Telefono:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Telefono:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.telefono || '', styles: { fillColor: COLORS.white } },
-      { content: 'Dirección:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Dirección:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.direccion || '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Email:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Email:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.email || '', styles: { fillColor: COLORS.white } },
-      { content: 'Cod postal:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Cod postal:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.codigoPostal || '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Provincia:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Provincia:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.provincia || '', styles: { fillColor: COLORS.white } },
       { content: '', styles: { fillColor: COLORS.lightBlue } },
       { content: '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Localidad:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Localidad:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.ciudad || '', styles: { fillColor: COLORS.white }, colSpan: 3 }
     ]
   ];
@@ -205,7 +205,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
 
     return [
       { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
-      { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' } },
+      { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' as const } },
       { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
       { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
       { content: '$0', styles: { halign: 'right' } },
@@ -246,7 +246,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
       fillColor: COLORS.white
     },
     headStyles: {
-      fontStyle: 'bold',
+      fontStyle: 'bold' as const,
       fontSize: 8,
     },
     alternateRowStyles: {
@@ -273,7 +273,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
         content: 'TOTAL CONTADO EFECTIVO',
         styles: {
           halign: 'center',
-          fontStyle: 'bold',
+          fontStyle: 'bold' as const,
           fontSize: 10,
           fillColor: COLORS.white,
           textColor: COLORS.black
@@ -283,7 +283,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
         content: formatCurrency(presupuesto.subtotal),
         styles: {
           halign: 'right',
-          fontStyle: 'bold',
+          fontStyle: 'bold' as const,
           fontSize: 10,
           fillColor: COLORS.white,
           textColor: COLORS.black
@@ -314,7 +314,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
           content: 'FORMAS DE FINANCIACION',
           styles: {
             halign: 'center',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 10,
             fillColor: COLORS.darkBlue,
             textColor: COLORS.white
@@ -351,7 +351,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
           content: formatCurrency(entregaInicial),
           styles: {
             halign: 'right',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 8,
             fillColor: COLORS.white,
             cellPadding: 2
@@ -380,7 +380,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
           content: 'OPCION',
           styles: {
             halign: 'center',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 8,
             fillColor: COLORS.lightBlue
           }
@@ -389,7 +389,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
           content: 'El saldo restante puede financiarlo con:',
           styles: {
             halign: 'center',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 8,
             fillColor: COLORS.lightBlue
           }
@@ -398,7 +398,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
           content: 'Total:',
           styles: {
             halign: 'center',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 8,
             fillColor: COLORS.lightBlue
           }
@@ -487,7 +487,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
             content: 'B - Creditos Personales',
             styles: {
               halign: 'center',
-              fontStyle: 'bold',
+              fontStyle: 'bold' as const,
               fontSize: 8,
               fillColor: COLORS.white,
               cellPadding: 1
@@ -639,39 +639,39 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   // ===== DATOS DEL CLIENTE EN TABLA =====
   const clienteData = [
     [
-      { content: 'Cliente:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Cliente:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: documento.clienteNombre || cliente.nombre || '', styles: { fillColor: COLORS.white } },
-      { content: `N°${tipoDocumento === 'FACTURA' ? 'Factura' : tipoDocumento === 'NOTA DE PEDIDO' ? 'Pedido' : 'Documento'}:`, styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: `N°${tipoDocumento === 'FACTURA' ? 'Factura' : tipoDocumento === 'NOTA DE PEDIDO' ? 'Pedido' : 'Documento'}:`, styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: documento.numeroDocumento || '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Fecha:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Fecha:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: formatDate(documento.fechaEmision), styles: { fillColor: COLORS.white }, colSpan: 3 }
     ],
     [
-      { content: 'DNI:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'DNI:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.cuit || '', styles: { fillColor: COLORS.white }, colSpan: 3 }
     ],
     [
-      { content: 'Telefono:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Telefono:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.telefono || '', styles: { fillColor: COLORS.white } },
-      { content: 'Dirección:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Dirección:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.direccion || '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Email:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Email:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.email || '', styles: { fillColor: COLORS.white } },
-      { content: 'Cod postal:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Cod postal:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.codigoPostal || '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Provincia:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Provincia:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.provincia || '', styles: { fillColor: COLORS.white } },
       { content: '', styles: { fillColor: COLORS.lightBlue } },
       { content: '', styles: { fillColor: COLORS.white } }
     ],
     [
-      { content: 'Localidad:', styles: { fontStyle: 'bold', fillColor: COLORS.lightBlue } },
+      { content: 'Localidad:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: cliente.ciudad || '', styles: { fillColor: COLORS.white }, colSpan: 3 }
     ]
   ];
@@ -710,7 +710,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
     return [
       { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
-      { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' } },
+      { content: descripcionCompleta, styles: { halign: 'left', fontStyle: 'bold' as const } },
       { content: detalle.cantidad.toString(), styles: { halign: 'center' } },
       { content: formatCurrency(detalle.precioUnitario), styles: { halign: 'right' } },
       { content: '$0', styles: { halign: 'right' } },
@@ -751,7 +751,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
       fillColor: COLORS.white
     },
     headStyles: {
-      fontStyle: 'bold',
+      fontStyle: 'bold' as const,
       fontSize: 8,
     },
     alternateRowStyles: {
@@ -778,7 +778,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
         content: 'TOTAL CONTADO EFECTIVO',
         styles: {
           halign: 'center',
-          fontStyle: 'bold',
+          fontStyle: 'bold' as const,
           fontSize: 10,
           fillColor: COLORS.white,
           textColor: COLORS.black
@@ -788,7 +788,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
         content: formatCurrency(documento.subtotal),
         styles: {
           halign: 'right',
-          fontStyle: 'bold',
+          fontStyle: 'bold' as const,
           fontSize: 10,
           fillColor: COLORS.white,
           textColor: COLORS.black
@@ -819,7 +819,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
           content: 'FINANCIAMIENTO SELECCIONADO',
           styles: {
             halign: 'center',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 10,
             fillColor: COLORS.darkBlue,
             textColor: COLORS.white
@@ -856,7 +856,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
           content: formatCurrency(entregaInicial),
           styles: {
             halign: 'right',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 8,
             fillColor: COLORS.white,
             cellPadding: 2
@@ -898,7 +898,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
           content: 'El saldo restante se financiará con:',
           styles: {
             halign: 'left',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 8,
             fillColor: COLORS.lightBlue,
             cellPadding: 2
@@ -942,7 +942,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
           content: formatCurrency(opcionSeleccionada.montoCuota),
           styles: {
             halign: 'right',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 8,
             fillColor: COLORS.white,
             cellPadding: 2
@@ -971,7 +971,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
           content: 'TOTAL CON FINANCIAMIENTO:',
           styles: {
             halign: 'center',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 9,
             fillColor: COLORS.white,
             textColor: COLORS.black
@@ -981,7 +981,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
           content: formatCurrency(opcionSeleccionada.montoTotal),
           styles: {
             halign: 'right',
-            fontStyle: 'bold',
+            fontStyle: 'bold' as const,
             fontSize: 9,
             fillColor: COLORS.white,
             textColor: COLORS.black

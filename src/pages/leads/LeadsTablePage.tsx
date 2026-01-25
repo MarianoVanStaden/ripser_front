@@ -274,8 +274,8 @@ export const LeadsTablePage = () => {
   const getRowBackgroundByDate = (lead: LeadDTO, index: number): string => {
     if (index === 0) return 'transparent';
 
-    const fechaActual = getFechaCreacion(lead);
-    const fechaAnterior = getFechaCreacion(processedLeads[index - 1]);
+    void getFechaCreacion(lead);
+    void getFechaCreacion(processedLeads[index - 1]);
 
     // Si cambió el día, contar cuántos cambios de día hubo antes
     let grupoIndex = 0;

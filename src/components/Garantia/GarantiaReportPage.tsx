@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, Stack, Chip,
   CircularProgress, Alert, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, FormControl,
+  TableContainer, TableHead, TableRow, FormControl,
   InputLabel, Select, MenuItem
 } from '@mui/material';
 import {
@@ -10,7 +10,6 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Warning as WarningIcon,
-  TrendingUp as TrendingUpIcon,
   Build as BuildIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';

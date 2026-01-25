@@ -31,11 +31,9 @@ import {
   Tab,
   Tabs,
   Tooltip,
-  Switch,
   FormControlLabel,
   RadioGroup,
   Radio,
-  Autocomplete,
   InputAdornment,
 } from '@mui/material';
 import {
@@ -56,7 +54,7 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 // Real API services
-import { clienteApi, productApi, usuarioApi, leadApi } from '../../api/services';
+import { clienteApi, productApi, usuarioApi } from '../../api/services';
 import { documentoApi } from '../../api/services/documentoApi';
 import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
@@ -78,7 +76,6 @@ import type {
   TipoItemDocumento,
   ColorEquipo,
   MedidaEquipo,
-  Lead,
 } from '../../types';
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 
@@ -161,23 +158,19 @@ const FacturacionPage = () => {
   
   // Data
   const [clients, setClients] = useState<Cliente[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [products, setProducts] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [notasPedido, setNotasPedido] = useState<DocumentoComercial[]>([]);
-
+  
   // Manual invoice form
   const [selectedClientId, setSelectedClientId] = useState<number | ''>('');
-  const [selectedLeadId, setSelectedLeadId] = useState<number | ''>('');
   const [selectedUsuarioId, setSelectedUsuarioId] = useState<number | ''>(user?.id ?? '');
   const [paymentMethod, setPaymentMethod] = useState<MetodoPago>('EFECTIVO');
-  const [invoiceDate, setInvoiceDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [dueDate, setDueDate] = useState(dayjs().add(30, 'days').format('YYYY-MM-DD'));
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('IVA_21');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
   
   // From Nota de Pedido
   const [selectedNotaPedido, setSelectedNotaPedido] = useState<DocumentoComercial | null>(null);
@@ -233,9 +226,8 @@ const FacturacionPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [clientsData, leadsData, usuariosResponse, productsData, recetasData, notasData, plantillasData] = await Promise.all([
+      const [clientsData, usuariosResponse, productsData, recetasData, notasData, plantillasData] = await Promise.all([
         clienteApi.getAll().catch(() => []),
-        leadApi.getAll().catch(() => []),
         usuarioApi.getAll().catch((err: any) => {
           if (err?.response?.status === 403) return { content: [] };
           return { content: [] };
@@ -247,7 +239,6 @@ const FacturacionPage = () => {
       ]);
 
       setClients(Array.isArray(clientsData) ? clientsData : []);
-      setLeads(Array.isArray(leadsData) ? leadsData.filter((l: Lead) => l.estadoLead !== 'CONVERTIDO') : []);
       // Handle paginated response from usuarioApi
       const usuariosArray = Array.isArray(usuariosResponse)
         ? usuariosResponse
@@ -320,6 +311,7 @@ const FacturacionPage = () => {
   }, [notaCart]);
 
   const notaFinancingAdjustment = useMemo(() => {
+    if (!selectedOpcionId) return 0;
     const selectedOpcion = opcionesFinanciamiento[selectedOpcionId];
     if (!selectedOpcion || selectedOpcion.tasaInteres === 0) return 0;
     return notaSubtotal * (selectedOpcion.tasaInteres / 100);
@@ -407,15 +399,12 @@ const FacturacionPage = () => {
 
   const clearForm = () => {
     setSelectedClientId('');
-    setSelectedLeadId('');
     setSelectedUsuarioId('');
     setPaymentMethod('EFECTIVO');
-    setInvoiceDate(dayjs().format('YYYY-MM-DD'));
     setDueDate(dayjs().add(30, 'days').format('YYYY-MM-DD'));
     setNotes('');
     setCart([]);
     setSelectedIva('IVA_21');
-    setInvoiceNumber('');
     setError(null);
     setSuccess(null);
   };
@@ -512,8 +501,8 @@ const FacturacionPage = () => {
         item.recetaTipo = defaultReceta.tipoEquipo;
         item.precioUnitario = defaultReceta.precioVenta || 0;
         // Set default color and medida from receta
-        item.color = defaultReceta.color;
-        item.medida = defaultReceta.medida;
+        item.color = defaultReceta.color as ColorEquipo;
+        item.medida = defaultReceta.medida as MedidaEquipo;
         // Clear producto fields
         delete item.productoId;
         delete item.productoNombre;
@@ -540,8 +529,8 @@ const FacturacionPage = () => {
         item.recetaModelo = receta.modelo;
         item.recetaTipo = receta.tipoEquipo;
         // Set default color and medida from receta
-        item.color = receta.color;
-        item.medida = receta.medida;
+        item.color = receta.color as ColorEquipo;
+        item.medida = receta.medida as MedidaEquipo;
         if (!item.precioManualmenteModificado) {
           item.precioUnitario = receta.precioVenta || 0;
         }
@@ -676,7 +665,7 @@ const FacturacionPage = () => {
   }, []);
 
   const handleSubmitManualInvoice = async () => {
-    if (!selectedClientId && !selectedLeadId) return setError('Debe seleccionar un cliente o lead.');
+    if (!selectedClientId) return setError('Debe seleccionar un cliente.');
     if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
@@ -707,8 +696,7 @@ const FacturacionPage = () => {
 
     try {
       const presupuesto = await documentoApi.createPresupuesto({
-        clienteId: selectedClientId ? Number(selectedClientId) : undefined,
-        leadId: selectedLeadId ? Number(selectedLeadId) : undefined,
+        clienteId: Number(selectedClientId),
         usuarioId: Number(selectedUsuarioId),
         tipoIva: selectedIva,
         observaciones: notes || undefined,
@@ -943,8 +931,8 @@ const FacturacionPage = () => {
             recetaModelo: d.recetaModelo,
             recetaTipo: d.recetaTipo,
             descripcionEquipo: d.descripcionEquipo,
-            color: d.color,
-            medida: d.medida,
+            color: d.color as ColorEquipo,
+            medida: d.medida as MedidaEquipo,
           }))
         : []
     );
@@ -1406,88 +1394,21 @@ const FacturacionPage = () => {
 
               <Grid container spacing={3} sx={{ width: '100%' }}>
                 <Grid item xs={12} md={6}>
-                  <Autocomplete
-                    fullWidth
-                    options={[
-                      ...clients.map(c => ({ type: 'cliente' as const, id: c.id, nombre: c.nombre, apellido: c.apellido || '', cuit: c.cuit || '' })),
-                      ...leads.map(l => ({ type: 'lead' as const, id: l.id, nombre: l.nombre, apellido: l.apellido || '', cuit: '' }))
-                    ]}
-                    getOptionKey={(option) => `${option.type}-${option.id}`}
-                    getOptionLabel={(option) => {
-                      const label = option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre;
-                      return option.cuit ? `${label} - ${option.cuit}` : label;
-                    }}
-                    filterOptions={(options, { inputValue }) => {
-                      const searchTerm = inputValue.toLowerCase().trim();
-                      if (!searchTerm) return options;
-                      return options.filter(option => {
-                        const nombre = (option.nombre || '').toLowerCase();
-                        const apellido = (option.apellido || '').toLowerCase();
-                        const cuit = (option.cuit || '').toLowerCase();
-                        return nombre.includes(searchTerm) || apellido.includes(searchTerm) || cuit.includes(searchTerm);
-                      });
-                    }}
-                    value={
-                      selectedClientId
-                        ? clients.find(c => c.id === selectedClientId)
-                          ? { type: 'cliente' as const, id: selectedClientId as number, nombre: clients.find(c => c.id === selectedClientId)!.nombre, apellido: clients.find(c => c.id === selectedClientId)!.apellido || '', cuit: clients.find(c => c.id === selectedClientId)!.cuit || '' }
-                          : null
-                        : selectedLeadId
-                          ? leads.find(l => l.id === selectedLeadId)
-                            ? { type: 'lead' as const, id: selectedLeadId as number, nombre: leads.find(l => l.id === selectedLeadId)!.nombre, apellido: leads.find(l => l.id === selectedLeadId)!.apellido || '', cuit: '' }
-                            : null
-                          : null
-                    }
-                    onChange={(_, newValue) => {
-                      if (newValue) {
-                        if (newValue.type === 'cliente') {
-                          setSelectedClientId(newValue.id);
-                          setSelectedLeadId('');
-                        } else {
-                          setSelectedLeadId(newValue.id);
-                          setSelectedClientId('');
-                        }
-                      } else {
-                        setSelectedClientId('');
-                        setSelectedLeadId('');
-                      }
-                    }}
-                    renderOption={(props, option) => (
-                      <Box component="li" {...props} key={`${option.type}-${option.id}`}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                          <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                            {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
-                            {option.cuit && ` - ${option.cuit}`}
-                          </Typography>
-                          {option.type === 'cliente' && (
-                            <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />
-                          )}
-                          {option.type === 'lead' && (
-                            <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
-                          )}
-                        </Box>
-                      </Box>
-                    )}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Buscar Cliente / Lead"
-                        placeholder="Escriba nombre, apellido o CUIT..."
-                        required
-                        helperText="Busque por nombre, apellido o CUIT"
-                        InputProps={{
-                          ...params.InputProps,
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <SearchIcon color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    )}
-                    noOptionsText="No se encontraron clientes o leads"
-                    isOptionEqualToValue={(option, value) => option.type === value.type && option.id === value.id}
-                  />
+                  <FormControl fullWidth required>
+                    <InputLabel>Cliente</InputLabel>
+                    <Select
+                      value={selectedClientId}
+                      onChange={(e) => setSelectedClientId(e.target.value as number)}
+                      label="Cliente"
+                    >
+                      <MenuItem value="">Seleccionar Cliente</MenuItem>
+                      {clients.map((client) => (
+                        <MenuItem key={client.id} value={client.id}>
+                          {client.nombre} - {client.cuit}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
@@ -1644,7 +1565,7 @@ const FacturacionPage = () => {
                   variant="contained"
                   startIcon={<SaveIcon />}
                   onClick={handleSubmitManualInvoice}
-                  disabled={loading || (!selectedClientId && !selectedLeadId) || !selectedUsuarioId || cart.length === 0}
+                  disabled={loading || !selectedClientId || !selectedUsuarioId || cart.length === 0}
                 >
                   Crear Factura
                 </Button>

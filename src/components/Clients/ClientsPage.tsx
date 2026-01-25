@@ -47,7 +47,7 @@ const ClientsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await clientApi.getAll();
-      setClients(data);
+      setClients(data as unknown as Client[]);
     } catch (err) {
       console.error('Error fetching clients:', err);
       setError('Failed to load clients. Please try again.');

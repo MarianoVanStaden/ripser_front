@@ -422,14 +422,14 @@ const CuentaCorrientePage: React.FC = () => {
             <DatePicker
               label="Desde"
               value={fechaDesde}
-              onChange={setFechaDesde}
+              onChange={(newValue) => setFechaDesde(newValue as Dayjs | null)}
               slotProps={{ textField: { size: 'small', sx: { minWidth: { xs: '48%', sm: 150 }, flex: { xs: '1 1 48%', sm: '0 0 auto' } } } }}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
-              onChange={setFechaHasta}
+              onChange={(newValue) => setFechaHasta(newValue as Dayjs | null)}
               slotProps={{ textField: { size: 'small', sx: { minWidth: { xs: '48%', sm: 150 }, flex: { xs: '1 1 48%', sm: '0 0 auto' } } } }}
             />
 

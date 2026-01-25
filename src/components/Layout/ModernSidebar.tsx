@@ -1,5 +1,5 @@
 import React from "react";
-import { Sidebar, Menu, MenuItem, Submenu, Logo } from "react-mui-sidebar";
+import { Sidebar, Menu, MenuItem, Logo } from "react-mui-sidebar";
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import WorkIcon from '@mui/icons-material/Work';

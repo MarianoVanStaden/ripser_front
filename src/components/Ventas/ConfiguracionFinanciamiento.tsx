@@ -4,7 +4,7 @@ import {
   TableContainer, TableHead, TableRow, Paper, IconButton, Chip, Dialog,
   DialogTitle, DialogContent, DialogActions, TextField, Grid, FormControl,
   InputLabel, Select, MenuItem, Alert, CircularProgress, Tooltip, Stack,
-  Switch, FormControlLabel, Slider, InputAdornment, Divider, useMediaQuery, useTheme
+  Switch, FormControlLabel, Slider, InputAdornment, Divider
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -14,8 +14,6 @@ import {
   Save as SaveIcon,
   Close as CloseIcon,
   Refresh as RefreshIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
   AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
 import { opcionFinanciamientoTemplateApi } from '../../api/services';

@@ -543,7 +543,6 @@ const EmpleadosPage: React.FC = () => {
               {detailTabValue === 1 && (
                 <DocumentManager
                   entityId={selectedEmpleado.id}
-                  entityType="empleado"
                   categorias={CATEGORIAS_EMPLEADO}
                   onUpload={async (file, categoria, descripcion) => {
                     await documentoEmpleadoApi.upload(selectedEmpleado.id, file, categoria, descripcion);

@@ -19,7 +19,6 @@ import {
   DialogContentText,
   DialogActions,
   Stack,
-  CircularProgress,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -44,9 +43,8 @@ const RecetasList: React.FC = () => {
   const navigate = useNavigate();
   const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-  const [totalElements, setTotalElements] = useState(0);
+  const [page] = useState(0);
+  const [pageSize] = useState(10);
 
   // Filtros
   const [searchText, setSearchText] = useState('');
@@ -116,7 +114,6 @@ const RecetasList: React.FC = () => {
       }
 
       setRecetas(filtered);
-      setTotalElements(response.totalElements || filtered.length);
     } catch (error) {
       console.error('Error loading recetas:', error);
       setSnackbar({

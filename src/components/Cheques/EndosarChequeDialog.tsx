@@ -9,7 +9,6 @@ import {
   TextField,
   Autocomplete,
   Alert,
-  Box,
   Typography,
   Card,
   CardContent,
@@ -36,7 +35,7 @@ interface Props {
 
 // Form data interface
 interface EndosoFormData {
-  proveedorDestinoId: number | null;
+  proveedorDestinoId: number | undefined;
   observaciones: string;
 }
 
@@ -64,12 +63,11 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     watch,
   } = useForm<EndosoFormData>({
-    resolver: yupResolver(validationSchema),
+    resolver: yupResolver(validationSchema) as any,
     defaultValues: {
-      proveedorDestinoId: null,
+      proveedorDestinoId: undefined,
       observaciones: '',
     },
   });
@@ -87,7 +85,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
   useEffect(() => {
     if (open) {
       reset({
-        proveedorDestinoId: null,
+        proveedorDestinoId: undefined,
         observaciones: '',
       });
       setError(null);
@@ -114,7 +112,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
     }
   };
 
-  const onSubmit = async (data: EndosoFormData) => {
+  const onSubmit = async (data: any) => {
     if (!cheque || !data.proveedorDestinoId) {
       setError('Datos incompletos para realizar el endoso');
       return;

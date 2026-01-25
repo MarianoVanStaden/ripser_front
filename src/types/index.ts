@@ -2,6 +2,10 @@
 export * from './auth.types';
 export * from './tenant.types';
 
+// Export lead types
+export * from './lead.types';
+export type { LeadDTO as Lead } from './lead.types';
+
 // Export shared enums
 export * from './shared.enums';
 import type { ProvinciaEnum } from './shared.enums';
@@ -1404,7 +1408,10 @@ export interface DetalleVenta {
   // For EQUIPO type
   recetaId?: number;
   recetaNombre?: string;
+  recetaModelo?: string;
   descripcionEquipo?: string;
+  color?: string;
+  medida?: string;
 
   // For EQUIPO items - list of assigned equipment numbers
   equiposNumerosHeladera?: string[];
@@ -1433,6 +1440,7 @@ export interface Venta {
   metodoPago?: MetodoPago;
   observaciones?: string;
   notas?: string; // Add for compatibility
+  tipoDocumento?: string;
   createdAt?: string;
   updatedAt?: string;
   detalleVentas: DetalleVenta[];
@@ -1758,12 +1766,14 @@ export interface CreateProveedorDTO {
 }
 export interface Proveedor {
   id: number;
-  nombre: string;
+  nombre?: string;
+  razonSocial?: string;
+  cuit?: string;
   contacto?: string;
   telefono?: string;
   email?: string;
   direccion?: string;
-  estado: string;
+  estado?: string;
   observaciones?: string;
   saldoActual?: number;
 }
@@ -2078,6 +2088,7 @@ export interface DocumentoComercial {
   usuarioId: number;
   usuarioNombre: string;
   fechaEmision: string; // ISO string
+  fecha?: string; // Alias for backward compatibility
   fechaVencimiento: string; // ISO string
   subtotal: number;
   iva: number;
@@ -2495,7 +2506,7 @@ export interface ConfirmarEntregaEquipoDTO {
 }
 
 // --- Sistema de Roles y Permisos ---
-export type TipoRol = 'ADMIN' | 'USER' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USUARIO';
+export type TipoRol = 'ADMIN' | 'USER' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USUARIO' | 'ADMIN_EMPRESA' | 'GERENTE_SUCURSAL';
 
 export type Modulo =
   | 'DASHBOARD'
@@ -2508,7 +2519,8 @@ export type Modulo =
   | 'TRANSPORTE'
   | 'GARANTIAS'
   | 'RRHH'
-  | 'ADMIN';
+  | 'ADMIN'
+  | 'ADMINISTRACION';
 
 export type UserRole = 
   | 'ADMIN'
@@ -2909,6 +2921,7 @@ export type TipoChequeType = 'PROPIO' | 'TERCEROS';
 
 // Estado del cheque (Backend: EstadoCheque enum)
 export type EstadoChequeType =
+  | 'RECIBIDO'      // Cheque recibido
   | 'EN_CARTERA'    // Cheque en cartera, pendiente de cobro
   | 'DEPOSITADO'    // Cheque depositado en banco
   | 'COBRADO'       // Cheque cobrado exitosamente

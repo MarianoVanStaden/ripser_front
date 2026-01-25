@@ -445,7 +445,7 @@ const FlujoCajaPage: React.FC = () => {
               label="Desde"
               value={fechaDesde}
               onChange={(newValue) => {
-                setFechaDesde(newValue);
+                setFechaDesde(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}
               slotProps={{ textField: { size: 'small' } }}
@@ -455,7 +455,7 @@ const FlujoCajaPage: React.FC = () => {
               label="Hasta"
               value={fechaHasta}
               onChange={(newValue) => {
-                setFechaHasta(newValue);
+                setFechaHasta(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}
               slotProps={{ textField: { size: 'small' } }}

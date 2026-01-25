@@ -34,7 +34,6 @@ import {
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import { chequeApi } from '../../api/services/chequeApi';
-import { useTenant } from '../../context/TenantContext';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { Cheque } from '../../types';
 import ChequeFormDialog from './ChequeFormDialog';
@@ -44,7 +43,6 @@ import ChequeTipoChip from './ChequeTipoChip';
 
 const ChequesPage: React.FC = () => {
   // Permisos y contexto
-  const { empresaId, sucursalId } = useTenant();
   const { tienePermiso } = usePermisos();
 
   // Estados

@@ -35,24 +35,18 @@ import {
   LinearProgress,
   TablePagination,
   Menu,
-  ListItemButton,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Visibility as ViewIcon,
   Business as BusinessIcon,
-  ShoppingCart as ShoppingCartIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Timeline as TimelineIcon,
   Receipt as ReceiptIcon,
   Download as DownloadIcon,
-  FilterList as FilterIcon,
   Refresh as RefreshIcon,
-  DateRange as DateRangeIcon,
   AttachMoney as MoneyIcon,
-  TableChart as TableChartIcon,
-  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -150,10 +144,10 @@ const HistorialComprasPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const suppliersData = await proveedorApi.getAll();
-      setSuppliers(suppliersData);
+      setSuppliers((suppliersData as unknown) as ProveedorDTO[]);
 
       // Get compras from API
-      const comprasData: CompraDTO[] = await compraApi.getAll();
+      const comprasData = (await compraApi.getAll() as unknown) as CompraDTO[];
 
       // Map API data to CompraHistorial
       const comprasWithSuppliers: CompraHistorial[] = comprasData.map(compra => {
@@ -162,14 +156,14 @@ const HistorialComprasPage: React.FC = () => {
           id: compra.id,
           numero: compra.numero || `COMP-${compra.id}`,
           supplierId: compra.proveedorId,
-          supplier: suppliersData.find(s => s.id === compra.proveedorId),
+          supplier: (suppliersData.find(s => s.id === compra.proveedorId) as unknown) as ProveedorDTO,
           fecha: compra.fechaCreacion || compra.fechaEntrega || '',
           total: detalles.reduce((sum, item) => sum + (item.cantidad || 0) * (item.costoUnitario || 0), 0),
           estado: compra.estado,
           metodoPago: compra.metodoPago || 'Sin método',
           observaciones: compra.observaciones,
           items: detalles.map(item => ({
-            id: item.id,
+            id: item.id || 0,
             descripcion: item.nombreProductoTemporal || item.descripcionProductoTemporal || 'Sin descripción',
             cantidad: item.cantidad || 0,
             precioUnitario: item.costoUnitario || 0,
@@ -181,7 +175,7 @@ const HistorialComprasPage: React.FC = () => {
       setCompras(comprasWithSuppliers);
 
       // Calculate statistics
-      calculateEstadisticas(comprasWithSuppliers, suppliersData);
+      calculateEstadisticas(comprasWithSuppliers, (suppliersData as unknown) as ProveedorDTO[]);
     } catch (err) {
       setError('Error al cargar los datos');
       console.error('Error loading data:', err);
@@ -559,14 +553,14 @@ const HistorialComprasPage: React.FC = () => {
                   <DatePicker
                     label="Desde"
                     value={fechaDesde}
-                    onChange={setFechaDesde}
+                    onChange={(newValue) => setFechaDesde(newValue as Dayjs | null)}
                     slotProps={{ textField: { size: 'small', fullWidth: true } }}
                   />
 
                   <DatePicker
                     label="Hasta"
                     value={fechaHasta}
-                    onChange={setFechaHasta}
+                    onChange={(newValue) => setFechaHasta(newValue as Dayjs | null)}
                     slotProps={{ textField: { size: 'small', fullWidth: true } }}
                   />
                 </Box>

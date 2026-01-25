@@ -75,7 +75,7 @@ const ConfiguracionTallerPage: React.FC = () => {
         clave: 'VALOR_HORA_MANO_OBRA',
         valor: valorHora,
         descripcion: 'Valor por hora de mano de obra para el cálculo de costos en órdenes de servicio',
-        tipoDato: 'DECIMAL',
+        tipo: 'DECIMAL',
         fechaActualizacion: new Date().toISOString()
       };
 

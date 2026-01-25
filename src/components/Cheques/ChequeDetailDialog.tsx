@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { SwapHoriz as SwapHorizIcon } from '@mui/icons-material';
 import { chequeApi } from '../../api/services/chequeApi';
-import type { Cheque, CambioEstadoChequeDTO, CadenaEndososDTO } from '../../types';
+import type { Cheque, CadenaEndososDTO } from '../../types';
 import ChequeEstadoChip from './ChequeEstadoChip';
 import ChequeTipoChip from './ChequeTipoChip';
 import ChequeEndososChain from './ChequeEndososChain';
@@ -141,26 +141,6 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
       setLoading(false);
       setShowAnulacionInput(false);
       setMotivoAnulacion('');
-    }
-  };
-
-  const handleCambiarEstado = async (nuevoEstado: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const cambio: CambioEstadoChequeDTO = {
-        nuevoEstado: nuevoEstado as any,
-      };
-
-      await chequeApi.cambiarEstado(cheque.id, cambio);
-      onUpdate();
-      onClose();
-    } catch (err: any) {
-      console.error('Error cambiando estado:', err);
-      setError(err.response?.data?.message || 'Error al cambiar el estado');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -378,7 +358,6 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
                   </Box>
                 ) : (
                   <ChequeEndososChain
-                    chequeId={cheque.id}
                     cadenaEndosos={endososChain || undefined}
                     loading={loadingEndosos}
                   />

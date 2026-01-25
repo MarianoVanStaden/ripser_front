@@ -55,7 +55,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
   const [formData, setFormData] = useState<Partial<OpcionFinanciamientoDTO>>({
     nombre: "",
     metodoPago: "EFECTIVO",
@@ -86,7 +86,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
   const cargarOpciones = async () => {
     setLoading(true);
     try {
-      const opcionesCargadas = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(documentoId);
+      const opcionesCargadas = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(documentoId!);
       setOpciones(opcionesCargadas);
     } catch (error) {
       console.error('Error cargando opciones:', error);

@@ -91,12 +91,6 @@ interface RecentSale {
   estado: string;
 }
 
-interface SalesTrend {
-  date: string;
-  amount: number;
-  count: number;
-}
-
 interface ConnectionStatus {
   connected: boolean;
   message: string;
@@ -256,7 +250,7 @@ const Dashboard: React.FC = () => {
       console.log('🔍 Dashboard data received:', {
         clientsCount: clients.length,
         firstClientIds: clients.slice(0, 3).map((c: any) => ({ id: c.id, nombre: c.nombre })),
-        productsCount: products.content?.length || products.length,
+        productsCount: Array.isArray(products) ? products.length : (products as any).content?.length || 0,
         documentosCount: allDocumentos.length,
         firstDocumentosIds: allDocumentos.slice(0, 3).map((d: any) => ({
           id: d.id,
@@ -287,7 +281,6 @@ const Dashboard: React.FC = () => {
       const currentYear = now.getFullYear();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const ninetyDaysAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
 
       // Calculate time-based sales
       const monthlySales = sales.filter((sale: any) => {

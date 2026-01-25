@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Card, CardContent, Divider, Chip, Stack, Button, 
-  Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, 
-  TableRow, IconButton, Dialog, Alert, CircularProgress
+  Grid, Table, TableBody, TableCell, TableContainer, TableHead, 
+  TableRow, IconButton, Alert, CircularProgress
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
   Block as BlockIcon,
   Add as AddIcon,
   Edit as EditIcon,
-  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { type GarantiaDTO } from '../../api/services/garantiaApi';
@@ -343,8 +342,8 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                               />
                             </TableCell>
                             <TableCell>
-                              {reclamo.tecnico 
-                                ? `${reclamo.tecnico.nombre} ${reclamo.tecnico.apellido}` 
+                              {reclamo.tecnicoApellido 
+                                ? `${reclamo.tecnicoNombre} ${reclamo.tecnicoApellido}` 
                                 : '-'}
                             </TableCell>
                             <TableCell align="center">

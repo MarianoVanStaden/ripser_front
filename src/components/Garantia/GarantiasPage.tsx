@@ -7,7 +7,6 @@ import {
 } from '@mui/material';
 import { 
   Add as AddIcon, 
-  Edit as EditIcon, 
   Search as SearchIcon,
   Block as BlockIcon,
   Visibility as VisibilityIcon,

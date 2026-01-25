@@ -18,8 +18,6 @@ import type {
   EquipoFabricadoCreateDTO,
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
-  MedidaEquipo,
-  ColorEquipo,
 } from '../../types';
 import { MEDIDAS_EQUIPO, COLORES_EQUIPO } from '../../types';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -208,7 +206,7 @@ const EquipoForm: React.FC = () => {
   const onSubmit = async (data: any) => {
     try {
       setLoading(true);
-      if (isEdit && id) {
+      if (isEdit && numeroHeladera) {
         const updateData: EquipoFabricadoUpdateDTO = {
           tipo: data.tipo,
           modelo: data.modelo,
@@ -223,7 +221,7 @@ const EquipoForm: React.FC = () => {
           clienteId: selectedCliente?.id,
         };
         
-        const response = await equipoFabricadoApi.update(Number(id), updateData);
+        const response = await equipoFabricadoApi.update(Number(numeroHeladera), updateData);
         console.log('✅ Equipo updated successfully:', response);
         
         // Guardar info del equipo editado para el modal

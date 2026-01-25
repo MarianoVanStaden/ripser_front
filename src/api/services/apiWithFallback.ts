@@ -2,7 +2,7 @@ import * as realClienteApi from './clienteApi';
 import * as realContactoClienteApi from './contactoClienteApi';
 import * as realCuentaCorrienteApi from './cuentaCorrienteApi';
 import * as realSupplierApi from './supplierApi';
-import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi, mockGarantias, mockReclamosGarantia } from './mockData';
+import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi, mockGarantias } from './mockData';
 
 let backendAvailable: boolean | null = null;
 

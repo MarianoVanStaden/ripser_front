@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Grid, Paper, Typography, Box, Card, CardContent, Chip } from '@mui/material';
+import React, { useState } from 'react';
+import { Grid, Typography, Box, Card, CardContent } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PeopleIcon from '@mui/icons-material/People';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';

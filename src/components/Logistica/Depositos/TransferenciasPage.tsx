@@ -57,7 +57,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { transferenciaApi, depositoApi, stockDepositoApi, equipoFabricadoApi } from '../../../api/services';
+import { transferenciaApi, depositoApi, stockDepositoApi } from '../../../api/services';
 import { ubicacionEquipoApi } from '../../../api/services/ubicacionEquipoApi';
 import { useAuth } from '../../../context/AuthContext';
 import type {
@@ -408,7 +408,7 @@ const TransferenciasPage: React.FC = () => {
 
       const dataParaExportar = prepareTableDataForExport(filteredTransferencias, [
         {
-          key: 'numeroTransferencia',
+          key: 'numero' as keyof TransferenciaDepositoDTO,
           header: 'Número',
           transform: (_, row) => `#${row.id}`
         },
@@ -421,7 +421,7 @@ const TransferenciasPage: React.FC = () => {
           transform: (items) => items?.length || 0
         },
         { key: 'estado', header: 'Estado' },
-        { key: 'usuarioCreadorNombre', header: 'Creado Por' },
+        { key: 'usuarioSolicitudNombre', header: 'Creado Por' },
         { key: 'observaciones', header: 'Observaciones' },
       ]);
 
@@ -776,7 +776,7 @@ const TransferenciasPage: React.FC = () => {
       // Contabilizar salidas
       if (!depositoMap.has(t.depositoOrigenId)) {
         depositoMap.set(t.depositoOrigenId, {
-          nombre: t.depositoOrigenNombre,
+          nombre: t.depositoOrigenNombre || `Depósito ${t.depositoOrigenId}`,
           salidas: 0,
           entradas: 0,
         });
@@ -787,7 +787,7 @@ const TransferenciasPage: React.FC = () => {
       // Contabilizar entradas
       if (!depositoMap.has(t.depositoDestinoId)) {
         depositoMap.set(t.depositoDestinoId, {
-          nombre: t.depositoDestinoNombre,
+          nombre: t.depositoDestinoNombre || `Depósito ${t.depositoDestinoId}`,
           salidas: 0,
           entradas: 0,
         });
@@ -978,12 +978,12 @@ const TransferenciasPage: React.FC = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {transferenciasPorEstado.map((entry, index) => (
+                      {transferenciasPorEstado.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -1286,7 +1286,7 @@ const TransferenciasPage: React.FC = () => {
                 onChange={(newValue) =>
                   setNewTransferencia(prev => ({
                     ...prev,
-                    fechaTransferencia: newValue || dayjs(),
+                    fechaTransferencia: newValue ? dayjs(newValue) : dayjs(),
                   }))
                 }
                 slotProps={{ textField: { fullWidth: true } }}
@@ -1667,7 +1667,7 @@ const TransferenciasPage: React.FC = () => {
                   onChange={(newValue) =>
                     setRecepcionData(prev => ({
                       ...prev,
-                      fechaRecepcion: newValue || dayjs(),
+                      fechaRecepcion: newValue ? dayjs(newValue) : dayjs(),
                     }))
                   }
                   slotProps={{ textField: { size: 'small', sx: { width: 250 } } }}

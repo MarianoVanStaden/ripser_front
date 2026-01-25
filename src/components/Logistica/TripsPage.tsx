@@ -51,7 +51,6 @@ import {
   Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  Refresh as RefreshIcon,
   KeyboardArrowLeft as BackIcon,
   KeyboardArrowRight as NextIcon,
 } from '@mui/icons-material';
@@ -168,8 +167,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title,
 const wizardSteps = ['Información', 'Entregas', 'Confirmar'];
 
 const TripsPage2: React.FC = () => {
-  const theme = useTheme();
-  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const { isMobile, isTablet } = useResponsive();
 
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
@@ -183,7 +181,6 @@ const TripsPage2: React.FC = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Viaje | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
-  const [selectedFactura, setSelectedFactura] = useState<DocumentoComercial | null>(null);
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, any>>({});
 
   // Wizard state for mobile
@@ -332,20 +329,19 @@ const TripsPage2: React.FC = () => {
   const isVehicleInUse = (vehicleId: string): boolean => {
     return trips.some(trip =>
       trip.vehiculoId.toString() === vehicleId &&
-      trip.estado === 'EN_CURSO'
+      trip.estado === 'EN_RUTA'
     );
   };
 
   const getTripUsingVehicle = (vehicleId: string): Viaje | undefined => {
     return trips.find(trip =>
       trip.vehiculoId.toString() === vehicleId &&
-      trip.estado === 'EN_CURSO'
+      trip.estado === 'EN_RUTA'
     );
   };
 
   const handleAdd = () => {
     setEditingTrip(null);
-    setSelectedFactura(null);
     setSelectedDeliveryFactura(null);
     setFormData({
       fechaViaje: '',
@@ -369,6 +365,7 @@ const TripsPage2: React.FC = () => {
       destino: trip.destino,
       conductorId: trip.conductorId.toString(),
       vehiculoId: trip.vehiculoId.toString(),
+      facturaId: '',
       estado: trip.estado,
       observaciones: trip.observaciones || '',
     });
@@ -379,7 +376,7 @@ const TripsPage2: React.FC = () => {
     } catch (err) {
       setTripDeliveries([]);
     }
-    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '' });
+    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '' });
     setActiveStep(0);
     setDialogOpen(true);
   };
@@ -520,7 +517,7 @@ const TripsPage2: React.FC = () => {
   const getStatusChip = (status: EstadoViaje) => {
     const statusConfig = {
       PLANIFICADO: { label: 'Planificado', color: 'info' as const },
-      EN_CURSO: { label: 'En Curso', color: 'warning' as const },
+      EN_RUTA: { label: 'En Ruta', color: 'warning' as const },
       COMPLETADO: { label: 'Completado', color: 'success' as const },
       CANCELADO: { label: 'Cancelado', color: 'error' as const },
     };
@@ -1008,7 +1005,7 @@ const TripsPage2: React.FC = () => {
 
               {trip.estado === 'PLANIFICADO' && (
                 <IconButton
-                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_CURSO'); }}
+                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_RUTA'); }}
                   size="small"
                   color="success"
                   sx={{ minWidth: 44, minHeight: 44 }}
@@ -1017,7 +1014,7 @@ const TripsPage2: React.FC = () => {
                 </IconButton>
               )}
 
-              {trip.estado === 'EN_CURSO' && (
+              {trip.estado === 'EN_RUTA' && (
                 <IconButton
                   onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'COMPLETADO'); }}
                   size="small"
@@ -1115,10 +1112,10 @@ const TripsPage2: React.FC = () => {
                 <RouteIcon color="warning" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
                   <Typography variant={isMobile ? 'h5' : 'h4'}>
-                    {trips.filter(t => t.estado === 'EN_CURSO').length}
+                    {trips.filter(t => t.estado === 'EN_RUTA').length}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    En Curso
+                    En Ruta
                   </Typography>
                 </Box>
               </Box>
@@ -1168,7 +1165,7 @@ const TripsPage2: React.FC = () => {
               {[
                 { value: 'all', label: 'Todos' },
                 { value: 'PLANIFICADO', label: 'Planificados' },
-                { value: 'EN_CURSO', label: 'En Curso' },
+                { value: 'EN_RUTA', label: 'En Ruta' },
                 { value: 'COMPLETADO', label: 'Completados' },
               ].map((option) => (
                 <Chip
@@ -1191,7 +1188,7 @@ const TripsPage2: React.FC = () => {
               >
                 <MenuItem value="all">Todos</MenuItem>
                 <MenuItem value="PLANIFICADO">Planificados</MenuItem>
-                <MenuItem value="EN_CURSO">En Curso</MenuItem>
+                <MenuItem value="EN_RUTA">En Ruta</MenuItem>
                 <MenuItem value="COMPLETADO">Completados</MenuItem>
                 <MenuItem value="CANCELADO">Cancelados</MenuItem>
               </Select>
@@ -1227,7 +1224,6 @@ const TripsPage2: React.FC = () => {
                   </Box>
                   <Box component="tbody">
                     {paginatedTrips.map((trip) => {
-                      const tripDeliveriesData = getTripDeliveries(trip.id);
                       const tripFacturas = getFacturasByTrip(trip.id);
                       const tripClientes = getClientesByTrip(trip.id);
 
@@ -1305,11 +1301,11 @@ const TripsPage2: React.FC = () => {
                                 <MapIcon fontSize="small" />
                               </IconButton>
                               {trip.estado === 'PLANIFICADO' && (
-                                <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
+                                <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_RUTA')} size="small" color="success">
                                   <StartIcon fontSize="small" />
                                 </IconButton>
                               )}
-                              {trip.estado === 'EN_CURSO' && (
+                              {trip.estado === 'EN_RUTA' && (
                                 <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
                                   <StopIcon fontSize="small" />
                                 </IconButton>
@@ -1493,7 +1489,7 @@ const TripsPage2: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoViaje })}
                 >
                   <MenuItem value="PLANIFICADO">Planificado</MenuItem>
-                  <MenuItem value="EN_CURSO">En Curso</MenuItem>
+                  <MenuItem value="EN_RUTA">En Ruta</MenuItem>
                   <MenuItem value="COMPLETADO">Completado</MenuItem>
                   <MenuItem value="CANCELADO">Cancelado</MenuItem>
                 </Select>

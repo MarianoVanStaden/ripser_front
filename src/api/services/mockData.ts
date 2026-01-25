@@ -78,6 +78,7 @@ import type {
 export const mockClientes: Cliente[] = [
   {
     id: 1,
+    empresaId: 1,
     nombre: "Juan Carlos",
     apellido: "Pérez",
     cuit: "20-12345678-9",
@@ -96,6 +97,7 @@ export const mockClientes: Cliente[] = [
   },
   {
     id: 2,
+    empresaId: 1,
     nombre: "Distribuidora San Martín",
     razonSocial: "Distribuidora San Martín S.R.L.",
     cuit: "30-67890123-4",
@@ -103,7 +105,7 @@ export const mockClientes: Cliente[] = [
     telefono: "+54 11 9876-5432",
     direccion: "Av. San Martín 567",
     ciudad: "San Martín",
-    provincia: "Buenos Aires",
+    provincia: "BUENOS_AIRES",
     codigoPostal: "1650",
     tipo: "PERSONA_JURIDICA",
     estado: "ACTIVO",
@@ -114,6 +116,7 @@ export const mockClientes: Cliente[] = [
   },
   {
     id: 3,
+    empresaId: 1,
     nombre: "María Elena",
     apellido: "González",
     cuit: "27-87654321-0",
@@ -121,7 +124,7 @@ export const mockClientes: Cliente[] = [
     telefono: "+54 351 444-7890",
     direccion: "Belgrano 890",
     ciudad: "Córdoba",
-    provincia: "Córdoba",
+    provincia: "CORDOBA",
     codigoPostal: "5000",
     tipo: "PERSONA_FISICA",
     estado: "MOROSO",
@@ -132,6 +135,7 @@ export const mockClientes: Cliente[] = [
   },
   {
     id: 4,
+    empresaId: 1,
     nombre: "Comercial Norte",
     razonSocial: "Comercial Norte S.A.",
     cuit: "30-11223344-5",
@@ -139,7 +143,7 @@ export const mockClientes: Cliente[] = [
     telefono: "+54 381 555-0123",
     direccion: "Ruta Nacional 9 Km 1200",
     ciudad: "San Miguel de Tucumán",
-    provincia: "Tucumán",
+    provincia: "TUCUMAN",
     codigoPostal: "4000",
     tipo: "PERSONA_JURIDICA",
     estado: "SUSPENDIDO",
@@ -150,6 +154,7 @@ export const mockClientes: Cliente[] = [
   },
   {
     id: 5,
+    empresaId: 1,
     nombre: "Roberto",
     apellido: "Martínez",
     cuit: "20-99887766-3",
@@ -157,7 +162,7 @@ export const mockClientes: Cliente[] = [
     telefono: "+54 261 333-4567",
     direccion: "Las Heras 456",
     ciudad: "Mendoza",
-    provincia: "Mendoza",
+    provincia: "MENDOZA",
     codigoPostal: "5500",
     tipo: "PERSONA_FISICA",
     estado: "INACTIVO",
@@ -294,6 +299,7 @@ export const mockClienteApi = {
     const newCliente: Cliente = {
       ...cliente,
       id: Math.max(...mockClientes.map((c) => c.id)) + 1,
+      empresaId: 1,
       saldoActual: 0,
       fechaAlta: new Date().toISOString(),
       fechaActualizacion: new Date().toISOString(),

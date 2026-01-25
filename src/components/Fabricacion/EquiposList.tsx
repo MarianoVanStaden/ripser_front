@@ -51,8 +51,8 @@ const EquiposList: React.FC = () => {
   const location = useLocation();
   const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10000); // Load all equipos for client-side filtering
+  const [page] = useState(0);
+  const [pageSize] = useState(10000); // Load all equipos for client-side filtering
   const [totalElements, setTotalElements] = useState(0);
 
   // Filtros
@@ -187,11 +187,7 @@ const EquiposList: React.FC = () => {
       if (estadoAsignacionFilter) {
         console.log('🔍 Filtering by estadoAsignacion:', estadoAsignacionFilter);
         filtered = filtered.filter((e: EquipoFabricadoListDTO) => {
-          // If backend provides estadoAsignacion, use it
-          if (e.estadoAsignacion) {
-            return e.estadoAsignacion === estadoAsignacionFilter;
-          }
-          // Otherwise, infer it
+          // Infer estadoAsignacion from estado and asignado properties
           if (e.estado === 'COMPLETADO') {
             const inferredEstado = e.asignado ? 'ENTREGADO' : 'DISPONIBLE';
             return inferredEstado === estadoAsignacionFilter;
@@ -204,7 +200,7 @@ const EquiposList: React.FC = () => {
       console.log('📋 First 3 equipos:', filtered.slice(0, 3));
 
       // Check if equipos have IDs
-      const equiposSinId = filtered.filter(e => !e.id);
+      const equiposSinId = filtered.filter((e: EquipoFabricadoListDTO) => !e.id);
       if (equiposSinId.length > 0) {
         console.warn(`⚠️ ${equiposSinId.length} equipos sin campo 'id':`, equiposSinId.slice(0, 3));
         console.warn('⚠️ Campos disponibles en equipos:', Object.keys(filtered[0] || {}));

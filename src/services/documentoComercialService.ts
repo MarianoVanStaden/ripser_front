@@ -1,5 +1,5 @@
 import api from '../api'; // Adjust the import based on your project structure
-import { DocumentoComercial, EstadoDocumento } from '../types'; // Adjust the import based on your project structure
+import type { DocumentoComercial, EstadoDocumento } from '../types'; // Adjust the import based on your project structure
 
 export const changeEstadoDocumento = async (id: number, estado: EstadoDocumento): Promise<DocumentoComercial> => {
   const response = await api.put(`/documentos/${id}/estado`, estado, {

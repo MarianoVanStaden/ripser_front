@@ -10,7 +10,7 @@ import {
   type ReclamoGarantiaUpdateDTO
 } from '../../api/services/reclamoGarantiaApi';
 import { employeeApi } from '../../api/services/employeeApi';
-import { garantiaApi, type GarantiaDTO } from '../../api/services/garantiaApi';
+import { type GarantiaDTO } from '../../api/services/garantiaApi';
 
 interface ReclamoFormDialogProps {
   open: boolean;

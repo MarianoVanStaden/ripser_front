@@ -51,8 +51,7 @@ import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services"
 import { documentoApi } from "../../api/services/documentoApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
-import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, DetalleDocumentoDTO, RecetaFabricacionDTO, TipoItemDocumento, ColorEquipo, MedidaEquipo, Lead } from "../../types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { useTenant } from "../../context/TenantContext";
@@ -117,7 +116,7 @@ const initialDetalle: DetalleForm = {
   productoId: "",
   recetaId: "",
   color: "",
-  medida: "",
+  medida: undefined,
   descripcion: "",
   cantidad: 1,
   precioUnitario: 0,
@@ -465,7 +464,7 @@ const PresupuestosPage: React.FC = () => {
         detalle.productoId = "";
         detalle.recetaId = "";
         detalle.color = "";
-        detalle.medida = "";
+        detalle.medida = undefined;
         detalle.descripcion = "";
         detalle.precioUnitario = 0;
         detalle.subtotal = 0;
@@ -476,7 +475,7 @@ const PresupuestosPage: React.FC = () => {
       } else if (field === "color") {
         detalle.color = value as string;
       } else if (field === "medida") {
-        detalle.medida = value as string;
+        detalle.medida = value ? (value as MedidaEquipo) : undefined;
       } else if (field === "descripcion") {
         detalle.descripcion = value as string;
       } else if (field === "cantidad") {
@@ -526,7 +525,8 @@ const PresupuestosPage: React.FC = () => {
     if (presupuesto) {
       setEditingPresupuesto(presupuesto);
       setFormData({
-        clienteId: presupuesto.clienteId.toString() || "",
+        clienteId: presupuesto.clienteId?.toString() || "",
+        leadId: (presupuesto as any).leadId?.toString() || "",
         usuarioId: presupuesto.usuarioId?.toString() || (user?.id ?? 0).toString(),
         fechaEmision: presupuesto.fechaEmision?.split("T")[0] || new Date().toISOString().split("T")[0],
         observaciones: presupuesto.observaciones || "",
@@ -541,7 +541,7 @@ const PresupuestosPage: React.FC = () => {
               productoId: detalle.productoId?.toString() || "",
               recetaId: detalle.recetaId?.toString() || "",
               color: detalle.color || "",
-              medida: detalle.medida || "",
+              medida: detalle.medida || undefined,
               descripcion: detalle.descripcion || "",
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
@@ -805,30 +805,32 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [clientes, presupuestosFinanciamiento]);
 
-  const loadPresupuestos = async () => {
+  // Reload function for manual refresh if needed
+  const _loadPresupuestos = async () => {
     try {
       setLoading(true);
       const data = await documentoApi.getByTipo("PRESUPUESTO");
       setPresupuestos(data);
     } catch (error: any) {
       console.error('Error al cargar presupuestos:', error);
-      
+
       // Show user-friendly error message
       let errorMessage = 'Error al cargar los presupuestos';
-      
-      if (error.response?.status === 500 && 
+
+      if (error.response?.status === 500 &&
           error.response?.data?.message?.includes('More than one row with the given identifier')) {
         errorMessage = 'Error de integridad de datos en la base de datos. Por favor, contacta al administrador del sistema.';
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
-      
+
       // You can use a toast/snackbar here to show the error
       alert(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+  void _loadPresupuestos;
 
   if (loading) {
     return (
@@ -1135,8 +1137,8 @@ const PresupuestosPage: React.FC = () => {
                       ? { type: 'cliente' as const, id: Number(formData.clienteId), nombre: clientes.find(c => c.id.toString() === formData.clienteId)!.nombre, apellido: clientes.find(c => c.id.toString() === formData.clienteId)!.apellido || '' }
                       : null
                     : formData.leadId
-                      ? leads.find(l => l.id.toString() === formData.leadId)
-                        ? { type: 'lead' as const, id: Number(formData.leadId), nombre: leads.find(l => l.id.toString() === formData.leadId)!.nombre, apellido: leads.find(l => l.id.toString() === formData.leadId)!.apellido || '' }
+                      ? leads.find(l => l.id && l.id.toString() === formData.leadId)
+                        ? { type: 'lead' as const, id: Number(formData.leadId), nombre: leads.find(l => l.id && l.id.toString() === formData.leadId)!.nombre, apellido: leads.find(l => l.id && l.id.toString() === formData.leadId)!.apellido || '' }
                         : null
                       : null
                 }
@@ -1145,7 +1147,7 @@ const PresupuestosPage: React.FC = () => {
                     if (newValue.type === 'cliente') {
                       setFormData({ ...formData, clienteId: newValue.id.toString(), leadId: '' });
                     } else {
-                      setFormData({ ...formData, leadId: newValue.id.toString(), clienteId: '' });
+                      setFormData({ ...formData, leadId: newValue.id?.toString() || '', clienteId: '' });
                     }
                   } else {
                     setFormData({ ...formData, clienteId: '', leadId: '' });

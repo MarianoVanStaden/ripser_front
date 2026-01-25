@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { List, ListItem, ListItemText, Avatar, Typography, CircularProgress, Tooltip, Box, Chip } from '@mui/material';
+import { List, ListItem, ListItemText, Avatar, Typography, CircularProgress, Box, Chip } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import BuildIcon from '@mui/icons-material/Build';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import WarningIcon from '@mui/icons-material/Warning';
 import { clientApi, productApi, saleApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
@@ -13,7 +10,6 @@ import { useTenant } from '../../context/TenantContext';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import type { Cliente, Product, Sale } from '../../types';
 
 dayjs.extend(relativeTime);
 dayjs.locale('es');
@@ -86,8 +82,7 @@ export const RecentActivity: React.FC = () => {
             details: c.email || c.telefono ? `${c.email || ''} ${c.telefono || ''}`.trim() : undefined,
             avatarText: (c.nombre?.[0] || 'C').toUpperCase(),
             avatarColor: avatarColors.client,
-            icon: <PeopleIcon fontSize="small" />,
-          }));
+            icon: <PeopleIcon fontSize="small" />,            priority: 'medium' as const,          }));
 
         // Recent products (last 3)
         const recentProducts = products
@@ -103,6 +98,7 @@ export const RecentActivity: React.FC = () => {
             avatarText: (p.nombre?.[0] || 'P').toUpperCase(),
             avatarColor: avatarColors.product,
             icon: <InventoryIcon fontSize="small" />,
+            priority: 'medium' as const,
           }));
 
         // Recent sales (last 5)
@@ -119,6 +115,7 @@ export const RecentActivity: React.FC = () => {
             avatarText: '$',
             avatarColor: avatarColors.sale,
             icon: <TrendingUpIcon fontSize="small" />,
+            priority: 'low' as const,
           }));
 
         // Low stock alerts

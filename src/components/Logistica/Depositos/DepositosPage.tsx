@@ -34,7 +34,6 @@ import {
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   Search as SearchIcon,
   Warehouse as WarehouseIcon,
   CheckCircle as CheckCircleIcon,
@@ -50,7 +49,7 @@ import type { Deposito, DepositoCreateDTO, Sucursal } from '../../../types';
 
 const DepositosPage: React.FC = () => {
   // Context and permissions
-  const { empresaId, sucursalId } = useTenant();
+  const { empresaId } = useTenant();
   const { tienePermiso } = usePermisos();
 
   // State management

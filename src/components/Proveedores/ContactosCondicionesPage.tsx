@@ -16,29 +16,19 @@ import {
   Alert,
   CircularProgress,
   Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   InputAdornment,
   Avatar,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
   ListItemIcon,
   ListItemSecondaryAction,
-  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Phone as PhoneIcon,
-  Email as EmailIcon,
-  Person as PersonIcon,
   Business as BusinessIcon,
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -80,7 +70,7 @@ const ContactosCondicionesPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const proveedoresData = await supplierApi.getAll();
-      setProveedores(proveedoresData);
+      setProveedores(proveedoresData as ProveedorDTO[]);
 
       const contactosData = await contactoApi.getAll();
       setContactos(contactosData);
@@ -110,7 +100,7 @@ const ContactosCondicionesPage: React.FC = () => {
     // Log the data being sent for debugging
     console.log('Saving contacto with data:', contactoData);
 
-    let savedContacto;
+    let savedContacto: ContactoProveedorDTO;
     if (editingContacto && editingContacto.id) {
       savedContacto = await contactoApi.update(editingContacto.id, contactoData);
       setContactos(contactos.map(c => c.id === editingContacto.id ? savedContacto : c));
@@ -160,7 +150,7 @@ const ContactosCondicionesPage: React.FC = () => {
   };
 
   const filteredProveedores = proveedores.filter(prov =>
-    (prov.nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    ((prov as any).nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (prov.razonSocial?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
@@ -232,9 +222,8 @@ const ContactosCondicionesPage: React.FC = () => {
             />
             <List sx={{ maxHeight: 500, overflow: 'auto' }}>
               {filteredProveedores.map((prov) => (
-                <ListItem
+                <ListItemButton
                   key={prov.id}
-                  button
                   selected={selectedProveedor?.id === prov.id}
                   onClick={() => handleSelectProveedor(prov)}
                 >
@@ -244,7 +233,7 @@ const ContactosCondicionesPage: React.FC = () => {
                     </Avatar>
                   </ListItemIcon>
                   <ListItemText
-                    primary={prov.nombre}
+                    primary={(prov as any).nombre}
                     secondary={prov.razonSocial}
                   />
                   <ListItemSecondaryAction>
@@ -254,7 +243,7 @@ const ContactosCondicionesPage: React.FC = () => {
                       color={prov.estado === 'ACTIVO' ? 'success' : 'default'}
                     />
                   </ListItemSecondaryAction>
-                </ListItem>
+                </ListItemButton>
               ))}
             </List>
           </Paper>
@@ -265,7 +254,7 @@ const ContactosCondicionesPage: React.FC = () => {
               <Paper elevation={2} sx={{ p: 3 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                   <Typography variant="h6">
-                    Contactos - {selectedProveedor.nombre}
+                    Contactos - {(selectedProveedor as any).nombre}
                   </Typography>
                   <Button
   variant="contained"

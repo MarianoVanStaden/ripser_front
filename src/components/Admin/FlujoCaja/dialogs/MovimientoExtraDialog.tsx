@@ -233,10 +233,9 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
                   row
                   value={tipo}
                   onChange={handleTipoChange}
-                  disabled={loading}
                 >
-                  <FormControlLabel value="EGRESO" control={<Radio />} label="Gasto Extra" />
-                  <FormControlLabel value="INGRESO" control={<Radio />} label="Cobro Extra" />
+                  <FormControlLabel value="EGRESO" control={<Radio />} label="Gasto Extra" disabled={loading} />
+                  <FormControlLabel value="INGRESO" control={<Radio />} label="Cobro Extra" disabled={loading} />
                 </RadioGroup>
               </FormControl>
             </Grid>
@@ -267,7 +266,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
               <DatePicker
                 label="Fecha *"
                 value={fecha}
-                onChange={(newValue) => newValue && setFecha(newValue)}
+                onChange={(newValue) => newValue && setFecha(newValue as Dayjs)}
                 disabled={loading}
                 slotProps={{
                   textField: {

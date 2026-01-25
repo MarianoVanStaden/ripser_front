@@ -13,7 +13,6 @@ import {
   Assignment as AssignmentIcon,
   CheckCircle as CheckCircleIcon,
   HourglassEmpty as HourglassIcon,
-  Block as BlockIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { 

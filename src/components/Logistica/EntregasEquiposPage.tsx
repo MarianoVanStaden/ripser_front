@@ -16,7 +16,6 @@ import {
   useTheme,
   useMediaQuery,
   SwipeableDrawer,
-  Fab,
   Badge,
   Grid,
 } from '@mui/material';
@@ -141,8 +140,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title,
 };
 
 const EntregasEquiposPage2: React.FC = () => {
-  const theme = useTheme();
-  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const { isMobile, isTablet } = useResponsive();
 
   const [facturasConEquipos, setFacturasConEquipos] = useState<FacturaConEquipos[]>([]);
   const [loading, setLoading] = useState(true);
@@ -251,7 +249,7 @@ const EntregasEquiposPage2: React.FC = () => {
 
       const entregaResponse = await api.post('/api/entregas-viaje', {
         documentoComercialId: selectedFactura.id,
-        direccionEntrega: selectedFactura.clienteDireccion || `Cliente: ${selectedFactura.clienteNombre}`,
+        direccionEntrega: `Cliente: ${selectedFactura.clienteNombre}`,
         fechaEntrega: dayjs().toISOString(),
         estado: 'PENDIENTE',
         observaciones: observaciones || `Entrega directa. Equipos: ${equiposIds.length}`,

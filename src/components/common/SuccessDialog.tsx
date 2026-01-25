@@ -13,9 +13,6 @@ import {
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
-  Visibility as VisibilityIcon,
-  Add as AddIcon,
-  Print as PrintIcon,
 } from '@mui/icons-material';
 
 export interface SuccessDialogAction {

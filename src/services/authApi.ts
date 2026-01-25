@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -10,12 +10,39 @@ const authApi = axios.create({
   },
 });
 
-export const login = async (credentials) => {
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface UserData {
+  email?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+interface PasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+interface ApiErrorResponse {
+  message?: string;
+}
+
+const getErrorMessage = (error: unknown, defaultMessage: string): string => {
+  if (error instanceof AxiosError) {
+    return (error.response?.data as ApiErrorResponse)?.message || defaultMessage;
+  }
+  return defaultMessage;
+};
+
+export const login = async (credentials: LoginCredentials) => {
   try {
     const response = await authApi.post('/login', credentials);
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || 'Error en la solicitud de inicio de sesión';
+    throw getErrorMessage(error, 'Error en la solicitud de inicio de sesión');
   }
 };
 
@@ -23,16 +50,16 @@ export const logout = async () => {
   try {
     await authApi.post('/logout');
   } catch (error) {
-    throw error.response?.data?.message || 'Error en la solicitud de cierre de sesión';
+    throw getErrorMessage(error, 'Error en la solicitud de cierre de sesión');
   }
 };
 
-export const register = async (userData) => {
+export const register = async (userData: UserData) => {
   try {
     const response = await authApi.post('/register', userData);
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || 'Error en la solicitud de registro';
+    throw getErrorMessage(error, 'Error en la solicitud de registro');
   }
 };
 
@@ -41,24 +68,24 @@ export const getProfile = async () => {
     const response = await authApi.get('/profile');
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || 'Error al obtener el perfil';
+    throw getErrorMessage(error, 'Error al obtener el perfil');
   }
 };
 
-export const updateProfile = async (userData) => {
+export const updateProfile = async (userData: UserData) => {
   try {
     const response = await authApi.put('/profile', userData);
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || 'Error al actualizar el perfil';
+    throw getErrorMessage(error, 'Error al actualizar el perfil');
   }
 };
 
-export const changePassword = async (passwordData) => {
+export const changePassword = async (passwordData: PasswordData) => {
   try {
     await authApi.put('/change-password', passwordData);
   } catch (error) {
-    throw error.response?.data?.message || 'Error al cambiar la contraseña';
+    throw getErrorMessage(error, 'Error al cambiar la contraseña');
   }
 };
 

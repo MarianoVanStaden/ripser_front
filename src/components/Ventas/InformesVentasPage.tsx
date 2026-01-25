@@ -30,22 +30,15 @@ import {
   TablePagination,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
   Visibility as VisibilityIcon,
-  Receipt as ReceiptIcon,
   Print as PrintIcon,
-  Delete as DeleteIcon,
   Search as SearchIcon,
   FilterList as FilterListIcon,
   GetApp as GetAppIcon,
   TrendingUp as TrendingUpIcon,
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
-  DateRange as DateRangeIcon,
   BarChart as BarChartIcon,
-  PieChart as PieChartIcon,
-  ShowChart as ShowChartIcon,
 } from '@mui/icons-material';
 // Ensure we import named APIs from the barrel; there is no default export for clienteApi
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
@@ -81,54 +74,41 @@ ChartJS.register(
   Legend
 );
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SaleRecord = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ClientRecord = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type UsuarioRecord = any;
+
 const InformeVentasPage = () => {
   const { empresaId } = useTenant();
-  const [sales, setSales] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
+  const [sales, setSales] = useState<SaleRecord[]>([]);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewingSale, setViewingSale] = useState(null);
-  const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState({});
+  const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null);
+  const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<Record<number, unknown[]>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [vendedorFilter, setVendedorFilter] = useState('all');
-  const [dateFromFilter, setDateFromFilter] = useState(null);
-  const [dateToFilter, setDateToFilter] = useState(null);
+  const [dateFromFilter, setDateFromFilter] = useState<Date | null>(null);
+  const [dateToFilter, setDateToFilter] = useState<Date | null>(null);
   const [tipoDocumentoFilter, setTipoDocumentoFilter] = useState('all');
   const [reportType, setReportType] = useState('summary');
   const [groupBy, setGroupBy] = useState('Método de Pago');
-  const [chartType, setChartType] = useState('pie');
+  const [chartType, setChartType] = useState<'pie' | 'bar' | 'line'>('pie');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     loadData();
   }, [empresaId]); // Re-fetch when tenant changes
-const testUsuarioExistence = (usuariosData) => {
-  console.log('=== TESTING USUARIO EXISTENCE ===');
-  console.log('Total usuarios:', usuariosData.length);
-  
-  // Check if usuario with ID 2 exists
-  const usuario2ById = usuariosData.find(u => u.id === 2);
-  const usuario2ByStringId = usuariosData.find(u => u.id === '2');
-  const usuario2ByNumberId = usuariosData.find(u => u.id === Number(2));
-  
-  console.log('Usuario with id === 2:', usuario2ById);
-  console.log('Usuario with id === "2":', usuario2ByStringId);
-  console.log('Usuario with id === Number(2):', usuario2ByNumberId);
-  
-  // List all usuario IDs
-  console.log('All usuario IDs and types:');
-  usuariosData.forEach((u, index) => {
-    console.log(`${index}: ID=${u.id} (type: ${typeof u.id}), nombre: ${u.nombre || 'N/A'}`);
-  });
-  
-  console.log('=== END TEST ===');
-};
+
 const loadData = async () => {
   try {
     setLoading(true);
@@ -152,20 +132,18 @@ const loadData = async () => {
     ]);
     
     // Combine both document types
-    const salesResponse = [...(Array.isArray(facturasResponse) ? facturasResponse : facturasResponse.content || facturasResponse.data || []), 
-                           ...(Array.isArray(notasCreditoResponse) ? notasCreditoResponse : notasCreditoResponse.content || notasCreditoResponse.data || [])];
+    const salesResponse = [...(Array.isArray(facturasResponse) ? facturasResponse : (facturasResponse as any).content || (facturasResponse as any).data || []),
+                           ...(Array.isArray(notasCreditoResponse) ? notasCreditoResponse : (notasCreditoResponse as any).content || (notasCreditoResponse as any).data || [])];
 
     // Extract actual data from paginated responses
-    const salesData = Array.isArray(salesResponse) ? salesResponse : salesResponse.content || salesResponse.data || [];
-    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : clientsResponse.content || clientsResponse.data || [];
-    const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : usuariosResponse.content || usuariosResponse.data || [];
+    const salesData = Array.isArray(salesResponse) ? salesResponse : (salesResponse as any).content || (salesResponse as any).data || [];
+    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : (clientsResponse as any).content || (clientsResponse as any).data || [];
+    const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : (usuariosResponse as any).content || (usuariosResponse as any).data || [];
 
     console.log('Sales data:', salesData);
     console.log('Clients data:', clientsData);
     console.log('Usuarios data:', usuariosData);
 
-    // Keep all loaded documents (FACTURA and NOTA_CREDITO)
-    const facturas = salesData;
 
     console.log(`Total sales loaded: ${salesData.length}`);
 
@@ -174,7 +152,7 @@ const loadData = async () => {
     console.log('Usuarios count:', usuariosData.length);
     if (usuariosData.length > 0) {
       console.log('First usuario:', usuariosData[0]);
-      usuariosData.forEach((usuario, index) => {
+      usuariosData.forEach((usuario: UsuarioRecord, index: number) => {
         console.log(`Usuario ${index}:`, {
           id: usuario.id,
           idType: typeof usuario.id,
@@ -228,7 +206,8 @@ const loadData = async () => {
     console.log('Usuario with ID "2":', usuariosMap.get("2"));
 
     // Enrich sales data with client and usuario information
-    const enrichedSales = salesData.map(sale => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const enrichedSales = salesData.map((sale: any) => {
       // Map cliente - DocumentoComercial has clienteId and clienteNombre
       let cliente = null;
       if (sale.cliente) {
@@ -271,7 +250,8 @@ const loadData = async () => {
       }
 
       // Map detalles to detalleVentas for compatibility
-      const detalleVentas = (sale.detalles || []).map((detalle) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const detalleVentas = (sale.detalles || []).map((detalle: any) => ({
         ...detalle,
         producto: {
           id: detalle.productoId,
@@ -309,7 +289,8 @@ const loadData = async () => {
     });
 
     // Sort by date descending (most recent first)
-    const sortedSales = enrichedSales.sort((a, b) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sortedSales = enrichedSales.sort((a: any, b: any) => {
       const dateA = new Date(a.fechaVenta || a.fecha_venta || 0).getTime();
       const dateB = new Date(b.fechaVenta || b.fecha_venta || 0).getTime();
       return dateB - dateA;
@@ -320,7 +301,7 @@ const loadData = async () => {
     setUsuarios(usuariosData);
 
     // Load opciones de financiamiento for each factura
-    const opcionesMap = {};
+    const opcionesMap: Record<number, unknown[]> = {};
     for (const sale of enrichedSales) {
       try {
         const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(sale.id);
@@ -333,21 +314,21 @@ const loadData = async () => {
     }
     setOpcionesFinanciamiento(opcionesMap);
 
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Error loading data:', err);
-    setError(err.message || 'Error al cargar los datos. Verifique la conexión con el servidor.');
+    setError(err instanceof Error ? err.message : 'Error al cargar los datos. Verifique la conexión con el servidor.');
   } finally {
     setLoading(false);
   }
 };
 
-  const handleViewSale = (sale) => {
+  const handleViewSale = (sale: SaleRecord) => {
     setViewingSale(sale);
     setViewDialogOpen(true);
   };
 
-  const getStatusLabel = (status) => {
-    const statusLabels = {
+  const getStatusLabel = (status: string) => {
+    const statusLabels: Record<string, string> = {
       PENDIENTE: 'Pendiente',
       ENVIADA: 'Enviada',
       CANCELADA: 'Cancelada',
@@ -357,8 +338,8 @@ const loadData = async () => {
     return statusLabels[status] || status;
   };
 
-  const getStatusColor = (status) => {
-    const statusColors = {
+  const getStatusColor = (status: string): 'warning' | 'info' | 'error' | 'success' | 'default' | 'primary' | 'secondary' => {
+    const statusColors: Record<string, 'warning' | 'info' | 'error' | 'success' | 'default' | 'primary' | 'secondary'> = {
       PENDIENTE: 'warning',
       ENVIADA: 'info',
       CANCELADA: 'error',
@@ -368,8 +349,8 @@ const loadData = async () => {
     return statusColors[status] || 'default';
   };
 
-  const getPaymentMethodLabel = (method) => {
-    const methods = {
+  const getPaymentMethodLabel = (method: string) => {
+    const methods: Record<string, string> = {
       EFECTIVO: 'Efectivo',
       TARJETA_CREDITO: 'Tarjeta de Crédito',
       TARJETA_DEBITO: 'Tarjeta de Débito',
@@ -381,8 +362,8 @@ const loadData = async () => {
     return methods[method] || method;
   };
 
-  const getTipoDocumentoLabel = (tipo) => {
-    const tipos = {
+  const getTipoDocumentoLabel = (tipo: string) => {
+    const tipos: Record<string, string> = {
       FACTURA: 'Factura',
       NOTA_CREDITO: 'Nota de Crédito',
       NOTA_PEDIDO: 'Nota de Pedido',
@@ -391,8 +372,8 @@ const loadData = async () => {
     return tipos[tipo] || tipo;
   };
 
-  const getTipoDocumentoColor = (tipo) => {
-    const colors = {
+  const getTipoDocumentoColor = (tipo: string): 'warning' | 'info' | 'error' | 'success' | 'default' | 'primary' | 'secondary' => {
+    const colors: Record<string, 'warning' | 'info' | 'error' | 'success' | 'default' | 'primary' | 'secondary'> = {
       FACTURA: 'primary',
       NOTA_CREDITO: 'error',
       NOTA_PEDIDO: 'warning',
@@ -401,7 +382,7 @@ const loadData = async () => {
     return colors[tipo] || 'default';
   };
 
-  function getClientFullName(cliente) {
+  function getClientFullName(cliente: ClientRecord) {
     if (!cliente) {
       return 'Cliente no disponible';
     }
@@ -436,7 +417,7 @@ const loadData = async () => {
     return 'Cliente no disponible';
   }
 
-const getUsuarioFullName = (usuario, usuarioId = null) => {
+const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string | null = null) => {
   if (!usuario && !usuarioId) {
     return 'Vendedor no disponible';
   }
@@ -506,47 +487,8 @@ const getUsuarioFullName = (usuario, usuarioId = null) => {
 
   return 'Vendedor no disponible';
 };
-const debugUsuarioMapping = (salesData, usuariosData) => {
-  console.log('=== DEBUGGING USUARIO MAPPING ===');
-  
-  // Log the structure of usuarios data
-  console.log('Usuarios data structure:', usuariosData);
-  if (usuariosData && usuariosData.length > 0) {
-    console.log('First usuario example:', usuariosData[0]);
-    console.log('Usuario fields:', Object.keys(usuariosData[0]));
-  }
-  
-  // Log the structure of sales data
-  console.log('Sales data structure (first item):', salesData[0]);
-  if (salesData && salesData.length > 0) {
-    console.log('Sale fields:', Object.keys(salesData[0]));
-    
-    // Check what usuario-related fields exist in sales
-    const saleUsuarioFields = Object.keys(salesData[0]).filter(key => 
-      key.toLowerCase().includes('usuario') || 
-      key.toLowerCase().includes('vendedor') ||
-      key.toLowerCase().includes('user')
-    );
-    console.log('Usuario-related fields in sales:', saleUsuarioFields);
-  }
-  
-  // Check specific sales with usuarioId = 2
-  const salesWithUsuario2 = salesData.filter(sale => 
-    sale.usuarioId === 2 || sale.usuario_id === 2
-  );
-  console.log('Sales with usuarioId = 2:', salesWithUsuario2);
-  
-  // Check if usuario with ID = 2 exists
-  const usuario2 = usuariosData.find(u => u.id === 2 || u.id === '2');
-  console.log('Usuario with ID = 2:', usuario2);
-  
-  console.log('=== END DEBUG ===');
-};
 
-// Call this function in your loadData function after getting the data:
-// debugUsuarioMapping(salesData, usuariosData);
-
-  const safeParseDate = (dateString) => {
+  const safeParseDate = (dateString: string | null | undefined): Date | null => {
     if (!dateString) return null;
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? null : date;
@@ -628,9 +570,9 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
 
   const { totalRevenue, totalTransactions, averageOrderValue } = calculateTotals();
 
-  const generateSalesReport = () => {
-    const groupedSales = {};
-    filteredSales.forEach(sale => {
+  const generateSalesReport = (): Record<string, { count: number; total: number }> => {
+    const groupedSales: Record<string, { count: number; total: number }> = {};
+    filteredSales.forEach((sale: SaleRecord) => {
       const saleDate = safeParseDate(sale.fechaVenta || sale.fecha_venta) || new Date();
       let key = '';
       switch (groupBy) {
@@ -746,17 +688,20 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'right',
+        position: 'right' as const,
         labels: {
           padding: 15,
           font: {
             size: 12,
           },
-          generateLabels: chartType === 'pie' ? (chart) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          generateLabels: chartType === 'pie' ? (chart: any) => {
             const data = chart.data;
             if (data.labels.length && data.datasets.length) {
-              const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-              return data.labels.map((label, i) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const total = data.datasets[0].data.reduce((a: number, b: number) => a + b, 0);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              return data.labels.map((label: string, i: number) => {
                 const value = data.datasets[0].data[i];
                 const percentage = ((value / total) * 100).toFixed(1);
                 return {
@@ -776,16 +721,18 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
         text: `Ventas por ${groupBy}`,
         font: {
           size: 16,
-          weight: 'bold',
+          weight: 'bold' as const,
         },
         padding: 20,
       },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function(context: any) {
             const label = context.label || '';
             const value = context.parsed || context.parsed.y || 0;
-            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
             return `${label}: $${value.toLocaleString()} (${percentage}%)`;
           },
@@ -800,7 +747,8 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
           text: 'Total ($)',
         },
         ticks: {
-          callback: function(value) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          callback: function(value: any) {
             return '$' + value.toLocaleString();
           },
         },
@@ -901,7 +849,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 <Select
                   value={chartType}
                   label="Tipo de Gráfico"
-                  onChange={(e) => setChartType(e.target.value)}
+                  onChange={(e) => setChartType(e.target.value as 'pie' | 'bar' | 'line')}
                 >
                   <MenuItem value="bar">Barras</MenuItem>
                   <MenuItem value="pie">Torta</MenuItem>
@@ -1071,7 +1019,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 <DatePicker
                   label="Desde"
                   value={dateFromFilter}
-                  onChange={(newValue) => setDateFromFilter(newValue)}
+                  onChange={(newValue) => setDateFromFilter(newValue as Date | null)}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                 />
               </LocalizationProvider>
@@ -1081,7 +1029,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                 <DatePicker
                   label="Hasta"
                   value={dateToFilter}
-                  onChange={(newValue) => setDateToFilter(newValue)}
+                  onChange={(newValue) => setDateToFilter(newValue as Date | null)}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                 />
               </LocalizationProvider>
@@ -1308,7 +1256,7 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {viewingSale.detalleVentas.map((item, index) => (
+                        {viewingSale.detalleVentas.map((item: any, index: number) => (
                           <TableRow key={item.id || index}>
                             <TableCell>
                               {item.tipoItem === 'EQUIPO' ? (
@@ -1369,8 +1317,8 @@ const debugUsuarioMapping = (salesData, usuariosData) => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {opcionesFinanciamiento[viewingSale.id].map((opcion, index) => (
-                          <TableRow key={opcion.id || index}>
+                        {opcionesFinanciamiento[viewingSale.id].map((opcion: any, index: number) => (
+                          <TableRow key={(opcion as any).id || index}>
                             <TableCell>
                               <Typography variant="body2" fontWeight={opcion.esSeleccionada ? 'bold' : 'normal'}>
                                 {opcion.nombre}

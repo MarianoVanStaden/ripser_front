@@ -232,9 +232,9 @@ const StockEquiposPage: React.FC = () => {
   // Handler para exportar inventario de equipos a PDF
   const handleExportEquiposPDF = async (): Promise<void> => {
     try {
-      const disponibles = equipos.filter(e => !e.asignado && e.estadoFabricacion === 'COMPLETADO').length;
+      const disponibles = equipos.filter(e => !e.asignado && e.estado === 'COMPLETADO').length;
       const asignados = equipos.filter(e => e.asignado).length;
-      const enProceso = equipos.filter(e => e.estadoFabricacion === 'EN_PROCESO').length;
+      const enProceso = equipos.filter(e => e.estado === 'EN_PROCESO').length;
 
       await generateEquiposInventoryPDF(
         filteredEquipos,

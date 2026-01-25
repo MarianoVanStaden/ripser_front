@@ -31,14 +31,12 @@ import {
   Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { bancoApi } from '../../api/services/bancoApi';
-import { useTenant } from '../../context/TenantContext';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { Banco } from '../../types';
 import BancoFormDialog from './BancoFormDialog';
 
 const BancosPage: React.FC = () => {
   // Permisos y contexto
-  const { empresaId } = useTenant();
   const { tienePermiso } = usePermisos();
 
   // Estados

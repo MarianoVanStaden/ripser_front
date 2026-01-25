@@ -80,6 +80,7 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
       importe: 0,
       concepto: '',
       numeroComprobante: '',
+      metodoPago: 'EFECTIVO',
     });
     setDialogOpen(true);
   };

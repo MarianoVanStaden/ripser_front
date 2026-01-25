@@ -23,16 +23,7 @@ import {
   TableHead,
   TableRow,
   InputAdornment,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
   Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Divider,
   TablePagination,
   Checkbox,
   FormControlLabel,
@@ -51,7 +42,6 @@ import {
   Receipt as ReceiptIcon,
   Business as BusinessIcon,
   AttachMoney as MoneyIcon,
-  FilterList as FilterIcon,
   Refresh as RefreshIcon,
   Print as PrintIcon,
   GetApp as GetAppIcon,
@@ -64,15 +54,17 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { supplierApi } from '../../api/services/supplierApi';
 import { compraApi} from '../../api/services/compraApi';
-import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO } from '../../types';
+import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO, Producto, OrdenCompra, CategoriaProducto } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
-
-import type { OrdenCompra, ProductoDTO, CategoriaProducto} from '../../types';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
-class ErrorBoundary extends React.Component<{}, { hasError: boolean }> {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, { hasError: boolean }> {
   state = { hasError: false };
 
   static getDerivedStateFromError() {
@@ -90,7 +82,7 @@ const ComprasPedidosPage: React.FC = () => {
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
   const [proveedores, setProveedores] = useState<ProveedorDTO[]>([]);
   const [compras, setCompras] = useState<CompraDTO[]>([]);
-  const [productos, setProductos] = useState<ProductDTO[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +161,7 @@ const loadProveedores = async () => {
     setLoading(true);
     const data = await supplierApi.getAll();
     console.log('Proveedores:', data); // Debug log
-    setProveedores(data);
+    setProveedores(data as ProveedorDTO[]);
     setError(null);
   } catch (err: any) {
     if (err.response?.status === 403) {
@@ -190,28 +182,28 @@ const loadCompras = async () => {
     setLoading(true);
     const data = await compraApi.getAll();
     console.log('Compras data:', JSON.stringify(data, null, 2));
-    setCompras(data);
+    setCompras((data as unknown) as CompraDTO[]);
     setOrdenes(
       data.map((compra) => {
         console.log(`Compra ID: ${compra.id}, proveedorId: ${compra.proveedorId}, proveedor: ${JSON.stringify(compra.proveedor, null, 2)}`);
         const orden = {
           id: compra.id,
-          numero: compra.numero || `COMPRA-${compra.id}`,
-          proveedor: compra.proveedor,
+          numero: (compra as any).numero || `COMPRA-${compra.id}`,
+          proveedor: (compra.proveedor as unknown) as ProveedorDTO,
           supplierId: compra.proveedorId
             ? compra.proveedorId.toString()
             : compra.proveedor?.id
               ? compra.proveedor.id.toString()
               : '',
-          fechaCreacion: compra.fechaCreacion && dayjs(compra.fechaCreacion).isValid()
-            ? compra.fechaCreacion
+          fechaCreacion: (compra as any).fechaCreacion && dayjs((compra as any).fechaCreacion).isValid()
+            ? (compra as any).fechaCreacion
             : new Date().toISOString(),
-          fechaEntregaEstimada: compra.fechaEntrega && dayjs(compra.fechaEntrega).isValid()
-            ? compra.fechaEntrega
+          fechaEntregaEstimada: (compra as any).fechaEntrega && dayjs((compra as any).fechaEntrega).isValid()
+            ? (compra as any).fechaEntrega
             : new Date().toISOString(),
           estado: compra.estado,
-          total: compra.detalles.reduce((sum, item) => sum + item.cantidad * item.costoUnitario, 0),
-          items: compra.detalles.map((detalle) => ({
+          total: (compra as any).detalles?.reduce((sum: number, item: any) => sum + item.cantidad * item.costoUnitario, 0) || 0,
+          items: ((compra as any).detalles || []).map((detalle: any) => ({
             id: detalle.id,
             productoId: detalle.productoId ? detalle.productoId.toString() : '',
             descripcion: detalle.nombreProductoTemporal || detalle.descripcionProductoTemporal || '',
@@ -226,7 +218,7 @@ const loadCompras = async () => {
             esProductoNuevo: detalle.esProductoNuevo ?? !detalle.productoId,
           })),
           observaciones: compra.observaciones,
-          metodoPago: compra.metodoPago,
+          metodoPago: (compra as any).metodoPago || 'EFECTIVO',
         };
         return orden;
       })
@@ -402,93 +394,6 @@ const handleEditOrden = (orden: OrdenCompra) => {
     })),
   });
   setOpenOrdenDialog(true);
-};
-
-const validateOrder = (orden) => {
-  if (!orden.estado || !['PENDIENTE', 'CONFIRMADA', 'EN_TRANSITO', 'RECIBIDA', 'CANCELADA'].includes(orden.estado)) {
-    return { isValid: false, message: 'Debe seleccionar un estado válido' };
-  }
-  if (!orden.items || orden.items.length === 0) {
-    return { isValid: false, message: 'La orden debe tener al menos un item' };
-  }
-  for (let i = 0; i < orden.items.length; i++) {
-    const item = orden.items[i];
-    const hasExistingProduct = item.productoId && item.productoId.trim() !== '';
-    const hasNewProduct = item.esProductoNuevo && item.nombreProductoTemporal && item.nombreProductoTemporal.trim() !== '';
-    if (!hasExistingProduct && !hasNewProduct) {
-      return {
-        isValid: false,
-        message: `El item ${i + 1} debe tener un producto seleccionado o un nombre de producto nuevo`,
-      };
-    }
-    // Validate category for new products
-    if (item.esProductoNuevo && (!item.categoriaId || item.categoriaId.trim() === '')) {
-      return {
-        isValid: false,
-        message: `El item ${i + 1} (producto nuevo) debe tener una categoría seleccionada`,
-      };
-    }
-    if (!item.cantidad || item.cantidad <= 0) {
-      return {
-        isValid: false,
-        message: `El item ${i + 1} debe tener una cantidad válida`,
-      };
-    }
-    if (!item.precioUnitario || item.precioUnitario <= 0) {
-      return {
-        isValid: false,
-        message: `El item ${i + 1} debe tener un precio válido`,
-      };
-    }
-  }
-  return { isValid: true };
-};
-const handleCrearOrden = async () => {
-  try {
-    // Validate the order
-    const validation = validateOrder(newOrden);
-    if (!validation.isValid) {
-      alert(validation.message);
-      return;
-    }
-
-    // Prepare the order data
-    const orderData = {
-      ...newOrden,
-      items: newOrden.items.map(item => ({
-        ...item,
-        // Ensure we have the right product identifier
-        productoId: item.esProductoNuevo ? null : item.productoId,
-        nombreProducto: item.esProductoNuevo ? item.nombreProductoTemporal : item.descripcionProductoTemporal,
-        esProductoNuevo: item.esProductoNuevo || false,
-        cantidad: parseFloat(item.cantidad) || 0,
-        precio: parseFloat(item.precio) || 0,
-        subtotal: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0)
-      }))
-    };
-
-    console.log('Order data to send:', orderData);
-
-    // Send to your API
-    const response = await fetch('/api/ordenes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(orderData)
-    });
-
-    if (response.ok) {
-      alert('Orden creada exitosamente');
-      // Reset form or redirect
-    } else {
-      const errorData = await response.json();
-      alert(`Error: ${errorData.message || 'No se pudo crear la orden'}`);
-    }
-  } catch (error) {
-    console.error('Error creating order:', error);
-    alert('Error al crear la orden');
-  }
 };
 // Function to create new products
 const createNewProduct = async (item: CompraDTO['detalles'][0]): Promise<number> => {
@@ -683,7 +588,7 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
     console.log('Compra Payload:', JSON.stringify(compraPayload, null, 2));
     console.log('Should update stock:', shouldUpdateStock);
 
-    let createdOrUpdatedCompra;
+    let createdOrUpdatedCompra: CompraDTO;
     if (isEditMode && selectedOrden?.id) {
       createdOrUpdatedCompra = await compraApi.update(selectedOrden.id, compraPayload);
       setCompras(compras.map((c) => (c.id === selectedOrden.id ? createdOrUpdatedCompra : c)));
@@ -827,12 +732,12 @@ const generateProductCode = (categoriaId: string): string => {
     .map(item => item.codigoProductoTemporal);
 
   // Combine all codes
-  const allCodes = [...existingCodes, ...currentOrderCodes];
+  const allCodes = [...existingCodes, ...currentOrderCodes].filter(code => code);
 
   // Find the highest number used with this prefix
   let maxNumber = 0;
   allCodes.forEach(code => {
-    const numberPart = code.replace(prefix, '');
+    const numberPart = code!.replace(prefix, '');
     const num = parseInt(numberPart, 10);
     if (!isNaN(num) && num > maxNumber) {
       maxNumber = num;
@@ -987,20 +892,6 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
 
   const getOrderCountByStatus = (status: string) => {
     return ordenes.filter(orden => orden.estado === status).length;
-  };
-
-  const handleSaveCompra = async (compraData: CreateCompraDTO) => {
-    try {
-      setLoading(true);
-      const created = await compraApi.create(compraData);
-      setCompras([created, ...compras]);
-      setOpenOrdenDialog(false);
-      setError(null);
-    } catch (err) {
-      setError('Error al guardar la compra');
-    } finally {
-      setLoading(false);
-    }
   };
 
 const [openDeleteDialog, setOpenDeleteDialog] = useState<number | null>(null);
@@ -1194,14 +1085,14 @@ const handleDeleteCompra = async (id: number) => {
             <DatePicker
               label="Desde"
               value={fechaDesde}
-              onChange={setFechaDesde}
+              onChange={(newValue) => setFechaDesde(newValue as Dayjs | null)}
               slotProps={{ textField: { size: 'small' } }}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
-              onChange={setFechaHasta}
+              onChange={(newValue) => setFechaHasta(newValue as Dayjs | null)}
               slotProps={{ textField: { size: 'small' } }}
             />
 
@@ -1743,8 +1634,8 @@ const handleDeleteCompra = async (id: number) => {
                       {selectedOrden.items.map((item) => {
                         // Try to find the product from the productos array if we have a productoId
                         const producto = item.productoId ? productos.find(p => p.id === Number(item.productoId)) : null;
-                        const productName = item.nombreProductoTemporal || item.nombre || item.productoNombre || producto?.nombre || item.descripcion || 'Producto sin nombre';
-                        const productCode = item.codigoProductoTemporal || item.codigo || producto?.codigo || '';
+                        const productName = item.nombreProductoTemporal || (item as any).nombre || (item as any).productoNombre || producto?.nombre || item.descripcion || 'Producto sin nombre';
+                        const productCode = item.codigoProductoTemporal || (item as any).codigo || producto?.codigo || '';
                         
                         return (
                           <TableRow key={item.id}>

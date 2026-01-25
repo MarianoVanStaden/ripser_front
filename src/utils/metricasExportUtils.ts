@@ -387,7 +387,7 @@ export const exportarMetricasPDF = (
   try {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    void doc.internal.pageSize.getHeight();
 
     // Agregar encabezado corporativo
     let yPosition = addCorporateHeader(doc, 'Informe de Métricas de Leads');

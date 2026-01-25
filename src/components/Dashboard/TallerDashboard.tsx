@@ -6,7 +6,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import EngineeringIcon from '@mui/icons-material/Engineering';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 interface TallerMetrics {
@@ -44,7 +43,6 @@ const TallerDashboard: React.FC = () => {
   });
 
   const [ordenesUrgentes, setOrdenesUrgentes] = useState<OrdenServicio[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchTallerMetrics();
@@ -100,8 +98,6 @@ const TallerDashboard: React.FC = () => {
       ]);
     } catch (error) {
       console.error('Error fetching taller metrics:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

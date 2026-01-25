@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -32,7 +31,6 @@ import {
   Switch,
   FormControlLabel,
   TablePagination,
-  Link,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -71,7 +69,6 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const StockPage: React.FC = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [products, setProducts] = useState<Producto[]>([]);
@@ -165,7 +162,6 @@ const StockPage: React.FC = () => {
       setLoading(true);
       await productApi.update(selectedProduct.id, {
         nombre: editForm.nombre,
-        codigo: editForm.codigo,
         descripcion: editForm.descripcion,
         precio: editForm.precio,
         stockMinimo: editForm.stockMinimo,

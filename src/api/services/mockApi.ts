@@ -4,6 +4,7 @@ import type { Cliente, ContactoCliente, CuentaCorriente, CreateClienteRequest, C
 const mockClientes: Cliente[] = [
   {
     id: 1,
+    empresaId: 1,
     nombre: 'Juan Carlos',
     apellido: 'Pérez',
     razonSocial: undefined,
@@ -26,6 +27,7 @@ const mockClientes: Cliente[] = [
   },
   {
     id: 2,
+    empresaId: 1,
     nombre: 'Tecnología Global',
     apellido: undefined,
     razonSocial: 'Tecnología Global S.A.',
@@ -48,6 +50,7 @@ const mockClientes: Cliente[] = [
   },
   {
     id: 3,
+    empresaId: 1,
     nombre: 'María Elena',
     apellido: 'González',
     razonSocial: undefined,
@@ -56,7 +59,7 @@ const mockClientes: Cliente[] = [
     telefono: '+54 11 6789-0123',
     direccion: 'Calle Falsa 123',
     ciudad: 'La Plata',
-    provincia: 'Buenos Aires',
+    provincia: 'BUENOS_AIRES',
     codigoPostal: '1900',
     tipo: 'PERSONA_FISICA',
     estado: 'MOROSO',
@@ -70,6 +73,7 @@ const mockClientes: Cliente[] = [
   },
   {
     id: 4,
+    empresaId: 1,
     nombre: 'Comercial del Sur',
     apellido: undefined,
     razonSocial: 'Comercial del Sur S.R.L.',
@@ -78,7 +82,7 @@ const mockClientes: Cliente[] = [
     telefono: '+54 221 789-0123',
     direccion: 'Ruta 2 Km 45',
     ciudad: 'Chascomús',
-    provincia: 'Buenos Aires',
+    provincia: 'BUENOS_AIRES',
     codigoPostal: '7130',
     tipo: 'PERSONA_JURIDICA',
     estado: 'SUSPENDIDO',
@@ -92,6 +96,7 @@ const mockClientes: Cliente[] = [
   },
   {
     id: 5,
+    empresaId: 1,
     nombre: 'Roberto',
     apellido: 'Silva',
     razonSocial: undefined,
@@ -206,6 +211,7 @@ export const mockClienteApi = {
     await delay(800);
     const newCliente: Cliente = {
       id: nextClienteId++,
+      empresaId: 1,
       ...cliente,
       saldoActual: 0,
       fechaAlta: new Date().toISOString(),

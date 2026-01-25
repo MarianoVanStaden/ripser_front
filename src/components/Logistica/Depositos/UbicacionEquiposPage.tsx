@@ -38,7 +38,6 @@ import {
   Edit as EditIcon,
   History as HistoryIcon,
   Add as AddIcon,
-  Warehouse as WarehouseIcon,
 } from '@mui/icons-material';
 import { ubicacionEquipoApi } from '../../../api/services/ubicacionEquipoApi';
 import { depositoApi } from '../../../api/services/depositoApi';
@@ -50,7 +49,6 @@ import type {
   Deposito,
   EquipoFabricadoDTO,
   MovimientoEquipo,
-  UbicacionEquipoCreateDTO,
   TipoEquipo,
 } from '../../../types';
 
@@ -562,7 +560,7 @@ const UbicacionEquiposPage: React.FC = () => {
 
       {/* Tabs */}
       <Card sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
           <Tab label="Todos los Equipos" />
           <Tab label="Por Depósito" />
           <Tab label="Buscar Equipo" />

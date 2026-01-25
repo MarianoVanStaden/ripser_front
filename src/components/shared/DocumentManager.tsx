@@ -46,7 +46,6 @@ type Documento = DocumentoLegajo | DocumentoCliente | {
 
 interface DocumentManagerProps {
   entityId: number;
-  entityType: 'legajo' | 'cliente' | 'empleado';
   categorias: string[];
   onUpload: (file: File, categoria: string, descripcion?: string) => Promise<void>;
   onDownload: (id: number, fileName: string) => Promise<void>;
@@ -56,7 +55,6 @@ interface DocumentManagerProps {
 
 const DocumentManager: React.FC<DocumentManagerProps> = ({
   entityId,
-  entityType,
   categorias,
   onUpload,
   onDownload,

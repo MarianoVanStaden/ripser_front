@@ -17,8 +17,6 @@ import type {
   RecetaFabricacionUpdateDTO,
   DetalleRecetaCreateDTO,
   TipoEquipo,
-  ColorEquipo,
-  MedidaEquipo,
   RecetaFabricacionDTO,
 } from '../../types';
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
@@ -64,7 +62,7 @@ const RecetaForm: React.FC = () => {
   const [editSuccessDialogOpen, setEditSuccessDialogOpen] = useState(false);
   const [updatedReceta, setUpdatedReceta] = useState<RecetaFabricacionDTO | null>(null);
 
-  const { control, handleSubmit, formState: { errors }, reset, setValue } = useForm({
+  const { control, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       nombre: '',

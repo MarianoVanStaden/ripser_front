@@ -19,12 +19,11 @@ import type { CadenaEndososDTO } from '../../types';
 dayjs.locale('es');
 
 interface Props {
-  chequeId: number;
   cadenaEndosos?: CadenaEndososDTO;
   loading?: boolean;
 }
 
-const ChequeEndososChain: React.FC<Props> = ({ chequeId, cadenaEndosos, loading }) => {
+const ChequeEndososChain: React.FC<Props> = ({ cadenaEndosos, loading }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>

@@ -145,8 +145,8 @@ const NotasCreditoPage: React.FC = () => {
       ...form,
       facturaId: factura.id,
       facturaNumero: factura.numeroDocumento,
-      clienteId: factura.clienteId,
-      clienteNombre: factura.clienteNombre,
+      clienteId: factura.clienteId || 0,
+      clienteNombre: factura.clienteNombre || '',
       equiposSeleccionados: [],
     });
     setErrors({ ...errors, factura: '' });

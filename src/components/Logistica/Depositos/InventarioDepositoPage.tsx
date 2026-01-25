@@ -59,7 +59,7 @@ import { productApi } from '../../../api/services/productApi';
 import { movimientoStockDepositoApi } from '../../../api/services/movimientosApi';
 import { usePermisos } from '../../../hooks/usePermisos';
 import { useAuth } from '../../../context/AuthContext';
-import type { StockDeposito, Deposito, Producto, MovimientoStockDeposito, StockDepositoCreateDTO } from '../../../types';
+import type { StockDeposito, Deposito, Producto, ProductoDTO, MovimientoStockDeposito, StockDepositoCreateDTO } from '../../../types';
 import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
 import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
 import { calcularStockDisponible, calcularStockAsignado, validarAsignacionStock, formatearErrorBackend, detectarDesincronizacion } from '../../../utils/stockCalculations';
@@ -197,7 +197,7 @@ const InventarioDepositoPage: React.FC = () => {
     const problemas: typeof desincronizados = [];
 
     productos.forEach(producto => {
-      const result = detectarDesincronizacion(producto, stockItems);
+      const result = detectarDesincronizacion(producto as ProductoDTO, stockItems);
       if (!result.sincronizado) {
         problemas.push({ producto, diferencia: result.diferencia });
       }
@@ -304,11 +304,6 @@ const InventarioDepositoPage: React.FC = () => {
   }, [stockItems]);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
-
-  // Get stock distribution for a product
-  const getStockDistribution = (productoId: number) => {
-    return stockItems.filter((item) => item.productoId === productoId);
-  };
 
   // Get total stock for a product
   const getTotalStock = (productoId: number) => {
@@ -434,13 +429,13 @@ const InventarioDepositoPage: React.FC = () => {
 
     const stockTotal = producto.stockActual || 0;
     const stockAsignado = calcularStockAsignado(producto.id, stockItems);
-    const stockDisponible = calcularStockDisponible(producto, stockItems);
+    const stockDisponible = calcularStockDisponible(producto as ProductoDTO, stockItems);
 
     setStockDisponibleInfo({ producto, stockTotal, stockAsignado, stockDisponible });
 
     // Buscar si el producto ya tiene configuración de min/max en algún depósito
     const stockExistente = stockItems.find(s => s.productoId === productoId);
-    if (stockExistente && (stockExistente.stockMinimo > 0 || stockExistente.stockMaximo > 0)) {
+    if (stockExistente && (stockExistente.stockMinimo > 0 || (stockExistente.stockMaximo && stockExistente.stockMaximo > 0))) {
       setConfigExistente({
         stockMinimo: stockExistente.stockMinimo || 0,
         stockMaximo: stockExistente.stockMaximo || 0
@@ -471,7 +466,7 @@ const InventarioDepositoPage: React.FC = () => {
     }
 
     // Validar stock disponible
-    const producto = productos.find(p => p.id === createForm.productoId);
+    const producto = (productos as ProductoDTO[]).find(p => p.id === createForm.productoId);
     if (!producto) {
       setError('Producto no encontrado');
       return;
@@ -898,7 +893,7 @@ const InventarioDepositoPage: React.FC = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="cantidad"
@@ -936,7 +931,7 @@ const InventarioDepositoPage: React.FC = () => {
 
       {/* Tabs */}
       <Card sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
           <Tab label="Vista por Depósito" />
           <Tab label="Vista por Producto" />
         </Tabs>

@@ -11,7 +11,11 @@ export interface AuthUser {
   username: string;
   email?: string;
   roles?: TipoRol[];
+  rol?: string; // Alias for backward compatibility
   esSuperAdmin?: boolean;  // Multi-tenant: indicates if user has full system access
+  empresaId?: number;      // Active company ID
+  sucursalId?: number;     // Active branch ID
+  nombre?: string;         // User's full name
 }
 
 interface AuthContextType {

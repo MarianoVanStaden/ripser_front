@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import apiClient from '../api/config';
 
 export const createPresupuesto = async (data: any) => {
   try {

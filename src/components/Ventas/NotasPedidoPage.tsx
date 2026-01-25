@@ -51,10 +51,8 @@ import type {
   EstadoDocumento,
   MetodoPago,
   DetalleDocumento,
-  Cliente,
   OpcionFinanciamientoDTO,
-  RecetaFabricacionDTO,
-  Lead
+  RecetaFabricacionDTO
 } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import SuccessDialog from "../common/SuccessDialog";
@@ -120,7 +118,8 @@ const NotasPedidoPage: React.FC = () => {
   });
   const [leadConversionDialogOpen, setLeadConversionDialogOpen] = useState(false);
   const [leadToConvert, setLeadToConvert] = useState<DocumentoComercial | null>(null);
-  const [convertingLead, setConvertingLead] = useState(false);
+  void setLeadConversionDialogOpen; // Used in future implementation
+  void leadToConvert; // Used in future implementation
 
   const fetchData = useCallback(async () => {
     try {
@@ -142,7 +141,7 @@ const NotasPedidoPage: React.FC = () => {
         }),
       ]);
 
-      setRecetas(Array.isArray(recetasData) ? recetasData : []);
+      setRecetas((Array.isArray(recetasData) ? (recetasData as unknown) : []) as RecetaFabricacionDTO[]);
 
       const notasArray = Array.isArray(notasData) ? notasData : [];
       
@@ -572,7 +571,7 @@ const NotasPedidoPage: React.FC = () => {
       console.log('opcionFinanciamientoSeleccionadaId:', nota.opcionFinanciamientoSeleccionadaId);
 
       // Obtener el cliente completo
-      const cliente = await clienteApi.getById(nota.clienteId);
+      const cliente = await clienteApi.getById(nota.clienteId!);
       console.log('Cliente encontrado:', cliente);
 
       // Obtener la opción de financiamiento seleccionada si existe

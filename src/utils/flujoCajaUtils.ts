@@ -89,6 +89,7 @@ export const getPaymentMethodColor = (metodo: MetodoPago): string => {
  */
 export const getChequeEstadoLabel = (estado: EstadoChequeType): string => {
   const labels: Record<EstadoChequeType, string> = {
+    RECIBIDO: 'Recibido',
     EN_CARTERA: 'En Cartera',
     DEPOSITADO: 'Depositado',
     COBRADO: 'Cobrado',
@@ -103,6 +104,7 @@ export const getChequeEstadoLabel = (estado: EstadoChequeType): string => {
  */
 export const getChequeEstadoColor = (estado: EstadoChequeType): string => {
   const colors: Record<EstadoChequeType, string> = {
+    RECIBIDO: '#9C27B0', // púrpura
     EN_CARTERA: '#FFC107', // amarillo
     DEPOSITADO: '#2196F3', // azul
     COBRADO: '#4CAF50', // verde

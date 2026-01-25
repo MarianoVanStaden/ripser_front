@@ -9,13 +9,11 @@ import {
   CircularProgress,
   Alert,
   Button,
-  IconButton,
   Chip,
   Paper,
   Stack,
   Divider,
   Avatar,
-  LinearProgress,
   Tooltip
 } from '@mui/material';
 import {
@@ -38,8 +36,7 @@ import {
   Schedule as ScheduleIcon,
   Warning as WarningIcon,
   Error as ErrorIcon,
-  Business as BusinessIcon,
-  Person as PersonIcon
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -309,7 +306,7 @@ export const VentasDashboard = () => {
               Dashboard de Ventas
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Bienvenido, {user?.nombre || user?.username} - {sucursalNombre}
+              Bienvenido, {user?.username} - {sucursalNombre}
             </Typography>
           </Box>
           <Stack 

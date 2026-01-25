@@ -37,7 +37,6 @@ import {
   ListItemText,
 } from '@mui/material';
 import {
-  Add as AddIcon,
   Edit as EditIcon,
   StarRate as StarRateIcon,
   TrendingUp,
@@ -450,7 +449,7 @@ const EvaluacionDesempenoPage = () => {
         <Select
           labelId="supplier-select-label"
           value={selectedSupplier}
-          onChange={(e) => setSelectedSupplier(e.target.value)}
+          onChange={(e) => setSelectedSupplier(e.target.value ? Number(e.target.value) : '')}
           disabled={loading}
         >
           {suppliers.map((supplier) => (
@@ -495,7 +494,7 @@ const EvaluacionDesempenoPage = () => {
                   <TableBody>
                     {getSupplierEvaluations(selectedSupplier).map((evaluacion) => (
                       <TableRow key={evaluacion.id}>
-                        <TableCell>{evaluacion.proveedor.razonSocial}</TableCell>
+                        <TableCell>{suppliers.find(s => s.id === evaluacion.proveedorId)?.razonSocial || 'Proveedor no encontrado'}</TableCell>
                         <TableCell>{evaluacion.criterio}</TableCell>
                         <TableCell>
                           <Rating value={evaluacion.calificacion} precision={0.1} readOnly max={5} />

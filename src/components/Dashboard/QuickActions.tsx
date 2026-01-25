@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Grid, Paper, Typography, Box } from '@mui/material';
+import { Grid, Paper, Typography, Box } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -8,7 +8,6 @@ import BuildIcon from '@mui/icons-material/Build';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import SettingsIcon from '@mui/icons-material/Settings';
 import { useNavigate } from 'react-router-dom';
 
 interface QuickAction {
@@ -114,7 +113,7 @@ const QuickActions: React.FC = () => {
                   justifyContent: 'center',
                 }}
               >
-                {React.cloneElement(action.icon, { fontSize: 'small' })}
+                {React.cloneElement(action.icon as React.ReactElement<any>, { fontSize: 'small' })}
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="caption" fontWeight="600" sx={{ display: 'block' }}>

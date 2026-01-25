@@ -25,9 +25,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Checkbox,
-  ListItemText,
-  OutlinedInput,
   Tooltip,
   FormHelperText,
   Divider,
@@ -45,14 +42,14 @@ import {
   CheckCircle as CheckCircleIcon,
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
-import usuarioAdminApi, { type UsuarioDTO, type TipoRol } from '../../api/services/usuarioAdminApi';
+import usuarioAdminApi, { type TipoRol } from '../../api/services/usuarioAdminApi';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { empresaService } from '../../services/empresaService';
 import { sucursalService } from '../../services/sucursalService';
 import { usuarioEmpresaService } from '../../services/usuarioEmpresaService';
 import { usuarioEmpresaIntegrationService } from '../../services/usuarioEmpresaIntegrationService';
-import { ROLES_EMPRESA_OPTIONS, getAvailableRolesForUser, getRolEmpresaOption, mapRolEmpresaToSystemRole } from '../../utils/roleMapper';
+import { getAvailableRolesForUser, getRolEmpresaOption, mapRolEmpresaToSystemRole } from '../../utils/roleMapper';
 import type { CreateUsuarioWithEmpresaDTO, UsuarioWithEmpresa, RolEmpresaOption } from '../../types/usuario-enhanced.types';
 import type { Empresa, Sucursal, RolEmpresa } from '../../types';
 
@@ -171,58 +168,6 @@ const UsersPage: React.FC = () => {
 
     return () => clearTimeout(timeoutId);
   }, [formData.username, editingUser]);
-
-  // Real-time validation
-  const validateUsername = (value: string): string => {
-    if (!value) return 'El nombre de usuario es requerido';
-    if (value.length < 3) return 'Mínimo 3 caracteres';
-    if (value.length > 60) return 'Máximo 60 caracteres';
-    return '';
-  };
-
-  const validateEmail = (value: string): string => {
-    if (!value) return 'El email es requerido';
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) return 'Email inválido';
-    return '';
-  };
-
-  const validatePassword = (value: string): string => {
-    if (!editingUser) {
-      if (!value) return 'La contraseña es requerida';
-      if (value.length < 8) return 'Mínimo 8 caracteres';
-      if (value.length > 120) return 'Máximo 120 caracteres';
-    }
-    return '';
-  };
-
-  const validateRoles = (roles: string[]): string => {
-    if (!roles || roles.length === 0) return 'Debe seleccionar al menos un rol';
-    return '';
-  };
-
-  // Update form field with validation
-  const updateField = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
-
-    // Validate on change
-    let error = '';
-    switch (field) {
-      case 'username':
-        error = validateUsername(value);
-        break;
-      case 'email':
-        error = validateEmail(value);
-        break;
-      case 'password':
-        error = validatePassword(value);
-        break;
-      case 'roles':
-        error = validateRoles(value);
-        break;
-    }
-    setValidationErrors({ ...validationErrors, [field]: error });
-  };
 
   const loadData = async () => {
     try {

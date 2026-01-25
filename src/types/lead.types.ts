@@ -82,6 +82,7 @@ export interface LeadDTO {
   motivoRechazo?: string;
   fechaConversion?: string;
   diasHastaConversion?: number;
+  clienteIdConvertido?: number;
   creadoPorId?: number;
   modificadoPorId?: number;
   fechaCreacion?: string;
@@ -211,6 +212,7 @@ export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
 export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: 'Primer Contacto',
   CONVERTIDO: 'Convertido',
+  PERDIDO: 'Perdido',
   DESCARTADO: 'Descartado',
   MOSTRO_INTERES: 'Mostró Interés',
   CLIENTE_POTENCIAL: 'Cliente Potencial',

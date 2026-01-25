@@ -25,4 +25,9 @@ export const contactoClienteApi = {
     const response = await api.put(`/clientes/contactos/${id}`, contacto);
     return response.data;
   },
+
+  // Delete contact
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/clientes/contactos/${id}`);
+  },
 };
