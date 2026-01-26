@@ -1,6 +1,7 @@
 // frontend/src/api/testConnection.ts
+// In production with Nginx proxy, use relative URLs (empty string)
 const API_BASE_URL =
-  (import.meta as any).env?.VITE_API_BASE_URL ?? "http://localhost:8080/RipserApp";
+  (import.meta as any).env?.VITE_API_BASE_URL ?? "";
 
 export type ConnectionStatus = { connected: boolean; message: string };
 

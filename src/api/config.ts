@@ -22,10 +22,11 @@ export const setAuthToken = (token: string | null) => {
 };
 
 // Create axios instance with default configuration
-// Resolve base URL and ensure it ends with /api for consistency
+// Resolve base URL: empty string for relative URLs (works with Nginx proxy)
+// In production with Nginx, requests to /api/* are proxied to the backend
 const rawBase = import.meta.env.DEV
   ? ''
-  : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/RipserApp');
+  : (import.meta.env.VITE_API_BASE_URL ?? '');
 const normalizedBase = /^https?:\/\//.test(rawBase)
   ? rawBase.replace(/\/$/, '')
   : rawBase;

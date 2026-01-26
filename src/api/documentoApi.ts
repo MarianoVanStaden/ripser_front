@@ -14,7 +14,8 @@ type DocumentoPresupuestoPayload = {
 };
 
 // Use environment variable for API base URL with correct endpoint
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/RipserApp/api/documentos";
+// In production with Nginx proxy, use relative URLs
+const API_URL = (import.meta.env.VITE_API_URL || "/api") + "/documentos";
 
 export const documentoApi = {
   // Get documents by type (PRESUPUESTO, NOTA_PEDIDO, FACTURA)
