@@ -515,14 +515,14 @@ const TripsPage2: React.FC = () => {
   };
 
   const getStatusChip = (status: EstadoViaje) => {
-    const statusConfig = {
-      PLANIFICADO: { label: 'Planificado', color: 'info' as const },
-      EN_RUTA: { label: 'En Ruta', color: 'warning' as const },
-      COMPLETADO: { label: 'Completado', color: 'success' as const },
-      CANCELADO: { label: 'Cancelado', color: 'error' as const },
+    const statusConfig: Record<string, { label: string; color: 'info' | 'warning' | 'success' | 'error' | 'default' }> = {
+      PLANIFICADO: { label: 'Planificado', color: 'info' },
+      EN_RUTA: { label: 'En Ruta', color: 'warning' },
+      COMPLETADO: { label: 'Completado', color: 'success' },
+      CANCELADO: { label: 'Cancelado', color: 'error' },
     };
 
-    const config = statusConfig[status];
+    const config = statusConfig[status] || { label: status || 'Desconocido', color: 'default' };
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
