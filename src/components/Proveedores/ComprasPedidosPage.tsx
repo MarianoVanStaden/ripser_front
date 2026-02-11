@@ -241,7 +241,7 @@ const loadCompras = async () => {
 const loadProductos = async () => {
   try {
     setLoading(true);
-    const data = await productApi.getAll();
+    const data = await productApi.getAll(0, 10000);
     console.log('Productos response:', data); // Log the full response
     setProductos(data || []); // productApi.getAll ya retorna data.content
     setError(null);
@@ -495,11 +495,13 @@ const detectPriceChanges = () => {
   newOrden.items.forEach((item) => {
     if (item.productoId && !item.esProductoNuevo) {
       const producto = productos.find(p => p.id.toString() === item.productoId);
-      if (producto && producto.precio !== item.precioUnitario) {
+      // Comparar con el costo anterior (precio de compra), no el precio de venta
+      const costoAnterior = producto?.costo ?? 0;
+      if (producto && costoAnterior !== item.precioUnitario) {
         changes.push({
           productoId: producto.id,
           nombreProducto: producto.nombre,
-          precioAnterior: producto.precio,
+          precioAnterior: costoAnterior,
           precioNuevo: item.precioUnitario,
           shouldUpdate: true, // Default to true
         });
@@ -1762,15 +1764,18 @@ const handleDeleteCompra = async (id: number) => {
                   <TableRow>
                     <TableCell>Actualizar</TableCell>
                     <TableCell>Producto</TableCell>
-                    <TableCell align="right">Precio Anterior</TableCell>
+                    <TableCell align="right">Costo Anterior</TableCell>
                     <TableCell align="center">→</TableCell>
-                    <TableCell align="right">Precio Nuevo</TableCell>
+                    <TableCell align="right">Costo Nuevo</TableCell>
                     <TableCell align="right">Variación</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {priceChanges.map((change, index) => {
-                    const variation = ((change.precioNuevo - change.precioAnterior) / change.precioAnterior) * 100;
+                    // Proteger contra división por cero cuando el costo anterior es 0
+                    const variation = change.precioAnterior > 0
+                      ? ((change.precioNuevo - change.precioAnterior) / change.precioAnterior) * 100
+                      : (change.precioNuevo > 0 ? 100 : 0); // Si no había costo anterior, es 100% nuevo
                     const isIncrease = variation > 0;
 
                     return (

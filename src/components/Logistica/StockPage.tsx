@@ -46,6 +46,8 @@ import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
 import type { Producto, MovimientoStock, CategoriaProducto } from '../../types';
 import { generateStockInventoryPDF } from '../../utils/pdfExportUtils';
+import { loadPriceCalculationParams, calculateSellingPrice } from '../../utils/priceCalculations';
+import type { PriceCalculationParams } from '../../utils/priceCalculations';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -84,10 +86,15 @@ const StockPage: React.FC = () => {
     codigo: '',
     descripcion: '',
     precio: 0,
+    costo: null as number | null,
     stockMinimo: 0,
     categoriaProductoId: 1,
     activo: true,
   });
+
+  // Price calculation states
+  const [priceParams, setPriceParams] = useState<PriceCalculationParams | null>(null);
+  const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
 
   // Filter states for Inventory tab
   const [searchTerm, setSearchTerm] = useState('');
@@ -108,7 +115,27 @@ const StockPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    loadPriceParams();
   }, []);
+
+  const loadPriceParams = async () => {
+    try {
+      const params = await loadPriceCalculationParams();
+      setPriceParams(params);
+    } catch (error) {
+      console.warn('Could not load price calculation parameters');
+    }
+  };
+
+  // Calculate suggested price when costo changes
+  useEffect(() => {
+    if (editForm.costo != null && editForm.costo > 0 && priceParams) {
+      const calculated = calculateSellingPrice(editForm.costo, priceParams.porcentajeGanancia, priceParams.redondeo);
+      setSuggestedPrice(calculated);
+    } else {
+      setSuggestedPrice(null);
+    }
+  }, [editForm.costo, priceParams]);
 
   const loadData = async () => {
     try {
@@ -148,10 +175,12 @@ const StockPage: React.FC = () => {
       codigo: product.codigo || '',
       descripcion: product.descripcion || '',
       precio: product.precio,
+      costo: product.costo,
       stockMinimo: product.stockMinimo,
       categoriaProductoId: product.categoriaProducto?.id || product.categoriaProductoId || 1,
       activo: product.activo,
     });
+    setSuggestedPrice(null);
     setEditDialogOpen(true);
   };
 
@@ -164,6 +193,7 @@ const StockPage: React.FC = () => {
         nombre: editForm.nombre,
         descripcion: editForm.descripcion,
         precio: editForm.precio,
+        costo: editForm.costo,
         stockMinimo: editForm.stockMinimo,
         categoriaProductoId: editForm.categoriaProductoId,
         activo: editForm.activo,
@@ -506,6 +536,7 @@ const StockPage: React.FC = () => {
                     <TableCell sx={{ minWidth: 100 }} align="center">Stock Actual</TableCell>
                     <TableCell sx={{ minWidth: 100 }} align="center">Stock Mínimo</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Categoría</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Costo</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Precio</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
                     <TableCell sx={{ minWidth: 100 }} align="center">Acciones</TableCell>
@@ -542,6 +573,12 @@ const StockPage: React.FC = () => {
                           variant="outlined"
                         />
                       </TableCell>
+                      <TableCell>
+                        {product.costo != null
+                          ? `$${product.costo.toLocaleString()}`
+                          : <Typography variant="caption" color="text.secondary">-</Typography>
+                        }
+                      </TableCell>
                       <TableCell>${product.precio.toLocaleString()}</TableCell>
                       <TableCell>
                         {getStockChip(product.stockActual, product.stockMinimo, product.activo)}
@@ -559,7 +596,7 @@ const StockPage: React.FC = () => {
                   ))}
                   {filteredProducts.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} align="center">
+                      <TableCell colSpan={9} align="center">
                         <Box textAlign="center" py={4}>
                           <Typography variant="body1" color="text.secondary">
                             No se encontraron productos con los filtros aplicados
@@ -758,7 +795,41 @@ const StockPage: React.FC = () => {
             />
 
             <TextField
-              label="Precio"
+              label="Costo (Precio de Compra)"
+              type="number"
+              value={editForm.costo ?? ''}
+              onChange={(e) => setEditForm({
+                ...editForm,
+                costo: e.target.value ? parseFloat(e.target.value) : null
+              })}
+              fullWidth
+              inputProps={{ step: '0.01', min: '0' }}
+              helperText="Costo de adquisicion del producto"
+            />
+
+            {suggestedPrice !== null && (
+              <Box sx={{ p: 2, bgcolor: 'info.main', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="body2" color="info.contrastText">
+                    Precio sugerido: <strong>${suggestedPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
+                  </Typography>
+                  <Typography variant="caption" color="info.contrastText">
+                    (Ganancia: {priceParams?.porcentajeGanancia.toFixed(2)}%, Redondeo: {priceParams?.redondeo})
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setEditForm({ ...editForm, precio: suggestedPrice })}
+                  sx={{ color: 'info.contrastText', borderColor: 'info.contrastText' }}
+                >
+                  Aplicar
+                </Button>
+              </Box>
+            )}
+
+            <TextField
+              label="Precio de Venta"
               type="number"
               value={editForm.precio}
               onChange={(e) => setEditForm({ ...editForm, precio: parseFloat(e.target.value) || 0 })}

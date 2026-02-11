@@ -111,7 +111,7 @@ const Dashboard: React.FC = () => {
       // Fetch data from multiple endpoints (orders set to empty array, orderApi removed)
       const [clients, products, sales, lowStockProducts] = await Promise.all([
         clientApi.getAll(),
-        productApi.getAll(),
+        productApi.getAll(0, 10000),
         saleApi.getAll(),
         productApi.getLowStock(), // Products with low stock
       ]);

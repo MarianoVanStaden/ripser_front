@@ -40,6 +40,7 @@ interface Producto {
   nombre: string;
   codigo: string;
   precio: number;
+  costo: number | null;
 }
 
 const RecetaForm: React.FC = () => {
@@ -225,11 +226,11 @@ const RecetaForm: React.FC = () => {
       else if (field === 'costoUnitario') detalle.costoUnitario = Number(value) || 0;
       else if (field === 'observaciones') detalle.observaciones = value as string;
 
-      // Auto-update cost when product changes
+      // Auto-update cost when product changes (prefer costo over precio)
       if (field === 'productoId' && value) {
         const producto = productos.find((p) => p.id === Number(value));
         if (producto) {
-          detalle.costoUnitario = producto.precio || 0;
+          detalle.costoUnitario = producto.costo ?? producto.precio ?? 0;
         }
       }
 

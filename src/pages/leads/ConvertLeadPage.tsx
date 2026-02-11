@@ -68,7 +68,7 @@ export const ConvertLeadPage = () => {
       setLoading(true);
       const [leadData, productosData, recetasData] = await Promise.all([
         leadApi.getById(leadId),
-        productApi.getAll().catch(() => []),
+        productApi.getAll(0, 10000).catch(() => []),
         recetaFabricacionApi.findAllActive().catch(() => [])
       ]);
       

@@ -171,6 +171,8 @@ const SettingsPage: React.FC = () => {
     NOMBRE: 'Información de Empresa',
     TELEFONO: 'Contacto',
     EMAIL: 'Contacto',
+    PORCENTAJE: 'Calculo de Precios',
+    REDONDEO: 'Calculo de Precios',
     GENERAL: 'General',
   };
 
@@ -301,6 +303,71 @@ const SettingsPage: React.FC = () => {
                 }}
               >
                 Crear META_PRESUPUESTO_MENSUAL
+              </Button>
+            )}
+          </Stack>
+        </Alert>
+      ) : null}
+
+      {/* Ayuda Rápida - Parámetros de Cálculo de Precios */}
+      {!parameters.find(p => p.clave === 'PORCENTAJE_GANANCIA') || !parameters.find(p => p.clave === 'REDONDEO_PRECIO') ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            💰 Configuración de Calculo de Precios
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Para calcular automaticamente el precio de venta a partir del costo, configure los siguientes parametros:
+          </Typography>
+          <Box sx={{ ml: 2, mb: 2 }}>
+            <Typography variant="body2" fontWeight="600">• PORCENTAJE_GANANCIA</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Porcentaje de ganancia para calcular precio de venta (ej: 27.671993 para ~27.67%)
+            </Typography>
+            <br/>
+            <Typography variant="body2" fontWeight="600" sx={{ mt: 1 }}>• REDONDEO_PRECIO</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Factor de redondeo para el precio calculado (ej: 100 para redondear a centenas)
+            </Typography>
+          </Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            {!parameters.find(p => p.clave === 'PORCENTAJE_GANANCIA') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                fullWidth={isMobile}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'PORCENTAJE_GANANCIA',
+                    valor: '27.671993',
+                    descripcion: 'Porcentaje de ganancia para calcular el precio de venta a partir del costo. Formula: precio = costo * (1 + porcentaje/100)',
+                    tipo: 'DECIMAL',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear PORCENTAJE_GANANCIA
+              </Button>
+            )}
+            {!parameters.find(p => p.clave === 'REDONDEO_PRECIO') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                fullWidth={isMobile}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'REDONDEO_PRECIO',
+                    valor: '100',
+                    descripcion: 'Factor de redondeo para el precio de venta calculado. Ej: 10 redondea a decenas, 100 a centenas, 1000 a miles.',
+                    tipo: 'INTEGER',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear REDONDEO_PRECIO
               </Button>
             )}
           </Stack>

@@ -93,4 +93,12 @@ export const recetaFabricacionApi = {
     const response = await api.get<RecetaFabricacionDTO[]>('/api/recetas-fabricacion/disponibles-venta');
     return response.data;
   },
+
+  // Recalculate costs for all ingredients using current Producto.costo
+  recalcularCostos: async (id: number): Promise<RecetaFabricacionDTO> => {
+    const response = await api.patch<RecetaFabricacionDTO>(
+      `/api/recetas-fabricacion/${id}/recalcular-costos`
+    );
+    return response.data;
+  },
 };

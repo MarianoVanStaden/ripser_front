@@ -611,6 +611,7 @@ export interface Producto {
   nombre: string;
   descripcion?: string;
   precio: number;
+  costo: number | null;
   stockActual: number;
   stockMinimo: number;
   codigo?: string;
@@ -626,6 +627,7 @@ export interface CreateProductRequest {
   nombre: string;
   descripcion?: string;
   precio: number;
+  costo?: number | null;
   stockActual: number;
   stockMinimo: number;
   codigo?: string;
@@ -638,6 +640,7 @@ export interface ProductoCreateDTO {
   nombre: string;
   descripcion?: string;
   precio: number;
+  costo?: number | null;
   stockActual: number;
   stockMinimo: number;
   codigo?: string;
@@ -649,6 +652,7 @@ export interface ProductoUpdateDTO {
   nombre?: string;
   descripcion?: string;
   precio?: number;
+  costo?: number | null;
   stockMinimo?: number;
   categoriaProductoId?: number;
   activo?: boolean;
@@ -660,6 +664,7 @@ export interface ProductoDTO {
   nombre: string;
   descripcion?: string;
   precio: number;
+  costo: number | null;
   stockActual: number;
   stockMinimo: number;
   codigo?: string;
@@ -675,6 +680,7 @@ export interface ProductoListDTO {
   nombre: string;
   codigo?: string;
   precio: number;
+  costo: number | null;
   stockActual: number;
   stockMinimo: number;
   categoriaProductoNombre?: string;
@@ -1480,6 +1486,7 @@ export type ColorEquipo =
   | 'FAPLAC_NORDICO_FINLANDES';
 
 export type MedidaEquipo =
+  | '0.5m'
   | '0.8m'
   | '0.9m'
   | '1.0m'
@@ -2261,6 +2268,7 @@ export interface RecetaFabricacionDTO {
   color?: string;
   observaciones?: string;
   precioVenta?: number;
+  costoFabricacion: number;
   disponibleParaVenta?: boolean;
   activo: boolean;
   fechaCreacion: string;
@@ -2275,6 +2283,7 @@ export type RecetaFabricacionListDTO = {
   modelo?: string;
   medida?: string;
   color?: string;
+  costoFabricacion: number;
   activo: boolean;
   fechaCreacion: string;
   cantidadDetalles: number;

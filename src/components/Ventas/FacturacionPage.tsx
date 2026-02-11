@@ -232,7 +232,7 @@ const FacturacionPage = () => {
           if (err?.response?.status === 403) return { content: [] };
           return { content: [] };
         }),
-        productApi.getAll().catch(() => []),
+        productApi.getAll(0, 10000).catch(() => []),
         recetaFabricacionApi.findDisponiblesParaVenta().catch(() => []),
         documentoApi.getByTipo('NOTA_PEDIDO').catch(() => []),
         opcionFinanciamientoTemplateApi.obtenerActivas().catch(() => []),

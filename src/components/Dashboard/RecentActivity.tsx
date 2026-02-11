@@ -65,7 +65,7 @@ export const RecentActivity: React.FC = () => {
         // Fetch latest clients, products, and sales
         const [clients, products, sales] = await Promise.all([
           clientApi.getAll(),
-          productApi.getAll(),
+          productApi.getAll(0, 10000),
           saleApi.getAll(),
         ]);
 

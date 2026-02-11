@@ -252,7 +252,7 @@ const PresupuestosPage: React.FC = () => {
           setError(errorMessage);
           return [];
         }),
-        productApi.getAll().catch((err) => {
+        productApi.getAll(0, 10000).catch((err) => {
           console.error("Error fetching productos:", err);
           setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
           return [];

@@ -33,6 +33,7 @@ import {
   Delete as DeleteIcon,
   CheckCircle,
   Cancel,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -47,6 +48,7 @@ interface Producto {
   nombre: string;
   codigo: string;
   precio: number;
+  costo: number | null;
 }
 
 const RecetaDetail: React.FC = () => {
@@ -72,6 +74,9 @@ const RecetaDetail: React.FC = () => {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+
+  // Estado para recalculo de costos
+  const [recalculatingCosts, setRecalculatingCosts] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -182,6 +187,29 @@ const RecetaDetail: React.FC = () => {
         message: 'Error al cambiar el estado',
         severity: 'error',
       });
+    }
+  };
+
+  const handleRecalcularCostos = async () => {
+    if (!receta) return;
+    try {
+      setRecalculatingCosts(true);
+      const updated = await recetaFabricacionApi.recalcularCostos(receta.id);
+      setReceta(updated);
+      setSnackbar({
+        open: true,
+        message: 'Costos recalculados correctamente',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Error recalculating costs:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al recalcular los costos',
+        severity: 'error',
+      });
+    } finally {
+      setRecalculatingCosts(false);
     }
   };
 
@@ -296,6 +324,16 @@ const RecetaDetail: React.FC = () => {
                 </Box>
                 <Box>
                   <Typography variant="caption" color="textSecondary">
+                    Costo de Fabricacion
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600" color="secondary">
+                    {receta.costoFabricacion != null
+                      ? `$${receta.costoFabricacion.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                      : 'No calculado'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="textSecondary">
                     Disponible para Venta
                   </Typography>
                   <Typography variant="body1">
@@ -344,13 +382,24 @@ const RecetaDetail: React.FC = () => {
       <Paper elevation={2} sx={{ p: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Lista de Materiales</Typography>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={() => setAddDialog(true)}
-          >
-            Agregar Material
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={recalculatingCosts ? <CircularProgress size={20} /> : <RefreshIcon />}
+              onClick={handleRecalcularCostos}
+              disabled={recalculatingCosts || receta.detalles.length === 0}
+            >
+              Recalcular Costos
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={() => setAddDialog(true)}
+            >
+              Agregar Material
+            </Button>
+          </Stack>
         </Box>
 
         <TableContainer>
@@ -443,7 +492,7 @@ const RecetaDetail: React.FC = () => {
                   setNewDetalle((prev) => ({
                     ...prev,
                     productoId: newValue.id,
-                    costoUnitario: newValue.precio,
+                    costoUnitario: newValue.costo ?? newValue.precio,
                   }));
                 }
               }}

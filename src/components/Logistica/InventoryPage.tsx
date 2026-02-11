@@ -85,7 +85,7 @@ const InventoryPage: React.FC = () => {
       
       // Load data from backend APIs
       const [productsData, categoriesData, movimientosData] = await Promise.all([
-        productApi.getAll(),
+        productApi.getAll(0, 10000),
         categoriaProductoApi.getAll(),
         movimientoStockApi.getAll()
       ]);
