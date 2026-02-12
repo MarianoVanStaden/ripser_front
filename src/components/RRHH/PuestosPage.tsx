@@ -1,5 +1,5 @@
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect } from 'react';
+// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -26,9 +26,7 @@ import {
   InputAdornment,
   Grid,
   Chip,
-  Divider,
-  useMediaQuery,
-  useTheme
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,49 +35,58 @@ import {
   Refresh as RefreshIcon,
   Search as SearchIcon,
   Work as WorkIcon,
-  AttachMoney as MoneyIcon,
   Business as BusinessIcon,
-  Description as DescriptionIcon
+  People as PeopleIcon,
+  Visibility as VisibilityIcon,
+  CheckCircle as CheckCircleIcon,
+  PowerSettingsNew as ActivarIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { puestoApi } from '../../api/services/puestoApi';
-import type { Puesto } from '../../types';
+import { usePermisos } from '../../hooks/usePermisos';
+import type { PuestoListDTO } from '../../types';
+import PuestoFormDialog from './PuestoFormDialog';
+import { formatPrice } from '../../utils/priceCalculations';
 
 const PuestosPage: React.FC = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [puestos, setPuestos] = useState<Puesto[]>([]);
+  const navigate = useNavigate();
+  const { tieneRol } = usePermisos();
+  const canWrite = tieneRol('ADMIN', 'ADMIN_EMPRESA');
+
+  const [puestos, setPuestos] = useState<PuestoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Puesto | null>(null);
-  const [openDetail, setOpenDetail] = useState(false);
-  const [openForm, setOpenForm] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [editingPuesto, setEditingPuesto] = useState<Puesto | null>(null);
-  
-  // Filtros
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [departamentoFilter, setDepartamentoFilter] = useState('TODOS');
+  const [departamentos, setDepartamentos] = useState<string[]>([]);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    nombre: '',
-    descripcion: '',
-    departamento: '',
-    salarioBase: ''
-  });
+  // Pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+
+  // Dialogs
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingPuesto, setEditingPuesto] = useState<PuestoListDTO | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedForDelete, setSelectedForDelete] = useState<PuestoListDTO | null>(null);
 
   useEffect(() => {
-    loadPuestos();
+    loadData();
   }, []);
 
-  const loadPuestos = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await puestoApi.getAll();
-      console.log('Puestos raw data:', data);
-      console.log('Primer puesto:', data[0]);
-      setPuestos(Array.isArray(data) ? data : []);
+      const [puestosData, deptsData] = await Promise.all([
+        puestoApi.getAll(),
+        puestoApi.getDepartamentos(),
+      ]);
+      setPuestos(Array.isArray(puestosData) ? puestosData : []);
+      setDepartamentos(Array.isArray(deptsData) ? deptsData : []);
     } catch (err) {
       setError('Error al cargar los puestos');
       console.error('Error loading puestos:', err);
@@ -89,116 +96,78 @@ const PuestosPage: React.FC = () => {
     }
   };
 
-  const departamentos = ['TODOS', ...Array.from(new Set(puestos.map(p => p.departamento).filter(Boolean)))];
+  const filteredPuestos = useMemo(() => {
+    return puestos.filter((p) => {
+      const matchesDept = departamentoFilter === 'TODOS' || p.departamento === departamentoFilter;
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        !term ||
+        p.nombre.toLowerCase().includes(term) ||
+        p.departamento?.toLowerCase().includes(term);
+      return matchesDept && matchesSearch;
+    });
+  }, [puestos, departamentoFilter, searchTerm]);
 
-  const filteredPuestos = puestos.filter(p => {
-    const matchesDepartamento = departamentoFilter === 'TODOS' || p.departamento === departamentoFilter;
-    
-    const matchesSearch = !searchTerm ||
-      p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.departamento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
+  const paginatedPuestos = useMemo(() => {
+    const start = page * rowsPerPage;
+    return filteredPuestos.slice(start, start + rowsPerPage);
+  }, [filteredPuestos, page, rowsPerPage]);
 
-    return matchesDepartamento && matchesSearch;
-  });
+  const stats = useMemo(() => {
+    const total = puestos.length;
+    const activos = puestos.filter((p) => p.activo).length;
+    const totalEmpleados = puestos.reduce((sum, p) => sum + (p.cantidadEmpleados || 0), 0);
+    return { total, activos, departamentos: departamentos.length, totalEmpleados };
+  }, [puestos, departamentos]);
 
-  const handleOpenForm = (puesto?: Puesto) => {
-    if (puesto) {
-      setEditingPuesto(puesto);
-      setFormData({
-        nombre: puesto.nombre,
-        descripcion: puesto.descripcion || '',
-        departamento: puesto.departamento || '',
-        salarioBase: (puesto.salarioBase || 0).toString()
-      });
-    } else {
-      setEditingPuesto(null);
-      setFormData({
-        nombre: '',
-        descripcion: '',
-        departamento: '',
-        salarioBase: ''
-      });
-    }
-    setOpenForm(true);
+  const handleOpenForm = (puesto?: PuestoListDTO) => {
+    setEditingPuesto(puesto || null);
+    setFormOpen(true);
   };
 
   const handleCloseForm = () => {
-    setOpenForm(false);
+    setFormOpen(false);
     setEditingPuesto(null);
-    setFormData({
-      nombre: '',
-      descripcion: '',
-      departamento: '',
-      salarioBase: ''
-    });
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleSave = async () => {
+    await loadData();
+    handleCloseForm();
+    setSuccess('Puesto guardado correctamente');
+    setTimeout(() => setSuccess(null), 3000);
   };
 
-  const handleSavePuesto = async () => {
-    try {
-      setError(null);
-
-      if (!formData.nombre.trim()) {
-        setError('El nombre del puesto es obligatorio');
-        return;
-      }
-
-      // Validación removida: ahora permite salario 0 o vacío
-      const salarioBase = formData.salarioBase ? parseFloat(formData.salarioBase) : 0;
-      if (salarioBase < 0) {
-        setError('El salario base no puede ser negativo');
-        return;
-      }
-
-      const puestoData: any = {
-        nombre: formData.nombre.trim(),
-        descripcion: formData.descripcion.trim() || null,
-        departamento: formData.departamento.trim() || null,
-        salarioBase: salarioBase
-      };
-
-      if (editingPuesto) {
-        await puestoApi.update(editingPuesto.id, { ...puestoData, id: editingPuesto.id });
-      } else {
-        await puestoApi.create(puestoData);
-      }
-
-      await loadPuestos();
-      handleCloseForm();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar el puesto');
-      console.error('Error saving puesto:', err);
-    }
+  const handleOpenDelete = (puesto: PuestoListDTO) => {
+    setSelectedForDelete(puesto);
+    setDeleteOpen(true);
   };
 
   const handleDeletePuesto = async () => {
-    if (!selected) return;
-    
+    if (!selectedForDelete) return;
     try {
       setError(null);
-      await puestoApi.delete(selected.id);
-      await loadPuestos();
-      setOpenDelete(false);
-      setSelected(null);
+      await puestoApi.delete(selectedForDelete.id);
+      await loadData();
+      setDeleteOpen(false);
+      setSelectedForDelete(null);
+      setSuccess('Puesto eliminado correctamente');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al eliminar el puesto');
-      console.error('Error deleting puesto:', err);
-      setOpenDelete(false);
+      setDeleteOpen(false);
     }
   };
 
-  const handleViewDetails = (puesto: Puesto) => {
-    setSelected(puesto);
-    setOpenDetail(true);
-  };
-
-  const handleOpenDelete = (puesto: Puesto) => {
-    setSelected(puesto);
-    setOpenDelete(true);
+  const handleActivar = async (puesto: PuestoListDTO) => {
+    try {
+      setError(null);
+      await puestoApi.activar(puesto.id);
+      await loadData();
+      setSuccess('Puesto activado correctamente');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al activar el puesto');
+    }
   };
 
   if (loading) {
@@ -211,395 +180,251 @@ const PuestosPage: React.FC = () => {
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
-          Puestos de Trabajo
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+        <Box display="flex" alignItems="center" gap={2}>
+          <WorkIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+          <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+            Puestos de Trabajo
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1}>
           <Tooltip title="Recargar">
-            <IconButton onClick={loadPuestos} color="primary">
+            <IconButton onClick={loadData} color="primary">
               <RefreshIcon />
             </IconButton>
           </Tooltip>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenForm()}
-            fullWidth={isMobile}
-          >
-            Nuevo Puesto
-          </Button>
+          {canWrite && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenForm()}>
+              Nuevo Puesto
+            </Button>
+          )}
         </Stack>
       </Box>
 
+      {/* Alerts */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
+      )}
 
-      {/* Estadísticas Rápidas */}
-      <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
-        <Grid item xs={6} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                <WorkIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main' }} />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold" color="primary.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                    {filteredPuestos.length}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Total Puestos
-                  </Typography>
-                </Box>
-              </Stack>
+      {/* Stats */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={3}>
+          <Card sx={{ borderLeft: '4px solid', borderColor: 'primary.main' }}>
+            <CardContent sx={{ p: 1.5 }}>
+              <Typography variant="body2" color="textSecondary">Total Puestos</Typography>
+              <Typography variant="h4" fontWeight="bold" color="primary.main">{stats.total}</Typography>
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={6} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                <BusinessIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'success.main' }} />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                    {departamentos.length - 1}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Departamentos
-                  </Typography>
-                </Box>
-              </Stack>
+        <Grid item xs={6} sm={3}>
+          <Card sx={{ borderLeft: '4px solid', borderColor: 'success.main' }}>
+            <CardContent sx={{ p: 1.5 }}>
+              <Typography variant="body2" color="textSecondary">Activos</Typography>
+              <Typography variant="h4" fontWeight="bold" color="success.main">{stats.activos}</Typography>
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={6} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                <MoneyIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'info.main' }} />
-                <Box>
-                  <Typography variant="h5" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
-                    ${filteredPuestos.length > 0
-                      ? Math.round(filteredPuestos.reduce((sum, p) => sum + (p.salarioBase || 0), 0) / filteredPuestos.length).toLocaleString('es-AR')
-                      : 0}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Salario Promedio
-                  </Typography>
-                </Box>
-              </Stack>
+        <Grid item xs={6} sm={3}>
+          <Card sx={{ borderLeft: '4px solid', borderColor: 'info.main' }}>
+            <CardContent sx={{ p: 1.5 }}>
+              <Typography variant="body2" color="textSecondary">Departamentos</Typography>
+              <Typography variant="h4" fontWeight="bold" color="info.main">{stats.departamentos}</Typography>
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={6} sm={6} md={3}>
-          <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                <MoneyIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'warning.main' }} />
-                <Box>
-                  <Typography variant="h5" fontWeight="bold" color="warning.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
-                    ${filteredPuestos.length > 0
-                      ? Math.max(...filteredPuestos.map(p => p.salarioBase || 0)).toLocaleString('es-AR')
-                      : 0}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Salario Máximo
-                  </Typography>
-                </Box>
-              </Stack>
+        <Grid item xs={6} sm={3}>
+          <Card sx={{ borderLeft: '4px solid', borderColor: 'warning.main' }}>
+            <CardContent sx={{ p: 1.5 }}>
+              <Typography variant="body2" color="textSecondary">Empleados Asignados</Typography>
+              <Typography variant="h4" fontWeight="bold" color="warning.main">{stats.totalEmpleados}</Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      <Card>
+      {/* Filters */}
+      <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Box mb={2}>
-            <Grid container spacing={2}>
-              {/* Búsqueda */}
-              <Grid item xs={12} md={8}>
-                <TextField
-                  fullWidth
-                  label="Buscar"
-                  placeholder="Nombre, departamento, descripción..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-
-              {/* Filtro por Departamento */}
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Departamento"
-                  value={departamentoFilter}
-                  onChange={(e) => setDepartamentoFilter(e.target.value)}
-                  size="small"
-                  SelectProps={{ native: true }}
-                >
-                  {departamentos.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </TextField>
-              </Grid>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={8}>
+              <TextField
+                fullWidth
+                label="Buscar"
+                placeholder="Nombre, departamento..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
             </Grid>
-          </Box>
-
-          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ minWidth: 150 }}>Nombre</TableCell>
-                  <TableCell sx={{ minWidth: 130 }}>Departamento</TableCell>
-                  <TableCell sx={{ minWidth: 200 }}>Descripción</TableCell>
-                  <TableCell align="right" sx={{ minWidth: 110 }}>Salario Base</TableCell>
-                  <TableCell align="center" sx={{ minWidth: 110 }}>Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredPuestos.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      <Typography variant="body2" color="textSecondary">
-                        No hay puestos disponibles
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredPuestos.map(puesto => (
-                    <TableRow key={puesto.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="600">
-                          {puesto.nombre}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        {puesto.departamento ? (
-                          <Chip
-                            label={puesto.departamento}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                        ) : (
-                          <Chip
-                            label="Sin Asignar"
-                            size="small"
-                            color="default"
-                            variant="outlined"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" noWrap sx={{ maxWidth: 300 }}>
-                          {puesto.descripcion || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="600" color="success.main">
-                          ${(puesto.salarioBase || 0).toLocaleString('es-AR')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          <Tooltip title="Ver Detalle">
-                            <IconButton
-                              size="small"
-                              color="info"
-                              onClick={() => handleViewDetails(puesto)}
-                            >
-                              <DescriptionIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Editar">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleOpenForm(puesto)}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Eliminar">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleOpenDelete(puesto)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                select
+                label="Departamento"
+                value={departamentoFilter}
+                onChange={(e) => { setDepartamentoFilter(e.target.value); setPage(0); }}
+                size="small"
+                SelectProps={{ native: true }}
+              >
+                <option value="TODOS">Todos</option>
+                {departamentos.map((dept) => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
 
-      {/* Dialog de Detalle */}
-      <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        {selected && (
-          <>
-            <DialogTitle sx={{ pb: 1 }}>
-              <Box display="flex" alignItems="center" gap={1}>
-                <WorkIcon color="primary" />
-                <Typography variant="h6" fontWeight="bold">
-                  {selected.nombre}
-                </Typography>
-              </Box>
-            </DialogTitle>
-            <DialogContent>
-              <Stack spacing={3} sx={{ mt: 1 }}>
-                <Box>
-                  <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase">
-                    Departamento
+      {/* Table */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Nombre</TableCell>
+              <TableCell>Departamento</TableCell>
+              <TableCell align="right">Salario Base</TableCell>
+              <TableCell align="center">Versión</TableCell>
+              <TableCell align="center">Empleados</TableCell>
+              <TableCell align="center">Tareas</TableCell>
+              <TableCell align="center">Estado</TableCell>
+              <TableCell align="center">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedPuestos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  <Typography variant="body2" color="textSecondary" sx={{ py: 3 }}>
+                    No se encontraron puestos
                   </Typography>
-                  <Typography variant="body1" sx={{ mt: 0.5 }}>
-                    {selected.departamento ? (
-                      <Chip label={selected.departamento} size="small" color="primary" />
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedPuestos.map((puesto) => (
+                <TableRow key={puesto.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight="600">{puesto.nombre}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    {puesto.departamento ? (
+                      <Chip label={puesto.departamento} size="small" color="primary" variant="outlined" />
                     ) : (
-                      <Chip label="Sin Asignar" size="small" color="default" />
+                      <Typography variant="body2" color="textSecondary">-</Typography>
                     )}
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase">
-                    Descripción
-                  </Typography>
-                  <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1, mt: 1 }}>
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                      {selected.descripcion || 'Sin descripción'}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Typography variant="body2" fontWeight="600" color="success.main">
+                      {formatPrice(puesto.salarioBase || 0)}
                     </Typography>
-                  </Box>
-                </Box>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip label={`v${puesto.version}`} size="small" variant="outlined" />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip
+                      icon={<PeopleIcon />}
+                      label={puesto.cantidadEmpleados}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="center">{puesto.cantidadTareas}</TableCell>
+                  <TableCell align="center">
+                    {puesto.activo ? (
+                      <Chip icon={<CheckCircleIcon />} label="Activo" color="success" size="small" />
+                    ) : (
+                      <Chip label="Inactivo" color="error" size="small" />
+                    )}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Stack direction="row" spacing={0.5} justifyContent="center">
+                      <Tooltip title="Ver Detalle">
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() => navigate(`/rrhh/puestos/${puesto.id}`)}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      {canWrite && (
+                        <>
+                          <Tooltip title="Editar">
+                            <IconButton size="small" color="primary" onClick={() => handleOpenForm(puesto)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          {!puesto.activo && (
+                            <Tooltip title="Activar">
+                              <IconButton size="small" color="success" onClick={() => handleActivar(puesto)}>
+                                <ActivarIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          <Tooltip title="Eliminar">
+                            <IconButton size="small" color="error" onClick={() => handleOpenDelete(puesto)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <TablePagination
+          component="div"
+          count={filteredPuestos.length}
+          page={page}
+          onPageChange={(_, newPage) => setPage(newPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[10, 25, 50]}
+          labelRowsPerPage="Filas por página"
+        />
+      </TableContainer>
 
-                <Box>
-                  <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase">
-                    Salario Base
-                  </Typography>
-                  <Typography variant="h4" color="success.main" fontWeight="bold" sx={{ mt: 1 }}>
-                    ${(selected.salarioBase || 0).toLocaleString('es-AR')}
-                  </Typography>
-                </Box>
-              </Stack>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button variant="outlined" onClick={() => setOpenDetail(false)}>
-                Cerrar
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<EditIcon />}
-                onClick={() => {
-                  setOpenDetail(false);
-                  handleOpenForm(selected);
-                }}
-              >
-                Editar
-              </Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
+      {/* Form Dialog */}
+      <PuestoFormDialog
+        open={formOpen}
+        puestoId={editingPuesto?.id || null}
+        onClose={handleCloseForm}
+        onSave={handleSave}
+      />
 
-      {/* Dialog de Formulario */}
-      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>
-          {editingPuesto ? 'Editar Puesto' : 'Nuevo Puesto'}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 2 }}>
-            <TextField
-              label="Nombre del Puesto"
-              name="nombre"
-              value={formData.nombre}
-              onChange={handleFormChange}
-              required
-              fullWidth
-              placeholder="Ej: Desarrollador Senior"
-            />
-            <TextField
-              label="Departamento"
-              name="departamento"
-              value={formData.departamento}
-              onChange={handleFormChange}
-              fullWidth
-              placeholder="Ej: Tecnología"
-            />
-            <TextField
-              label="Descripción"
-              name="descripcion"
-              value={formData.descripcion}
-              onChange={handleFormChange}
-              fullWidth
-              multiline
-              rows={4}
-              placeholder="Descripción detallada del puesto..."
-            />
-            <TextField
-              label="Salario Base"
-              name="salarioBase"
-              type="number"
-              value={formData.salarioBase}
-              onChange={handleFormChange}
-              fullWidth
-              InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
-              }}
-              placeholder="0.00"
-              helperText="Opcional: Deja en 0 si no aplica"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button variant="outlined" onClick={handleCloseForm}>
-            Cancelar
-          </Button>
-          <Button variant="contained" onClick={handleSavePuesto}>
-            {editingPuesto ? 'Guardar Cambios' : 'Crear Puesto'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog de Confirmación de Eliminación */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
+      {/* Delete Confirmation */}
+      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Está seguro que desea eliminar el puesto <strong>{selected?.nombre}</strong>?
+            ¿Está seguro que desea eliminar el puesto <strong>{selectedForDelete?.nombre}</strong>?
           </Typography>
           <Alert severity="warning" sx={{ mt: 2 }}>
             Esta acción no se puede deshacer.
           </Alert>
         </DialogContent>
         <DialogActions>
-          <Button variant="outlined" onClick={() => setOpenDelete(false)}>
-            Cancelar
-          </Button>
-          <Button variant="contained" color="error" onClick={handleDeletePuesto}>
-            Eliminar
-          </Button>
+          <Button variant="outlined" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+          <Button variant="contained" color="error" onClick={handleDeletePuesto}>Eliminar</Button>
         </DialogActions>
       </Dialog>
     </Box>

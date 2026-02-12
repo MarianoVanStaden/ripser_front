@@ -1,5 +1,6 @@
 export { default as EmpleadosPage } from './EmpleadosPage';
 export { default as PuestosPage } from './PuestosPage';
+export { default as PuestoDetailPage } from './PuestoDetailPage';
 export { default as AsistenciasPage } from './AsistenciasPage';
 export { default as LicenciasPage } from './LicenciasPage';
 export { default as CapacitacionesPage } from './CapacitacionesPage';

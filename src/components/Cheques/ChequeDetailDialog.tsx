@@ -188,7 +188,12 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             <Typography variant="body2" color="textSecondary">
               Banco
             </Typography>
-            <Typography variant="body1">{cheque.bancoNombre || '-'}</Typography>
+            <Typography variant="body1">
+              {cheque.bancoNombre || '-'}
+              {cheque.esEcheq && (
+                <Chip label="E-Cheq" size="small" variant="outlined" color="info" sx={{ ml: 1 }} />
+              )}
+            </Typography>
           </Grid>
 
           <Grid item xs={6}>

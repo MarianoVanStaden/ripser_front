@@ -36,6 +36,7 @@ import InformesVentasPage from './components/Ventas/InformesVentasPage';
 import NotasCreditoPage from './components/Ventas/NotasCreditoPage';
 import { ChequesPage } from './components/Cheques';
 import { BancosPage } from './components/Bancos';
+import { CuentasBancariasPage } from './components/CuentasBancarias';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
@@ -66,7 +67,7 @@ import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
 import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
 import ConfiguracionTallerPage from './components/Taller/ConfiguracionTallerPage';
-import { EmpleadosPage, PuestosPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage, UsuariosPage } from './components/RRHH';
+import { EmpleadosPage, PuestosPage, PuestoDetailPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage, UsuariosPage } from './components/RRHH';
 import {
   RecetasList,
   RecetaDetail,
@@ -163,6 +164,7 @@ function App() {
               <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
               <Route path="admin/flujo-caja" element={<PrivateRoute><FlujoCajaPage /></PrivateRoute>} />
               <Route path="admin/bancos" element={<PrivateRoute><BancosPage /></PrivateRoute>} />
+              <Route path="admin/cuentas-bancarias" element={<PrivateRoute><CuentasBancariasPage /></PrivateRoute>} />
               {/* Multi-Tenant Admin */}
               <Route path="admin/empresas" element={<PrivateRoute><EmpresasPage /></PrivateRoute>} />
               <Route path="admin/sucursales" element={<PrivateRoute><SucursalesPage /></PrivateRoute>} />
@@ -218,6 +220,7 @@ function App() {
               <Route path="rrhh/empleados" element={<PrivateRoute><EmpleadosPage /></PrivateRoute>} />
               <Route path="rrhh/usuarios" element={<PrivateRoute><UsuariosPage /></PrivateRoute>} />
               <Route path="rrhh/puestos" element={<PrivateRoute><PuestosPage /></PrivateRoute>} />
+              <Route path="rrhh/puestos/:id" element={<PrivateRoute><PuestoDetailPage /></PrivateRoute>} />
               <Route path="rrhh/asistencia" element={<PrivateRoute><AsistenciasPage /></PrivateRoute>} />
               <Route path="rrhh/licencias" element={<PrivateRoute><LicenciasPage /></PrivateRoute>} />
               <Route path="rrhh/capacitaciones" element={<PrivateRoute><CapacitacionesPage /></PrivateRoute>} />

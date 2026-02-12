@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, TableSortLabel, IconButton, Typography,
+  TableHead, TableRow, TableSortLabel, TablePagination, IconButton, Typography,
   Tooltip, CircularProgress, Alert, TextField, InputAdornment,
   Chip, Stack, Button, Menu, MenuItem, Dialog, DialogTitle,
   DialogContent, DialogContentText, DialogActions,
@@ -41,6 +41,8 @@ export const PrestamosListPage: React.FC = () => {
   });
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('diasVencido');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
 
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
@@ -80,12 +82,14 @@ export const PrestamosListPage: React.FC = () => {
     setSelectedEstados(prev =>
       prev.includes(estado) ? prev.filter(e => e !== estado) : [...prev, estado]
     );
+    setPage(0);
   };
 
   const toggleCategoria = (cat: CategoriaPrestamo) => {
     setSelectedCategorias(prev =>
       prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
     );
+    setPage(0);
   };
 
   const processedPrestamos = useMemo(() => {
@@ -117,6 +121,11 @@ export const PrestamosListPage: React.FC = () => {
 
     return filtered;
   }, [prestamos, searchTerm, selectedEstados, selectedCategorias, order, orderBy]);
+
+  const paginatedPrestamos = useMemo(() => {
+    const start = page * rowsPerPage;
+    return processedPrestamos.slice(start, start + rowsPerPage);
+  }, [processedPrestamos, page, rowsPerPage]);
 
   const handleDelete = async () => {
     if (!prestamoToDelete) return;
@@ -165,7 +174,7 @@ export const PrestamosListPage: React.FC = () => {
           fullWidth
           placeholder="Buscar por nombre o código..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
           InputProps={{
             startAdornment: <InputAdornment position="start"><Search /></InputAdornment>,
           }}
@@ -256,7 +265,7 @@ export const PrestamosListPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {processedPrestamos.length === 0 ? (
+              {paginatedPrestamos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} align="center">
                     <Box py={4}>
@@ -265,7 +274,7 @@ export const PrestamosListPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                processedPrestamos.map(p => (
+                paginatedPrestamos.map(p => (
                   <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/prestamos/${p.id}`)}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">{p.clienteNombre}</Typography>
@@ -351,9 +360,17 @@ export const PrestamosListPage: React.FC = () => {
         </TableContainer>
       )}
 
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-        Mostrando {processedPrestamos.length} de {prestamos.length} préstamos
-      </Typography>
+      <TablePagination
+        component="div"
+        count={processedPrestamos.length}
+        page={page}
+        onPageChange={(_, newPage) => setPage(newPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+        rowsPerPageOptions={[10, 25, 50, 100]}
+        labelRowsPerPage="Filas por página:"
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+      />
 
       {/* Estado Change Menu */}
       <Menu

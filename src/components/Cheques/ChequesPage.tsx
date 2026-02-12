@@ -361,6 +361,14 @@ const ChequesPage: React.FC = () => {
                             <WarningIcon color="error" fontSize="small" />
                           </Tooltip>
                         )}
+                        {cheque.esEcheq && (
+                          <Chip
+                            label="E-Cheq"
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                          />
+                        )}
                         {cheque.endosado && (
                           <Tooltip title="Ver cadena de endosos">
                             <Chip

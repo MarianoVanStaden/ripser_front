@@ -198,6 +198,7 @@ const navigation: NavigationSection[] = [
     items: [
       { text: 'Flujo de Caja', icon: <BarChartIcon />, path: '/admin/flujo-caja' },
       { text: 'Bancos', icon: <AccountBalanceIcon />, path: '/admin/bancos' },
+      { text: 'Cuentas Bancarias', icon: <AccountBalanceIcon />, path: '/admin/cuentas-bancarias' },
       { text: 'Empresas', icon: <BusinessIcon />, path: '/admin/empresas' },
       { text: 'Sucursales', icon: <AccountBalanceIcon />, path: '/admin/sucursales' },
       { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },

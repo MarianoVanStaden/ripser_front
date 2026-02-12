@@ -30,29 +30,24 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
 } from '@mui/icons-material';
-import { bancoApi } from '../../api/services/bancoApi';
+import { cuentaBancariaApi } from '../../api/services/cuentaBancariaApi';
 import { usePermisos } from '../../hooks/usePermisos';
-import type { Banco } from '../../types';
-import BancoFormDialog from './BancoFormDialog';
+import type { CuentaBancaria } from '../../types';
+import CuentaBancariaFormDialog from './CuentaBancariaFormDialog';
 
-const BancosPage: React.FC = () => {
-  // Permisos y contexto
+const CuentasBancariasPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
 
-  // Estados
-  const [bancos, setBancos] = useState<Banco[]>([]);
+  const [cuentas, setCuentas] = useState<CuentaBancaria[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Estados de dialogs
   const [formDialogOpen, setFormDialogOpen] = useState(false);
-  const [selectedBanco, setSelectedBanco] = useState<Banco | null>(null);
+  const [selectedCuenta, setSelectedCuenta] = useState<CuentaBancaria | null>(null);
 
-  // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Cargar datos
   useEffect(() => {
     if (tienePermiso('ADMINISTRACION')) {
       loadData();
@@ -63,8 +58,8 @@ const BancosPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const bancosData = await bancoApi.getAll();
-      setBancos(Array.isArray(bancosData) ? bancosData : []);
+      const data = await cuentaBancariaApi.getAll();
+      setCuentas(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err: any) {
       console.error('Error loading data:', err);
@@ -78,66 +73,62 @@ const BancosPage: React.FC = () => {
     }
   };
 
-  // Bancos filtrados
-  const filteredBancos = useMemo(() => {
-    return bancos.filter((banco) => {
-      const matchesSearch =
-        banco.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        banco.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        banco.nombreCorto?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      return matchesSearch;
+  const filteredCuentas = useMemo(() => {
+    return cuentas.filter((cuenta) => {
+      const term = searchTerm.toLowerCase();
+      return (
+        cuenta.bancoNombre?.toLowerCase().includes(term) ||
+        cuenta.cbu?.toLowerCase().includes(term) ||
+        cuenta.alias?.toLowerCase().includes(term) ||
+        cuenta.numeroCuenta?.toLowerCase().includes(term)
+      );
     });
-  }, [bancos, searchTerm]);
+  }, [cuentas, searchTerm]);
 
-  // Estadísticas
   const stats = useMemo(() => {
-    const total = bancos.length;
-    const activos = bancos.filter((b) => b.activo).length;
-    const inactivos = bancos.filter((b) => !b.activo).length;
+    const total = cuentas.length;
+    const activas = cuentas.filter((c) => c.activo).length;
+    const inactivas = cuentas.filter((c) => !c.activo).length;
+    return { total, activas, inactivas };
+  }, [cuentas]);
 
-    return { total, activos, inactivos };
-  }, [bancos]);
-
-  // Handlers
-  const handleOpenForm = (banco?: Banco) => {
-    setSelectedBanco(banco || null);
+  const handleOpenForm = (cuenta?: CuentaBancaria) => {
+    setSelectedCuenta(cuenta || null);
     setFormDialogOpen(true);
   };
 
   const handleCloseForm = () => {
     setFormDialogOpen(false);
-    setSelectedBanco(null);
+    setSelectedCuenta(null);
   };
 
   const handleSave = async () => {
     await loadData();
     handleCloseForm();
-    setSuccess('Banco guardado correctamente');
+    setSuccess('Cuenta bancaria guardada correctamente');
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const handleDelete = async (banco: Banco) => {
-    if (!window.confirm(`¿Está seguro de eliminar el banco "${banco.nombre}"?`)) {
+  const handleDelete = async (cuenta: CuentaBancaria) => {
+    if (!window.confirm(`¿Está seguro de eliminar esta cuenta bancaria?`)) {
       return;
     }
 
     try {
       setLoading(true);
-      await bancoApi.delete(banco.id);
+      await cuentaBancariaApi.delete(cuenta.id);
       await loadData();
-      setSuccess('Banco eliminado correctamente');
+      setSuccess('Cuenta bancaria eliminada correctamente');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      console.error('Error deleting banco:', err);
-      setError(err.response?.data?.message || 'Error al eliminar el banco');
+      console.error('Error deleting cuenta:', err);
+      setError(err.response?.data?.message || 'Error al eliminar la cuenta bancaria');
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
     }
   };
 
-  // Verificar permisos
   if (!tienePermiso('ADMINISTRACION')) {
     return (
       <Box sx={{ p: 3 }}>
@@ -153,11 +144,11 @@ const BancosPage: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <AccountBalanceIcon sx={{ fontSize: 40, color: 'primary.main' }} />
           <Typography variant="h4" component="h1">
-            Gestión de Bancos
+            Cuentas Bancarias
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenForm()}>
-          Nuevo Banco
+          Nueva Cuenta
         </Button>
       </Box>
 
@@ -179,7 +170,7 @@ const BancosPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
-                Total Bancos
+                Total Cuentas
               </Typography>
               <Typography variant="h4">{stats.total}</Typography>
             </CardContent>
@@ -189,10 +180,10 @@ const BancosPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
-                Activos
+                Activas
               </Typography>
               <Typography variant="h4" color="success.main">
-                {stats.activos}
+                {stats.activas}
               </Typography>
             </CardContent>
           </Card>
@@ -201,10 +192,10 @@ const BancosPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
-                Inactivos
+                Inactivas
               </Typography>
               <Typography variant="h4" color="error.main">
-                {stats.inactivos}
+                {stats.inactivas}
               </Typography>
             </CardContent>
           </Card>
@@ -219,7 +210,7 @@ const BancosPage: React.FC = () => {
             label="Buscar"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Nombre, código..."
+            placeholder="Banco, CBU, alias, N. cuenta..."
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -241,44 +232,52 @@ const BancosPage: React.FC = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Código</TableCell>
-                <TableCell>Nombre</TableCell>
-                <TableCell>Nombre Corto</TableCell>
+                <TableCell>Banco</TableCell>
+                <TableCell>CBU</TableCell>
+                <TableCell>N. Cuenta</TableCell>
+                <TableCell>Tipo Cuenta</TableCell>
+                <TableCell>Alias</TableCell>
                 <TableCell align="center">Estado</TableCell>
                 <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredBancos.length === 0 ? (
+              {filteredCuentas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Typography variant="body1" color="textSecondary" sx={{ py: 3 }}>
-                      No se encontraron bancos
+                      No se encontraron cuentas bancarias
                     </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredBancos.map((banco) => (
-                  <TableRow key={banco.id} hover>
+                filteredCuentas.map((cuenta) => (
+                  <TableRow key={cuenta.id} hover>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {banco.codigo}
+                        {cuenta.bancoNombre}
                       </Typography>
                     </TableCell>
-                    <TableCell>{banco.nombre}</TableCell>
-                    <TableCell>{banco.nombreCorto || '-'}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                        {cuenta.cbu || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{cuenta.numeroCuenta || '-'}</TableCell>
+                    <TableCell>{cuenta.tipoCuenta || '-'}</TableCell>
+                    <TableCell>{cuenta.alias || '-'}</TableCell>
                     <TableCell align="center">
-                      {banco.activo ? (
+                      {cuenta.activo ? (
                         <Chip
                           icon={<CheckCircleIcon />}
-                          label="Activo"
+                          label="Activa"
                           color="success"
                           size="small"
                         />
                       ) : (
                         <Chip
                           icon={<CancelIcon />}
-                          label="Inactivo"
+                          label="Inactiva"
                           color="error"
                           size="small"
                         />
@@ -286,14 +285,14 @@ const BancosPage: React.FC = () => {
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Editar">
-                        <IconButton size="small" onClick={() => handleOpenForm(banco)}>
+                        <IconButton size="small" onClick={() => handleOpenForm(cuenta)}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Eliminar">
                         <IconButton
                           size="small"
-                          onClick={() => handleDelete(banco)}
+                          onClick={() => handleDelete(cuenta)}
                           color="error"
                         >
                           <DeleteIcon fontSize="small" />
@@ -309,9 +308,9 @@ const BancosPage: React.FC = () => {
       )}
 
       {/* Dialog */}
-      <BancoFormDialog
+      <CuentaBancariaFormDialog
         open={formDialogOpen}
-        banco={selectedBanco}
+        cuenta={selectedCuenta}
         onClose={handleCloseForm}
         onSave={handleSave}
       />
@@ -319,4 +318,4 @@ const BancosPage: React.FC = () => {
   );
 };
 
-export default BancosPage;
+export default CuentasBancariasPage;

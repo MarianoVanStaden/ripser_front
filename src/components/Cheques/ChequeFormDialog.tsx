@@ -51,6 +51,7 @@ interface ChequeFormData {
   cbu?: string;
   endosado?: boolean;
   endosadoA?: string;
+  esEcheq?: boolean;
 }
 
 // Schema de validación Yup
@@ -83,6 +84,7 @@ const validationSchema = yup.object({
   cbu: yup.string().matches(/^(\d{22})?$/, 'El CBU debe tener 22 dígitos').nullable(),
   endosado: yup.boolean().nullable(),
   endosadoA: yup.string().max(200).nullable(),
+  esEcheq: yup.boolean().nullable(),
 });
 
 const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) => {
@@ -117,6 +119,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
       cbu: '',
       endosado: false,
       endosadoA: '',
+      esEcheq: false,
     },
   });
 
@@ -150,6 +153,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
         cbu: cheque.cbu || '',
         endosado: cheque.endosado || false,
         endosadoA: cheque.endosadoA || '',
+        esEcheq: cheque.esEcheq || false,
       });
     } else {
       reset({
@@ -169,6 +173,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
         cbu: '',
         endosado: false,
         endosadoA: '',
+        esEcheq: false,
       });
     }
   }, [cheque, reset]);
@@ -210,6 +215,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
           cbu: data.cbu || undefined,
           endosado: data.endosado,
           endosadoA: data.endosadoA || undefined,
+          esEcheq: data.esEcheq,
         };
         await chequeApi.update(cheque.id, updateData);
       } else {
@@ -231,6 +237,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
           cbu: data.cbu || undefined,
           endosado: data.endosado,
           endosadoA: data.endosadoA || undefined,
+          esEcheq: data.esEcheq,
         };
         await chequeApi.create(createData);
       }
@@ -531,6 +538,25 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
                     label="CBU"
                     error={!!errors.cbu}
                     helperText={errors.cbu?.message || "22 dígitos"}
+                  />
+                )}
+              />
+            </Grid>
+
+            {/* E-Cheq */}
+            <Grid item xs={12} sm={4}>
+              <Controller
+                name="esEcheq"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={field.value || false}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    }
+                    label="E-Cheq"
                   />
                 )}
               />

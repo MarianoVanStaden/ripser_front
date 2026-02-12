@@ -35,5 +35,6 @@ export { equipoFabricadoApi } from "./equipoFabricadoApi";
 export { transferenciaApi } from "./transferenciaApi";
 export { auditoriaApi } from "./auditoriaApi";
 export { bancoApi } from "./bancoApi";
+export { cuentaBancariaApi } from "./cuentaBancariaApi";
 export { chequeApi } from "./chequeApi";
 export { reconciliacionApi } from "./reconciliacionApi";

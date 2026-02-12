@@ -1240,13 +1240,117 @@ export type EstadoEmpleado = 'ACTIVO' | 'INACTIVO' | 'LICENCIA';
 export type TipoLicencia = 'VACACIONES' | 'ENFERMEDAD' | 'PERSONAL' | 'MATERNIDAD';
 export type EstadoLicencia = 'SOLICITADA' | 'APROBADA' | 'RECHAZADA';
 
-export interface Puesto {
+// Puestos de Trabajo - RRHH API
+export interface SubtareaPuestoDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  orden: number;
+  obligatoria: boolean;
+  activo: boolean;
+  fechaCreacion?: string;
+  fechaActualizacion?: string;
+}
+
+export interface TareaPuestoDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  orden: number;
+  obligatoria: boolean;
+  activo: boolean;
+  fechaCreacion?: string;
+  fechaActualizacion?: string;
+  subtareas: SubtareaPuestoDTO[];
+}
+
+export interface PuestoListDTO {
+  id: number;
+  nombre: string;
+  departamento?: string;
+  salarioBase: number;
+  version: number;
+  activo: boolean;
+  cantidadEmpleados: number;
+  cantidadTareas: number;
+}
+
+export interface PuestoResponseDTO {
   id: number;
   nombre: string;
   descripcion?: string;
   departamento?: string;
   salarioBase: number;
+  version: number;
+  activo: boolean;
+  requisitos?: string;
+  objetivoGeneral?: string;
+  fechaCreacion?: string;
+  fechaActualizacion?: string;
+  cantidadEmpleados: number;
+  tareas: TareaPuestoDTO[];
 }
+
+export interface CreatePuestoDTO {
+  nombre: string;
+  descripcion?: string;
+  departamento?: string;
+  salarioBase?: number;
+  requisitos?: string;
+  objetivoGeneral?: string;
+}
+
+export interface UpdatePuestoDTO {
+  nombre?: string;
+  descripcion?: string;
+  departamento?: string;
+  salarioBase?: number;
+  requisitos?: string;
+  objetivoGeneral?: string;
+  motivoCambio?: string;
+}
+
+export interface PuestoVersionDTO {
+  id: number;
+  version: number;
+  snapshot: string;
+  motivoCambio?: string;
+  creadoPor?: string;
+  fechaCreacion: string;
+}
+
+export interface CreateTareaPuestoDTO {
+  nombre: string;
+  descripcion?: string;
+  orden?: number;
+  obligatoria?: boolean;
+}
+
+export interface UpdateTareaPuestoDTO {
+  nombre?: string;
+  descripcion?: string;
+  orden?: number;
+  obligatoria?: boolean;
+  activo?: boolean;
+}
+
+export interface CreateSubtareaPuestoDTO {
+  nombre: string;
+  descripcion?: string;
+  orden?: number;
+  obligatoria?: boolean;
+}
+
+export interface UpdateSubtareaPuestoDTO {
+  nombre?: string;
+  descripcion?: string;
+  orden?: number;
+  obligatoria?: boolean;
+  activo?: boolean;
+}
+
+// Backward compat alias for Empleado.puesto
+export type Puesto = PuestoListDTO;
 
 export interface Empleado {
   id: number;
@@ -1706,15 +1810,6 @@ export interface tareaServicioApi {
   fechaInicio?: string;
   fechaFin?: string;
   observaciones?: string;
-}
-
-// Puesto (Job Position)
-export interface Puesto {
-  id: number;
-  nombre: string;
-  descripcion?: string;
-  departamento?: string;
-  salarioBase: number;
 }
 
 // Rol (Role)
@@ -2889,18 +2984,33 @@ export interface ReconciliacionProductoDTO {
 // Entidad Banco - Coincide con BancoDTO del backend
 export interface Banco {
   id: number;
-  empresaId: number;
   codigo: string;
   nombre: string;
   nombreCorto?: string;
+  activo: boolean;
+  fechaAlta: string;
+  fechaActualizacion?: string;
+}
+
+// DTO para crear/actualizar bancos - Coincide con CreateBancoDTO del backend
+export interface BancoCreateDTO {
+  codigo: string;
+  nombre: string;
+  nombreCorto?: string;
+  activo?: boolean;
+}
+
+// ==================== CUENTAS BANCARIAS ====================
+
+export interface CuentaBancaria {
+  id: number;
+  empresaId: number;
+  bancoId: number;
+  bancoNombre: string;
   cbu?: string;
-  alias?: string;
   numeroCuenta?: string;
   tipoCuenta?: string;
-  swift?: string;
-  sitioWeb?: string;
-  telefono?: string;
-  direccion?: string;
+  alias?: string;
   observaciones?: string;
   activo: boolean;
   creadoPorId?: number;
@@ -2910,19 +3020,12 @@ export interface Banco {
   fechaBaja?: string;
 }
 
-// DTO para crear/actualizar bancos - Coincide con CreateBancoDTO del backend
-export interface BancoCreateDTO {
-  codigo: string;
-  nombre: string;
-  nombreCorto?: string;
+export interface CuentaBancariaCreateDTO {
+  bancoId: number;
   cbu?: string;
-  alias?: string;
   numeroCuenta?: string;
   tipoCuenta?: string;
-  swift?: string;
-  sitioWeb?: string;
-  telefono?: string;
-  direccion?: string;
+  alias?: string;
   observaciones?: string;
   activo?: boolean;
 }
@@ -2977,6 +3080,7 @@ export interface Cheque {
   cbu?: string;
   endosado?: boolean;
   endosadoA?: string;
+  esEcheq?: boolean;
 
   // Auditoría
   creadoPorId?: number;
@@ -3011,6 +3115,7 @@ export interface ChequeCreateDTO {
   cbu?: string;
   endosado?: boolean;
   endosadoA?: string;
+  esEcheq?: boolean;
 }
 
 // DTO para actualizar cheques (coincide con UpdateChequeDTO del backend)
@@ -3030,6 +3135,7 @@ export interface ChequeUpdateDTO {
   cbu?: string;
   endosado?: boolean;
   endosadoA?: string;
+  esEcheq?: boolean;
 }
 
 // DTO para cambio de estado (coincide con CambioEstadoChequeDTO del backend)
