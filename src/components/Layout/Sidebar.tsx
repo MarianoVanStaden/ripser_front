@@ -101,6 +101,14 @@ const navigation: NavigationSection[] = [
     ],
   },
   {
+    title: 'PRESTAMOS',
+    modulo: 'PRESTAMOS',
+    items: [
+      { text: 'Resumen', icon: <AccountBalanceIcon />, path: '/prestamos/resumen' },
+      { text: 'Gestión Préstamos', icon: <AssignmentIcon />, path: '/prestamos/lista' },
+    ],
+  },
+  {
     title: 'PROVEEDORES',
     modulo: 'PROVEEDORES',
     items: [

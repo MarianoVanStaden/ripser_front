@@ -85,6 +85,11 @@ import {
   TransferenciasPage,
   ReconciliacionStockPage
 } from './components/Logistica/Depositos';
+import {
+  PrestamosResumenPage,
+  PrestamosListPage,
+  PrestamoDetailPage,
+} from './components/Prestamos';
 
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -186,6 +191,10 @@ function App() {
               <Route path="clientes/agenda" element={<PrivateRoute><AgendaVisitasPage /></PrivateRoute>} />
               <Route path="clientes/cuenta-corriente" element={<PrivateRoute><CuentaCorrientePage /></PrivateRoute>} />
               <Route path="clientes/credito" element={<PrivateRoute><CreditoPersonalPage /></PrivateRoute>} />
+              {/* PRESTAMOS Module */}
+              <Route path="prestamos/resumen" element={<PrivateRoute><PrestamosResumenPage /></PrivateRoute>} />
+              <Route path="prestamos/lista" element={<PrivateRoute><PrestamosListPage /></PrivateRoute>} />
+              <Route path="prestamos/:id" element={<PrivateRoute><PrestamoDetailPage /></PrivateRoute>} />
               {/* LEADS Module */}
               <Route path="leads" element={<PrivateRoute><LeadsPage /></PrivateRoute>} />
               <Route path="leads/table" element={<PrivateRoute><LeadsTablePage /></PrivateRoute>} />

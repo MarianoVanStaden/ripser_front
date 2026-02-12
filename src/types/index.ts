@@ -6,6 +6,9 @@ export * from './tenant.types';
 export * from './lead.types';
 export type { LeadDTO as Lead } from './lead.types';
 
+// Export prestamo types
+export * from './prestamo.types';
+
 // Export shared enums
 export * from './shared.enums';
 import type { ProvinciaEnum } from './shared.enums';
@@ -2529,7 +2532,8 @@ export type Modulo =
   | 'GARANTIAS'
   | 'RRHH'
   | 'ADMIN'
-  | 'ADMINISTRACION';
+  | 'ADMINISTRACION'
+  | 'PRESTAMOS';
 
 export type UserRole = 
   | 'ADMIN'
