@@ -1,4 +1,5 @@
 import api from '../api';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 // ==================== TYPES ====================
 export interface GarantiaDTO {
@@ -27,8 +28,10 @@ export interface GarantiaCreateDTO {
 // ==================== GARANTIAS API ====================
 export const garantiaApi = {
   // GET /api/garantias
-  findAll: async (): Promise<GarantiaDTO[]> => {
-    const response = await api.get('/api/garantias');
+  findAll: async (pagination: PaginationParams = {}): Promise<PageResponse<GarantiaDTO>> => {
+    const response = await api.get<PageResponse<GarantiaDTO>>('/api/garantias', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

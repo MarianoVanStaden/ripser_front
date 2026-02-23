@@ -1,12 +1,15 @@
 import axios from '../config';
 import type { Sueldo } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE_URL = '/api/sueldos';
 
 export const sueldoApi = {
   // Get all sueldos
-  getAll: async (): Promise<Sueldo[]> => {
-    const response = await axios.get<Sueldo[]>(BASE_URL);
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Sueldo>> => {
+    const response = await axios.get<PageResponse<Sueldo>>(BASE_URL, {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

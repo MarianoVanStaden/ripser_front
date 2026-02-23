@@ -188,8 +188,8 @@ export const VentasDashboard = () => {
         sucursalId: sucursalFiltro !== null ? sucursalFiltro : undefined
       };
 
-      const [allLeads, metricasData] = await Promise.all([
-        leadApi.getAll(params),
+      const [allLeadsResponse, metricasData] = await Promise.all([
+        leadApi.getAll({}, params),
         leadMetricasApi.obtenerMetricasCompletas({
           fechaInicio,
           fechaFin,
@@ -197,6 +197,8 @@ export const VentasDashboard = () => {
           usuarioAsignadoId: user?.id
         })
       ]);
+
+      const allLeads = allLeadsResponse.content;
 
       // Calculate quick stats
       const stats: QuickStats = {

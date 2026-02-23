@@ -1,10 +1,13 @@
 import api from '../config';
 import type { StockDeposito, StockDepositoCreateDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const stockDepositoApi = {
   // Consultas
-  getAll: async (): Promise<StockDeposito[]> => {
-    const response = await api.get('/api/stock-deposito');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<StockDeposito>> => {
+    const response = await api.get<PageResponse<StockDeposito>>('/api/stock-deposito', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

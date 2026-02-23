@@ -181,7 +181,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
   const loadOptions = async () => {
     try {
       const [clientesData, proveedoresData, bancosData] = await Promise.all([
-        clienteApi.getAll(),
+        clienteApi.getAll({ page: 0, size: 500 }).then(res => res.content),
         proveedorApi.getAll(),
         bancoApi.getActivos(),  // Solo cargar bancos activos
       ]);

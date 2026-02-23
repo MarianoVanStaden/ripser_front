@@ -1,13 +1,16 @@
 import api from '../config';
 import type { Banco, BancoCreateDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const bancoApi = {
   /**
    * GET /api/bancos
    * Obtiene todos los bancos
    */
-  getAll: async (): Promise<Banco[]> => {
-    const response = await api.get('/api/bancos');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Banco>> => {
+    const response = await api.get<PageResponse<Banco>>('/api/bancos', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

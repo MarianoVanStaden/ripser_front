@@ -227,12 +227,12 @@ const FacturacionPage = () => {
     setError(null);
     try {
       const [clientsData, usuariosResponse, productsData, recetasData, notasData, plantillasData] = await Promise.all([
-        clienteApi.getAll().catch(() => []),
+        clienteApi.getAll({ page: 0, size: 500 }).then(res => res.content).catch(() => []),
         usuarioApi.getAll().catch((err: any) => {
           if (err?.response?.status === 403) return { content: [] };
           return { content: [] };
         }),
-        productApi.getAll(0, 10000).catch(() => []),
+        productApi.getAll({ page: 0, size: 10000 }).catch(() => []),
         recetaFabricacionApi.findDisponiblesParaVenta().catch(() => []),
         documentoApi.getByTipo('NOTA_PEDIDO').catch(() => []),
         opcionFinanciamientoTemplateApi.obtenerActivas().catch(() => []),
@@ -244,7 +244,10 @@ const FacturacionPage = () => {
         ? usuariosResponse
         : (usuariosResponse?.content || []);
       setUsuarios(usuariosArray);
-      setProducts(Array.isArray(productsData) ? (productsData as Producto[]).filter(p => p && (p as any).id) : []);
+      
+      const productsList = Array.isArray(productsData) ? productsData : (productsData as any)?.content || [];
+      setProducts((productsList as Producto[]).filter(p => p && p.id));
+      
       setRecetas(Array.isArray(recetasData) ? recetasData : []);
       setPlantillasFinanciamiento(Array.isArray(plantillasData) ? plantillasData : []);
       

@@ -11,17 +11,9 @@ import type {
   EndosoChequeCreateDTO,
   EndosoChequeDTO,
   CadenaEndososDTO,
-  ChequeDisponibleEndosoDTO
+  ChequeDisponibleEndosoDTO,
+  PageResponse,
 } from '../../types';
-
-// Interface para respuestas paginadas
-interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
-}
 
 export const chequeApi = {
   // ==================== CRUD BÁSICO ====================

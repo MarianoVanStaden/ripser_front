@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -38,100 +38,66 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { Cliente, TipoCliente, EstadoCliente } from '../../types';
-import { clienteApi } from '../../api/services/clienteApi';
+import { clienteApi, type ClienteFilterParams } from '../../api/services/clienteApi';
 import { useTenant } from '../../context/TenantContext';
+import { usePagination } from '../../hooks/usePagination';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const ClientesPage: React.FC = () => {
   const navigate = useNavigate();
   const { sucursalFiltro } = useTenant();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<TipoCliente | ''>('');
   const [estadoFilter, setEstadoFilter] = useState<EstadoCliente | ''>('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(12);
 
-  useEffect(() => {
-    loadClientes();
-  }, [sucursalFiltro]); // Agregar dependencia sucursalFiltro
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const loadClientes = async () => {
-    try {
-      setLoading(true);
-      const data = await clienteApi.getAll({
-        sucursalId: sucursalFiltro
-      });
-      setClientes(data);
-    } catch (err) {
-      setError('Error al cargar los clientes');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchClientes = useCallback(
+    (page: number, size: number, sort: string, filters: ClienteFilterParams) =>
+      clienteApi.getAll({ page, size, sort }, filters),
+    []
+  );
 
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) {
-      loadClientes();
-      return;
-    }
-    try {
-      setLoading(true);
-      const results = await clienteApi.getAll({
-        sucursalId: sucursalFiltro,
-        term: searchTerm
-      });
-      setClientes(results);
-    } catch (err) {
-      setError('Error al buscar clientes');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: clientes,
+    totalElements,
+    loading,
+    error,
+    page,
+    handleChangePage,
+    handleChangeRowsPerPage,
+    size: rowsPerPage,
+    setFilters,
+    refresh,
+  } = usePagination<Cliente, ClienteFilterParams>({
+    fetchFn: fetchClientes,
+    initialSize: 12,
+    defaultSort: 'nombre,asc',
+    initialFilters: {
+      sucursalId: sucursalFiltro,
+      ...(tipoFilter ? { tipo: tipoFilter } : {}),
+      ...(estadoFilter ? { estado: estadoFilter } : {}),
+    },
+  });
+
+  // Update filters when search/filter values change
+  React.useEffect(() => {
+    setFilters({
+      sucursalId: sucursalFiltro,
+      ...(debouncedSearch ? { term: debouncedSearch } : {}),
+      ...(tipoFilter ? { tipo: tipoFilter } : {}),
+      ...(estadoFilter ? { estado: estadoFilter } : {}),
+    });
+  }, [debouncedSearch, tipoFilter, estadoFilter, sucursalFiltro, setFilters]);
 
   const clearFilters = () => {
     setSearchTerm('');
     setTipoFilter('');
     setEstadoFilter('');
-    setPage(0);
-    loadClientes();
-  };
-
-  const filteredClientes = clientes.filter((cliente) => {
-    const matchesTipo = !tipoFilter || cliente.tipo === tipoFilter;
-    const matchesEstado = !estadoFilter || cliente.estado === estadoFilter;
-    return matchesTipo && matchesEstado;
-  });
-
-  // Ordenar alfabéticamente por nombre
-  const sortedClientes = useMemo(() => {
-    return [...filteredClientes].sort((a, b) => {
-      const nombreA = a.nombre?.toLowerCase() || '';
-      const nombreB = b.nombre?.toLowerCase() || '';
-      return nombreA.localeCompare(nombreB);
-    });
-  }, [filteredClientes]);
-
-  // Paginación
-  const paginatedClientes = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return sortedClientes.slice(startIndex, startIndex + rowsPerPage);
-  }, [sortedClientes, page, rowsPerPage]);
-
-  const handleChangePage = (_event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
   };
 
   const getEstadoColor = (estado: EstadoCliente) => {
@@ -198,7 +164,7 @@ const ClientesPage: React.FC = () => {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
@@ -210,7 +176,6 @@ const ClientesPage: React.FC = () => {
       )}
 
       {/* Buscador y Filtros */}
-      {/* Buscador y Filtros – versión compacta y más linda */}
 <Paper
   sx={{
     p: { sm: 2, md: 2.5 },
@@ -237,7 +202,6 @@ const ClientesPage: React.FC = () => {
       placeholder="Buscar clientes"
       value={searchTerm}
       onChange={(e) => setSearchTerm(e.target.value)}
-      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
       sx={{
         minWidth: { xs: '100%', sm: 360, md: 420 },
         flex: { xs: '1 1 100%', sm: '0 0 auto' },
@@ -305,24 +269,6 @@ const ClientesPage: React.FC = () => {
     {/* Botones */}
     <Box sx={{ ml: { xs: 0, sm: 'auto' }, display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, mt: { xs: 1, sm: 0 } }}>
       <Button
-        variant="contained"
-        size="small"
-        startIcon={<SearchIcon />}
-        onClick={handleSearch}
-        disabled={loading}
-        fullWidth={isMobile}
-        sx={{
-          borderRadius: 999,
-          px: 2.2,
-          textTransform: 'none',
-          fontWeight: 600,
-          flex: { xs: 1, sm: 'none' },
-        }}
-      >
-        Buscar
-      </Button>
-
-      <Button
         size="small"
         variant="text"
         startIcon={<ClearIcon />}
@@ -345,13 +291,13 @@ const ClientesPage: React.FC = () => {
       {/* Resumen */}
       <Box mb={2}>
         <Typography variant="body2" color="text.secondary">
-          {loading ? 'Cargando...' : `${sortedClientes.length} cliente(s) encontrado(s)`}
+          {loading ? 'Cargando...' : `${totalElements} cliente(s) encontrado(s)`}
         </Typography>
       </Box>
 
       {/* Grid de Cards */}
       <Grid container spacing={2}>
-        {paginatedClientes.map((cliente) => (
+        {clientes.map((cliente) => (
           <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
             <Card>
               <CardContent>
@@ -433,11 +379,11 @@ const ClientesPage: React.FC = () => {
       </Grid>
 
       {/* Paginación */}
-      {sortedClientes.length > 0 && (
+      {totalElements > 0 && (
         <Box display="flex" justifyContent="center" mt={3}>
           <TablePagination
             component="div"
-            count={sortedClientes.length}
+            count={totalElements}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
@@ -449,7 +395,7 @@ const ClientesPage: React.FC = () => {
         </Box>
       )}
 
-      {filteredClientes.length === 0 && !loading && (
+      {clientes.length === 0 && !loading && (
         <Box textAlign="center" py={4}>
           <Typography variant="h6" color="text.secondary">
             No se encontraron clientes
@@ -521,4 +467,3 @@ const ClientesPage: React.FC = () => {
 };
 
 export default ClientesPage;
-

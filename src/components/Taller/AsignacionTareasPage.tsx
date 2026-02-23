@@ -112,8 +112,13 @@ const AsignacionTareasPage: React.FC = () => {
   const loadOrdenes = async () => {
     try {
       const data = await ordenServicioApi.getAll();
+      
+      const ordenesList = Array.isArray(data) 
+        ? data 
+        : (data as any).content || [];
+        
       // Filtrar solo órdenes que no estén finalizadas o canceladas
-      const ordenesActivas = (Array.isArray(data) ? data : []).filter(
+      const ordenesActivas = ordenesList.filter(
         (o: OrdenServicio) => o.estado === 'PENDIENTE' || o.estado === 'EN_PROCESO'
       );
       setOrdenes(ordenesActivas);

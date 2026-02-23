@@ -290,104 +290,6 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, [presupuestos]);
 
-  // Function to create equipos in process when there's no available stock
-  const createEquiposEnProcesoIfNeeded = useCallback(async (detalles: DetalleDocumento[]): Promise<{
-    equiposCreados: string[];
-    advertencias: string[];
-  }> => {
-    const equiposCreados: string[] = [];
-    const advertencias: string[] = [];
-
-    const detallesConEquipo = detalles.filter(d => d.tipoItem === 'EQUIPO');
-
-    for (const detalle of detallesConEquipo) {
-      if (detalle.recetaId) {
-        let equiposFiltrados: any[] = [];
-
-        try {
-          console.log(`🔍 Verificando stock para receta ${detalle.recetaId}, color: "${detalle.color}", medida: "${detalle.medida}"`);
-
-          // Get all available equipos for this receta
-          const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(Number(detalle.recetaId));
-          console.log(`📦 Equipos disponibles totales: ${equiposDisponibles.length}`);
-
-          // Filter by color and medida if specified
-          equiposFiltrados = equiposDisponibles.filter(equipo => {
-            const matchColor = !detalle.color || equipo.color === detalle.color;
-            const matchMedida = !detalle.medida || equipo.medida === detalle.medida;
-            return matchColor && matchMedida;
-          });
-
-          const cantidadDisponible = equiposFiltrados.length;
-          const cantidadRequerida = detalle.cantidad || 0;
-
-          console.log(`✅ Equipos que coinciden con filtros: ${cantidadDisponible} de ${cantidadRequerida} requeridos`);
-
-          // If there aren't enough equipos, create the missing ones as "EN_PROCESO"
-          if (cantidadDisponible < cantidadRequerida) {
-            const cantidadFaltante = cantidadRequerida - cantidadDisponible;
-            const receta = recetas.find(r => r.id === Number(detalle.recetaId));
-
-            console.log(`🏭 Creando ${cantidadFaltante} equipo(s) en proceso...`);
-
-            // Create the missing equipos in batch
-            const equipoData: any = {
-              recetaId: Number(detalle.recetaId),
-              tipo: receta?.tipoEquipo || 'HELADERA' as any,
-              modelo: receta?.modelo || '',
-              medida: detalle.medida || receta?.medida,
-              color: detalle.color,
-              // Don't send numeroHeladera - let backend auto-generate it
-              cantidad: cantidadFaltante,
-              estado: 'PENDIENTE' as any,
-            };
-
-            console.log('📝 Datos del equipo a crear:', equipoData);
-            const response = await equipoFabricadoApi.createBatch(equipoData);
-            console.log('✅ Respuesta del backend:', response);
-
-            equiposCreados.push(`${cantidadFaltante} equipo(s) "${receta?.nombre || 'sin nombre'}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'})`);
-          } else {
-            console.log(`✅ Stock suficiente, no se requiere crear equipos`);
-          }
-        } catch (error: any) {
-          console.error(`❌ Error creating equipos for receta ${detalle.recetaId}:`, error);
-
-          const receta = recetas.find(r => r.id === Number(detalle.recetaId));
-          const recetaNombre = receta?.nombre || `Receta ${detalle.recetaId}`;
-
-          // Check if it's a stock insufficiency error (409 Conflict)
-          if (error?.response?.status === 409) {
-            const cantidadFaltante = (detalle.cantidad || 0) - (equiposFiltrados?.length || 0);
-            advertencias.push(
-              `⚠️ No se pudieron crear ${cantidadFaltante} equipo(s) "${recetaNombre}" (${detalle.color || 'sin color'}, ${detalle.medida || 'sin medida'}) automáticamente porque faltan componentes en stock. ` +
-              `Deberás crearlos manualmente en el módulo de Producción cuando tengas los componentes necesarios.`
-            );
-          } else {
-            // Extract detailed error message for other errors
-            let errorMsg = 'Error desconocido';
-            if (error?.response?.data) {
-              const data = error.response.data;
-              errorMsg = data.message || data.error || JSON.stringify(data);
-              console.error('📋 Detalles del error del backend:', data);
-            } else if (error instanceof Error) {
-              errorMsg = error.message;
-            }
-
-            console.error(`📋 Status: ${error?.response?.status || 'N/A'}`);
-            advertencias.push(`${recetaNombre}: ${errorMsg}`);
-          }
-          // Don't throw - continue with other equipos
-        }
-      }
-    }
-
-    if (advertencias.length > 0) {
-      console.warn('⚠️ Advertencias al crear equipos:', advertencias);
-    }
-
-    return { equiposCreados, advertencias };
-  }, [recetas]);
 
   const handleConvertToNotaPedido = useCallback(async () => {
     if (!convertForm.presupuestoId) {
@@ -445,6 +347,18 @@ const NotasPedidoPage: React.FC = () => {
       setFormLoading(true);
       setError(null);
 
+      // Fetch the full presupuesto (with detalles) to preserve colors — the list endpoint
+      // may not include detalles in the summary response.
+      let presupDetalles: DetalleDocumento[] = selectedPresupuesto?.detalles || [];
+      try {
+        const fullPresupuesto = await documentoApi.getById(Number(convertForm.presupuestoId));
+        if (fullPresupuesto.detalles?.length) {
+          presupDetalles = fullPresupuesto.detalles;
+        }
+      } catch (e) {
+        console.warn('No se pudieron obtener los detalles completos del presupuesto:', e);
+      }
+
       const payload = {
         presupuestoId: Number(convertForm.presupuestoId),
         metodoPago: convertForm.metodoPago,
@@ -454,34 +368,104 @@ const NotasPedidoPage: React.FC = () => {
       const nuevaNota = await documentoApi.convertToNotaPedido(payload);
       setNotasPedido(prev => [nuevaNota, ...prev]);
 
-      // Create equipos en proceso if needed for new nota de pedido
-      if (nuevaNota.detalles && nuevaNota.detalles.length > 0) {
-        const { equiposCreados, advertencias } = await createEquiposEnProcesoIfNeeded(nuevaNota.detalles);
+      // Fetch full nota to ensure detalles have their IDs (required for reservarParaNota).
+      // convertToNotaPedido may return the document without nested detalle IDs.
+      let notaConDetalles = nuevaNota;
+      if (nuevaNota.id) {
+        try {
+          const fullNota = await documentoApi.getById(nuevaNota.id);
+          if (fullNota.detalles?.length) {
+            // Some backend DTO mappings omit the detalle ID in certain responses (missing setId()).
+            // Merge: prefer the source that has a non-null id for each position.
+            const mergedDetalles = fullNota.detalles.map((d, idx) => ({
+              ...d,
+              id: d.id ?? nuevaNota.detalles?.[idx]?.id,
+            }));
+            notaConDetalles = { ...fullNota, detalles: mergedDetalles };
+          }
+        } catch {
+          console.warn('No se pudo obtener la nota completa; los detalles pueden carecer de ID.');
+        }
+      }
 
-        // Build combined message
-        const mensajes: string[] = [];
+      // Enrich nota's detalles with colors from presupuesto when backend doesn't preserve them
+      const enrichedDetalles = (notaConDetalles.detalles || []).map((d, idx) => {
+        if (d.tipoItem === 'EQUIPO' && !d.color) {
+          // Try to match by position first (most reliable if backend preserves order)
+          const presupDetalle = presupDetalles[idx];
+          if (presupDetalle?.tipoItem === 'EQUIPO' && presupDetalle.color) {
+            return { ...d, color: presupDetalle.color };
+          }
+          // Fallback: match by recetaId
+          const presupDetalleByReceta = presupDetalles.find(
+            pd => pd.tipoItem === 'EQUIPO' && pd.recetaId === d.recetaId && pd.color
+          );
+          if (presupDetalleByReceta?.color) {
+            return { ...d, color: presupDetalleByReceta.color };
+          }
+        }
+        return d;
+      });
 
-        if (equiposCreados.length > 0) {
-          mensajes.push(`✅ Se crearon automáticamente: ${equiposCreados.join(', ')}`);
+      // Update local state with enriched nota so the view dialog shows colors from the presupuesto.
+      // The DB may not persist colors (backend bug in convertToNotaPedido), but we can at least
+      // show the correct colors for the current session.
+      const notaEnriquecida = { ...notaConDetalles, detalles: enrichedDetalles };
+      setNotasPedido(prev => prev.map(n => n.id === notaEnriquecida.id ? notaEnriquecida : n));
+
+      // Resolve stock for each EQUIPO detalle using the unified backend endpoint.
+      // Backend applies P1 → P2 → P3 automatically and creates the DetalleEquipoAsignacion link.
+      const detallesEquipo = enrichedDetalles.filter(d => d.tipoItem === 'EQUIPO');
+      const resoluciones: string[] = [];
+      const advertenciasResolucion: string[] = [];
+
+      for (const detalle of detallesEquipo) {
+        if (!detalle.id) {
+          advertenciasResolucion.push(
+            `${detalle.recetaNombre || 'Ítem'}: ID de detalle no disponible — asignación pendiente`
+          );
+          continue;
         }
 
-        if (advertencias.length > 0) {
-          mensajes.push(...advertencias);
-        }
+        const receta = recetas.find(r => r.id === Number(detalle.recetaId));
+        const cantidad = detalle.cantidad || 1;
 
-        // Show combined snackbar if there are any messages
-        if (mensajes.length > 0) {
-          const tieneAdvertencias = advertencias.length > 0;
-          const severity = tieneAdvertencias && equiposCreados.length === 0 ? 'warning' :
-                          tieneAdvertencias ? 'info' :
-                          'success';
+        for (let i = 0; i < cantidad; i++) {
+          try {
+            const equipo = await equipoFabricadoApi.resolverParaPedido({
+              tipo: (receta?.tipoEquipo as any) || 'HELADERA',
+              modelo: detalle.recetaModelo || receta?.modelo || '',
+              medida: detalle.medida,
+              color: detalle.color,
+              detalleNotaPedidoId: detalle.id!,
+            });
 
-          setSnackbar({
-            open: true,
-            message: mensajes.join('\n\n'),
-            severity: severity
-          });
+            if (equipo.estado === 'COMPLETADO') {
+              resoluciones.push(`✅ Stock reservado: ${equipo.numeroHeladera} (${equipo.color || 'sin color'})`);
+            } else if (equipo.estado === 'FABRICADO_SIN_TERMINACION') {
+              resoluciones.push(`🎨 Base reservada: ${equipo.numeroHeladera}${detalle.color ? ` → terminación ${detalle.color}` : ''}`);
+            } else {
+              resoluciones.push(`🏭 En cola de fabricación: ${equipo.numeroHeladera} (${detalle.color || 'sin color'})`);
+            }
+          } catch (err: any) {
+            const msg = err?.response?.data?.message || err?.message || 'Error desconocido';
+            advertenciasResolucion.push(`${detalle.recetaNombre || 'Ítem'}: ${msg}`);
+          }
         }
+      }
+
+      if (resoluciones.length > 0 || advertenciasResolucion.length > 0) {
+        const lines = [
+          ...resoluciones,
+          ...advertenciasResolucion.map(a => `⚠️ ${a}`),
+        ];
+        setSnackbar({
+          open: true,
+          message: lines.join('\n'),
+          severity: advertenciasResolucion.length > 0
+            ? (resoluciones.length > 0 ? 'info' : 'warning')
+            : 'success',
+        });
       }
 
       // Remove converted presupuesto from available list
@@ -515,7 +499,7 @@ const NotasPedidoPage: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
-  }, [convertForm, handleCloseConvertDialog, createEquiposEnProcesoIfNeeded]);
+  }, [convertForm, handleCloseConvertDialog, recetas]);
 
   const handleViewNota = useCallback((nota: DocumentoComercial) => {
     setSelectedNota(nota);

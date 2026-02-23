@@ -2,43 +2,38 @@ import { useState, useEffect, useCallback } from 'react';
 import { leadApi } from '../api/services/leadApi';
 import { EstadoLeadEnum } from '../types/lead.types';
 import type { LeadDTO, LeadFilterState } from '../types/lead.types';
+import type { PageResponse } from '../types/pagination.types';
 
 /**
  * Hook personalizado para gestionar leads
  */
 export const useLeads = () => {
   const [leads, setLeads] = useState<LeadDTO[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Cargar todos los leads
+   * Cargar leads (paginated + filters)
    */
-  const loadLeads = useCallback(async () => {
+  const loadLeads = useCallback(async (filters: LeadFilterState = {}, page = 0, size = 20) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await leadApi.getAll();
-      setLeads(data);
+      
+      // Map filters to API params
+      // LeadFilterState keys generally match LeadFilterParams, but we pass them directly
+      const response: PageResponse<LeadDTO> = await leadApi.getAll(
+        { page, size }, 
+        filters 
+      );
+      
+      setLeads(response.content);
+      setTotalElements(response.totalElements);
+      setTotalPages(response.totalPages);
     } catch (err) {
       console.error('Error loading leads:', err);
-      setError('Error al cargar los leads');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
-   * Cargar leads por estado
-   */
-  const loadLeadsByEstado = useCallback(async (estado: EstadoLeadEnum) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await leadApi.getByEstado(estado);
-      setLeads(data);
-    } catch (err) {
-      console.error('Error loading leads by estado:', err);
       setError('Error al cargar los leads');
     } finally {
       setLoading(false);
@@ -52,7 +47,10 @@ export const useLeads = () => {
     try {
       setError(null);
       const newLead = await leadApi.create(leadData);
-      setLeads((prev) => [...prev, newLead]);
+      // For paginated lists, we usually don't append. 
+      // But preserving existing behavior of appending might be less disruptive for small lists logic.
+      // However, if we view page 1 and add item, it might appear.
+      setLeads((prev) => [newLead, ...prev]); 
       return newLead;
     } catch (err) {
       console.error('Error creating lead:', err);
@@ -92,84 +90,19 @@ export const useLeads = () => {
     }
   }, []);
 
-  /**
-   * Filtrar leads localmente
-   */
-  const filterLeads = useCallback((filters: LeadFilterState): LeadDTO[] => {
-    return leads.filter((lead) => {
-      // Filtro por estados
-      if (filters.estados && filters.estados.length > 0) {
-        if (!filters.estados.includes(lead.estadoLead)) {
-          return false;
-        }
-      }
-
-      // Filtro por canales
-      if (filters.canales && filters.canales.length > 0) {
-        if (!filters.canales.includes(lead.canal)) {
-          return false;
-        }
-      }
-
-      // Filtro por provincias
-      if (filters.provincias && filters.provincias.length > 0) {
-        if (!lead.provincia || !filters.provincias.includes(lead.provincia)) {
-          return false;
-        }
-      }
-
-      // Filtro por búsqueda (nombre o teléfono)
-      if (filters.busqueda && filters.busqueda.trim() !== '') {
-        const busqueda = filters.busqueda.toLowerCase();
-        const nombreMatch = lead.nombre.toLowerCase().includes(busqueda);
-        const telefonoMatch = lead.telefono.toLowerCase().includes(busqueda);
-        if (!nombreMatch && !telefonoMatch) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [leads]);
-
-  /**
-   * Obtener estadísticas de los leads
-   */
-  const getLeadStats = useCallback(() => {
-    const total = leads.length;
-    const byEstado = leads.reduce((acc, lead) => {
-      acc[lead.estadoLead] = (acc[lead.estadoLead] || 0) + 1;
-      return acc;
-    }, {} as Record<EstadoLeadEnum, number>);
-
-    const byCanal = leads.reduce((acc, lead) => {
-      acc[lead.canal] = (acc[lead.canal] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const convertidos = byEstado[EstadoLeadEnum.CONVERTIDO] || 0;
-    const tasaConversion = total > 0 ? (convertidos / total) * 100 : 0;
-
-    return {
-      total,
-      byEstado,
-      byCanal,
-      convertidos,
-      tasaConversion: tasaConversion.toFixed(2)
-    };
-  }, [leads]);
+  // Removed legacy methods: loadLeadsByEstado, filterLeads, getLeadStats
+  // Use leadMetricasApi for stats.
 
   return {
     leads,
+    totalElements,
+    totalPages,
     loading,
     error,
     loadLeads,
-    loadLeadsByEstado,
     createLead,
     updateLead,
-    deleteLead,
-    filterLeads,
-    getLeadStats
+    deleteLead
   };
 };
 

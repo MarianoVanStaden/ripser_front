@@ -1,10 +1,13 @@
 import api from '../config';
 import type { StockMovement, Warehouse, Vehicle, Trip, Delivery, CreateStockMovementRequest, CreateWarehouseRequest, CreateVehicleRequest, CreateTripRequest, CreateDeliveryRequest } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const stockMovementApi = {
   // Get all stock movements
-  getAll: async (): Promise<StockMovement[]> => {
-    const response = await api.get('/stock-movements');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<StockMovement>> => {
+    const response = await api.get<PageResponse<StockMovement>>('/stock-movements', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 
@@ -52,8 +55,10 @@ export const stockMovementApi = {
 
 export const warehouseApi = {
   // Get all warehouses
-  getAll: async (): Promise<Warehouse[]> => {
-    const response = await api.get('/warehouses');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Warehouse>> => {
+    const response = await api.get<PageResponse<Warehouse>>('/warehouses', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 
@@ -89,8 +94,10 @@ export const warehouseApi = {
 
 export const vehicleApi = {
   // Get all vehicles
-  getAll: async (): Promise<Vehicle[]> => {
-    const response = await api.get('/vehiculos');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Vehicle>> => {
+    const response = await api.get<PageResponse<Vehicle>>('/vehiculos', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 
@@ -126,8 +133,10 @@ export const vehicleApi = {
 
 export const tripApi = {
   // Get all trips
-  getAll: async (): Promise<Trip[]> => {
-    const response = await api.get('/viajes');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Trip>> => {
+    const response = await api.get<PageResponse<Trip>>('/viajes', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 
@@ -175,8 +184,10 @@ export const tripApi = {
 
 export const deliveryApi = {
   // Get all deliveries
-  getAll: async (): Promise<Delivery[]> => {
-    const response = await api.get('/deliveries');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Delivery>> => {
+    const response = await api.get<PageResponse<Delivery>>('/deliveries', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

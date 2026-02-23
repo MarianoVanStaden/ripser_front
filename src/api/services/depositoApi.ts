@@ -1,10 +1,13 @@
 import api from '../config';
 import type { Deposito, DepositoCreateDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const depositoApi = {
   // Consultas básicas
-  getAll: async (): Promise<Deposito[]> => {
-    const response = await api.get('/api/depositos');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Deposito>> => {
+    const response = await api.get<PageResponse<Deposito>>('/api/depositos', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

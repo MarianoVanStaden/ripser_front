@@ -1,11 +1,11 @@
 import api from '../config';
-import type { Empleado, EmpleadoCreateDTO, EmpleadoUpdateDTO } from '../../types';
+import type { Empleado, EmpleadoCreateDTO, EmpleadoUpdateDTO, PageResponse, PaginationParams } from '../../types';
 
 export const employeeApi = {
   // Get all employees (paginated)
-  getAll: async (page: number = 0, size: number = 100): Promise<any> => {
-    const response = await api.get('/api/empleados', {
-      params: { page, size }
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Empleado>> => {
+    const response = await api.get<PageResponse<Empleado>>('/api/empleados', {
+      params: { ...pagination },
     });
     return response.data;
   },

@@ -9,13 +9,14 @@ import type {
   RecetaFabricacionUpdateDTO,
   DetalleRecetaCreateDTO,
 } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 
 export const recetaFabricacionApi = {
   // CRUD básico
-  findAll: async (page: number = 0, size: number = 10) => {
-    const response = await api.get<any>('/api/recetas-fabricacion', {
-      params: { page, size }
+  findAll: async (pagination: PaginationParams = {}): Promise<PageResponse<RecetaFabricacionListDTO>> => {
+    const response = await api.get<PageResponse<RecetaFabricacionListDTO>>('/api/recetas-fabricacion', {
+      params: { ...pagination },
     });
     return response.data;
   },

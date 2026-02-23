@@ -32,6 +32,7 @@ const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefi
     FACTURADO: 'info',
     EN_TRANSITO: 'secondary',
     ENTREGADO: 'success',
+    PENDIENTE_TERMINACION: 'warning',
   };
   return colorMap[estado] || 'default';
 };
@@ -44,6 +45,7 @@ const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefi
     FACTURADO: 'Facturado',
     EN_TRANSITO: 'En Tránsito',
     ENTREGADO: 'Entregado',
+    PENDIENTE_TERMINACION: 'Pendiente Terminación',
   };
   return labelMap[estado] || estado;
 };
@@ -117,30 +119,67 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
     for (let i = 0; i < newAsignaciones.length; i++) {
       const asignacion = newAsignaciones[i];
       try {
-        const equipos = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId);
+        // Fetch both COMPLETADO+DISPONIBLE and FABRICADO_SIN_TERMINACION equipos
+        const [equiposCompletos, equiposSinTerminacionRaw] = await Promise.all([
+          equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId),
+          equipoFabricadoApi.findSinTerminacionByReceta(asignacion.recetaId).catch(() => [] as any[]),
+        ]);
+
+        // Backend limitation: list DTOs may return id: null for some equipos.
+        // Resolve real IDs via findByNumeroHeladera for those that need it.
+        const equiposSinTerminacionResolved = await Promise.all(
+          equiposSinTerminacionRaw.map(async (e: any) => {
+            if (e.id) return e as EquipoFabricadoDTO; // already has a valid ID
+            if (!e.numeroHeladera) return null;        // can't resolve, skip
+            try {
+              const full = await equipoFabricadoApi.findByNumeroHeladera(e.numeroHeladera);
+              return { ...e, id: full.id } as EquipoFabricadoDTO;
+            } catch {
+              return null; // resolution failed, skip this equipo
+            }
+          })
+        );
+        const equiposSinTerminacion = equiposSinTerminacionResolved.filter(
+          (e): e is EquipoFabricadoDTO => Boolean(e?.id)
+        );
+
+        // Combine lists deduplicating by ID
+        const combinados: EquipoFabricadoDTO[] = [
+          ...equiposCompletos,
+          ...equiposSinTerminacion.filter((e) => !equiposCompletos.some((c) => c.id === e.id)),
+        ];
 
         // Filter by color, medida, and estadoAsignacion
-        const equiposFiltrados = equipos.filter((equipo) => {
+        const equiposFiltrados = combinados.filter((equipo) => {
           const matchColor = !asignacion.color || equipo.color === asignacion.color;
           const matchMedida = !asignacion.medida || equipo.medida === asignacion.medida;
-          
-          // Only DISPONIBLE equipos can be assigned
-          // If estadoAsignacion is not provided, infer from estado + asignado
+
+          // Infer estadoAsignacion if not provided
           let estadoAsignacion = equipo.estadoAsignacion;
-          if (!estadoAsignacion && equipo.estado === 'COMPLETADO') {
-            estadoAsignacion = equipo.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+          if (!estadoAsignacion) {
+            if (equipo.estado === 'COMPLETADO') {
+              estadoAsignacion = equipo.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+            } else if (equipo.estado === 'FABRICADO_SIN_TERMINACION') {
+              estadoAsignacion = equipo.asignado ? 'PENDIENTE_TERMINACION' : 'DISPONIBLE';
+            }
           }
-          const isDisponible = estadoAsignacion === 'DISPONIBLE';
-          
-          return matchColor && matchMedida && isDisponible;
+
+          // Accept DISPONIBLE (both COMPLETADO and FABRICADO_SIN_TERMINACION)
+          // and PENDIENTE_TERMINACION (reserved base that still needs finishing)
+          const isSelectable =
+            estadoAsignacion === 'DISPONIBLE' ||
+            estadoAsignacion === 'PENDIENTE_TERMINACION' ||
+            (!equipo.asignado && equipo.estado === 'FABRICADO_SIN_TERMINACION');
+
+          return matchColor && matchMedida && isSelectable;
         });
 
         console.log(`🔍 Filtrado de equipos para ${asignacion.recetaNombre}:`);
-        console.log(`  - Total disponibles: ${equipos.length}`);
+        console.log(`  - Completados+disponibles: ${equiposCompletos.length}`);
+        console.log(`  - Sin terminación: ${equiposSinTerminacion.length}`);
         console.log(`  - Color requerido: "${asignacion.color || 'Sin especificar'}"`);
         console.log(`  - Medida requerida: "${asignacion.medida || 'Sin especificar'}"`);
-        console.log(`  - Solo DISPONIBLES: Sí`);
-        console.log(`  - Equipos que cumplen criterios: ${equiposFiltrados.length}`);
+        console.log(`  - Equipos seleccionables: ${equiposFiltrados.length}`);
 
         setAsignaciones((prev) =>
           prev.map((a, index) =>
@@ -213,6 +252,14 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
 
   const allLoaded = asignaciones.every((a) => !a.loading);
 
+  // Check if any selected equipo is not COMPLETADO (sin terminación or in process)
+  const haySinTerminacion = asignaciones.some((a) =>
+    a.equiposSeleccionados.some((id) => {
+      const equipo = a.equiposDisponibles.find((e) => e.id === id);
+      return equipo && equipo.estado !== 'COMPLETADO';
+    })
+  );
+
   return (
     <Dialog
       open={open}
@@ -236,6 +283,14 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+
+        {haySinTerminacion && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <strong>Atención:</strong> Uno o más equipos seleccionados aún no tienen terminación (estado <em>Sin Terminación</em>).
+            Se asignarán a la factura y podrán completar su terminación antes de la entrega.
+            El equipo quedará reservado exclusivamente para esta venta.
           </Alert>
         )}
 
@@ -359,9 +414,18 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                                 </Box>
                                 <Box display="flex" gap={1} alignItems="center">
                                   <Chip
-                                    label={equipo.estado}
+                                    label={
+                                      equipo.estado === 'COMPLETADO' ? 'Completado' :
+                                      equipo.estado === 'FABRICADO_SIN_TERMINACION' ? 'Sin Terminación' :
+                                      equipo.estado === 'EN_PROCESO' ? 'En Proceso' :
+                                      equipo.estado
+                                    }
                                     size="small"
-                                    color={equipo.estado === 'COMPLETADO' ? 'success' : 'default'}
+                                    color={
+                                      equipo.estado === 'COMPLETADO' ? 'success' :
+                                      equipo.estado === 'FABRICADO_SIN_TERMINACION' ? 'warning' :
+                                      'default'
+                                    }
                                     variant="outlined"
                                   />
                                   {equipo.estadoAsignacion && (

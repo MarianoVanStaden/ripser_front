@@ -81,18 +81,18 @@ const CuentaCorrientePage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const clientesData = await clienteApi.getAll();
-        setClientes(clientesData);
+        const clientesData = await clienteApi.getAll({ page: 0, size: 500 });
+        setClientes(clientesData.content);
 
         // Check for a client ID passed via navigation state
         const initialClienteId = location.state?.clienteId;
         if (initialClienteId) {
-          const initialCliente = clientesData.find(c => c.id === initialClienteId);
+          const initialCliente = clientesData.content.find(c => c.id === initialClienteId);
           if (initialCliente) {
             setSelectedCliente(initialCliente);
             // Fetch movements for the pre-selected client
             const movimientosData = await cuentaCorrienteApi.getByClienteId(initialCliente.id);
-            setMovimientos(movimientosData);
+            setMovimientos(movimientosData.content);
           }
         }
       } catch (err) {
@@ -112,7 +112,7 @@ const CuentaCorrientePage: React.FC = () => {
       setLoading(true);
       setError(null);
       const movimientosData = await cuentaCorrienteApi.getByClienteId(selectedCliente.id);
-      setMovimientos(movimientosData);
+      setMovimientos(movimientosData.content);
     } catch (err) {
       setError('Error al cargar los movimientos del cliente.');
       console.error('Error loading movements:', err);
@@ -132,7 +132,7 @@ const CuentaCorrientePage: React.FC = () => {
         try {
           setLoading(true);
           const data = await cuentaCorrienteApi.getByClienteId(cliente.id);
-          setMovimientos(data);
+          setMovimientos(data.content);
         } catch (err) {
           setError('Error al cargar los movimientos del cliente.');
           console.error('Error loading client movements:', err);
@@ -185,7 +185,7 @@ const CuentaCorrientePage: React.FC = () => {
         clienteApi.getById(selectedCliente.id)
       ]);
 
-      setMovimientos(movimientosData);
+      setMovimientos(movimientosData.content);
       setSelectedCliente(clienteActualizado);
 
       // Also update the cliente in the clientes array

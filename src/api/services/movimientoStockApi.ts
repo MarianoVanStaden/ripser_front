@@ -1,5 +1,5 @@
 import api from '../config';
-import type { MovimientoStock } from '../../types';
+import type { MovimientoStock, PageResponse, PaginationParams } from '../../types';
 
 // Recount request/response types
 export interface RecuentoRequest {
@@ -18,9 +18,11 @@ export interface RecuentoResponse {
 }
 
 export const movimientoStockApi = {
-  // Get all movimientos
-  getAll: async (): Promise<MovimientoStock[]> => {
-    const response = await api.get('/api/movimientos-stock');
+  // Get all movimientos (paginated)
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<MovimientoStock>> => {
+    const response = await api.get<PageResponse<MovimientoStock>>('/api/movimientos-stock', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

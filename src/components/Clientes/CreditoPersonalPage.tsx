@@ -138,7 +138,7 @@ const CreditoPersonalPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const clientesData = await clienteApi.getAll();
+      const clientesData = (await clienteApi.getAll({ page: 0, size: 500 })).content;
       setClientes(clientesData);
       
       // Load credits with client data

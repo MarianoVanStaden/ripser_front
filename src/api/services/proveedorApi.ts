@@ -1,4 +1,5 @@
 import api from '../config';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 interface Proveedor {
   id: number;
@@ -16,9 +17,11 @@ interface Proveedor {
 }
 
 export const proveedorApi = {
-  // Get all proveedores
-  getAll: async (): Promise<Proveedor[]> => {
-    const response = await api.get('/api/proveedores');
+  // Get all proveedores (paginated)
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Proveedor>> => {
+    const response = await api.get<PageResponse<Proveedor>>('/api/proveedores', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

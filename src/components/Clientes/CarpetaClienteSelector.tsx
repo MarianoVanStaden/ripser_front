@@ -43,7 +43,7 @@ const CarpetaClienteSelector: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await clienteApi.getAll();
+      const data = (await clienteApi.getAll({ page: 0, size: 500 })).content;
       setClientes(data);
     } catch (err) {
       setError('Error al cargar los clientes');

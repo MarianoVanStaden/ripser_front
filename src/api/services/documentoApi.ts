@@ -8,7 +8,9 @@ import type {
   OpcionFinanciamiento,
   CreateOpcionFinanciamientoDTO,
   ConvertToFacturaDTO,
-  CreateNotaCreditoDTO
+  CreateNotaCreditoDTO,
+  PageResponse,
+  PaginationParams,
 } from '../../types';
 
 // Narrow DTO for creating presupuesto in current backend
@@ -24,10 +26,12 @@ export type CreatePresupuestoPayload = {
 export const documentoApi = {
 
 
-  // Get all documentos - Note: This endpoint doesn't exist in backend, using getByTipo instead
-  getAll: async (): Promise<DocumentoComercial[]> => {
-    // Since backend doesn't have a getAll, we'll get all presupuestos as a workaround
-    return await documentoApi.getByTipo('PRESUPUESTO');
+  // Get all documentos (paginated)
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<DocumentoComercial>> => {
+    const response = await api.get<PageResponse<DocumentoComercial>>('/api/documentos', {
+      params: { ...pagination },
+    });
+    return response.data;
   },
   // Get documento by ID
   getById: async (id: number): Promise<DocumentoComercial> => {

@@ -5,6 +5,7 @@ import type {
   FlujoCajaMovimientoEnhanced,
   CategoriasDisponiblesDTO,
 } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const movimientoExtraApi = {
   /**
@@ -43,10 +44,13 @@ export const movimientoExtraApi = {
 
   /**
    * Lists all extra movements for the current company.
-   * @returns Promise<FlujoCajaMovimientoEnhanced[]> - Array of movements
+   * @param pagination - Pagination parameters
+   * @returns Promise<PageResponse<FlujoCajaMovimientoEnhanced>> - Paginated movements
    */
-  listar: async (): Promise<FlujoCajaMovimientoEnhanced[]> => {
-    const response = await api.get('/api/movimientos-extra');
+  listar: async (pagination: PaginationParams = {}): Promise<PageResponse<FlujoCajaMovimientoEnhanced>> => {
+    const response = await api.get<PageResponse<FlujoCajaMovimientoEnhanced>>('/api/movimientos-extra', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

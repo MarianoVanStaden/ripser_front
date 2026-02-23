@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Cliente, TipoCliente, EstadoCliente } from '../../types';
+import type { Cliente, TipoCliente, EstadoCliente, PageResponse, PaginationParams } from '../../types';
 
 const BASE_PATH = '/api/clientes';
 
@@ -15,9 +15,11 @@ export interface ClienteFilterParams {
 }
 
 export const clienteApi = {
-  // Get all clients with optional filters
-  getAll: async (params?: ClienteFilterParams): Promise<Cliente[]> => {
-    const response = await api.get<Cliente[]>(BASE_PATH, { params });
+  // Get all clients with optional filters (paginated)
+  getAll: async (pagination: PaginationParams = {}, params?: ClienteFilterParams): Promise<PageResponse<Cliente>> => {
+    const response = await api.get<PageResponse<Cliente>>(BASE_PATH, {
+      params: { ...params, ...pagination },
+    });
     return response.data;
   },
 
@@ -44,10 +46,9 @@ export const clienteApi = {
     await api.delete(`${BASE_PATH}/${id}`);
   },
 
-  // Search clients
-  search: async (term: string): Promise<Cliente[]> => {
-    // Assuming a search endpoint exists on the backend
-    const response = await api.get<Cliente[]>(`${BASE_PATH}/search`, { params: { q: term } });
-    return response.data;
+  // Search clients (paginated)
+  search: async (term: string, pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
+    // Use getAll with term filter
+    return clienteApi.getAll(pagination, { term });
   },
 };

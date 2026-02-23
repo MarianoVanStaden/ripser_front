@@ -68,8 +68,13 @@ const TrabajosRealizadosPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await ordenServicioApi.getAll();
+      
+      const ordenesList = Array.isArray(data) 
+        ? data 
+        : (data as any).content || [];
+        
       // Filtrar solo órdenes finalizadas o canceladas
-      const ordenesCompletadas = (Array.isArray(data) ? data : []).filter(
+      const ordenesCompletadas = ordenesList.filter(
         (o: OrdenServicio) => o.estado === 'FINALIZADA' || o.estado === 'CANCELADA'
       );
       setOrdenes(ordenesCompletadas);

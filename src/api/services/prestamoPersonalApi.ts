@@ -6,12 +6,15 @@ import type {
   EstadoPrestamo,
   CategoriaPrestamo,
 } from '../../types/prestamo.types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE_PATH = '/api/prestamos-personales';
 
 export const prestamoPersonalApi = {
-  getAll: async (): Promise<PrestamoPersonalDTO[]> => {
-    const response = await api.get<PrestamoPersonalDTO[]>(BASE_PATH);
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<PrestamoPersonalDTO>> => {
+    const response = await api.get<PageResponse<PrestamoPersonalDTO>>(BASE_PATH, {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

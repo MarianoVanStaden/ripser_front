@@ -9,8 +9,9 @@ import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
-  Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending,
+  Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending, Brush,
 } from '@mui/icons-material';
+import AplicarTerminacionDialog from './AplicarTerminacionDialog';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -30,6 +31,7 @@ const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefi
     FACTURADO: 'info',
     EN_TRANSITO: 'secondary',
     ENTREGADO: 'success',
+    PENDIENTE_TERMINACION: 'warning',
   };
   return colorMap[estado] || 'default';
 };
@@ -42,6 +44,7 @@ const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefi
     FACTURADO: 'Facturado',
     EN_TRANSITO: 'En Tránsito',
     ENTREGADO: 'Entregado',
+    PENDIENTE_TERMINACION: 'Pendiente Terminación',
   };
   return labelMap[estado] || estado;
 };
@@ -106,6 +109,11 @@ const EquiposList: React.FC = () => {
     errorMessage: string;
   }>({ open: false, errorMessage: '' });
 
+  const [terminacionDialog, setTerminacionDialog] = useState<{
+    open: boolean;
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipo: null });
+
   const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [currentTab, setCurrentTab] = useState(0);
@@ -119,6 +127,7 @@ const EquiposList: React.FC = () => {
       enProceso: equipos.filter(e => e.estado === 'EN_PROCESO').length,
       completados: equipos.filter(e => e.estado === 'COMPLETADO').length,
       cancelados: equipos.filter(e => e.estado === 'CANCELADO').length,
+      sinTerminacion: equipos.filter(e => e.estado === 'FABRICADO_SIN_TERMINACION').length,
       // Entregados = completados y asignados
       entregados: equipos.filter(e => e.estado === 'COMPLETADO' && e.asignado).length,
       // En tránsito = completados pero aún no asignados (listos para entrega)
@@ -168,7 +177,7 @@ const EquiposList: React.FC = () => {
     try {
       setLoading(true);
       console.log('🔄 Loading equipos - Page:', page, 'PageSize:', pageSize);
-      const response = await equipoFabricadoApi.findAll(page, pageSize);
+      const response = await equipoFabricadoApi.findAll({ page, size: pageSize });
       console.log('📥 API Response:', response);
       console.log('📊 Total elements in DB:', response.totalElements);
       console.log('📄 Total pages:', response.totalPages);
@@ -187,12 +196,20 @@ const EquiposList: React.FC = () => {
       if (estadoAsignacionFilter) {
         console.log('🔍 Filtering by estadoAsignacion:', estadoAsignacionFilter);
         filtered = filtered.filter((e: EquipoFabricadoListDTO) => {
-          // Infer estadoAsignacion from estado and asignado properties
+          // Use actual estadoAsignacion if provided by backend
+          const actual = (e as any).estadoAsignacion as EstadoAsignacionEquipo | undefined;
+          if (actual) return actual === estadoAsignacionFilter;
+
+          // Otherwise infer from estado and asignado
+          let inferred: EstadoAsignacionEquipo | null = null;
           if (e.estado === 'COMPLETADO') {
-            const inferredEstado = e.asignado ? 'ENTREGADO' : 'DISPONIBLE';
-            return inferredEstado === estadoAsignacionFilter;
+            inferred = e.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+          } else if (e.estado === 'FABRICADO_SIN_TERMINACION') {
+            inferred = e.asignado ? 'RESERVADO' : 'PENDIENTE_TERMINACION';
+          } else if (e.asignado) {
+            inferred = 'RESERVADO';
           }
-          return false;
+          return inferred === estadoAsignacionFilter;
         });
       }
 
@@ -466,16 +483,25 @@ const EquiposList: React.FC = () => {
       headerName: 'Estado Fab.',
       width: 120,
       renderCell: (params: GridRenderCellParams) => {
-        const colorMap: Record<EstadoFabricacion, 'warning' | 'info' | 'success' | 'error'> = {
+        const colorMap: Record<EstadoFabricacion, 'warning' | 'info' | 'success' | 'error' | 'secondary'> = {
           PENDIENTE: 'warning',
           EN_PROCESO: 'info',
           COMPLETADO: 'success',
           CANCELADO: 'error',
+          FABRICADO_SIN_TERMINACION: 'secondary',
         };
+        const labelMap: Record<EstadoFabricacion, string> = {
+          PENDIENTE: 'Pendiente',
+          EN_PROCESO: 'En Proceso',
+          COMPLETADO: 'Completado',
+          CANCELADO: 'Cancelado',
+          FABRICADO_SIN_TERMINACION: 'Sin Terminación',
+        };
+        const estado = params.value as EstadoFabricacion;
         return (
           <Chip
-            label={params.value.replace('_', ' ')}
-            color={colorMap[params.value as EstadoFabricacion] || 'default'}
+            label={labelMap[estado] ?? estado.replace(/_/g, ' ')}
+            color={colorMap[estado] ?? 'default'}
             size="small"
           />
         );
@@ -490,8 +516,14 @@ const EquiposList: React.FC = () => {
 
         // Infer estado if not provided by backend
         let inferredEstado = estadoAsignacion;
-        if (!inferredEstado && params.row.estado === 'COMPLETADO') {
-          inferredEstado = params.row.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+        if (!inferredEstado) {
+          if (params.row.estado === 'COMPLETADO') {
+            inferredEstado = params.row.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+          } else if (params.row.estado === 'FABRICADO_SIN_TERMINACION') {
+            inferredEstado = params.row.asignado ? 'RESERVADO' : 'PENDIENTE_TERMINACION';
+          } else if (params.row.asignado) {
+            inferredEstado = 'RESERVADO';
+          }
         }
 
         return (
@@ -543,8 +575,14 @@ const EquiposList: React.FC = () => {
       renderCell: (params: GridRenderCellParams) => {
         // Get estadoAsignacion (or infer it)
         let estadoAsignacion = params.row.estadoAsignacion as EstadoAsignacionEquipo | null;
-        if (!estadoAsignacion && params.row.estado === 'COMPLETADO') {
-          estadoAsignacion = params.row.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+        if (!estadoAsignacion) {
+          if (params.row.estado === 'COMPLETADO') {
+            estadoAsignacion = params.row.asignado ? 'ENTREGADO' : 'DISPONIBLE';
+          } else if (params.row.estado === 'FABRICADO_SIN_TERMINACION') {
+            estadoAsignacion = params.row.asignado ? 'RESERVADO' : 'PENDIENTE_TERMINACION';
+          } else if (params.row.asignado) {
+            estadoAsignacion = 'RESERVADO';
+          }
         }
         
         // Validations based on estadoAsignacion
@@ -613,6 +651,18 @@ const EquiposList: React.FC = () => {
                   }}
                 >
                   <CheckCircle fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {(params.row.estado === 'FABRICADO_SIN_TERMINACION' ||
+              (params.row.estado === 'COMPLETADO' && !params.row.color)) && (
+              <Tooltip title="Aplicar Terminación">
+                <IconButton
+                  size="small"
+                  color="secondary"
+                  onClick={() => setTerminacionDialog({ open: true, equipo: params.row })}
+                >
+                  <Brush fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}
@@ -903,6 +953,26 @@ const EquiposList: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card sx={{ height: '100%', bgcolor: 'secondary.50' }}>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'secondary.main', color: 'white' }}>
+                    <Brush fontSize="large" />
+                  </Box>
+                  <Box>
+                    <Typography variant="h4" fontWeight="bold" color="secondary.main">
+                      {metrics.sinTerminacion}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Sin Terminación
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
 
         <Divider sx={{ mb: 3 }} />
@@ -947,6 +1017,7 @@ const EquiposList: React.FC = () => {
             <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
             <MenuItem value="COMPLETADO">Completado</MenuItem>
             <MenuItem value="CANCELADO">Cancelado</MenuItem>
+            <MenuItem value="FABRICADO_SIN_TERMINACION">Sin Terminación</MenuItem>
           </TextField>
           <TextField
             label="Estado Asignación"
@@ -962,6 +1033,7 @@ const EquiposList: React.FC = () => {
             <MenuItem value="FACTURADO">Facturado</MenuItem>
             <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
             <MenuItem value="ENTREGADO">Entregado</MenuItem>
+            <MenuItem value="PENDIENTE_TERMINACION">Pendiente Terminación</MenuItem>
           </TextField>
         </Stack>
 
@@ -969,7 +1041,6 @@ const EquiposList: React.FC = () => {
               {/* Grouped by Tipo */}
               {(['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'] as TipoEquipo[]).map((tipo) => {
                 const equiposDelTipo = equiposPorTipo[tipo];
-                if (equiposDelTipo.length === 0) return null;
 
                 const tipoLabels: Record<TipoEquipo, string> = {
                   HELADERA: 'Heladeras',
@@ -986,7 +1057,7 @@ const EquiposList: React.FC = () => {
                 };
 
                 return (
-                  <Accordion key={tipo} defaultExpanded sx={{ mb: 2 }}>
+                  <Accordion key={tipo} defaultExpanded={equiposDelTipo.length > 0} sx={{ mb: 2 }}>
                     <AccordionSummary
                       expandIcon={<ExpandMore />}
                       sx={{
@@ -1392,9 +1463,14 @@ const EquiposList: React.FC = () => {
             )}
 
             {/* Info Message */}
-            <Alert severity="info" sx={{ mt: 2, width: '100%' }}>
+            <Alert
+              severity={completarDialog.equipo?.color ? 'success' : 'info'}
+              sx={{ mt: 2, width: '100%' }}
+            >
               <Typography variant="caption">
-                Al completar, el equipo estará disponible para asignación o venta.
+                {completarDialog.equipo?.color
+                  ? 'Al completar, el equipo estará disponible para asignación o venta.'
+                  : 'Este equipo no tiene color asignado. Al completar quedará como base genérica (Sin Terminación), lista para aplicar terminación a demanda.'}
               </Typography>
             </Alert>
           </Box>
@@ -1734,6 +1810,16 @@ const EquiposList: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <AplicarTerminacionDialog
+        open={terminacionDialog.open}
+        equipo={terminacionDialog.equipo}
+        onClose={() => setTerminacionDialog({ open: false, equipo: null })}
+        onSuccess={() => {
+          setTerminacionDialog({ open: false, equipo: null });
+          loadEquipos();
+        }}
+      />
 
       <Snackbar
         open={snackbar.open}

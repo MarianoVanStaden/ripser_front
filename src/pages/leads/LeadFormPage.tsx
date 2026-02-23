@@ -106,11 +106,14 @@ export const LeadFormPage = () => {
   const loadCatalogs = async () => {
     try {
       setLoadingCatalogs(true);
-      const [productosData, recetasData] = await Promise.all([
-        productApi.getAll(0, 1000).catch(() => []),
+      const [productosResponse, recetasData] = await Promise.all([
+        productApi.getAll({ page: 0, size: 1000 }).catch(() => []),
         recetaFabricacionApi.findAllActive().catch(() => [])
       ]);
-      setProductos(productosData);
+      const productosList = Array.isArray(productosResponse) 
+        ? productosResponse 
+        : (productosResponse as any)?.content || [];
+      setProductos(productosList);
       setRecetas(recetasData);
     } catch (err) {
       console.error('Error al cargar catálogos:', err);

@@ -1,10 +1,13 @@
 import api from '../config';
 import type { Viaje, ViajeCreateDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const viajeApi = {
   // Get all viajes
-  getAll: async (): Promise<Viaje[]> => {
-    const response = await api.get('/api/viajes');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Viaje>> => {
+    const response = await api.get<PageResponse<Viaje>>('/api/viajes', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

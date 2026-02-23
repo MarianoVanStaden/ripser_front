@@ -25,6 +25,7 @@ import { LeadFormPage } from './pages/leads/LeadFormPage';
 import { LeadDetailPage } from './pages/leads/LeadDetailPage';
 import { ConvertLeadPage } from './pages/leads/ConvertLeadPage';
 import { LeadMetricasPage } from './pages/leads/LeadMetricasPage';
+import { GestionGlobalRecordatoriosPage } from './pages/leads/GestionGlobalRecordatoriosPage';
 import { VentasDashboard } from './pages/ventas/VentasDashboard';
 import NotasPedidoPage from './components/Ventas/NotasPedidoPage';
 import PresupuestosPage from './components/Ventas/PresupuestosPage';
@@ -201,6 +202,7 @@ function App() {
               <Route path="leads" element={<PrivateRoute><LeadsPage /></PrivateRoute>} />
               <Route path="leads/table" element={<PrivateRoute><LeadsTablePage /></PrivateRoute>} />
               <Route path="leads/metricas" element={<PrivateRoute><LeadMetricasPage /></PrivateRoute>} />
+              <Route path="leads/recordatorios" element={<PrivateRoute><GestionGlobalRecordatoriosPage /></PrivateRoute>} />
               <Route path="leads/nuevo" element={<PrivateRoute><LeadFormPage /></PrivateRoute>} />
               <Route path="leads/:id" element={<PrivateRoute><LeadDetailPage /></PrivateRoute>} />
               <Route path="leads/:id/editar" element={<PrivateRoute><LeadFormPage /></PrivateRoute>} />

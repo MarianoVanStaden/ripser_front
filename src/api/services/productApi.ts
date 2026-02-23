@@ -1,21 +1,13 @@
 import api from '../config';
-import type { Producto, ProductoCreateDTO, ProductoUpdateDTO } from '../../types';
+import type { Producto, ProductoCreateDTO, ProductoUpdateDTO, PageResponse, PaginationParams } from '../../types';
 
 export const productApi = {
-  // Get all products
-
-  getAll: async (page: number = 0, size: number = 10): Promise<Producto[]> => {
-    try {
-      const response = await api.get('/api/productos', { params: { page, size } });
-      return response.data.content; // Handle Spring Page object
-    } catch (error: any) {
-      console.error('Error fetching products:', {
-        status: error.response?.status,
-        message: error.response?.data,
-        url: error.config?.url,
-      });
-      throw error;
-    }
+  // Get all products (paginated)
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Producto>> => {
+    const response = await api.get<PageResponse<Producto>>('/api/productos', {
+      params: { ...pagination },
+    });
+    return response.data;
   },
   getLowStock: async (): Promise<Producto[]> => {
     try {

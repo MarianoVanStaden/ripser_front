@@ -1,4 +1,5 @@
 import type { Cliente, ContactoCliente, CuentaCorriente, CreateClienteRequest, CreateContactoClienteRequest, CreateCuentaCorrienteRequest } from '../../types';
+import { PageResponse, PaginationParams, arrayToPage } from '../../types/pagination.types';
 
 // Mock data
 const mockClientes: Cliente[] = [
@@ -191,9 +192,9 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const mockClienteApi = {
   // Get all clients
-  getAll: async (): Promise<Cliente[]> => {
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
     await delay(500);
-    return [...mockClientes];
+    return arrayToPage(mockClientes, pagination.page || 0, pagination.size || 20);
   },
 
   // Get client by ID
@@ -253,28 +254,31 @@ export const mockClienteApi = {
   },
 
   // Search clients
-  search: async (query: string): Promise<Cliente[]> => {
+  search: async (query: string, pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
     await delay(300);
     const lowercaseQuery = query.toLowerCase();
-    return mockClientes.filter(cliente => 
+    const results = mockClientes.filter(cliente => 
       cliente.nombre.toLowerCase().includes(lowercaseQuery) ||
       (cliente.apellido && cliente.apellido.toLowerCase().includes(lowercaseQuery)) ||
       (cliente.razonSocial && cliente.razonSocial.toLowerCase().includes(lowercaseQuery)) ||
       (cliente.email && cliente.email.toLowerCase().includes(lowercaseQuery)) ||
       (cliente.cuit && cliente.cuit.includes(query))
     );
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 
   // Get clients by state
-  getByEstado: async (estado: string): Promise<Cliente[]> => {
+  getByEstado: async (estado: string, pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
     await delay(300);
-    return mockClientes.filter(c => c.estado === estado);
+    const results = mockClientes.filter(c => c.estado === estado);
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 
   // Get clients by type
-  getByTipo: async (tipo: string): Promise<Cliente[]> => {
+  getByTipo: async (tipo: string, pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
     await delay(300);
-    return mockClientes.filter(c => c.tipo === tipo);
+    const results = mockClientes.filter(c => c.tipo === tipo);
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 
   // Update client credit limit
@@ -306,9 +310,9 @@ export const mockClienteApi = {
 
 export const mockContactoClienteApi = {
   // Get all contacts
-  getAll: async (): Promise<ContactoCliente[]> => {
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<ContactoCliente>> => {
     await delay(400);
-    return [...mockContactos];
+    return arrayToPage(mockContactos, pagination.page || 0, pagination.size || 20);
   },
 
   // Get contact by ID
@@ -368,9 +372,9 @@ export const mockContactoClienteApi = {
 
 export const mockCuentaCorrienteApi = {
   // Get all movements
-  getAll: async (): Promise<CuentaCorriente[]> => {
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<CuentaCorriente>> => {
     await delay(400);
-    return [...mockCuentaCorriente];
+    return arrayToPage(mockCuentaCorriente, pagination.page || 0, pagination.size || 20);
   },
 
   // Get movement by ID

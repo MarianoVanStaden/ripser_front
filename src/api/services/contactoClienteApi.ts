@@ -1,17 +1,36 @@
 import api from '../config';
 import type { ContactoCliente, CreateContactoClienteRequest } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
+
+export interface ContactoClienteFilterParams {
+  clienteId?: number;
+  fechaInicio?: string;
+  fechaFin?: string;
+}
 
 export const contactoClienteApi = {
-  // Get all contacts for a client
-  getByClienteId: async (clienteId: number): Promise<ContactoCliente[]> => {
-    const response = await api.get(`/clientes/contactos/cliente/${clienteId}`);
+  // Get all contacts with optional filters (paginated)
+  getAll: async (pagination: PaginationParams = {}, params?: ContactoClienteFilterParams): Promise<PageResponse<ContactoCliente>> => {
+    const response = await api.get<PageResponse<ContactoCliente>>('/api/contactos-cliente', {
+      params: { ...params, ...pagination },
+    });
     return response.data;
   },
 
+  /**
+   * @deprecated Use getAll({ clienteId }, pagination) instead
+   */
+  // Get all contacts for a client
+  getByClienteId: async (clienteId: number, pagination: PaginationParams = {}): Promise<PageResponse<ContactoCliente>> => {
+    return contactoClienteApi.getAll(pagination, { clienteId });
+  },
+
+  /**
+   * @deprecated Use getAll({ fechaInicio, fechaFin }, pagination) instead
+   */
   // Get próximos contactos (date range)
-  getProximos: async (fechaInicio: string, fechaFin: string): Promise<ContactoCliente[]> => {
-    const response = await api.get(`/clientes/contactos/proximos?fechaInicio=${encodeURIComponent(fechaInicio)}&fechaFin=${encodeURIComponent(fechaFin)}`);
-    return response.data;
+  getProximos: async (fechaInicio: string, fechaFin: string, pagination: PaginationParams = {}): Promise<PageResponse<ContactoCliente>> => {
+    return contactoClienteApi.getAll(pagination, { fechaInicio, fechaFin });
   },
 
   // Create new contact

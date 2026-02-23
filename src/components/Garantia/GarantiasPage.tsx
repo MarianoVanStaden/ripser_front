@@ -58,9 +58,13 @@ const GarantiasPage: React.FC = () => {
         documentoApi.getByTipo('FACTURA')
       ]);
 
-      // Handle garantias
+      // Handle garantias with pagination support
       if (garantiasData.status === 'fulfilled') {
-        setGarantias(Array.isArray(garantiasData.value) ? garantiasData.value : []);
+        const responseValue = garantiasData.value;
+        const garantiasList = Array.isArray(responseValue) 
+          ? responseValue 
+          : (responseValue as any).content || [];
+        setGarantias(garantiasList);
       } else {
         console.error('Error loading garantias:', garantiasData.reason);
         setError('Error al cargar las garantías: ' + (garantiasData.reason?.response?.data?.message || garantiasData.reason?.message || 'Error desconocido'));

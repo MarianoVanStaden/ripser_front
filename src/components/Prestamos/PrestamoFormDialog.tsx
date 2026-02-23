@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Grid, TextField, MenuItem, Box, Typography, Autocomplete,
@@ -40,13 +40,13 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
   const [formData, setFormData] = useState<CreatePrestamoPersonalDTO>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clienteSearch, setClienteSearch] = useState('');
-  const [clienteOptions, setClienteOptions] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loadingClientes, setLoadingClientes] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 
   useEffect(() => {
     if (open) {
+      loadClientes();
       if (prestamo) {
         setFormData({
           clienteId: prestamo.clienteId,
@@ -66,27 +66,20 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
     }
   }, [open, prestamo]);
 
-  const searchClientes = useCallback(async (term: string) => {
-    if (term.length < 2) return;
+  const loadClientes = async () => {
     try {
       setLoadingClientes(true);
-      const results = await clienteApi.search(term);
-      setClienteOptions(results);
-    } catch {
-      console.error('Error searching clientes');
+      const data: any = await clienteApi.getAll();
+      console.log('Clientes data received:', data);
+      // Handle both plain array and paginated response ({ content: [...] })
+      const list = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
+      setClientes(list);
+    } catch (err) {
+      console.error('Error loading clientes:', err);
     } finally {
       setLoadingClientes(false);
     }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (clienteSearch.length >= 2) {
-        searchClientes(clienteSearch);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [clienteSearch, searchClientes]);
+  };
 
   const handleChange = (field: keyof CreatePrestamoPersonalDTO, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -134,14 +127,25 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Autocomplete
-                options={clienteOptions}
-                getOptionLabel={(opt) => `${opt.nombre}${opt.apellido ? ' ' + opt.apellido : ''}`}
+                options={clientes}
+                getOptionLabel={(cliente) =>
+                  cliente.razonSocial
+                    ? `${cliente.razonSocial} (${cliente.cuit})`
+                    : `${cliente.nombre} ${cliente.apellido || ''}`
+                }
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.id}>
+                    {option.razonSocial
+                      ? `${option.razonSocial} (${option.cuit})`
+                      : `${option.nombre} ${option.apellido || ''}`}
+                  </li>
+                )}
                 value={selectedCliente}
                 onChange={(_, newVal) => {
                   setSelectedCliente(newVal);
                   handleChange('clienteId', newVal?.id || 0);
                 }}
-                onInputChange={(_, val) => setClienteSearch(val)}
                 loading={loadingClientes}
                 renderInput={(params) => (
                   <TextField

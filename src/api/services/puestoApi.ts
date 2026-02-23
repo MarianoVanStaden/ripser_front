@@ -12,13 +12,16 @@ import type {
   UpdateSubtareaPuestoDTO,
   SubtareaPuestoDTO,
 } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE = '/api/rrhh/puestos';
 
 export const puestoApi = {
   // ── Puestos ──────────────────────────────────────────────
-  getAll: async (): Promise<PuestoListDTO[]> => {
-    const response = await api.get(BASE);
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<PuestoListDTO>> => {
+    const response = await api.get<PageResponse<PuestoListDTO>>(BASE, {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

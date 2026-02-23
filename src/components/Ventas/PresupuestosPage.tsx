@@ -227,23 +227,23 @@ const PresupuestosPage: React.FC = () => {
       setError(null);
 
       const [clientesData, leadsData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
-        clienteApi.getAll().catch((err) => {
+        clienteApi.getAll().then(res => res.content).catch((err) => {
           console.error("Error fetching clientes:", err);
           setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        leadApi.getAll().catch((err) => {
+        leadApi.getAll().then(res => res.content).catch((err) => {
           console.error("Error fetching leads:", err);
           setError("Error al cargar leads: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        usuarioApi.getAll().catch((err) => {
+        usuarioApi.getAll().then(res => res.content || res).catch((err) => { // Handle both if unsure
           console.error("Error fetching usuarios:", err);
           console.log("Usuarios response:", err.response?.data, err.response?.status);
           setError("Error al cargar usuarios: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
+        documentoApi.getByTipo("PRESUPUESTO").then(res => res.content || res).catch((err) => {
           console.error("Error fetching presupuestos:", err);
           console.log("Presupuestos response:", err.response?.data, err.response?.status);
           const errorMessage = err.response?.status === 403
@@ -252,12 +252,12 @@ const PresupuestosPage: React.FC = () => {
           setError(errorMessage);
           return [];
         }),
-        productApi.getAll(0, 10000).catch((err) => {
+        productApi.getAll(0, 10000).then(res => res.content).catch((err) => {
           console.error("Error fetching productos:", err);
           setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        recetaFabricacionApi.findDisponiblesParaVenta().catch((err) => {
+        recetaFabricacionApi.findDisponiblesParaVenta().then(res => Array.isArray(res) ? res : res.content || []).catch((err) => {
           console.error("Error fetching recetas:", err);
           setError("Error al cargar recetas de equipos: " + (err.response?.data?.message || err.message));
           return [];

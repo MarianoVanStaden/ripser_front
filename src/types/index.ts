@@ -9,6 +9,9 @@ export type { LeadDTO as Lead } from './lead.types';
 // Export prestamo types
 export * from './prestamo.types';
 
+// Export pagination types
+export * from './pagination.types';
+
 // Export shared enums
 export * from './shared.enums';
 import type { ProvinciaEnum } from './shared.enums';
@@ -2416,7 +2419,7 @@ export interface RecetaFabricacionUpdateDTO {
 
 export type TipoEquipo = 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
 
-export type EstadoAsignacionEquipo = 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'EN_TRANSITO' | 'ENTREGADO';
+export type EstadoAsignacionEquipo = 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'EN_TRANSITO' | 'ENTREGADO' | 'PENDIENTE_TERMINACION';
 
 export interface HistorialEstadoEquipo {
   id: number;
@@ -2449,6 +2452,7 @@ export interface EquipoFabricadoDTO {
   estadoAsignacion?: EstadoAsignacionEquipo;
   estado: EstadoFabricacion;
   fechaFinalizacion?: string;
+  fechaTerminacion?: string;  // YYYY-MM-DD — fecha en que se aplicó el color/revestimiento
   responsableId?: number;
   responsableNombre?: string;
   clienteId?: number;
@@ -2464,13 +2468,17 @@ export interface EquipoFabricadoListDTO {
   empresaId: number;         // Multi-tenant: empresa ID
   tipo: TipoEquipo;
   modelo: string;
+  medida?: MedidaEquipo;
   numeroHeladera: string;
   color?: string;
+  observaciones?: string;    // e.g. "Color previsto: PLATA (detalle #354)" for PENDIENTE_TERMINACION bases
   cantidad: number;
   asignado: boolean;
+  estadoAsignacion?: EstadoAsignacionEquipo;
   estado: EstadoFabricacion;
   fechaCreacion: string;
   fechaFinalizacion?: string;
+  fechaTerminacion?: string;  // YYYY-MM-DD — fecha en que se aplicó el color/revestimiento
   responsableNombre?: string;
   clienteNombre?: string;
 }
@@ -2504,13 +2512,53 @@ export interface EquipoFabricadoUpdateDTO {
   responsableId?: number;
   clienteId?: number;
 }
-export type EstadoFabricacion = 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO';
+export type EstadoFabricacion = 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO' | 'FABRICADO_SIN_TERMINACION';
 
 // Response for batch equipment creation
 export interface EquipoCreationResponseDTO {
   cantidadCreada: number;
   equipos: EquipoFabricadoDTO[];
   mensaje: string;
+}
+
+// Flujo de fabricación base + terminación
+export type TipoTerminacion = 'COLOR_PINTURA' | 'GALVANIZADO' | 'TAPIZADO' | 'PLASTIFICADO' | 'OTRO';
+
+export interface FabricacionBaseRequestDTO {
+  recetaId?: number;
+  tipo: TipoEquipo;
+  modelo: string;
+  equipo?: string;
+  medida?: MedidaEquipo;
+  cantidad: number;
+  responsableId?: number;
+  observaciones?: string;
+}
+
+export interface AplicarTerminacionDTO {
+  tipoTerminacion: TipoTerminacion;
+  valor: string;
+  completarAlTerminar: boolean;
+  responsableId?: number;
+  observaciones?: string;
+}
+
+export interface EtapaTerminacionDTO {
+  id: number;
+  tipoTerminacion: TipoTerminacion;
+  valor: string;
+  fechaAplicacion: string;
+  completado: boolean;
+  responsableNombre?: string;
+}
+
+export interface HistorialFabricacionDTO {
+  id: number;
+  estadoAnterior: EstadoFabricacion;
+  estadoNuevo: EstadoFabricacion;
+  descripcion: string;
+  fecha: string;
+  usuarioNombre?: string;
 }
 
 // Validación de stock para fabricación

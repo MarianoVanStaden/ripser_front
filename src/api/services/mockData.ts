@@ -278,11 +278,14 @@ export const mockCuentaCorriente: CuentaCorriente[] = [
   },
 ];
 
+import { arrayToPage } from '../../types/pagination.types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
+
 // Mock API functions
 export const mockClienteApi = {
-  getAll: async (): Promise<Cliente[]> => {
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
     await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
-    return [...mockClientes];
+    return arrayToPage(mockClientes, pagination.page || 0, pagination.size || 20);
   },
 
   getById: async (id: number): Promise<Cliente> => {
@@ -335,10 +338,10 @@ export const mockClienteApi = {
     mockClientes.splice(index, 1);
   },
 
-  search: async (query: string): Promise<Cliente[]> => {
+  search: async (query: string, pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const lowercaseQuery = query.toLowerCase();
-    return mockClientes.filter(
+    const results = mockClientes.filter(
       (cliente) =>
         cliente.nombre.toLowerCase().includes(lowercaseQuery) ||
         (cliente.apellido &&
@@ -348,13 +351,15 @@ export const mockClienteApi = {
         (cliente.cuit && cliente.cuit.includes(query)) ||
         (cliente.email && cliente.email.toLowerCase().includes(lowercaseQuery))
     );
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 };
 
 export const mockContactoClienteApi = {
-  getByClienteId: async (clienteId: number): Promise<ContactoCliente[]> => {
+  getByClienteId: async (clienteId: number, pagination: PaginationParams = {}): Promise<PageResponse<ContactoCliente>> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    return mockContactos.filter((c) => c.clienteId === clienteId);
+    const results = mockContactos.filter((c) => c.clienteId === clienteId);
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 
   create: async (
@@ -397,9 +402,10 @@ export const mockContactoClienteApi = {
 };
 
 export const mockCuentaCorrienteApi = {
-  getByClienteId: async (clienteId: number): Promise<CuentaCorriente[]> => {
+  getByClienteId: async (clienteId: number, pagination: PaginationParams = {}): Promise<PageResponse<CuentaCorriente>> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    return mockCuentaCorriente.filter((c) => c.clienteId === clienteId);
+    const results = mockCuentaCorriente.filter((c) => c.clienteId === clienteId);
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 
   create: async (
@@ -516,9 +522,9 @@ export const mockSuppliers: Supplier[] = [
 
 // Mock API for Suppliers
 export const mockSupplierApi = {
-  getAll: async (): Promise<Supplier[]> => {
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Supplier>> => {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    return [...mockSuppliers];
+    return arrayToPage(mockSuppliers, pagination.page || 0, pagination.size || 20);
   },
 
   getById: async (id: number): Promise<Supplier> => {
@@ -574,20 +580,22 @@ export const mockSupplierApi = {
     mockSuppliers.splice(index, 1);
   },
 
-  search: async (query: string): Promise<Supplier[]> => {
+  search: async (query: string, pagination: PaginationParams = {}): Promise<PageResponse<Supplier>> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const lowerQuery = query.toLowerCase();
-    return mockSuppliers.filter(
+    const results = mockSuppliers.filter(
       (supplier) =>
         supplier.name.toLowerCase().includes(lowerQuery) ||
         supplier.contactPerson.toLowerCase().includes(lowerQuery) ||
         supplier.email.toLowerCase().includes(lowerQuery)
     );
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 
-  getByStatus: async (isActive: boolean): Promise<Supplier[]> => {
+  getByStatus: async (isActive: boolean, pagination: PaginationParams = {}): Promise<PageResponse<Supplier>> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    return mockSuppliers.filter((supplier) => supplier.isActive === isActive);
+    const results = mockSuppliers.filter((supplier) => supplier.isActive === isActive);
+    return arrayToPage(results, pagination.page || 0, pagination.size || 20);
   },
 
   updateRating: async (id: number, rating: number): Promise<Supplier> => {

@@ -1,4 +1,5 @@
 import api from '../api';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 // Criterios de evaluación como const object
 export const CriterioEvaluacion = {
@@ -43,16 +44,8 @@ export interface EstadisticasEvaluacionDTO {
   calificacionMinima: number;
 }
 
-export interface PaginatedResponse<T> {
-  content: T[];
-  pageable: {
-    pageNumber: number;
-    pageSize: number;
-  };
-  totalElements: number;
-  totalPages: number;
-  last: boolean;
-}
+/** @deprecated Use PageResponse from '../../types/pagination.types' instead */
+export type PaginatedResponse<T> = PageResponse<T>;
 
 // API Service
 const BASE_PATH = '/api/evaluaciones-proveedores';
@@ -73,12 +66,10 @@ export const evaluacionProveedorApi = {
   // Obtener evaluaciones paginadas
   obtenerPaginado: async (
     proveedorId: number,
-    page: number = 0,
-    size: number = 10,
-    sort: string = 'fechaEvaluacion,desc'
-  ): Promise<PaginatedResponse<EvaluacionProveedorDTO>> => {
-    const response = await api.get(`${BASE_PATH}/proveedor/${proveedorId}/paginado`, {
-      params: { page, size, sort }
+    pagination: PaginationParams = { sort: 'fechaEvaluacion,desc' }
+  ): Promise<PageResponse<EvaluacionProveedorDTO>> => {
+    const response = await api.get<PageResponse<EvaluacionProveedorDTO>>(`${BASE_PATH}/proveedor/${proveedorId}/paginado`, {
+      params: { ...pagination },
     });
     return response.data;
   },
@@ -112,11 +103,10 @@ export const evaluacionProveedorApi = {
 
   // Obtener todas las evaluaciones (paginado)
   obtenerTodas: async (
-    page: number = 0,
-    size: number = 20
-  ): Promise<PaginatedResponse<EvaluacionProveedorDTO>> => {
-    const response = await api.get(BASE_PATH, {
-      params: { page, size }
+    pagination: PaginationParams = {}
+  ): Promise<PageResponse<EvaluacionProveedorDTO>> => {
+    const response = await api.get<PageResponse<EvaluacionProveedorDTO>>(BASE_PATH, {
+      params: { ...pagination },
     });
     return response.data;
   },

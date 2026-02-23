@@ -38,14 +38,18 @@ const GarantiaReportPage: React.FC = () => {
       ]);
 
       if (garantiasData.status === 'fulfilled') {
-        setGarantias(Array.isArray(garantiasData.value) ? garantiasData.value : []);
+        const value = garantiasData.value;
+        const list = Array.isArray(value) ? value : (value as any).content || [];
+        setGarantias(list);
       } else {
         console.error('Error loading garantias:', garantiasData.reason);
         setError('Error al cargar las garantías');
       }
 
       if (reclamosData.status === 'fulfilled') {
-        setReclamos(Array.isArray(reclamosData.value) ? reclamosData.value : []);
+        const value = reclamosData.value;
+        const list = Array.isArray(value) ? value : (value as any).content || [];
+        setReclamos(list);
       } else {
         console.error('Error loading reclamos:', reclamosData.reason);
       }

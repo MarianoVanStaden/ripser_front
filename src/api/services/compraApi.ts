@@ -6,12 +6,16 @@ import type {
   RecepcionCompraDTO,
   RecepcionResponseDTO,
   DistribucionManualDTO,
+  PageResponse,
+  PaginationParams,
 } from '../../types';
 
 export const compraApi = {
-  // Get all compras
-  getAll: async (): Promise<Compra[]> => {
-    const response = await api.get('/api/compras');
+  // Get all compras (paginated)
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Compra>> => {
+    const response = await api.get<PageResponse<Compra>>('/api/compras', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

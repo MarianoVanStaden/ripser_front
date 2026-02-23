@@ -1,10 +1,13 @@
 import api from '../config';
 import type { RegistroAsistencia } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const registroAsistenciaApi = {
   // Get all registros
-  getAll: async (): Promise<RegistroAsistencia[]> => {
-    const response = await api.get('/api/registro-asistencia');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<RegistroAsistencia>> => {
+    const response = await api.get<PageResponse<RegistroAsistencia>>('/api/registro-asistencia', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

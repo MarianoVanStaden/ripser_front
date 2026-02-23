@@ -10,6 +10,7 @@ import type {
   AprobacionReconciliacionDTO,
   CancelarReconciliacionDTO,
 } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE_URL = '/api/stock/reconciliacion';
 
@@ -124,14 +125,9 @@ export const reconciliacionApi = {
   /**
    * Listar todas las reconciliaciones (paginado)
    */
-  getAll: async (page = 0, size = 10): Promise<{
-    content: ReconciliacionStockDTO[];
-    totalElements: number;
-    totalPages: number;
-    number: number;
-  }> => {
-    const response = await api.get(`${BASE_URL}/`, {
-      params: { page, size },
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<ReconciliacionStockDTO>> => {
+    const response = await api.get<PageResponse<ReconciliacionStockDTO>>(`${BASE_URL}/`, {
+      params: { ...pagination },
     });
     return response.data;
   },

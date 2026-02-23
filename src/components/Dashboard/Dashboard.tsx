@@ -231,11 +231,11 @@ const Dashboard: React.FC = () => {
       const currentEmpresaId = sessionStorage.getItem('empresaId');
       console.log('🔍 Dashboard fetchDashboardData - empresaId from sessionStorage:', currentEmpresaId, 'from context:', empresaId);
 
-      const [clients, products, allDocumentos, lowStock] = await Promise.all([
+      const [clientsData, productsData, allDocumentos, lowStock] = await Promise.all([
         clientApi.getAll().catch((err) => {
           throw new Error(`clientApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
         }),
-        productApi.getAll(0, 1000).catch((err) => {
+        productApi.getAll({ page: 0, size: 1000 }).catch((err) => {
           throw new Error(`productApi.getAll failed: ${err.response?.status} ${err.response?.data}`);
         }),
         documentoApi.getByTipo('FACTURA').catch((err) => {
@@ -245,20 +245,26 @@ const Dashboard: React.FC = () => {
           throw new Error(`productApi.getLowStock failed: ${err.response?.status} ${err.response?.data}`);
         }),
       ]);
+      
+      // Handle pagination/content extraction
+      const clients = Array.isArray(clientsData) ? clientsData : (clientsData as any).content || [];
+      const products = Array.isArray(productsData) ? productsData : (productsData as any).content || [];
+      const documentos = Array.isArray(allDocumentos) ? allDocumentos : (allDocumentos as any).content || [];
+      const lowStockItems = Array.isArray(lowStock) ? lowStock : (lowStock as any).content || [];
 
       // 🔍 DEBUG: Log what data was returned
       console.log('🔍 Dashboard data received:', {
         clientsCount: clients.length,
         firstClientIds: clients.slice(0, 3).map((c: any) => ({ id: c.id, nombre: c.nombre })),
-        productsCount: Array.isArray(products) ? products.length : (products as any).content?.length || 0,
-        documentosCount: allDocumentos.length,
-        firstDocumentosIds: allDocumentos.slice(0, 3).map((d: any) => ({
+        productsCount: products.length,
+        documentosCount: documentos.length,
+        firstDocumentosIds: documentos.slice(0, 3).map((d: any) => ({
           id: d.id,
           numero: d.numeroDocumento,
           clienteId: d.clienteId,
           clienteNombre: d.clienteNombre
         })),
-        lowStockCount: lowStock.length,
+        lowStockCount: lowStockItems.length,
       });
 
       // 🔍 DEBUG: Check if these clients belong to empresa 2
@@ -271,7 +277,7 @@ const Dashboard: React.FC = () => {
       }
 
       // Filter only invoices (FAC-), exclude order notes (NP-)
-      const sales = allDocumentos.filter((doc: any) => {
+      const sales = documentos.filter((doc: any) => {
         const numeroDoc = doc.numeroDocumento || doc.ventaNumero || '';
         return numeroDoc.startsWith('FAC-');
       });
@@ -362,7 +368,7 @@ const Dashboard: React.FC = () => {
       const outOfStock = products.filter((p: any) => p.stockActual === 0);
 
       // Set low stock products - Filter only active products
-      const activeLowStock = lowStock.filter((p: any) => p.activo === true);
+      const activeLowStock = lowStockItems.filter((p: any) => p.activo === true);
       setLowStockProducts(activeLowStock.slice(0, 5));
 
       // Top products by stock value

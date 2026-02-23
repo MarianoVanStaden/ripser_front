@@ -1,12 +1,15 @@
 import axios from '../config';
 import type { Legajo } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE_URL = '/api/legajos';
 
 export const legajoApi = {
   // Get all legajos
-  getAll: async (): Promise<Legajo[]> => {
-    const response = await axios.get<Legajo[]>(BASE_URL);
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Legajo>> => {
+    const response = await axios.get<PageResponse<Legajo>>(BASE_URL, {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

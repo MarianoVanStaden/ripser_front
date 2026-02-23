@@ -134,9 +134,9 @@ const AgendaVisitasPage: React.FC = () => {
     try {
       setLoading(true);
       const [clientesData] = await Promise.all([
-        clienteApi.getAll(),
+        clienteApi.getAll({ page: 0, size: 500 }).then(res => res.content),
       ]);
-      
+
       setClientes(clientesData);
       
       // Load visits with client data

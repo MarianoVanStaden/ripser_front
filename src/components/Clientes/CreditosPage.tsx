@@ -98,7 +98,7 @@ const CreditosPage: React.FC = () => {
 
       const [creditosData, clientesData] = await Promise.all([
         creditoClienteApi.getAll(),
-        clienteApi.getAll(),
+        clienteApi.getAll({ page: 0, size: 500 }).then(res => res.content),
       ]);
 
       console.log('Creditos data received:', creditosData);
@@ -106,7 +106,7 @@ const CreditosPage: React.FC = () => {
 
       // Ensure we always set arrays
       setCreditos(Array.isArray(creditosData) ? creditosData : []);
-      setClientes(Array.isArray(clientesData) ? clientesData : []);
+      setClientes(clientesData);
 
       if (!Array.isArray(creditosData)) {
         console.warn('Expected creditos to be an array, got:', typeof creditosData, creditosData);

@@ -1,4 +1,5 @@
 import api from '../config';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export type TipoRol = 'ADMIN' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USUARIO';
 
@@ -37,14 +38,6 @@ export interface UsuarioUpdateDTO {
 export interface ChangePasswordDTO {
   currentPassword: string;
   newPassword: string;
-}
-
-export interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
 }
 
 /**

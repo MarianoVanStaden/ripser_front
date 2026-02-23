@@ -9,14 +9,20 @@ import type {
   EstadoFabricacion,
   ValidacionStockDTO,
   EquipoCreationResponseDTO,
+  FabricacionBaseRequestDTO,
+  AplicarTerminacionDTO,
+  EtapaTerminacionDTO,
+  HistorialFabricacionDTO,
+  PageResponse,
+  PaginationParams,
 } from '../../types';
 
 
 export const equipoFabricadoApi = {
-  // CRUD básico
-  findAll: async (page: number = 0, size: number = 10) => {
-    const response = await api.get<any>('/api/equipos-fabricados', {
-      params: { page, size }
+  // CRUD básico (paginated)
+  findAll: async (pagination: PaginationParams = {}): Promise<PageResponse<EquipoFabricadoListDTO>> => {
+    const response = await api.get<PageResponse<EquipoFabricadoListDTO>>('/api/equipos-fabricados', {
+      params: { ...pagination },
     });
     return response.data;
   },
@@ -213,6 +219,119 @@ export const equipoFabricadoApi = {
       `/api/equipos-fabricados/${equipoId}/estado-asignacion`,
       { estadoAsignacion: nuevoEstado }
     );
+    return response.data;
+  },
+
+  // Flujo Base + Terminación
+  fabricarBase: async (data: FabricacionBaseRequestDTO): Promise<EquipoCreationResponseDTO> => {
+    const response = await api.post<EquipoCreationResponseDTO>('/api/equipos-fabricados/base', data);
+    return response.data;
+  },
+
+  findSinTerminacion: async (): Promise<EquipoFabricadoListDTO[]> => {
+    const response = await api.get<EquipoFabricadoListDTO[]>('/api/equipos-fabricados/sin-terminacion');
+    return response.data;
+  },
+
+  findSinTerminacionByReceta: async (recetaId: number): Promise<EquipoFabricadoListDTO[]> => {
+    const response = await api.get<EquipoFabricadoListDTO[]>(
+      `/api/equipos-fabricados/sin-terminacion/receta/${recetaId}`
+    );
+    return response.data;
+  },
+
+  reservarParaNota: async (data: { equipoFabricadoId: number; detalleNotaPedidoId: number }): Promise<EquipoFabricadoDTO> => {
+    const response = await api.post<EquipoFabricadoDTO>(
+      '/api/equipos-fabricados/reservar-para-nota',
+      data
+    );
+    return response.data;
+  },
+
+  aplicarTerminacion: async (id: number, data: AplicarTerminacionDTO): Promise<EquipoFabricadoDTO> => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${id}/aplicar-terminacion`,
+      data
+    );
+    return response.data;
+  },
+
+  // WORKAROUND: Backend returns id: null in list DTOs — resolve real ID first via numeroHeladera
+  aplicarTerminacionPorNumero: async (numeroHeladera: string, data: AplicarTerminacionDTO): Promise<EquipoFabricadoDTO> => {
+    const equipoResponse = await api.get<EquipoFabricadoDTO>(`/api/equipos-fabricados/numero/${numeroHeladera}`);
+    const equipoId = equipoResponse.data.id;
+    if (!equipoId) {
+      throw new Error(`Equipo ${numeroHeladera} no tiene ID en la respuesta del backend`);
+    }
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/aplicar-terminacion`,
+      data
+    );
+    return response.data;
+  },
+
+  getEtapasTerminacion: async (id: number): Promise<EtapaTerminacionDTO[]> => {
+    const response = await api.get<EtapaTerminacionDTO[]>(
+      `/api/equipos-fabricados/${id}/etapas-terminacion`
+    );
+    return response.data;
+  },
+
+  getHistorialFabricacion: async (id: number): Promise<HistorialFabricacionDTO[]> => {
+    const response = await api.get<HistorialFabricacionDTO[]>(
+      `/api/equipos-fabricados/${id}/historial`
+    );
+    return response.data;
+  },
+
+  // FABRICADO_SIN_TERMINACION → COMPLETADO (cuando ya tiene terminaciones registradas)
+  completarBase: async (id: number): Promise<EquipoFabricadoDTO> => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${id}/completar-base`
+    );
+    return response.data;
+  },
+
+  // Libera la reserva de un equipo → DISPONIBLE
+  liberarReserva: async (id: number): Promise<EquipoFabricadoDTO> => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${id}/liberar-reserva`
+    );
+    return response.data;
+  },
+
+  // Equipos base reservados para notas de pedido sin color (estadoAsignacion = PENDIENTE_TERMINACION)
+  findPendientesTerminacion: async (): Promise<EquipoFabricadoListDTO[]> => {
+    const response = await api.get<EquipoFabricadoListDTO[]>(
+      '/api/equipos-fabricados/pendientes-terminacion'
+    );
+    return response.data;
+  },
+
+  // Unified stock resolution for a nota de pedido detalle:
+  //   P1 → existing COMPLETADO equipo with matching color → reserve it
+  //   P2 → available FABRICADO_SIN_TERMINACION base → store expected color → reserve
+  //   P3 → no stock → create new PENDIENTE equipo for fabrication queue
+  // In all cases creates a DetalleEquipoAsignacion link.
+  resolverParaPedido: async (data: {
+    tipo: TipoEquipo;
+    modelo: string;
+    medida?: string;
+    color?: string;
+    detalleNotaPedidoId: number;
+  }): Promise<EquipoFabricadoDTO> => {
+    const response = await api.post<EquipoFabricadoDTO>(
+      '/api/equipos-fabricados/resolver-para-pedido',
+      data
+    );
+    return response.data;
+  },
+
+  // Quick count of available bases (no lock — for display purposes only)
+  countBasesDisponibles: async (modelo: string, medida?: string): Promise<number> => {
+    const response = await api.get<number>('/api/equipos-fabricados/bases-disponibles/count', {
+      params: { modelo, ...(medida ? { medida } : {}) },
+    });
     return response.data;
   },
 };

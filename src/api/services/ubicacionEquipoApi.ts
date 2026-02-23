@@ -1,10 +1,13 @@
 import api from '../config';
 import type { UbicacionEquipo, UbicacionEquipoCreateDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const ubicacionEquipoApi = {
   // Consultas
-  getAll: async (): Promise<UbicacionEquipo[]> => {
-    const response = await api.get('/api/ubicacion-equipo');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<UbicacionEquipo>> => {
+    const response = await api.get<PageResponse<UbicacionEquipo>>('/api/ubicacion-equipo', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

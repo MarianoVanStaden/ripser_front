@@ -1,10 +1,13 @@
 import api from '../config';
 import type { CreditoCliente, CreditoCreateDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const creditoClienteApi = {
   // Get all creditos
-  getAll: async (): Promise<CreditoCliente[]> => {
-    const response = await api.get('/api/creditos-cliente');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<CreditoCliente>> => {
+    const response = await api.get<PageResponse<CreditoCliente>>('/api/creditos-cliente', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

@@ -68,9 +68,9 @@ export const LeadsTablePage = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await leadApi.getAll({
-        sucursalId: sucursalFiltro
-      });
+      // First arg is pagination, second is filtering params
+      const response = await leadApi.getAll({}, { sucursalId: sucursalFiltro });
+      const data = response.content;
 
       // Cargar recordatorios para cada lead
       const leadsConRecordatorios = await Promise.all(

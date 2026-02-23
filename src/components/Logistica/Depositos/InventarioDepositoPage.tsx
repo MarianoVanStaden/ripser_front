@@ -171,7 +171,7 @@ const InventarioDepositoPage: React.FC = () => {
       const [stockResponse, depositosResponse, productosData] = await Promise.all([
         stockDepositoApi.getAll(),
         depositoApi.getActivos(),
-        productApi.getAll(0, 10000),
+        productApi.getAll({ page: 0, size: 10000 }),
       ]);
       // Handle paginated responses
       const stockData = Array.isArray(stockResponse)
@@ -180,9 +180,14 @@ const InventarioDepositoPage: React.FC = () => {
       const depositosData = Array.isArray(depositosResponse)
         ? depositosResponse
         : (depositosResponse as any)?.content || [];
+      
+      const productosList = Array.isArray(productosData) 
+        ? productosData 
+        : (productosData as any)?.content || [];
+        
       setStockItems(stockData);
       setDepositos(depositosData);
-      setProductos(productosData || []);
+      setProductos(productosList);
       setError(null);
     } catch (err: any) {
       console.error('Error loading data:', err);

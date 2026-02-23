@@ -1,4 +1,5 @@
 import api from '../api';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 // ==================== TYPES ====================
 export interface ReclamoGarantiaDTO {
@@ -37,8 +38,10 @@ export interface ReclamoGarantiaUpdateDTO {
 // ==================== RECLAMOS API ====================
 export const reclamoGarantiaApi = {
   // GET /api/reclamos-garantia
-  findAll: async (): Promise<ReclamoGarantiaDTO[]> => {
-    const response = await api.get('/api/reclamos-garantia');
+  findAll: async (pagination: PaginationParams = {}): Promise<PageResponse<ReclamoGarantiaDTO>> => {
+    const response = await api.get<PageResponse<ReclamoGarantiaDTO>>('/api/reclamos-garantia', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

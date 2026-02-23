@@ -1,5 +1,6 @@
 import api from '../config';
-import type { Cliente, CreateClienteRequest } from '../../types';
+import type { Cliente, CreateClienteRequest, PageResponse, PaginationParams } from '../../types';
+import { arrayToPage } from '../../types/pagination.types';
 import { mockClienteApi } from './mockApi';
 
 // Flag to determine if we should use mock data
@@ -47,14 +48,19 @@ const withFallback = async <T>(
 };
 
 export const clienteApi = {
-  // Get all clients
-  getAll: async (): Promise<Cliente[]> => {
+  // Get all clients (paginated)
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
     return withFallback(
       async () => {
-  const response = await api.get('/clientes'); // baseURL now ends with /api
+        const response = await api.get<PageResponse<Cliente>>('/clientes', {
+          params: { ...pagination },
+        });
         return response.data;
       },
-      () => mockClienteApi.getAll()
+      async () => {
+        const mockData = await mockClienteApi.getAll();
+        return arrayToPage<Cliente>(mockData, pagination.page ?? 0, pagination.size ?? 20);
+      }
     );
   },
 

@@ -1,10 +1,13 @@
 import api from '../config';
 import type { Vehiculo, VehiculoCreateDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const vehiculoApi = {
   // Get all vehiculos
-  getAll: async (): Promise<Vehiculo[]> => {
-    const response = await api.get('/api/vehiculos');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Vehiculo>> => {
+    const response = await api.get<PageResponse<Vehiculo>>('/api/vehiculos', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

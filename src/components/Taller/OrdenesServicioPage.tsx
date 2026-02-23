@@ -89,8 +89,11 @@ const OrdenesServicioPage: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const data = await clienteApi.getAll();
-      setClientes(Array.isArray(data) ? data : []);
+      const data = await clienteApi.getAll({ page: 0, size: 1000 });
+      const clientesList = Array.isArray(data) 
+        ? data 
+        : (data as any).content || [];
+      setClientes(clientesList);
     } catch (err) {
       console.error('Error loading clientes:', err);
     }
@@ -110,7 +113,11 @@ const OrdenesServicioPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await ordenServicioApi.getAll();
-      setOrdenes(Array.isArray(data) ? data : []);
+      // Handle paginated response
+      const ordenesList = Array.isArray(data) 
+        ? data 
+        : (data as any).content || [];
+      setOrdenes(ordenesList);
     } catch (err) {
       setError('Error al cargar las órdenes de servicio');
       console.error('Error loading ordenes:', err);

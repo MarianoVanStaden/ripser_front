@@ -250,8 +250,12 @@ const TripsPage2: React.FC = () => {
       }
 
       try {
-        const allVehicles = await vehiculoApi.getAll();
-        vehiclesData = allVehicles.filter(v => v.estado === 'DISPONIBLE');
+        const allVehiclesResponse = await vehiculoApi.getAll({ page: 0, size: 1000 });
+        const allVehicles = Array.isArray(allVehiclesResponse) 
+          ? allVehiclesResponse 
+          : (allVehiclesResponse as any).content || [];
+          
+        vehiclesData = allVehicles.filter((v: any) => v.estado === 'DISPONIBLE');
         if (allVehicles.length > 0 && vehiclesData.length === 0) {
           errors.push(`Hay ${allVehicles.length} vehículos pero ninguno está DISPONIBLE`);
         }
@@ -283,7 +287,10 @@ const TripsPage2: React.FC = () => {
       }
 
       try {
-        clientesData = await clienteApi.getAll();
+        const clientesResponse = await clienteApi.getAll({ page: 0, size: 1000 });
+        clientesData = Array.isArray(clientesResponse) 
+          ? clientesResponse 
+          : (clientesResponse as any).content || [];
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`Clientes: ${errorMsg}`);

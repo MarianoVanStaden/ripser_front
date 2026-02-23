@@ -1,13 +1,14 @@
 import api from '../config';
 import type { OrdenServicio } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const ordenServicioApi = {
   // Get all ordenes de servicio
-  getAll: async (): Promise<OrdenServicio[]> => {
-    const response = await api.get('/api/ordenes-servicio');
-    // Backend returns paginated response: { content: [], totalPages, totalElements, ... }
-    // Extract the content array from the paginated response
-    return response.data.content || response.data;
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<OrdenServicio>> => {
+    const response = await api.get<PageResponse<OrdenServicio>>('/api/ordenes-servicio', {
+      params: { ...pagination },
+    });
+    return response.data;
   },
 
   // Get orden by ID

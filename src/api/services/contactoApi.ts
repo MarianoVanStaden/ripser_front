@@ -1,10 +1,13 @@
 import api from '../config';
 import dayjs from 'dayjs';
 import type { ContactoProveedorDTO } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const contactoApi = {
-  getAll: async (): Promise<ContactoProveedorDTO[]> => {
-    const res = await api.get('/api/contactos-proveedor');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<ContactoProveedorDTO>> => {
+    const res = await api.get<PageResponse<ContactoProveedorDTO>>('/api/contactos-proveedor', {
+      params: { ...pagination },
+    });
     return res.data;
   },
   getById: async (id: number): Promise<ContactoProveedorDTO> => {

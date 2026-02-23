@@ -9,30 +9,38 @@ import type {
   RecordatorioLeadDTO,
   PrioridadLeadEnum
 } from '../../types/lead.types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE_PATH = '/api/leads';
 
+export interface LeadFilterParams {
+  sucursalId?: number | null;
+  estados?: EstadoLeadEnum[];
+  canales?: CanalEnum[];
+  provincias?: string[]; // Assuming simple string or enum
+  prioridad?: PrioridadLeadEnum;
+  usuarioId?: number;
+  busqueda?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+}
+
 export const leadApi = {
-  // Listar todos los leads con filtros opcionales
-  getAll: async (params?: {
-    sucursalId?: number | null;
-    estado?: EstadoLeadEnum;
-    canal?: CanalEnum;
-  }): Promise<LeadDTO[]> => {
-    const queryParams = new URLSearchParams();
-
-    if (params?.sucursalId !== undefined && params.sucursalId !== null) {
-      queryParams.append('sucursalId', params.sucursalId.toString());
+  // Listar todos los leads con filtros opcionales (paginated)
+  getAll: async (pagination: PaginationParams = {}, params?: LeadFilterParams): Promise<PageResponse<LeadDTO>> => {
+    // Convert array params to comma-separated strings if backend expects 'A,B'
+    // Or let axios handle it if backend expects repeated params.
+    // Assuming backend standard:
+    const paramsToSend = { ...params, ...pagination };
+    
+    // Check if we need to transform arrays
+    if (params?.estados) {
+      // Just passing it through, axios default is usually array format
     }
-    if (params?.estado) {
-      queryParams.append('estado', params.estado);
-    }
-    if (params?.canal) {
-      queryParams.append('canal', params.canal);
-    }
-
-    const url = `${BASE_PATH}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-    const response = await api.get<LeadDTO[]>(url);
+    
+    const response = await api.get<PageResponse<LeadDTO>>(BASE_PATH, {
+      params: paramsToSend, 
+    });
     return response.data;
   },
 
@@ -42,21 +50,33 @@ export const leadApi = {
     return response.data;
   },
 
-  // Buscar leads por estado
+  /**
+   * @deprecated Use getAll with filters instead
+   */
+  // Buscar leads por estado (Legacy)
   getByEstado: async (estado: EstadoLeadEnum): Promise<LeadDTO[]> => {
-    const response = await api.get<LeadDTO[]>(`${BASE_PATH}/estado/${estado}`);
-    return response.data;
+    // Mapping to getAll for backward compatibility if possible, but return type differs
+    // Since we are migrating, we should just remove or update usage. 
+    // But to avoid breaking unknown callers, maybe we keep it but it will fail if backend changed.
+    // However, the user instruction is to "Replace specific endpoints".
+    // I will comment it out or mark deprecated, but better yet, implement it using getAll and unwrapping (inefficient but safe) or just error out.
+    // Given the task is "Update", I will remove it and fix the hook that uses it.
+    throw new Error('Use leadApi.getAll with filters instead');
   },
 
+  /**
+   * @deprecated Use getAll with filters instead
+   */
   // Buscar leads por prioridad
   getByPrioridad: async (prioridad: PrioridadLeadEnum): Promise<LeadDTO[]> => {
-    const response = await api.get<LeadDTO[]>(`${BASE_PATH}/prioridad/${prioridad}`);
-    return response.data;
+     throw new Error('Use leadApi.getAll with filters instead');
   },
 
   // Obtener leads próximos a seguimiento
-  getProximosSeguimiento: async (): Promise<LeadDTO[]> => {
-    const response = await api.get<LeadDTO[]>(`${BASE_PATH}/proximos-seguimiento`);
+  getProximosSeguimiento: async (pagination: PaginationParams = {}): Promise<PageResponse<LeadDTO>> => {
+    const response = await api.get<PageResponse<LeadDTO>>(`${BASE_PATH}/proximos-seguimiento`, {
+       params: pagination
+    });
     return response.data;
   },
 

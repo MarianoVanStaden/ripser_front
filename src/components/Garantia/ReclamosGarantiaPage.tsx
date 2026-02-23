@@ -50,13 +50,21 @@ const ReclamosGarantiaPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const [reclamosData, garantiasData] = await Promise.all([
+      const [reclamosResponse, garantiasResponse] = await Promise.all([
         reclamoGarantiaApi.findAll(),
         garantiaApi.findAll()
       ]);
       
-      setReclamos(reclamosData);
-      setGarantias(garantiasData);
+      const reclamosList = Array.isArray(reclamosResponse) 
+        ? reclamosResponse 
+        : (reclamosResponse as any).content || [];
+        
+      const garantiasList = Array.isArray(garantiasResponse) 
+        ? garantiasResponse 
+        : (garantiasResponse as any).content || [];
+      
+      setReclamos(reclamosList);
+      setGarantias(garantiasList);
     } catch (err: any) {
       console.error('Error loading reclamos:', err);
       setError(err.response?.data?.message || 'Error al cargar los reclamos');

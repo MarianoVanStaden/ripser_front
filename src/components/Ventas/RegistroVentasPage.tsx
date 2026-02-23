@@ -100,22 +100,27 @@ const RegistroVentasPage: React.FC = () => {
       setError(null);
       
       // Load all data in parallel
-      const [facturasData, notasCreditoData, clientsData, usuariosData] = await Promise.all([
+      const [facturasData, notasCreditoData, clientsResponse, usuariosData] = await Promise.all([
         documentoApi.getByTipo('FACTURA'),
         documentoApi.getByTipo('NOTA_CREDITO'),
-        clienteApi.getAll(),
+        clienteApi.getAll({ size: 1000 }), // Get more clients for lookup
         usuarioApi.getAll(),
       ]);
       
       // Combine both document types
-      const salesData = [...facturasData, ...notasCreditoData];
+      const salesData = [...(facturasData as any), ...(notasCreditoData as any)];
       
+      // Handle clients pagination
+      const clientsArray = Array.isArray(clientsResponse) 
+        ? clientsResponse 
+        : (clientsResponse as any)?.content || [];
+
       console.log('Sales data:', salesData);
-      console.log('Clients data:', clientsData);
+      console.log('Clients data:', clientsArray);
       console.log('Usuarios data:', usuariosData);
       
       // Create maps for quick lookups
-      const clientsMap = new Map(clientsData.map((client: Cliente) => [client.id, client]));
+      const clientsMap = new Map(clientsArray.map((client: Cliente) => [client.id, client]));
       // Handle usuarios response - it might be paginated or direct array
       const usuariosArray = Array.isArray(usuariosData) ? usuariosData : (usuariosData as any).content || [];
       const usuariosMap = new Map(usuariosArray.map((usuario: Usuario) => [usuario.id, usuario]));

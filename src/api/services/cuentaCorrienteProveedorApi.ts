@@ -1,10 +1,13 @@
 import api from '../config';
 import type { CuentaCorrienteProveedor, CreateMovimientoProveedorPayload } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const cuentaCorrienteProveedorApi = {
   // Get all movimientos
-  getAll: async (): Promise<CuentaCorrienteProveedor[]> => {
-    const response = await api.get('/api/cuenta-corriente-proveedor');
+  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<CuentaCorrienteProveedor>> => {
+    const response = await api.get<PageResponse<CuentaCorrienteProveedor>>('/api/cuenta-corriente-proveedor', {
+      params: { ...pagination },
+    });
     return response.data;
   },
 

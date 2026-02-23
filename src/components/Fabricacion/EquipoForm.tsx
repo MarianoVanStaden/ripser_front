@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Stack, Alert,
   Snackbar, CircularProgress, IconButton, Autocomplete, Dialog, DialogTitle,
-  DialogContent, DialogActions,
+  DialogContent, DialogActions, ToggleButtonGroup, ToggleButton,
 } from '@mui/material';
-import { ArrowBack, Save, CheckCircle } from '@mui/icons-material';
+import { ArrowBack, Save, CheckCircle, Build, Brush } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -18,6 +18,7 @@ import type {
   EquipoFabricadoCreateDTO,
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
+  FabricacionBaseRequestDTO,
 } from '../../types';
 import { MEDIDAS_EQUIPO, COLORES_EQUIPO } from '../../types';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -54,6 +55,7 @@ const EquipoForm: React.FC = () => {
   const [selectedResponsable, setSelectedResponsable] = useState<any>(null);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [estado, setEstado] = useState<EstadoFabricacion>('PENDIENTE');
+  const [modoFabricacion, setModoFabricacion] = useState<'COMPLETO' | 'BASE'>('COMPLETO');
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -147,8 +149,7 @@ const EquipoForm: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      await clienteApi.getAll().catch(() => []);
-      const clientesData = await clienteApi.getAll();
+      const clientesData = (await clienteApi.getAll({ page: 0, size: 500 })).content;
       console.log('Loaded clientes:', clientesData);
       setClientes(clientesData);
     } catch (error) {
@@ -232,6 +233,35 @@ const EquipoForm: React.FC = () => {
         });
         
         setEditSuccessDialogOpen(true);
+      } else if (modoFabricacion === 'BASE') {
+        // Flujo base: arranca en PENDIENTE igual que el flujo tradicional pero sin color.
+        // PENDIENTE → Iniciar → EN_PROCESO → Completar → FABRICADO_SIN_TERMINACION → Aplicar Terminación → COMPLETADO
+        const createData: EquipoFabricadoCreateDTO = {
+          tipo: data.tipo,
+          modelo: data.modelo,
+          equipo: data.equipo,
+          medida: data.medida,
+          color: undefined, // Sin color — el backend lo completa a FABRICADO_SIN_TERMINACION
+          cantidad: data.cantidad,
+          observaciones: data.observaciones,
+          numeroHeladera: 'AUTO',
+          recetaId: selectedReceta?.id,
+          responsableId: selectedResponsable?.id,
+        };
+
+        console.log('📦 CreateData (base, sin color) being sent:', JSON.stringify(createData, null, 2));
+
+        const response = await equipoFabricadoApi.createBatch(createData);
+        console.log('✅ Equipos base created successfully:', response);
+
+        const equiposParaModal: EquipoCreado[] = response.equipos.map(equipo => ({
+          numeroHeladera: equipo.numeroHeladera,
+          tipo: equipo.tipo,
+          modelo: equipo.modelo,
+        }));
+
+        setEquiposCreados(equiposParaModal);
+        setSuccessDialogOpen(true);
       } else {
         const createData: EquipoFabricadoCreateDTO = {
           tipo: data.tipo,
@@ -247,7 +277,7 @@ const EquipoForm: React.FC = () => {
           responsableId: selectedResponsable?.id,
           clienteId: selectedCliente?.id,
         };
-        
+
         // Log para debug - ver qué se está enviando
         console.log('📦 CreateData being sent:', JSON.stringify(createData, null, 2));
 
@@ -364,6 +394,34 @@ const EquipoForm: React.FC = () => {
       </Box>
 
       <form onSubmit={handleSubmit(onSubmit)}>
+        {!isEdit && (
+          <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Modo de Fabricación
+            </Typography>
+            <ToggleButtonGroup
+              value={modoFabricacion}
+              exclusive
+              onChange={(_, newMode) => { if (newMode) setModoFabricacion(newMode); }}
+              sx={{ mt: 1 }}
+            >
+              <ToggleButton value="COMPLETO" sx={{ gap: 1 }}>
+                <Build fontSize="small" />
+                Fabricación Completa
+              </ToggleButton>
+              <ToggleButton value="BASE" sx={{ gap: 1 }}>
+                <Brush fontSize="small" />
+                Fabricar Base (sin terminación)
+              </ToggleButton>
+            </ToggleButtonGroup>
+            {modoFabricacion === 'BASE' && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                El equipo arrancará en estado <strong>Pendiente</strong>, sin color asignado. Flujo: Iniciar Fabricación → Completar → quedará como base genérica (Sin Terminación) lista para aplicar terminación a demanda.
+              </Alert>
+            )}
+          </Paper>
+        )}
+
         <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
             Información General
@@ -459,28 +517,30 @@ const EquipoForm: React.FC = () => {
                   </TextField>
                 )}
               />
-              <Controller
-                name="color"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    select
-                    label="Color"
-                    fullWidth
-                    value={field.value || ''}
-                  >
-                    <MenuItem value="">
-                      <em>Sin especificar</em>
-                    </MenuItem>
-                    {COLORES_EQUIPO.map((color) => (
-                      <MenuItem key={color} value={color}>
-                        {color.replace(/_/g, ' ')}
+              {(isEdit || modoFabricacion === 'COMPLETO') && (
+                <Controller
+                  name="color"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      select
+                      label="Color"
+                      fullWidth
+                      value={field.value || ''}
+                    >
+                      <MenuItem value="">
+                        <em>Sin especificar</em>
                       </MenuItem>
-                    ))}
-                  </TextField>
-                )}
-              />
+                      {COLORES_EQUIPO.map((color) => (
+                        <MenuItem key={color} value={color}>
+                          {color.replace(/_/g, ' ')}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                />
+              )}
               <Controller
                 name="cantidad"
                 control={control}
@@ -532,6 +592,7 @@ const EquipoForm: React.FC = () => {
                 <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
                 <MenuItem value="COMPLETADO">Completado</MenuItem>
                 <MenuItem value="CANCELADO">Cancelado</MenuItem>
+                <MenuItem value="FABRICADO_SIN_TERMINACION">Fabricado Sin Terminación</MenuItem>
               </TextField>
             )}
 

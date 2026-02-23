@@ -3,6 +3,9 @@ import * as realContactoClienteApi from './contactoClienteApi';
 import * as realCuentaCorrienteApi from './cuentaCorrienteApi';
 import * as realSupplierApi from './supplierApi';
 import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi, mockGarantias } from './mockData';
+import { arrayToPage } from '../../types/pagination.types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
+import type { Cliente } from '../../types';
 
 let backendAvailable: boolean | null = null;
 
@@ -14,7 +17,7 @@ const testBackendConnection = async (): Promise<boolean> => {
 
   try {
     // Try a simple request to test connectivity
-    await realClienteApi.clienteApi.getAll();
+    await realClienteApi.clienteApi.getAll({ page: 0, size: 1 });
     backendAvailable = true;
     console.log('✅ Backend conectado - usando API real');
     return true;
@@ -27,11 +30,12 @@ const testBackendConnection = async (): Promise<boolean> => {
 
 // Wrapper for cliente API
 export const clienteApiWithFallback = {
-  getAll: async () => {
+  getAll: async (pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
-    return isBackendAvailable 
-      ? realClienteApi.clienteApi.getAll() 
-      : mockClienteApi.getAll();
+    if (isBackendAvailable) {
+      return realClienteApi.clienteApi.getAll(pagination);
+    }
+    return mockClienteApi.getAll(pagination);
   },
 
   getById: async (id: number) => {
@@ -62,21 +66,21 @@ export const clienteApiWithFallback = {
       : mockClienteApi.delete(id);
   },
 
-  search: async (query: string) => {
+  search: async (query: string, pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
     return isBackendAvailable 
-      ? realClienteApi.clienteApi.search(query) 
-      : mockClienteApi.search(query);
+      ? realClienteApi.clienteApi.search(query, pagination) 
+      : mockClienteApi.search(query, pagination);
   }
 };
 
 // Wrapper for contacto cliente API
 export const contactoClienteApiWithFallback = {
-  getByClienteId: async (clienteId: number) => {
+  getByClienteId: async (clienteId: number, pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
     return isBackendAvailable 
-      ? realContactoClienteApi.contactoClienteApi.getByClienteId(clienteId) 
-      : mockContactoClienteApi.getByClienteId(clienteId);
+      ? realContactoClienteApi.contactoClienteApi.getByClienteId(clienteId, pagination) 
+      : mockContactoClienteApi.getByClienteId(clienteId, pagination);
   },
 
   create: async (contacto: any) => {
@@ -103,11 +107,11 @@ export const contactoClienteApiWithFallback = {
 
 // Wrapper for cuenta corriente API
 export const cuentaCorrienteApiWithFallback = {
-  getByClienteId: async (clienteId: number) => {
+  getByClienteId: async (clienteId: number, pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
     return isBackendAvailable 
-      ? realCuentaCorrienteApi.cuentaCorrienteApi.getByClienteId(clienteId) 
-      : mockCuentaCorrienteApi.getByClienteId(clienteId);
+      ? realCuentaCorrienteApi.cuentaCorrienteApi.getByClienteId(clienteId, pagination) 
+      : mockCuentaCorrienteApi.getByClienteId(clienteId, pagination);
   },
 
   create: async (movimiento: any) => {
@@ -120,11 +124,11 @@ export const cuentaCorrienteApiWithFallback = {
 
 // Wrapper for supplier API
 export const supplierApiWithFallback = {
-  getAll: async () => {
+  getAll: async (pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
     return isBackendAvailable 
-      ? realSupplierApi.supplierApi.getAll() 
-      : mockSupplierApi.getAll();
+      ? realSupplierApi.supplierApi.getAll(pagination) 
+      : mockSupplierApi.getAll(pagination);
   },
 
   getById: async (id: number) => {
@@ -158,9 +162,9 @@ export const supplierApiWithFallback = {
 
 // Wrapper for garantia API
 export const garantiaApiWithFallback = {
-  getAll: async () => {
+  getAll: async (pagination: PaginationParams = {}) => {
     // TODO: Replace with real API check when backend is ready
-    return mockGarantias;
+    return arrayToPage(mockGarantias, pagination.page || 0, pagination.size || 20);
   },
   getById: async (id: number) => {
     return mockGarantias.find(g => g.id === id) || null;

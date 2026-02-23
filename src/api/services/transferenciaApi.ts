@@ -5,21 +5,22 @@ import type {
   ConfirmarRecepcionDTO,
   EstadoTransferencia,
 } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE_URL = '/api/transferencias';
 
 export const transferenciaApi = {
   // Obtener todas las transferencias
-  getAll: async (params?: {
+  getAll: async (pagination: PaginationParams = {}, params?: {
     empresaId?: number;
     estado?: EstadoTransferencia;
     depositoOrigenId?: number;
     depositoDestinoId?: number;
     fechaDesde?: string;
     fechaHasta?: string;
-  }): Promise<TransferenciaDepositoDTO[]> => {
-    const response = await api.get<TransferenciaDepositoDTO[]>(BASE_URL, {
-      params,
+  }): Promise<PageResponse<TransferenciaDepositoDTO>> => {
+    const response = await api.get<PageResponse<TransferenciaDepositoDTO>>(BASE_URL, {
+      params: { ...params, ...pagination },
     });
     return response.data;
   },

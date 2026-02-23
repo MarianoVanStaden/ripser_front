@@ -1,21 +1,28 @@
 import api from '../config';
 import type { CuentaCorriente, CreateMovimientoPayload } from '../../types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
+
+export interface CuentaCorrienteFilterParams {
+  clienteId?: number;
+}
 
 export const cuentaCorrienteApi = {
   /**
-   * Fetches all account movements from all clients.
+   * Fetches all account movements from all clients with optional filters (paginated).
    */
-  getAll: async (): Promise<CuentaCorriente[]> => {
-    const res = await api.get('/api/cuentas-corriente');
+  getAll: async (pagination: PaginationParams = {}, filters?: CuentaCorrienteFilterParams): Promise<PageResponse<CuentaCorriente>> => {
+    const res = await api.get<PageResponse<CuentaCorriente>>('/api/cuentas-corriente', {
+      params: { ...pagination, ...filters },
+    });
     return res.data;
   },
 
   /**
+   * @deprecated Use getAll({ clienteId }, pagination) instead
    * Fetches all account movements for a specific client.
    */
-  getByClienteId: async (clienteId: number): Promise<CuentaCorriente[]> => {
-    const res = await api.get(`/api/cuentas-corriente/cliente/${clienteId}`);
-    return res.data;
+  getByClienteId: async (clienteId: number, pagination: PaginationParams = {}): Promise<PageResponse<CuentaCorriente>> => {
+    return cuentaCorrienteApi.getAll(pagination, { clienteId });
   },
 
   /**

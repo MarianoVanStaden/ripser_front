@@ -4,7 +4,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningIcon from '@mui/icons-material/Warning';
-import { clientApi, productApi, saleApi } from '../../api/services';
+import { clientApi, productApi, documentoApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
 
 import dayjs from 'dayjs';
@@ -63,14 +63,24 @@ export const RecentActivity: React.FC = () => {
       setLoading(true);
       try {
         // Fetch latest clients, products, and sales
-        const [clients, products, sales] = await Promise.all([
+        const [clientsResponse, productsResponse, salesResponse] = await Promise.all([
           clientApi.getAll(),
-          productApi.getAll(0, 10000),
-          saleApi.getAll(),
+          productApi.getAll({ page: 0, size: 10000 }),
+          documentoApi.getByTipo('FACTURA').catch(() => []),
         ]);
 
+        const clients = Array.isArray(clientsResponse) 
+          ? clientsResponse 
+          : (clientsResponse as any).content || [];
+        
+        const products = Array.isArray(productsResponse) 
+          ? productsResponse 
+          : (productsResponse as any).content || [];
+
+        const sales = Array.isArray(salesResponse) ? salesResponse : [];
+
         // Recent clients (last 3)
-        const recentClients = clients
+        const recentClients = (clients as any[])
           .slice(-3)
           .reverse()
           .map((c: any) => ({
@@ -85,7 +95,7 @@ export const RecentActivity: React.FC = () => {
             icon: <PeopleIcon fontSize="small" />,            priority: 'medium' as const,          }));
 
         // Recent products (last 3)
-        const recentProducts = products
+        const recentProducts = (products as any[])
           .slice(-3)
           .reverse()
           .map((p: any) => ({
@@ -102,7 +112,7 @@ export const RecentActivity: React.FC = () => {
           }));
 
         // Recent sales (last 5)
-        const recentSales = sales
+        const recentSales = (sales as any[])
           .slice(-5)
           .reverse()
           .map((s: any) => ({
@@ -119,7 +129,7 @@ export const RecentActivity: React.FC = () => {
           }));
 
         // Low stock alerts
-        const lowStockAlerts = products
+        const lowStockAlerts = (products as any[])
           .filter((p: any) => p.stockActual <= (p.stockMinimo || 5) && p.stockActual > 0)
           .slice(0, 3)
           .map((p: any) => ({

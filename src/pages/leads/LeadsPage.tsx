@@ -55,14 +55,51 @@ export const LeadsPage = () => {
     try {
       setLoading(true);
       setError(null);
-      // Pasar sucursalFiltro al API
-      const data = await leadApi.getAll({
-        sucursalId: sucursalFiltro
-      });
+      
+      console.log('🔄 Loading leads with sucursalFiltro:', sucursalFiltro);
+      
+      // Pasar sucursalFiltro al API (filtering params are second argument)
+      // First argument is pagination, passing empty object for default or first page
+      // Default page size 1000 to get all leads for client-side filtering if needed
+      const response = await leadApi.getAll(
+        { page: 0, size: 1000 }, 
+        { sucursalId: sucursalFiltro }
+      );
+      
+      const data = response.content || [];
+      console.log(`✅ Loaded ${data.length} leads from API`);
+
+      // 🔍 DEBUG & CLIENT-SIDE FILTERING FALLBACK
+      // Si el backend no filtra (el usuario reporta error), filtramos en el cliente si es posible
+      let filteredData = data;
+      
+      if (sucursalFiltro && filteredData.length > 0) {
+        // Verificar estructura de datos
+        // Intentamos encontrar campos de sucursal
+        const sampleItem = filteredData[0] as any;
+        const hasSucursalId = sampleItem.sucursalId !== undefined;
+        const hasSucursalObj = sampleItem.sucursal && sampleItem.sucursal.id !== undefined;
+        
+        // Solo aplicar filtro si detectamos que la info existe en la respuesta
+        if (hasSucursalId || hasSucursalObj) {
+          const initialCount = filteredData.length;
+          filteredData = filteredData.filter((item: any) => {
+            const itemSucursalId = item.sucursalId || item.sucursal?.id;
+            // Si el item no tiene sucursal asignada (es null), asumimos que es global o de empresa
+            // Pero si estamos filtrando por una sucursal específica, ¿deberíamos mostrarlo?
+            // Generalmente NO.
+            return itemSucursalId && Number(itemSucursalId) === Number(sucursalFiltro);
+          });
+          
+          if (filteredData.length < initialCount) {
+             console.log(`📉 Applied client-side filtering: ${initialCount} -> ${filteredData.length} leads for sucursal ${sucursalFiltro}`);
+          }
+        }
+      }
       
       // Cargar recordatorios para cada lead
       const leadsConRecordatorios = await Promise.all(
-        data.map(async (lead) => {
+        filteredData.map(async (lead) => {
           try {
             const recordatorios = await leadApi.getRecordatorios(lead.id!);
             return { ...lead, recordatorios };
