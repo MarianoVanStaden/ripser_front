@@ -243,7 +243,8 @@ const TripsPage2: React.FC = () => {
       const errors: string[] = [];
 
       try {
-        tripsData = await viajeApi.getAll();
+        const tripsResponse = await viajeApi.getAll();
+        tripsData = tripsResponse.content || [];
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`Viajes: ${errorMsg}`);

@@ -55,6 +55,8 @@ interface AsignarEquiposDialogProps {
   onClose: () => void;
   onConfirm: (asignaciones: { [detalleId: number]: number[] }) => void;
   detallesEquipo: DetalleDocumento[];
+  /** clienteId of the nota de pedido — allows selecting equipos already reserved for this client */
+  clienteId?: number;
 }
 
 interface DetalleAsignacion {
@@ -76,6 +78,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
   onClose,
   onConfirm,
   detallesEquipo,
+  clienteId,
 }) => {
   const [asignaciones, setAsignaciones] = useState<DetalleAsignacion[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +118,35 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
 
     setAsignaciones(newAsignaciones);
 
+    // Pre-fetch equipos already reserved for this client (once for all recetas)
+    let clienteReservados: EquipoFabricadoDTO[] = [];
+    if (clienteId) {
+      try {
+        const clienteEquiposRaw = await equipoFabricadoApi.findByCliente(clienteId);
+        const reservadosRaw = clienteEquiposRaw.filter(
+          (e) => e.estado === 'COMPLETADO' && e.estadoAsignacion === 'RESERVADO'
+        );
+        // Resolve full DTOs (list DTO may have null id; full DTO always has it)
+        const resolved = await Promise.all(
+          reservadosRaw.map(async (e: any) => {
+            if (e.id) {
+              const full = await equipoFabricadoApi.findByNumeroHeladera(e.numeroHeladera).catch(() => null);
+              return full ?? null;
+            }
+            if (!e.numeroHeladera) return null;
+            try {
+              return await equipoFabricadoApi.findByNumeroHeladera(e.numeroHeladera);
+            } catch {
+              return null;
+            }
+          })
+        );
+        clienteReservados = resolved.filter((e): e is EquipoFabricadoDTO => Boolean(e?.id));
+      } catch {
+        // Non-fatal — fall back to only DISPONIBLE equipos
+      }
+    }
+
     // Fetch available equipos for each receta
     for (let i = 0; i < newAsignaciones.length; i++) {
       const asignacion = newAsignaciones[i];
@@ -143,10 +175,21 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           (e): e is EquipoFabricadoDTO => Boolean(e?.id)
         );
 
+        // Client's RESERVADO equipos matching this receta's modelo + medida
+        const reservadosParaReceta = clienteReservados.filter(
+          (e) =>
+            e.modelo === asignacion.recetaModelo &&
+            (!asignacion.medida || e.medida === asignacion.medida)
+        );
+
         // Combine lists deduplicating by ID
         const combinados: EquipoFabricadoDTO[] = [
           ...equiposCompletos,
           ...equiposSinTerminacion.filter((e) => !equiposCompletos.some((c) => c.id === e.id)),
+          ...reservadosParaReceta.filter(
+            (e) => !equiposCompletos.some((c) => c.id === e.id) &&
+                   !equiposSinTerminacion.some((c) => c.id === e.id)
+          ),
         ];
 
         // Filter by color, medida, and estadoAsignacion
@@ -164,12 +207,13 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
             }
           }
 
-          // Accept DISPONIBLE (both COMPLETADO and FABRICADO_SIN_TERMINACION)
-          // and PENDIENTE_TERMINACION (reserved base that still needs finishing)
+          // Accept DISPONIBLE and PENDIENTE_TERMINACION (standard pool)
+          // Also accept RESERVADO when the equipo belongs to this client
           const isSelectable =
             estadoAsignacion === 'DISPONIBLE' ||
             estadoAsignacion === 'PENDIENTE_TERMINACION' ||
-            (!equipo.asignado && equipo.estado === 'FABRICADO_SIN_TERMINACION');
+            (!equipo.asignado && equipo.estado === 'FABRICADO_SIN_TERMINACION') ||
+            (estadoAsignacion === 'RESERVADO' && clienteId != null && equipo.clienteId === clienteId);
 
           return matchColor && matchMedida && isSelectable;
         });

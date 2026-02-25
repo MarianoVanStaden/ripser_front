@@ -393,10 +393,23 @@ const EquiposList: React.FC = () => {
   };
 
   const handleDesasignar = async () => {
-    if (!unassignDialog.equipoId) return;
+    // Resolve the real ID if the list DTO returned null (known backend limitation)
+    let equipoId = unassignDialog.equipoId;
+    if (!equipoId) {
+      const numeroHeladera = unassignDialog.equipo?.numeroHeladera;
+      if (!numeroHeladera) return;
+      try {
+        const full = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera);
+        equipoId = full.id;
+      } catch {
+        setUnassignDialog({ open: false, equipoId: null, equipo: null });
+        setUnassignErrorDialog({ open: true, errorMessage: 'No se pudo obtener el ID del equipo para desasignar.' });
+        return;
+      }
+    }
 
     try {
-      await equipoFabricadoApi.desasignarEquipo(unassignDialog.equipoId);
+      await equipoFabricadoApi.desasignarEquipo(equipoId);
       setSnackbar({
         open: true,
         message: 'Equipo desasignado correctamente',

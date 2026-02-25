@@ -440,6 +440,17 @@ const NotasPedidoPage: React.FC = () => {
               detalleNotaPedidoId: detalle.id!,
             });
 
+            // Link the equipo to the client if not already set by the backend.
+            // Use update({ clienteId }) for all states — asignarEquipo fails on already-reserved equipos.
+            const clienteId = notaConDetalles.clienteId;
+            if (equipo.id && clienteId && !equipo.clienteId) {
+              try {
+                await equipoFabricadoApi.update(equipo.id, { clienteId });
+              } catch {
+                // Non-fatal: client linking failed, but reservation is still valid
+              }
+            }
+
             if (equipo.estado === 'COMPLETADO') {
               resoluciones.push(`✅ Stock reservado: ${equipo.numeroHeladera} (${equipo.color || 'sin color'})`);
             } else if (equipo.estado === 'FABRICADO_SIN_TERMINACION') {
@@ -1181,6 +1192,7 @@ const NotasPedidoPage: React.FC = () => {
           onClose={handleCloseAsignarEquiposDialog}
           onConfirm={handleConfirmAsignacion}
           detallesEquipo={notaForAsignacion.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
+          clienteId={notaForAsignacion.clienteId ?? undefined}
         />
       )}
 

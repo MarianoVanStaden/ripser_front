@@ -271,7 +271,7 @@ const EquipoForm: React.FC = () => {
           color: data.color,
           cantidad: data.cantidad,
           observaciones: data.observaciones,
-          estado,
+          estado: 'PENDIENTE', // Always start in PENDIENTE for new equipos
           numeroHeladera: 'AUTO', // Placeholder - backend debe reemplazarlo
           recetaId: selectedReceta?.id,
           responsableId: selectedResponsable?.id,
@@ -657,7 +657,7 @@ const EquipoForm: React.FC = () => {
           setSelectedReceta(null);
           setSelectedResponsable(null);
           setSelectedCliente(null);
-          setEstado('EN_PROCESO');
+          setEstado('PENDIENTE');
         }}
         onVerEquipos={() => navigate('/fabricacion/equipos')}
       />

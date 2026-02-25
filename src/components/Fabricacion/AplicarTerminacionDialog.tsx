@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, FormControlLabel, Switch,
@@ -47,12 +47,29 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
   const [observaciones, setObservaciones] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Full equipo DTO fetched from detail endpoint (list DTO may omit observaciones / clienteId)
+  const [fullEquipo, setFullEquipo] = useState<EquipoFabricadoDTO | null>(null);
+  const autoFilledRef = useRef(false);
 
-  const colorPrevisto = parsearColorPrevisto(equipo?.observaciones);
+  // When dialog opens, fetch the full equipo to ensure observaciones and clienteId are available
+  useEffect(() => {
+    if (!open || !equipo?.numeroHeladera) {
+      setFullEquipo(null);
+      autoFilledRef.current = false;
+      return;
+    }
+    equipoFabricadoApi.findByNumeroHeladera(equipo.numeroHeladera)
+      .then(full => setFullEquipo(full))
+      .catch(() => setFullEquipo(null));
+  }, [open, equipo?.numeroHeladera]);
+
+  // Resolve color from fetched observaciones, with fallback to list DTO observaciones
+  const colorPrevisto = parsearColorPrevisto(fullEquipo?.observaciones ?? equipo?.observaciones);
 
   // Pre-fill color when dialog opens if there's an expected color in observaciones
   useEffect(() => {
-    if (open && colorPrevisto && COLORES_EQUIPO.includes(colorPrevisto as any)) {
+    if (open && colorPrevisto && COLORES_EQUIPO.includes(colorPrevisto as any) && !autoFilledRef.current) {
+      autoFilledRef.current = true;
       setTipoTerminacion('COLOR_PINTURA');
       setValor(colorPrevisto);
     }
@@ -64,6 +81,8 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
     setCompletarAlTerminar(true);
     setObservaciones('');
     setError(null);
+    setFullEquipo(null);
+    autoFilledRef.current = false;
     onClose();
   };
 
@@ -83,6 +102,23 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
         completarAlTerminar,
         observaciones: observaciones.trim() || undefined,
       });
+
+      // The backend resets estadoAsignacion → DISPONIBLE when completing terminación.
+      // If the equipo was reserved (PENDIENTE_TERMINACION or RESERVADO), restore RESERVADO state.
+      // We use estadoAsignacion (not the asignado boolean) as the reliable indicator.
+      const preTerminacionEstado =
+        fullEquipo?.estadoAsignacion ?? equipo?.estadoAsignacion;
+      const wasReserved =
+        preTerminacionEstado === 'PENDIENTE_TERMINACION' ||
+        preTerminacionEstado === 'RESERVADO';
+      if (completarAlTerminar && wasReserved && resultado.id) {
+        try {
+          await equipoFabricadoApi.updateEstadoAsignacion(resultado.id, 'RESERVADO');
+        } catch {
+          // Non-fatal: terminación was applied, but state restore failed
+        }
+      }
+
       onSuccess(resultado);
       handleClose();
     } catch (err: any) {
@@ -214,7 +250,11 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
                 <Typography variant="body2">Marcar como completado al aplicar</Typography>
                 <Typography variant="caption" color="text.secondary">
                   {completarAlTerminar
-                    ? 'El equipo quedará disponible para venta/asignación'
+                    ? (['PENDIENTE_TERMINACION', 'RESERVADO'].includes(
+                        (fullEquipo?.estadoAsignacion ?? equipo?.estadoAsignacion) ?? ''
+                      ))
+                      ? 'El equipo quedará completado y mantendrá su reserva actual'
+                      : 'El equipo quedará disponible para venta/asignación'
                     : 'El equipo quedará en estado "Sin Terminación" para aplicar más etapas'}
                 </Typography>
               </Box>
