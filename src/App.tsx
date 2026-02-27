@@ -76,7 +76,8 @@ import {
   EquiposList,
   EquipoDetail,
   EquipoForm,
-  DashboardFabricacion
+  DashboardFabricacion,
+  StockPlanificacionPage,
 } from './components/Fabricacion';
 import ReportesEstadosPage from './components/Fabricacion/ReportesEstadosPage';
 import {
@@ -282,6 +283,7 @@ function App() {
               <Route path="fabricacion/equipos/nuevo" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
               <Route path="fabricacion/equipos/editar/:id" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
               <Route path="fabricacion/reportes-estados" element={<PrivateRoute><ReportesEstadosPage /></PrivateRoute>} />
+              <Route path="fabricacion/stock-planificacion" element={<PrivateRoute><StockPlanificacionPage /></PrivateRoute>} />
             </Route>
           </Routes>
         </Router>

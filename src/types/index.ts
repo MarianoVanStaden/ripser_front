@@ -3676,3 +3676,6 @@ export interface CategoriasDisponiblesDTO {
   gastosExtras: CategoriaGastoExtra[];
   cobrosExtras: CategoriaCobroExtra[];
 }
+
+// Stock Planificación de Fabricación
+export * from './stockPlanificacion.types';

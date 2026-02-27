@@ -44,6 +44,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import InventoryIcon from '@mui/icons-material/Inventory';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useAuth } from '../../context/AuthContext';
@@ -168,6 +169,7 @@ const navigation: NavigationSection[] = [
       { text: 'Estructura de Producción', icon: <AssignmentIcon />, path: '/fabricacion/recetas' },
       { text: 'Equipos Fabricados', icon: <CategoryIcon />, path: '/fabricacion/equipos' },
       { text: 'Reportes de Estados', icon: <AssignmentIcon />, path: '/fabricacion/reportes-estados' },
+      { text: 'Stock Preventivo', icon: <InventoryIcon />, path: '/fabricacion/stock-planificacion' },
     ],
   },
   {

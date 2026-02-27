@@ -10,3 +10,6 @@ export { default as EquipoForm } from './EquipoForm';
 
 // Dashboard
 export { default as DashboardFabricacion } from './DashboardFabricacion';
+
+// Stock Planificación
+export { StockPlanificacionPage } from './StockPlanificacion';
