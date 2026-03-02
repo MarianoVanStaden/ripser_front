@@ -21,6 +21,7 @@ export interface ActivoAmortizableDTO {
   metodo: MetodoAmortizacion;
   tasaMensual: number | null;
   montoFijoMensual: number | null;
+  vidaUtilKm: number | null;
   valorInicial: number;
   fechaAdquisicion: string;
   activo: boolean;
@@ -36,6 +37,7 @@ export interface CreateActivoAmortizableDTO {
   metodo: MetodoAmortizacion;
   tasaMensual?: number | null;
   montoFijoMensual?: number | null;
+  vidaUtilKm?: number | null;
   valorInicial: number;
   fechaAdquisicion: string;
   sucursalId?: number | null;

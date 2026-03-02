@@ -66,16 +66,22 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
 
     setSaving(true);
     setError(null);
+    const payload = {
+      valorDolar: vd,
+      kmRecorridos: activo.metodo === 'POR_KILOMETROS' ? parseFloat(kmRecorridos) : undefined,
+      comprasPesos: comprasPesos ? parseFloat(comprasPesos) : 0,
+    };
+    console.log('[AmortizacionMesRow] POST payload:', payload);
     try {
-      await amortizacionApi.registrarAmortizacion(anio, mes, activo.id, {
-        valorDolar: vd,
-        kmRecorridos: activo.metodo === 'POR_KILOMETROS' ? parseFloat(kmRecorridos) : undefined,
-        comprasPesos: comprasPesos ? parseFloat(comprasPesos) : 0,
-      });
+      const result = await amortizacionApi.registrarAmortizacion(anio, mes, activo.id, payload);
+      console.log('[AmortizacionMesRow] POST response:', result);
       setDialogOpen(false);
       onRegistered();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al registrar la amortización');
+      const data = err?.response?.data;
+      console.error('[AmortizacionMesRow] POST error:', err?.response?.status, data);
+      const msg = data?.message ?? data?.error ?? (typeof data === 'string' ? data : null) ?? (data ? JSON.stringify(data) : null) ?? 'Error al registrar la amortización';
+      setError(`${err?.response?.status ?? ''} ${msg}`);
     } finally {
       setSaving(false);
     }

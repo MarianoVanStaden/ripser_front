@@ -205,6 +205,11 @@ export default function AmortizacionesPage() {
                         ${fmt(a.montoFijoMensual)}/mes
                       </Typography>
                     )}
+                    {a.metodo === 'POR_KILOMETROS' && a.vidaUtilKm != null && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {new Intl.NumberFormat('es-AR').format(a.vidaUtilKm)} km vida útil
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell align="right">${fmt(a.valorInicial)}</TableCell>
                   <TableCell>{a.fechaAdquisicion}</TableCell>

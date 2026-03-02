@@ -63,6 +63,8 @@ export interface BalanceAnualResponseDTO {
 }
 
 export interface GuardarBalanceMensualDTO {
+  anio: number;
+  mes: number;
   sucursalId?: number | null;
   valorDolar?: number;
   saldoInicialPesos?: number;

@@ -56,6 +56,7 @@ const schema = yup.object({
   fechaAdquisicion: yup.string().required('La fecha de adquisición es obligatoria'),
   tasaMensual: yup.number().nullable().optional(),
   montoFijoMensual: yup.number().nullable().optional(),
+  vidaUtilKm: yup.number().nullable().optional().min(1, 'Debe ser > 0'),
   vehiculoId: yup.number().nullable().optional(),
 });
 
@@ -67,6 +68,7 @@ type FormData = {
   fechaAdquisicion: string;
   tasaMensual?: number | null;
   montoFijoMensual?: number | null;
+  vidaUtilKm?: number | null;
   vehiculoId?: number | null;
 };
 
@@ -100,6 +102,7 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
       fechaAdquisicion: new Date().toISOString().split('T')[0],
       tasaMensual: null,
       montoFijoMensual: null,
+      vidaUtilKm: null,
       vehiculoId: null,
     },
   });
@@ -120,6 +123,7 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
         fechaAdquisicion: activo.fechaAdquisicion,
         tasaMensual: activo.tasaMensual,
         montoFijoMensual: activo.montoFijoMensual,
+        vidaUtilKm: activo.vidaUtilKm,
         vehiculoId: activo.vehiculoId,
       });
     } else {
@@ -131,6 +135,7 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
         fechaAdquisicion: new Date().toISOString().split('T')[0],
         tasaMensual: null,
         montoFijoMensual: null,
+        vidaUtilKm: null,
         vehiculoId: null,
       });
     }
@@ -157,6 +162,7 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
         fechaAdquisicion: data.fechaAdquisicion,
         tasaMensual: data.metodo === 'PORCENTAJE_FIJO' ? (data.tasaMensual ?? null) : null,
         montoFijoMensual: data.metodo === 'MONTO_FIJO_MENSUAL' ? (data.montoFijoMensual ?? null) : null,
+        vidaUtilKm: data.metodo === 'POR_KILOMETROS' ? (data.vidaUtilKm ?? null) : null,
         vehiculoId: data.tipo === 'VEHICULO' ? (data.vehiculoId ?? null) : null,
       };
 
@@ -264,6 +270,29 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
                         </MenuItem>
                       ))}
                     </TextField>
+                  )}
+                />
+              </Grid>
+            )}
+
+            {metodoVal === 'POR_KILOMETROS' && (
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Controller
+                  name="vidaUtilKm"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Vida útil estimada (km) *"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      value={field.value ?? ''}
+                      onChange={(e) => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                      inputProps={{ step: '1', min: '1' }}
+                      helperText="Kilometraje total de vida del vehículo (ej: 300000)"
+                      error={!!errors.vidaUtilKm}
+                    />
                   )}
                 />
               </Grid>

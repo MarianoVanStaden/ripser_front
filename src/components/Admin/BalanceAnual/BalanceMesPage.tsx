@@ -184,6 +184,9 @@ export default function BalanceMesPage() {
     try {
       const result = await balanceAnualApi.calcular(anioNum, mesNum, vd);
       setForm(dtoToForm(result));
+      // calcular may have persisted the record — sync saved state so a subsequent
+      // guardar call knows the record already exists (avoids duplicate-create 400)
+      setSaved(result);
     } catch (err: any) {
       const data = err?.response?.data;
       setCalcError(data?.message ?? data?.error ?? (typeof data === 'string' ? data : null) ?? 'Error al calcular');
@@ -197,17 +200,25 @@ export default function BalanceMesPage() {
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      // Strip undefined/null so the backend doesn't receive null for optional numeric fields
-      const cleanBody = Object.fromEntries(
-        Object.entries(form).filter(([, v]) => v != null)
-      ) as GuardarBalanceMensualDTO;
+      // anio + mes are @NotNull in the backend DTO even though they're also in the URL path
+      const cleanBody: GuardarBalanceMensualDTO = {
+        anio: anioNum,
+        mes: mesNum,
+        ...Object.fromEntries(Object.entries(form).filter(([, v]) => v != null)),
+      };
       const dto = await balanceAnualApi.guardar(anioNum, mesNum, cleanBody);
       setSaved(dto);
       setForm(dtoToForm(dto));
       setSaveSuccess(true);
     } catch (err: any) {
       const data = err?.response?.data;
-      const msg = data?.message ?? data?.error ?? (typeof data === 'string' ? data : null) ?? 'Error al guardar';
+      console.error('Balance save 400 body:', JSON.stringify(data));
+      const msg =
+        data?.message ??
+        data?.error ??
+        (typeof data === 'string' ? data : null) ??
+        (data ? JSON.stringify(data) : null) ??
+        'Error al guardar';
       setSaveError(msg);
     } finally {
       setSaving(false);
