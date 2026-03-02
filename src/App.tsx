@@ -93,6 +93,8 @@ import {
   PrestamosListPage,
   PrestamoDetailPage,
 } from './components/Prestamos';
+import { BalanceAnualPage, BalanceMesPage } from './components/Admin/BalanceAnual';
+import { AmortizacionesPage, AmortizacionMesPage } from './components/Admin/Amortizaciones';
 
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -172,6 +174,11 @@ function App() {
               <Route path="admin/sucursales" element={<PrivateRoute><SucursalesPage /></PrivateRoute>} />
               {/* Selector de contexto - Solo SUPER_ADMIN */}
               <Route path="admin/tenant-selector" element={<SuperAdminRoute><TenantSelector /></SuperAdminRoute>} />
+              {/* Balance Anual + Amortizaciones */}
+              <Route path="admin/balance" element={<PrivateRoute><BalanceAnualPage /></PrivateRoute>} />
+              <Route path="admin/balance/:anio/:mes" element={<PrivateRoute><BalanceMesPage /></PrivateRoute>} />
+              <Route path="admin/amortizaciones" element={<PrivateRoute><AmortizacionesPage /></PrivateRoute>} />
+              <Route path="admin/amortizaciones/:anio/:mes" element={<PrivateRoute><AmortizacionMesPage /></PrivateRoute>} />
               {/* VENTAS Module */}
               <Route path="ventas/dashboard" element={<PrivateRoute><VentasDashboard /></PrivateRoute>} />
               <Route path="ventas/notas-pedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />

@@ -45,6 +45,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useAuth } from '../../context/AuthContext';
@@ -200,6 +202,8 @@ const navigation: NavigationSection[] = [
     modulo: 'ADMIN',
     items: [
       { text: 'Flujo de Caja', icon: <BarChartIcon />, path: '/admin/flujo-caja' },
+      { text: 'Balance Anual', icon: <AssessmentIcon />, path: '/admin/balance' },
+      { text: 'Amortizaciones', icon: <ReceiptLongIcon />, path: '/admin/amortizaciones' },
       { text: 'Bancos', icon: <AccountBalanceIcon />, path: '/admin/bancos' },
       { text: 'Cuentas Bancarias', icon: <AccountBalanceIcon />, path: '/admin/cuentas-bancarias' },
       { text: 'Empresas', icon: <BusinessIcon />, path: '/admin/empresas' },

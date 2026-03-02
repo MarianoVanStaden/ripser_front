@@ -4,8 +4,8 @@ import type { ProveedorDTO, CreateProveedorDTO } from '../../types';
 export const supplierApi = {
   // Get all suppliers
   getAll: async (): Promise<ProveedorDTO[]> => {
-    const res = await api.get('/api/proveedores');
-    return res.data;
+    const res = await api.get('/api/proveedores', { params: { size: 1000 } });
+    return Array.isArray(res.data) ? res.data : (res.data?.content ?? []);
   },
 
   // Get supplier by ID

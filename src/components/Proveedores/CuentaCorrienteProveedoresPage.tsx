@@ -66,8 +66,8 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<TipoMovimiento | ''>('');
-  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(30, 'day'));
-  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
+  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(null);
+  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(null);
   const [openMovimientoDialog, setOpenMovimientoDialog] = useState(false);
   const [newMovimiento, setNewMovimiento] = useState({
     tipo: 'DEBITO' as TipoMovimiento,
@@ -89,8 +89,8 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const proveedoresData = await proveedorApi.getAll();
-      setProveedores(proveedoresData);
+      const proveedoresData = await proveedorApi.getAll({ size: 1000 });
+      setProveedores(proveedoresData.content);
     } catch (err) {
       setError('Error al cargar los proveedores.');
       console.error('Error loading proveedores:', err);

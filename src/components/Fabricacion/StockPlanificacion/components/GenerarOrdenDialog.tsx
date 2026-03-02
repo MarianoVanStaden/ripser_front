@@ -123,7 +123,10 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
         observaciones: data.observaciones || undefined,
       });
     } catch (err) {
-      setApiError((err as Error)?.message || 'Error al generar la orden');
+      // Extraer el mensaje del backend (Spring devuelve { error, message } en el body)
+      const axiosLike = err as { response?: { data?: { message?: string } } };
+      const backendMsg = axiosLike?.response?.data?.message;
+      setApiError(backendMsg ?? (err instanceof Error ? err.message : 'Error al generar la orden'));
     }
   };
 

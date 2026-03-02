@@ -89,8 +89,8 @@ const ComprasPedidosPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('');
   const [supplierFilter, setSupplierFilter] = useState<string>('');
-  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(30, 'day'));
-  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
+  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(null);
+  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(null);
   const [openOrdenDialog, setOpenOrdenDialog] = useState(false);
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedOrden, setSelectedOrden] = useState<OrdenCompra | null>(null);
@@ -180,7 +180,8 @@ const loadProveedores = async () => {
 const loadCompras = async () => {
   try {
     setLoading(true);
-    const data = await compraApi.getAll();
+    const pageData = await compraApi.getAll({ size: 1000 });
+    const data = Array.isArray(pageData) ? pageData : (pageData?.content ?? []);
     console.log('Compras data:', JSON.stringify(data, null, 2));
     setCompras((data as unknown) as CompraDTO[]);
     setOrdenes(
@@ -241,9 +242,10 @@ const loadCompras = async () => {
 const loadProductos = async () => {
   try {
     setLoading(true);
-    const data = await productApi.getAll(0, 10000);
+    const productosPage = await productApi.getAll({ size: 10000 });
+    const data = Array.isArray(productosPage) ? productosPage : (productosPage?.content ?? []);
     console.log('Productos response:', data); // Log the full response
-    setProductos(data || []); // productApi.getAll ya retorna data.content
+    setProductos(data || []);
     setError(null);
   } catch (err: any) {
     console.error('Error loading productos:', err);

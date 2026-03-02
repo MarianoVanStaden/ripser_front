@@ -434,10 +434,16 @@ const EquiposList: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteDialog.equipoId) return;
+    const id = deleteDialog.equipoId;
+    const numero = deleteDialog.equipo?.numeroHeladera;
+    if (!id && !numero) return;
 
     try {
-      await equipoFabricadoApi.delete(deleteDialog.equipoId);
+      if (id) {
+        await equipoFabricadoApi.delete(id);
+      } else {
+        await equipoFabricadoApi.deletePorNumero(numero!);
+      }
       setSnackbar({
         open: true,
         message: 'Equipo eliminado correctamente',

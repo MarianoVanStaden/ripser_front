@@ -56,6 +56,16 @@ export const equipoFabricadoApi = {
     await api.delete(`/api/equipos-fabricados/${id}`);
   },
 
+  // WORKAROUND: Backend returns id: null in list DTOs — resolve real ID first via numeroHeladera
+  deletePorNumero: async (numeroHeladera: string) => {
+    const equipoResponse = await api.get<EquipoFabricadoDTO>(`/api/equipos-fabricados/numero/${numeroHeladera}`);
+    const equipoId = equipoResponse.data.id;
+    if (!equipoId) {
+      throw new Error(`Equipo ${numeroHeladera} no tiene ID en la respuesta del backend`);
+    }
+    await api.delete(`/api/equipos-fabricados/${equipoId}`);
+  },
+
   // Búsquedas específicas
   findByTipo: async (tipo: TipoEquipo) => {
     const response = await api.get<EquipoFabricadoListDTO[]>(`/api/equipos-fabricados/tipo/${tipo}`);

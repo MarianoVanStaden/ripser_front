@@ -19,8 +19,10 @@ export const cuentaCorrienteProveedorApi = {
 
   // Get movimientos by proveedor
   getByProveedorId: async (proveedorId: number): Promise<CuentaCorrienteProveedor[]> => {
-    const response = await api.get(`/api/cuenta-corriente-proveedor/proveedor/${proveedorId}`);
-    return response.data;
+    const response = await api.get(`/api/cuenta-corriente-proveedor/proveedor/${proveedorId}`, {
+      params: { size: 1000 },
+    });
+    return Array.isArray(response.data) ? response.data : (response.data?.content ?? []);
   },
 
   // Create movimiento
