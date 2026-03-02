@@ -25,6 +25,8 @@ import {
   FormControl,
   InputLabel,
   Stack,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -66,6 +68,7 @@ export default function AmortizacionesPage() {
   const [activos, setActivos] = useState<ActivoAmortizableDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInactivos, setShowInactivos] = useState(false);
 
   // Form dialog
   const [formOpen, setFormOpen] = useState(false);
@@ -158,6 +161,13 @@ export default function AmortizacionesPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
+      <Box display="flex" justifyContent="flex-end" mb={1}>
+        <FormControlLabel
+          control={<Switch checked={showInactivos} onChange={(e) => setShowInactivos(e.target.checked)} size="small" />}
+          label={<Typography variant="body2">Mostrar inactivos</Typography>}
+        />
+      </Box>
+
       {loading ? (
         <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
       ) : (
@@ -175,14 +185,14 @@ export default function AmortizacionesPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {activos.length === 0 && (
+              {activos.filter((a) => showInactivos || a.activo).length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
                     <Typography color="text.secondary" py={2}>No hay activos registrados</Typography>
                   </TableCell>
                 </TableRow>
               )}
-              {activos.map((a) => (
+              {activos.filter((a) => showInactivos || a.activo).map((a) => (
                 <TableRow key={a.id} hover>
                   <TableCell>
                     {a.nombre}

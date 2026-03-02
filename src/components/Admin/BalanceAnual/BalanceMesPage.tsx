@@ -210,9 +210,9 @@ export default function BalanceMesPage() {
       setSaved(dto);
       setForm(dtoToForm(dto));
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err: any) {
       const data = err?.response?.data;
-      console.error('Balance save 400 body:', JSON.stringify(data));
       const msg =
         data?.message ??
         data?.error ??
@@ -292,7 +292,7 @@ export default function BalanceMesPage() {
           </Box>
           {calcError && <Alert severity="error" sx={{ mt: 1 }}>{calcError}</Alert>}
           <Typography variant="caption" color="text.secondary" mt={1} display="block">
-            El resultado se carga en el formulario pero no se guarda automáticamente. Revisá y hacé clic en "Guardar".
+            Completa automáticamente los campos de <strong>flujo de caja</strong>. Los de <strong>posición patrimonial</strong> (stock, cuentas x cobrar/pagar, patrimonio) se ingresan manualmente.
           </Typography>
         </Paper>
       )}
@@ -306,106 +306,128 @@ export default function BalanceMesPage() {
       {saveError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSaveError(null)}>{saveError}</Alert>}
       {saveSuccess && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSaveSuccess(false)}>Balance guardado correctamente.</Alert>}
 
-      {/* Form: todos los campos */}
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Typography variant="subtitle1" fontWeight={600} mb={2}>Datos del balance</Typography>
-
+      {/* Valor dólar */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2}>
-          <Grid size={12}>
-            <NumericField label="Valor dólar" fieldKey="valorDolar" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-
-          <Grid size={12}>
-            <Divider><Typography variant="caption">Pesos — Ingresos y egresos</Typography></Divider>
-          </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <NumericField label="Valor dólar del mes" fieldKey="valorDolar" form={form} onChange={handleFieldChange} disabled={isReadonly} />
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Pesos */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderLeft: '4px solid', borderColor: 'primary.main' }}>
+        <Typography variant="subtitle2" fontWeight={700} color="primary" mb={2}>PESOS ($)</Typography>
+        <br></br>
+
+        <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Saldo inicial ($)" fieldKey="saldoInicialPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        </Grid>
+
+        <Divider sx={{ mb: 2 }} />
+        <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Total cobrado ($)" fieldKey="totalCobradoPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Total gastos ($)" fieldKey="totalGastosPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Total amortizado ($)" fieldKey="totalAmortizadoPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Saldo neto del mes ($)" fieldKey="saldoNetoMesPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Saldo final ($)" fieldKey="saldoFinalPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
+        </Grid>
 
-          <Grid size={12}>
-            <Divider><Typography variant="caption">Pesos — Posición patrimonial</Typography></Divider>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        <Divider sx={{ mb: 2 }} />
+        <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Cuentas x cobrar ($)" fieldKey="cuentasXCobrarPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <NumericField label="Stock materiales ($)" fieldKey="stockMaterialesPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <NumericField label="Stock fabricación ($)" fieldKey="stockFabricacionPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <NumericField label="Stock comercialización ($)" fieldKey="stockComercializacionPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Cuentas x pagar ($)" fieldKey="cuentasXPagarPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <NumericField label="Stock materiales ($)" fieldKey="stockMaterialesPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <NumericField label="Stock fabricación ($)" fieldKey="stockFabricacionPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <NumericField label="Stock comercialización ($)" fieldKey="stockComercializacionPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Patrimonio ($)" fieldKey="patrimonioPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Resultado ($)" fieldKey="resultadoPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
+        </Grid>
+      </Paper>
 
-          <Grid size={12}>
-            <Divider><Typography variant="caption">Dólares — Ingresos y egresos</Typography></Divider>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+      {/* Dólares */}
+      <Paper variant="outlined" sx={{ p: 2, borderLeft: '4px solid', borderColor: 'warning.main' }}>
+        <Typography variant="subtitle2" fontWeight={700} color="warning.dark" mb={2}>DÓLARES (USD)</Typography>
+        <br></br>
+
+        <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Saldo inicial (USD)" fieldKey="saldoInicialDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        </Grid>
+
+        <Divider sx={{ mb: 2 }} />
+        <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Total cobrado (USD)" fieldKey="totalCobradoDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Total gastos (USD)" fieldKey="totalGastosDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Total amortizado (USD)" fieldKey="totalAmortizadoDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Saldo neto del mes (USD)" fieldKey="saldoNetoMesDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Saldo final (USD)" fieldKey="saldoFinalDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
+        </Grid>
 
-          <Grid size={12}>
-            <Divider><Typography variant="caption">Dólares — Posición patrimonial</Typography></Divider>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        <Divider sx={{ mb: 2 }} />
+        <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Cuentas x cobrar (USD)" fieldKey="cuentasXCobrarDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <NumericField label="Stock materiales (USD)" fieldKey="stockMaterialesDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <NumericField label="Stock fabricación (USD)" fieldKey="stockFabricacionDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-            <NumericField label="Stock comercialización (USD)" fieldKey="stockComercializacionDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Cuentas x pagar (USD)" fieldKey="cuentasXPagarDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <NumericField label="Stock materiales (USD)" fieldKey="stockMaterialesDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <NumericField label="Stock fabricación (USD)" fieldKey="stockFabricacionDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <NumericField label="Stock comercialización (USD)" fieldKey="stockComercializacionDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Patrimonio (USD)" fieldKey="patrimonioDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Resultado (USD)" fieldKey="resultadoDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
         </Grid>

@@ -13,7 +13,23 @@ import {
   Chip,
 } from '@mui/material';
 import { amortizacionApi } from '../../../../api/services/amortizacionApi';
-import type { ActivoAmortizableDTO, AmortizacionMensualDTO } from '../../../../types';
+import type { ActivoAmortizableDTO, AmortizacionMensualDTO, TipoActivoAmortizable, MetodoAmortizacion } from '../../../../types';
+
+const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
+  VEHICULO: 'Vehículo',
+  HERRAMIENTAS: 'Herramientas',
+  INFRAESTRUCTURA: 'Infraestructura',
+  MATERIA_PRIMA: 'Materia prima',
+  AGUINALDOS: 'Aguinaldos',
+  DESEMPLEO: 'Desempleo',
+  OTRO: 'Otro',
+};
+
+const METODO_LABEL: Record<MetodoAmortizacion, string> = {
+  PORCENTAJE_FIJO: 'Porcentaje fijo',
+  POR_KILOMETROS: 'Por km',
+  MONTO_FIJO_MENSUAL: 'Monto fijo',
+};
 
 interface Props {
   activo: ActivoAmortizableDTO;
@@ -71,17 +87,14 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
       kmRecorridos: activo.metodo === 'POR_KILOMETROS' ? parseFloat(kmRecorridos) : undefined,
       comprasPesos: comprasPesos ? parseFloat(comprasPesos) : 0,
     };
-    console.log('[AmortizacionMesRow] POST payload:', payload);
     try {
-      const result = await amortizacionApi.registrarAmortizacion(anio, mes, activo.id, payload);
-      console.log('[AmortizacionMesRow] POST response:', result);
+      await amortizacionApi.registrarAmortizacion(anio, mes, activo.id, payload);
       setDialogOpen(false);
       onRegistered();
     } catch (err: any) {
       const data = err?.response?.data;
-      console.error('[AmortizacionMesRow] POST error:', err?.response?.status, data);
       const msg = data?.message ?? data?.error ?? (typeof data === 'string' ? data : null) ?? (data ? JSON.stringify(data) : null) ?? 'Error al registrar la amortización';
-      setError(`${err?.response?.status ?? ''} ${msg}`);
+      setError(`${err?.response?.status ? `(${err.response.status}) ` : ''}${msg}`);
     } finally {
       setSaving(false);
     }
@@ -98,8 +111,8 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
             </Typography>
           )}
         </TableCell>
-        <TableCell>{activo.tipo}</TableCell>
-        <TableCell>{activo.metodo.replace(/_/g, ' ')}</TableCell>
+        <TableCell>{TIPO_LABEL[activo.tipo]}</TableCell>
+        <TableCell>{METODO_LABEL[activo.metodo]}</TableCell>
         <TableCell align="right">
           {amortizacion ? `$${fmt(amortizacion.montoAmortizadoPesos)}` : '—'}
         </TableCell>

@@ -2576,7 +2576,7 @@ export interface ValidacionStockDTO {
 
 export type EstadoEntregaEquipo = 'PENDIENTE' | 'EN_RUTA' | 'ENTREGADO' | 'RECHAZADO' | 'REPROGRAMADO';
 
-export type EstadoViaje = 'PLANIFICADO' | 'EN_RUTA' | 'COMPLETADO' | 'CANCELADO';
+export type EstadoViaje = 'PLANIFICADO' | 'EN_CURSO' | 'COMPLETADO' | 'CANCELADO';
 
 export interface EntregaViajeDetalle {
   id: number;
@@ -3683,3 +3683,6 @@ export interface CategoriasDisponiblesDTO {
 
 // Stock Planificación de Fabricación
 export * from './stockPlanificacion.types';
+
+// Posición Patrimonial
+export * from './posicionPatrimonial.types';

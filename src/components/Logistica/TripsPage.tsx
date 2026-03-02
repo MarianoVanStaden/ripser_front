@@ -337,14 +337,14 @@ const TripsPage2: React.FC = () => {
   const isVehicleInUse = (vehicleId: string): boolean => {
     return trips.some(trip =>
       trip.vehiculoId.toString() === vehicleId &&
-      trip.estado === 'EN_RUTA'
+      trip.estado === 'EN_CURSO'
     );
   };
 
   const getTripUsingVehicle = (vehicleId: string): Viaje | undefined => {
     return trips.find(trip =>
       trip.vehiculoId.toString() === vehicleId &&
-      trip.estado === 'EN_RUTA'
+      trip.estado === 'EN_CURSO'
     );
   };
 
@@ -525,7 +525,7 @@ const TripsPage2: React.FC = () => {
   const getStatusChip = (status: EstadoViaje) => {
     const statusConfig: Record<string, { label: string; color: 'info' | 'warning' | 'success' | 'error' | 'default' }> = {
       PLANIFICADO: { label: 'Planificado', color: 'info' },
-      EN_RUTA: { label: 'En Ruta', color: 'warning' },
+      EN_CURSO: { label: 'En Ruta', color: 'warning' },
       COMPLETADO: { label: 'Completado', color: 'success' },
       CANCELADO: { label: 'Cancelado', color: 'error' },
     };
@@ -1013,7 +1013,7 @@ const TripsPage2: React.FC = () => {
 
               {trip.estado === 'PLANIFICADO' && (
                 <IconButton
-                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_RUTA'); }}
+                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_CURSO'); }}
                   size="small"
                   color="success"
                   sx={{ minWidth: 44, minHeight: 44 }}
@@ -1022,7 +1022,7 @@ const TripsPage2: React.FC = () => {
                 </IconButton>
               )}
 
-              {trip.estado === 'EN_RUTA' && (
+              {trip.estado === 'EN_CURSO' && (
                 <IconButton
                   onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'COMPLETADO'); }}
                   size="small"
@@ -1120,7 +1120,7 @@ const TripsPage2: React.FC = () => {
                 <RouteIcon color="warning" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
                   <Typography variant={isMobile ? 'h5' : 'h4'}>
-                    {trips.filter(t => t.estado === 'EN_RUTA').length}
+                    {trips.filter(t => t.estado === 'EN_CURSO').length}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     En Ruta
@@ -1173,7 +1173,7 @@ const TripsPage2: React.FC = () => {
               {[
                 { value: 'all', label: 'Todos' },
                 { value: 'PLANIFICADO', label: 'Planificados' },
-                { value: 'EN_RUTA', label: 'En Ruta' },
+                { value: 'EN_CURSO', label: 'En Ruta' },
                 { value: 'COMPLETADO', label: 'Completados' },
               ].map((option) => (
                 <Chip
@@ -1196,7 +1196,7 @@ const TripsPage2: React.FC = () => {
               >
                 <MenuItem value="all">Todos</MenuItem>
                 <MenuItem value="PLANIFICADO">Planificados</MenuItem>
-                <MenuItem value="EN_RUTA">En Ruta</MenuItem>
+                <MenuItem value="EN_CURSO">En Ruta</MenuItem>
                 <MenuItem value="COMPLETADO">Completados</MenuItem>
                 <MenuItem value="CANCELADO">Cancelados</MenuItem>
               </Select>
@@ -1309,11 +1309,11 @@ const TripsPage2: React.FC = () => {
                                 <MapIcon fontSize="small" />
                               </IconButton>
                               {trip.estado === 'PLANIFICADO' && (
-                                <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_RUTA')} size="small" color="success">
+                                <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
                                   <StartIcon fontSize="small" />
                                 </IconButton>
                               )}
-                              {trip.estado === 'EN_RUTA' && (
+                              {trip.estado === 'EN_CURSO' && (
                                 <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
                                   <StopIcon fontSize="small" />
                                 </IconButton>
@@ -1497,7 +1497,7 @@ const TripsPage2: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoViaje })}
                 >
                   <MenuItem value="PLANIFICADO">Planificado</MenuItem>
-                  <MenuItem value="EN_RUTA">En Ruta</MenuItem>
+                  <MenuItem value="EN_CURSO">En Ruta</MenuItem>
                   <MenuItem value="COMPLETADO">Completado</MenuItem>
                   <MenuItem value="CANCELADO">Cancelado</MenuItem>
                 </Select>

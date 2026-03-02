@@ -49,7 +49,7 @@ export const viajeApi = {
   // Change viaje estado
   changeEstado: async (id: number, estado: string): Promise<Viaje> => {
     const response = await api.patch(`/api/viajes/${id}/estado`, null, {
-      params: { estado }
+      params: { estado },
     });
     return response.data;
   }

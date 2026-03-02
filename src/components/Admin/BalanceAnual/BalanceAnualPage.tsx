@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -19,10 +20,16 @@ import { balanceAnualApi } from '../../../api/services/balanceAnualApi';
 import type { BalanceAnualResponseDTO } from '../../../types';
 import TablaBalanceAnual from './components/TablaBalanceAnual';
 
+const MESES = [
+  '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 
 export default function BalanceAnualPage() {
+  const navigate = useNavigate();
   const [anio, setAnio] = useState(CURRENT_YEAR);
   const [data, setData] = useState<BalanceAnualResponseDTO | null>(null);
   const [loading, setLoading] = useState(false);
@@ -105,7 +112,7 @@ export default function BalanceAnualPage() {
           anio={anio}
           moneda={moneda}
           onMonedaChange={setMoneda}
-          onCalcular={(mes) => {/* navigate to mes page */}}
+          onCalcular={(mes) => navigate(`/admin/balance/${anio}/${mes}`)}
           onCerrar={(mes) => setCerrarDialog({ open: true, mes })}
         />
       )}
@@ -114,7 +121,7 @@ export default function BalanceAnualPage() {
         <DialogTitle>Cerrar mes</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Cerrar el mes {cerrarDialog.mes}/{anio}? Una vez cerrado no podrá editarse.
+            ¿Cerrar {MESES[cerrarDialog.mes]} {anio}? Una vez cerrado no podrá editarse.
           </Typography>
           {cerrarError && (
             <Alert severity="error" sx={{ mt: 2 }}>{cerrarError}</Alert>

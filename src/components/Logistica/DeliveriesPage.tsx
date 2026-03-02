@@ -30,6 +30,9 @@ import {
   List,
   ListItem,
   ListItemText,
+  Dialog,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -48,7 +51,6 @@ import {
   ExpandLess as ExpandLessIcon,
   Inventory as EquipmentIcon,
   PhotoCamera as PhotoCameraIcon,
-  AttachFile as AttachFileIcon,
   Download as DownloadIcon,
   Article as ArticleIcon,
 } from '@mui/icons-material';
@@ -225,15 +227,20 @@ const DeliveriesPage2: React.FC = () => {
   const [rejectDeliveryId, setRejectDeliveryId] = useState<number | null>(null);
   const [rejectMotivo, setRejectMotivo] = useState('');
 
-  // Estado para foto/contrato firmado en confirmación
-  const [contratoFoto, setContratoFoto] = useState<File | null>(null);
-  const [contratoPreview, setContratoPreview] = useState<string | null>(null);
+  // Estado para fotos/archivos en confirmación (múltiples)
+  const [contratoFotos, setContratoFotos] = useState<File[]>([]);
+  const [contratoPreviews, setContratoPreviews] = useState<(string | null)[]>([]);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estado para documentos de entrega en detalles
   const [entregaDocumentos, setEntregaDocumentos] = useState<DocumentoEntrega[]>([]);
   const [loadingDocumentos, setLoadingDocumentos] = useState(false);
+  const addDocInputRef = useRef<HTMLInputElement>(null);
+  const [addingDocumentos, setAddingDocumentos] = useState(false);
+
+  // Lightbox para ver imagen en grande
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoEntrega>('all');
@@ -386,17 +393,55 @@ const DeliveriesPage2: React.FC = () => {
       setSelectedDeliveryDetails(null);
     }
 
-    // Cargar documentos si la entrega ya fue confirmada
-    if (delivery.estado === 'ENTREGADA') {
-      setLoadingDocumentos(true);
+    // Cargar documentos para cualquier estado
+    setLoadingDocumentos(true);
+    try {
+      const docs = await entregaViajeDocumentoApi.getByEntrega(delivery.id);
+      setEntregaDocumentos(docs);
+    } catch {
+      setEntregaDocumentos([]);
+    } finally {
+      setLoadingDocumentos(false);
+    }
+  };
+
+  const handleAddDocumentos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length || !selectedDelivery) return;
+    setAddingDocumentos(true);
+    for (const file of files) {
       try {
-        const docs = await entregaViajeDocumentoApi.getByEntrega(delivery.id);
-        setEntregaDocumentos(docs);
-      } catch {
-        setEntregaDocumentos([]);
-      } finally {
-        setLoadingDocumentos(false);
-      }
+        await entregaViajeDocumentoApi.upload(
+          selectedDelivery.id,
+          file,
+          file.type.startsWith('image/') ? 'Foto de entrega' : 'Documento de entrega'
+        );
+      } catch { /* continúa con el siguiente */ }
+    }
+    try {
+      const docs = await entregaViajeDocumentoApi.getByEntrega(selectedDelivery.id);
+      setEntregaDocumentos(docs);
+    } catch { /* mantiene lista actual */ }
+    setAddingDocumentos(false);
+    if (addDocInputRef.current) addDocInputRef.current.value = '';
+  };
+
+  const handleDeleteDocumento = async (doc: DocumentoEntrega) => {
+    try {
+      await entregaViajeDocumentoApi.delete(doc.entregaId, doc.id);
+      setEntregaDocumentos((prev) => prev.filter((d) => d.id !== doc.id));
+    } catch {
+      setError('Error al eliminar el documento.');
+    }
+  };
+
+  const handleViewImage = async (doc: DocumentoEntrega) => {
+    try {
+      const blob = await entregaViajeDocumentoApi.download(doc.entregaId, doc.id);
+      const url = URL.createObjectURL(blob);
+      setLightboxSrc(url);
+    } catch {
+      setError('Error al cargar la imagen.');
     }
   };
 
@@ -443,28 +488,48 @@ const DeliveriesPage2: React.FC = () => {
 
 
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setContratoFoto(file);
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setContratoPreview(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setContratoPreview(null); // PDF: sin vista previa
-    }
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const prevCount = contratoFotos.length;
+    setContratoFotos((prev) => [...prev, ...files]);
+    files.forEach((file, i) => {
+      const idx = prevCount + i;
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) =>
+          setContratoPreviews((prev) => {
+            const next = [...prev];
+            next[idx] = ev.target?.result as string;
+            return next;
+          });
+        reader.readAsDataURL(file);
+      } else {
+        setContratoPreviews((prev) => {
+          const next = [...prev];
+          next[idx] = null;
+          return next;
+        });
+      }
+    });
+    // Reset input so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const limpiarFoto = () => {
-    setContratoFoto(null);
-    setContratoPreview(null);
+  const removeFile = (index: number) => {
+    setContratoFotos((prev) => prev.filter((_, i) => i !== index));
+    setContratoPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const limpiarFotos = () => {
+    setContratoFotos([]);
+    setContratoPreviews([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const openConfirmDialog = (id: number) => {
     setConfirmDeliveryId(id);
     setReceptorData({ nombre: '', dni: '', observaciones: '' });
-    limpiarFoto();
+    limpiarFotos();
     setConfirmDialogOpen(true);
   };
 
@@ -485,28 +550,27 @@ const DeliveriesPage2: React.FC = () => {
         receptorData.observaciones || undefined
       );
 
-      // Subir contrato firmado si fue adjuntado
-      if (contratoFoto) {
+      // Subir archivos adjuntos si fueron seleccionados
+      if (contratoFotos.length > 0) {
         setUploadingFoto(true);
-        try {
-          await entregaViajeDocumentoApi.upload(
-            confirmDeliveryId,
-            contratoFoto,
-            'Contrato firmado'
-          );
-        } catch (uploadErr) {
-          console.error('Error al subir el contrato:', uploadErr);
-          // La entrega quedó confirmada aunque falle el upload
-          setError('Entrega confirmada. El contrato no se pudo subir — reintente desde los detalles.');
-        } finally {
-          setUploadingFoto(false);
+        for (const file of contratoFotos) {
+          try {
+            await entregaViajeDocumentoApi.upload(
+              confirmDeliveryId,
+              file,
+              file.type.startsWith('image/') ? 'Foto de entrega' : 'Documento de entrega'
+            );
+          } catch (uploadErr) {
+            console.error('Error al subir archivo:', uploadErr);
+          }
         }
+        setUploadingFoto(false);
       }
 
       setConfirmDialogOpen(false);
       setConfirmDeliveryId(null);
       setReceptorData({ nombre: '', dni: '', observaciones: '' });
-      limpiarFoto();
+      limpiarFotos();
       setError(null);
       await loadData();
       setDetailsDialogOpen(false);
@@ -739,6 +803,26 @@ const DeliveriesPage2: React.FC = () => {
 
   return (
     <Box sx={{ pb: isMobile ? 10 : 3, minHeight: '100vh' }}>
+      {/* Inputs de archivo ocultos — siempre montados para que los refs funcionen en mobile y desktop */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        multiple
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={handleFotoChange}
+      />
+      <input
+        ref={addDocInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        multiple
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={handleAddDocumentos}
+      />
+
       {/* Header - Sin card de fondo */}
       <Box
         sx={{ mb: 3 }}
@@ -1392,44 +1476,82 @@ const DeliveriesPage2: React.FC = () => {
                     </Card>
                   )}
 
-                  {selectedDelivery.estado === 'ENTREGADA' && (
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Box display="flex" alignItems="center" gap={1} mb={1}>
-                          <ArticleIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">Documentos adjuntos</Typography>
+                  {/* Imágenes / Documentos — disponible para todos los estados */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <PhotoCameraIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                          <Typography variant="caption" color="text.secondary">Imágenes / Documentos</Typography>
                         </Box>
-                        {loadingDocumentos ? (
-                          <Box display="flex" justifyContent="center" py={1}>
-                            <CircularProgress size={20} />
-                          </Box>
-                        ) : entregaDocumentos.length === 0 ? (
-                          <Typography variant="body2" color="text.secondary">Sin documentos adjuntos.</Typography>
-                        ) : (
-                          <List dense disablePadding>
-                            {entregaDocumentos.map((doc) => (
-                              <ListItem
-                                key={doc.id}
-                                disableGutters
-                                secondaryAction={
-                                  <IconButton edge="end" size="small" onClick={() => handleDownloadDocumento(doc)}>
-                                    <DownloadIcon fontSize="small" />
+                        <Button
+                          size="small"
+                          startIcon={addingDocumentos ? <CircularProgress size={12} /> : <PhotoCameraIcon />}
+                          onClick={() => addDocInputRef.current?.click()}
+                          disabled={addingDocumentos}
+                        >
+                          {addingDocumentos ? 'Subiendo...' : 'Agregar fotos'}
+                        </Button>
+                      </Box>
+                      {loadingDocumentos ? (
+                        <Box display="flex" justifyContent="center" py={1}>
+                          <CircularProgress size={20} />
+                        </Box>
+                      ) : (
+                        <>
+                          {/* Imágenes en grid */}
+                          {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).length > 0 && (
+                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.75, mb: 1 }}>
+                              {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).map((doc) => (
+                                <Box
+                                  key={doc.id}
+                                  onClick={() => handleViewImage(doc)}
+                                  sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', cursor: 'pointer' }}
+                                >
+                                  <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
+                                    <PhotoCameraIcon color="action" fontSize="small" />
+                                  </Box>
+                                  <Typography variant="caption" noWrap sx={{ display: 'block', px: 0.5, pb: 0.25, fontSize: 10 }}>
+                                    {doc.originalName ?? doc.fileName}
+                                  </Typography>
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteDocumento(doc); }}
+                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.45)', color: 'white', p: '2px' }}
+                                  >
+                                    <CloseIcon sx={{ fontSize: 12 }} />
                                   </IconButton>
-                                }
-                              >
-                                <ListItemText
-                                  primary={doc.descripcion || doc.originalName || doc.fileName}
-                                  secondary={doc.fechaCreacion ? new Date(doc.fechaCreacion).toLocaleString() : undefined}
-                                  primaryTypographyProps={{ variant: 'body2' }}
-                                  secondaryTypographyProps={{ variant: 'caption' }}
-                                />
-                              </ListItem>
-                            ))}
-                          </List>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                          {/* Otros archivos */}
+                          {entregaDocumentos.filter((d) => !d.mimeType?.startsWith('image/')).map((doc) => (
+                            <ListItem
+                              key={doc.id}
+                              disableGutters
+                              secondaryAction={
+                                <Box display="flex">
+                                  <IconButton size="small" onClick={() => handleDownloadDocumento(doc)}><DownloadIcon fontSize="small" /></IconButton>
+                                  <IconButton size="small" onClick={() => handleDeleteDocumento(doc)}><CloseIcon fontSize="small" /></IconButton>
+                                </Box>
+                              }
+                            >
+                              <ListItemText
+                                primary={doc.descripcion || doc.originalName || doc.fileName}
+                                secondary={doc.fechaCreacion ? new Date(doc.fechaCreacion).toLocaleString() : undefined}
+                                primaryTypographyProps={{ variant: 'body2' }}
+                                secondaryTypographyProps={{ variant: 'caption' }}
+                              />
+                            </ListItem>
+                          ))}
+                          {entregaDocumentos.length === 0 && (
+                            <Typography variant="body2" color="text.secondary">Sin documentos adjuntos.</Typography>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
                 </Stack>
               )}
 
@@ -1583,45 +1705,81 @@ const DeliveriesPage2: React.FC = () => {
                   </Grid>
                 )}
 
-                {selectedDelivery.estado === 'ENTREGADA' && (
-                  <Grid item xs={12}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-                          <ArticleIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="subtitle2">Documentos adjuntos</Typography>
+                {/* Imágenes / Documentos — disponible para todos los estados */}
+                <Grid item xs={12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <PhotoCameraIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <Typography variant="subtitle2">Imágenes / Documentos</Typography>
                         </Box>
-                        {loadingDocumentos ? (
-                          <Box display="flex" justifyContent="center" py={2}>
-                            <CircularProgress size={24} />
-                          </Box>
-                        ) : entregaDocumentos.length === 0 ? (
-                          <Typography variant="body2" color="text.secondary">
-                            Sin documentos adjuntos.
-                          </Typography>
-                        ) : (
-                          <List dense>
-                            {entregaDocumentos.map((doc) => (
-                              <ListItem
-                                key={doc.id}
-                                secondaryAction={
-                                  <IconButton edge="end" size="small" onClick={() => handleDownloadDocumento(doc)}>
-                                    <DownloadIcon fontSize="small" />
+                        <Button
+                          size="small"
+                          startIcon={addingDocumentos ? <CircularProgress size={14} /> : <PhotoCameraIcon />}
+                          onClick={() => addDocInputRef.current?.click()}
+                          disabled={addingDocumentos}
+                        >
+                          {addingDocumentos ? 'Subiendo...' : 'Agregar fotos'}
+                        </Button>
+                      </Box>
+                      {loadingDocumentos ? (
+                        <Box display="flex" justifyContent="center" py={2}>
+                          <CircularProgress size={24} />
+                        </Box>
+                      ) : (
+                        <>
+                          {/* Imágenes en grid */}
+                          {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).length > 0 && (
+                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, mb: 1.5 }}>
+                              {entregaDocumentos.filter((d) => d.mimeType?.startsWith('image/')).map((doc) => (
+                                <Box
+                                  key={doc.id}
+                                  onClick={() => handleViewImage(doc)}
+                                  sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
+                                >
+                                  <Box sx={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
+                                    <PhotoCameraIcon color="action" />
+                                  </Box>
+                                  <Typography variant="caption" noWrap sx={{ display: 'block', px: 0.5, pb: 0.5 }}>
+                                    {doc.originalName ?? doc.fileName}
+                                  </Typography>
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteDocumento(doc); }}
+                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.45)', color: 'white', p: '2px' }}
+                                  >
+                                    <CloseIcon sx={{ fontSize: 14 }} />
                                   </IconButton>
-                                }
-                              >
-                                <ListItemText
-                                  primary={doc.descripcion || doc.originalName || doc.fileName}
-                                  secondary={doc.fechaCreacion ? new Date(doc.fechaCreacion).toLocaleString() : undefined}
-                                />
-                              </ListItem>
-                            ))}
-                          </List>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                )}
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                          {/* Otros archivos */}
+                          {entregaDocumentos.filter((d) => !d.mimeType?.startsWith('image/')).map((doc) => (
+                            <ListItem
+                              key={doc.id}
+                              secondaryAction={
+                                <Box display="flex">
+                                  <IconButton size="small" onClick={() => handleDownloadDocumento(doc)}><DownloadIcon fontSize="small" /></IconButton>
+                                  <IconButton size="small" onClick={() => handleDeleteDocumento(doc)}><CloseIcon fontSize="small" /></IconButton>
+                                </Box>
+                              }
+                            >
+                              <ListItemText
+                                primary={doc.descripcion || doc.originalName || doc.fileName}
+                                secondary={doc.fechaCreacion ? new Date(doc.fechaCreacion).toLocaleString() : undefined}
+                              />
+                            </ListItem>
+                          ))}
+                          {entregaDocumentos.length === 0 && (
+                            <Typography variant="body2" color="text.secondary">Sin documentos adjuntos.</Typography>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
               </Grid>
 
               {selectedDelivery.estado === 'PENDIENTE' && (
@@ -1719,53 +1877,51 @@ const DeliveriesPage2: React.FC = () => {
               placeholder="Notas adicionales..."
             />
 
-            {/* Foto / Contrato firmado */}
+            {/* Fotos / Archivos adjuntos (múltiples) */}
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                Contrato firmado (opcional)
-              </Typography>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                style={{ display: 'none' }}
-                onChange={handleFotoChange}
-              />
               <Button
                 variant="outlined"
                 fullWidth
-                startIcon={contratoFoto ? <AttachFileIcon /> : <PhotoCameraIcon />}
+                startIcon={<PhotoCameraIcon />}
                 onClick={() => fileInputRef.current?.click()}
                 sx={{
                   minHeight: 52,
-                  borderStyle: contratoFoto ? 'solid' : 'dashed',
-                  borderColor: contratoFoto ? 'success.main' : 'divider',
-                  color: contratoFoto ? 'success.main' : 'text.secondary',
+                  borderStyle: 'dashed',
+                  borderColor: 'divider',
+                  color: 'text.secondary',
                 }}
               >
-                {contratoFoto ? contratoFoto.name : 'Sacar foto / Adjuntar PDF'}
+                {contratoFotos.length > 0
+                  ? `${contratoFotos.length} archivo(s) — Agregar más`
+                  : 'Sacar foto / Adjuntar archivo'}
               </Button>
-              {contratoPreview && (
-                <Box sx={{ mt: 1, position: 'relative', borderRadius: 1, overflow: 'hidden' }}>
-                  <img
-                    src={contratoPreview}
-                    alt="Vista previa contrato"
-                    style={{ width: '100%', maxHeight: 200, objectFit: 'contain', display: 'block', background: '#f5f5f5' }}
-                  />
-                  <IconButton
-                    size="small"
-                    sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: 'white' }}
-                    onClick={limpiarFoto}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              )}
-              {contratoFoto && !contratoPreview && (
-                <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <ArticleIcon fontSize="small" color="action" />
-                  <Typography variant="caption" color="text.secondary" noWrap>{contratoFoto.name}</Typography>
-                  <IconButton size="small" onClick={limpiarFoto}><CloseIcon fontSize="inherit" /></IconButton>
+              {contratoFotos.length > 0 && (
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.75, mt: 1 }}>
+                  {contratoFotos.map((file, i) => (
+                    <Box
+                      key={i}
+                      sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}
+                    >
+                      {contratoPreviews[i] ? (
+                        <img
+                          src={contratoPreviews[i]!}
+                          alt={file.name}
+                          style={{ width: '100%', height: 72, objectFit: 'cover', display: 'block' }}
+                        />
+                      ) : (
+                        <Box sx={{ height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
+                          <ArticleIcon color="action" fontSize="small" />
+                        </Box>
+                      )}
+                      <IconButton
+                        size="small"
+                        onClick={() => removeFile(i)}
+                        sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.55)', color: 'white', p: '2px' }}
+                      >
+                        <CloseIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Box>
+                  ))}
                 </Box>
               )}
             </Box>
@@ -1773,7 +1929,7 @@ const DeliveriesPage2: React.FC = () => {
             {uploadingFoto && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <CircularProgress size={16} />
-                <Typography variant="caption">Subiendo contrato...</Typography>
+                <Typography variant="caption">Subiendo archivos...</Typography>
               </Box>
             )}
           </Stack>
@@ -1819,52 +1975,46 @@ const DeliveriesPage2: React.FC = () => {
                 rows={3}
               />
 
-              {/* Foto / Contrato firmado */}
+              {/* Fotos / Archivos adjuntos (múltiples) */}
               <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                  Contrato firmado (opcional)
-                </Typography>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  style={{ display: 'none' }}
-                  onChange={handleFotoChange}
-                />
                 <Button
                   variant="outlined"
                   fullWidth
-                  startIcon={contratoFoto ? <AttachFileIcon /> : <PhotoCameraIcon />}
+                  startIcon={<PhotoCameraIcon />}
                   onClick={() => fileInputRef.current?.click()}
-                  sx={{
-                    borderStyle: contratoFoto ? 'solid' : 'dashed',
-                    borderColor: contratoFoto ? 'success.main' : 'divider',
-                    color: contratoFoto ? 'success.main' : 'text.secondary',
-                  }}
+                  sx={{ borderStyle: 'dashed', borderColor: 'divider', color: 'text.secondary' }}
                 >
-                  {contratoFoto ? contratoFoto.name : 'Adjuntar contrato firmado (foto o PDF)'}
+                  {contratoFotos.length > 0
+                    ? `${contratoFotos.length} archivo(s) — Agregar más`
+                    : 'Sacar foto / Adjuntar archivo'}
                 </Button>
-                {contratoPreview && (
-                  <Box sx={{ mt: 1, position: 'relative', borderRadius: 1, overflow: 'hidden' }}>
-                    <img
-                      src={contratoPreview}
-                      alt="Vista previa contrato"
-                      style={{ width: '100%', maxHeight: 180, objectFit: 'contain', display: 'block', background: '#f5f5f5' }}
-                    />
-                    <IconButton
-                      size="small"
-                      sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: 'white' }}
-                      onClick={limpiarFoto}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
-                {contratoFoto && !contratoPreview && (
-                  <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <ArticleIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary" noWrap>{contratoFoto.name}</Typography>
-                    <IconButton size="small" onClick={limpiarFoto}><CloseIcon fontSize="inherit" /></IconButton>
+                {contratoFotos.length > 0 && (
+                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.75, mt: 1 }}>
+                    {contratoFotos.map((file, i) => (
+                      <Box
+                        key={i}
+                        sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}
+                      >
+                        {contratoPreviews[i] ? (
+                          <img
+                            src={contratoPreviews[i]!}
+                            alt={file.name}
+                            style={{ width: '100%', height: 72, objectFit: 'cover', display: 'block' }}
+                          />
+                        ) : (
+                          <Box sx={{ height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
+                            <ArticleIcon color="action" fontSize="small" />
+                          </Box>
+                        )}
+                        <IconButton
+                          size="small"
+                          onClick={() => removeFile(i)}
+                          sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.55)', color: 'white', p: '2px' }}
+                        >
+                          <CloseIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Box>
+                    ))}
                   </Box>
                 )}
               </Box>
@@ -1872,7 +2022,7 @@ const DeliveriesPage2: React.FC = () => {
               {uploadingFoto && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CircularProgress size={16} />
-                  <Typography variant="caption">Subiendo contrato...</Typography>
+                  <Typography variant="caption">Subiendo archivos...</Typography>
                 </Box>
               )}
 
@@ -2009,6 +2159,29 @@ const DeliveriesPage2: React.FC = () => {
           </Box>
         </SwipeableDrawer>
       )}
+
+      {/* Lightbox — ver imagen en tamaño completo */}
+      <Dialog
+        open={!!lightboxSrc}
+        onClose={() => { if (lightboxSrc) URL.revokeObjectURL(lightboxSrc); setLightboxSrc(null); }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogContent sx={{ p: 0, bgcolor: 'black' }}>
+          {lightboxSrc && (
+            <img
+              src={lightboxSrc}
+              alt="Vista previa"
+              style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', display: 'block' }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { if (lightboxSrc) URL.revokeObjectURL(lightboxSrc); setLightboxSrc(null); }}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
