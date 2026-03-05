@@ -28,6 +28,7 @@ import {
   Select,
   Divider,
   TablePagination,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -49,12 +50,12 @@ import { useTenant } from '../../context/TenantContext';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
+import { useClienteSearch } from '../../hooks/useClienteSearch';
 
 const RegistroVentasPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaId } = useTenant();
   const [sales, setSales] = useState<Venta[]>([]);
-  const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +87,8 @@ const RegistroVentasPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [clientFilter, setClientFilter] = useState<string>('all');
+  const [selectedClientOption, setSelectedClientOption] = useState<Cliente | null>(null);
+  const { options: clientOptions, loading: clientSearchLoading, inputValue: clientInputValue, setInputValue: setClientInputValue } = useClienteSearch();
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
   const [tipoDocumentoFilter, setTipoDocumentoFilter] = useState<string>('all');
@@ -99,28 +102,20 @@ const RegistroVentasPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Load all data in parallel
-      const [facturasData, notasCreditoData, clientsResponse, usuariosData] = await Promise.all([
+      // Load all data in parallel — usuarios is non-critical, never blocks the page
+      const [facturasData, notasCreditoData, usuariosData] = await Promise.all([
         documentoApi.getByTipo('FACTURA'),
         documentoApi.getByTipo('NOTA_CREDITO'),
-        clienteApi.getAll({ size: 1000 }), // Get more clients for lookup
-        usuarioApi.getAll(),
+        usuarioApi.getAll().catch(() => []),
       ]);
-      
+
       // Combine both document types
       const salesData = [...(facturasData as any), ...(notasCreditoData as any)];
-      
-      // Handle clients pagination
-      const clientsArray = Array.isArray(clientsResponse) 
-        ? clientsResponse 
-        : (clientsResponse as any)?.content || [];
 
       console.log('Sales data:', salesData);
-      console.log('Clients data:', clientsArray);
       console.log('Usuarios data:', usuariosData);
-      
+
       // Create maps for quick lookups
-      const clientsMap = new Map(clientsArray.map((client: Cliente) => [client.id, client]));
       // Handle usuarios response - it might be paginated or direct array
       const usuariosArray = Array.isArray(usuariosData) ? usuariosData : (usuariosData as any).content || [];
       const usuariosMap = new Map(usuariosArray.map((usuario: Usuario) => [usuario.id, usuario]));
@@ -134,19 +129,14 @@ const RegistroVentasPage: React.FC = () => {
         let cliente = null;
         if (sale.cliente) {
           cliente = sale.cliente;
-        } else if (sale.clienteId) {
-          const clienteFromMap = clientsMap.get(sale.clienteId);
-          if (clienteFromMap) {
-            cliente = clienteFromMap;
-          } else if (sale.clienteNombre) {
-            // Create a mock cliente object from clienteNombre
-            const nameParts = sale.clienteNombre.split(' ');
-            cliente = {
-              id: sale.clienteId,
-              nombre: nameParts[0] || sale.clienteNombre,
-              apellido: nameParts.slice(1).join(' ') || '',
-            } as Cliente;
-          }
+        } else if (sale.clienteId && sale.clienteNombre) {
+          // Build a minimal cliente object from the document's denormalized fields
+          const nameParts = sale.clienteNombre.split(' ');
+          cliente = {
+            id: sale.clienteId,
+            nombre: nameParts[0] || sale.clienteNombre,
+            apellido: nameParts.slice(1).join(' ') || '',
+          } as Cliente;
         }
 
         // Map usuario - DocumentoComercial has usuarioId and usuarioNombre
@@ -222,7 +212,6 @@ const RegistroVentasPage: React.FC = () => {
       });
       
       setSales(sortedSales);
-      setClients(clientsData);
       setUsuarios(usuariosArray);
       
     } catch (err) {
@@ -271,14 +260,13 @@ const RegistroVentasPage: React.FC = () => {
         editForm.estado as any
       );
 
-      // Update the local state with enriched data
-      const clientsMap = new Map(clients.map((client: Cliente) => [client.id, client]));
+      // Update the local state — only estado changed, preserve existing enriched fields
       const usuariosMap = new Map(usuarios.map((usuario: Usuario) => [usuario.id, usuario]));
 
       const enrichedUpdatedSale = {
         ...updatedSale,
-        cliente: clientsMap.get(parseInt(editForm.clienteId)) || null,
-        usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || null,
+        cliente: editingSale.cliente ?? null,
+        usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || editingSale.usuario || null,
       } as unknown as Venta;
 
       setSales(prevSales =>
@@ -395,6 +383,8 @@ const RegistroVentasPage: React.FC = () => {
     setStatusFilter('all');
     setPaymentMethodFilter('all');
     setClientFilter('all');
+    setSelectedClientOption(null);
+    setClientInputValue('');
     setDateFromFilter('');
     setDateToFilter('');
     setTipoDocumentoFilter('all');
@@ -460,10 +450,19 @@ const RegistroVentasPage: React.FC = () => {
     try {
       console.log('Iniciando generación de PDF para venta:', venta);
 
-      // Obtener el cliente completo
-      const cliente = clients.find(c => c.id === venta.clienteId);
+      // Obtener el cliente — preferir el que ya viene enriquecido en la venta,
+      // sino hacer fetch puntual por ID
+      let cliente = venta.cliente ?? null;
+      if (!cliente && venta.clienteId) {
+        try {
+          cliente = await clienteApi.getById(venta.clienteId);
+        } catch {
+          console.error('Cliente no encontrado:', venta.clienteId);
+          setError('No se pudo encontrar la información del cliente');
+          return;
+        }
+      }
       if (!cliente) {
-        console.error('Cliente no encontrado:', venta.clienteId);
         setError('No se pudo encontrar la información del cliente');
         return;
       }
@@ -695,21 +694,38 @@ const RegistroVentasPage: React.FC = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Cliente</InputLabel>
-                <Select
-                  value={clientFilter}
-                  label="Cliente"
-                  onChange={(e) => setClientFilter(e.target.value)}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  {clients.map((client: Cliente) => (
-                    <MenuItem key={client.id} value={client.id.toString()}>
-                      {getClientFullName(client)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                options={clientOptions}
+                loading={clientSearchLoading}
+                value={selectedClientOption}
+                inputValue={clientInputValue}
+                getOptionLabel={(option) => getClientFullName(option)}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                filterOptions={(x) => x}
+                noOptionsText={clientInputValue.length < 3 ? 'Escribí 3 o más letras' : 'Sin resultados'}
+                onInputChange={(_e, value) => setClientInputValue(value)}
+                onChange={(_e, value) => {
+                  setSelectedClientOption(value);
+                  setClientFilter(value ? value.id.toString() : 'all');
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Cliente"
+                    placeholder="Buscar cliente..."
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {clientSearchLoading ? <CircularProgress size={16} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
             </Grid>
             <Grid item xs={12} md={1.5}>
               <TextField

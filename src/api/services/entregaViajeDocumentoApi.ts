@@ -2,13 +2,13 @@ import api from '../config';
 
 export interface DocumentoEntrega {
   id: number;
-  entregaId: number;
+  entregaId?: number;
   fileName: string;
   originalName?: string;
   mimeType?: string;
   descripcion?: string;
   fechaCreacion?: string;
-  url?: string;
+  urlDescarga?: string;
 }
 
 const BASE_PATH = (entregaId: number) => `/api/entregas-viaje/${entregaId}/documentos`;

@@ -40,8 +40,7 @@ import {
   AttachMoney as AttachMoneyIcon,
   BarChart as BarChartIcon,
 } from '@mui/icons-material';
-// Ensure we import named APIs from the barrel; there is no default export for clienteApi
-import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
+import { documentoApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import { generateSalesReportPDF, generateSaleDetailPDF } from '../../utils/pdfExportUtils';
@@ -114,10 +113,9 @@ const loadData = async () => {
     setLoading(true);
     setError(null);
 
-    const [facturasResponse, notasCreditoResponse, clientsResponse, usuariosResponse] = await Promise.all([
+    const [facturasResponse, notasCreditoResponse, usuariosResponse] = await Promise.all([
       documentoApi.getByTipo('FACTURA').catch(err => {
         console.error('Error loading facturas:', err);
-        // If 500 error, show helpful message
         if (err.response?.status === 500) {
           throw new Error('Error en el servidor: Posible problema de integridad de datos. Contacte al administrador.');
         }
@@ -125,10 +123,9 @@ const loadData = async () => {
       }),
       documentoApi.getByTipo('NOTA_CREDITO').catch(err => {
         console.error('Error loading notas de crédito:', err);
-        return []; // Return empty array if notas de crédito fail to load
+        return [];
       }),
-      clienteApi.getAll(),
-      usuarioApi.getAll(),
+      usuarioApi.getAll().catch(() => []),
     ]);
     
     // Combine both document types
@@ -137,11 +134,9 @@ const loadData = async () => {
 
     // Extract actual data from paginated responses
     const salesData = Array.isArray(salesResponse) ? salesResponse : (salesResponse as any).content || (salesResponse as any).data || [];
-    const clientsData = Array.isArray(clientsResponse) ? clientsResponse : (clientsResponse as any).content || (clientsResponse as any).data || [];
     const usuariosData = Array.isArray(usuariosResponse) ? usuariosResponse : (usuariosResponse as any).content || (usuariosResponse as any).data || [];
 
     console.log('Sales data:', salesData);
-    console.log('Clients data:', clientsData);
     console.log('Usuarios data:', usuariosData);
 
 
@@ -164,19 +159,7 @@ const loadData = async () => {
     console.log('=== END USUARIOS DEBUG ===');
 
     // Create maps for faster lookups
-    const clientsMap = new Map();
     const usuariosMap = new Map();
-
-    // Handle clients mapping
-    if (Array.isArray(clientsData)) {
-      clientsData.forEach(client => {
-        if (client && client.id !== undefined && client.id !== null) {
-          clientsMap.set(client.id, client);
-          clientsMap.set(String(client.id), client);
-          clientsMap.set(parseInt(client.id), client);
-        }
-      });
-    }
 
     // Handle usuarios mapping
     if (Array.isArray(usuariosData)) {
@@ -212,19 +195,13 @@ const loadData = async () => {
       let cliente = null;
       if (sale.cliente) {
         cliente = sale.cliente;
-      } else if (sale.clienteId) {
-        const clienteFromMap = clientsMap.get(sale.clienteId);
-        if (clienteFromMap) {
-          cliente = clienteFromMap;
-        } else if (sale.clienteNombre) {
-          // Create a mock cliente object from clienteNombre
-          const nameParts = sale.clienteNombre.split(' ');
-          cliente = {
-            id: sale.clienteId,
-            nombre: nameParts[0] || sale.clienteNombre,
-            apellido: nameParts.slice(1).join(' ') || '',
-          };
-        }
+      } else if (sale.clienteId && sale.clienteNombre) {
+        const nameParts = sale.clienteNombre.split(' ');
+        cliente = {
+          id: sale.clienteId,
+          nombre: nameParts[0] || sale.clienteNombre,
+          apellido: nameParts.slice(1).join(' ') || '',
+        };
       }
 
       // Map usuario - DocumentoComercial has usuarioId and usuarioNombre
@@ -296,8 +273,14 @@ const loadData = async () => {
       return dateB - dateA;
     });
 
+    // Derive unique clients from enriched sales (no separate API call needed)
+    const uniqueClientsMap = new Map<number, ClientRecord>();
+    enrichedSales.forEach((sale: any) => {
+      if (sale.cliente?.id) uniqueClientsMap.set(sale.cliente.id, sale.cliente);
+    });
+
     setSales(sortedSales);
-    setClients(clientsData);
+    setClients(Array.from(uniqueClientsMap.values()));
     setUsuarios(usuariosData);
 
     // Load opciones de financiamiento for each factura

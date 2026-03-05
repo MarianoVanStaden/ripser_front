@@ -51,4 +51,13 @@ export const clienteApi = {
     // Use getAll with term filter
     return clienteApi.getAll(pagination, { term });
   },
+
+  // Typeahead search — hits GET /api/clientes/search?q=...&page=0&size=10
+  searchByQuery: async (q: string, size = 10, signal?: AbortSignal): Promise<PageResponse<Cliente>> => {
+    const response = await api.get<PageResponse<Cliente>>(`${BASE_PATH}/search`, {
+      params: { q, page: 0, size },
+      signal,
+    });
+    return response.data;
+  },
 };

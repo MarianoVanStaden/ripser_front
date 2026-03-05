@@ -236,6 +236,7 @@ const DeliveriesPage2: React.FC = () => {
   // Estado para documentos de entrega en detalles
   const [entregaDocumentos, setEntregaDocumentos] = useState<DocumentoEntrega[]>([]);
   const [loadingDocumentos, setLoadingDocumentos] = useState(false);
+  const [docThumbnails, setDocThumbnails] = useState<Record<number, string>>({});
   const addDocInputRef = useRef<HTMLInputElement>(null);
   const [addingDocumentos, setAddingDocumentos] = useState(false);
 
@@ -398,6 +399,19 @@ const DeliveriesPage2: React.FC = () => {
     try {
       const docs = await entregaViajeDocumentoApi.getByEntrega(delivery.id);
       setEntregaDocumentos(docs);
+      // Pre-cargar miniaturas de imágenes como blobs (el endpoint requiere auth headers)
+      const imageDocs = docs.filter((d) => d.mimeType?.startsWith('image/'));
+      const thumbEntries = await Promise.all(
+        imageDocs.map(async (d) => {
+          try {
+            const blob = await entregaViajeDocumentoApi.download(delivery.id, d.id);
+            return [d.id, URL.createObjectURL(blob)] as [number, string];
+          } catch {
+            return null;
+          }
+        })
+      );
+      setDocThumbnails(Object.fromEntries(thumbEntries.filter(Boolean) as [number, string][]));
     } catch {
       setEntregaDocumentos([]);
     } finally {
@@ -419,8 +433,21 @@ const DeliveriesPage2: React.FC = () => {
       } catch { /* continúa con el siguiente */ }
     }
     try {
-      const docs = await entregaViajeDocumentoApi.getByEntrega(selectedDelivery.id);
+      const entregaId = selectedDelivery.id;
+      const docs = await entregaViajeDocumentoApi.getByEntrega(entregaId);
       setEntregaDocumentos(docs);
+      const imageDocs = docs.filter((d) => d.mimeType?.startsWith('image/'));
+      const thumbEntries = await Promise.all(
+        imageDocs.map(async (d) => {
+          try {
+            const blob = await entregaViajeDocumentoApi.download(entregaId, d.id);
+            return [d.id, URL.createObjectURL(blob)] as [number, string];
+          } catch {
+            return null;
+          }
+        })
+      );
+      setDocThumbnails(Object.fromEntries(thumbEntries.filter(Boolean) as [number, string][]));
     } catch { /* mantiene lista actual */ }
     setAddingDocumentos(false);
     if (addDocInputRef.current) addDocInputRef.current.value = '';
@@ -428,7 +455,7 @@ const DeliveriesPage2: React.FC = () => {
 
   const handleDeleteDocumento = async (doc: DocumentoEntrega) => {
     try {
-      await entregaViajeDocumentoApi.delete(doc.entregaId, doc.id);
+      await entregaViajeDocumentoApi.delete(selectedDelivery!.id, doc.id);
       setEntregaDocumentos((prev) => prev.filter((d) => d.id !== doc.id));
     } catch {
       setError('Error al eliminar el documento.');
@@ -437,7 +464,7 @@ const DeliveriesPage2: React.FC = () => {
 
   const handleViewImage = async (doc: DocumentoEntrega) => {
     try {
-      const blob = await entregaViajeDocumentoApi.download(doc.entregaId, doc.id);
+      const blob = await entregaViajeDocumentoApi.download(selectedDelivery!.id, doc.id);
       const url = URL.createObjectURL(blob);
       setLightboxSrc(url);
     } catch {
@@ -447,7 +474,7 @@ const DeliveriesPage2: React.FC = () => {
 
   const handleDownloadDocumento = async (doc: DocumentoEntrega) => {
     try {
-      const blob = await entregaViajeDocumentoApi.download(doc.entregaId, doc.id);
+      const blob = await entregaViajeDocumentoApi.download(selectedDelivery!.id, doc.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1508,8 +1535,12 @@ const DeliveriesPage2: React.FC = () => {
                                   onClick={() => handleViewImage(doc)}
                                   sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', cursor: 'pointer' }}
                                 >
-                                  <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
-                                    <PhotoCameraIcon color="action" fontSize="small" />
+                                  <Box sx={{ height: 64, overflow: 'hidden', bgcolor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {docThumbnails[doc.id] ? (
+                                      <img src={docThumbnails[doc.id]} alt={doc.originalName ?? doc.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                      <PhotoCameraIcon color="action" fontSize="small" />
+                                    )}
                                   </Box>
                                   <Typography variant="caption" noWrap sx={{ display: 'block', px: 0.5, pb: 0.25, fontSize: 10 }}>
                                     {doc.originalName ?? doc.fileName}
@@ -1738,8 +1769,12 @@ const DeliveriesPage2: React.FC = () => {
                                   onClick={() => handleViewImage(doc)}
                                   sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
                                 >
-                                  <Box sx={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
-                                    <PhotoCameraIcon color="action" />
+                                  <Box sx={{ height: 80, overflow: 'hidden', bgcolor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {docThumbnails[doc.id] ? (
+                                      <img src={docThumbnails[doc.id]} alt={doc.originalName ?? doc.fileName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                      <PhotoCameraIcon color="action" />
+                                    )}
                                   </Box>
                                   <Typography variant="caption" noWrap sx={{ display: 'block', px: 0.5, pb: 0.5 }}>
                                     {doc.originalName ?? doc.fileName}

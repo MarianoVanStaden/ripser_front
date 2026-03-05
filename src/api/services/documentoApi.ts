@@ -73,13 +73,15 @@ export const documentoApi = {
   void _fechaInicio; void _fechaFin;
   throw new Error('Get by fecha endpoint not implemented in backend');
   },
-  // Get documentos by tipo
-  getByTipo: async (tipo: string): Promise<DocumentoComercial[]> => {
+  // Get documentos by tipo (paginated endpoint, returns flat array for backward-compat)
+  getByTipo: async (tipo: string, size = 500): Promise<DocumentoComercial[]> => {
     try {
-      const response = await api.get<DocumentoComercial[]>(`/api/documentos/tipo/${encodeURIComponent(tipo)}`);
-      return response.data; // Backend returns List<DocumentoComercialDTO>
+      const response = await api.get<PageResponse<DocumentoComercial>>(
+        `/api/documentos/tipo/${encodeURIComponent(tipo)}`,
+        { params: { page: 0, size }, timeout: 60000 }
+      );
+      return response.data.content;
     } catch (err) {
-      // Narrow axios error shape safely without using 'any'
       const status = typeof err === 'object' && err !== null && 'response' in err
         ? (err as { response?: { status?: number } }).response?.status
         : undefined;
@@ -118,15 +120,9 @@ export const documentoApi = {
     return response.data;
   },
 
-  // Obtener presupuestos
+  // Obtener presupuestos (delegated to getByTipo for consistency)
   getPresupuestos: async (): Promise<DocumentoComercial[]> => {
-    try {
-      const response = await api.get<DocumentoComercial[]>(`/api/documentos/tipo/PRESUPUESTO`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching presupuestos:', error);
-      throw error;
-    }
+    return documentoApi.getByTipo('PRESUPUESTO');
   },
 
 
