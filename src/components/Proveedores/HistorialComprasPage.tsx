@@ -143,11 +143,13 @@ const HistorialComprasPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const suppliersData = await proveedorApi.getAll();
-      setSuppliers((suppliersData as unknown) as ProveedorDTO[]);
+      const suppliersResponse = await proveedorApi.getAll();
+      const suppliersList = (suppliersResponse.content ?? []) as unknown as ProveedorDTO[];
+      setSuppliers(suppliersList);
 
       // Get compras from API
-      const comprasData = (await compraApi.getAll() as unknown) as CompraDTO[];
+      const comprasResponse = await compraApi.getAll();
+      const comprasData = (comprasResponse.content ?? []) as unknown as CompraDTO[];
 
       // Map API data to CompraHistorial
       const comprasWithSuppliers: CompraHistorial[] = comprasData.map(compra => {
@@ -156,7 +158,7 @@ const HistorialComprasPage: React.FC = () => {
           id: compra.id,
           numero: compra.numero || `COMP-${compra.id}`,
           supplierId: compra.proveedorId,
-          supplier: (suppliersData.find(s => s.id === compra.proveedorId) as unknown) as ProveedorDTO,
+          supplier: suppliersList.find(s => s.id === compra.proveedorId) as unknown as ProveedorDTO,
           fecha: compra.fechaCreacion || compra.fechaEntrega || '',
           total: detalles.reduce((sum, item) => sum + (item.cantidad || 0) * (item.costoUnitario || 0), 0),
           estado: compra.estado,
@@ -175,7 +177,7 @@ const HistorialComprasPage: React.FC = () => {
       setCompras(comprasWithSuppliers);
 
       // Calculate statistics
-      calculateEstadisticas(comprasWithSuppliers, (suppliersData as unknown) as ProveedorDTO[]);
+      calculateEstadisticas(comprasWithSuppliers, suppliersList);
     } catch (err) {
       setError('Error al cargar los datos');
       console.error('Error loading data:', err);

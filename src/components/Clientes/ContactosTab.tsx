@@ -54,7 +54,8 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
     try {
       setLoading(true);
       const data = await contactoClienteApi.getByClienteId(clienteId);
-      setContactos(data);
+      const items = data.content ?? [];
+      setContactos(items);
     } catch (err) {
       setError('Error al cargar los contactos');
       console.error(err);

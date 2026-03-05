@@ -11,18 +11,18 @@ export interface ContactoClienteFilterParams {
 export const contactoClienteApi = {
   // Get all contacts with optional filters (paginated)
   getAll: async (pagination: PaginationParams = {}, params?: ContactoClienteFilterParams): Promise<PageResponse<ContactoCliente>> => {
-    const response = await api.get<PageResponse<ContactoCliente>>('/api/contactos-cliente', {
+    const response = await api.get<PageResponse<ContactoCliente>>('/api/clientes/contactos', {
       params: { ...params, ...pagination },
     });
     return response.data;
   },
 
-  /**
-   * @deprecated Use getAll({ clienteId }, pagination) instead
-   */
-  // Get all contacts for a client
+  // Get all contacts for a specific client
   getByClienteId: async (clienteId: number, pagination: PaginationParams = {}): Promise<PageResponse<ContactoCliente>> => {
-    return contactoClienteApi.getAll(pagination, { clienteId });
+    const response = await api.get<PageResponse<ContactoCliente>>(`/api/clientes/${clienteId}/contactos`, {
+      params: { ...pagination },
+    });
+    return response.data;
   },
 
   /**
@@ -35,18 +35,18 @@ export const contactoClienteApi = {
 
   // Create new contact
   create: async (contacto: CreateContactoClienteRequest): Promise<ContactoCliente> => {
-    const response = await api.post('/clientes/contactos', contacto);
+    const response = await api.post('/api/clientes/contactos', contacto);
     return response.data;
   },
 
   // Update contact
   update: async (id: number, contacto: Partial<CreateContactoClienteRequest>): Promise<ContactoCliente> => {
-    const response = await api.put(`/clientes/contactos/${id}`, contacto);
+    const response = await api.put(`/api/clientes/contactos/${id}`, contacto);
     return response.data;
   },
 
   // Delete contact
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/clientes/contactos/${id}`);
+    await api.delete(`/api/clientes/contactos/${id}`);
   },
 };

@@ -70,10 +70,11 @@ const ContactosCondicionesPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const proveedoresData = await supplierApi.getAll();
+      // supplierApiWithFallback.getAll() already returns ProveedorDTO[] (not PageResponse)
       setProveedores(proveedoresData as ProveedorDTO[]);
 
-      const contactosData = await contactoApi.getAll();
-      setContactos(contactosData);
+      const contactosResponse = await contactoApi.getAll();
+      setContactos(contactosResponse.content ?? []);
     } catch (err) {
       setError('Error al cargar los datos');
       console.error('Error loading data:', err);

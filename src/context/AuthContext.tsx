@@ -38,6 +38,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [esSuperAdmin, setEsSuperAdmin] = useState<boolean>(false);
 
   useEffect(() => {
+    const isTokenExpired = (token: string): boolean => {
+      try {
+        const base64 = token.split('.')[1];
+        const payload = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
+        if (!payload.exp) return false;
+        return payload.exp * 1000 < Date.now() - 60_000;
+      } catch {
+        return true;
+      }
+    };
+
     const validateToken = async () => {
       const t = localStorage.getItem("auth_token");
       const u = localStorage.getItem("auth_user");
@@ -50,25 +61,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (t && u) {
+        if (isTokenExpired(t)) {
+          console.warn('⚠️ Token expirado (client-side check)');
+          logout();
+          setLoading(false);
+          return;
+        }
+
         try {
           await authApi.validateToken(t);
-          const userParsed = JSON.parse(u);
-          const isSuperAdmin = superAdmin === 'true';
-
-          console.log('✅ Token válido - Usuario:', {
-            username: userParsed.username,
-            esSuperAdmin: isSuperAdmin
-          });
-
-          setToken(t);
-          setUser(userParsed);
-          setEsSuperAdmin(isSuperAdmin);
-          // Set for global axios (fallback) and our dedicated api instance
-          axios.defaults.headers.common.Authorization = `Bearer ${t}`;
-          setAuthToken(t);
-        } catch {
-          logout();
+          console.log('✅ Token validado por el backend');
+        } catch (err: any) {
+          const status = err?.response?.status;
+          if (status === 401) {
+            console.warn('⚠️ Token inválido (401), cerrando sesión');
+            logout();
+            setLoading(false);
+            return;
+          }
+          // 403, network errors, etc. = endpoint issue, not token issue
+          console.warn('⚠️ validate endpoint no disponible (status:', status, '), confiando en validación client-side');
         }
+
+        const userParsed = JSON.parse(u);
+        const isSuperAdmin = superAdmin === 'true';
+
+        console.log('✅ Token válido - Usuario:', {
+          username: userParsed.username,
+          esSuperAdmin: isSuperAdmin
+        });
+
+        setToken(t);
+        setUser(userParsed);
+        setEsSuperAdmin(isSuperAdmin);
+        axios.defaults.headers.common.Authorization = `Bearer ${t}`;
+        setAuthToken(t);
       }
       setLoading(false);
     };

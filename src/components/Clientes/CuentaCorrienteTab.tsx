@@ -62,8 +62,9 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
     try {
       setLoading(true);
       const data = await cuentaCorrienteApi.getByClienteId(clienteId);
+      const items = data.content ?? [];
       // Ordenar por fecha descendente
-      setMovimientos(data.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()));
+      setMovimientos(items.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()));
     } catch (err) {
       setError('Error al cargar los movimientos');
       console.error(err);
