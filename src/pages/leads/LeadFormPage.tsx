@@ -28,8 +28,10 @@ import {
   Delete as DeleteIcon,
   Notifications as NotificationsIcon
 } from '@mui/icons-material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
+import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import type { Cliente } from '../../types';
 import { productApi } from '../../api/services/productApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import {
@@ -50,8 +52,13 @@ import { useTenant } from '../../context/TenantContext';
 export const LeadFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { sucursalFiltro } = useTenant();
   const isEditMode = Boolean(id);
+  const clienteOrigenIdParam = searchParams.get('clienteId');
+  const modoRecompra = searchParams.get('modo') === 'recompra';
+
+  const [clienteOrigen, setClienteOrigen] = useState<Cliente | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -102,6 +109,25 @@ export const LeadFormPage = () => {
       loadLead(parseInt(id));
     }
   }, [id, isEditMode]);
+
+  // Pre-rellenar datos del cliente origen en modo recompra
+  useEffect(() => {
+    if (!modoRecompra || !clienteOrigenIdParam) return;
+    const clienteId = parseInt(clienteOrigenIdParam);
+    clienteApi.getById(clienteId).then((cliente) => {
+      setClienteOrigen(cliente);
+      setFormData((prev) => ({
+        ...prev,
+        nombre: `${cliente.nombre}${cliente.apellido ? ' ' + cliente.apellido : ''}`,
+        telefono: cliente.telefono || cliente.whatsapp || prev.telefono || '',
+        email: cliente.email || prev.email || '',
+        canal: CanalEnum.RECOMPRA,
+        clienteOrigenId: clienteId,
+      }));
+    }).catch((err) => {
+      console.error('Error al cargar cliente origen:', err);
+    });
+  }, [clienteOrigenIdParam, modoRecompra]);
 
   const loadCatalogs = async () => {
     try {
@@ -344,6 +370,12 @@ export const LeadFormPage = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {modoRecompra && clienteOrigen && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Lead de recompra generado desde el cliente <strong>{clienteOrigen.nombre}{clienteOrigen.apellido ? ` ${clienteOrigen.apellido}` : ''}</strong>. Los datos fueron pre-cargados y pueden editarse.
         </Alert>
       )}
 

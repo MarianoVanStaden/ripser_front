@@ -13,7 +13,8 @@ import {
   IconButton,
   Paper,
   List,
-  ListItem
+  ListItem,
+  Tooltip
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -90,7 +91,7 @@ export const LeadDetailPage = () => {
   };
 
   const canConvert = (leadData: LeadDTO): boolean => {
-    return leadData.estadoLead !== EstadoLeadEnum.CONVERTIDO && 
+    return leadData.estadoLead !== EstadoLeadEnum.CONVERTIDO &&
            leadData.estadoLead !== EstadoLeadEnum.DESCARTADO;
   };
 
@@ -215,14 +216,19 @@ export const LeadDetailPage = () => {
               </Button>
             )}
             {canConvert(lead) && (
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<ConvertIcon />}
-                onClick={() => navigate(`/leads/${lead.id}/convertir`)}
-              >
-                Convertir a Cliente
-              </Button>
+              <Tooltip title={lead.clienteOrigenId ? 'Este lead es de recompra — el cliente ya existe en el sistema' : ''}>
+                <span>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<ConvertIcon />}
+                    onClick={() => navigate(`/leads/${lead.id}/convertir`)}
+                    disabled={!!lead.clienteOrigenId}
+                  >
+                    Convertir a Cliente
+                  </Button>
+                </span>
+              </Tooltip>
             )}
           </Box>
         </Box>

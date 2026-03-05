@@ -49,7 +49,6 @@ import {
 } from "@mui/icons-material";
 import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
-import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
@@ -178,47 +177,10 @@ const PresupuestosPage: React.FC = () => {
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<DocumentoComercial | null>(null);
   const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
-  const [loadingOpciones, setLoadingOpciones] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
   const [presupuestosFinanciamiento, setPresupuestosFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdPresupuesto, setCreatedPresupuesto] = useState<DocumentoComercial | null>(null);
-
-  // Function to fetch financing options for all presupuestos
-  const fetchFinanciamientoOptions = useCallback(async (presupuestosList: DocumentoComercial[]) => {
-    const financiamientoMap: Record<number, OpcionFinanciamientoDTO[]> = {};
-    const selectedIdMap: Record<number, number> = {};
-    
-    await Promise.all(
-      presupuestosList.map(async (presupuesto) => {
-        try {
-          const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
-          if (opciones && opciones.length > 0) {
-            financiamientoMap[presupuesto.id] = opciones;
-            const seleccionada = opciones.find((opcion) => opcion.esSeleccionada);
-            if (seleccionada?.id) {
-              selectedIdMap[presupuesto.id] = seleccionada.id;
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching financing options for presupuesto ${presupuesto.id}:`, error);
-        }
-      })
-    );
-    
-    if (Object.keys(financiamientoMap).length > 0) {
-      setPresupuestosFinanciamiento((prev) => ({ ...prev, ...financiamientoMap }));
-    }
-    if (Object.keys(selectedIdMap).length > 0) {
-      setPresupuestos((prev) =>
-        prev.map((presupuesto) =>
-          selectedIdMap[presupuesto.id]
-            ? { ...presupuesto, opcionFinanciamientoSeleccionadaId: selectedIdMap[presupuesto.id] }
-            : presupuesto
-        )
-      );
-    }
-  }, []);
 
   // Main fetch data function
   const fetchData = useCallback(async () => {
@@ -301,10 +263,6 @@ const PresupuestosPage: React.FC = () => {
         }
       });
       setPresupuestosFinanciamiento(embeddedFinanciamientoMap);
-      
-      if (presupuestosArray.length > 0) {
-        await fetchFinanciamientoOptions(presupuestosArray);
-      }
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
@@ -312,7 +270,7 @@ const PresupuestosPage: React.FC = () => {
       setLoading(false);
       console.log("Loading complete, loading:", false);
     }
-  }, [fetchFinanciamientoOptions, empresaId]); // Re-fetch when tenant changes
+  }, [empresaId]); // Re-fetch when tenant changes
 
   useEffect(() => {
     fetchData();
@@ -709,23 +667,15 @@ const PresupuestosPage: React.FC = () => {
   }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose]);
 
   // Financiamiento handlers
-  const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
+  const handleOpenFinanciamiento = useCallback((presupuesto: DocumentoComercial) => {
     setSelectedPresupuesto(presupuesto);
-    setSelectedOpcionId(presupuesto.opcionFinanciamientoSeleccionadaId || null);
+    const opciones = presupuestosFinanciamiento[presupuesto.id] ?? [];
+    setOpcionesFinanciamiento(opciones);
+    const seleccionada = opciones.find(o => o.id === presupuesto.opcionFinanciamientoSeleccionadaId)
+      ?? opciones.find(o => o.esSeleccionada);
+    setSelectedOpcionId(presupuesto.opcionFinanciamientoSeleccionadaId || (seleccionada?.id ?? null));
     setFinanciamientoDialogOpen(true);
-    setLoadingOpciones(true);
-    try {
-      const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
-      setOpcionesFinanciamiento(opciones);
-      const seleccionada = opciones.find(o => o.esSeleccionada);
-      if (seleccionada) setSelectedOpcionId(seleccionada.id ?? null);
-    } catch (e) {
-      console.error('Error cargando opciones:', e);
-      setSnackbar({ open: true, message: 'Error al cargar opciones de financiamiento', severity: 'error' });
-    } finally {
-      setLoadingOpciones(false);
-    }
-  }, []);
+  }, [presupuestosFinanciamiento]);
 
   const handleSelectOpcion = useCallback(async () => {
     if (!selectedPresupuesto || !selectedOpcionId) return;
@@ -767,21 +717,8 @@ const PresupuestosPage: React.FC = () => {
         return;
       }
 
-      // Obtener las opciones de financiamiento del presupuesto
-      const opcionesCache = presupuestosFinanciamiento[presupuesto.id];
-      let opciones: OpcionFinanciamientoDTO[] = [];
-
-      if (opcionesCache) {
-        opciones = opcionesCache;
-      } else {
-        // Cargar opciones si no están en caché
-        try {
-          opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
-        } catch (e) {
-          console.warn('No se pudieron cargar opciones de financiamiento:', e);
-          // Continuar sin opciones de financiamiento
-        }
-      }
+      // Obtener las opciones de financiamiento del presupuesto (ya embebidas en la respuesta del backend)
+      const opciones: OpcionFinanciamientoDTO[] = presupuestosFinanciamiento[presupuesto.id] ?? [];
 
       // Generar el PDF
       generarPresupuestoPDF({
@@ -1666,36 +1603,30 @@ const PresupuestosPage: React.FC = () => {
             </Box>
           )}
           <Divider sx={{ mb: 2 }} />
-          {loadingOpciones ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
-              {opcionesFinanciamiento.map((opcion) => (
-                <Box key={opcion.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
-                  <FormControlLabel value={opcion.id} control={<Radio />} label={
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        {getMetodoPagoIcon(opcion.metodoPago)}
-                        <Typography variant="subtitle1">{opcion.nombre}</Typography>
-                        {opcion.tasaInteres < 0 && (
-                          <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
-                        )}
-                      </Box>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
-                        <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
-                        <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
-                        <Typography variant="body2">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                        <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                      </Box>
-                      {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
+          <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
+            {opcionesFinanciamiento.map((opcion) => (
+              <Box key={opcion.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
+                <FormControlLabel value={opcion.id} control={<Radio />} label={
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      {getMetodoPagoIcon(opcion.metodoPago)}
+                      <Typography variant="subtitle1">{opcion.nombre}</Typography>
+                      {opcion.tasaInteres < 0 && (
+                        <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
+                      )}
                     </Box>
-                  } />
-                </Box>
-              ))}
-            </RadioGroup>
-          )}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
+                      <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
+                      <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
+                      <Typography variant="body2">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                      <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                    </Box>
+                    {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
+                  </Box>
+                } />
+              </Box>
+            ))}
+          </RadioGroup>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setFinanciamientoDialogOpen(false)}>Cancelar</Button>

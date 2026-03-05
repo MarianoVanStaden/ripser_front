@@ -10,7 +10,8 @@ export const CanalEnum = {
   WHATSAPP: 'WHATSAPP',
   REFERIDO: 'REFERIDO',
   FACEBOOK: 'FACEBOOK',
-  INSTAGRAM: 'INSTAGRAM'
+  INSTAGRAM: 'INSTAGRAM',
+  RECOMPRA: 'RECOMPRA'
 } as const;
 
 export type CanalEnum = typeof CanalEnum[keyof typeof CanalEnum];
@@ -83,6 +84,7 @@ export interface LeadDTO {
   fechaConversion?: string;
   diasHastaConversion?: number;
   clienteIdConvertido?: number;
+  clienteOrigenId?: number;
   creadoPorId?: number;
   modificadoPorId?: number;
   fechaCreacion?: string;
@@ -239,7 +241,8 @@ export const CANAL_LABELS: Record<CanalEnum, string> = {
   WHATSAPP: 'WhatsApp',
   REFERIDO: 'Referido',
   FACEBOOK: 'Facebook',
-  INSTAGRAM: 'Instagram'
+  INSTAGRAM: 'Instagram',
+  RECOMPRA: 'Recompra'
 };
 
 export const CANAL_ICONS: Record<CanalEnum, string> = {
@@ -249,7 +252,8 @@ export const CANAL_ICONS: Record<CanalEnum, string> = {
   WHATSAPP: '💬',
   REFERIDO: '🤝',
   FACEBOOK: '📘',
-  INSTAGRAM: '📸'
+  INSTAGRAM: '📸',
+  RECOMPRA: '🔄'
 };
 
 export const TIPO_INTERACCION_LABELS: Record<TipoInteraccionEnum, string> = {

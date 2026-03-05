@@ -13,6 +13,11 @@ import {
   Rating,
   useMediaQuery,
   useTheme,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -22,9 +27,13 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   LocationOn as LocationIcon,
+  Autorenew as RecompraIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Cliente, EstadoCliente } from '../../types';
+import { leadApi } from '../../api/services/leadApi';
+import type { LeadDTO } from '../../types/lead.types';
+import { ESTADO_LABELS, CANAL_LABELS } from '../../types/lead.types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
@@ -70,10 +79,13 @@ const ClienteDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
+  const [leadsRecompra, setLeadsRecompra] = useState<LeadDTO[]>([]);
+  const [loadingLeads, setLoadingLeads] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadCliente(Number(id));
+      loadLeadsRecompra(Number(id));
     }
   }, [id]);
 
@@ -87,6 +99,18 @@ const ClienteDetailPage: React.FC = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLeadsRecompra = async (clienteId: number) => {
+    try {
+      setLoadingLeads(true);
+      const data = await leadApi.getAll({}, { clienteOrigenId: clienteId });
+      setLeadsRecompra(data.content);
+    } catch (err) {
+      console.error('Error al cargar leads de recompra:', err);
+    } finally {
+      setLoadingLeads(false);
     }
   };
 
@@ -179,6 +203,15 @@ const ClienteDetailPage: React.FC = () => {
             />
           </Box>
         </Box>
+        <Button
+          variant="outlined"
+          color="secondary"
+          startIcon={<RecompraIcon />}
+          onClick={() => navigate(`/leads/nuevo?clienteId=${id}&modo=recompra`)}
+          fullWidth={isMobile}
+        >
+          Generar Lead de Recompra
+        </Button>
         <Button
           variant="contained"
           startIcon={<EditIcon />}
@@ -286,6 +319,10 @@ const ClienteDetailPage: React.FC = () => {
             <Tab label={isMobile ? 'Contactos' : 'Historial de Contactos'} {...a11yProps(1)} />
             <Tab label={isMobile ? 'Cta. Cte.' : 'Cuenta Corriente'} {...a11yProps(2)} />
             <Tab label="Documentos" {...a11yProps(3)} />
+            <Tab
+              label={isMobile ? 'Recompras' : `Leads de Recompra${leadsRecompra.length > 0 ? ` (${leadsRecompra.length})` : ''}`}
+              {...a11yProps(4)}
+            />
           </Tabs>
         </Box>
 
@@ -384,6 +421,51 @@ const ClienteDetailPage: React.FC = () => {
                 return await documentoClienteApi.getByClienteId(clienteId);
               }}
             />
+          )}
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={4}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6">Leads de Recompra</Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => navigate(`/leads/nuevo?clienteId=${id}&modo=recompra`)}
+            >
+              + Nuevo Lead de Recompra
+            </Button>
+          </Box>
+          {loadingLeads ? (
+            <Box display="flex" justifyContent="center" py={3}><CircularProgress size={24} /></Box>
+          ) : leadsRecompra.length === 0 ? (
+            <Alert severity="info">No hay leads de recompra registrados para este cliente.</Alert>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Estado</TableCell>
+                  <TableCell>Canal</TableCell>
+                  <TableCell>Producto de interés</TableCell>
+                  <TableCell>Fecha creación</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {leadsRecompra.map((lead) => (
+                  <TableRow key={lead.id} hover>
+                    <TableCell>
+                      <Chip label={ESTADO_LABELS[lead.estadoLead]} size="small" />
+                    </TableCell>
+                    <TableCell>{CANAL_LABELS[lead.canal]}</TableCell>
+                    <TableCell>{lead.productoInteresNombre || lead.recetaInteresNombre || '—'}</TableCell>
+                    <TableCell>{lead.fechaCreacion ? new Date(lead.fechaCreacion).toLocaleDateString() : '—'}</TableCell>
+                    <TableCell>
+                      <Button size="small" onClick={() => navigate(`/leads/${lead.id}`)}>Ver</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </TabPanel>
       </Paper>

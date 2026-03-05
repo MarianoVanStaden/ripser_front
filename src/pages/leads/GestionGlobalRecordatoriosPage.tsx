@@ -57,6 +57,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRecordatoriosLeads } from '../../hooks/useRecordatoriosLeads';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import {
   TipoRecordatorioEnum,
   PrioridadLeadEnum,
@@ -734,6 +735,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
 export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { sucursalFiltro } = useTenant();
   const {
     recordatorios,
     conteos,
@@ -782,6 +784,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     if (filterPrioridad) filters.prioridad = filterPrioridad;
     if (filterTipo) filters.tipo = filterTipo;
     if (soloMios && user?.id) filters.usuarioId = user.id;
+    if (sucursalFiltro) filters.sucursalId = sucursalFiltro;
 
     const today = getTodayStr();
     switch (datePreset) {
@@ -808,7 +811,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
         break;
     }
     return filters;
-  }, [datePreset, customFechaDesde, customFechaHasta, filterPrioridad, filterTipo, soloMios, user]);
+  }, [datePreset, customFechaDesde, customFechaHasta, filterPrioridad, filterTipo, soloMios, user, sucursalFiltro]);
 
   const refresh = useCallback(() => {
     setAutoRefreshCountdown(60);
@@ -818,7 +821,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   useEffect(() => {
     loadRecordatorios(buildFilters());
     setPage(0);
-  }, [datePreset, filterPrioridad, filterTipo, soloMios]);
+  }, [datePreset, filterPrioridad, filterTipo, soloMios, sucursalFiltro]);
 
   useEffect(() => {
     if (datePreset === 'personalizado' && (customFechaDesde || customFechaHasta)) {

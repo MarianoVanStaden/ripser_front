@@ -23,6 +23,7 @@ export interface LeadFilterParams {
   busqueda?: string;
   fechaDesde?: string;
   fechaHasta?: string;
+  clienteOrigenId?: number;
 }
 
 export const leadApi = {
