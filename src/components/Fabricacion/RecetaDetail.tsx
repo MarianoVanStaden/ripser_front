@@ -42,6 +42,7 @@ import {
 } from '../../api/services/recetaFabricacionApi';
 import type { DetalleRecetaCreateDTO, RecetaFabricacionDTO } from  '../../types';
 import api from '../../api/config';
+import RecetaCosteoSection from './RecetaCosteoSection';
 
 interface Producto {
   id: number;
@@ -296,9 +297,9 @@ const RecetaDetail: React.FC = () => {
                   <Typography variant="caption" color="textSecondary">
                     Tipo de Equipo
                   </Typography>
-                  <Typography variant="body1">
+                  <Box mt={0.5}>
                     <Chip label={receta.tipoEquipo} color="primary" size="small" />
-                  </Typography>
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="textSecondary">
@@ -336,13 +337,13 @@ const RecetaDetail: React.FC = () => {
                   <Typography variant="caption" color="textSecondary">
                     Disponible para Venta
                   </Typography>
-                  <Typography variant="body1">
+                  <Box mt={0.5}>
                     <Chip
                       label={receta.disponibleParaVenta ? 'Sí' : 'No'}
                       color={receta.disponibleParaVenta ? 'success' : 'default'}
                       size="small"
                     />
-                  </Typography>
+                  </Box>
                 </Box>
               </Stack>
             </CardContent>
@@ -468,6 +469,9 @@ const RecetaDetail: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Costeo */}
+      <RecetaCosteoSection recetaId={Number(id)} />
 
       {/* Dialog para agregar material */}
       <Dialog

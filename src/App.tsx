@@ -41,6 +41,7 @@ import { CuentasBancariasPage } from './components/CuentasBancarias';
 import UsersPage from './components/Admin/UsersPage';
 import RolesPage from './components/Admin/RolesPage';
 import SettingsPage from './components/Admin/SettingsPage';
+import CosteoParametrosPage from './components/Admin/CosteoParametrosPage';
 import FlujoCajaPage from './components/Admin/FlujoCaja/FlujoCajaPage';
 import { EmpresasPage } from './components/Admin/EmpresasPage';
 import { SucursalesPage } from './components/Admin/SucursalesPage';
@@ -173,6 +174,7 @@ function App() {
               <Route path="admin/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
               <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
               <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+              <Route path="admin/costeo-parametros" element={<PrivateRoute><CosteoParametrosPage /></PrivateRoute>} />
               <Route path="admin/flujo-caja" element={<PrivateRoute><FlujoCajaPage /></PrivateRoute>} />
               <Route path="admin/bancos" element={<PrivateRoute><BancosPage /></PrivateRoute>} />
               <Route path="admin/cuentas-bancarias" element={<PrivateRoute><CuentasBancariasPage /></PrivateRoute>} />

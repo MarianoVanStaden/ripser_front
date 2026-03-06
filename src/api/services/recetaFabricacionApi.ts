@@ -8,6 +8,7 @@ import type {
   RecetaFabricacionCreateDTO,
   RecetaFabricacionUpdateDTO,
   DetalleRecetaCreateDTO,
+  CosteoRecetaDTO,
 } from '../../types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
@@ -100,6 +101,12 @@ export const recetaFabricacionApi = {
     const response = await api.patch<RecetaFabricacionDTO>(
       `/api/recetas-fabricacion/${id}/recalcular-costos`
     );
+    return response.data;
+  },
+
+  // Get full cost breakdown for a receta
+  getCosteo: async (id: number): Promise<CosteoRecetaDTO> => {
+    const response = await api.get<CosteoRecetaDTO>(`/api/recetas-fabricacion/${id}/costeo`);
     return response.data;
   },
 };

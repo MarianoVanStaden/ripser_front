@@ -225,6 +225,7 @@ const navigation: NavigationSection[] = [
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
       { text: 'Gestión Depósitos', icon: <SettingsIcon />, path: '/logistica/configuracion/depositos' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
+      { text: 'Porcentajes de Costeo', icon: <SettingsIcon />, path: '/admin/costeo-parametros' },
     ],
   },
 ];

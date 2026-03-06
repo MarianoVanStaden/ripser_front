@@ -3736,6 +3736,21 @@ export interface FlujoCajaKPIs {
   };
 }
 
+export interface CosteoRecetaDTO {
+  recetaId: number;
+  codigo: string;
+  nombre: string;
+  costoMaterial: number;
+  costoManoObra: number;
+  costoVariosMateriales: number;
+  costosFijos: number;
+  costoVenta: number;
+  costoTraslado: number;
+  costoTotalFabricacion: number;
+  ganancia: number;
+  precioSugerido: number;
+}
+
 // ==================== MOVIMIENTOS EXTRAS ====================
 
 // Tipo de movimiento para el backend (diferente al usado en UI)
