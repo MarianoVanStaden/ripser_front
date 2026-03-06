@@ -109,8 +109,8 @@ export const contactoClienteApiWithFallback = {
 export const cuentaCorrienteApiWithFallback = {
   getByClienteId: async (clienteId: number, pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
-    return isBackendAvailable 
-      ? realCuentaCorrienteApi.cuentaCorrienteApi.getByClienteId(clienteId, pagination) 
+    return isBackendAvailable
+      ? realCuentaCorrienteApi.cuentaCorrienteApi.getByClienteId(clienteId)
       : mockCuentaCorrienteApi.getByClienteId(clienteId, pagination);
   },
 

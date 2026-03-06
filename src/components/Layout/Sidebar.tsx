@@ -31,6 +31,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import WorkIcon from '@mui/icons-material/Work';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -47,6 +48,8 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import GavelIcon from '@mui/icons-material/Gavel';
+import PhoneCallbackIcon from '@mui/icons-material/PhoneCallback';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useAuth } from '../../context/AuthContext';
@@ -113,6 +116,14 @@ const navigation: NavigationSection[] = [
     ],
   },
   {
+    title: 'COBRANZAS',
+    modulo: 'COBRANZAS',
+    items: [
+      { text: 'Resumen', icon: <AssessmentIcon />, path: '/cobranzas/resumen' },
+      { text: 'Gestiones', icon: <PhoneCallbackIcon />, path: '/cobranzas/lista' },
+    ],
+  },
+  {
     title: 'PROVEEDORES',
     modulo: 'PROVEEDORES',
     items: [
@@ -149,7 +160,7 @@ const navigation: NavigationSection[] = [
       { text: 'Armado de Viajes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
       { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
-      
+      { text: 'Legajo de Vehículos', icon: <DirectionsCarIcon />, path: '/logistica/vehiculos/incidencias' },
     ],
   },
   {

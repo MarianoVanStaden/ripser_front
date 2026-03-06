@@ -25,6 +25,7 @@ import {
   InputAdornment,
   TablePagination,
   Stack,
+  Tooltip,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -36,6 +37,7 @@ import {
   TrendingDown as TrendingDownIcon,
   Download as DownloadIcon,
   Refresh as RefreshIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { useLocation } from 'react-router-dom';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -450,6 +452,7 @@ const CuentaCorrientePage: React.FC = () => {
                 <TableCell sx={{ minWidth: 100 }}>Comprobante</TableCell>
                 <TableCell align="right" sx={{ minWidth: 100 }}>Importe</TableCell>
                 <TableCell align="right" sx={{ minWidth: 100 }}>Saldo</TableCell>
+                <TableCell sx={{ minWidth: 120 }}>Registrado por</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -475,11 +478,25 @@ const CuentaCorrientePage: React.FC = () => {
                     {/* This is the fix: provide a fallback for null saldo */}
                     ${(movimiento.saldo ?? 0).toLocaleString('es-AR')}
                   </TableCell>
+                  <TableCell>
+                    {movimiento.usuarioNombre ? (
+                      <Tooltip title={movimiento.usuarioNombre}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <PersonIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 100 }}>
+                            {movimiento.usuarioNombre}
+                          </Typography>
+                        </Box>
+                      </Tooltip>
+                    ) : (
+                      <Typography variant="body2" color="text.disabled">-</Typography>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               {paginatedMovimientos.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Typography color="text.secondary" py={4}>
                       No se encontraron movimientos
                     </Typography>

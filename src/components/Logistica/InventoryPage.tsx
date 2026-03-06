@@ -85,20 +85,19 @@ const InventoryPage: React.FC = () => {
       
       // Load data from backend APIs
       const [productsData, categoriesData, movimientosData] = await Promise.all([
-        productApi.getAll(0, 10000),
+        productApi.getAll({ page: 0, size: 10000 }),
         categoriaProductoApi.getAll(),
         movimientoStockApi.getAll()
       ]);
-      
-      console.log('Products loaded:', productsData.length);
-      console.log('Categories loaded:', categoriesData.length, categoriesData);
-      console.log('Sample product:', productsData[0]);
-      
-      setProducts(productsData);
+
+      const productsList = productsData.content ?? [];
+      const movimientosList = movimientosData.content ?? [];
+
+      setProducts(productsList);
       setCategories(categoriesData);
-      
+
       // Filter movements to get only adjustments (AJUSTE type)
-      const inventoryAdjustments: InventoryAdjustment[] = movimientosData
+      const inventoryAdjustments: InventoryAdjustment[] = movimientosList
         .filter((movement: MovimientoStock) => movement.tipo === 'AJUSTE')
         .map((movement: MovimientoStock) => {
           // Backend returns producto as an object, extract the ID

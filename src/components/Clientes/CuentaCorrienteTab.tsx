@@ -22,11 +22,13 @@ import {
   TableRow,
   Paper,
   TablePagination,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import type { CuentaCorriente, CreateCuentaCorrienteRequest, TipoMovimiento, MetodoPago } from '../../types';
@@ -226,12 +228,13 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
               <TableCell align="right">Importe</TableCell>
               <TableCell align="right">Saldo</TableCell>
               <TableCell>Comprobante</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Registrado por</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedMovimientos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   <Typography variant="body1" color="text.secondary" py={4}>
                     No hay movimientos registrados
                   </Typography>
@@ -270,12 +273,26 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
                   <TableCell>
                     {movimiento.numeroComprobante || '-'}
                   </TableCell>
+                  <TableCell>
+                    {movimiento.usuarioNombre ? (
+                      <Tooltip title={movimiento.usuarioNombre}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <PersonIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 100 }}>
+                            {movimiento.usuarioNombre}
+                          </Typography>
+                        </Box>
+                      </Tooltip>
+                    ) : (
+                      <Typography variant="body2" color="text.disabled">-</Typography>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-        
+
         {movimientos.length > 0 && (
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}

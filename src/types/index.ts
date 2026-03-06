@@ -165,6 +165,7 @@ export interface CuentaCorriente {
   opcionFinanciamiento?: OpcionFinanciamientoDTO;
   metodoPago?: MetodoPago;
   chequeId?: number;
+  usuarioNombre?: string | null;
 }
 
 // Client related enums
@@ -1710,6 +1711,8 @@ export interface Vehiculo {
   estado: string;
   capacidad?: number;
   observaciones?: string;
+  totalIncidencias?: number;
+  incidenciasAbiertas?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -1746,6 +1749,94 @@ export interface VehiculoCreateDTO {
   estado?: string;
   capacidad?: number;
   observaciones?: string;
+}
+
+// ── Incidencias Vehículo ──────────────────────────────────────────────────────
+
+export type TipoIncidenciaVehiculo =
+  | 'ACCIDENTE'
+  | 'INFRACCION_TRANSITO'
+  | 'FALLA_MECANICA'
+  | 'DAÑO_CARROCERIA'
+  | 'MANTENIMIENTO_PREVENTIVO'
+  | 'VENCIMIENTO_DOCUMENTACION'
+  | 'ROBO_PARCIAL'
+  | 'OTRO';
+
+export type GravedadIncidencia = 'LEVE' | 'MODERADA' | 'GRAVE' | 'CRITICA';
+export type EstadoIncidencia = 'ABIERTA' | 'EN_PROCESO' | 'RESUELTA' | 'CERRADA';
+
+export const TIPO_INCIDENCIA_LABELS: Record<TipoIncidenciaVehiculo, string> = {
+  ACCIDENTE: 'Accidente',
+  INFRACCION_TRANSITO: 'Infracción de tránsito',
+  FALLA_MECANICA: 'Falla mecánica',
+  DAÑO_CARROCERIA: 'Daño carrocería',
+  MANTENIMIENTO_PREVENTIVO: 'Mantenimiento preventivo',
+  VENCIMIENTO_DOCUMENTACION: 'Vencimiento documentación',
+  ROBO_PARCIAL: 'Robo parcial',
+  OTRO: 'Otro',
+};
+
+export const GRAVEDAD_INCIDENCIA_LABELS: Record<GravedadIncidencia, string> = {
+  LEVE: 'Leve',
+  MODERADA: 'Moderada',
+  GRAVE: 'Grave',
+  CRITICA: 'Crítica',
+};
+
+export const ESTADO_INCIDENCIA_LABELS: Record<EstadoIncidencia, string> = {
+  ABIERTA: 'Abierta',
+  EN_PROCESO: 'En proceso',
+  RESUELTA: 'Resuelta',
+  CERRADA: 'Cerrada',
+};
+
+export interface IncidenciaVehiculoDTO {
+  id: number;
+  vehiculoId: number;
+  vehiculo?: Vehiculo;
+  tipo: TipoIncidenciaVehiculo;
+  gravedad: GravedadIncidencia;
+  estado: EstadoIncidencia;
+  fecha: string;
+  kmVehiculo?: number;
+  lugar?: string;
+  descripcion: string;
+  numeroExpediente?: string;
+  terceroInvolucrado?: string;
+  fechaVencimientoDoc?: string;
+  fechaResolucion?: string;
+  observacionesResolucion?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateIncidenciaVehiculoDTO {
+  vehiculoId: number;
+  tipo: TipoIncidenciaVehiculo;
+  gravedad: GravedadIncidencia;
+  fecha: string;
+  kmVehiculo?: number;
+  lugar?: string;
+  descripcion: string;
+  numeroExpediente?: string;
+  terceroInvolucrado?: string;
+  fechaVencimientoDoc?: string;
+}
+
+export interface UpdateIncidenciaVehiculoDTO {
+  tipo?: TipoIncidenciaVehiculo;
+  gravedad?: GravedadIncidencia;
+  estado?: EstadoIncidencia;
+  fecha?: string;
+  kmVehiculo?: number;
+  lugar?: string;
+  descripcion?: string;
+  numeroExpediente?: string;
+  terceroInvolucrado?: string;
+  fechaVencimientoDoc?: string;
+  fechaResolucion?: string;
+  observacionesResolucion?: string;
 }
 
 export interface EmpleadoCreateDTO {
@@ -1901,6 +1992,7 @@ export interface CuentaCorrienteProveedor {
   numeroComprobante?: string;
   saldo: number;
   compraId?: number;
+  usuarioNombre?: string | null;
 }
 
 export interface CreateMovimientoProveedorPayload {

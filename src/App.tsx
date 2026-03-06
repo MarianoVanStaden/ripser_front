@@ -63,6 +63,7 @@ import RecountTasksPage from './components/Logistica/RecountTasksPage';
 import TripsPage from './components/Logistica/TripsPage';
 import DeliveriesPage from './components/Logistica/DeliveriesPage';
 import EntregasEquiposPage from './components/Logistica/EntregasEquiposPage';
+import IncidenciasVehiculoPage from './components/Logistica/IncidenciasVehiculoPage';
 import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
 import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
 import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
@@ -93,6 +94,11 @@ import {
   PrestamosListPage,
   PrestamoDetailPage,
 } from './components/Prestamos';
+import {
+  CobranzasResumenPage,
+  CobranzasListPage,
+  GestionCobranzaDetailPage,
+} from './components/Prestamos/Cobranzas';
 import { BalanceAnualPage, BalanceMesPage } from './components/Admin/BalanceAnual';
 import { AmortizacionesPage, AmortizacionMesPage } from './components/Admin/Amortizaciones';
 import PosicionPatrimonialPage from './components/Admin/PosicionPatrimonial';
@@ -208,6 +214,10 @@ function App() {
               <Route path="prestamos/resumen" element={<PrivateRoute><PrestamosResumenPage /></PrivateRoute>} />
               <Route path="prestamos/lista" element={<PrivateRoute><PrestamosListPage /></PrivateRoute>} />
               <Route path="prestamos/:id" element={<PrivateRoute><PrestamoDetailPage /></PrivateRoute>} />
+              {/* COBRANZAS Module */}
+              <Route path="cobranzas/resumen" element={<PrivateRoute><CobranzasResumenPage /></PrivateRoute>} />
+              <Route path="cobranzas/lista" element={<PrivateRoute><CobranzasListPage /></PrivateRoute>} />
+              <Route path="cobranzas/:id" element={<PrivateRoute><GestionCobranzaDetailPage /></PrivateRoute>} />
               {/* LEADS Module */}
               <Route path="leads" element={<PrivateRoute><LeadsPage /></PrivateRoute>} />
               <Route path="leads/table" element={<PrivateRoute><LeadsTablePage /></PrivateRoute>} />
@@ -253,6 +263,7 @@ function App() {
               <Route path="logistica/distribucion/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
               <Route path="logistica/distribucion/entregas-productos" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
               <Route path="logistica/distribucion/entregas-equipos" element={<PrivateRoute><EntregasEquiposPage /></PrivateRoute>} />
+              <Route path="logistica/vehiculos/incidencias" element={<PrivateRoute><IncidenciasVehiculoPage /></PrivateRoute>} />
 
               {/* MOVIMIENTOS - Trazabilidad y transferencias internas */}
               <Route path="logistica/movimientos/transferencias" element={<PrivateRoute><TransferenciasPage /></PrivateRoute>} />

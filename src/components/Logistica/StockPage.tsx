@@ -142,17 +142,15 @@ const StockPage: React.FC = () => {
       setLoading(true);
       // Request all products with a large page size to avoid pagination issues
       const [productsData, movementsData, categoriasData] = await Promise.all([
-        productApi.getAll(0, 10000), // Request up to 10000 products
+        productApi.getAll({ page: 0, size: 10000 }),
         movimientoStockApi.getAll(),
         categoriaProductoApi.getAll(),
       ]);
 
-      console.log('📦 Productos cargados desde el backend:', productsData.length, productsData);
-      console.log('📂 Categorías cargadas:', categoriasData);
-      console.log('🔍 Muestra de productos:', productsData.slice(0, 5));
+      const productsList = productsData.content ?? [];
 
-      setProducts(productsData);
-      setStockMovements(movementsData);
+      setProducts(productsList);
+      setStockMovements(movementsData.content ?? []);
       setCategorias(categoriasData);
       setError(null);
     } catch (err) {
