@@ -33,9 +33,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { amortizacionApi } from '../../../api/services/amortizacionApi';
 import type { ActivoAmortizableDTO, TipoActivoAmortizable, MetodoAmortizacion } from '../../../types';
 import ActivoFormDialog from './components/ActivoFormDialog';
+import CierreMensualDialog from './components/CierreMensualDialog';
 
 const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
   VEHICULO: 'Vehículo',
@@ -83,6 +85,7 @@ export default function AmortizacionesPage() {
   // Navigate to month
   const [navAnio, setNavAnio] = useState(CURRENT_YEAR);
   const [navMes, setNavMes] = useState(CURRENT_MONTH);
+  const [cierreOpen, setCierreOpen] = useState(false);
 
   const loadActivos = useCallback(async () => {
     setLoading(true);
@@ -155,6 +158,13 @@ export default function AmortizacionesPage() {
             onClick={() => navigate(`/admin/amortizaciones/${navAnio}/${navMes}`)}
           >
             Ver registro del mes
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AssignmentTurnedInIcon />}
+            onClick={() => setCierreOpen(true)}
+          >
+            Cierre de Mes
           </Button>
         </Stack>
       </Box>
@@ -275,6 +285,14 @@ export default function AmortizacionesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <CierreMensualDialog
+        open={cierreOpen}
+        anio={navAnio}
+        mes={navMes}
+        onClose={() => setCierreOpen(false)}
+        onSuccess={() => setCierreOpen(false)}
+      />
     </Box>
   );
 }

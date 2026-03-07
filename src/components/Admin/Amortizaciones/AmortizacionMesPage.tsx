@@ -19,9 +19,11 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { amortizacionApi } from '../../../api/services/amortizacionApi';
 import type { ActivoAmortizableDTO, AmortizacionMensualDTO } from '../../../types';
 import AmortizacionMesRow from './components/AmortizacionMesRow';
+import CierreMensualDialog from './components/CierreMensualDialog';
 
 const MESES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -43,6 +45,7 @@ export default function AmortizacionMesPage() {
   const [detalles, setDetalles] = useState<AmortizacionMensualDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cierreOpen, setCierreOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,9 +84,17 @@ export default function AmortizacionMesPage() {
 
   return (
     <Box p={3}>
-      <Box display="flex" alignItems="center" gap={1} mb={1}>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1} flexWrap="wrap" gap={1}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/amortizaciones')} size="small">
           Activos
+        </Button>
+        <Button
+          variant="contained"
+          color="secondary"
+          startIcon={<AssignmentTurnedInIcon />}
+          onClick={() => setCierreOpen(true)}
+        >
+          Cierre de Mes
         </Button>
       </Box>
 
@@ -169,6 +180,14 @@ export default function AmortizacionMesPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <CierreMensualDialog
+        open={cierreOpen}
+        anio={anioNum}
+        mes={mesNum}
+        onClose={() => setCierreOpen(false)}
+        onSuccess={() => { setCierreOpen(false); load(); }}
+      />
     </Box>
   );
 }

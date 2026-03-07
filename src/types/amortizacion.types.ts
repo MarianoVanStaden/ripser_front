@@ -21,6 +21,7 @@ export interface ActivoAmortizableDTO {
   metodo: MetodoAmortizacion;
   tasaMensual: number | null;
   montoFijoMensual: number | null;
+  costoPorKmUsd?: number | null;
   vidaUtilKm: number | null;
   valorInicial: number;
   fechaAdquisicion: string;
@@ -73,4 +74,40 @@ export interface RegistrarAmortizacionDTO {
   valorDolar: number;
   kmRecorridos?: number | null;
   comprasPesos?: number;
+}
+
+export interface ProcesarCierreMensualDTO {
+  anio: number;
+  mes: number;
+  flujoCajaMensual: number;
+  valorDolar: number;
+  kmPorActivo?: Record<string, number>;
+}
+
+export interface RegistroCierreMensualDTO {
+  id: number;
+  activoId: number;
+  activoNombre: string;
+  activoTipo: TipoActivoAmortizable;
+  anio: number;
+  mes: number;
+  montoAmortizadoPesos: number;
+  montoAmortizadoDolares: number;
+  fondoAcumuladoPesos: number;
+  kmRecorridos: number | null;
+  valorDolar: number;
+}
+
+export interface ResultadoCierreMensualDTO {
+  empresaId: number;
+  anio: number;
+  mes: number;
+  flujoCajaMensual: number;
+  valorDolar: number;
+  totalAmortizadoPesos: number;
+  totalAmortizadoDolares: number;
+  porcentajeTotalDelFlujo: number;
+  flujoDisponiblePesos: number;
+  registros: RegistroCierreMensualDTO[];
+  advertencias: string[];
 }
