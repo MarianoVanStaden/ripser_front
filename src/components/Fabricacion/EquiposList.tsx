@@ -12,6 +12,7 @@ import {
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending, Brush,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
+import UsuarioBadge from '../common/UsuarioBadge';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -578,6 +579,14 @@ const EquiposList: React.FC = () => {
       headerName: 'Responsable',
       width: 130,
       renderCell: (params: GridRenderCellParams) => params.value || '-',
+    },
+    {
+      field: 'usuarioCreadorNombre',
+      headerName: 'Creado por',
+      width: 130,
+      renderCell: (params: GridRenderCellParams) => (
+        <UsuarioBadge nombre={params.value ?? null} />
+      ),
     },
     {
       field: 'fechaCreacion',

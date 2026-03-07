@@ -2308,6 +2308,12 @@ export interface DocumentoComercial {
   documentoOrigenNumero?: string;
   documentoOrigenTipo?: string;
   numeroReferencia?: string;
+  usuarioCreadorPresupuestoId:        number | null;
+  usuarioCreadorPresupuestoNombre:    string | null;
+  usuarioConvertidorNotaPedidoId:     number | null;
+  usuarioConvertidorNotaPedidoNombre: string | null;
+  usuarioFacturadorId:                number | null;
+  usuarioFacturadorNombre:            string | null;
 }
 
 export interface CreateNotaCreditoDTO {
@@ -2557,6 +2563,8 @@ export interface EquipoFabricadoDTO {
   receptorNombre?: string;
   receptorDni?: string;
   fechaEntrega?: string;
+  usuarioCreadorId:     number | null;
+  usuarioCreadorNombre: string | null;
 }
 
 export interface EquipoFabricadoListDTO {
@@ -2577,6 +2585,8 @@ export interface EquipoFabricadoListDTO {
   fechaTerminacion?: string;  // YYYY-MM-DD — fecha en que se aplicó el color/revestimiento
   responsableNombre?: string;
   clienteNombre?: string;
+  usuarioCreadorId:     number | null;
+  usuarioCreadorNombre: string | null;
 }
 
 export interface EquipoFabricadoCreateDTO {

@@ -496,6 +496,14 @@ const loadClientes = async () => {
                     <Typography variant="body1">{equipo.responsableNombre}</Typography>
                   </Box>
                 )}
+                {equipo.usuarioCreadorNombre && (
+                  <Box>
+                    <Typography variant="caption" color="textSecondary">
+                      Creado por
+                    </Typography>
+                    <Typography variant="body1">{equipo.usuarioCreadorNombre}</Typography>
+                  </Box>
+                )}
                 <Box>
                   <Typography variant="caption" color="textSecondary">
                     Fecha de Creación

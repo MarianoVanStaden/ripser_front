@@ -173,6 +173,8 @@ const SettingsPage: React.FC = () => {
     EMAIL: 'Contacto',
     PORCENTAJE: 'Calculo de Precios',
     REDONDEO: 'Calculo de Precios',
+    COSTEO: 'Costos de Fabricación',
+    VALOR: 'Valores de Referencia',
     GENERAL: 'General',
   };
 

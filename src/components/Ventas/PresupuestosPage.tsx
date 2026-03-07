@@ -56,6 +56,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useTenant } from "../../context/TenantContext";
 import SuccessDialog from "../common/SuccessDialog";
 import { generarPresupuestoPDF } from "../../services/pdfService";
+import AuditoriaFlujo from "../common/AuditoriaFlujo";
+import UsuarioBadge from "../common/UsuarioBadge";
 
 const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string }>): OpcionFinanciamientoDTO[] => {
   if (!Array.isArray(opciones)) return [];
@@ -894,6 +896,7 @@ const PresupuestosPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 120 }} align="right">IVA</TableCell>
                   <TableCell sx={{ minWidth: 120 }} align="right">Total</TableCell>
                   <TableCell sx={{ minWidth: 160 }}>Financiamiento</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>Creado por</TableCell>
                   <TableCell sx={{ minWidth: 200 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -948,6 +951,9 @@ const PresupuestosPage: React.FC = () => {
                             />
                           )}
                         </Box>
+                      </TableCell>
+                      <TableCell>
+                        <UsuarioBadge nombre={presupuesto.usuarioCreadorPresupuestoNombre ?? null} />
                       </TableCell>
                       <TableCell>
                         <Tooltip title="Ver">
@@ -1496,6 +1502,15 @@ const PresupuestosPage: React.FC = () => {
                 )}
               </Box>
             </Paper>
+          {readOnly && editingPresupuesto && (
+            <Box sx={{ mt: 2 }}>
+              <Divider sx={{ mb: 1.5 }} />
+              <Typography variant="subtitle2" gutterBottom>
+                Trazabilidad del flujo
+              </Typography>
+              <AuditoriaFlujo documento={editingPresupuesto} />
+            </Box>
+          )}
           </Box>
         </DialogContent>
         <DialogActions>

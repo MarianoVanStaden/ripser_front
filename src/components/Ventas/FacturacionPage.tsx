@@ -62,6 +62,7 @@ import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
+import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import type {
@@ -1642,6 +1643,10 @@ const FacturacionPage = () => {
                         <Typography variant="h6" color="primary">
                           Total: ${nota.total?.toFixed(2) || '0.00'}
                         </Typography>
+
+                        <Box mt={1}>
+                          <AuditoriaFlujo documento={nota} />
+                        </Box>
 
                         {notaOpcionesFinanciamiento[nota.id] && notaOpcionesFinanciamiento[nota.id].length > 0 && (
                           <Box mt={1}>

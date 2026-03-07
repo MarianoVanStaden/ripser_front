@@ -57,6 +57,8 @@ import type {
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
+import AuditoriaFlujo from "../common/AuditoriaFlujo";
+import UsuarioBadge from "../common/UsuarioBadge";
 import { generarNotaPedidoPDF } from "../../services/pdfService";
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
@@ -758,6 +760,7 @@ const NotasPedidoPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 150 }}>Método de Pago</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
                   <TableCell align="right" sx={{ minWidth: 120 }}>Total</TableCell>
+                  <TableCell sx={{ minWidth: 130 }}>Creado por</TableCell>
                   <TableCell sx={{ minWidth: 180 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -786,10 +789,13 @@ const NotasPedidoPage: React.FC = () => {
                       ${nota.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
+                      <UsuarioBadge nombre={nota.usuarioCreadorPresupuestoNombre ?? null} />
+                    </TableCell>
+                    <TableCell>
                       <Tooltip title="Ver">
-                        <IconButton 
-                          size="small" 
-                          color="primary" 
+                        <IconButton
+                          size="small"
+                          color="primary"
                           onClick={() => handleViewNota(nota)}
                         >
                           <VisibilityIcon />
@@ -1177,6 +1183,11 @@ const NotasPedidoPage: React.FC = () => {
                   </Box>
                 </Box>
               </Box>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" gutterBottom>
+                Trazabilidad del flujo
+              </Typography>
+              <AuditoriaFlujo documento={selectedNota} />
             </Box>
           )}
         </DialogContent>
