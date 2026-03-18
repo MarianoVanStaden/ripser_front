@@ -434,8 +434,8 @@ const NotasCreditoPage: React.FC = () => {
                 loading={loadingFacturas}
                 onChange={(_, value) => handleFacturaChange(value)}
                 value={facturaSeleccionada}
-                renderOption={(props, option) => (
-                  <li {...props} key={option.id}>
+                renderOption={({ key, ...props }, option) => (
+                  <li key={key} {...props}>
                     <Box sx={{ py: 0.5 }}>
                       <Typography variant="body2" fontWeight="600">
                         {option.numeroDocumento}

@@ -1098,8 +1098,8 @@ const PresupuestosPage: React.FC = () => {
                   setHasUnsavedChanges(true);
                 }}
                 disabled={readOnly || !!editingPresupuesto}
-                renderOption={(props, option) => (
-                  <Box component="li" {...props} key={`${option.type}-${option.id}`}>
+                renderOption={({ key, ...props }, option) => (
+                  <Box component="li" key={key} {...props}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                       <Typography variant="body2" sx={{ flexGrow: 1 }}>
                         {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}

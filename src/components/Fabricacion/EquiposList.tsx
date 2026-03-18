@@ -562,7 +562,7 @@ const EquiposList: React.FC = () => {
       align: 'center',
       headerAlign: 'center',
       renderCell: (params: GridRenderCellParams) =>
-        params.value ? (
+        (params.value || params.row.clienteId) ? (
           <Chip label="Sí" color="success" size="small" />
         ) : (
           <Chip label="No" color="default" size="small" />

@@ -134,8 +134,8 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                     : `${cliente.nombre} ${cliente.apellido || ''}`
                 }
                 isOptionEqualToValue={(option, value) => option.id === value.id}
-                renderOption={(props, option) => (
-                  <li {...props} key={option.id}>
+                renderOption={({ key, ...props }, option) => (
+                  <li key={key} {...props}>
                     {option.razonSocial
                       ? `${option.razonSocial} (${option.cuit})`
                       : `${option.nombre} ${option.apellido || ''}`}

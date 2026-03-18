@@ -834,8 +834,8 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
           onChange={(_, v) => setSelectedVehiculo(v)}
           getOptionLabel={getVehiculoLabel}
           isOptionEqualToValue={(a, b) => a.id === b.id}
-          renderOption={(props, option) => (
-            <li {...props}>
+          renderOption={({ key, ...props }, option) => (
+            <li key={key} {...props}>
               <Box>
                 <Typography variant="body2" fontWeight={600}>{option.patente}</Typography>
                 <Typography variant="caption" color="text.secondary">

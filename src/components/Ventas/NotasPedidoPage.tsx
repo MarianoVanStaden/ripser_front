@@ -903,8 +903,8 @@ const NotasPedidoPage: React.FC = () => {
                   return numero.includes(searchTerm) || cliente.includes(searchTerm) || lead.includes(searchTerm);
                 });
               }}
-              renderOption={(props, option) => (
-                <Box component="li" {...props} key={option.id}>
+              renderOption={({ key, ...props }, option) => (
+                <Box component="li" key={key} {...props}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                     <Typography variant="body2" sx={{ flexGrow: 1 }}>
                       {option.numeroDocumento} - {option.clienteNombre || option.leadNombre} - 

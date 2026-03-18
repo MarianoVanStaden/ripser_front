@@ -124,7 +124,9 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
       try {
         const clienteEquiposRaw = await equipoFabricadoApi.findByCliente(clienteId);
         const reservadosRaw = clienteEquiposRaw.filter(
-          (e) => e.estado === 'COMPLETADO' && e.estadoAsignacion === 'RESERVADO'
+          (e) =>
+            (e.estado === 'COMPLETADO' || e.estado === 'FABRICADO_SIN_TERMINACION') &&
+            (e.estadoAsignacion === 'RESERVADO' || e.estadoAsignacion === 'DISPONIBLE')
         );
         // Resolve full DTOs (list DTO may have null id; full DTO always has it)
         const resolved = await Promise.all(
