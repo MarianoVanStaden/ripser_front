@@ -427,7 +427,7 @@ const AuditoriaPage: React.FC = () => {
   };
 
   // Export functions
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       const filtrosAplicados: Record<string, any> = {};
 
@@ -483,7 +483,7 @@ const AuditoriaPage: React.FC = () => {
           },
         ]);
 
-        exportToExcel({
+        await exportToExcel({
           fileName: `auditoria-movimientos-stock-${dayjs().format('YYYY-MM-DD')}`,
           metadata: {
             title: 'Auditoría de Movimientos de Stock',
@@ -519,7 +519,7 @@ const AuditoriaPage: React.FC = () => {
           { key: 'observaciones', header: 'Observaciones' },
         ]);
 
-        exportToExcel({
+        await exportToExcel({
           fileName: `auditoria-movimientos-equipos-${dayjs().format('YYYY-MM-DD')}`,
           metadata: {
             title: 'Auditoría de Movimientos de Equipos',

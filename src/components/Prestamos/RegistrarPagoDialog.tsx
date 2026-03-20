@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Grid, TextField, Box, Typography, Alert, CircularProgress,
+  FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import { Payment } from '@mui/icons-material';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
-import type { CuotaPrestamoDTO } from '../../types/prestamo.types';
+import type { CuotaPrestamoDTO, MetodoPago } from '../../types/prestamo.types';
+import { METODO_PAGO_LABELS } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import dayjs from 'dayjs';
 
@@ -21,6 +23,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
 }) => {
   const [montoPagado, setMontoPagado] = useState<number>(0);
   const [fechaPago, setFechaPago] = useState<string>(dayjs().format('YYYY-MM-DD'));
+  const [metodoPago, setMetodoPago] = useState<MetodoPago | ''>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +32,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       const saldoRestante = cuota.montoCuota - cuota.montoPagado;
       setMontoPagado(saldoRestante > 0 ? saldoRestante : cuota.montoCuota);
       setFechaPago(dayjs().format('YYYY-MM-DD'));
+      setMetodoPago('');
       setError(null);
     }
   }, [open, cuota]);
@@ -46,11 +50,12 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
         cuotaId: cuota.id,
         montoPagado,
         fechaPago,
+        ...(metodoPago ? { metodoPago } : {}),
       });
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrar el pago');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar el pago');
     } finally {
       setSaving(false);
     }
@@ -105,6 +110,21 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 onChange={(e) => setFechaPago(e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Método de Pago</InputLabel>
+                <Select
+                  value={metodoPago}
+                  label="Método de Pago"
+                  onChange={(e) => setMetodoPago(e.target.value as MetodoPago | '')}
+                >
+                  <MenuItem value=""><em>Sin especificar</em></MenuItem>
+                  {(Object.keys(METODO_PAGO_LABELS) as MetodoPago[]).map(key => (
+                    <MenuItem key={key} value={key}>{METODO_PAGO_LABELS[key]}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
         </Box>

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type {
@@ -107,15 +107,14 @@ const addCorporateFooter = (pdf: jsPDF): void => {
  * @param metaPresupuestoMensual - Meta mensual de presupuesto (opcional)
  * @param sucursalNombre - Nombre de la sucursal filtrada (opcional)
  */
-export const exportarMetricasExcel = (
+export const exportarMetricasExcel = async (
   metricas: LeadMetricasResponseDTO,
   nombreArchivo: string = 'metricas-leads.xlsx',
   metaMensualLeads?: number,
   metaPresupuestoMensual?: number,
   sucursalNombre?: string
-) => {
-  // Crear un nuevo libro de Excel
-  const workbook = XLSX.utils.book_new();
+): Promise<void> => {
+  const workbook = new ExcelJS.Workbook();
 
   // === Hoja 1: Resumen General ===
   // Calcular KPIs adicionales
@@ -186,8 +185,8 @@ export const exportarMetricasExcel = (
       ['Cumplimiento de Meta (%)', cumplimientoPresupuesto]
     );
   }
-  const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
-  XLSX.utils.book_append_sheet(workbook, wsResumen, 'Resumen');
+  const wsResumen = workbook.addWorksheet('Resumen');
+  resumenData.forEach(row => wsResumen.addRow(row));
 
   // === Hoja 2: Embudo de Ventas ===
   const embudoData = [
@@ -201,8 +200,8 @@ export const exportarMetricasExcel = (
       item.orden.toString()
     ]);
   });
-  const wsEmbudo = XLSX.utils.aoa_to_sheet(embudoData);
-  XLSX.utils.book_append_sheet(workbook, wsEmbudo, 'Embudo de Ventas');
+  const wsEmbudo = workbook.addWorksheet('Embudo de Ventas');
+  embudoData.forEach(row => wsEmbudo.addRow(row));
 
   // === Hoja 3: Métricas por Canal ===
   const canalData = [
@@ -217,8 +216,8 @@ export const exportarMetricasExcel = (
       (canal.promedioTiempoConversion ?? 0).toFixed(0)
     ]);
   });
-  const wsCanal = XLSX.utils.aoa_to_sheet(canalData);
-  XLSX.utils.book_append_sheet(workbook, wsCanal, 'Por Canal');
+  const wsCanal = workbook.addWorksheet('Por Canal');
+  canalData.forEach(row => wsCanal.addRow(row));
 
   // === Hoja 4: Métricas por Prioridad ===
   const prioridadData = [
@@ -233,8 +232,8 @@ export const exportarMetricasExcel = (
       (prio.promedioValorEstimado ?? 0).toFixed(2)
     ]);
   });
-  const wsPrioridad = XLSX.utils.aoa_to_sheet(prioridadData);
-  XLSX.utils.book_append_sheet(workbook, wsPrioridad, 'Por Prioridad');
+  const wsPrioridad = workbook.addWorksheet('Por Prioridad');
+  prioridadData.forEach(row => wsPrioridad.addRow(row));
 
   // === Hoja 5: Distribución Geográfica ===
   const geoData = [
@@ -249,8 +248,8 @@ export const exportarMetricasExcel = (
       (geo.valorEstimadoTotal ?? 0).toFixed(2)
     ]);
   });
-  const wsGeo = XLSX.utils.aoa_to_sheet(geoData);
-  XLSX.utils.book_append_sheet(workbook, wsGeo, 'Por Provincia');
+  const wsGeo = workbook.addWorksheet('Por Provincia');
+  geoData.forEach(row => wsGeo.addRow(row));
 
   // === Hoja 6: Productos de Interés ===
   const productosData = [
@@ -270,8 +269,8 @@ export const exportarMetricasExcel = (
       (prod.valorEstimadoTotal ?? 0).toFixed(2)
     ]);
   });
-  const wsProductos = XLSX.utils.aoa_to_sheet(productosData);
-  XLSX.utils.book_append_sheet(workbook, wsProductos, 'Productos');
+  const wsProductos = workbook.addWorksheet('Productos');
+  productosData.forEach(row => wsProductos.addRow(row));
 
   // === Hoja 7: Equipos de Interés ===
   const equiposData = [
@@ -290,8 +289,8 @@ export const exportarMetricasExcel = (
       (equipo.tasaConversion ?? 0).toFixed(2)
     ]);
   });
-  const wsEquipos = XLSX.utils.aoa_to_sheet(equiposData);
-  XLSX.utils.book_append_sheet(workbook, wsEquipos, 'Equipos');
+  const wsEquipos = workbook.addWorksheet('Equipos');
+  equiposData.forEach(row => wsEquipos.addRow(row));
 
   // === Hoja 8: Vendedores ===
   const vendedoresData = [
@@ -308,27 +307,36 @@ export const exportarMetricasExcel = (
       (vend.valorRealizado ?? 0).toFixed(2)
     ]);
   });
-  const wsVendedores = XLSX.utils.aoa_to_sheet(vendedoresData);
-  XLSX.utils.book_append_sheet(workbook, wsVendedores, 'Vendedores');
+  const wsVendedores = workbook.addWorksheet('Vendedores');
+  vendedoresData.forEach(row => wsVendedores.addRow(row));
 
   // === Hoja 9: Tendencias - Leads por Mes ===
   const leadsData = [['Mes', 'Cantidad']];
   metricas.tendenciasTemporales.leadsPorMes.forEach((tendencia: TendenciaMensualDTO) => {
     leadsData.push([tendencia.mes, tendencia.cantidad.toString()]);
   });
-  const wsLeads = XLSX.utils.aoa_to_sheet(leadsData);
-  XLSX.utils.book_append_sheet(workbook, wsLeads, 'Leads por Mes');
+  const wsLeads = workbook.addWorksheet('Leads por Mes');
+  leadsData.forEach(row => wsLeads.addRow(row));
 
   // === Hoja 10: Tendencias - Conversiones por Mes ===
   const conversionesData = [['Mes', 'Cantidad']];
   metricas.tendenciasTemporales.conversionesPorMes.forEach((tendencia: TendenciaMensualDTO) => {
     conversionesData.push([tendencia.mes, tendencia.cantidad.toString()]);
   });
-  const wsConversiones = XLSX.utils.aoa_to_sheet(conversionesData);
-  XLSX.utils.book_append_sheet(workbook, wsConversiones, 'Conversiones por Mes');
+  const wsConversiones = workbook.addWorksheet('Conversiones por Mes');
+  conversionesData.forEach(row => wsConversiones.addRow(row));
 
   // Generar el archivo Excel
-  XLSX.writeFile(workbook, nombreArchivo);
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nombreArchivo;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 /**

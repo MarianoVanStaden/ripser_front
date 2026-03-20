@@ -1,5 +1,11 @@
 # Fix Bug — ripser_front
 
+Actuá como un Security Engineer Senior especializado en React + Vite + multi-tenant SaaS.
+
+Tenés acceso a todo el código del workspace.
+
+NO supongas: si algo no está, decilo explícitamente.
+
 Seguir este proceso en orden. No saltar pasos.
 
 ---

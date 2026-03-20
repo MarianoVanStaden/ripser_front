@@ -141,6 +141,7 @@ export interface PrestamoPersonalDTO {
   cuotasPendientes: number;
   montoPagado: number;
   saldoPendiente: number;
+  documentoId?: number | null;
 }
 
 export interface CreatePrestamoPersonalDTO {
@@ -183,10 +184,32 @@ export interface CuotaPrestamoDTO {
   estado: EstadoCuota;
 }
 
+export const MetodoPago = {
+  EFECTIVO: 'EFECTIVO',
+  TRANSFERENCIA_BANCARIA: 'TRANSFERENCIA_BANCARIA',
+  CHEQUE: 'CHEQUE',
+  TARJETA_CREDITO: 'TARJETA_CREDITO',
+  TARJETA_DEBITO: 'TARJETA_DEBITO',
+  MERCADO_PAGO: 'MERCADO_PAGO',
+  CUENTA_CORRIENTE: 'CUENTA_CORRIENTE',
+} as const;
+export type MetodoPago = typeof MetodoPago[keyof typeof MetodoPago];
+
+export const METODO_PAGO_LABELS: Record<MetodoPago, string> = {
+  EFECTIVO: 'Efectivo',
+  TRANSFERENCIA_BANCARIA: 'Transferencia Bancaria',
+  CHEQUE: 'Cheque',
+  TARJETA_CREDITO: 'Tarjeta de Crédito',
+  TARJETA_DEBITO: 'Tarjeta de Débito',
+  MERCADO_PAGO: 'Mercado Pago',
+  CUENTA_CORRIENTE: 'Cuenta Corriente',
+};
+
 export interface RegistrarPagoCuotaDTO {
   cuotaId: number;
   montoPagado: number;
   fechaPago?: string;
+  metodoPago?: MetodoPago;
 }
 
 export interface RecordatorioCuotaDTO {

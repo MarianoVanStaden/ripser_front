@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TableSortLabel, TablePagination, IconButton, Typography,
@@ -17,24 +17,19 @@ import {
   TIPO_FINANCIACION_LABELS,
 } from '../../types/prestamo.types';
 import type { PrestamoPersonalDTO } from '../../types/prestamo.types';
-import type { PaginationParams } from '../../types/pagination.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
-import { usePagination } from '../../hooks/usePagination';
-import { useDebounce } from '../../hooks/useDebounce';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'clienteNombre' | 'montoTotal' | 'cuotaActual' | 'estado' | 'categoria' | 'diasVencido' | 'saldoPendiente';
 
-interface PrestamoFilters {
-  term?: string;
-  estado?: string;
-  categoria?: string;
-}
-
 export const PrestamosListPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const [allPrestamos, setAllPrestamos] = useState<PrestamoPersonalDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstados, setSelectedEstados] = useState<EstadoPrestamo[]>(() => {
@@ -47,6 +42,8 @@ export const PrestamosListPage: React.FC = () => {
   });
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('diasVencido');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
 
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
@@ -58,59 +55,78 @@ export const PrestamosListPage: React.FC = () => {
   const [estadoMenuAnchor, setEstadoMenuAnchor] = useState<null | HTMLElement>(null);
   const [estadoMenuPrestamo, setEstadoMenuPrestamo] = useState<PrestamoPersonalDTO | null>(null);
 
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const loadPrestamos = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await prestamoPersonalApi.getAll({ page: 0, size: 9999, sort: 'diasVencido,desc' });
+      setAllPrestamos(response.content);
+    } catch (err) {
+      setError('Error al cargar préstamos');
+      console.error('Error loading prestamos:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const fetchPrestamos = useCallback(
-    (page: number, size: number, sort: string, filters: PrestamoFilters) =>
-      prestamoPersonalApi.getAll({ page, size, sort, ...filters } as PaginationParams & PrestamoFilters),
-    []
-  );
-
-  const {
-    data: prestamos,
-    totalElements,
-    loading,
-    error,
-    page,
-    size: rowsPerPage,
-    handleChangePage,
-    handleChangeRowsPerPage,
-    setFilters,
-    setSort,
-    refresh,
-  } = usePagination<PrestamoPersonalDTO, PrestamoFilters>({
-    fetchFn: fetchPrestamos,
-    initialSize: 25,
-    defaultSort: 'diasVencido,desc',
-  });
-
-  // Update filters when search/filter values change
   useEffect(() => {
-    setFilters({
-      ...(debouncedSearch ? { term: debouncedSearch } : {}),
-      ...(selectedEstados.length === 1 ? { estado: selectedEstados[0] } : {}),
-      ...(selectedCategorias.length === 1 ? { categoria: selectedCategorias[0] } : {}),
+    loadPrestamos();
+  }, []);
+
+  // Client-side filtering + sorting
+  const filteredPrestamos = useMemo(() => {
+    let result = allPrestamos;
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      result = result.filter(p =>
+        p.clienteNombre?.toLowerCase().includes(term) ||
+        p.codigoClienteRojas?.toLowerCase().includes(term)
+      );
+    }
+
+    if (selectedEstados.length > 0) {
+      result = result.filter(p => selectedEstados.includes(p.estado));
+    }
+
+    if (selectedCategorias.length > 0) {
+      result = result.filter(p => selectedCategorias.includes(p.categoria));
+    }
+
+    // Sorting
+    result = [...result].sort((a, b) => {
+      let valA: string | number = a[orderBy] ?? '';
+      let valB: string | number = b[orderBy] ?? '';
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA < valB) return order === 'asc' ? -1 : 1;
+      if (valA > valB) return order === 'asc' ? 1 : -1;
+      return 0;
     });
-  }, [debouncedSearch, selectedEstados, selectedCategorias, setFilters]);
+
+    return result;
+  }, [allPrestamos, searchTerm, selectedEstados, selectedCategorias, order, orderBy]);
+
+  const pagedPrestamos = useMemo(
+    () => filteredPrestamos.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
+    [filteredPrestamos, page, rowsPerPage]
+  );
 
   const handleSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
-    const newOrder = isAsc ? 'desc' : 'asc';
-    setOrder(newOrder);
+    setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
-    setSort(`${property},${newOrder}`);
+    setPage(0);
   };
 
   const toggleEstado = (estado: EstadoPrestamo) => {
-    setSelectedEstados(prev =>
-      prev.includes(estado) ? prev.filter(e => e !== estado) : [...prev, estado]
-    );
+    setSelectedEstados(prev => prev.includes(estado) ? [] : [estado]);
+    setPage(0);
   };
 
   const toggleCategoria = (cat: CategoriaPrestamo) => {
-    setSelectedCategorias(prev =>
-      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-    );
+    setSelectedCategorias(prev => prev.includes(cat) ? [] : [cat]);
+    setPage(0);
   };
 
   const handleDelete = async () => {
@@ -119,7 +135,7 @@ export const PrestamosListPage: React.FC = () => {
       await prestamoPersonalApi.delete(prestamoToDelete.id);
       setDeleteDialogOpen(false);
       setPrestamoToDelete(null);
-      refresh();
+      loadPrestamos();
     } catch (err) {
       console.error('Error deleting prestamo:', err);
     }
@@ -131,7 +147,7 @@ export const PrestamosListPage: React.FC = () => {
       await prestamoPersonalApi.cambiarEstado(estadoMenuPrestamo.id, estado);
       setEstadoMenuAnchor(null);
       setEstadoMenuPrestamo(null);
-      refresh();
+      loadPrestamos();
     } catch (err) {
       console.error('Error changing estado:', err);
     }
@@ -158,7 +174,7 @@ export const PrestamosListPage: React.FC = () => {
           fullWidth
           placeholder="Buscar por nombre o código..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
           InputProps={{
             startAdornment: <InputAdornment position="start"><Search /></InputAdornment>,
           }}
@@ -249,7 +265,7 @@ export const PrestamosListPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {prestamos.length === 0 ? (
+              {pagedPrestamos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} align="center">
                     <Box py={4}>
@@ -258,7 +274,7 @@ export const PrestamosListPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                prestamos.map(p => (
+                pagedPrestamos.map(p => (
                   <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/prestamos/${p.id}`)}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">{p.clienteNombre}</Typography>
@@ -346,11 +362,11 @@ export const PrestamosListPage: React.FC = () => {
 
       <TablePagination
         component="div"
-        count={totalElements}
+        count={filteredPrestamos.length}
         page={page}
-        onPageChange={handleChangePage}
+        onPageChange={(_, newPage) => setPage(newPage)}
         rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
+        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
         rowsPerPageOptions={[10, 25, 50, 100]}
         labelRowsPerPage="Filas por página:"
         labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
@@ -381,7 +397,7 @@ export const PrestamosListPage: React.FC = () => {
       <PrestamoFormDialog
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditingPrestamo(null); }}
-        onSaved={refresh}
+        onSaved={loadPrestamos}
         prestamo={editingPrestamo}
       />
 

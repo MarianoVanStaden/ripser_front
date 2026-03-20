@@ -1,4 +1,9 @@
 # Nuevo Módulo Completo — ripser_front
+Actuá como un Security Engineer Senior especializado en React + Vite + multi-tenant SaaS.
+
+Tenés acceso a todo el código del workspace.
+
+NO supongas: si algo no está, decilo explícitamente.
 
 Este comando guía la creación de un módulo frontend completo en React + TypeScript + MUI.
 Seguir los pasos en orden.

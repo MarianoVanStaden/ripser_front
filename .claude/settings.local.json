@@ -65,7 +65,9 @@
       "Bash(grep:*)",
       "Bash(xargs:*)",
       "Bash(find /c/Users/santi/Documents/GitHub/ripser_front/src -type f \\\\\\(-name *.test.* -o -name *.spec.* \\\\\\))",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(npm show:*)",
+      "Bash(npm audit:*)"
     ],
     "deny": [],
     "ask": []

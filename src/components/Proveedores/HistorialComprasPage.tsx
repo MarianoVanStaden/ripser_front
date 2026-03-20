@@ -326,7 +326,7 @@ const HistorialComprasPage: React.FC = () => {
     handleExportClose();
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const excelData = filteredCompras.map(compra => ({
       'Fecha': dayjs(compra.fecha).format('DD/MM/YYYY'),
       'Proveedor': compra.supplier?.razonSocial || 'Sin nombre',
@@ -336,7 +336,7 @@ const HistorialComprasPage: React.FC = () => {
       'Estado': compra.estado
     }));
 
-    exportToExcel({
+    await exportToExcel({
       fileName: `historial_compras_${dayjs().format('YYYY-MM-DD')}`,
       sheets: [{
         name: 'Historial de Compras',

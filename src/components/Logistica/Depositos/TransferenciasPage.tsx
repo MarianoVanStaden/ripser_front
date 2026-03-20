@@ -394,7 +394,7 @@ const TransferenciasPage: React.FC = () => {
   };
 
   // Export functions
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       const filtrosAplicados: Record<string, any> = {};
 
@@ -439,7 +439,7 @@ const TransferenciasPage: React.FC = () => {
         }))
       );
 
-      exportToExcel({
+      await exportToExcel({
         fileName: `transferencias-${dayjs().format('YYYY-MM-DD')}`,
         metadata: {
           title: 'Transferencias entre Depósitos',

@@ -1565,6 +1565,7 @@ export interface Venta {
   createdAt?: string;
   updatedAt?: string;
   detalleVentas: DetalleVenta[];
+  prestamoId?: number | null;
 }
 export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE'| 'FINANCIACION_PROPIA' | 'CUENTA_CORRIENTE' | 'MERCADO_PAGO' | 'OTRO';
 
@@ -2314,6 +2315,7 @@ export interface DocumentoComercial {
   usuarioConvertidorNotaPedidoNombre: string | null;
   usuarioFacturadorId:                number | null;
   usuarioFacturadorNombre:            string | null;
+  prestamoId?: number | null;
 }
 
 export interface CreateNotaCreditoDTO {
@@ -2427,6 +2429,9 @@ export interface ConvertToFacturaDTO {
   notaPedidoId: number;
   descuento?: number;
   equiposAsignaciones?: { [detalleId: number]: number[] }; // Map of DetalleDocumento ID to List of EquipoFabricado IDs
+  cantidadCuotas?: number;
+  tipoFinanciacion?: string;
+  primerVencimiento?: string;
 }
 
 export interface OpcionFinanciamientoDTO {

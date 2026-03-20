@@ -260,7 +260,7 @@ const EvaluacionDesempenoPage = () => {
     handleExportClose();
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const supplierName = suppliers.find(s => s.id === selectedSupplier)?.razonSocial || 'Proveedor';
     const excelData = evaluaciones.map(evaluacion => ({
       'Fecha': evaluacion.fechaEvaluacion ? new Date(evaluacion.fechaEvaluacion).toLocaleDateString('es-AR') : 'N/A',
@@ -270,7 +270,7 @@ const EvaluacionDesempenoPage = () => {
       'Evaluado Por': evaluacion.evaluadoPor || 'N/A'
     }));
 
-    exportToExcel({
+    await exportToExcel({
       fileName: `evaluacion_${supplierName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
       sheets: [{
         name: 'Evaluaciones',

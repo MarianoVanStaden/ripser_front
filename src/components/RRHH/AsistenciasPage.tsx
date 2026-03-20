@@ -83,7 +83,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { registroAsistenciaApi } from '../../api/services/registroAsistenciaApi';
@@ -432,7 +432,7 @@ const AsistenciasPage: React.FC = () => {
   };
 
   // Funciones de exportación
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     const data = reportFilteredAsistencias.map(asistencia => {
       const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
         ex.empleadoId === asistencia.empleadoId && 
@@ -477,12 +477,23 @@ const AsistenciasPage: React.FC = () => {
       'Observaciones': ''
     });
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Asistencias');
-    
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Asistencias');
+    const headers = Object.keys(data[0] || {});
+    worksheet.addRow(headers);
+    data.forEach(row => worksheet.addRow(headers.map(h => (row as any)[h] ?? '')));
+
     const fileName = `Reporte_Asistencias_${dayjs(reportFechaDesde).format('DDMMYYYY')}_${dayjs(reportFechaHasta).format('DDMMYYYY')}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
     setExportMenuAnchor(null);
   };
 

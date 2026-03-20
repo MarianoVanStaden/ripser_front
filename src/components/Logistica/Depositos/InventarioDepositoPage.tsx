@@ -552,7 +552,7 @@ const InventarioDepositoPage: React.FC = () => {
   };
 
   // Export functions
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       // Preparar filtros aplicados
       const filtrosAplicados: Record<string, any> = {};
@@ -602,7 +602,7 @@ const InventarioDepositoPage: React.FC = () => {
         { 'Métrica': 'Alertas Sobre Máximo', 'Valor': stats.alertasSobre },
       ];
 
-      exportToExcel({
+      await exportToExcel({
         fileName: `inventario-depositos-${dayjs().format('YYYY-MM-DD')}`,
         metadata: {
           title: 'Inventario por Depósito',

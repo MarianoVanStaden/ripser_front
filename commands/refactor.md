@@ -1,4 +1,9 @@
 # Refactor — ripser_front
+Actuá como un Security Engineer Senior especializado en React + Vite + multi-tenant SaaS.
+
+Tenés acceso a todo el código del workspace.
+
+NO supongas: si algo no está, decilo explícitamente.
 
 Analizar y mejorar el código sin cambiar el comportamiento. Seguir los pasos en orden.
 

@@ -152,12 +152,12 @@ export const LeadMetricasPage = () => {
     }
   };
 
-  const handleExportar = () => {
+  const handleExportar = async () => {
     if (!metricas) return;
 
     try {
       const nombreArchivo = generarNombreArchivo('xlsx');
-      exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre);
+      await exportarMetricasExcel(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre);
       setError(null); // Limpiar errores previos si fue exitoso
     } catch (err: any) {
       console.error('Error al exportar métricas a Excel:', err);

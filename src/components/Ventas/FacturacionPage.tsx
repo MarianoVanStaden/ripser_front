@@ -53,6 +53,7 @@ import {
   Search as SearchIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 // Real API services
 import { clienteApi, productApi, usuarioApi } from '../../api/services';
 import { documentoApi } from '../../api/services/documentoApi';
@@ -150,6 +151,7 @@ type NotaCartItem = {
 };
 
 const FacturacionPage = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const { user } = useAuth();
   const { empresaId } = useTenant();
@@ -168,6 +170,9 @@ const FacturacionPage = () => {
   const [selectedClientId, setSelectedClientId] = useState<number | ''>('');
   const [selectedUsuarioId, setSelectedUsuarioId] = useState<number | ''>(user?.id ?? '');
   const [paymentMethod, setPaymentMethod] = useState<MetodoPago>('EFECTIVO');
+  const [cantidadCuotas, setCantidadCuotas] = useState<number | null>(null);
+  const [tipoFinanciacion, setTipoFinanciacion] = useState<string>('MENSUAL');
+  const [primerVencimiento, setPrimerVencimiento] = useState<string>('');
   const [dueDate, setDueDate] = useState(dayjs().add(30, 'days').format('YYYY-MM-DD'));
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -178,6 +183,9 @@ const FacturacionPage = () => {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [editingNotaItems, setEditingNotaItems] = useState(false);
   const [notaCart, setNotaCart] = useState<NotaCartItem[]>([]);
+  const [notaCantidadCuotas, setNotaCantidadCuotas] = useState<number | null>(null);
+  const [notaTipoFinanciacion, setNotaTipoFinanciacion] = useState<string>('MENSUAL');
+  const [notaPrimerVencimiento, setNotaPrimerVencimiento] = useState<string>('');
   
   // Estado management dialog
   const [estadoDialogOpen, setEstadoDialogOpen] = useState(false);
@@ -405,6 +413,9 @@ const FacturacionPage = () => {
     setSelectedClientId('');
     setSelectedUsuarioId('');
     setPaymentMethod('EFECTIVO');
+    setCantidadCuotas(null);
+    setTipoFinanciacion('MENSUAL');
+    setPrimerVencimiento('');
     setDueDate(dayjs().add(30, 'days').format('YYYY-MM-DD'));
     setNotes('');
     setCart([]);
@@ -779,6 +790,11 @@ const FacturacionPage = () => {
         // No equipos, proceed directly with factura creation
         const factura = await documentoApi.convertToFactura({
           notaPedidoId: nota.id,
+          ...(paymentMethod === 'FINANCIACION_PROPIA' && cantidadCuotas != null && {
+            cantidadCuotas,
+            tipoFinanciacion,
+            ...(primerVencimiento && { primerVencimiento }),
+          }),
         });
 
         setCreatedFactura(factura);
@@ -841,68 +857,65 @@ const FacturacionPage = () => {
 
     setLoading(true);
     setError(null);
-    setAsignarEquiposDialogOpen(false);
 
     try {
+      const cuotasParaEnviar = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: notaParaAsignacion.id,
         equiposAsignaciones: asignaciones,
+        ...(cuotasParaEnviar != null && {
+          cantidadCuotas: cuotasParaEnviar,
+          tipoFinanciacion: isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion,
+          ...((isManualInvoice ? primerVencimiento : notaPrimerVencimiento) && {
+            primerVencimiento: isManualInvoice ? primerVencimiento : notaPrimerVencimiento,
+          }),
+        }),
       });
 
+      setAsignarEquiposDialogOpen(false);
       setNotaParaAsignacion(null);
       setCreatedFactura(factura);
       setSuccessDialogOpen(true);
 
       if (isManualInvoice) {
-        // Clear manual invoice form
         clearForm();
         setSelectedOpcionId(null);
         setOpcionesFinanciamiento([]);
         setIsManualInvoice(false);
-        // Reload data to get updated notas
         await loadData();
       } else {
-        // Remove nota from list (facturacion desde nota)
         setNotasPedido((prev) => prev.filter((n) => n.id !== notaParaAsignacion.id));
         handleCloseConvertDialog();
-        // NO recargar datos aquí - la nota ya fue removida del estado local
       }
     } catch (err: any) {
       console.error('Error converting to factura with equipos:', err);
-      let errorMessage = 'Error desconocido al convertir a factura';
-      
-      if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-        
-        // Detectar error de constraint de equipo único
-        if (errorMessage.includes('uk_equipo_unico') || 
-            errorMessage.includes('constraint') || 
-            errorMessage.includes('Duplicate entry') ||
-            errorMessage.includes('ya está asignado') || 
-            errorMessage.includes('already assigned')) {
-          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
-                        'Uno o más equipos ya están asignados a esta u otra factura. ' +
-                        'Cada equipo solo puede ser asignado una vez.\n\n' +
-                        '💡 Soluciones:\n' +
-                        '• Verifique que no haya seleccionado el mismo equipo múltiples veces\n' +
-                        '• Revise si los equipos ya fueron facturados previamente\n' +
-                        '• Seleccione equipos diferentes del inventario';
-        }
-      } else if (err?.response?.status === 500 && err?.response?.data) {
-        // Intentar extraer información del error 500
-        const responseData = JSON.stringify(err.response.data);
-        if (responseData.includes('uk_equipo_unico') || responseData.includes('Duplicate')) {
-          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
-                        'El sistema detectó que está intentando asignar equipos que ya están en uso.\n\n' +
-                        '💡 Por favor:\n' +
-                        '• Verifique los equipos seleccionados\n' +
-                        '• Asegúrese de no repetir números de equipo\n' +
-                        '• Consulte el inventario de equipos disponibles';
-        }
-      } else if (err?.message) {
-        errorMessage = err.message;
+
+      const data = err?.response?.data;
+      const rawText = data ? JSON.stringify(data) : '';
+      const backendMsg: string = data?.message || data?.error || data?.detail || '';
+
+      let errorMessage: string;
+
+      if (
+        rawText.includes('uk_equipo_unico') ||
+        rawText.includes('Duplicate') ||
+        backendMsg.includes('constraint') ||
+        backendMsg.includes('ya está asignado') ||
+        backendMsg.includes('already assigned')
+      ) {
+        errorMessage =
+          'Uno o más equipos ya están asignados a otra factura. ' +
+          'Seleccione equipos diferentes e intente nuevamente.';
+      } else if (backendMsg) {
+        errorMessage = backendMsg;
+      } else if (err?.response?.status === 500) {
+        errorMessage =
+          'Error interno del servidor al crear la factura. ' +
+          'Intente con equipos diferentes o contacte al administrador.';
+      } else {
+        errorMessage = err?.message || 'Error desconocido al convertir a factura';
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -966,6 +979,9 @@ const FacturacionPage = () => {
     setEditingNotaItems(false);
     setSelectedOpcionId(null);
     setOpcionesFinanciamiento([]);
+    setNotaCantidadCuotas(null);
+    setNotaTipoFinanciacion('MENSUAL');
+    setNotaPrimerVencimiento('');
   };
 
   const handleConvertNotaToFactura = async () => {
@@ -996,7 +1012,14 @@ const FacturacionPage = () => {
         setLoading(false);
       } else {
         // No equipos, proceed directly with factura creation
-        const factura = await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        const factura = await documentoApi.convertToFactura({
+          notaPedidoId: notaId,
+          ...(notaCantidadCuotas != null && {
+            cantidadCuotas: notaCantidadCuotas,
+            tipoFinanciacion: notaTipoFinanciacion,
+            ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
+          }),
+        });
         setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
         handleCloseConvertDialog();
         setCreatedFactura(factura);
@@ -1478,6 +1501,50 @@ const FacturacionPage = () => {
                   />
                 </Grid>
 
+                {paymentMethod === 'FINANCIACION_PROPIA' && (
+                  <>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        required
+                        type="number"
+                        label="Cantidad de Cuotas"
+                        value={cantidadCuotas ?? ''}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value);
+                          setCantidadCuotas(isNaN(v) || v < 1 ? null : v);
+                        }}
+                        inputProps={{ min: 1 }}
+                        placeholder="Ej: 12"
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>Tipo de Financiación</InputLabel>
+                        <Select
+                          value={tipoFinanciacion}
+                          onChange={(e) => setTipoFinanciacion(e.target.value)}
+                          label="Tipo de Financiación"
+                        >
+                          {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
+                            <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        label="Primer Vencimiento"
+                        type="date"
+                        value={primerVencimiento}
+                        onChange={(e) => setPrimerVencimiento(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                  </>
+                )}
+
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
@@ -1820,6 +1887,54 @@ const FacturacionPage = () => {
                       })()}
                     </Typography>
                   </Alert>
+                </Box>
+              )}
+
+              {/* Financing fields for FINANCIACION_PROPIA */}
+              {selectedNotaPedido?.metodoPago === 'FINANCIACION_PROPIA' && (
+                <Box mb={3}>
+                  <Typography variant="subtitle1" gutterBottom>Datos de Financiación Propia</Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        required
+                        type="number"
+                        label="Cantidad de Cuotas"
+                        value={notaCantidadCuotas ?? ''}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value);
+                          setNotaCantidadCuotas(isNaN(v) || v < 1 ? null : v);
+                        }}
+                        inputProps={{ min: 1 }}
+                        placeholder="Ej: 12"
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>Tipo de Financiación</InputLabel>
+                        <Select
+                          value={notaTipoFinanciacion}
+                          onChange={(e) => setNotaTipoFinanciacion(e.target.value)}
+                          label="Tipo de Financiación"
+                        >
+                          {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
+                            <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        label="Primer Vencimiento"
+                        type="date"
+                        value={notaPrimerVencimiento}
+                        onChange={(e) => setNotaPrimerVencimiento(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                  </Grid>
                 </Box>
               )}
 
@@ -2242,6 +2357,7 @@ const FacturacionPage = () => {
           { label: 'Número de Documento', value: createdFactura.numeroDocumento },
           { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
           { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+          ...(createdFactura.prestamoId ? [{ label: 'Préstamo generado', value: `#${createdFactura.prestamoId}` }] : []),
         ] : []}
         actions={[
           {
@@ -2253,6 +2369,13 @@ const FacturacionPage = () => {
             icon: <AddIcon />,
             variant: 'outlined',
           },
+          ...(createdFactura?.prestamoId ? [{
+            label: 'Ver Préstamo',
+            onClick: () => navigate(`/prestamos/${createdFactura.prestamoId}`),
+            icon: <MoneyIcon />,
+            variant: 'contained' as const,
+            color: 'secondary' as const,
+          }] : []),
         ]}
       />
 

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import dayjs from 'dayjs';
 
 /**
@@ -19,30 +19,42 @@ export interface ExcelExportConfig {
   };
 }
 
+const downloadBuffer = (buffer: ArrayBuffer, fileName: string): void => {
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 /**
  * Exporta datos a un archivo Excel (.xlsx)
  * @param config Configuración de la exportación
  */
-export const exportToExcel = (config: ExcelExportConfig): void => {
+export const exportToExcel = async (config: ExcelExportConfig): Promise<void> => {
   try {
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
 
     // Agregar metadata como primera hoja si existe
     if (config.metadata) {
-      const metadataRows = [
+      const metadataRows: any[][] = [
         ['Reporte generado'],
-        [''],
+        [],
         ...(config.metadata.title ? [['Título', config.metadata.title]] : []),
         ...(config.metadata.generatedBy ? [['Generado por', config.metadata.generatedBy]] : []),
         [
           'Fecha de generación',
           config.metadata.generatedAt || dayjs().format('DD/MM/YYYY HH:mm:ss'),
         ],
-        [''],
+        [],
       ];
 
       if (config.metadata.filters) {
-        metadataRows.push(['Filtros aplicados'], ['']);
+        metadataRows.push(['Filtros aplicados'], []);
         Object.entries(config.metadata.filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null && value !== '') {
             metadataRows.push([key, String(value)]);
@@ -50,46 +62,43 @@ export const exportToExcel = (config: ExcelExportConfig): void => {
         });
       }
 
-      const metadataSheet = XLSX.utils.aoa_to_sheet(metadataRows);
-      XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Información');
+      const metadataSheet = workbook.addWorksheet('Información');
+      metadataRows.forEach(row => metadataSheet.addRow(row));
     }
 
     // Agregar cada hoja de datos
     config.sheets.forEach((sheetConfig) => {
-      const worksheet = XLSX.utils.json_to_sheet(sheetConfig.data, {
-        header: sheetConfig.columns,
-      });
+      const worksheet = workbook.addWorksheet(sheetConfig.name);
+      const headers = sheetConfig.columns ||
+        (sheetConfig.data.length > 0 ? Object.keys(sheetConfig.data[0]) : []);
 
-      // Aplicar formato automático de ancho de columnas
-      const maxWidths: number[] = [];
+      // Fila de encabezados
+      worksheet.addRow(headers);
 
-      // Calcular ancho basado en headers
-      if (sheetConfig.columns) {
-        sheetConfig.columns.forEach((col, idx) => {
-          maxWidths[idx] = col.length;
-        });
-      }
-
-      // Calcular ancho basado en datos
+      // Filas de datos en el orden de los headers
       sheetConfig.data.forEach((row) => {
-        Object.values(row).forEach((val, idx) => {
-          const cellLength = String(val || '').length;
-          maxWidths[idx] = Math.max(maxWidths[idx] || 0, cellLength);
-        });
+        worksheet.addRow(headers.map(h => row[h] ?? ''));
       });
 
-      // Aplicar anchos (máximo 50 caracteres)
-      worksheet['!cols'] = maxWidths.map((w) => ({ wch: Math.min(w + 2, 50) }));
-
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetConfig.name);
+      // Calcular y aplicar ancho de columnas
+      const maxWidths: number[] = headers.map(h => h.length);
+      sheetConfig.data.forEach((row) => {
+        headers.forEach((h, idx) => {
+          const cellLength = String(row[h] ?? '').length;
+          maxWidths[idx] = Math.max(maxWidths[idx], cellLength);
+        });
+      });
+      headers.forEach((_, idx) => {
+        worksheet.getColumn(idx + 1).width = Math.min(maxWidths[idx] + 2, 50);
+      });
     });
 
-    // Generar archivo
     const fileName = config.fileName.endsWith('.xlsx')
       ? config.fileName
       : `${config.fileName}.xlsx`;
 
-    XLSX.writeFile(workbook, fileName);
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadBuffer(buffer, fileName);
   } catch (error) {
     console.error('Error al exportar a Excel:', error);
     throw new Error('No se pudo generar el archivo Excel');
@@ -102,19 +111,14 @@ export const exportToExcel = (config: ExcelExportConfig): void => {
  * @param fileName Nombre del archivo (sin extensión)
  * @param sheetName Nombre de la hoja
  */
-export const exportSimpleTable = (
+export const exportSimpleTable = async (
   data: any[],
   fileName: string,
   sheetName: string = 'Datos'
-): void => {
-  exportToExcel({
+): Promise<void> => {
+  return exportToExcel({
     fileName,
-    sheets: [
-      {
-        name: sheetName,
-        data,
-      },
-    ],
+    sheets: [{ name: sheetName, data }],
   });
 };
 

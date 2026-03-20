@@ -1049,6 +1049,15 @@ const RegistroVentasPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setViewDialogOpen(false)}>Cerrar</Button>
+          {viewingSale?.prestamoId && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => { setViewDialogOpen(false); navigate(`/prestamos/${viewingSale.prestamoId}`); }}
+            >
+              Ver Préstamo
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<PrintIcon />}

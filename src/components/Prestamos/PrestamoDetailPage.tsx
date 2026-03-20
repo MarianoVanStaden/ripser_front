@@ -8,7 +8,7 @@ import {
 import {
   ArrowBack, Edit, Payment, Add, Send, CheckCircle,
   Phone, Email, WhatsApp, Videocam, PersonPin, Groups,
-  Delete, Notifications,
+  Delete, Notifications, Receipt,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -217,6 +217,11 @@ export const PrestamoDetailPage: React.FC = () => {
         <Typography variant="h4" sx={{ flexGrow: 1 }}>
           Préstamo - {prestamo.clienteNombre}
         </Typography>
+        {prestamo.documentoId && (
+          <Button variant="outlined" color="secondary" startIcon={<Receipt />} onClick={() => navigate('/ventas/registro')}>
+            Ver Factura #{prestamo.documentoId}
+          </Button>
+        )}
         <Button variant="outlined" startIcon={<Edit />} onClick={() => setEditOpen(true)}>Editar</Button>
       </Box>
 
