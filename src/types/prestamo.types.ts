@@ -192,6 +192,7 @@ export const MetodoPago = {
   TARJETA_DEBITO: 'TARJETA_DEBITO',
   MERCADO_PAGO: 'MERCADO_PAGO',
   CUENTA_CORRIENTE: 'CUENTA_CORRIENTE',
+  FINANCIACION_PROPIA: 'FINANCIACION_PROPIA',
 } as const;
 export type MetodoPago = typeof MetodoPago[keyof typeof MetodoPago];
 
@@ -203,13 +204,14 @@ export const METODO_PAGO_LABELS: Record<MetodoPago, string> = {
   TARJETA_DEBITO: 'Tarjeta de Débito',
   MERCADO_PAGO: 'Mercado Pago',
   CUENTA_CORRIENTE: 'Cuenta Corriente',
+  FINANCIACION_PROPIA: 'Financiación Propia',
 };
 
 export interface RegistrarPagoCuotaDTO {
   cuotaId: number;
   montoPagado: number;
   fechaPago?: string;
-  metodoPago?: MetodoPago;
+  metodoPago: MetodoPago;
 }
 
 export interface RecordatorioCuotaDTO {

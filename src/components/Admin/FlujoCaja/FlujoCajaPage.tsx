@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import {
   Box,
   Typography,
@@ -22,7 +22,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { adminFlujoCajaApi } from '../../../api/services/adminFlujoCajaApi';
+import { useFlujoCaja } from '../../../hooks/useFlujoCaja';
+import { useSmartRefresh, formatLastUpdated } from '../../../hooks/useSmartRefresh';
 import type {
   FlujoCajaResponseEnhanced,
   MetodoPago,
@@ -57,47 +58,39 @@ const FlujoCajaPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // State
-  const [rawData, setRawData] = useState<FlujoCajaResponseEnhanced | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Fechas y filtros
   const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(3, 'month'));
   const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
   const [activeFilter, setActiveFilter] = useState<string>('last3months');
   const [_selectedMetodoPago, setSelectedMetodoPago] = useState<MetodoPago | 'ALL'>('ALL');
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // Movimientos extras state
   const [movimientoDialogOpen, setMovimientoDialogOpen] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState<FlujoCajaMovimientoEnhanced | null>(null);
   const [tipoDialogInicial, setTipoDialogInicial] = useState<'INGRESO' | 'EGRESO'>('EGRESO');
 
-  // Load data on mount
+  // React Query — datos del flujo de caja
+  const {
+    data: rawData,
+    isLoading,
+    isFetching,
+    isError,
+    error: queryError,
+    refetch,
+    invalidate,
+    dataUpdatedAt,
+  } = useFlujoCaja(fechaDesde, fechaHasta);
+
+  // Auto-refresh inteligente: sólo cuando el usuario está idle y no hay modal abierto
+  useSmartRefresh({ onRefetch: refetch, hasOpenModal: movimientoDialogOpen });
+
+  // Forzar re-render periódico para actualizar el texto "Última actualización"
+  const [, tickLastUpdated] = useReducer((x: number) => x + 1, 0);
   useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const interval = setInterval(tickLastUpdated, 10_000);
+    return () => clearInterval(interval);
   }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const fechaDesdeStr = fechaDesde ? fechaDesde.format('YYYY-MM-DD') : undefined;
-      const fechaHastaStr = fechaHasta ? fechaHasta.format('YYYY-MM-DD') : undefined;
-
-      // Usar endpoint mejorado
-      const response = await adminFlujoCajaApi.getFlujoCajaEnhanced(
-        fechaDesdeStr,
-        fechaHastaStr
-      );
-      setRawData(response);
-    } catch (err) {
-      console.error('Error loading flujo de caja:', err);
-      setError('Error al cargar el flujo de caja. Verifique la conexión con el servidor.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Computed data with useMemo for performance
   const movimientos = useMemo(() => {
@@ -211,14 +204,14 @@ const FlujoCajaPage: React.FC = () => {
 
     try {
       await movimientoExtraApi.anular(movimientoExtraId);
-      await loadData(); // Reload data
+      invalidate();
     } catch (err: any) {
       console.error('Error al anular movimiento:', err);
-      alert('Error al anular el movimiento. Por favor intentá de nuevo.');
+      setLocalError('Error al anular el movimiento. Por favor intentá de nuevo.');
     }
   };
 
-  if (loading) {
+  if (isLoading && !rawData) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress size={60} />
@@ -247,14 +240,17 @@ const FlujoCajaPage: React.FC = () => {
             >
               <AccountBalanceIcon sx={{ mr: { xs: 1, sm: 2 } }} />
               {isMobile ? 'Flujo de Caja' : 'Flujo de Caja - Dashboard Profesional'}
+              {isFetching && (
+                <CircularProgress size={18} sx={{ ml: 2, color: 'text.secondary' }} />
+              )}
             </Typography>
             <Typography variant="body2" color="text.secondary" mt={0.5}>
               {totalMovimientos} movimientos
               {fechaDesde && fechaHasta && (
                 <> | {fechaDesde.format('DD/MM/YYYY')} - {fechaHasta.format('DD/MM/YYYY')}</>
               )}
-              {rawData?.fechaCorte && !isMobile && (
-                <> | Corte: {dayjs(rawData.fechaCorte).format('DD/MM/YYYY HH:mm')}</>
+              {dataUpdatedAt > 0 && (
+                <> | Actualizado: {formatLastUpdated(dataUpdatedAt)}</>
               )}
             </Typography>
           </Box>
@@ -304,8 +300,9 @@ const FlujoCajaPage: React.FC = () => {
             </Button>
             <Button
               variant="outlined"
-              startIcon={!isMobile && <RefreshIcon />}
-              onClick={loadData}
+              startIcon={isFetching ? <CircularProgress size={16} /> : (!isMobile && <RefreshIcon />)}
+              onClick={() => refetch()}
+              disabled={isFetching}
               fullWidth={isMobile}
               size={isMobile ? 'medium' : 'medium'}
             >
@@ -314,9 +311,9 @@ const FlujoCajaPage: React.FC = () => {
           </Box>
         </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
+        {(isError || localError) && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setLocalError(null)}>
+            {localError ?? (queryError?.message || 'Error al cargar el flujo de caja.')}
           </Alert>
         )}
 
@@ -450,7 +447,7 @@ const FlujoCajaPage: React.FC = () => {
               }}
               slotProps={{ textField: { size: 'small', fullWidth: isMobile } }}
             />
-            <Button variant="contained" onClick={loadData} fullWidth={isMobile}>
+            <Button variant="contained" onClick={() => refetch()} disabled={isFetching} fullWidth={isMobile}>
               Aplicar Filtros
             </Button>
           </Box>
@@ -458,7 +455,7 @@ const FlujoCajaPage: React.FC = () => {
 
         {/* KPI Cards */}
         <Box mb={4}>
-          <FlujoCajaKPICards kpis={kpis} loading={loading} />
+          <FlujoCajaKPICards kpis={kpis} loading={isFetching} />
         </Box>
 
         <Divider sx={{ my: 4 }} />
@@ -469,7 +466,7 @@ const FlujoCajaPage: React.FC = () => {
             paymentMethodData={paymentMethodData}
             timeSeriesData={timeSeriesData}
             onPaymentMethodClick={handlePaymentMethodClick}
-            loading={loading}
+            loading={isFetching}
             granularity={granularity}
           />
         </Box>
@@ -482,7 +479,7 @@ const FlujoCajaPage: React.FC = () => {
             paymentMethodData={paymentMethodData}
             chequeStatusData={chequeStatusData}
             totalGeneral={totalGeneral}
-            loading={loading}
+            loading={isFetching}
           />
         </Box>
 
@@ -492,7 +489,7 @@ const FlujoCajaPage: React.FC = () => {
         <Box id="movimientos-table">
           <FlujoCajaMovimientosTable
             movimientos={movimientos}
-            loading={loading}
+            loading={isFetching}
             onEdit={handleEditMovimiento}
             onAnular={handleAnularMovimiento}
           />
@@ -525,7 +522,7 @@ const FlujoCajaPage: React.FC = () => {
             setEditingMovimiento(null);
           }}
           onSuccess={() => {
-            loadData();
+            invalidate();
             setMovimientoDialogOpen(false);
             setEditingMovimiento(null);
           }}

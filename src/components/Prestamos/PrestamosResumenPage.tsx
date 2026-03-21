@@ -1,16 +1,21 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Grid, Card, CardContent, Typography, CircularProgress, Alert,
-  Button,
+  Button, Collapse, List, ListItem, ListItemText, Divider, Badge,
+  Chip, IconButton, Tooltip, Paper,
 } from '@mui/material';
 import {
   AccountBalance, TrendingUp, Warning, Gavel, CheckCircle,
   Cancel, AttachMoney, MoneyOff, Schedule, Refresh,
+  ExpandMore, ExpandLess, Payment,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
-import type { ResumenPrestamosDTO } from '../../types/prestamo.types';
+import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
+import type { ResumenPrestamosDTO, CuotaPrestamoDTO } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
+import { RegistrarPagoDialog } from './RegistrarPagoDialog';
 
 interface StatCardProps {
   title: string;
@@ -61,13 +66,31 @@ export const PrestamosResumenPage: React.FC = () => {
   const [resumen, setResumen] = useState<ResumenPrestamosDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [vencidas, setVencidas] = useState<CuotaPrestamoDTO[]>([]);
+  const [proximas, setProximas] = useState<CuotaPrestamoDTO[]>([]);
+  const [expandVencidas, setExpandVencidas] = useState(false);
+  const [expandProximas, setExpandProximas] = useState(false);
+  const [pagoDialogOpen, setPagoDialogOpen] = useState(false);
+  const [pagoDialogData, setPagoDialogData] = useState<{
+    cuota: CuotaPrestamoDTO;
+    clienteId: number;
+    prestamoId: number;
+    allCuotas: CuotaPrestamoDTO[];
+  } | null>(null);
+  const [loadingPago, setLoadingPago] = useState(false);
 
   const loadResumen = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await prestamoPersonalApi.getResumen();
+      const [data, vencidasData, proximasData] = await Promise.all([
+        prestamoPersonalApi.getResumen(),
+        cuotaPrestamoApi.getVencidas(),
+        cuotaPrestamoApi.getProximasVencer(7),
+      ]);
       setResumen(data);
+      setVencidas(vencidasData);
+      setProximas(proximasData);
     } catch (err) {
       console.error('Error loading resumen:', err);
       setError('Error al cargar el resumen. Intente nuevamente.');
@@ -79,6 +102,22 @@ export const PrestamosResumenPage: React.FC = () => {
   useEffect(() => {
     loadResumen();
   }, []);
+
+  const handleOpenPago = async (cuota: CuotaPrestamoDTO) => {
+    try {
+      setLoadingPago(true);
+      const [prestamo, allCuotas] = await Promise.all([
+        prestamoPersonalApi.getById(cuota.prestamoId),
+        cuotaPrestamoApi.getByPrestamo(cuota.prestamoId),
+      ]);
+      setPagoDialogData({ cuota, clienteId: prestamo.clienteId, prestamoId: cuota.prestamoId, allCuotas });
+      setPagoDialogOpen(true);
+    } catch {
+      // silent fail — user can navigate to detail page instead
+    } finally {
+      setLoadingPago(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -253,8 +292,108 @@ export const PrestamosResumenPage: React.FC = () => {
               />
             </Grid>
           </Grid>
+
+          {/* Task 6 — Cuotas vencidas */}
+          <Box sx={{ mt: 4 }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', mb: 1 }}
+              onClick={() => setExpandVencidas(v => !v)}
+            >
+              <Badge badgeContent={vencidas.length} color="error">
+                <Typography variant="h6">Cuotas Vencidas</Typography>
+              </Badge>
+              <IconButton size="small">
+                {expandVencidas ? <ExpandLess /> : <ExpandMore />}
+              </IconButton>
+            </Box>
+            <Collapse in={expandVencidas}>
+              {vencidas.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>Sin cuotas vencidas</Typography>
+              ) : (
+                <Paper variant="outlined">
+                  <List dense disablePadding>
+                    {vencidas.map((c, idx) => (
+                      <React.Fragment key={c.id}>
+                        {idx > 0 && <Divider />}
+                        <ListItem
+                          secondaryAction={
+                            <Tooltip title="Registrar Pago">
+                              <IconButton size="small" onClick={() => handleOpenPago(c)} disabled={loadingPago}>
+                                <Payment fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          }
+                        >
+                          <ListItemText
+                            primary={`Préstamo #${c.prestamoId} — Cuota N.${c.numeroCuota}`}
+                            secondary={`Cuota N.${c.numeroCuota} — ${formatPrice(c.montoCuota - c.montoPagado)} — Venc. ${dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}`}
+                          />
+                          <Chip label="Vencida" size="small" color="error" sx={{ mr: 1 }} />
+                        </ListItem>
+                      </React.Fragment>
+                    ))}
+                  </List>
+                </Paper>
+              )}
+            </Collapse>
+          </Box>
+
+          {/* Task 6 — Cuotas próximas a vencer */}
+          <Box sx={{ mt: 3 }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', mb: 1 }}
+              onClick={() => setExpandProximas(v => !v)}
+            >
+              <Badge badgeContent={proximas.length} color="warning">
+                <Typography variant="h6">Próximas a Vencer (7 días)</Typography>
+              </Badge>
+              <IconButton size="small">
+                {expandProximas ? <ExpandLess /> : <ExpandMore />}
+              </IconButton>
+            </Box>
+            <Collapse in={expandProximas}>
+              {proximas.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>Sin cuotas próximas a vencer</Typography>
+              ) : (
+                <Paper variant="outlined">
+                  <List dense disablePadding>
+                    {proximas.map((c, idx) => (
+                      <React.Fragment key={c.id}>
+                        {idx > 0 && <Divider />}
+                        <ListItem
+                          secondaryAction={
+                            <Tooltip title="Registrar Pago">
+                              <IconButton size="small" onClick={() => handleOpenPago(c)} disabled={loadingPago}>
+                                <Payment fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          }
+                        >
+                          <ListItemText
+                            primary={`Préstamo #${c.prestamoId} — Cuota N.${c.numeroCuota}`}
+                            secondary={`Cuota N.${c.numeroCuota} — ${formatPrice(c.montoCuota - c.montoPagado)} — Venc. ${dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}`}
+                          />
+                          <Chip label="Próxima" size="small" color="warning" sx={{ mr: 1 }} />
+                        </ListItem>
+                      </React.Fragment>
+                    ))}
+                  </List>
+                </Paper>
+              )}
+            </Collapse>
+          </Box>
         </>
       )}
+
+      <RegistrarPagoDialog
+        open={pagoDialogOpen}
+        onClose={() => { setPagoDialogOpen(false); setPagoDialogData(null); }}
+        onSaved={async (_changed) => { setPagoDialogOpen(false); setPagoDialogData(null); await loadResumen(); }}
+        cuota={pagoDialogData?.cuota ?? null}
+        clienteId={pagoDialogData?.clienteId ?? 0}
+        prestamoId={pagoDialogData?.prestamoId ?? 0}
+        allCuotas={pagoDialogData?.allCuotas ?? []}
+      />
     </Box>
   );
 };

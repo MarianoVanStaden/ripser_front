@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import {
   Box,
   Paper,
@@ -47,7 +47,9 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { clienteApi } from '../../api/services/clienteApi';
 import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
-import type { Cliente, CuentaCorriente, TipoMovimiento, MetodoPago } from '../../types';
+import type { Cliente, TipoMovimiento, MetodoPago } from '../../types';
+import { useCuentaCorrienteCliente } from '../../hooks/useCuentaCorrienteCliente';
+import { useSmartRefresh, formatLastUpdated } from '../../hooks/useSmartRefresh';
 import { generateCuentaCorrienteClientePDF } from '../../utils/pdfExportUtils';
 
 dayjs.locale('es');
@@ -58,9 +60,8 @@ const CuentaCorrientePage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
-  const [movimientos, setMovimientos] = useState<CuentaCorriente[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [clientesLoading, setClientesLoading] = useState(true);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<TipoMovimiento | ''>('');
   const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(30, 'day'));
@@ -78,87 +79,65 @@ const CuentaCorrientePage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // React Query — movimientos del cliente seleccionado
+  const {
+    data: movimientos = [],
+    isFetching,
+    refetch,
+    invalidate,
+    dataUpdatedAt,
+  } = useCuentaCorrienteCliente(selectedCliente?.id);
+
+  // Auto-refresh inteligente
+  useSmartRefresh({ onRefetch: refetch, hasOpenModal: openMovimientoDialog });
+
+  // Re-render periódico para "Última actualización"
+  const [, tickLastUpdated] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => {
+    const interval = setInterval(tickLastUpdated, 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        setClientesLoading(true);
+        setLocalError(null);
         const clientesData = await clienteApi.getAll({ page: 0, size: 500 });
         setClientes(clientesData.content);
 
-        // Check for a client ID passed via navigation state
+        // Pre-seleccionar cliente si viene por navigation state
         const initialClienteId = location.state?.clienteId;
         if (initialClienteId) {
           const initialCliente = clientesData.content.find(c => c.id === initialClienteId);
-          if (initialCliente) {
-            setSelectedCliente(initialCliente);
-            // Fetch movements for the pre-selected client
-            const movimientosData = await cuentaCorrienteApi.getByClienteId(initialCliente.id);
-            setMovimientos(movimientosData.content);
-          }
+          if (initialCliente) setSelectedCliente(initialCliente);
+          // React Query se encarga de fetchear los movimientos cuando selectedCliente cambia
         }
       } catch (err) {
-        setError('Error al cargar los datos iniciales.');
+        setLocalError('Error al cargar los datos iniciales.');
         console.error('Error loading initial data:', err);
       } finally {
-        setLoading(false);
+        setClientesLoading(false);
       }
     };
 
     loadInitialData();
-  }, [location.state]); // Re-run effect if navigation state changes
-
-  const loadData = async () => {
-    if (!selectedCliente) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const movimientosData = await cuentaCorrienteApi.getByClienteId(selectedCliente.id);
-      setMovimientos(movimientosData.content);
-    } catch (err) {
-      setError('Error al cargar los movimientos del cliente.');
-      console.error('Error loading movements:', err);
-      setMovimientos([]); // Clear movements on error
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [location.state]);
 
   const handleClienteChange = (clienteId: number) => {
     const cliente = clientes.find(c => c.id === clienteId) || null;
     setSelectedCliente(cliente);
-    
-    if (cliente) {
-      // Fetch movements for the newly selected client
-      const fetchMovimientos = async () => {
-        try {
-          setLoading(true);
-          const data = await cuentaCorrienteApi.getByClienteId(cliente.id);
-          setMovimientos(data.content);
-        } catch (err) {
-          setError('Error al cargar los movimientos del cliente.');
-          console.error('Error loading client movements:', err);
-          setMovimientos([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchMovimientos();
-    } else {
-      // If "Todos los clientes" is selected, clear the movements
-      setMovimientos([]);
-    }
+    setPage(0);
+    // React Query hace el fetch automáticamente cuando cambia selectedCliente
   };
 
   const handleSaveMovimiento = async () => {
     if (!selectedCliente) {
-      setError("Debe seleccionar un cliente para registrar un movimiento.");
+      setLocalError('Debe seleccionar un cliente para registrar un movimiento.');
       return;
     }
 
     try {
-      setLoading(true);
-      // Create payload matching CreateMovimientoPayload interface
       const payload = {
         clienteId: selectedCliente.id,
         fecha: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
@@ -171,34 +150,20 @@ const CuentaCorrientePage: React.FC = () => {
 
       await cuentaCorrienteApi.create(payload);
 
-      // Reset form and close dialog
-      setNewMovimiento({
-        tipo: 'CREDITO',
-        importe: 0,
-        concepto: '',
-        numeroComprobante: '',
-        metodoPago: 'EFECTIVO',
-      });
+      setNewMovimiento({ tipo: 'CREDITO', importe: 0, concepto: '', numeroComprobante: '', metodoPago: 'EFECTIVO' });
       setOpenMovimientoDialog(false);
 
-      // Refresh both the movements AND the client data to get updated saldoActual
-      const [movimientosData, clienteActualizado] = await Promise.all([
-        cuentaCorrienteApi.getByClienteId(selectedCliente.id),
-        clienteApi.getById(selectedCliente.id)
+      // Invalidar movimientos (React Query refetchea automáticamente)
+      // + actualizar saldoActual del cliente seleccionado
+      const [, clienteActualizado] = await Promise.all([
+        invalidate(),
+        clienteApi.getById(selectedCliente.id),
       ]);
-
-      setMovimientos(movimientosData.content);
       setSelectedCliente(clienteActualizado);
-
-      // Also update the cliente in the clientes array
-      setClientes(prevClientes =>
-        prevClientes.map(c => c.id === clienteActualizado.id ? clienteActualizado : c)
-      );
+      setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? clienteActualizado : c));
     } catch (err) {
-      setError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
+      setLocalError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
       console.error('Error saving movement:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -284,7 +249,7 @@ const CuentaCorrientePage: React.FC = () => {
     setPage(0); // Reset to first page when changing rows per page
   };
 
-  if (loading) {
+  if (clientesLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -297,10 +262,18 @@ const CuentaCorrientePage: React.FC = () => {
       <Box p={{ xs: 2, sm: 3 }}>
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-          <Typography variant="h4" component="h1" display="flex" alignItems="center" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
-            <AccountBalanceIcon sx={{ mr: 1 }} />
-            Cuenta Corriente
-          </Typography>
+          <Box>
+            <Typography variant="h4" component="h1" display="flex" alignItems="center" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+              <AccountBalanceIcon sx={{ mr: 1 }} />
+              Cuenta Corriente
+              {isFetching && <CircularProgress size={16} sx={{ ml: 1.5, color: 'text.secondary' }} />}
+            </Typography>
+            {dataUpdatedAt > 0 && (
+              <Typography variant="caption" color="text.secondary">
+                Actualizado: {formatLastUpdated(dataUpdatedAt)}
+              </Typography>
+            )}
+          </Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             <Button
               variant="outlined"
@@ -323,9 +296,9 @@ const CuentaCorrientePage: React.FC = () => {
           </Stack>
         </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
+        {localError && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setLocalError(null)}>
+            {localError}
           </Alert>
         )}
 
@@ -435,8 +408,8 @@ const CuentaCorrientePage: React.FC = () => {
               slotProps={{ textField: { size: 'small', sx: { minWidth: { xs: '48%', sm: 150 }, flex: { xs: '1 1 48%', sm: '0 0 auto' } } } }}
             />
 
-            <IconButton onClick={loadData}>
-              <RefreshIcon />
+            <IconButton onClick={() => refetch()} disabled={isFetching || !selectedCliente}>
+              {isFetching ? <CircularProgress size={20} /> : <RefreshIcon />}
             </IconButton>
           </Box>
         </Paper>

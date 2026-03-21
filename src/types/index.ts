@@ -2432,6 +2432,15 @@ export interface ConvertToFacturaDTO {
   cantidadCuotas?: number;
   tipoFinanciacion?: string;
   primerVencimiento?: string;
+  confirmarConDeudaPendiente?: boolean;
+}
+
+export interface DeudaClienteError {
+  error: string;
+  message: string;
+  cuotasPendientes: number;
+  deudaCuentaCorriente: number | null;
+  requiereConfirmacion: true;
 }
 
 export interface OpcionFinanciamientoDTO {

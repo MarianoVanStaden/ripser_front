@@ -110,6 +110,7 @@ export const documentoApi = {
     presupuestoId: number;
     metodoPago: MetodoPago;
     tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+    confirmarConDeudaPendiente?: boolean;
   }): Promise<DocumentoComercial> => {
     const response = await api.post<DocumentoComercial>('/api/documentos/nota-pedido', dto);
     return response.data;

@@ -86,6 +86,9 @@ export const PrestamoDetailPage: React.FC = () => {
     open: false, message: '', severity: 'success',
   });
 
+  // Cascade highlight (Task 2)
+  const [highlightedCuotaIds, setHighlightedCuotaIds] = useState<Set<number>>(new Set());
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -189,6 +192,22 @@ export const PrestamoDetailPage: React.FC = () => {
       loadData();
     } catch {
       setSnackbar({ open: true, message: 'Error al eliminar', severity: 'error' });
+    }
+  };
+
+  const handlePagoSaved = async (changedCuotas: CuotaPrestamoDTO[]) => {
+    await loadData();
+    if (changedCuotas.length > 1) {
+      setSnackbar({
+        open: true,
+        message: `Pago aplicado a ${changedCuotas.length} cuotas (excedente imputado automáticamente)`,
+        severity: 'success',
+      });
+    }
+    if (changedCuotas.length > 0) {
+      const ids = new Set(changedCuotas.map(c => c.id));
+      setHighlightedCuotaIds(ids);
+      setTimeout(() => setHighlightedCuotaIds(new Set()), 3000);
     }
   };
 
@@ -333,7 +352,7 @@ export const PrestamoDetailPage: React.FC = () => {
             </TableHead>
             <TableBody>
               {cuotas.map(c => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} sx={highlightedCuotaIds.has(c.id) ? { bgcolor: 'success.50', transition: 'background-color 0.5s' } : {}}>
                   <TableCell>{c.numeroCuota}</TableCell>
                   <TableCell align="right">{formatPrice(c.montoCuota)}</TableCell>
                   <TableCell align="right">{formatPrice(c.montoPagado)}</TableCell>
@@ -522,7 +541,15 @@ export const PrestamoDetailPage: React.FC = () => {
 
       {/* Dialogs */}
       <PrestamoFormDialog open={editOpen} onClose={() => setEditOpen(false)} onSaved={loadData} prestamo={prestamo} />
-      <RegistrarPagoDialog open={pagoDialogOpen} onClose={() => setPagoDialogOpen(false)} onSaved={loadData} cuota={selectedCuota} />
+      <RegistrarPagoDialog
+        open={pagoDialogOpen}
+        onClose={() => setPagoDialogOpen(false)}
+        onSaved={handlePagoSaved}
+        cuota={selectedCuota}
+        clienteId={prestamo?.clienteId ?? 0}
+        prestamoId={prestamoId}
+        allCuotas={cuotas}
+      />
       <SeguimientoFormDialog open={seguimientoOpen} onClose={() => setSeguimientoOpen(false)} onSaved={loadData} prestamoId={prestamoId} />
       <RecordatorioFormDialog
         open={recordatorioOpen}

@@ -1,4 +1,9 @@
 # Auditoría de Seguridad — ripser_front
+Actuá como un Security Engineer Senior especializado en React + Vite + multi-tenant SaaS.
+
+Tenés acceso a todo el código del workspace.
+
+NO supongas: si algo no está, decilo explícitamente.
 
 Revisar todos los archivos en `src/components/`, `src/api/`, `src/context/`, `src/hooks/` y `src/utils/`.
 Verificar cada punto:

@@ -6,53 +6,90 @@ import {
 } from '@mui/material';
 import { Payment } from '@mui/icons-material';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
+import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
 import type { CuotaPrestamoDTO, MetodoPago } from '../../types/prestamo.types';
 import { METODO_PAGO_LABELS } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import dayjs from 'dayjs';
 
+// Exclude FINANCIACION_PROPIA from cuota payment selector
+const METODOS_PAGO_CUOTA = (Object.keys(METODO_PAGO_LABELS) as MetodoPago[]).filter(
+  k => k !== 'FINANCIACION_PROPIA'
+);
+
 interface RegistrarPagoDialogProps {
   open: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (changedCuotas: CuotaPrestamoDTO[]) => void;
   cuota: CuotaPrestamoDTO | null;
+  clienteId: number;
+  prestamoId: number;
+  allCuotas: CuotaPrestamoDTO[];
 }
 
 export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
-  open, onClose, onSaved, cuota,
+  open, onClose, onSaved, cuota, clienteId, prestamoId, allCuotas,
 }) => {
   const [montoPagado, setMontoPagado] = useState<number>(0);
   const [fechaPago, setFechaPago] = useState<string>(dayjs().format('YYYY-MM-DD'));
-  const [metodoPago, setMetodoPago] = useState<MetodoPago | ''>('');
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saldoDisponible, setSaldoDisponible] = useState<number | null>(null);
+  const [loadingSaldo, setLoadingSaldo] = useState(false);
 
   useEffect(() => {
     if (open && cuota) {
       const saldoRestante = cuota.montoCuota - cuota.montoPagado;
       setMontoPagado(saldoRestante > 0 ? saldoRestante : cuota.montoCuota);
       setFechaPago(dayjs().format('YYYY-MM-DD'));
-      setMetodoPago('');
+      setMetodoPago('EFECTIVO');
       setError(null);
+      setSaldoDisponible(null);
     }
   }, [open, cuota]);
 
+  useEffect(() => {
+    if (metodoPago === 'CUENTA_CORRIENTE' && clienteId) {
+      setLoadingSaldo(true);
+      cuentaCorrienteApi.getByClienteId(clienteId)
+        .then(res => {
+          const movimientos = res.content;
+          const creditos = movimientos.filter(m => m.tipo === 'CREDITO').reduce((s, m) => s + m.importe, 0);
+          const debitos = movimientos.filter(m => m.tipo === 'DEBITO').reduce((s, m) => s + m.importe, 0);
+          setSaldoDisponible(creditos - debitos);
+        })
+        .catch(() => setSaldoDisponible(null))
+        .finally(() => setLoadingSaldo(false));
+    } else {
+      setSaldoDisponible(null);
+    }
+  }, [metodoPago, clienteId]);
+
+  const saldoInsuficiente = metodoPago === 'CUENTA_CORRIENTE'
+    && saldoDisponible !== null
+    && saldoDisponible < montoPagado;
+
   const handleSave = async () => {
     if (!cuota) return;
-    if (montoPagado <= 0) {
-      setError('El monto debe ser mayor a 0');
+    if (montoPagado <= 0) { setError('El monto debe ser mayor a 0'); return; }
+    if (saldoInsuficiente) {
+      setError(`Saldo insuficiente. Disponible: ${formatPrice(saldoDisponible!)}`);
       return;
     }
     try {
       setSaving(true);
       setError(null);
-      await cuotaPrestamoApi.registrarPago({
-        cuotaId: cuota.id,
-        montoPagado,
-        fechaPago,
-        ...(metodoPago ? { metodoPago } : {}),
+      await cuotaPrestamoApi.registrarPago({ cuotaId: cuota.id, montoPagado, fechaPago, metodoPago });
+
+      // Task 2: refetch cuotas to detect cascade changes
+      const newCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
+      const changed = newCuotas.filter(c => {
+        const prev = allCuotas.find(p => p.id === c.id);
+        return prev && prev.estado !== c.estado;
       });
-      onSaved();
+
+      onSaved(changed);
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar el pago');
@@ -112,20 +149,36 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
               />
             </Grid>
             <Grid item xs={12}>
-              <FormControl fullWidth>
+              <FormControl fullWidth required>
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
                   value={metodoPago}
                   label="Método de Pago"
-                  onChange={(e) => setMetodoPago(e.target.value as MetodoPago | '')}
+                  onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
                 >
-                  <MenuItem value=""><em>Sin especificar</em></MenuItem>
-                  {(Object.keys(METODO_PAGO_LABELS) as MetodoPago[]).map(key => (
+                  {METODOS_PAGO_CUOTA.map(key => (
                     <MenuItem key={key} value={key}>{METODO_PAGO_LABELS[key]}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
+            {metodoPago === 'CUENTA_CORRIENTE' && (
+              <Grid item xs={12}>
+                {loadingSaldo ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={16} />
+                    <Typography variant="body2" color="text.secondary">Consultando saldo...</Typography>
+                  </Box>
+                ) : (
+                  <Alert severity={saldoInsuficiente ? 'error' : 'info'}>
+                    {saldoDisponible !== null
+                      ? <>Saldo a favor disponible: <strong>{formatPrice(saldoDisponible)}</strong></>
+                      : 'No se pudo obtener el saldo disponible'}
+                    {saldoInsuficiente && ` — insuficiente para cubrir ${formatPrice(montoPagado)}`}
+                  </Alert>
+                )}
+              </Grid>
+            )}
           </Grid>
         </Box>
       </DialogContent>
@@ -134,7 +187,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
         <Button
           onClick={handleSave}
           variant="contained"
-          disabled={saving}
+          disabled={saving || saldoInsuficiente || loadingSaldo}
           startIcon={saving ? <CircularProgress size={20} /> : <Payment />}
         >
           Registrar Pago
