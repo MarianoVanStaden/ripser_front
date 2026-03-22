@@ -8,7 +8,7 @@ import {
 import {
   ArrowBack, Edit, Payment, Add, Send, CheckCircle,
   Phone, Email, WhatsApp, Videocam, PersonPin, Groups,
-  Delete, Notifications, Receipt,
+  Delete, Notifications, Receipt, Undo,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -31,6 +31,7 @@ import type {
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
+import { RevertirPagoDialog } from './RevertirPagoDialog';
 import { SeguimientoFormDialog } from './SeguimientoFormDialog';
 import { RecordatorioFormDialog } from './RecordatorioFormDialog';
 
@@ -85,6 +86,10 @@ export const PrestamoDetailPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
+
+  // Revertir pago dialog
+  const [revertirOpen, setRevertirOpen] = useState(false);
+  const [selectedCuotaRevertir, setSelectedCuotaRevertir] = useState<CuotaPrestamoDTO | null>(null);
 
   // Cascade highlight (Task 2)
   const [highlightedCuotaIds, setHighlightedCuotaIds] = useState<Set<number>>(new Set());
@@ -193,6 +198,11 @@ export const PrestamoDetailPage: React.FC = () => {
     } catch {
       setSnackbar({ open: true, message: 'Error al eliminar', severity: 'error' });
     }
+  };
+
+  const handlePagoRevertido = async () => {
+    await loadData();
+    setSnackbar({ open: true, message: 'Pago revertido correctamente', severity: 'success' });
   };
 
   const handlePagoSaved = async (changedCuotas: CuotaPrestamoDTO[]) => {
@@ -374,6 +384,13 @@ export const PrestamoDetailPage: React.FC = () => {
                           </IconButton>
                         </Tooltip>
                       )}
+                      {(c.estado === 'PAGADA' || c.estado === 'PARCIAL') && c.montoPagado > 0 && (
+                        <Tooltip title="Revertir pago">
+                          <IconButton size="small" color="warning" onClick={() => { setSelectedCuotaRevertir(c); setRevertirOpen(true); }}>
+                            <Undo fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       <Tooltip title="Agregar Recordatorio">
                         <IconButton size="small" onClick={() => { setRecordatorioCuotaId(c.id); setEditingRecordatorio(null); setRecordatorioOpen(true); }}>
                           <Notifications fontSize="small" />
@@ -549,6 +566,14 @@ export const PrestamoDetailPage: React.FC = () => {
         clienteId={prestamo?.clienteId ?? 0}
         prestamoId={prestamoId}
         allCuotas={cuotas}
+      />
+      <RevertirPagoDialog
+        open={revertirOpen}
+        onClose={() => { setRevertirOpen(false); setSelectedCuotaRevertir(null); }}
+        onReverted={handlePagoRevertido}
+        cuota={selectedCuotaRevertir}
+        cantidadCuotas={prestamo?.cantidadCuotas ?? 0}
+        prestamoId={prestamoId}
       />
       <SeguimientoFormDialog open={seguimientoOpen} onClose={() => setSeguimientoOpen(false)} onSaved={loadData} prestamoId={prestamoId} />
       <RecordatorioFormDialog

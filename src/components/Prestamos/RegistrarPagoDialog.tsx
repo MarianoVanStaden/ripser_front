@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { Payment } from '@mui/icons-material';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
-import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
+import { clientApi } from '../../api/services/clientApi';
 import type { CuotaPrestamoDTO, MetodoPago } from '../../types/prestamo.types';
 import { METODO_PAGO_LABELS } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
@@ -16,6 +16,9 @@ import dayjs from 'dayjs';
 const METODOS_PAGO_CUOTA = (Object.keys(METODO_PAGO_LABELS) as MetodoPago[]).filter(
   k => k !== 'FINANCIACION_PROPIA'
 );
+
+// Methods that require saldo a favor validation
+const METODOS_CON_VALIDACION_SALDO: MetodoPago[] = ['CUENTA_CORRIENTE'];
 
 interface RegistrarPagoDialogProps {
   open: boolean;
@@ -50,15 +53,12 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   }, [open, cuota]);
 
   useEffect(() => {
-    if (metodoPago === 'CUENTA_CORRIENTE' && clienteId) {
+    setError(null);
+    if (METODOS_CON_VALIDACION_SALDO.includes(metodoPago) && clienteId) {
       setLoadingSaldo(true);
-      cuentaCorrienteApi.getByClienteId(clienteId)
-        .then(res => {
-          const movimientos = res.content;
-          const creditos = movimientos.filter(m => m.tipo === 'CREDITO').reduce((s, m) => s + m.importe, 0);
-          const debitos = movimientos.filter(m => m.tipo === 'DEBITO').reduce((s, m) => s + m.importe, 0);
-          setSaldoDisponible(creditos - debitos);
-        })
+      // saldoActual = debitos - creditos: negative means client has credit (saldo a favor)
+      clientApi.getById(clienteId)
+        .then(cliente => setSaldoDisponible(-(cliente.saldoActual ?? 0)))
         .catch(() => setSaldoDisponible(null))
         .finally(() => setLoadingSaldo(false));
     } else {
@@ -66,7 +66,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
     }
   }, [metodoPago, clienteId]);
 
-  const saldoInsuficiente = metodoPago === 'CUENTA_CORRIENTE'
+  const saldoInsuficiente = METODOS_CON_VALIDACION_SALDO.includes(metodoPago)
     && saldoDisponible !== null
     && saldoDisponible < montoPagado;
 
@@ -162,7 +162,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            {metodoPago === 'CUENTA_CORRIENTE' && (
+            {METODOS_CON_VALIDACION_SALDO.includes(metodoPago) && (
               <Grid item xs={12}>
                 {loadingSaldo ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

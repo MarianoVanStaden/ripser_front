@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -45,6 +45,8 @@ import {
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
+import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
+import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
 import { useTenant } from "../../context/TenantContext";
 import type {
   DocumentoComercial,
@@ -52,8 +54,10 @@ import type {
   MetodoPago,
   DetalleDocumento,
   OpcionFinanciamientoDTO,
-  RecetaFabricacionDTO
+  RecetaFabricacionDTO,
+  DeudaClienteError,
 } from "../../types";
+import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
@@ -122,6 +126,50 @@ const NotasPedidoPage: React.FC = () => {
   const [leadToConvert, setLeadToConvert] = useState<DocumentoComercial | null>(null);
   void setLeadConversionDialogOpen; // Used in future implementation
   void leadToConvert; // Used in future implementation
+
+  // Deuda cliente confirmation
+  const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
+  const pendingDeudaRef = useRef<(() => void) | null>(null);
+  const deudaYaConfirmadaRef = useRef(false);
+
+  // Detects a debt-block response regardless of HTTP status or missing requiereConfirmacion flag.
+  // The backend may return 400/409/422 and may omit requiereConfirmacion on some endpoints.
+  const parseDeudaError = (err: any): DeudaClienteError | null => {
+    const data = err?.response?.data;
+    if (!data) return null;
+    if (data.requiereConfirmacion || data.cuotasPendientes != null) {
+      return {
+        error: data.error || 'Cliente con deuda pendiente',
+        message: data.message || '',
+        cuotasPendientes: data.cuotasPendientes ?? 0,
+        deudaCuentaCorriente: data.deudaCuentaCorriente ?? null,
+        requiereConfirmacion: true,
+      };
+    }
+    // Fallback: detect by message content (backend may send plain 500/400 without structured fields)
+    if (typeof data.message === 'string' && data.message.toLowerCase().includes('deuda pendiente')) {
+      return {
+        error: 'Cliente con deuda pendiente',
+        message: data.message,
+        cuotasPendientes: 0,
+        deudaCuentaCorriente: null,
+        requiereConfirmacion: true,
+      };
+    }
+    return null;
+  };
+
+  const handleDeudaConfirm = useCallback(() => {
+    setDeudaError(null);
+    const fn = pendingDeudaRef.current;
+    pendingDeudaRef.current = null;
+    fn?.();
+  }, []);
+
+  const handleDeudaCancel = useCallback(() => {
+    setDeudaError(null);
+    pendingDeudaRef.current = null;
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -293,7 +341,7 @@ const NotasPedidoPage: React.FC = () => {
   }, [presupuestos]);
 
 
-  const handleConvertToNotaPedido = useCallback(async () => {
+  const handleConvertToNotaPedido = useCallback(async (confirmarConDeudaPendiente?: boolean) => {
     if (!convertForm.presupuestoId) {
       setError("Debe seleccionar un presupuesto");
       return;
@@ -345,6 +393,47 @@ const NotasPedidoPage: React.FC = () => {
       }
     }
 
+    // Preemptive debt check: run before any API side-effects so the warning appears before
+    // equipo resolution starts. Skipped when the user has already confirmed via the modal.
+    if (!confirmarConDeudaPendiente) {
+      const clienteId = selectedPresupuesto?.clienteId;
+      if (clienteId) {
+        try {
+          const [prestamos, ccPage] = await Promise.all([
+            prestamoPersonalApi.getByCliente(clienteId),
+            cuentaCorrienteApi.getByClienteId(clienteId),
+          ]);
+
+          const activoStates = ['ACTIVO', 'EN_MORA', 'EN_LEGAL'];
+          const cuotasPendientes = prestamos
+            .filter(p => activoStates.includes(p.estado))
+            .reduce((sum, p) => sum + (p.cuotasPendientes || 0), 0);
+
+          const movements = ccPage.content;
+          const lastMovement = [...movements].sort(
+            (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+          )[0];
+          const saldo = lastMovement?.saldo ?? 0;
+          const deudaCC = saldo < 0 ? saldo : null;
+
+          if (cuotasPendientes > 0 || deudaCC !== null) {
+            setDeudaError({
+              error: 'Cliente con deuda pendiente',
+              message: '',
+              cuotasPendientes,
+              deudaCuentaCorriente: deudaCC,
+              requiereConfirmacion: true,
+            });
+            pendingDeudaRef.current = () => handleConvertToNotaPedido(true);
+            return;
+          }
+        } catch (checkErr) {
+          // Non-fatal: proceed normally; backend will catch any debt on its end
+          console.warn('No se pudo verificar deuda del cliente de forma preventiva:', checkErr);
+        }
+      }
+    }
+
     try {
       setFormLoading(true);
       setError(null);
@@ -365,6 +454,7 @@ const NotasPedidoPage: React.FC = () => {
         presupuestoId: Number(convertForm.presupuestoId),
         metodoPago: convertForm.metodoPago,
         tipoIva: convertForm.tipoIva,
+        ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
       };
 
       const nuevaNota = await documentoApi.convertToNotaPedido(payload);
@@ -489,6 +579,15 @@ const NotasPedidoPage: React.FC = () => {
       setSuccessDialogOpen(true);
     } catch (err: any) {
       console.error("Error converting to nota de pedido:", err);
+
+      // Deuda cliente: mostrar modal de confirmación
+      const deudaData = parseDeudaError(err);
+      if (deudaData) {
+        setDeudaError(deudaData);
+        pendingDeudaRef.current = () => handleConvertToNotaPedido(true);
+        return;
+      }
+
       let errorMessage = "Error al convertir el presupuesto";
 
       // Check if error is due to lead conversion requirement
@@ -536,9 +635,30 @@ const NotasPedidoPage: React.FC = () => {
     const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
 
     if (detallesEquipo.length > 0) {
-      // Open AsignarEquiposDialog
-      setNotaForAsignacion(nota);
-      setAsignarEquiposDialogOpen(true);
+      // Probe for debt BEFORE opening AsignarEquiposDialog so the warning appears first.
+      // The call intentionally omits equiposAsignaciones — the backend should reject it
+      // (missing equipos) unless there is a debt error, which takes priority.
+      try {
+        const probeResult = await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        // Unexpected success (nota converted without equipos): accept and show success dialog.
+        setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+        setCreatedFactura(probeResult);
+        setFacturaSuccessDialogOpen(true);
+      } catch (probeErr: any) {
+        const deudaData = parseDeudaError(probeErr);
+        if (deudaData) {
+          setDeudaError(deudaData);
+          pendingDeudaRef.current = () => {
+            deudaYaConfirmadaRef.current = true;
+            setNotaForAsignacion(nota);
+            setAsignarEquiposDialogOpen(true);
+          };
+          return;
+        }
+        // Non-debt error (e.g. backend requires equipos) → proceed to selection dialog
+        setNotaForAsignacion(nota);
+        setAsignarEquiposDialogOpen(true);
+      }
     } else {
       // No equipos, proceed directly with conversion
       if (!window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
@@ -555,6 +675,22 @@ const NotasPedidoPage: React.FC = () => {
         setFacturaSuccessDialogOpen(true);
       } catch (err: any) {
         console.error("Error converting to factura:", err);
+        const deudaData = parseDeudaError(err);
+        if (deudaData) {
+          setDeudaError(deudaData);
+          pendingDeudaRef.current = async () => {
+            try {
+              setError(null);
+              const facturaRetry = await documentoApi.convertToFactura({ notaPedidoId: notaId, confirmarConDeudaPendiente: true });
+              setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+              setCreatedFactura(facturaRetry);
+              setFacturaSuccessDialogOpen(true);
+            } catch (retryErr: any) {
+              setError(retryErr?.response?.data?.message || retryErr?.message || "Error desconocido al convertir a factura");
+            }
+          };
+          return;
+        }
         const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
         setError(errorMessage);
       }
@@ -617,6 +753,9 @@ const NotasPedidoPage: React.FC = () => {
   const handleConfirmAsignacion = useCallback(async (asignaciones: { [detalleId: number]: number[] }) => {
     if (!notaForAsignacion) return;
 
+    const deudaPreconfirmada = deudaYaConfirmadaRef.current;
+    deudaYaConfirmadaRef.current = false;
+
     try {
       setError(null);
       setAsignarEquiposDialogOpen(false);
@@ -624,6 +763,7 @@ const NotasPedidoPage: React.FC = () => {
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: notaForAsignacion.id,
         equiposAsignaciones: asignaciones,
+        ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
       });
 
       // Remove nota from local state
@@ -634,6 +774,28 @@ const NotasPedidoPage: React.FC = () => {
       setFacturaSuccessDialogOpen(true);
     } catch (err: any) {
       console.error("Error converting to factura with equipos:", err);
+      const deudaData = parseDeudaError(err);
+      if (deudaData) {
+        const notaId = notaForAsignacion.id;
+        setDeudaError(deudaData);
+        pendingDeudaRef.current = async () => {
+          try {
+            setError(null);
+            const facturaRetry = await documentoApi.convertToFactura({
+              notaPedidoId: notaId,
+              equiposAsignaciones: asignaciones,
+              confirmarConDeudaPendiente: true,
+            });
+            setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+            setNotaForAsignacion(null);
+            setCreatedFactura(facturaRetry);
+            setFacturaSuccessDialogOpen(true);
+          } catch (retryErr: any) {
+            setError(retryErr?.response?.data?.message || retryErr?.message || "Error desconocido al convertir a factura");
+          }
+        };
+        return;
+      }
       const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
       setError(errorMessage);
     }
@@ -1340,6 +1502,14 @@ const NotasPedidoPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Deuda cliente confirmation dialog */}
+      <DeudaClienteConfirmDialog
+        open={deudaError !== null}
+        error={deudaError}
+        onConfirm={handleDeudaConfirm}
+        onCancel={handleDeudaCancel}
+      />
     </Box>
   );
 };

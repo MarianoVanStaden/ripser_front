@@ -214,6 +214,11 @@ export interface RegistrarPagoCuotaDTO {
   metodoPago: MetodoPago;
 }
 
+export interface RevertirPagoCuotaRequest {
+  cuotaId: number;
+  motivo?: string;
+}
+
 export interface RecordatorioCuotaDTO {
   id?: number;
   cuotaId: number;

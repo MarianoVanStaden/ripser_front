@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Box,
   Button,
@@ -78,7 +78,9 @@ import type {
   TipoItemDocumento,
   ColorEquipo,
   MedidaEquipo,
+  DeudaClienteError,
 } from '../../types';
+import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 
 // Types
@@ -230,6 +232,48 @@ const FacturacionPage = () => {
     medida?: MedidaEquipo;
     stockDisponible: number;
   } | null>(null);
+
+  // Deuda cliente confirmation
+  const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
+  const pendingDeudaRef = useRef<(() => void) | null>(null);
+  // Set to true when user confirms debt at nota step, so factura call can skip the second dialog
+  const deudaYaConfirmadaRef = useRef(false);
+
+  const parseDeudaError = (err: any): DeudaClienteError | null => {
+    const data = err?.response?.data;
+    if (!data) return null;
+    if (data.requiereConfirmacion || data.cuotasPendientes != null) {
+      return {
+        error: data.error || 'Cliente con deuda pendiente',
+        message: data.message || '',
+        cuotasPendientes: data.cuotasPendientes ?? 0,
+        deudaCuentaCorriente: data.deudaCuentaCorriente ?? null,
+        requiereConfirmacion: true,
+      };
+    }
+    if (typeof data.message === 'string' && data.message.toLowerCase().includes('deuda pendiente')) {
+      return {
+        error: 'Cliente con deuda pendiente',
+        message: data.message,
+        cuotasPendientes: 0,
+        deudaCuentaCorriente: null,
+        requiereConfirmacion: true,
+      };
+    }
+    return null;
+  };
+
+  const handleDeudaConfirm = useCallback(() => {
+    setDeudaError(null);
+    const fn = pendingDeudaRef.current;
+    pendingDeudaRef.current = null;
+    fn?.();
+  }, []);
+
+  const handleDeudaCancel = useCallback(() => {
+    setDeudaError(null);
+    pendingDeudaRef.current = null;
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -770,12 +814,66 @@ const FacturacionPage = () => {
         }
       }
 
-      const nota = await documentoApi.convertToNotaPedido({
-        presupuestoId: presupuesto.id,
-        metodoPago: paymentMethod,
-        tipoIva: selectedIva,
-      });
-
+      let nota: DocumentoComercial;
+      try {
+        nota = await documentoApi.convertToNotaPedido({
+          presupuestoId: presupuesto.id,
+          metodoPago: paymentMethod,
+          tipoIva: selectedIva,
+        });
+      } catch (notaErr: any) {
+        const deudaNotaData = parseDeudaError(notaErr);
+        if (deudaNotaData) {
+          setDeudaError(deudaNotaData);
+          const presupuestoId = presupuesto.id;
+          const capturedPayment = paymentMethod;
+          const capturedIva = selectedIva;
+          const capturedCuotas = cantidadCuotas;
+          const capturedTipoFin = tipoFinanciacion;
+          const capturedVencimiento = primerVencimiento;
+          pendingDeudaRef.current = async () => {
+            setLoading(true);
+            try {
+              const retryNota = await documentoApi.convertToNotaPedido({
+                presupuestoId,
+                metodoPago: capturedPayment,
+                tipoIva: capturedIva,
+                confirmarConDeudaPendiente: true,
+              });
+              const detallesEquipoRetry = retryNota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
+              if (detallesEquipoRetry.length > 0) {
+                deudaYaConfirmadaRef.current = true; // debt confirmed — skip second dialog at factura step
+                setNotaParaAsignacion(retryNota);
+                setIsManualInvoice(true);
+                setAsignarEquiposDialogOpen(true);
+              } else {
+                const facturaRetry = await documentoApi.convertToFactura({
+                  notaPedidoId: retryNota.id,
+                  confirmarConDeudaPendiente: true,
+                  ...(capturedPayment === 'FINANCIACION_PROPIA' && capturedCuotas != null && {
+                    cantidadCuotas: capturedCuotas,
+                    tipoFinanciacion: capturedTipoFin,
+                    ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
+                  }),
+                });
+                setCreatedFactura(facturaRetry);
+                setSuccessDialogOpen(true);
+                clearForm();
+                setSelectedOpcionId(null);
+                setOpcionesFinanciamiento([]);
+                await loadData();
+              }
+            } catch (retryErr: any) {
+              setError(retryErr?.response?.data?.message || retryErr?.message || 'Error desconocido al crear la factura');
+            } finally {
+              setLoading(false);
+            }
+          };
+          setLoading(false);
+          return;
+        }
+        throw notaErr;
+      }
 
       // Check if there are EQUIPO items in the nota
       const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
@@ -788,14 +886,54 @@ const FacturacionPage = () => {
         setLoading(false);
       } else {
         // No equipos, proceed directly with factura creation
-        const factura = await documentoApi.convertToFactura({
-          notaPedidoId: nota.id,
-          ...(paymentMethod === 'FINANCIACION_PROPIA' && cantidadCuotas != null && {
-            cantidadCuotas,
-            tipoFinanciacion,
-            ...(primerVencimiento && { primerVencimiento }),
-          }),
-        });
+        let factura: DocumentoComercial;
+        try {
+          factura = await documentoApi.convertToFactura({
+            notaPedidoId: nota.id,
+            ...(paymentMethod === 'FINANCIACION_PROPIA' && cantidadCuotas != null && {
+              cantidadCuotas,
+              tipoFinanciacion,
+              ...(primerVencimiento && { primerVencimiento }),
+            }),
+          });
+        } catch (facturaErr: any) {
+          const deudaFacturaData = parseDeudaError(facturaErr);
+          if (deudaFacturaData) {
+            setDeudaError(deudaFacturaData);
+            const notaId = nota.id;
+            const capturedPayment = paymentMethod;
+            const capturedCuotas = cantidadCuotas;
+            const capturedTipoFin = tipoFinanciacion;
+            const capturedVencimiento = primerVencimiento;
+            pendingDeudaRef.current = async () => {
+              setLoading(true);
+              try {
+                const facturaRetry = await documentoApi.convertToFactura({
+                  notaPedidoId: notaId,
+                  confirmarConDeudaPendiente: true,
+                  ...(capturedPayment === 'FINANCIACION_PROPIA' && capturedCuotas != null && {
+                    cantidadCuotas: capturedCuotas,
+                    tipoFinanciacion: capturedTipoFin,
+                    ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
+                  }),
+                });
+                setCreatedFactura(facturaRetry);
+                setSuccessDialogOpen(true);
+                clearForm();
+                setSelectedOpcionId(null);
+                setOpcionesFinanciamiento([]);
+                await loadData();
+              } catch (retryErr: any) {
+                setError(retryErr?.response?.data?.message || retryErr?.message || 'Error desconocido al crear la factura');
+              } finally {
+                setLoading(false);
+              }
+            };
+            setLoading(false);
+            return;
+          }
+          throw facturaErr;
+        }
 
         setCreatedFactura(factura);
         setSuccessDialogOpen(true);
@@ -860,9 +998,12 @@ const FacturacionPage = () => {
 
     try {
       const cuotasParaEnviar = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
+      const deudaPreconfirmada = deudaYaConfirmadaRef.current;
+      deudaYaConfirmadaRef.current = false; // reset before the call
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: notaParaAsignacion.id,
         equiposAsignaciones: asignaciones,
+        ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
         ...(cuotasParaEnviar != null && {
           cantidadCuotas: cuotasParaEnviar,
           tipoFinanciacion: isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion,
@@ -889,6 +1030,52 @@ const FacturacionPage = () => {
       }
     } catch (err: any) {
       console.error('Error converting to factura with equipos:', err);
+
+      // Deuda cliente: mostrar modal de confirmación
+      const deudaEquiposData = parseDeudaError(err);
+      if (deudaEquiposData) {
+        setDeudaError(deudaEquiposData);
+        const notaId = notaParaAsignacion.id;
+        const capturedIsManual = isManualInvoice;
+        const capturedCuotas = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
+        const capturedTipoFin = isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion;
+        const capturedVencimiento = isManualInvoice ? primerVencimiento : notaPrimerVencimiento;
+        pendingDeudaRef.current = async () => {
+          setLoading(true);
+          try {
+            const facturaRetry = await documentoApi.convertToFactura({
+              notaPedidoId: notaId,
+              equiposAsignaciones: asignaciones,
+              confirmarConDeudaPendiente: true,
+              ...(capturedCuotas != null && {
+                cantidadCuotas: capturedCuotas,
+                tipoFinanciacion: capturedTipoFin,
+                ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
+              }),
+            });
+            setAsignarEquiposDialogOpen(false);
+            setNotaParaAsignacion(null);
+            setCreatedFactura(facturaRetry);
+            setSuccessDialogOpen(true);
+            if (capturedIsManual) {
+              clearForm();
+              setSelectedOpcionId(null);
+              setOpcionesFinanciamiento([]);
+              setIsManualInvoice(false);
+              await loadData();
+            } else {
+              setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+              handleCloseConvertDialog();
+            }
+          } catch (retryErr: any) {
+            setError(retryErr?.response?.data?.message || retryErr?.message || 'Error desconocido al convertir a factura');
+          } finally {
+            setLoading(false);
+          }
+        };
+        setLoading(false);
+        return;
+      }
 
       const data = err?.response?.data;
       const rawText = data ? JSON.stringify(data) : '';
@@ -2385,6 +2572,14 @@ const FacturacionPage = () => {
         onClose={handleCloseAsignarEquiposDialog}
         onConfirm={handleConfirmEquiposAsignacion}
         detallesEquipo={notaParaAsignacion?.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
+      />
+
+      {/* Deuda cliente confirmation dialog */}
+      <DeudaClienteConfirmDialog
+        open={deudaError !== null}
+        error={deudaError}
+        onConfirm={handleDeudaConfirm}
+        onCancel={handleDeudaCancel}
       />
     </Box>
   );
