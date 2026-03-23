@@ -1,4 +1,4 @@
-// ==================== ENUMS ====================
+// ==================== ENUMS EXISTENTES ====================
 
 export const EstadoGestionCobranza = {
   NUEVA: 'NUEVA',
@@ -54,6 +54,34 @@ export const TipoRecordatorioCobranza = {
 } as const;
 export type TipoRecordatorioCobranza = typeof TipoRecordatorioCobranza[keyof typeof TipoRecordatorioCobranza];
 
+// ==================== NUEVOS ENUMS ====================
+
+export const EstadoPromesaPago = {
+  VIGENTE: 'VIGENTE',
+  CUMPLIDA: 'CUMPLIDA',
+  INCUMPLIDA: 'INCUMPLIDA',
+  CANCELADA: 'CANCELADA',
+} as const;
+export type EstadoPromesaPago = typeof EstadoPromesaPago[keyof typeof EstadoPromesaPago];
+
+export const TipoEventoCobranza = {
+  GESTION_ABIERTA: 'GESTION_ABIERTA',
+  CUOTA_VENCIDA: 'CUOTA_VENCIDA',
+  CUOTAS_EN_MORA_ACTUALIZADO: 'CUOTAS_EN_MORA_ACTUALIZADO',
+  PROMESA_REGISTRADA: 'PROMESA_REGISTRADA',
+  PROMESA_INCUMPLIDA: 'PROMESA_INCUMPLIDA',
+  PROMESA_CUMPLIDA: 'PROMESA_CUMPLIDA',
+  PROMESA_CANCELADA: 'PROMESA_CANCELADA',
+  PAGO_PARCIAL_REGISTRADO: 'PAGO_PARCIAL_REGISTRADO',
+  PAGO_TOTAL_REGISTRADO: 'PAGO_TOTAL_REGISTRADO',
+  PRIORIDAD_ESCALADA: 'PRIORIDAD_ESCALADA',
+  AGENTE_ASIGNADO: 'AGENTE_ASIGNADO',
+  ACUERDO_CUOTAS_CREADO: 'ACUERDO_CUOTAS_CREADO',
+  DERIVADO_LEGAL: 'DERIVADO_LEGAL',
+  GESTION_CERRADA: 'GESTION_CERRADA',
+} as const;
+export type TipoEventoCobranza = typeof TipoEventoCobranza[keyof typeof TipoEventoCobranza];
+
 // ==================== LABELS ====================
 
 export const ESTADO_GESTION_COBRANZA_LABELS: Record<EstadoGestionCobranza, string> = {
@@ -105,6 +133,30 @@ export const TIPO_RECORDATORIO_COBRANZA_LABELS: Record<TipoRecordatorioCobranza,
   LLAMADA: 'Llamada',
 };
 
+export const ESTADO_PROMESA_LABELS: Record<EstadoPromesaPago, string> = {
+  VIGENTE: 'Vigente',
+  CUMPLIDA: 'Cumplida',
+  INCUMPLIDA: 'Incumplida',
+  CANCELADA: 'Cancelada',
+};
+
+export const TIPO_EVENTO_LABELS: Record<TipoEventoCobranza, string> = {
+  GESTION_ABIERTA: 'Gestión abierta',
+  CUOTA_VENCIDA: 'Cuota vencida',
+  CUOTAS_EN_MORA_ACTUALIZADO: 'Mora actualizada',
+  PROMESA_REGISTRADA: 'Promesa registrada',
+  PROMESA_INCUMPLIDA: 'Promesa incumplida',
+  PROMESA_CUMPLIDA: 'Promesa cumplida',
+  PROMESA_CANCELADA: 'Promesa cancelada',
+  PAGO_PARCIAL_REGISTRADO: 'Pago parcial',
+  PAGO_TOTAL_REGISTRADO: 'Pago total',
+  PRIORIDAD_ESCALADA: 'Prioridad escalada',
+  AGENTE_ASIGNADO: 'Agente asignado',
+  ACUERDO_CUOTAS_CREADO: 'Acuerdo de cuotas',
+  DERIVADO_LEGAL: 'Derivado a legal',
+  GESTION_CERRADA: 'Gestión cerrada',
+};
+
 // ==================== COLORS ====================
 
 export const ESTADO_GESTION_COBRANZA_COLORS: Record<EstadoGestionCobranza, string> = {
@@ -123,16 +175,58 @@ export const PRIORIDAD_COBRANZA_COLORS: Record<PrioridadCobranza, string> = {
   BAJA: '#9CA3AF',
 };
 
-// Estados válidos para cerrar una gestión
+export const ESTADO_PROMESA_COLORS: Record<EstadoPromesaPago, string> = {
+  VIGENTE: '#2196F3',
+  CUMPLIDA: '#4CAF50',
+  INCUMPLIDA: '#F44336',
+  CANCELADA: '#9E9E9E',
+};
+
+// ==================== ESTADOS DE CIERRE ====================
+
 export const ESTADOS_CIERRE: EstadoGestionCobranza[] = [
   EstadoGestionCobranza.RECUPERADA,
   EstadoGestionCobranza.INCOBRABLE,
   EstadoGestionCobranza.EN_LEGAL,
   EstadoGestionCobranza.ACUERDO_CUOTAS,
-  EstadoGestionCobranza.PROMETIO_PAGO,
 ];
 
 // ==================== DTOs ====================
+
+/** Promesa de pago: nueva entidad, reemplaza los campos inline. */
+export interface PromesaPagoDTO {
+  id: number;
+  gestionId: number;
+  cuotaIds: number[];
+  fechaPromesa: string;        // ISO date "2026-04-15"
+  montoPrometido: number;
+  estado: EstadoPromesaPago;
+  observaciones: string | null;
+  registradoPorId: number | null;
+  fechaResolucion: string | null;
+  fechaCreacion: string;
+}
+
+export interface CreatePromesaPagoDTO {
+  fechaPromesa: string;        // ISO date, debe ser > hoy
+  montoPrometido: number;
+  cuotaIds: number[];          // al menos 1, deben pertenecer al préstamo
+  observaciones?: string;
+  registradoPorId?: number;
+}
+
+/** Evento del timeline: log inmutable. */
+export interface EventoCobranzaDTO {
+  id: number;
+  gestionId: number;
+  prestamoId: number;
+  tipo: TipoEventoCobranza;
+  fechaEvento: string;         // ISO datetime
+  descripcion: string;
+  monto: number | null;
+  usuarioId: number | null;
+  referenciaId: number | null;
+}
 
 export interface GestionCobranzaDTO {
   id: number;
@@ -146,13 +240,22 @@ export interface GestionCobranzaDTO {
   prioridad: PrioridadCobranza | null;
   agenteId: number | null;
   activa: boolean;
+  /** Snapshot al momento de apertura. Solo referencia histórica. */
   montoPendiente: number;
   diasVencidoApertura: number;
+  /** Monto real calculado LIVE desde cuotas. Usar este para mostrar deuda actual. */
+  montoMoraActual: number;
+  /** Días de mora real derivados de cuotas. */
+  diasMoraReal: number;
+  /** Cuotas actualmente en mora. */
+  cuotasEnMoraCount: number;
+  /** Próxima fecha de vencimiento de cuota pendiente. */
+  proximaCuotaVencimiento: string | null;
   fechaApertura: string;
   fechaCierre: string | null;
   fechaProximaGestion: string | null;
-  fechaPrometePago: string | null;
-  montoPrometido: number | null;
+  /** Promesa vigente actual, si existe. */
+  promesaVigente: PromesaPagoDTO | null;
   observaciones: string | null;
   totalAcciones: number;
   recordatoriosPendientes: number;
@@ -174,8 +277,6 @@ export interface UpdateGestionCobranzaDTO {
   prioridad?: PrioridadCobranza;
   agenteId?: number;
   fechaProximaGestion?: string;
-  fechaPrometePago?: string;
-  montoPrometido?: number;
   observaciones?: string;
 }
 
@@ -236,6 +337,12 @@ export interface ResumenCobranzaDTO {
   totalMontoPendiente: number;
   gestionesPorEstado: Record<EstadoGestionCobranza, number>;
   promesasIncumplidas: number;
+  /** Promesas que vencen hoy. */
+  promesasVigentesHoy: number;
   gestionesVencidasHoy: number;
   recordatoriosPendientesAgente: number;
+  /** Préstamos con cuotas vencidas sin gestión activa abierta. */
+  sinGestionConMora: number;
+  /** Total cuotas en estado VENCIDA en la empresa. */
+  cuotasVencidasTotal: number;
 }

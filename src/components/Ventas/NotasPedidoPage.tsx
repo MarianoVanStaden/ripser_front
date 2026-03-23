@@ -142,6 +142,7 @@ const NotasPedidoPage: React.FC = () => {
         error: data.error || 'Cliente con deuda pendiente',
         message: data.message || '',
         cuotasPendientes: data.cuotasPendientes ?? 0,
+        montoCuotasPendientes: data.montoCuotasPendientes ?? null,
         deudaCuentaCorriente: data.deudaCuentaCorriente ?? null,
         requiereConfirmacion: true,
       };
@@ -1366,6 +1367,7 @@ const NotasPedidoPage: React.FC = () => {
           onConfirm={handleConfirmAsignacion}
           detallesEquipo={notaForAsignacion.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
           clienteId={notaForAsignacion.clienteId ?? undefined}
+          notaPedidoId={notaForAsignacion.id}
         />
       )}
 

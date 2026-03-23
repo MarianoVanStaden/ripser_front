@@ -4,3 +4,7 @@ export { GestionCobranzaDetailPage } from './GestionCobranzaDetailPage';
 export { NuevaGestionDialog } from './NuevaGestionDialog';
 export { RegistrarAccionDialog } from './RegistrarAccionDialog';
 export { RecordatorioCobranzaDialog } from './RecordatorioCobranzaDialog';
+export { BadgeMora } from './BadgeMora';
+export { PromesaVigenteCard } from './PromesaVigenteCard';
+export { PromesaPagoDialog } from './PromesaPagoDialog';
+export { TimelineCobranza } from './TimelineCobranza';

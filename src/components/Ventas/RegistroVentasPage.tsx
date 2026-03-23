@@ -60,6 +60,7 @@ const RegistroVentasPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [confirmStateChangeDialogOpen, setConfirmStateChangeDialogOpen] = useState(false);
@@ -222,10 +223,33 @@ const RegistroVentasPage: React.FC = () => {
     }
   };
 
-  const handleViewSale = (sale: Venta): void => {
-    console.log('Viewing sale:', sale);
+  const handleViewSale = async (sale: Venta): Promise<void> => {
     setViewingSale(sale);
     setViewDialogOpen(true);
+    // Fetch full document to get equiposNumerosHeladera (not included in list endpoint)
+    setViewLoading(true);
+    try {
+      const full = await documentoApi.getById((sale as any).id);
+      if (full?.detalles?.length) {
+        const numerosById = new Map(
+          full.detalles.map((d: any) => [d.id, d.equiposNumerosHeladera as string[] | undefined])
+        );
+        setViewingSale((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            detalleVentas: (prev.detalleVentas || []).map((dv) => ({
+              ...dv,
+              equiposNumerosHeladera: numerosById.get(dv.id) ?? dv.equiposNumerosHeladera,
+            })),
+          };
+        });
+      }
+    } catch {
+      // Non-fatal — list data already shown, just missing equipo numbers
+    } finally {
+      setViewLoading(false);
+    }
   };
 
   const handleEditSale = (sale: Venta): void => {
@@ -953,9 +977,12 @@ const RegistroVentasPage: React.FC = () => {
 
               {viewingSale.detalleVentas && viewingSale.detalleVentas.length > 0 ? (
                 <>
-                  <Typography variant="subtitle2" color="text.secondary" mb={2}>
-                    Items ({viewingSale.detalleVentas.length} artículos)
-                  </Typography>
+                  <Box display="flex" alignItems="center" gap={1} mb={2}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Items ({viewingSale.detalleVentas.length} artículos)
+                    </Typography>
+                    {viewLoading && <CircularProgress size={14} />}
+                  </Box>
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                       <TableHead>

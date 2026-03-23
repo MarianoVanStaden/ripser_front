@@ -35,6 +35,15 @@ import type {
 import { formatPrice } from '../../../utils/priceCalculations';
 import { RegistrarAccionDialog } from './RegistrarAccionDialog';
 import { RecordatorioCobranzaDialog } from './RecordatorioCobranzaDialog';
+import { PromesaVigenteCard } from './PromesaVigenteCard';
+import { PromesaPagoDialog } from './PromesaPagoDialog';
+import { TimelineCobranza } from './TimelineCobranza';
+import { BadgeMora } from './BadgeMora';
+import type { EventoCobranzaDTO, PromesaPagoDTO } from '../../../types/cobranza.types';
+import {
+  ESTADO_PROMESA_LABELS,
+  ESTADO_PROMESA_COLORS,
+} from '../../../types/cobranza.types';
 
 // ── Icons per tipo acción ─────────────────────────────────────────────────────
 const TIPO_ACCION_ICONS: Record<string, React.ReactElement> = {
@@ -79,6 +88,8 @@ export const GestionCobranzaDetailPage: React.FC = () => {
   const [gestion, setGestion] = useState<GestionCobranzaDTO | null>(null);
   const [acciones, setAcciones] = useState<AccionCobranzaDTO[]>([]);
   const [recordatorios, setRecordatorios] = useState<RecordatorioCobranzaDTO[]>([]);
+  const [timeline, setTimeline] = useState<EventoCobranzaDTO[]>([]);
+  const [promesas, setPromesas] = useState<PromesaPagoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -86,6 +97,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
   // Dialogs
   const [accionOpen, setAccionOpen] = useState(false);
   const [recordatorioOpen, setRecordatorioOpen] = useState(false);
+  const [promesaOpen, setPromesaOpen] = useState(false);
 
   // Cerrar gestión menu
   const [cierreAnchor, setCierreAnchor] = useState<null | HTMLElement>(null);
@@ -101,14 +113,20 @@ export const GestionCobranzaDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [gestionData, accionesData, recordatoriosData] = await Promise.all([
+      const [gestionRes, accionesRes, recordatoriosRes, timelineRes, promesasRes] = await Promise.allSettled([
         gestionCobranzaApi.getById(gestionId),
         gestionCobranzaApi.getAccionesByGestion(gestionId),
         gestionCobranzaApi.getRecordatoriosByGestion(gestionId),
+        gestionCobranzaApi.getTimeline(gestionId),
+        gestionCobranzaApi.getPromesas(gestionId),
       ]);
-      setGestion(gestionData);
-      setAcciones(accionesData);
-      setRecordatorios(recordatoriosData);
+
+      if (gestionRes.status === 'rejected') throw gestionRes.reason;
+      setGestion(gestionRes.value);
+      if (accionesRes.status === 'fulfilled') setAcciones(accionesRes.value);
+      if (recordatoriosRes.status === 'fulfilled') setRecordatorios(recordatoriosRes.value);
+      if (timelineRes.status === 'fulfilled') setTimeline(timelineRes.value);
+      if (promesasRes.status === 'fulfilled') setPromesas(promesasRes.value);
     } catch (err) {
       console.error('Error loading gestion:', err);
       setError('Error al cargar la gestión.');
@@ -161,6 +179,16 @@ export const GestionCobranzaDetailPage: React.FC = () => {
       showSnack('Recordatorio eliminado.');
     } catch {
       showSnack('Error al eliminar el recordatorio.', 'error');
+    }
+  };
+
+  const handleCancelarPromesa = async (promesaId: number) => {
+    try {
+      await gestionCobranzaApi.cancelarPromesa(gestionId, promesaId);
+      showSnack('Promesa cancelada.');
+      loadData();
+    } catch {
+      showSnack('Error al cancelar la promesa.', 'error');
     }
   };
 
@@ -288,11 +316,28 @@ export const GestionCobranzaDetailPage: React.FC = () => {
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="caption" color="text.secondary">Monto Pendiente</Typography>
+              <Typography variant="caption" color="text.secondary">Mora Actual (live)</Typography>
               <Typography variant="h6" fontWeight={700} color="error.main">
-                {formatPrice(gestion.montoPendiente)}
+                {formatPrice(gestion.montoMoraActual)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {gestion.cuotasEnMoraCount} cuota(s) vencida(s)
               </Typography>
             </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">Días Mora Real</Typography>
+              <Box mt={0.5}>
+                <BadgeMora dias={gestion.diasMoraReal} />
+              </Box>
+            </Grid>
+            {gestion.proximaCuotaVencimiento && (
+              <Grid item xs={12} sm={6} md={3}>
+                <Typography variant="caption" color="text.secondary">Próximo Vencimiento</Typography>
+                <Typography variant="body2">
+                  {dayjs(gestion.proximaCuotaVencimiento).format('DD/MM/YYYY')}
+                </Typography>
+              </Grid>
+            )}
             <Grid item xs={12} sm={6} md={3}>
               <Typography variant="caption" color="text.secondary">Teléfono</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
@@ -308,19 +353,17 @@ export const GestionCobranzaDetailPage: React.FC = () => {
                   : '-'}
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="caption" color="text.secondary">Promete Pagar</Typography>
-              <Typography variant="body2">
-                {gestion.fechaPrometePago
-                  ? dayjs(gestion.fechaPrometePago).format('DD/MM/YYYY')
-                  : '-'}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 1 }} />
+              <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                Promesa de Pago
               </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="caption" color="text.secondary">Monto Prometido</Typography>
-              <Typography variant="body2">
-                {gestion.montoPrometido ? formatPrice(gestion.montoPrometido) : '-'}
-              </Typography>
+              <PromesaVigenteCard
+                promesa={gestion.promesaVigente}
+                gestionActiva={gestion.activa}
+                onRegistrarPromesa={() => setPromesaOpen(true)}
+                onCancelarPromesa={handleCancelarPromesa}
+              />
             </Grid>
             {gestion.observaciones && (
               <Grid item xs={12}>
@@ -338,6 +381,8 @@ export const GestionCobranzaDetailPage: React.FC = () => {
         <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
           <Tab label={`Acciones (${acciones.length})`} />
           <Tab label={`Recordatorios (${pendientesCount} pendientes)`} />
+          <Tab label="Historial Promesas" />
+          <Tab label={`Timeline (${timeline.length})`} />
         </Tabs>
       </Box>
 
@@ -553,6 +598,62 @@ export const GestionCobranzaDetailPage: React.FC = () => {
         </TableContainer>
       </TabPanel>
 
+      {/* Tab 2: Historial de promesas */}
+      <TabPanel value={tabValue} index={2}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<Handshake />}
+            onClick={() => setPromesaOpen(true)}
+            disabled={!gestion.activa}
+          >
+            Nueva Promesa
+          </Button>
+        </Box>
+        {promesas.length === 0 ? (
+          <Typography color="text.secondary" py={3} textAlign="center">
+            No hay promesas registradas
+          </Typography>
+        ) : (
+          promesas.map((p) => (
+            <Paper key={p.id} variant="outlined" sx={{ p: 2, mb: 1 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Chip
+                      label={ESTADO_PROMESA_LABELS[p.estado]}
+                      size="small"
+                      sx={{
+                        bgcolor: ESTADO_PROMESA_COLORS[p.estado],
+                        color: 'white',
+                        fontWeight: 700,
+                      }}
+                    />
+                    <Typography variant="body2">
+                      {dayjs(p.fechaPromesa).format('DD/MM/YYYY')} ·{' '}
+                      {formatPrice(p.montoPrometido)}
+                    </Typography>
+                  </Stack>
+                  {p.observaciones && (
+                    <Typography variant="caption" color="text.secondary">
+                      {p.observaciones}
+                    </Typography>
+                  )}
+                </Box>
+                <Typography variant="caption" color="text.disabled">
+                  {dayjs(p.fechaCreacion).format('DD/MM/YY')}
+                </Typography>
+              </Stack>
+            </Paper>
+          ))
+        )}
+      </TabPanel>
+
+      {/* Tab 3: Timeline */}
+      <TabPanel value={tabValue} index={3}>
+        <TimelineCobranza eventos={timeline} />
+      </TabPanel>
+
       {/* Dialogs */}
       <RegistrarAccionDialog
         open={accionOpen}
@@ -572,6 +673,18 @@ export const GestionCobranzaDetailPage: React.FC = () => {
         onClose={() => setRecordatorioOpen(false)}
         onSaved={() => {
           setRecordatorioOpen(false);
+          loadData();
+        }}
+      />
+
+      <PromesaPagoDialog
+        open={promesaOpen}
+        gestionId={gestionId}
+        prestamoId={gestion.prestamoId}
+        clienteNombre={`${gestion.clienteNombre} ${gestion.clienteApellido}`}
+        onClose={() => setPromesaOpen(false)}
+        onSaved={() => {
+          setPromesaOpen(false);
           loadData();
         }}
       />

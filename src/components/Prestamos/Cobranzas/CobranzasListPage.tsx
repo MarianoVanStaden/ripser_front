@@ -23,13 +23,10 @@ import type { GestionCobranzaDTO } from '../../../types/cobranza.types';
 import type { PaginationParams } from '../../../types/pagination.types';
 import { formatPrice } from '../../../utils/priceCalculations';
 import { usePagination } from '../../../hooks/usePagination';
-import { useDebounce } from '../../../hooks/useDebounce';
 import { NuevaGestionDialog } from './NuevaGestionDialog';
 
 interface CobranzaFilters {
   term?: string;
-  estado?: string;
-  prioridad?: string;
 }
 
 export const CobranzasListPage: React.FC = () => {
@@ -40,7 +37,6 @@ export const CobranzasListPage: React.FC = () => {
   const [soloActivas, setSoloActivas] = useState(true);
   const [nuevaGestionOpen, setNuevaGestionOpen] = useState(false);
 
-  const debouncedSearch = useDebounce(searchTerm, 300);
 
   const fetchGestiones = useCallback(
     (page: number, size: number, sort: string, filters: CobranzaFilters) => {
@@ -69,42 +65,29 @@ export const CobranzasListPage: React.FC = () => {
     initialSize: 25,
   });
 
-  // Sync debounced search + selected filters
-  const syncFilters = useCallback(
-    (
-      term: string,
-      estados: EstadoGestionCobranza[],
-      prioridades: PrioridadCobranza[]
-    ) => {
-      const filters: CobranzaFilters = {};
-      if (term) filters.term = term;
-      if (estados.length === 1) filters.estado = estados[0];
-      if (prioridades.length === 1) filters.prioridad = prioridades[0];
-      setFilters(filters);
-    },
-    [setFilters]
-  );
-
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    syncFilters(value, selectedEstados, selectedPrioridades);
+    setFilters(value ? { term: value } : {});
   };
 
   const toggleEstado = (estado: EstadoGestionCobranza) => {
-    const next = selectedEstados.includes(estado)
-      ? selectedEstados.filter((e) => e !== estado)
-      : [estado]; // single select for backend filter
-    setSelectedEstados(next);
-    syncFilters(debouncedSearch, next, selectedPrioridades);
+    setSelectedEstados((prev) =>
+      prev.includes(estado) ? prev.filter((e) => e !== estado) : [...prev, estado]
+    );
   };
 
   const togglePrioridad = (prioridad: PrioridadCobranza) => {
-    const next = selectedPrioridades.includes(prioridad)
-      ? selectedPrioridades.filter((p) => p !== prioridad)
-      : [prioridad];
-    setSelectedPrioridades(next);
-    syncFilters(debouncedSearch, selectedEstados, next);
+    setSelectedPrioridades((prev) =>
+      prev.includes(prioridad) ? prev.filter((p) => p !== prioridad) : [...prev, prioridad]
+    );
   };
+
+  // Filtrado client-side por estado y prioridad
+  const gestionesFiltradas = gestiones.filter((g) => {
+    if (selectedEstados.length > 0 && !selectedEstados.includes(g.estado)) return false;
+    if (selectedPrioridades.length > 0 && (g.prioridad == null || !selectedPrioridades.includes(g.prioridad))) return false;
+    return true;
+  });
 
   const getProximaGestionLabel = (fecha: string | null) => {
     if (!fecha) return '-';
@@ -246,7 +229,7 @@ export const CobranzasListPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {gestiones.length === 0 ? (
+              {gestionesFiltradas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} align="center">
                     <Typography color="text.secondary" py={4}>
@@ -255,7 +238,7 @@ export const CobranzasListPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                gestiones.map((g) => {
+                gestionesFiltradas.map((g) => {
                   const proximaInfo = getProximaGestionLabel(g.fechaProximaGestion);
                   return (
                     <TableRow

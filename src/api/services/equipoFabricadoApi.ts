@@ -223,6 +223,15 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  // Get equipos selectable for factura (includes RESERVADO for this nota de pedido)
+  findSeleccionablesParaFactura: async (recetaId: number, notaPedidoId: number): Promise<EquipoFabricadoDTO[]> => {
+    const response = await api.get<EquipoFabricadoDTO[]>(
+      `/api/equipos-fabricados/seleccionables-para-factura/receta/${recetaId}`,
+      { params: { notaPedidoId } }
+    );
+    return response.data;
+  },
+
   // Cambiar estado de asignación manualmente
   updateEstadoAsignacion: async (equipoId: number, nuevoEstado: string) => {
     const response = await api.put<EquipoFabricadoDTO>(

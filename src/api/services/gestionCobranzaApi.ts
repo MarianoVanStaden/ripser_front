@@ -10,6 +10,9 @@ import type {
   CreateRecordatorioCobranzaDTO,
   ResumenCobranzaDTO,
   EstadoGestionCobranza,
+  PromesaPagoDTO,
+  CreatePromesaPagoDTO,
+  EventoCobranzaDTO,
 } from '../../types/cobranza.types';
 
 export const gestionCobranzaApi = {
@@ -113,5 +116,42 @@ export const gestionCobranzaApi = {
 
   deleteRecordatorio: async (id: number): Promise<void> => {
     await api.delete(`/api/recordatorios-cobranza/${id}`);
+  },
+
+  // ── Promesas de Pago ───────────────────────────────────────────────────────
+
+  /** Registra una promesa. Cancela automáticamente la promesa vigente anterior. */
+  registrarPromesa: async (gestionId: number, data: CreatePromesaPagoDTO): Promise<PromesaPagoDTO> => {
+    const res = await api.post<PromesaPagoDTO>(`/api/gestiones-cobranza/${gestionId}/promesas`, data);
+    return res.data;
+  },
+
+  getPromesas: async (gestionId: number): Promise<PromesaPagoDTO[]> => {
+    const res = await api.get<PromesaPagoDTO[]>(`/api/gestiones-cobranza/${gestionId}/promesas`);
+    return res.data;
+  },
+
+  cancelarPromesa: async (gestionId: number, promesaId: number): Promise<PromesaPagoDTO> => {
+    const res = await api.delete<PromesaPagoDTO>(`/api/gestiones-cobranza/${gestionId}/promesas/${promesaId}`);
+    return res.data;
+  },
+
+  // ── Timeline ───────────────────────────────────────────────────────────────
+
+  getTimeline: async (gestionId: number): Promise<EventoCobranzaDTO[]> => {
+    const res = await api.get<EventoCobranzaDTO[]>(`/api/gestiones-cobranza/${gestionId}/timeline`);
+    return res.data;
+  },
+
+  getTimelinePrestamo: async (prestamoId: number): Promise<EventoCobranzaDTO[]> => {
+    const res = await api.get<EventoCobranzaDTO[]>(`/api/gestiones-cobranza/prestamo/${prestamoId}/timeline`);
+    return res.data;
+  },
+
+  // ── Motor de Cobranzas ─────────────────────────────────────────────────────
+
+  ejecutarMotor: async (): Promise<{ status: string; empresaId: string }> => {
+    const res = await api.post('/api/cobranza/motor/ejecutar');
+    return res.data;
   },
 };

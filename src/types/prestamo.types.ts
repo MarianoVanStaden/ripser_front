@@ -182,6 +182,7 @@ export interface CuotaPrestamoDTO {
   fechaVencimiento: string;
   fechaPago?: string | null;
   estado: EstadoCuota;
+  diasMora?: number;
 }
 
 export const MetodoPago = {

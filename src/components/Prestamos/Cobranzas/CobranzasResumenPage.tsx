@@ -4,7 +4,7 @@ import {
 } from '@mui/material';
 import {
   Gavel, Warning, AttachMoney, Schedule, CheckCircle,
-  PhoneCallback, Refresh, List as ListIcon,
+  PhoneCallback, Refresh, List as ListIcon, Handshake,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
@@ -158,6 +158,34 @@ export const CobranzasResumenPage: React.FC = () => {
                 value={resumen.recordatoriosPendientesAgente}
                 icon={<Gavel sx={{ color: '#9C27B0', fontSize: 28 }} />}
                 color="#9C27B0"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Promesas Vencen Hoy"
+                value={resumen.promesasVigentesHoy}
+                icon={<Handshake sx={{ color: '#9C27B0', fontSize: 28 }} />}
+                color="#9C27B0"
+                subtitle="Verificar si cumplieron"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Sin Gestión con Mora"
+                value={resumen.sinGestionConMora}
+                icon={<Warning sx={{ color: '#FF5722', fontSize: 28 }} />}
+                color="#FF5722"
+                subtitle="Préstamos que necesitan apertura"
+                onClick={() => navigate('/cobranzas/lista')}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Cuotas Vencidas Total"
+                value={resumen.cuotasVencidasTotal}
+                icon={<Schedule sx={{ color: '#795548', fontSize: 28 }} />}
+                color="#795548"
+                subtitle="En toda la empresa"
               />
             </Grid>
           </Grid>

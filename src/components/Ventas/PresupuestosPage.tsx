@@ -50,6 +50,7 @@ import {
 import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
+import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
 import { useAuth } from "../../context/AuthContext";
@@ -669,14 +670,27 @@ const PresupuestosPage: React.FC = () => {
   }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose]);
 
   // Financiamiento handlers
-  const handleOpenFinanciamiento = useCallback((presupuesto: DocumentoComercial) => {
+  const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
     setSelectedPresupuesto(presupuesto);
-    const opciones = presupuestosFinanciamiento[presupuesto.id] ?? [];
+    setFinanciamientoDialogOpen(true);
+
+    let opciones = presupuestosFinanciamiento[presupuesto.id] ?? [];
+
+    if (opciones.length === 0) {
+      try {
+        opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
+        if (opciones.length > 0) {
+          setPresupuestosFinanciamiento(prev => ({ ...prev, [presupuesto.id]: opciones }));
+        }
+      } catch (error) {
+        console.error('Error fetching financing options:', error);
+      }
+    }
+
     setOpcionesFinanciamiento(opciones);
     const seleccionada = opciones.find(o => o.id === presupuesto.opcionFinanciamientoSeleccionadaId)
       ?? opciones.find(o => o.esSeleccionada);
     setSelectedOpcionId(presupuesto.opcionFinanciamientoSeleccionadaId || (seleccionada?.id ?? null));
-    setFinanciamientoDialogOpen(true);
   }, [presupuestosFinanciamiento]);
 
   const handleSelectOpcion = useCallback(async () => {
@@ -1596,7 +1610,7 @@ const PresupuestosPage: React.FC = () => {
         }}
       >
         <DialogTitle>
-          <Typography variant="h6">Opciones de Financiamiento</Typography>
+          Opciones de Financiamiento
           <Typography variant="body2" color="text.secondary">Seleccione la opción de pago preferida</Typography>
         </DialogTitle>
         <DialogContent>

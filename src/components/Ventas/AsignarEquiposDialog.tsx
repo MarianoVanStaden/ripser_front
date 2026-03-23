@@ -57,6 +57,8 @@ interface AsignarEquiposDialogProps {
   detallesEquipo: DetalleDocumento[];
   /** clienteId of the nota de pedido — allows selecting equipos already reserved for this client */
   clienteId?: number;
+  /** notaPedidoId — when set, uses the seleccionables-para-factura endpoint so RESERVADO equipos for this nota appear */
+  notaPedidoId?: number;
 }
 
 interface DetalleAsignacion {
@@ -79,6 +81,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
   onConfirm,
   detallesEquipo,
   clienteId,
+  notaPedidoId,
 }) => {
   const [asignaciones, setAsignaciones] = useState<DetalleAsignacion[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -153,9 +156,11 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
     for (let i = 0; i < newAsignaciones.length; i++) {
       const asignacion = newAsignaciones[i];
       try {
-        // Fetch both COMPLETADO+DISPONIBLE and FABRICADO_SIN_TERMINACION equipos
+        // Fetch both COMPLETADO+DISPONIBLE (or seleccionables when notaPedidoId) and FABRICADO_SIN_TERMINACION equipos
         const [equiposCompletos, equiposSinTerminacionRaw] = await Promise.all([
-          equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId),
+          notaPedidoId
+            ? equipoFabricadoApi.findSeleccionablesParaFactura(asignacion.recetaId, notaPedidoId)
+            : equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId),
           equipoFabricadoApi.findSinTerminacionByReceta(asignacion.recetaId).catch(() => [] as any[]),
         ]);
 
@@ -194,6 +199,11 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           ),
         ];
 
+        // IDs returned by the nota-specific endpoint — only these RESERVADO equipos are selectable
+        const seleccionablesIds = notaPedidoId != null
+          ? new Set(equiposCompletos.map((e) => e.id))
+          : null;
+
         // Filter by color, medida, and estadoAsignacion
         const equiposFiltrados = combinados.filter((equipo) => {
           const matchColor = !asignacion.color || equipo.color === asignacion.color;
@@ -209,13 +219,17 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
             }
           }
 
-          // Accept DISPONIBLE and PENDIENTE_TERMINACION (standard pool)
-          // Also accept RESERVADO when the equipo belongs to this client
+          // Accept DISPONIBLE and PENDIENTE_TERMINACION (standard pool).
+          // Accept RESERVADO only if it was explicitly returned by the nota-specific endpoint
+          // (seleccionablesIds), or belongs to this client when using the old path.
           const isSelectable =
             estadoAsignacion === 'DISPONIBLE' ||
             estadoAsignacion === 'PENDIENTE_TERMINACION' ||
             (!equipo.asignado && equipo.estado === 'FABRICADO_SIN_TERMINACION') ||
-            (estadoAsignacion === 'RESERVADO' && clienteId != null && equipo.clienteId === clienteId);
+            (estadoAsignacion === 'RESERVADO' && (
+              (seleccionablesIds != null && seleccionablesIds.has(equipo.id)) ||
+              (seleccionablesIds == null && clienteId != null && equipo.clienteId === clienteId)
+            ));
 
           return matchColor && matchMedida && isSelectable;
         });
@@ -476,7 +490,11 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                                   />
                                   {equipo.estadoAsignacion && (
                                     <Chip
-                                      label={getEstadoAsignacionLabel(equipo.estadoAsignacion)}
+                                      label={
+                                        equipo.estadoAsignacion === 'RESERVADO' && notaPedidoId != null
+                                          ? 'Reservado para esta nota'
+                                          : getEstadoAsignacionLabel(equipo.estadoAsignacion)
+                                      }
                                       size="small"
                                       color={getEstadoAsignacionColor(equipo.estadoAsignacion)}
                                     />

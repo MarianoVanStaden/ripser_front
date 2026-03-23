@@ -247,6 +247,7 @@ const FacturacionPage = () => {
         error: data.error || 'Cliente con deuda pendiente',
         message: data.message || '',
         cuotasPendientes: data.cuotasPendientes ?? 0,
+        montoCuotasPendientes: data.montoCuotasPendientes ?? null,
         deudaCuentaCorriente: data.deudaCuentaCorriente ?? null,
         requiereConfirmacion: true,
       };
@@ -2572,6 +2573,7 @@ const FacturacionPage = () => {
         onClose={handleCloseAsignarEquiposDialog}
         onConfirm={handleConfirmEquiposAsignacion}
         detallesEquipo={notaParaAsignacion?.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
+        notaPedidoId={notaParaAsignacion?.id}
       />
 
       {/* Deuda cliente confirmation dialog */}

@@ -2439,6 +2439,7 @@ export interface DeudaClienteError {
   error: string;
   message: string;
   cuotasPendientes: number;
+  montoCuotasPendientes?: number | null;
   deudaCuentaCorriente: number | null;
   requiereConfirmacion: true;
 }
