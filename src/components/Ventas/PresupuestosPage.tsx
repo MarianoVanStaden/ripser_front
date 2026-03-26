@@ -202,12 +202,7 @@ const PresupuestosPage: React.FC = () => {
           setError("Error al cargar leads: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        usuarioApi.getAll().then(res => res.content || res).catch((err) => { // Handle both if unsure
-          console.error("Error fetching usuarios:", err);
-          console.log("Usuarios response:", err.response?.data, err.response?.status);
-          setError("Error al cargar usuarios: " + (err.response?.data?.message || err.message));
-          return [];
-        }),
+        usuarioApi.getVendedores().catch(() => []),
         documentoApi.getByTipo("PRESUPUESTO").then(res => res.content || res).catch((err) => {
           console.error("Error fetching presupuestos:", err);
           console.log("Presupuestos response:", err.response?.data, err.response?.status);
@@ -911,7 +906,7 @@ const PresupuestosPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 120 }} align="right">Total</TableCell>
                   <TableCell sx={{ minWidth: 160 }}>Financiamiento</TableCell>
                   <TableCell sx={{ minWidth: 130 }}>Creado por</TableCell>
-                  <TableCell sx={{ minWidth: 200 }}>Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 220, whiteSpace: 'nowrap' }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -969,7 +964,7 @@ const PresupuestosPage: React.FC = () => {
                       <TableCell>
                         <UsuarioBadge nombre={presupuesto.usuarioCreadorPresupuestoNombre ?? null} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
                         <Tooltip title="Ver">
                           <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, true)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
                             <VisibilityIcon />

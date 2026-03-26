@@ -95,10 +95,11 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
   const loadProveedores = async () => {
     try {
       setLoadingProveedores(true);
-      const data = await proveedorApi.getAll();
+      const data = await proveedorApi.getAll({ size: 1000 });
+      const lista = Array.isArray(data) ? data : (data as any).content ?? [];
 
       // Filter only active proveedores and filter out current provider if check is already endorsed
-      let filteredProveedores = data.filter(p => p.estado === 'ACTIVO' || !p.estado);
+      let filteredProveedores = lista.filter((p: any) => p.estado === 'ACTIVO' || !p.estado);
       if (cheque?.proveedorId) {
         filteredProveedores = filteredProveedores.filter(p => p.id !== cheque.proveedorId);
       }

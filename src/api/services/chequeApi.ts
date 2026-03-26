@@ -5,6 +5,7 @@ import type {
   ChequeUpdateDTO,
   CambioEstadoChequeDTO,
   ChequeFilterParams,
+  ChequeResumenDTO,
   HistorialEstadoChequeDTO,
   EstadoChequeType,
   TipoChequeType,
@@ -220,12 +221,29 @@ export const chequeApi = {
 
   /**
    * GET /api/cheques/buscar
-   * Búsqueda general con múltiples filtros
+   * Endpoint principal de la tabla. Combina filtros opcionales con paginación server-side.
+   *
+   * sort válidos: fechaAlta | monto | fechaCobro | numeroCheque (+ ,asc / ,desc)
+   * El backend devuelve 400 si se envía un sort fuera de esa lista.
    */
-  buscar: async (params: ChequeFilterParams, page = 0, size = 20): Promise<PageResponse<Cheque>> => {
-    const response = await api.get('/api/cheques/buscar', { 
-      params: { ...params, page, size } 
+  buscar: async (
+    params: ChequeFilterParams,
+    page = 0,
+    size = 20,
+    sort = 'fechaAlta,desc',
+  ): Promise<PageResponse<Cheque>> => {
+    const response = await api.get('/api/cheques/buscar', {
+      params: { ...params, page, size, sort },
     });
+    return response.data;
+  },
+
+  /**
+   * GET /api/cheques/estadisticas/resumen
+   * Resumen estadístico global de cheques
+   */
+  getResumen: async (): Promise<ChequeResumenDTO> => {
+    const response = await api.get('/api/cheques/estadisticas/resumen');
     return response.data;
   },
 

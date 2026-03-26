@@ -79,6 +79,8 @@ import type {
   LeadDTO,
 } from '../../types/lead.types';
 import { leadApi } from '../../api/services/leadApi';
+import { usuarioApi } from '../../api/services/usuarioApi';
+import type { Usuario } from '../../types';
 import type {
   RecordatorioConLeadDTO,
   RecordatorioGlobalFilterParams,
@@ -619,6 +621,11 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
             onChange={(_, value) => setSelectedLead(value)}
             getOptionLabel={getLeadLabel}
             isOptionEqualToValue={(a, b) => a.id === b.id}
+            renderOption={(props, option) => (
+              <li {...props} key={option.id}>
+                {getLeadLabel(option)}
+              </li>
+            )}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -759,7 +766,22 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const [customFechaHasta, setCustomFechaHasta] = useState('');
   const [filterPrioridad, setFilterPrioridad] = useState<PrioridadType | ''>('');
   const [filterTipo, setFilterTipo] = useState<TipoRecordatorioType | ''>('');
+  const [filterUsuarioId, setFilterUsuarioId] = useState<number | ''>('');
   const [soloMios, setSoloMios] = useState(false);
+
+  // ── Usuarios (asesores) ──
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  useEffect(() => {
+    usuarioApi.getActivos().then(setUsuarios).catch(() => {});
+  }, []);
+  const usuarioNombre = useCallback(
+    (id?: number) => {
+      if (!id) return '—';
+      const u = usuarios.find((u) => u.id === id);
+      return u ? `${u.nombre}${u.apellido ? ' ' + u.apellido : ''}` : `#${id}`;
+    },
+    [usuarios]
+  );
 
   // ── Dialog state ──
   const [interaccionOpen, setInteraccionOpen] = useState(false);
@@ -784,6 +806,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     if (filterPrioridad) filters.prioridad = filterPrioridad;
     if (filterTipo) filters.tipo = filterTipo;
     if (soloMios && user?.id) filters.usuarioId = user.id;
+    else if (filterUsuarioId) filters.usuarioId = filterUsuarioId;
     if (sucursalFiltro) filters.sucursalId = sucursalFiltro;
 
     const today = getTodayStr();
@@ -811,7 +834,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
         break;
     }
     return filters;
-  }, [datePreset, customFechaDesde, customFechaHasta, filterPrioridad, filterTipo, soloMios, user, sucursalFiltro]);
+  }, [datePreset, customFechaDesde, customFechaHasta, filterPrioridad, filterTipo, filterUsuarioId, soloMios, user, sucursalFiltro]);
 
   const refresh = useCallback(() => {
     setAutoRefreshCountdown(60);
@@ -821,7 +844,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   useEffect(() => {
     loadRecordatorios(buildFilters());
     setPage(0);
-  }, [datePreset, filterPrioridad, filterTipo, soloMios, sucursalFiltro]);
+  }, [datePreset, filterPrioridad, filterTipo, filterUsuarioId, soloMios, sucursalFiltro]);
 
   useEffect(() => {
     if (datePreset === 'personalizado' && (customFechaDesde || customFechaHasta)) {
@@ -1075,18 +1098,37 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
               </Select>
             </FormControl>
 
+            <FormControl size="small" sx={{ minWidth: 160 }} disabled={soloMios}>
+              <InputLabel>Asesor</InputLabel>
+              <Select
+                value={soloMios ? '' : filterUsuarioId}
+                label="Asesor"
+                onChange={(e) => setFilterUsuarioId(e.target.value as number | '')}
+              >
+                <MenuItem value=""><em>Todos</em></MenuItem>
+                {usuarios.map((u) => (
+                  <MenuItem key={u.id} value={u.id}>
+                    {u.nombre}{u.apellido ? ' ' + u.apellido : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <FormControlLabel
               control={
                 <Switch
                   checked={soloMios}
-                  onChange={(e) => setSoloMios(e.target.checked)}
+                  onChange={(e) => {
+                    setSoloMios(e.target.checked);
+                    if (e.target.checked) setFilterUsuarioId('');
+                  }}
                   size="small"
                 />
               }
               label={<Typography variant="body2">Solo mis recordatorios</Typography>}
             />
 
-            {(filterPrioridad || filterTipo || soloMios || datePreset !== 'todos') && (
+            {(filterPrioridad || filterTipo || filterUsuarioId || soloMios || datePreset !== 'todos') && (
               <Button
                 size="small"
                 variant="text"
@@ -1095,6 +1137,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                   setDatePreset('todos');
                   setFilterPrioridad('');
                   setFilterTipo('');
+                  setFilterUsuarioId('');
                   setSoloMios(false);
                   setCustomFechaDesde('');
                   setCustomFechaHasta('');
@@ -1133,6 +1176,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Mensaje</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Lead</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Asesor</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Teléfono</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Prioridad</TableCell>
@@ -1240,6 +1284,13 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                           {rec.lead.email}
                         </Typography>
                       )}
+                    </TableCell>
+
+                    {/* Asesor */}
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {usuarioNombre(rec.usuarioId)}
+                      </Typography>
                     </TableCell>
 
                     {/* Teléfono */}

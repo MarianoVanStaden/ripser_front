@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   Box, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, TablePagination, IconButton, Typography,
+  TableHead, TableRow, TablePagination, TableSortLabel, IconButton, Typography,
   Tooltip, CircularProgress, Alert, TextField, InputAdornment,
   Chip, Stack, Button, FormControlLabel, Switch,
 } from '@mui/material';
@@ -55,15 +55,27 @@ export const CobranzasListPage: React.FC = () => {
     error,
     page,
     size: rowsPerPage,
+    sort,
     handleChangePage,
     handleChangeRowsPerPage,
     setFilters,
+    setSort,
     refresh,
   } = usePagination<GestionCobranzaDTO, CobranzaFilters>({
     fetchFn: fetchGestiones,
-    defaultSort: 'prioridad,asc',
+    defaultSort: 'fechaApertura,desc',
     initialSize: 25,
   });
+
+  const [sortField, sortDir] = sort.split(',') as [string, 'asc' | 'desc'];
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSort(`${field},${sortDir === 'asc' ? 'desc' : 'asc'}`);
+    } else {
+      setSort(`${field},asc`);
+    }
+  };
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -123,8 +135,10 @@ export const CobranzasListPage: React.FC = () => {
               placeholder="Buscar por cliente..."
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><Search fontSize="small" /></InputAdornment>,
+              slotProps={{
+                input: {
+                  startAdornment: <InputAdornment position="start"><Search fontSize="small" /></InputAdornment>,
+                },
               }}
               sx={{ minWidth: 220 }}
             />
@@ -216,16 +230,30 @@ export const CobranzasListPage: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.100' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Cliente</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Teléfono</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">Días Vencido</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">Monto Pendiente</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Prioridad</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Próxima Gestión</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">Recordatorios</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">Ver</TableCell>
+                {[
+                  { label: 'Cliente', field: null },
+                  { label: 'Teléfono', field: null },
+                  { label: 'Días Mora', field: 'diasMoraReal', align: 'center' as const },
+                  { label: 'Monto Pendiente', field: null, align: 'right' as const },
+                  { label: 'Estado', field: 'estado' },
+                  { label: 'Prioridad', field: 'prioridad' },
+                  { label: 'Próxima Gestión', field: 'fechaProximaGestion' },
+                  { label: 'Acciones', field: null, align: 'center' as const },
+                  { label: 'Recordatorios', field: null, align: 'center' as const },
+                  { label: 'Ver', field: null, align: 'center' as const },
+                ].map(({ label, field, align }) => (
+                  <TableCell key={label} sx={{ fontWeight: 700 }} align={align}>
+                    {field ? (
+                      <TableSortLabel
+                        active={sortField === field}
+                        direction={sortField === field ? sortDir : 'asc'}
+                        onClick={() => handleSort(field)}
+                      >
+                        {label}
+                      </TableSortLabel>
+                    ) : label}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -266,9 +294,9 @@ export const CobranzasListPage: React.FC = () => {
                         <Typography
                           variant="body2"
                           fontWeight={700}
-                          color={g.diasVencido > 60 ? 'error.main' : g.diasVencido > 30 ? 'warning.main' : 'text.primary'}
+                          color={g.diasMoraReal > 60 ? 'error.main' : g.diasMoraReal > 30 ? 'warning.main' : 'text.primary'}
                         >
-                          {g.diasVencido}
+                          {g.diasMoraReal}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">

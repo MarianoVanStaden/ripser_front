@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Card,
@@ -24,6 +24,7 @@ import {
   InputAdornment,
   Tooltip,
   Chip,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -35,48 +36,85 @@ import {
 } from '@mui/icons-material';
 import { chequeApi } from '../../api/services/chequeApi';
 import { usePermisos } from '../../hooks/usePermisos';
-import type { Cheque } from '../../types';
+import type { Cheque, ChequeResumenDTO } from '../../types';
 import ChequeFormDialog from './ChequeFormDialog';
 import ChequeDetailDialog from './ChequeDetailDialog';
 import ChequeEstadoChip from './ChequeEstadoChip';
 import ChequeTipoChip from './ChequeTipoChip';
 
 const ChequesPage: React.FC = () => {
-  // Permisos y contexto
   const { tienePermiso } = usePermisos();
 
-  // Estados
+  // Datos
   const [cheques, setCheques] = useState<Cheque[]>([]);
+  const [resumen, setResumen] = useState<ChequeResumenDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Estados de dialogs
+  // Dialogs
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedCheque, setSelectedCheque] = useState<Cheque | null>(null);
 
-  // Estados de filtros
+  // Paginación
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalElements, setTotalElements] = useState(0);
+
+  // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cargar datos
   useEffect(() => {
     if (tienePermiso('VENTAS')) {
-      loadData();
+      loadResumen();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (tienePermiso('VENTAS')) {
+      loadCheques();
+    }
+  }, [page, pageSize, tipoFilter, estadoFilter]);
+
+  // Debounce del search para no disparar una request por cada tecla
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setPage(0);
+      loadCheques();
+    }, 400);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [searchTerm]);
+
+  const loadResumen = async () => {
+    try {
+      const data = await chequeApi.getResumen();
+      setResumen(data);
+    } catch (err) {
+      console.error('Error loading resumen:', err);
+    }
+  };
+
+  const loadCheques = useCallback(async () => {
     try {
       setLoading(true);
-      const chequesData = await chequeApi.getAllWithoutPagination();
-      setCheques(Array.isArray(chequesData) ? chequesData : []);
+      const params: Record<string, string> = {};
+      if (tipoFilter !== 'all') params.tipo = tipoFilter;
+      if (estadoFilter !== 'all') params.estado = estadoFilter;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+
+      const response = await chequeApi.buscar(params, page, pageSize, 'fechaAlta,desc');
+      setCheques(response.content);
+      setTotalElements(response.totalElements);
       setError(null);
     } catch (err: any) {
-      console.error('Error loading data:', err);
+      console.error('Error loading cheques:', err);
       if (err.response?.status === 403 || err.response?.status === 401) {
         setError('No tiene permisos para acceder a esta información');
       } else {
@@ -85,44 +123,14 @@ const ChequesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, tipoFilter, estadoFilter, searchTerm]);
 
-  // Cheques filtrados
-  const filteredCheques = useMemo(() => {
-    return cheques.filter((cheque) => {
-      const matchesSearch =
-        cheque.numeroCheque.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cheque.bancoNombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cheque.titular?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cheque.clienteNombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cheque.proveedorNombre?.toLowerCase().includes(searchTerm.toLowerCase());
+  const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
+    (value: string) => {
+      setter(value);
+      setPage(0);
+    };
 
-      const matchesTipo = tipoFilter === 'all' || cheque.tipo === tipoFilter;
-
-      const matchesEstado = estadoFilter === 'all' || cheque.estado === estadoFilter;
-
-      return matchesSearch && matchesTipo && matchesEstado;
-    });
-  }, [cheques, searchTerm, tipoFilter, estadoFilter]);
-
-  // Estadísticas
-  const stats = useMemo(() => {
-    const total = cheques.length;
-    const propios = cheques.filter((c) => c.tipo === 'PROPIO').length;
-    const terceros = cheques.filter((c) => c.tipo === 'TERCEROS').length;
-    const enCartera = cheques.filter((c) => c.estado === 'EN_CARTERA').length;
-    const depositados = cheques.filter((c) => c.estado === 'DEPOSITADO').length;
-    const cobrados = cheques.filter((c) => c.estado === 'COBRADO').length;
-    const rechazados = cheques.filter((c) => c.estado === 'RECHAZADO').length;
-    const montoTotal = cheques.reduce((sum, c) => sum + c.monto, 0);
-    const montoEnCartera = cheques
-      .filter((c) => c.estado === 'EN_CARTERA')
-      .reduce((sum, c) => sum + c.monto, 0);
-
-    return { total, propios, terceros, enCartera, depositados, cobrados, rechazados, montoTotal, montoEnCartera };
-  }, [cheques]);
-
-  // Handlers
   const handleOpenForm = (cheque?: Cheque) => {
     setSelectedCheque(cheque || null);
     setFormDialogOpen(true);
@@ -134,7 +142,7 @@ const ChequesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    await loadData();
+    await Promise.all([loadCheques(), loadResumen()]);
     handleCloseForm();
     setSuccess('Cheque guardado correctamente');
     setTimeout(() => setSuccess(null), 3000);
@@ -150,7 +158,10 @@ const ChequesPage: React.FC = () => {
     setSelectedCheque(null);
   };
 
-  // Verificar permisos
+  const handleDetailUpdate = async () => {
+    await Promise.all([loadCheques(), loadResumen()]);
+  };
+
   if (!tienePermiso('VENTAS')) {
     return (
       <Box sx={{ p: 3 }}>
@@ -158,6 +169,11 @@ const ChequesPage: React.FC = () => {
       </Box>
     );
   }
+
+  const enCartera = resumen?.porEstado?.['EN_CARTERA'];
+  const depositados = resumen?.porEstado?.['DEPOSITADO'];
+  const cobrados = resumen?.porEstado?.['COBRADO'];
+  const rechazados = resumen?.porEstado?.['RECHAZADO'];
 
   return (
     <Box sx={{ p: 3 }}>
@@ -194,7 +210,7 @@ const ChequesPage: React.FC = () => {
               <Typography color="textSecondary" gutterBottom variant="body2">
                 Total Cheques
               </Typography>
-              <Typography variant="h4">{stats.total}</Typography>
+              <Typography variant="h4">{resumen?.total ?? '-'}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -205,7 +221,7 @@ const ChequesPage: React.FC = () => {
                 En Cartera
               </Typography>
               <Typography variant="h4" color="primary.main">
-                {stats.enCartera}
+                {enCartera?.cantidad ?? '-'}
               </Typography>
             </CardContent>
           </Card>
@@ -217,7 +233,7 @@ const ChequesPage: React.FC = () => {
                 Depositados
               </Typography>
               <Typography variant="h4" color="info.main">
-                {stats.depositados}
+                {depositados?.cantidad ?? '-'}
               </Typography>
             </CardContent>
           </Card>
@@ -229,7 +245,7 @@ const ChequesPage: React.FC = () => {
                 Cobrados
               </Typography>
               <Typography variant="h4" color="success.main">
-                {stats.cobrados}
+                {cobrados?.cantidad ?? '-'}
               </Typography>
             </CardContent>
           </Card>
@@ -241,7 +257,7 @@ const ChequesPage: React.FC = () => {
                 Rechazados
               </Typography>
               <Typography variant="h4" color="error.main">
-                {stats.rechazados}
+                {rechazados?.cantidad ?? '-'}
               </Typography>
             </CardContent>
           </Card>
@@ -253,7 +269,7 @@ const ChequesPage: React.FC = () => {
                 Monto en Cartera
               </Typography>
               <Typography variant="h5">
-                ${stats.montoEnCartera.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                ${(enCartera?.monto ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </Typography>
             </CardContent>
           </Card>
@@ -285,7 +301,7 @@ const ChequesPage: React.FC = () => {
                 <InputLabel>Tipo</InputLabel>
                 <Select
                   value={tipoFilter}
-                  onChange={(e) => setTipoFilter(e.target.value)}
+                  onChange={(e) => handleFilterChange(setTipoFilter)(e.target.value)}
                   label="Tipo"
                 >
                   <MenuItem value="all">Todos</MenuItem>
@@ -299,7 +315,7 @@ const ChequesPage: React.FC = () => {
                 <InputLabel>Estado</InputLabel>
                 <Select
                   value={estadoFilter}
-                  onChange={(e) => setEstadoFilter(e.target.value)}
+                  onChange={(e) => handleFilterChange(setEstadoFilter)(e.target.value)}
                   label="Estado"
                 >
                   <MenuItem value="all">Todos</MenuItem>
@@ -321,121 +337,132 @@ const ChequesPage: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Número</TableCell>
-                <TableCell>Banco</TableCell>
-                <TableCell>Titular</TableCell>
-                <TableCell>Fecha Emisión</TableCell>
-                <TableCell>Fecha Cobro</TableCell>
-                <TableCell align="right">Monto</TableCell>
-                <TableCell align="center">Estado</TableCell>
-                <TableCell align="center">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredCheques.length === 0 ? (
+        <Paper>
+          <TableContainer>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
-                    <Typography variant="body1" color="textSecondary" sx={{ py: 3 }}>
-                      No se encontraron cheques
-                    </Typography>
-                  </TableCell>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Número</TableCell>
+                  <TableCell>Banco</TableCell>
+                  <TableCell>Titular</TableCell>
+                  <TableCell>Fecha Emisión</TableCell>
+                  <TableCell>Fecha Cobro</TableCell>
+                  <TableCell align="right">Monto</TableCell>
+                  <TableCell align="center">Estado</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
                 </TableRow>
-              ) : (
-                filteredCheques.map((cheque) => (
-                  <TableRow key={cheque.id} hover>
-                    <TableCell>
-                      <ChequeTipoChip tipo={cheque.tipo} />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {cheque.numeroCheque}
-                        </Typography>
-                        {cheque.vencido && (
-                          <Tooltip title="Cheque vencido">
-                            <WarningIcon color="error" fontSize="small" />
-                          </Tooltip>
-                        )}
-                        {cheque.esEcheq && (
-                          <Chip
-                            label="E-Cheq"
-                            size="small"
-                            variant="outlined"
-                            color="info"
-                          />
-                        )}
-                        {cheque.endosado && (
-                          <Tooltip title="Ver cadena de endosos">
-                            <Chip
-                              label="Endosado"
-                              size="small"
-                              variant="outlined"
-                              color="secondary"
-                              onClick={() => handleOpenDetail(cheque)}
-                              sx={{ cursor: 'pointer' }}
-                            />
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell>{cheque.bancoNombre || '-'}</TableCell>
-                    <TableCell>
-                      {cheque.titular}
-                      {cheque.clienteNombre && (
-                        <Typography variant="caption" display="block" color="textSecondary">
-                          Cliente: {cheque.clienteNombre}
-                        </Typography>
-                      )}
-                      {cheque.proveedorNombre && (
-                        <Typography variant="caption" display="block" color="textSecondary">
-                          Proveedor: {cheque.proveedorNombre}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(cheque.fechaEmision).toLocaleDateString('es-AR')}
-                    </TableCell>
-                    <TableCell>
-                      <Box>
-                        {new Date(cheque.fechaCobro).toLocaleDateString('es-AR')}
-                        {cheque.diasParaCobro !== undefined && cheque.diasParaCobro > 0 && (
-                          <Typography variant="caption" display="block" color="textSecondary">
-                            En {cheque.diasParaCobro} días
-                          </Typography>
-                        )}
-                      </Box>
-                    </TableCell>
-                    <TableCell align="right">
-                      ${cheque.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell align="center">
-                      <ChequeEstadoChip estado={cheque.estado} />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="Ver detalle">
-                        <IconButton size="small" onClick={() => handleOpenDetail(cheque)}>
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      {cheque.estado !== 'COBRADO' && cheque.estado !== 'ANULADO' && (
-                        <Tooltip title="Editar">
-                          <IconButton size="small" onClick={() => handleOpenForm(cheque)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+              </TableHead>
+              <TableBody>
+                {cheques.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center">
+                      <Typography variant="body1" color="textSecondary" sx={{ py: 3 }}>
+                        No se encontraron cheques
+                      </Typography>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  cheques.map((cheque) => (
+                    <TableRow key={cheque.id} hover>
+                      <TableCell>
+                        <ChequeTipoChip tipo={cheque.tipo} />
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                            {cheque.numeroCheque}
+                          </Typography>
+                          {cheque.vencido && (
+                            <Tooltip title="Cheque vencido">
+                              <WarningIcon color="error" fontSize="small" />
+                            </Tooltip>
+                          )}
+                          {cheque.esEcheq && (
+                            <Chip label="E-Cheq" size="small" variant="outlined" color="info" />
+                          )}
+                          {cheque.endosado && (
+                            <Tooltip title="Ver cadena de endosos">
+                              <Chip
+                                label="Endosado"
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                onClick={() => handleOpenDetail(cheque)}
+                                sx={{ cursor: 'pointer' }}
+                              />
+                            </Tooltip>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell>{cheque.bancoNombre || '-'}</TableCell>
+                      <TableCell>
+                        {cheque.titular}
+                        {cheque.clienteNombre && (
+                          <Typography variant="caption" display="block" color="textSecondary">
+                            Cliente: {cheque.clienteNombre}
+                          </Typography>
+                        )}
+                        {cheque.proveedorNombre && (
+                          <Typography variant="caption" display="block" color="textSecondary">
+                            Proveedor: {cheque.proveedorNombre}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(cheque.fechaEmision).toLocaleDateString('es-AR')}
+                      </TableCell>
+                      <TableCell>
+                        <Box>
+                          {new Date(cheque.fechaCobro).toLocaleDateString('es-AR')}
+                          {cheque.diasParaCobro !== undefined && cheque.diasParaCobro > 0 && (
+                            <Typography variant="caption" display="block" color="textSecondary">
+                              En {cheque.diasParaCobro} días
+                            </Typography>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell align="right">
+                        ${cheque.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell align="center">
+                        <ChequeEstadoChip estado={cheque.estado} />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Ver detalle">
+                          <IconButton size="small" onClick={() => handleOpenDetail(cheque)}>
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {cheque.estado !== 'COBRADO' && cheque.estado !== 'ANULADO' && (
+                          <Tooltip title="Editar">
+                            <IconButton size="small" onClick={() => handleOpenForm(cheque)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            component="div"
+            count={totalElements}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={(e) => {
+              setPageSize(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50]}
+            labelRowsPerPage="Filas por página"
+            labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+          />
+        </Paper>
       )}
 
       {/* Dialogs */}
@@ -450,7 +477,7 @@ const ChequesPage: React.FC = () => {
         open={detailDialogOpen}
         cheque={selectedCheque}
         onClose={handleCloseDetail}
-        onUpdate={loadData}
+        onUpdate={handleDetailUpdate}
       />
     </Box>
   );

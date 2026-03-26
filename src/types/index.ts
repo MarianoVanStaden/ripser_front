@@ -3253,6 +3253,7 @@ export interface Cheque {
 
   // Auditoría
   creadoPorId?: number;
+  creadoPorNombre?: string;
   modificadoPorId?: number;
   fechaAlta?: string;
   fechaActualizacion?: string;
@@ -3331,16 +3332,26 @@ export interface HistorialEstadoChequeDTO {
   fechaCambio: string;
 }
 
-// Parámetros de filtro para búsqueda de cheques
+// Parámetros de filtro para el endpoint principal GET /api/cheques/buscar
 export interface ChequeFilterParams {
-  numeroCheque?: string;
-  banco?: string;
+  search?: string;       // Texto libre: numeroCheque, titular, banco, cliente, proveedor
   tipo?: TipoChequeType;
   estado?: EstadoChequeType;
-  clienteId?: number;
-  proveedorId?: number;
-  fechaDesde?: string;
-  fechaHasta?: string;
+}
+
+// Resumen estadístico de cheques
+export interface ChequeEstadoResumenItem {
+  cantidad: number;
+  monto: number;
+}
+
+export interface ChequeResumenDTO {
+  total: number;
+  propios: number;
+  terceros: number;
+  porEstado: Record<string, ChequeEstadoResumenItem>;
+  montoTotal: number;
+  montoEnCartera: number;
 }
 
 // ==================== ENDORSEMENT TYPES ====================

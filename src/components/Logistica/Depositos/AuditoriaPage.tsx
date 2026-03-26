@@ -196,7 +196,10 @@ const AuditoriaPage: React.FC = () => {
       setMovimientosStock(movStockData);
       setMovimientosEquipo(movEquipoData);
       setDepositos(depositosData);
-      setProductos(productosData || []);
+      const productosArray = Array.isArray(productosData)
+        ? productosData
+        : (productosData as any)?.content || [];
+      setProductos(productosArray);
       setError(null);
     } catch (err: any) {
       console.error('Error loading data:', err);

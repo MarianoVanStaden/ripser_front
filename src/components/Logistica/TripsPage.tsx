@@ -243,7 +243,7 @@ const TripsPage2: React.FC = () => {
       const errors: string[] = [];
 
       try {
-        const tripsResponse = await viajeApi.getAll();
+        const tripsResponse = await viajeApi.getAll({ page: 0, size: 1000, sort: 'id,desc' });
         tripsData = tripsResponse.content || [];
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
@@ -319,6 +319,21 @@ const TripsPage2: React.FC = () => {
   const filteredTrips = trips
     .filter(trip => statusFilter === 'all' || trip.estado === statusFilter)
     .sort((a, b) => b.id - a.id);
+
+  // Facturas ya asignadas a alguna entrega (excluir las del viaje en edición)
+  const facturasAsignadasIds = new Set(
+    deliveries
+      .filter(d => !editingTrip || d.viajeId !== editingTrip.id)
+      .map(d => (d as any).documentoComercialId ?? (d as any).documentoComercial?.id ?? (d as any).ventaId)
+      .filter((id): id is number => id != null)
+  );
+  // También excluir las ya agregadas en el form actual
+  const facturasEnFormIds = new Set(
+    tripDeliveries.map(d => d.facturaId).filter((id): id is number => id != null)
+  );
+  const facturasDisponibles = facturas.filter(
+    f => !facturasAsignadasIds.has(f.id) && !facturasEnFormIds.has(f.id)
+  );
 
   const paginatedTrips = filteredTrips.slice(
     page * rowsPerPage,
@@ -427,41 +442,41 @@ const TripsPage2: React.FC = () => {
         savedTrip = await viajeApi.create(viajeData);
       }
 
-      if (tripDeliveries.length > 0) {
-        for (let i = 0; i < tripDeliveries.length; i++) {
-          const delivery = tripDeliveries[i];
-          if (!delivery.id) {
-            if (!delivery.facturaId) {
-              continue;
-            }
+      const entregaErrors: string[] = [];
+      for (const delivery of tripDeliveries) {
+        if (delivery.id || !delivery.facturaId) continue;
 
-            try {
-              const deliveryPayload: any = {
-                viajeId: savedTrip.id,
-                documentoComercialId: delivery.facturaId,
-                direccionEntrega: delivery.direccionEntrega || '',
-                fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
-                observaciones: delivery.observaciones || '',
-                estado: 'PENDIENTE' as EstadoEntrega,
-              };
-
-              await entregaViajeApi.create(deliveryPayload);
-              await new Promise(resolve => setTimeout(resolve, 500));
-            } catch (deliveryError: any) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-          }
+        try {
+          const deliveryPayload: any = {
+            viajeId: savedTrip.id,
+            documentoComercialId: delivery.facturaId,
+            direccionEntrega: delivery.direccionEntrega || '',
+            fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
+            observaciones: delivery.observaciones || '',
+            estado: 'PENDIENTE' as EstadoEntrega,
+          };
+          await entregaViajeApi.create(deliveryPayload);
+        } catch (deliveryError: any) {
+          const msg = deliveryError?.response?.data?.message || deliveryError?.message || 'Error desconocido';
+          const facturaLabel = delivery.factura?.numeroDocumento ?? `ID ${delivery.facturaId}`;
+          entregaErrors.push(`Factura ${facturaLabel}: ${msg}`);
         }
       }
 
       await loadData();
       setDialogOpen(false);
       setTripDeliveries([]);
+
+      if (entregaErrors.length > 0) {
+        setError(`Viaje guardado, pero hubo errores en algunas entregas:\n${entregaErrors.join('\n')}`);
+      }
     } catch (err) {
       const error = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
       let errorMessage = error.response?.data?.message || error.message || 'Error al guardar el viaje';
 
-      if (errorMessage.includes('no está disponible')) {
+      if (error.response?.status === 409 || errorMessage.toLowerCase().includes('ya está asignada') || errorMessage.toLowerCase().includes('already')) {
+        errorMessage = `Una o más facturas ya están asignadas a otro viaje. ${errorMessage}`;
+      } else if (errorMessage.includes('no está disponible')) {
         errorMessage = 'El vehículo seleccionado no está disponible. Por favor, selecciona otro vehículo.';
       } else if (error.response?.status === 403) {
         errorMessage = 'No tienes permisos para crear viajes. Contacta al administrador.';
@@ -621,8 +636,14 @@ const TripsPage2: React.FC = () => {
             <Autocomplete
               options={drivers}
               getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
               value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
               onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
+              renderOption={({ key, ...props }, option) => (
+                <li key={option.id} {...props}>
+                  {`${option.nombre} ${option.apellido}`}
+                </li>
+              )}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -733,7 +754,7 @@ const TripsPage2: React.FC = () => {
             <Typography variant="subtitle2">Agregar nueva entrega</Typography>
 
             <Autocomplete
-              options={facturas}
+              options={facturasDisponibles}
               getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
               value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
               onChange={(_, value) => {
@@ -1462,8 +1483,14 @@ const TripsPage2: React.FC = () => {
               <Autocomplete
                 options={drivers}
                 getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
                 value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
                 onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
+                renderOption={({ key, ...props }, option) => (
+                  <li key={option.id} {...props}>
+                    {`${option.nombre} ${option.apellido}`}
+                  </li>
+                )}
                 renderInput={(params) => (
                   <TextField {...params} label="Conductor" required />
                 )}
@@ -1535,7 +1562,7 @@ const TripsPage2: React.FC = () => {
               ))}
 
               <Autocomplete
-                options={facturas}
+                options={facturasDisponibles}
                 getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
                 value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
                 onChange={(_, value) => {

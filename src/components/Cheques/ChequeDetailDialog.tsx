@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { SwapHoriz as SwapHorizIcon } from '@mui/icons-material';
 import { chequeApi } from '../../api/services/chequeApi';
-import type { Cheque, CadenaEndososDTO } from '../../types';
+import type { Cheque, CadenaEndososDTO, HistorialEstadoChequeDTO } from '../../types';
 import ChequeEstadoChip from './ChequeEstadoChip';
 import ChequeTipoChip from './ChequeTipoChip';
 import ChequeEndososChain from './ChequeEndososChain';
@@ -39,11 +39,16 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
   const [endososChain, setEndososChain] = useState<CadenaEndososDTO | null>(null);
   const [loadingEndosos, setLoadingEndosos] = useState(false);
   const [showEndosarDialog, setShowEndosarDialog] = useState(false);
+  const [historial, setHistorial] = useState<HistorialEstadoChequeDTO[]>([]);
 
-  // Load endorsement chain when dialog opens
   useEffect(() => {
-    if (open && cheque && cheque.tipo === 'TERCEROS') {
-      loadEndosos();
+    if (open && cheque) {
+      if (cheque.tipo === 'TERCEROS') loadEndosos();
+      loadHistorial();
+    }
+    if (!open) {
+      setHistorial([]);
+      setEndososChain(null);
     }
   }, [open, cheque]);
 
@@ -52,15 +57,21 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
     try {
       setLoadingEndosos(true);
       const chain = await chequeApi.getCadenaEndosos(cheque.id);
-      console.log('Cadena de endosos recibida:', chain);
-      console.log('Total endosos:', chain.totalEndosos);
-      console.log('Array endosos:', chain.endosos);
       setEndososChain(chain);
     } catch (err) {
       console.error('Error loading endorsement chain:', err);
-      // Don't show critical error, just don't load the chain
     } finally {
       setLoadingEndosos(false);
+    }
+  };
+
+  const loadHistorial = async () => {
+    if (!cheque) return;
+    try {
+      const data = await chequeApi.getHistorialEstados(cheque.id);
+      setHistorial(data);
+    } catch (err) {
+      console.error('Error loading historial:', err);
     }
   };
 
@@ -188,12 +199,12 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
             <Typography variant="body2" color="textSecondary">
               Banco
             </Typography>
-            <Typography variant="body1">
-              {cheque.bancoNombre || '-'}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body1">{cheque.bancoNombre || '-'}</Typography>
               {cheque.esEcheq && (
-                <Chip label="E-Cheq" size="small" variant="outlined" color="info" sx={{ ml: 1 }} />
+                <Chip label="E-Cheq" size="small" variant="outlined" color="info" />
               )}
-            </Typography>
+            </Box>
           </Grid>
 
           <Grid item xs={6}>
@@ -333,6 +344,57 @@ const ChequeDetailDialog: React.FC<Props> = ({ open, cheque, onClose, onUpdate }
                 Observaciones
               </Typography>
               <Typography variant="body1">{cheque.observaciones}</Typography>
+            </Grid>
+          )}
+
+          {historial.length > 0 && (
+            <Grid item xs={12}>
+              <Divider />
+            </Grid>
+          )}
+
+          {historial.length > 0 && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>
+                Historial
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {historial.map((entry, index) => (
+                  <Box
+                    key={entry.id ?? index}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 1,
+                      py: 0.5,
+                      borderLeft: '2px solid',
+                      borderColor: 'divider',
+                      pl: 1.5,
+                    }}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2">
+                        {entry.estadoAnterior == null
+                          ? `Cheque cargado → ${entry.estadoNuevo}`
+                          : `${entry.estadoAnterior} → ${entry.estadoNuevo}`}
+                        {entry.usuarioNombre && (
+                          <Typography component="span" variant="body2" color="textSecondary">
+                            {' '}por {entry.usuarioNombre}
+                          </Typography>
+                        )}
+                      </Typography>
+                      {entry.motivo && (
+                        <Typography variant="caption" color="textSecondary">
+                          Motivo: {entry.motivo}
+                        </Typography>
+                      )}
+                      <Typography variant="caption" color="textSecondary" display="block">
+                        {new Date(entry.fechaCambio).toLocaleString('es-AR')}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
             </Grid>
           )}
 

@@ -32,6 +32,12 @@ export const usuarioApi = {
     return response.data;
   },
 
+  // Get vendedores de la empresa actual (accesible para todos los roles autenticados)
+  getVendedores: async (): Promise<Usuario[]> => {
+    const response = await api.get('/api/admin/usuarios/vendedores');
+    return response.data;
+  },
+
   // Create new usuario
   create: async (usuario: Usuario): Promise<Usuario> => {
     const response = await api.post('/api/admin/usuarios', usuario);

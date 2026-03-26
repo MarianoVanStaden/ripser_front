@@ -143,7 +143,7 @@ const StockPage: React.FC = () => {
       // Request all products with a large page size to avoid pagination issues
       const [productsData, movementsData, categoriasData] = await Promise.all([
         productApi.getAll({ page: 0, size: 10000 }),
-        movimientoStockApi.getAll(),
+        movimientoStockApi.getAll({ page: 0, size: 10000 }),
         categoriaProductoApi.getAll(),
       ]);
 

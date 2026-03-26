@@ -53,7 +53,7 @@ export const LeadFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const { sucursalFiltro } = useTenant();
+  const { sucursalFiltro, sucursales, canSelectSucursal } = useTenant();
   const isEditMode = Boolean(id);
   const clienteOrigenIdParam = searchParams.get('clienteId');
   const modoRecompra = searchParams.get('modo') === 'recompra';
@@ -75,6 +75,7 @@ export const LeadFormPage = () => {
     canal: CanalEnum.WHATSAPP,
     estadoLead: EstadoLeadEnum.PRIMER_CONTACTO,
     fechaPrimerContacto: new Date().toISOString().split('T')[0],
+    sucursalId: sucursalFiltro ?? undefined,
     productoInteresId: undefined,
     cantidadProductoInteres: undefined,
     recetaInteresId: undefined,
@@ -287,7 +288,12 @@ export const LeadFormPage = () => {
       navigate('/leads/table');
     } catch (err) {
       console.error('Error al guardar lead:', err);
-      setError('Error al guardar el lead. Por favor, intente nuevamente.');
+      const msg = (err as any)?.response?.data?.message || (err as any)?.response?.data;
+      if (typeof msg === 'string' && msg.includes('sucursal')) {
+        setError(msg);
+      } else {
+        setError('Error al guardar el lead. Por favor, intente nuevamente.');
+      }
     } finally {
       setSaving(false);
     }
@@ -485,6 +491,23 @@ export const LeadFormPage = () => {
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
+
+              {sucursales.length > 0 && (
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Sucursal</InputLabel>
+                    <Select
+                      value={formData.sucursalId ?? sucursalFiltro ?? ''}
+                      onChange={handleChange('sucursalId')}
+                      label="Sucursal"
+                    >
+                      {sucursales.map((s) => (
+                        <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
 
               {/* Producto de Interés */}
               <Grid item xs={12}>
