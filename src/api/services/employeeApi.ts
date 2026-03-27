@@ -74,5 +74,17 @@ export const employeeApi = {
       params: { estado }
     });
     return response.data;
+  },
+
+  // Link a user account to an employee
+  vincularUsuario: async (empleadoId: number, usuarioId: number): Promise<void> => {
+    await api.patch(`/api/empleados/${empleadoId}/vincular-usuario`, null, {
+      params: { usuarioId }
+    });
+  },
+
+  // Unlink the user account from an employee
+  desvincularUsuario: async (empleadoId: number): Promise<void> => {
+    await api.delete(`/api/empleados/${empleadoId}/vincular-usuario`);
   }
 };

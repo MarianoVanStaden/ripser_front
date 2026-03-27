@@ -207,7 +207,9 @@ const NotasPedidoPage: React.FC = () => {
       
       // Backend requires PRESUPUESTO in PENDIENTE state for conversion
       const pendientes = Array.isArray(presupuestosData)
-        ? presupuestosData.filter(p => p.estado === EstadoDocumentoEnum.PENDIENTE)
+        ? presupuestosData
+            .filter(p => p.estado === EstadoDocumentoEnum.PENDIENTE)
+            .sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime())
         : [];
       setPresupuestos(pendientes);
 
@@ -323,21 +325,57 @@ const NotasPedidoPage: React.FC = () => {
     setConvertForm(initialConvertForm);
     setSelectedPresupuesto(null);
     setError(null);
+    deudaYaConfirmadaRef.current = false;
   }, []);
 
-  const handlePresupuestoSelect = useCallback((presupuestoId: string) => {
+  const handlePresupuestoSelect = useCallback(async (presupuestoId: string) => {
     const presupuesto = presupuestos.find(p => p.id.toString() === presupuestoId);
     setSelectedPresupuesto(presupuesto || null);
-    
+    deudaYaConfirmadaRef.current = false;
+
     // If presupuesto has tipoIva defined, set it in the form
     if (presupuesto && presupuesto.tipoIva) {
-      setConvertForm(prev => ({ 
-        ...prev, 
+      setConvertForm(prev => ({
+        ...prev,
         presupuestoId,
         tipoIva: presupuesto.tipoIva as TipoIva
       }));
     } else {
       setConvertForm(prev => ({ ...prev, presupuestoId }));
+    }
+
+    // Debt check on selection so the warning appears before the user fills the form
+    const clienteId = presupuesto?.clienteId;
+    if (!clienteId) return;
+    try {
+      const [prestamos, ccPage] = await Promise.all([
+        prestamoPersonalApi.getByCliente(clienteId),
+        cuentaCorrienteApi.getByClienteId(clienteId),
+      ]);
+      const activoStates = ['ACTIVO', 'EN_MORA', 'EN_LEGAL'];
+      const prestamosActivos = prestamos.filter(p => activoStates.includes(p.estado));
+      const cuotasPendientes = prestamosActivos.reduce((sum, p) => sum + (p.cuotasPendientes || 0), 0);
+      const montoCuotasPendientes = prestamosActivos.reduce((sum, p) => sum + (p.saldoPendiente || 0), 0);
+      const movements = ccPage.content;
+      const lastMovement = [...movements].sort(
+        (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      )[0];
+      const saldo = lastMovement?.saldo ?? 0;
+      const deudaCC = saldo < 0 ? saldo : null;
+      if (cuotasPendientes > 0 || deudaCC !== null) {
+        setDeudaError({
+          error: 'Cliente con deuda pendiente',
+          message: '',
+          cuotasPendientes,
+          montoCuotasPendientes: cuotasPendientes > 0 ? montoCuotasPendientes : null,
+          deudaCuentaCorriente: deudaCC,
+          requiereConfirmacion: true,
+        });
+        // On confirm just mark as acknowledged; the actual conversion happens on submit
+        pendingDeudaRef.current = () => { deudaYaConfirmadaRef.current = true; };
+      }
+    } catch {
+      // Non-fatal: debt will be caught by backend if needed
     }
   }, [presupuestos]);
 
@@ -395,8 +433,9 @@ const NotasPedidoPage: React.FC = () => {
     }
 
     // Preemptive debt check: run before any API side-effects so the warning appears before
-    // equipo resolution starts. Skipped when the user has already confirmed via the modal.
-    if (!confirmarConDeudaPendiente) {
+    // equipo resolution starts. Skipped when the user has already confirmed via the modal
+    // (either at selection time or via a previous submit attempt).
+    if (!confirmarConDeudaPendiente && !deudaYaConfirmadaRef.current) {
       const clienteId = selectedPresupuesto?.clienteId;
       if (clienteId) {
         try {
@@ -406,9 +445,9 @@ const NotasPedidoPage: React.FC = () => {
           ]);
 
           const activoStates = ['ACTIVO', 'EN_MORA', 'EN_LEGAL'];
-          const cuotasPendientes = prestamos
-            .filter(p => activoStates.includes(p.estado))
-            .reduce((sum, p) => sum + (p.cuotasPendientes || 0), 0);
+          const prestamosActivos = prestamos.filter(p => activoStates.includes(p.estado));
+          const cuotasPendientes = prestamosActivos.reduce((sum, p) => sum + (p.cuotasPendientes || 0), 0);
+          const montoCuotasPendientes = prestamosActivos.reduce((sum, p) => sum + (p.saldoPendiente || 0), 0);
 
           const movements = ccPage.content;
           const lastMovement = [...movements].sort(
@@ -422,6 +461,7 @@ const NotasPedidoPage: React.FC = () => {
               error: 'Cliente con deuda pendiente',
               message: '',
               cuotasPendientes,
+              montoCuotasPendientes: cuotasPendientes > 0 ? montoCuotasPendientes : null,
               deudaCuentaCorriente: deudaCC,
               requiereConfirmacion: true,
             });
@@ -624,13 +664,61 @@ const NotasPedidoPage: React.FC = () => {
     setSelectedNota(null);
   }, []);
 
-  const handleConvertToFactura = useCallback(async (notaId: number) => {
+  const handleConvertToFactura = useCallback(async (notaId: number, confirmarConDeudaPendiente = false) => {
     // Find the nota
     const nota = notasPedido.find(n => n.id === notaId);
     if (!nota) {
       setError("Nota de pedido no encontrada");
       return;
     }
+
+    // Preemptive debt check (same pattern as convert-to-nota flow)
+    if (!confirmarConDeudaPendiente && !deudaYaConfirmadaRef.current) {
+      const clienteId = nota.clienteId;
+      if (clienteId) {
+        try {
+          const [prestamos, ccPage] = await Promise.all([
+            prestamoPersonalApi.getByCliente(clienteId),
+            cuentaCorrienteApi.getByClienteId(clienteId),
+          ]);
+          const activoStates = ['ACTIVO', 'EN_MORA', 'EN_LEGAL'];
+          const prestamosActivos = prestamos.filter(p => activoStates.includes(p.estado));
+          const cuotasPendientes = prestamosActivos.reduce((sum, p) => sum + (p.cuotasPendientes || 0), 0);
+          const montoCuotasPendientes = prestamosActivos.reduce((sum, p) => sum + (p.saldoPendiente || 0), 0);
+          const movements = ccPage.content;
+          const lastMovement = [...movements].sort(
+            (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+          )[0];
+          const saldo = lastMovement?.saldo ?? 0;
+          const deudaCC = saldo < 0 ? saldo : null;
+          if (cuotasPendientes > 0 || deudaCC !== null) {
+            setDeudaError({
+              error: 'Cliente con deuda pendiente',
+              message: '',
+              cuotasPendientes,
+              montoCuotasPendientes: cuotasPendientes > 0 ? montoCuotasPendientes : null,
+              deudaCuentaCorriente: deudaCC,
+              requiereConfirmacion: true,
+            });
+            const tieneEquipos = (nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []).length > 0;
+            if (tieneEquipos) {
+              // Skip probe; go directly to equipment selection with debt already confirmed
+              pendingDeudaRef.current = () => {
+                deudaYaConfirmadaRef.current = true;
+                setNotaForAsignacion(nota);
+                setAsignarEquiposDialogOpen(true);
+              };
+            } else {
+              pendingDeudaRef.current = () => handleConvertToFactura(notaId, true);
+            }
+            return;
+          }
+        } catch {
+          // Non-fatal: proceed; backend will catch debt on its end
+        }
+      }
+    }
+    deudaYaConfirmadaRef.current = false;
 
     // Check if there are EQUIPO items in the detalles
     const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
@@ -662,13 +750,16 @@ const NotasPedidoPage: React.FC = () => {
       }
     } else {
       // No equipos, proceed directly with conversion
-      if (!window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
+      if (!confirmarConDeudaPendiente && !window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
         return;
       }
 
       try {
         setError(null);
-        const factura = await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        const factura = await documentoApi.convertToFactura({
+          notaPedidoId: notaId,
+          ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
+        });
         // Remove nota from local state
         setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
         // Show success dialog

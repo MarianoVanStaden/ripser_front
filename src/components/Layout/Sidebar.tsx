@@ -103,7 +103,6 @@ const navigation: NavigationSection[] = [
       { text: 'Carpeta Cliente', icon: <PeopleIcon />, path: '/clientes/carpeta' },
       { text: 'Agenda Visitas', icon: <PeopleIcon />, path: '/clientes/agenda' },
       { text: 'Cuenta Corriente', icon: <PeopleIcon />, path: '/clientes/cuenta-corriente' },
-      { text: 'Crédito Personal', icon: <PeopleIcon />, path: '/clientes/credito' },
        { text: 'Métricas de Leads', icon: <AssignmentIcon />, path: '/leads/metricas' },
     ],
   },

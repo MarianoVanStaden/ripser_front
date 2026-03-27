@@ -30,6 +30,7 @@ import {
   Divider,
   useMediaQuery,
   useTheme,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,8 +42,13 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Visibility as VisibilityIcon,
+  Link as LinkIcon,
+  LinkOff as LinkOffIcon,
+  Badge as BadgeIcon,
 } from '@mui/icons-material';
 import usuarioAdminApi, { type TipoRol } from '../../api/services/usuarioAdminApi';
+import { employeeApi } from '../../api/services/employeeApi';
+import type { Empleado } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import { empresaService } from '../../services/empresaService';
@@ -86,6 +92,13 @@ const UsersPage: React.FC = () => {
   const [viewingUser, setViewingUser] = useState<UsuarioWithEmpresa | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Vincular empleado
+  const [vincularEmpleadoDialogOpen, setVincularEmpleadoDialogOpen] = useState(false);
+  const [vincularEmpleadoTarget, setVincularEmpleadoTarget] = useState<UsuarioWithEmpresa | null>(null);
+  const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [selectedEmpleadoToLink, setSelectedEmpleadoToLink] = useState<Empleado | null>(null);
+  const [empleadosLoading, setEmpleadosLoading] = useState(false);
 
   // Empresa and Sucursal data
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -482,6 +495,55 @@ const UsersPage: React.FC = () => {
   const handleView = (user: UsuarioWithEmpresa) => {
     setViewingUser(user);
     setViewDialogOpen(true);
+  };
+
+  const handleOpenVincularEmpleado = async (user: UsuarioWithEmpresa) => {
+    setVincularEmpleadoTarget(user);
+    setSelectedEmpleadoToLink(null);
+    setEmpleadosLoading(true);
+    setVincularEmpleadoDialogOpen(true);
+    try {
+      const lista = await employeeApi.getAllList();
+      // Only show employees without a linked user (or already linked to this one)
+      setEmpleados(lista.filter(e => e.usuarioId === null || e.usuarioId === user.empleadoId));
+    } catch {
+      setEmpleados([]);
+    } finally {
+      setEmpleadosLoading(false);
+    }
+  };
+
+  const handleConfirmVincularEmpleado = async () => {
+    if (!vincularEmpleadoTarget || !selectedEmpleadoToLink) return;
+    try {
+      await usuarioAdminApi.vincularEmpleado(vincularEmpleadoTarget.id, selectedEmpleadoToLink.id);
+      setSuccess('Empleado vinculado correctamente');
+      setVincularEmpleadoDialogOpen(false);
+      // Refresh viewing user
+      const updated = await usuarioAdminApi.getById(vincularEmpleadoTarget.id);
+      if (viewingUser?.id === vincularEmpleadoTarget.id) {
+        setViewingUser({ ...viewingUser, empleadoId: updated.empleadoId } as UsuarioWithEmpresa);
+      }
+      loadData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al vincular empleado');
+    }
+  };
+
+  const handleDesvincularEmpleado = async (user: UsuarioWithEmpresa) => {
+    if (!window.confirm('¿Desvincular el empleado de este usuario?')) return;
+    try {
+      await usuarioAdminApi.desvincularEmpleado(user.id);
+      setSuccess('Empleado desvinculado correctamente');
+      if (viewingUser?.id === user.id) {
+        setViewingUser({ ...viewingUser, empleadoId: null } as UsuarioWithEmpresa);
+      }
+      loadData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al desvincular empleado');
+    }
   };
 
   // Get role label and color
@@ -1345,6 +1407,46 @@ const UsersPage: React.FC = () => {
                 )}
               </Box>
 
+              {/* Empleado vinculado */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: '#1976d2' }}>
+                  <BadgeIcon />
+                  Empleado Vinculado
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                {viewingUser.empleadoId !== null ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <Alert severity="success" icon={<BadgeIcon />} sx={{ flex: 1 }}>
+                      Empleado vinculado: <strong>#{viewingUser.empleadoId}</strong>
+                    </Alert>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      startIcon={<LinkOffIcon />}
+                      onClick={() => handleDesvincularEmpleado(viewingUser)}
+                    >
+                      Desvincular
+                    </Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <Alert severity="info" sx={{ flex: 1 }}>
+                      Este usuario no tiene un empleado vinculado
+                    </Alert>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      startIcon={<LinkIcon />}
+                      onClick={() => handleOpenVincularEmpleado(viewingUser)}
+                    >
+                      Vincular empleado
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+
               {/* Additional Info */}
               {(viewingUser.updatedAt) && (
                 <Box sx={{ mb: 2 }}>
@@ -1362,6 +1464,49 @@ const UsersPage: React.FC = () => {
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => setViewDialogOpen(false)} variant="contained" color="primary">
             Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Vincular Empleado Dialog */}
+      <Dialog
+        open={vincularEmpleadoDialogOpen}
+        onClose={() => setVincularEmpleadoDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Vincular empleado al usuario</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          {empleadosLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box display="flex" flexDirection="column" gap={2} mt={1}>
+              <Typography variant="body2" color="text.secondary">
+                Seleccione el empleado a vincular con el usuario <strong>{vincularEmpleadoTarget?.username}</strong>
+              </Typography>
+              <Autocomplete
+                options={empleados}
+                getOptionLabel={(e) => `${e.nombre} ${e.apellido} (DNI: ${e.dni})`}
+                value={selectedEmpleadoToLink}
+                onChange={(_, val) => setSelectedEmpleadoToLink(val)}
+                renderInput={(params) => (
+                  <TextField {...params} label="Empleado" placeholder="Buscar empleado..." />
+                )}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVincularEmpleadoDialogOpen(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmVincularEmpleado}
+            variant="contained"
+            disabled={!selectedEmpleadoToLink}
+          >
+            Vincular
           </Button>
         </DialogActions>
       </Dialog>

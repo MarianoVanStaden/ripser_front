@@ -31,7 +31,10 @@ import {
   useMediaQuery,
   useTheme,
   Tabs,
-  Tab
+  Tab,
+  FormControlLabel,
+  Checkbox,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -46,13 +49,19 @@ import {
   Phone as PhoneIcon,
   Home as HomeIcon,
   Work as WorkIcon,
-  AttachMoney as AttachMoneyIcon
+  AttachMoney as AttachMoneyIcon,
+  AccountCircle as AccountCircleIcon,
+  LinkOff as LinkOffIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
 import { employeeApi } from '../../api/services/employeeApi';
 import { puestoApi } from '../../api/services/puestoApi';
 import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
+import usuarioAdminApi, { type UsuarioDTO } from '../../api/services/usuarioAdminApi';
+import { sucursalService } from '../../services/sucursalService';
+import { useTenant } from '../../context/TenantContext';
 import DocumentManager from '../shared/DocumentManager';
-import type { Empleado, Puesto, EmpleadoCreateDTO } from '../../types';
+import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal } from '../../types';
 
 // Categorías de documentos para empleados
 const CATEGORIAS_EMPLEADO = [
@@ -73,8 +82,11 @@ const CATEGORIAS_EMPLEADO = [
 const EmpleadosPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { empresaId } = useTenant();
+
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -86,13 +98,21 @@ const EmpleadosPage: React.FC = () => {
   const [editingEmpleado, setEditingEmpleado] = useState<Empleado | null>(null);
   const [detailTabValue, setDetailTabValue] = useState(0);
 
+  // Vincular usuario dialog
+  const [vincularDialogOpen, setVincularDialogOpen] = useState(false);
+  const [vincularEmpleadoTarget, setVincularEmpleadoTarget] = useState<Empleado | null>(null);
+  const [usuarios, setUsuarios] = useState<UsuarioDTO[]>([]);
+  const [selectedUsuario, setSelectedUsuario] = useState<UsuarioDTO | null>(null);
+  const [vincularLoading, setVincularLoading] = useState(false);
+  const [inactiveWarning, setInactiveWarning] = useState<string | null>(null);
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
   const [puestoFilter, setPuestoFilter] = useState<number | null>(null);
 
   // Form data
-  const [formData, setFormData] = useState<EmpleadoCreateDTO>({
+  const [formData, setFormData] = useState<EmpleadoCreateDTO & { confirmPassword?: string }>({
     nombre: '',
     apellido: '',
     dni: '',
@@ -103,7 +123,11 @@ const EmpleadosPage: React.FC = () => {
     fechaIngreso: '',
     puestoId: 0,
     salario: 0,
-    estado: 'ACTIVO'
+    estado: 'ACTIVO',
+    sucursalId: undefined,
+    crearUsuario: false,
+    usuarioPassword: '',
+    confirmPassword: '',
   });
 
   useEffect(() => {
@@ -116,10 +140,19 @@ const EmpleadosPage: React.FC = () => {
       setError(null);
       const [empleadosData, puestosData] = await Promise.all([
         employeeApi.getAllList(),
-        puestoApi.getAll()
+        puestoApi.getAll(),
       ]);
       setEmpleados(empleadosData);
       setPuestos(puestosData);
+
+      if (empresaId) {
+        try {
+          const sucursalesData = await sucursalService.getByEmpresa(empresaId);
+          setSucursales(sucursalesData.filter(s => s.estado === 'ACTIVO'));
+        } catch {
+          // sucursales not critical
+        }
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar los datos');
       console.error('Error loading data:', err);
@@ -148,7 +181,11 @@ const EmpleadosPage: React.FC = () => {
         fechaIngreso: empleado.fechaIngreso || '',
         puestoId: empleado.puesto?.id || 0,
         salario: empleado.salario || 0,
-        estado: empleado.estado || 'ACTIVO'
+        estado: empleado.estado || 'ACTIVO',
+        sucursalId: empleado.sucursalId,
+        crearUsuario: false,
+        usuarioPassword: '',
+        confirmPassword: '',
       });
     } else {
       setEditingEmpleado(null);
@@ -163,7 +200,11 @@ const EmpleadosPage: React.FC = () => {
         fechaIngreso: new Date().toISOString().split('T')[0],
         puestoId: 0,
         salario: 0,
-        estado: 'ACTIVO'
+        estado: 'ACTIVO',
+        sucursalId: undefined,
+        crearUsuario: false,
+        usuarioPassword: '',
+        confirmPassword: '',
       });
     }
     setFormDialogOpen(true);
@@ -179,7 +220,6 @@ const EmpleadosPage: React.FC = () => {
     try {
       setError(null);
 
-      // Validaciones
       if (!formData.nombre || !formData.apellido || !formData.dni) {
         setError('Nombre, Apellido y DNI son requeridos');
         return;
@@ -190,17 +230,41 @@ const EmpleadosPage: React.FC = () => {
         return;
       }
 
+      if (!editingEmpleado && formData.crearUsuario) {
+        if (!formData.email) {
+          setError('El email es requerido para crear una cuenta de acceso');
+          return;
+        }
+        if (!formData.usuarioPassword || formData.usuarioPassword.length < 8) {
+          setError('La contraseña debe tener al menos 8 caracteres');
+          return;
+        }
+        if (formData.usuarioPassword !== formData.confirmPassword) {
+          setError('Las contraseñas no coinciden');
+          return;
+        }
+      }
+
+      const { confirmPassword, ...payload } = formData;
+      if (!payload.crearUsuario) {
+        delete payload.usuarioPassword;
+      }
+
       if (editingEmpleado) {
-        await employeeApi.update(editingEmpleado.id, formData);
+        await employeeApi.update(editingEmpleado.id, payload);
         setSuccess('Empleado actualizado exitosamente');
       } else {
-        await employeeApi.create(formData);
-        setSuccess('Empleado creado exitosamente');
+        await employeeApi.create(payload);
+        setSuccess(
+          payload.crearUsuario
+            ? `Empleado creado exitosamente. Se creó la cuenta de acceso con usuario emp_${payload.dni}`
+            : 'Empleado creado exitosamente'
+        );
       }
 
       await loadData();
       handleCloseForm();
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al guardar el empleado');
       console.error('Error saving empleado:', err);
@@ -221,16 +285,72 @@ const EmpleadosPage: React.FC = () => {
     }
   };
 
-  const getEstadoColor = (estado: string): "default" | "success" | "error" | "warning" => {
+  const handleChangeEstado = async (empleado: Empleado, nuevoEstado: string) => {
+    try {
+      await employeeApi.changeEstado(empleado.id, nuevoEstado);
+      if (nuevoEstado === 'INACTIVO' && empleado.usuarioId !== null) {
+        setInactiveWarning(
+          `El empleado fue marcado como inactivo. Los accesos del usuario vinculado (#${empleado.usuarioId}) fueron desactivados automáticamente.`
+        );
+        setTimeout(() => setInactiveWarning(null), 8000);
+      }
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al cambiar estado');
+    }
+  };
+
+  const handleOpenVincularDialog = async (empleado: Empleado) => {
+    setVincularEmpleadoTarget(empleado);
+    setSelectedUsuario(null);
+    setVincularLoading(true);
+    setVincularDialogOpen(true);
+    try {
+      const data = await usuarioAdminApi.getAll(0, 200);
+      // Only show users that don't have a linked empleado (or are already this one's)
+      setUsuarios(data.content.filter(u => u.empleadoId === null || u.empleadoId === empleado.usuarioId));
+    } catch {
+      setUsuarios([]);
+    } finally {
+      setVincularLoading(false);
+    }
+  };
+
+  const handleConfirmVincular = async () => {
+    if (!vincularEmpleadoTarget || !selectedUsuario) return;
+    try {
+      await employeeApi.vincularUsuario(vincularEmpleadoTarget.id, selectedUsuario.id);
+      setSuccess('Usuario vinculado correctamente');
+      setVincularDialogOpen(false);
+      await loadData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al vincular usuario');
+    }
+  };
+
+  const handleDesvincularUsuario = async (empleado: Empleado) => {
+    if (!window.confirm('¿Desvincular la cuenta de acceso de este empleado?')) return;
+    try {
+      await employeeApi.desvincularUsuario(empleado.id);
+      setSuccess('Usuario desvinculado correctamente');
+      await loadData();
+      // Update detail dialog if open
+      if (selectedEmpleado?.id === empleado.id) {
+        setSelectedEmpleado({ ...selectedEmpleado, usuarioId: null });
+      }
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al desvincular usuario');
+    }
+  };
+
+  const getEstadoColor = (estado: string): 'default' | 'success' | 'error' | 'warning' => {
     switch (estado) {
-      case 'ACTIVO':
-        return 'success';
-      case 'INACTIVO':
-        return 'error';
-      case 'LICENCIA':
-        return 'warning';
-      default:
-        return 'default';
+      case 'ACTIVO': return 'success';
+      case 'INACTIVO': return 'error';
+      case 'LICENCIA': return 'warning';
+      default: return 'default';
     }
   };
 
@@ -241,7 +361,6 @@ const EmpleadosPage: React.FC = () => {
       emp.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.dni.includes(searchTerm);
-
     return matchesEstado && matchesPuesto && matchesSearch;
   });
 
@@ -289,10 +408,14 @@ const EmpleadosPage: React.FC = () => {
           {error}
         </Alert>
       )}
-
       {success && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
           {success}
+        </Alert>
+      )}
+      {inactiveWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setInactiveWarning(null)}>
+          {inactiveWarning}
         </Alert>
       )}
 
@@ -363,13 +486,14 @@ const EmpleadosPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 180 }}>Email</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>Teléfono</TableCell>
                   <TableCell sx={{ minWidth: 90 }}>Estado</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 60 }}>Acceso</TableCell>
                   <TableCell align="center" sx={{ minWidth: 120 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredEmpleados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={8} align="center">
                       <Typography variant="body2" color="textSecondary">
                         No hay empleados disponibles
                       </Typography>
@@ -394,7 +518,7 @@ const EmpleadosPage: React.FC = () => {
                       <TableCell>
                         <Chip
                           icon={<WorkIcon />}
-                          label={empleado.puesto?.nombre || '-'}
+                          label={empleado.puesto?.nombre || empleado.puestoNombre || '-'}
                           size="small"
                           variant="outlined"
                           color="primary"
@@ -408,6 +532,17 @@ const EmpleadosPage: React.FC = () => {
                           size="small"
                           color={getEstadoColor(empleado.estado)}
                         />
+                      </TableCell>
+                      <TableCell align="center">
+                        {empleado.usuarioId !== null ? (
+                          <Tooltip title={`Usuario #${empleado.usuarioId} vinculado`}>
+                            <AccountCircleIcon color="success" fontSize="small" />
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Sin cuenta de acceso">
+                            <AccountCircleIcon color="disabled" fontSize="small" />
+                          </Tooltip>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Box display="flex" gap={1} justifyContent="center">
@@ -456,9 +591,7 @@ const EmpleadosPage: React.FC = () => {
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
-        PaperProps={{
-          sx: { borderRadius: isMobile ? 0 : 3 }
-        }}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
       >
         {selectedEmpleado && (
           <>
@@ -474,11 +607,7 @@ const EmpleadosPage: React.FC = () => {
                   <Chip
                     label={selectedEmpleado.estado}
                     size="small"
-                    sx={{
-                      mt: 0.5,
-                      bgcolor: 'rgba(255,255,255,0.2)',
-                      color: 'white'
-                    }}
+                    sx={{ mt: 0.5, bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }}
                   />
                 </Box>
               </Box>
@@ -489,6 +618,7 @@ const EmpleadosPage: React.FC = () => {
               sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
             >
               <Tab label="Información" />
+              <Tab label="Acceso al sistema" />
               <Tab label="Documentos" />
             </Tabs>
             <DialogContent sx={{ pt: 3, minHeight: 400 }}>
@@ -527,7 +657,7 @@ const EmpleadosPage: React.FC = () => {
                     <Stack spacing={1.5}>
                       <Box display="flex" alignItems="center" gap={1}>
                         <WorkIcon color="action" />
-                        <Typography><strong>Puesto:</strong> {selectedEmpleado.puesto?.nombre || '-'}</Typography>
+                        <Typography><strong>Puesto:</strong> {selectedEmpleado.puesto?.nombre || selectedEmpleado.puestoNombre || '-'}</Typography>
                       </Box>
                       <Box display="flex" alignItems="center" gap={1}>
                         <AttachMoneyIcon color="action" />
@@ -535,12 +665,67 @@ const EmpleadosPage: React.FC = () => {
                       </Box>
                       <Typography><strong>Fecha Nacimiento:</strong> {selectedEmpleado.fechaNacimiento || '-'}</Typography>
                       <Typography><strong>Fecha Ingreso:</strong> {selectedEmpleado.fechaIngreso || '-'}</Typography>
+                      {selectedEmpleado.sucursalId && (
+                        <Typography>
+                          <strong>Sucursal:</strong>{' '}
+                          {sucursales.find(s => s.id === selectedEmpleado.sucursalId)?.nombre || `#${selectedEmpleado.sucursalId}`}
+                        </Typography>
+                      )}
                     </Stack>
                   </Box>
                 </Stack>
               )}
 
               {detailTabValue === 1 && (
+                <Stack spacing={2}>
+                  {selectedEmpleado.usuarioId !== null ? (
+                    <Box>
+                      <Alert severity="success" icon={<AccountCircleIcon />} sx={{ mb: 2 }}>
+                        Este empleado tiene acceso al sistema
+                      </Alert>
+                      <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                        <Stack spacing={1}>
+                          <Typography variant="body2">
+                            <strong>Usuario vinculado:</strong> #{selectedEmpleado.usuarioId}
+                          </Typography>
+                        </Stack>
+                      </Paper>
+                      <Box mt={2} display="flex" gap={1} flexWrap="wrap">
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          startIcon={<LinkOffIcon />}
+                          onClick={() => handleDesvincularUsuario(selectedEmpleado)}
+                        >
+                          Desvincular cuenta
+                        </Button>
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Alert severity="info" sx={{ mb: 2 }}>
+                        Este empleado no tiene cuenta de acceso al sistema
+                      </Alert>
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<LinkIcon />}
+                          onClick={() => {
+                            setDetailDialogOpen(false);
+                            handleOpenVincularDialog(selectedEmpleado);
+                          }}
+                        >
+                          Vincular cuenta existente
+                        </Button>
+                      </Stack>
+                    </Box>
+                  )}
+                </Stack>
+              )}
+
+              {detailTabValue === 2 && (
                 <DocumentManager
                   entityId={selectedEmpleado.id}
                   categorias={CATEGORIAS_EMPLEADO}
@@ -555,7 +740,6 @@ const EmpleadosPage: React.FC = () => {
                   }}
                   onLoad={async (empleadoId) => {
                     const docs = await documentoEmpleadoApi.getByEmpleadoId(empleadoId);
-                    // Mapear los campos del DTO a la estructura esperada por DocumentManager
                     return docs.map(doc => ({
                       id: doc.id,
                       nombreArchivo: doc.nombreOriginal,
@@ -596,13 +780,11 @@ const EmpleadosPage: React.FC = () => {
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
-        PaperProps={{
-          sx: { borderRadius: isMobile ? 0 : 2 }
-        }}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : 2 } }}
       >
         <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', py: 2.5 }}>
           <Typography variant="h5" fontWeight="600">
-            {editingEmpleado ? '✏️ Editar Empleado' : '➕ Nuevo Empleado'}
+            {editingEmpleado ? 'Editar Empleado' : 'Nuevo Empleado'}
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
@@ -610,7 +792,7 @@ const EmpleadosPage: React.FC = () => {
             {/* Información Personal */}
             <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
               <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                👤 INFORMACIÓN PERSONAL
+                INFORMACIÓN PERSONAL
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
@@ -656,13 +838,13 @@ const EmpleadosPage: React.FC = () => {
             {/* Información de Contacto */}
             <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
               <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                📞 CONTACTO
+                CONTACTO
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Email"
+                    label={formData.crearUsuario ? 'Email *' : 'Email'}
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -690,7 +872,7 @@ const EmpleadosPage: React.FC = () => {
             {/* Información Laboral */}
             <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
               <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                💼 INFORMACIÓN LABORAL
+                INFORMACIÓN LABORAL
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
@@ -746,8 +928,78 @@ const EmpleadosPage: React.FC = () => {
                     <MenuItem value="LICENCIA">Licencia</MenuItem>
                   </TextField>
                 </Grid>
+                {sucursales.length > 0 && (
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      select
+                      label="Sucursal"
+                      value={formData.sucursalId || ''}
+                      onChange={(e) => setFormData({ ...formData, sucursalId: e.target.value ? Number(e.target.value) : undefined })}
+                    >
+                      <MenuItem value="">Sin sucursal asignada</MenuItem>
+                      {sucursales.map(s => (
+                        <MenuItem key={s.id} value={s.id}>
+                          {s.nombre}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+                )}
               </Grid>
             </Paper>
+
+            {/* Cuenta de acceso — solo en creación */}
+            {!editingEmpleado && (
+              <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+                <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
+                  ACCESO AL SISTEMA
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={!!formData.crearUsuario}
+                      onChange={(e) => setFormData({ ...formData, crearUsuario: e.target.checked })}
+                    />
+                  }
+                  label="Crear cuenta de acceso al sistema"
+                />
+                {formData.crearUsuario && (
+                  <Stack spacing={2} mt={2}>
+                    <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
+                      Se creará el usuario <strong>emp_{formData.dni || '{DNI}'}</strong> con roles derivados del puesto seleccionado.
+                    </Alert>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Contraseña *"
+                          type="password"
+                          value={formData.usuarioPassword}
+                          onChange={(e) => setFormData({ ...formData, usuarioPassword: e.target.value })}
+                          helperText="Mínimo 8 caracteres"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Confirmar contraseña *"
+                          type="password"
+                          value={formData.confirmPassword}
+                          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                          error={!!formData.confirmPassword && formData.confirmPassword !== formData.usuarioPassword}
+                          helperText={
+                            formData.confirmPassword && formData.confirmPassword !== formData.usuarioPassword
+                              ? 'Las contraseñas no coinciden'
+                              : ''
+                          }
+                        />
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                )}
+              </Paper>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2.5, bgcolor: 'grey.100' }}>
@@ -760,7 +1012,51 @@ const EmpleadosPage: React.FC = () => {
             disabled={!formData.nombre || !formData.apellido || !formData.dni || !formData.puestoId}
             sx={{ minWidth: 160 }}
           >
-            {editingEmpleado ? '💾 Guardar Cambios' : '➕ Crear Empleado'}
+            {editingEmpleado ? 'Guardar Cambios' : 'Crear Empleado'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog Vincular usuario existente */}
+      <Dialog
+        open={vincularDialogOpen}
+        onClose={() => setVincularDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Vincular cuenta de acceso</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          {vincularLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Stack spacing={2}>
+              <Typography variant="body2" color="textSecondary">
+                Seleccione el usuario a vincular con <strong>{vincularEmpleadoTarget?.nombre} {vincularEmpleadoTarget?.apellido}</strong>
+              </Typography>
+              <Autocomplete
+                options={usuarios}
+                getOptionLabel={(u) => `${u.username} (${u.email})`}
+                value={selectedUsuario}
+                onChange={(_, val) => setSelectedUsuario(val)}
+                renderInput={(params) => (
+                  <TextField {...params} label="Usuario" placeholder="Buscar usuario..." />
+                )}
+              />
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVincularDialogOpen(false)} variant="outlined">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmVincular}
+            variant="contained"
+            disabled={!selectedUsuario}
+          >
+            Vincular
           </Button>
         </DialogActions>
       </Dialog>

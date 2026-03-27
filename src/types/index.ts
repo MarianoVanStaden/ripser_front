@@ -76,7 +76,6 @@ export interface Cliente {
   contactos?: ContactoCliente[];
   cuentaCorriente?: CuentaCorriente[];
   ventas?: Venta[];
-  creditos?: CreditoCliente[];
 }
 
 export interface ProductoSimple {
@@ -114,26 +113,6 @@ export interface ContactoProveedorDTO {
   usuarioId?: number;
 }
   
-export type EstadoCreditoCliente = 'PENDIENTE' | 'APLICADO' | 'ANULADO';
-
-export interface CreditoCliente {
-  id: number;
-  numeroNotaCredito: string;
-  clienteId: number;
-  clienteNombre: string;
-  fecha: string; // ISO 8601 string
-  importe: number;
-  motivo?: string;
-  estado: EstadoCreditoCliente;
-  ventaAsociadaId?: number;
-}
-
-export interface CreditoCreateDTO {
-  clienteId: number;
-  importe: number;
-  motivo: string;
-  ventaAsociadaId?: number;
-}
 // Client Contact entity
 export interface ContactoCliente {
   id: number;
@@ -1375,7 +1354,9 @@ export interface Empleado {
   fechaEgreso?: string;
   estado: EstadoEmpleado;
   puesto?: Puesto;
+  puestoNombre?: string;
   salario: number;
+  usuarioId: number | null;
   asistencias?: RegistroAsistencia[];
   licencias?: Licencia[];
   capacitaciones?: Capacitacion[];
@@ -1852,6 +1833,9 @@ export interface EmpleadoCreateDTO {
   puestoId?: number;
   salario: number;
   estado?: EstadoEmpleado;
+  sucursalId?: number;
+  crearUsuario?: boolean;
+  usuarioPassword?: string;
 }
 
 export interface EmpleadoUpdateDTO {

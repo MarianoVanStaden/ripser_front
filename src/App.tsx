@@ -14,7 +14,6 @@ import {
   ClienteFormPage, 
   ClienteDetailPage,
   AgendaVisitasPage,
-  CreditoPersonalPage,
   CarpetaClientePage,
   CarpetaClienteSelector,
   CuentaCorrientePage
@@ -209,7 +208,6 @@ function App() {
               <Route path="clientes/carpeta/:id" element={<PrivateRoute><CarpetaClientePage /></PrivateRoute>} />
               <Route path="clientes/agenda" element={<PrivateRoute><AgendaVisitasPage /></PrivateRoute>} />
               <Route path="clientes/cuenta-corriente" element={<PrivateRoute><CuentaCorrientePage /></PrivateRoute>} />
-              <Route path="clientes/credito" element={<PrivateRoute><CreditoPersonalPage /></PrivateRoute>} />
               {/* PRESTAMOS Module */}
               <Route path="prestamos/resumen" element={<PrivateRoute><PrestamosResumenPage /></PrivateRoute>} />
               <Route path="prestamos/lista" element={<PrivateRoute><PrestamosListPage /></PrivateRoute>} />

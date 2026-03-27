@@ -1,7 +1,7 @@
 import api from '../config';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
-export type TipoRol = 'ADMIN' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USUARIO';
+export type TipoRol = 'SUPER_ADMIN' | 'ADMIN' | 'GERENTE_SUCURSAL' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USER' | 'USUARIO';
 
 export interface UsuarioDTO {
   id: number;
@@ -12,6 +12,7 @@ export interface UsuarioDTO {
   roles: TipoRol[];
   enabled: boolean;
   accountNonLocked: boolean;
+  empleadoId: number | null;
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -99,6 +100,32 @@ class UsuarioAdminApi {
    */
   async me(): Promise<UsuarioDTO> {
     const response = await api.get<UsuarioDTO>(`${this.BASE_URL}/me`);
+    return response.data;
+  }
+
+  /**
+   * Get user by empleado ID
+   */
+  async getByEmpleado(empleadoId: number): Promise<UsuarioDTO> {
+    const response = await api.get<UsuarioDTO>(`${this.BASE_URL}/by-empleado/${empleadoId}`);
+    return response.data;
+  }
+
+  /**
+   * Link an empleado to a user
+   */
+  async vincularEmpleado(usuarioId: number, empleadoId: number): Promise<UsuarioDTO> {
+    const response = await api.patch<UsuarioDTO>(`${this.BASE_URL}/${usuarioId}/vincular-empleado`, null, {
+      params: { empleadoId }
+    });
+    return response.data;
+  }
+
+  /**
+   * Unlink the empleado from a user
+   */
+  async desvincularEmpleado(usuarioId: number): Promise<UsuarioDTO> {
+    const response = await api.delete<UsuarioDTO>(`${this.BASE_URL}/${usuarioId}/vincular-empleado`);
     return response.data;
   }
 }
