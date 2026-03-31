@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.github
+*.md
+.env
+.env.local
+.env.*.local
+coverage
+e2e
+tests
+*.spec.ts
+*.test.ts
+*.test.tsx

@@ -291,6 +291,7 @@ const LoginPage: React.FC = () => {
           {error && (
             <Alert
               severity="error"
+              data-testid="login-error-alert"
               sx={{
                 mb: 3,
                 borderRadius: 2,
@@ -313,6 +314,7 @@ const LoginPage: React.FC = () => {
               onChange={(e) => setUsernameOrEmail(e.target.value)}
               required
               autoComplete="username"
+              inputProps={{ 'data-testid': 'login-username-input' }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -346,6 +348,7 @@ const LoginPage: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
+              inputProps={{ 'data-testid': 'login-password-input' }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -358,6 +361,7 @@ const LoginPage: React.FC = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                       size="small"
+                      data-testid="login-toggle-password"
                       sx={{ color: RIPSER_COLORS.darkBlue, opacity: 0.5 }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -386,6 +390,7 @@ const LoginPage: React.FC = () => {
               type="submit"
               fullWidth
               variant="contained"
+              data-testid="login-submit-button"
               disabled={submitting || !usernameOrEmail || !password}
               sx={{
                 py: 1.5,

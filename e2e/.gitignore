@@ -1,0 +1,10 @@
+# Auth state (contains tokens — never commit)
+.auth/
+
+# Test artifacts
+test-results/
+playwright-report/
+blob-report/
+
+# Environment files with secrets
+.env.*.local

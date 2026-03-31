@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ripser_frontend
+    ports:
+      - "3000:80"       # Puerto 3000 externo → 80 interno (nginx)
+    restart: unless-stopped
+    # El frontend se comunica con el backend vía el proxy nginx (/api/* → 76.13.161.228:8080)
+    # No necesita network compartida con el backend porque el proxy usa IP pública.
+    # Si el backend también corre en Docker en el mismo host, podés cambiar la IP
+    # en nginx.conf por el nombre del servicio Docker (ej: http://backend:8080/RipserApp/api/).
+
+networks:
+  default:
+    name: ripser_network
