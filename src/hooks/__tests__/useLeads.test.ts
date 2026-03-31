@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import type { LeadDTO } from '../../types/lead.types';
 import { useLeads, useLead } from '../useLeads';
 import type { PageResponse } from '../../types/pagination.types';
 

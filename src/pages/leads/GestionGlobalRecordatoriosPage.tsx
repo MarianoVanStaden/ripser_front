@@ -45,12 +45,7 @@ import {
   Email as EmailIcon,
   Sms as SmsIcon,
   Task as TaskIcon,
-  Chat as ChatIcon,
-  AccessTime as AccessTimeIcon,
   Add as AddIcon,
-  LocalFireDepartment as FireIcon,
-  AcUnit as ColdIcon,
-  Whatshot as HotIcon,
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useNavigate } from 'react-router-dom';
@@ -63,11 +58,9 @@ import {
   PrioridadLeadEnum,
   PrioridadRecordatorioEnum,
   TipoInteraccionEnum,
-  ResultadoInteraccionEnum,
   PRIORIDAD_LABELS,
   TIPO_INTERACCION_LABELS,
   RESULTADO_INTERACCION_LABELS,
-  EstadoLeadEnum,
 } from '../../types/lead.types';
 import type {
   TipoRecordatorioEnum as TipoRecordatorioType,

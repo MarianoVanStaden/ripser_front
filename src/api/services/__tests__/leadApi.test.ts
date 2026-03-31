@@ -14,7 +14,7 @@ vi.mock('../../config', () => {
 import api from '../../config';
 import { leadApi } from '../leadApi';
 
-const mockedApi = vi.mocked(api);
+const mockedApi = vi.mocked(api, true);
 
 const mockLead = {
   id: 1,
@@ -174,7 +174,7 @@ describe('leadApi', () => {
     it('updateInteraccion sends PUT', async () => {
       mockedApi.put.mockResolvedValue({ data: { id: 1, descripcion: 'Updated' } });
 
-      const result = await leadApi.updateInteraccion(5, 1, { descripcion: 'Updated' } as any);
+      await leadApi.updateInteraccion(5, 1, { descripcion: 'Updated' } as any);
 
       expect(mockedApi.put).toHaveBeenCalledWith('/api/leads/5/interacciones/1', { descripcion: 'Updated' });
     });
@@ -203,7 +203,7 @@ describe('leadApi', () => {
       const rec = { fechaRecordatorio: '2024-03-01', tipo: 'TAREA', mensaje: 'Test' };
       mockedApi.post.mockResolvedValue({ data: { id: 1, ...rec } });
 
-      const result = await leadApi.createRecordatorio(5, rec as any);
+      await leadApi.createRecordatorio(5, rec as any);
 
       expect(mockedApi.post).toHaveBeenCalledWith('/api/leads/5/recordatorios', rec);
     });

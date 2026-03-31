@@ -14,7 +14,7 @@ vi.mock('../config', () => {
 import api from '../config';
 import { authApi } from '../authApi';
 
-const mockedApi = vi.mocked(api);
+const mockedApi = vi.mocked(api, true);
 
 describe('authApi', () => {
   beforeEach(() => {

@@ -41,9 +41,11 @@ const NON_RETRIABLE_STATUS = new Set([400, 401, 403, 404, 410, 422]);
 // Custom error for fatal (non-retriable) connection failures
 // ---------------------------------------------------------------------------
 class FatalSSEError extends Error {
-  constructor(public readonly status: number) {
+  readonly status: number;
+  constructor(status: number) {
     super(`[SSE] Fatal HTTP ${status} — retries stopped`);
     this.name = 'FatalSSEError';
+    this.status = status;
   }
 }
 
@@ -186,7 +188,7 @@ export function useFinancialEvents(): void {
       // openWhenHidden defaults to false — the library manages visibilitychange
       // internally: pauses the stream when hidden, resumes on show.
 
-      onopen: async (response) => {
+      onopen: async (response: Response) => {
         if (response.ok) {
           lastEventTimeRef.current = Date.now();
           console.log('[SSE CONNECTED] empresaId:', empresaId);
@@ -202,7 +204,7 @@ export function useFinancialEvents(): void {
         throw new Error(`[SSE] Server error ${response.status}`);
       },
 
-      onmessage: (ev) => {
+      onmessage: (ev: { data: string; event: string; id: string }) => {
         lastEventTimeRef.current = Date.now();
 
         // --- Keep-alive events: update health timer, no business logic -------
@@ -238,7 +240,7 @@ export function useFinancialEvents(): void {
         console.log('[SSE CLOSED] Connection closed by server');
       },
 
-      onerror: (err) => {
+      onerror: (err: unknown) => {
         console.error('[SSE ERROR]', err);
 
         if (err instanceof FatalSSEError) {

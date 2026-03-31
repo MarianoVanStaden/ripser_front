@@ -13,7 +13,7 @@ vi.mock('../../config', () => {
 import api from '../../config';
 import { proveedorApi } from '../proveedorApi';
 
-const mockedApi = vi.mocked(api);
+const mockedApi = vi.mocked(api, true);
 
 const mockProveedor = {
   id: 1,

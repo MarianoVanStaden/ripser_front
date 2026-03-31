@@ -11,10 +11,6 @@ vi.mock('../authApi', () => ({
 }));
 
 import api, { setAuthToken } from '../config';
-import { authApi } from '../authApi';
-
-const mockedAuthApi = vi.mocked(authApi);
-
 describe('api config', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;

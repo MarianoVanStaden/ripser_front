@@ -16,7 +16,7 @@ const makePage = <T>(content: T[], total = content.length): PageResponse<T> => (
 });
 
 describe('usePagination', () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
+  let mockFetch: ReturnType<typeof vi.fn<(page: number, size: number, sort: string, filters: Record<string, unknown>) => Promise<PageResponse<unknown>>>>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeAll(() => {
@@ -29,7 +29,7 @@ describe('usePagination', () => {
   });
 
   beforeEach(() => {
-    mockFetch = vi.fn().mockResolvedValue(makePage(['item1', 'item2'], 2));
+    mockFetch = vi.fn<(page: number, size: number, sort: string, filters: Record<string, unknown>) => Promise<PageResponse<unknown>>>().mockResolvedValue(makePage(['item1', 'item2'], 2));
   });
 
   it('fetches data on mount by default', async () => {

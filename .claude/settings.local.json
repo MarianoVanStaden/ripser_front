@@ -67,7 +67,8 @@
       "Bash(find /c/Users/santi/Documents/GitHub/ripser_front/src -type f \\\\\\(-name *.test.* -o -name *.spec.* \\\\\\))",
       "Bash(npx vitest:*)",
       "Bash(npm show:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(tee c:/Users/santi/tsc-errors.txt)"
     ],
     "deny": [],
     "ask": []

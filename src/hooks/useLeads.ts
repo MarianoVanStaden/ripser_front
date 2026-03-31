@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { leadApi } from '../api/services/leadApi';
-import { EstadoLeadEnum } from '../types/lead.types';
 import type { LeadDTO, LeadFilterState } from '../types/lead.types';
 import type { PageResponse } from '../types/pagination.types';
 
