@@ -53,7 +53,7 @@ export const LeadFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const { sucursalFiltro, sucursales, canSelectSucursal } = useTenant();
+  const { sucursalFiltro, sucursales } = useTenant();
   const isEditMode = Boolean(id);
   const clienteOrigenIdParam = searchParams.get('clienteId');
   const modoRecompra = searchParams.get('modo') === 'recompra';
