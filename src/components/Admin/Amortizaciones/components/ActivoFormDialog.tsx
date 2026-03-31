@@ -7,7 +7,7 @@ import {
   Button,
   TextField,
   MenuItem,
-  Grid,
+  Grid2 as Grid,
   Alert,
   CircularProgress,
 } from '@mui/material';

@@ -203,7 +203,7 @@ const PresupuestosPage: React.FC = () => {
           return [];
         }),
         usuarioApi.getVendedores().catch(() => []),
-        documentoApi.getByTipo("PRESUPUESTO").then(res => res.content || res).catch((err) => {
+        documentoApi.getByTipo("PRESUPUESTO").then(res => res).catch((err) => {
           console.error("Error fetching presupuestos:", err);
           console.log("Presupuestos response:", err.response?.data, err.response?.status);
           const errorMessage = err.response?.status === 403
@@ -212,12 +212,12 @@ const PresupuestosPage: React.FC = () => {
           setError(errorMessage);
           return [];
         }),
-        productApi.getAll(0, 10000).then(res => res.content).catch((err) => {
+        productApi.getAll({ page: 0, size: 10000 }).then(res => res.content).catch((err) => {
           console.error("Error fetching productos:", err);
           setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
           return [];
         }),
-        recetaFabricacionApi.findDisponiblesParaVenta().then(res => Array.isArray(res) ? res : res.content || []).catch((err) => {
+        recetaFabricacionApi.findDisponiblesParaVenta().then(res => res).catch((err) => {
           console.error("Error fetching recetas:", err);
           setError("Error al cargar recetas de equipos: " + (err.response?.data?.message || err.message));
           return [];

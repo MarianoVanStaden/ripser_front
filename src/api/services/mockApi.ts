@@ -1,5 +1,6 @@
 import type { Cliente, ContactoCliente, CuentaCorriente, CreateClienteRequest, CreateContactoClienteRequest, CreateCuentaCorrienteRequest } from '../../types';
-import { PageResponse, PaginationParams, arrayToPage } from '../../types/pagination.types';
+import type { PageResponse, PaginationParams } from '../../types/pagination.types';
+import { arrayToPage } from '../../types/pagination.types';
 
 // Mock data
 const mockClientes: Cliente[] = [

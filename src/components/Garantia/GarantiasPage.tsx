@@ -54,7 +54,7 @@ const GarantiasPage: React.FC = () => {
       // Load data with error handling for each request
       const [garantiasData, equiposData, facturasData] = await Promise.allSettled([
         garantiaApi.findAll(),
-        equipoFabricadoApi.findAll(0, 1000), // Load all equipos
+        equipoFabricadoApi.findAll({ page: 0, size: 1000 }), // Load all equipos
         documentoApi.getByTipo('FACTURA')
       ]);
 

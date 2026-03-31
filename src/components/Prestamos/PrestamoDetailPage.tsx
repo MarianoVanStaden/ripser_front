@@ -173,8 +173,7 @@ export const PrestamoDetailPage: React.FC = () => {
             await cuotaPrestamoApi.registrarPago({
               cuotaId: cuota.id,
               montoPagado: saldoRestante,
-              fechaPago: dayjs().format('YYYY-MM-DD'),
-            });
+              fechaPago: dayjs().format('YYYY-MM-DD'),              metodoPago: 'EFECTIVO',            });
           }
         }
       }

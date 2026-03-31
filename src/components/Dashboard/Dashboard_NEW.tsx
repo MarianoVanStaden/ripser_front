@@ -109,13 +109,14 @@ const Dashboard: React.FC = () => {
       setError(null);
 
       // Fetch data from multiple endpoints (orders set to empty array, orderApi removed)
-      const [clients, products, sales, lowStockProducts] = await Promise.all([
+      const [clients, productsResponse, sales, lowStockProducts] = await Promise.all([
         clientApi.getAll(),
-        productApi.getAll(0, 10000),
+        productApi.getAll({ page: 0, size: 10000 }),
         saleApi.getAll(),
         productApi.getLowStock(), // Products with low stock
       ]);
       const orders: any[] = [];
+      const products = productsResponse.content || [];
 
       // Calculate monthly sales amount (this month)
       const currentMonth = new Date().getMonth();

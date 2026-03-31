@@ -181,7 +181,7 @@ const AuditoriaPage: React.FC = () => {
         movimientoStockDepositoApi.getAll(),
         movimientoEquipoApi.getAll(),
         depositoApi.getAll(),
-        productApi.getAll(0, 10000),
+        productApi.getAll({ page: 0, size: 10000 }),
       ]);
       // Handle paginated responses
       const movStockData = Array.isArray(movStockResponse) 

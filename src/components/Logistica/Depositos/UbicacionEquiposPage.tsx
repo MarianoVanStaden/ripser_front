@@ -133,7 +133,7 @@ const UbicacionEquiposPage: React.FC = () => {
       const [ubicacionesResponse, depositosResponse, equiposResponse] = await Promise.all([
         ubicacionEquipoApi.getAll(),
         depositoApi.getActivos(),
-        equipoFabricadoApi.findAll(0, 1000), // Reducido para mejor rendimiento
+        equipoFabricadoApi.findAll({ page: 0, size: 1000 }), // Reducido para mejor rendimiento
       ]);
       // Handle paginated responses
       const ubicacionesData = Array.isArray(ubicacionesResponse)

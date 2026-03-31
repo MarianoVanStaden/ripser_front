@@ -4,8 +4,6 @@ import * as realCuentaCorrienteApi from './cuentaCorrienteApi';
 import * as realSupplierApi from './supplierApi';
 import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi, mockGarantias } from './mockData';
 import { arrayToPage } from '../../types/pagination.types';
-import type { PageResponse, PaginationParams } from '../../types/pagination.types';
-import type { Cliente } from '../../types';
 
 let backendAvailable: boolean | null = null;
 

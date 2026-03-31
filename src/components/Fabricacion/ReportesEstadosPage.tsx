@@ -20,8 +20,10 @@ interface EstadisticasEstados {
   FACTURADO: number;
   EN_TRANSITO: number;
   ENTREGADO: number;
+  PENDIENTE_TERMINACION: number;
   total: number;
 }
+
 
 const ReportesEstadosPage: React.FC = () => {
   const [estadisticas, setEstadisticas] = useState<EstadisticasEstados>({
@@ -30,6 +32,7 @@ const ReportesEstadosPage: React.FC = () => {
     FACTURADO: 0,
     EN_TRANSITO: 0,
     ENTREGADO: 0,
+    PENDIENTE_TERMINACION: 0,
     total: 0,
   });
   const [equipos, setEquipos] = useState<EquipoFabricadoDTO[]>([]);

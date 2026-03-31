@@ -109,9 +109,10 @@ const EvaluacionDesempenoPage = () => {
       const data = await supplierApiWithFallback.getAll();
       console.log('Proveedores cargados:', data);
       // API returns ProveedorDTO[]
-      setSuppliers(data as ProveedorDTO[]);
-      if (data.length > 0) {
-        setSelectedSupplier(data[0].id || '');
+      const suppliersArray = data as ProveedorDTO[];
+      setSuppliers(suppliersArray);
+      if (suppliersArray.length > 0) {
+        setSelectedSupplier(suppliersArray[0].id || '');
       }
     } catch (error) {
       console.error('Error loading suppliers:', error);

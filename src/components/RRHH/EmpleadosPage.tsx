@@ -143,7 +143,7 @@ const EmpleadosPage: React.FC = () => {
         puestoApi.getAll(),
       ]);
       setEmpleados(empleadosData);
-      setPuestos(puestosData);
+      setPuestos(puestosData.content || []);
 
       if (empresaId) {
         try {
@@ -285,7 +285,7 @@ const EmpleadosPage: React.FC = () => {
     }
   };
 
-  const handleChangeEstado = async (empleado: Empleado, nuevoEstado: string) => {
+  const _handleChangeEstado = async (empleado: Empleado, nuevoEstado: string) => {
     try {
       await employeeApi.changeEstado(empleado.id, nuevoEstado);
       if (nuevoEstado === 'INACTIVO' && empleado.usuarioId !== null) {

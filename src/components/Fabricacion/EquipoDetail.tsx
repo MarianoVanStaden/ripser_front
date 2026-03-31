@@ -296,6 +296,7 @@ const loadClientes = async () => {
     EN_PROCESO: 'info',
     COMPLETADO: 'success',
     CANCELADO: 'error',
+    FABRICADO_SIN_TERMINACION: 'info',
   }[equipo.estado] as 'warning' | 'info' | 'success' | 'error';
 
   return (

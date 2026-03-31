@@ -1,5 +1,5 @@
 import api from '../config';
-import type { PageResponse, PaginationParams } from '../../types/pagination.types';
+import type { PageResponse } from '../../types/pagination.types';
 
 export type TipoRol = 'SUPER_ADMIN' | 'ADMIN' | 'GERENTE_SUCURSAL' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USER' | 'USUARIO';
 

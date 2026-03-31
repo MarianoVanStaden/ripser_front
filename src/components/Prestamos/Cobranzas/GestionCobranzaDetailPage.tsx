@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import {
   ArrowBack, Add, CheckCircle, Delete,
-  Phone, Email, Chat, Sms, Task, Notifications,
+  Phone, Email, Sms, Task, Notifications,
   PhoneCallback, DirectionsWalk, Gavel, Handshake, SupportAgent,
   OpenInNew,
 } from '@mui/icons-material';

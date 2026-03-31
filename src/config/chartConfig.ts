@@ -86,7 +86,7 @@ export const barChartOptions: ChartOptions<'bar'> = {
         label: (context) => {
           const label = context.dataset.label || '';
           const value = context.parsed.y;
-          return `${label}: $${value.toLocaleString('es-AR')}`;
+          return `${label}: $${value?.toLocaleString('es-AR') ?? '0'}`;
         },
       },
     },
@@ -161,7 +161,7 @@ export const lineChartOptions: ChartOptions<'line'> = {
         label: (context) => {
           const label = context.dataset.label || '';
           const value = context.parsed.y;
-          return `${label}: $${value.toLocaleString('es-AR')}`;
+          return `${label}: $${value?.toLocaleString('es-AR') ?? '0'}`;
         },
       },
     },

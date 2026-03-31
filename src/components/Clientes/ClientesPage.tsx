@@ -72,7 +72,7 @@ const ClientesPage: React.FC = () => {
     handleChangeRowsPerPage,
     size: rowsPerPage,
     setFilters,
-    refresh,
+    refresh: _refresh,
   } = usePagination<Cliente, ClienteFilterParams>({
     fetchFn: fetchClientes,
     initialSize: 12,

@@ -48,7 +48,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import GavelIcon from '@mui/icons-material/Gavel';
+// import GavelIcon from '@mui/icons-material/Gavel';
 import PhoneCallbackIcon from '@mui/icons-material/PhoneCallback';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
@@ -116,7 +116,7 @@ const navigation: NavigationSection[] = [
   },
   {
     title: 'COBRANZAS',
-    modulo: 'COBRANZAS',
+    modulo: 'ADMINISTRACION',
     items: [
       { text: 'Resumen', icon: <AssessmentIcon />, path: '/cobranzas/resumen' },
       { text: 'Gestiones', icon: <PhoneCallbackIcon />, path: '/cobranzas/lista' },

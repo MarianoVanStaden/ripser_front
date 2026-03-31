@@ -93,7 +93,7 @@ const RecetasList: React.FC = () => {
   const loadRecetas = async () => {
     try {
       setLoading(true);
-      const response = await recetaFabricacionApi.findAll(page, pageSize);
+      const response = await recetaFabricacionApi.findAll({ page, size: pageSize });
 
       // Filtrar localmente según los criterios
       let filtered = response.content || [];

@@ -1,6 +1,6 @@
 import {
   Box,
-  Grid,
+  Grid2 as Grid,
   Paper,
   Typography,
   Divider,

@@ -80,6 +80,7 @@ const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefi
     FACTURADO: 'info',
     EN_TRANSITO: 'secondary',
     ENTREGADO: 'success',
+    PENDIENTE_TERMINACION: 'warning',
   };
   return colorMap[estado] || 'default';
 };
@@ -92,6 +93,7 @@ const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefi
     FACTURADO: 'Facturado',
     EN_TRANSITO: 'En Transito',
     ENTREGADO: 'Entregado',
+    PENDIENTE_TERMINACION: 'Pendiente Terminación',
   };
   return labelMap[estado] || estado;
 };
@@ -301,7 +303,8 @@ const DeliveriesPage2: React.FC = () => {
       }
 
       try {
-        tripsData = await viajeApi.getAll();
+        const tripsResponse = await viajeApi.getAll();
+        tripsData = tripsResponse.content || [];
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`Viajes: ${errorMsg}`);

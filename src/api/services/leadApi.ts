@@ -55,7 +55,7 @@ export const leadApi = {
    * @deprecated Use getAll with filters instead
    */
   // Buscar leads por estado (Legacy)
-  getByEstado: async (estado: EstadoLeadEnum): Promise<LeadDTO[]> => {
+  getByEstado: async (_estado: EstadoLeadEnum): Promise<LeadDTO[]> => {
     // Mapping to getAll for backward compatibility if possible, but return type differs
     // Since we are migrating, we should just remove or update usage. 
     // But to avoid breaking unknown callers, maybe we keep it but it will fail if backend changed.
@@ -69,7 +69,7 @@ export const leadApi = {
    * @deprecated Use getAll with filters instead
    */
   // Buscar leads por prioridad
-  getByPrioridad: async (prioridad: PrioridadLeadEnum): Promise<LeadDTO[]> => {
+  getByPrioridad: async (_prioridad: PrioridadLeadEnum): Promise<LeadDTO[]> => {
      throw new Error('Use leadApi.getAll with filters instead');
   },
 

@@ -101,7 +101,7 @@ const EndosarChequeDialog: React.FC<Props> = ({ open, cheque, onClose, onSuccess
       // Filter only active proveedores and filter out current provider if check is already endorsed
       let filteredProveedores = lista.filter((p: any) => p.estado === 'ACTIVO' || !p.estado);
       if (cheque?.proveedorId) {
-        filteredProveedores = filteredProveedores.filter(p => p.id !== cheque.proveedorId);
+        filteredProveedores = filteredProveedores.filter((p: any) => p.id !== cheque.proveedorId);
       }
 
       setProveedores(filteredProveedores);

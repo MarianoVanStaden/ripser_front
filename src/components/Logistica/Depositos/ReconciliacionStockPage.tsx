@@ -158,7 +158,7 @@ const ReconciliacionStockPage: React.FC = () => {
       setDepositos(depositosData);
 
       // Load products
-      const productosResponse = await productApi.getAll(0, 10000);
+      const productosResponse = await productApi.getAll({ page: 0, size: 10000 });
       const productosData = Array.isArray(productosResponse)
         ? productosResponse
         : (productosResponse as any)?.content || [];

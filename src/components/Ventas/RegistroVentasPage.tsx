@@ -530,6 +530,12 @@ const RegistroVentasPage: React.FC = () => {
           equiposNumerosHeladera: detalle.equiposNumerosHeladera,
         } as any)),
         opcionesFinanciamiento: [],
+        usuarioCreadorPresupuestoId: null,
+        usuarioCreadorPresupuestoNombre: null,
+        usuarioConvertidorNotaPedidoId: null,
+        usuarioConvertidorNotaPedidoNombre: null,
+        usuarioFacturadorId: venta.empleadoId || null,
+        usuarioFacturadorNombre: venta.empleado ? `${venta.empleado.nombre || ''} ${venta.empleado.apellido || ''}`.trim() : null,
       };
 
       console.log('Documento preparado:', documento);

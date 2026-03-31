@@ -195,7 +195,7 @@ const TransferenciasPage: React.FC = () => {
 
       // Cargar transferencias (puede fallar si el endpoint no existe aún)
       try {
-        const transferenciasData = await transferenciaApi.getAll({ empresaId: user?.empresaId });
+        const transferenciasData = await transferenciaApi.getAll({}, { empresaId: user?.empresaId });
         const transferenciasArray = Array.isArray(transferenciasData) 
           ? transferenciasData 
           : (transferenciasData as any)?.content || [];

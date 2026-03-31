@@ -139,7 +139,7 @@ const StockEquiposPage: React.FC = () => {
     try {
       setLoading(true);
       const [equiposData, movimientosData] = await Promise.all([
-        equipoFabricadoApi.findAll(0, 1000),
+        equipoFabricadoApi.findAll({ page: 0, size: 1000 }),
         movimientoStockFabricacionApi.findAll(),
       ]);
 

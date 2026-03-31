@@ -15,7 +15,7 @@ import {
   CircularProgress,
   Card,
   CardContent,
-  Grid,
+  Grid2 as Grid,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';

@@ -211,7 +211,7 @@ const CuentaCorrientePage: React.FC = () => {
 
   const handleExportarPDF = async (): Promise<void> => {
     if (!selectedCliente) {
-      setError('Debe seleccionar un cliente para exportar el PDF.');
+      setLocalError('Debe seleccionar un cliente para exportar el PDF.');
       return;
     }
 
@@ -230,7 +230,7 @@ const CuentaCorrientePage: React.FC = () => {
       );
     } catch (err) {
       console.error('Error al generar PDF:', err);
-      setError('Error al generar el PDF. Por favor, intente nuevamente.');
+      setLocalError('Error al generar el PDF. Por favor, intente nuevamente.');
     }
   };
 

@@ -8,7 +8,7 @@ import {
   TextField,
   Typography,
   Box,
-  Grid,
+  Grid2 as Grid,
   Card,
   CardContent,
   Table,

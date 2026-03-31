@@ -18,7 +18,6 @@ import type {
   EquipoFabricadoCreateDTO,
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
-  FabricacionBaseRequestDTO,
 } from '../../types';
 import { MEDIDAS_EQUIPO, COLORES_EQUIPO } from '../../types';
 import { employeeApi } from '../../api/services/employeeApi';

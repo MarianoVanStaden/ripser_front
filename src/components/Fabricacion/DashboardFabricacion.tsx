@@ -35,7 +35,7 @@ const DashboardFabricacion: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const equiposRes = await equipoFabricadoApi.findAll(0, 1000);
+      const equiposRes = await equipoFabricadoApi.findAll({ page: 0, size: 1000 });
 
       const equiposData = equiposRes.content || [];
 
