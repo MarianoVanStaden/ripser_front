@@ -176,9 +176,11 @@ const OpcionesFinanciamientoPage: React.FC = () => {
         const tasa = updated.tasaInteres || 0;
 
         // Calculate with interest
-        const montoConInteres = montoBase * (1 + tasa / 100);
-        const montoPorCuota = cuotas > 0 ? montoConInteres / cuotas : 0;
-
+          // El anticipo (40%) va sin recargo, el interés se aplica al financiado (60%)
+          const montoAnticipo = montoBase * 0.4;
+          const montoFinanciado = montoBase * 0.6 * (1 + tasa / 100);
+          const montoConInteres = montoAnticipo + montoFinanciado;
+          const montoPorCuota = cuotas > 0 ? montoFinanciado / cuotas : 0;
         updated.montoCuota = parseFloat(montoPorCuota.toFixed(2));
       }
 
@@ -748,16 +750,16 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                         fontWeight="medium"
                         color={(formData.tasaInteres || 0) < 0 ? 'success.main' : 'error.main'}
                       >
-                        ${Math.abs(((formData.montoTotal || 0) * (formData.tasaInteres || 0)) / 100).toLocaleString()}
-                        {(formData.tasaInteres || 0) < 0 ? ' (descuento)' : ''}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                      <Typography variant="caption" color="text.secondary">
-                        Monto Final
-                      </Typography>
-                      <Typography variant="body2" fontWeight="medium">
-                        ${((formData.montoTotal || 0) * (1 + (formData.tasaInteres || 0) / 100)).toLocaleString()}
+                          ${Math.abs((((formData.montoTotal || 0) * 0.6) * (formData.tasaInteres || 0)) / 100).toLocaleString()}
+                          {(formData.tasaInteres || 0) < 0 ? ' (descuento)' : ''}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} md={3}>
+                        <Typography variant="caption" color="text.secondary">
+                          Monto Final
+                        </Typography>
+                        <Typography variant="body2" fontWeight="medium">
+                          ${((formData.montoTotal || 0) * 0.4 + ((formData.montoTotal || 0) * 0.6) * (1 + (formData.tasaInteres || 0) / 100)).toLocaleString()}
                       </Typography>
                     </Grid>
                     <Grid item xs={6} md={3}>

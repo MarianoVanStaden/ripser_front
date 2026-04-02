@@ -101,12 +101,15 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
   };
 
   const calcularMontos = (cantidadCuotas: number, tasaInteres: number) => {
-    const montoConInteres = montoBase * (1 + tasaInteres / 100);
-    const montoCuota = montoConInteres / cantidadCuotas;
-    return {
-      montoTotal: Number(montoConInteres.toFixed(2)),
-      montoCuota: Number(montoCuota.toFixed(2)),
-    };
+      // El 40% se asume pagado sin recargo, el interés aplica sobre el 60%
+      const pagoAnticipo = montoBase * 0.4;
+      const pagoFinanciado = montoBase * 0.6 * (1 + tasaInteres / 100);
+      const montoConInteres = pagoAnticipo + pagoFinanciado;
+      const montoCuota = pagoFinanciado / cantidadCuotas;
+      return {
+        montoTotal: Number(montoConInteres.toFixed(2)),
+        montoCuota: Number(montoCuota.toFixed(2)),
+      };
   };
 
   const handleAddOpcion = () => {
@@ -504,7 +507,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
                 </Typography>
                 <Typography variant="body2">
                   Interés ({formData.tasaInteres}%):{" "}
-                  {formatCurrency((montoBase * (formData.tasaInteres || 0)) / 100)}
+                    {formatCurrency(((montoBase * 0.6) * (formData.tasaInteres || 0)) / 100)}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Total a financiar:</strong>{" "}

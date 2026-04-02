@@ -2416,6 +2416,8 @@ export interface ConvertToFacturaDTO {
   cantidadCuotas?: number;
   tipoFinanciacion?: string;
   primerVencimiento?: string;
+  porcentajeEntregaInicial?: number | null;
+  montoEntregaInicial?: number | null;
   confirmarConDeudaPendiente?: boolean;
 }
 

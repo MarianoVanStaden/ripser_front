@@ -1639,13 +1639,20 @@ const PresupuestosPage: React.FC = () => {
                         <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
                       )}
                     </Box>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
-                      <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
-                      <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
-                      <Typography variant="body2">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                      <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                    </Box>
-                    {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
+                          <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
+                          <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
+                          <Typography variant="body2">Cuota*: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                          <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                        </Box>
+                        {opcion.metodoPago === 'FINANCIACION_PROPIA' && (
+                          <Alert severity="warning" sx={{ mt: 1, py: 0, '& .MuiAlert-message': { py: 0.5 } }}>
+                            <Typography variant="caption">
+                              * El valor de la cuota es estimado. Cálculos definitivos y la configuración de entrega inicial se definen al facturar.
+                            </Typography>
+                          </Alert>
+                        )}
+                        {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
                   </Box>
                 } />
               </Box>

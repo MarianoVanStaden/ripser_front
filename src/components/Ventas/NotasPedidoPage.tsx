@@ -32,6 +32,10 @@ import {
   Snackbar,
   Autocomplete,
   InputAdornment,
+  FormControlLabel,
+  Checkbox,
+  RadioGroup,
+  Radio,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -664,7 +668,40 @@ const NotasPedidoPage: React.FC = () => {
     setSelectedNota(null);
   }, []);
 
-  const handleConvertToFactura = useCallback(async (notaId: number, confirmarConDeudaPendiente = false) => {
+  // Billing Dialog state (para Financiación Propia)
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
+  const [notaToBill, setNotaToBill] = useState<DocumentoComercial | null>(null);
+  const [billingForm, setBillingForm] = useState({
+    cantidadCuotas: 1,
+    tipoFinanciacion: 'MENSUAL',
+    primerVencimiento: '',
+    entregarInicial: false,
+    usePorcentaje: true,
+    porcentajeEntregaInicial: 0,
+    montoEntregaInicial: 0,
+  });
+
+  const handleOpenBillingDialog = useCallback((nota: DocumentoComercial) => {
+    if (nota.metodoPago === 'FINANCIACION_PROPIA') {
+      setNotaToBill(nota);
+      setBillingDialogOpen(true);
+    } else {
+      handleConvertToFactura(nota.id);
+    }
+  }, [notasPedido]);
+
+  const handleCloseBillingDialog = () => {
+    setBillingDialogOpen(false);
+    setNotaToBill(null);
+  };
+
+  const submitBillingDialog = () => {
+    if (!notaToBill) return;
+    handleConvertToFactura(notaToBill.id, false, billingForm);
+    handleCloseBillingDialog();
+  };
+
+  const handleConvertToFactura = useCallback(async (notaId: number, confirmarConDeudaPendiente = false, extraData?: any) => {
     // Find the nota
     const nota = notasPedido.find(n => n.id === notaId);
     if (!nota) {
@@ -709,7 +746,7 @@ const NotasPedidoPage: React.FC = () => {
                 setAsignarEquiposDialogOpen(true);
               };
             } else {
-              pendingDeudaRef.current = () => handleConvertToFactura(notaId, true);
+              pendingDeudaRef.current = () => handleConvertToFactura(notaId, true, extraData);
             }
             return;
           }
@@ -720,15 +757,28 @@ const NotasPedidoPage: React.FC = () => {
     }
     deudaYaConfirmadaRef.current = false;
 
+    // Payload for Facturacion
+    const baseFacturaPayload: any = { notaPedidoId: notaId };
+    if (extraData && nota?.metodoPago === 'FINANCIACION_PROPIA') {
+      baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
+      baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
+      if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
+      if (extraData.entregarInicial) {
+        if (extraData.usePorcentaje) {
+          baseFacturaPayload.porcentajeEntregaInicial = extraData.porcentajeEntregaInicial;
+        } else {
+          baseFacturaPayload.montoEntregaInicial = extraData.montoEntregaInicial;
+        }
+      }
+    }
+
     // Check if there are EQUIPO items in the detalles
     const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
 
     if (detallesEquipo.length > 0) {
       // Probe for debt BEFORE opening AsignarEquiposDialog so the warning appears first.
-      // The call intentionally omits equiposAsignaciones — the backend should reject it
-      // (missing equipos) unless there is a debt error, which takes priority.
       try {
-        const probeResult = await documentoApi.convertToFactura({ notaPedidoId: notaId });
+        const probeResult = await documentoApi.convertToFactura(baseFacturaPayload);
         // Unexpected success (nota converted without equipos): accept and show success dialog.
         setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
         setCreatedFactura(probeResult);
@@ -757,7 +807,7 @@ const NotasPedidoPage: React.FC = () => {
       try {
         setError(null);
         const factura = await documentoApi.convertToFactura({
-          notaPedidoId: notaId,
+          ...baseFacturaPayload,
           ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
         });
         // Remove nota from local state
@@ -773,7 +823,7 @@ const NotasPedidoPage: React.FC = () => {
           pendingDeudaRef.current = async () => {
             try {
               setError(null);
-              const facturaRetry = await documentoApi.convertToFactura({ notaPedidoId: notaId, confirmarConDeudaPendiente: true });
+              const facturaRetry = await documentoApi.convertToFactura({ ...baseFacturaPayload, confirmarConDeudaPendiente: true });
               setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
               setCreatedFactura(facturaRetry);
               setFacturaSuccessDialogOpen(true);
@@ -1059,7 +1109,7 @@ const NotasPedidoPage: React.FC = () => {
                         <IconButton 
                           size="small" 
                           color="success"
-                          onClick={() => handleConvertToFactura(nota.id)}
+                          onClick={() => handleOpenBillingDialog(nota)}
                           disabled={nota.estado !== EstadoDocumentoEnum.APROBADO && nota.estado !== EstadoDocumentoEnum.PENDIENTE}
                         >
                           <ReceiptIcon />
@@ -1603,6 +1653,79 @@ const NotasPedidoPage: React.FC = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
+      {/* Billing Dialog for FINANCIACION_PROPIA */}
+      <Dialog open={billingDialogOpen} onClose={handleCloseBillingDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Datos de Financiación Propia</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Cantidad de Cuotas"
+              type="number"
+              fullWidth
+              value={billingForm.cantidadCuotas}
+              onChange={(e) => setBillingForm(prev => ({ ...prev, cantidadCuotas: parseInt(e.target.value) || 1 }))}
+              inputProps={{ min: 1 }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Tipo de Financiación</InputLabel>
+              <Select
+                value={billingForm.tipoFinanciacion}
+                onChange={(e) => setBillingForm(prev => ({ ...prev, tipoFinanciacion: e.target.value }))}
+                label="Tipo de Financiación"
+              >
+                {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
+                  <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Primer Vencimiento"
+              type="date"
+              fullWidth
+              value={billingForm.primerVencimiento}
+              onChange={(e) => setBillingForm(prev => ({ ...prev, primerVencimiento: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+            <FormControlLabel
+              control={<Checkbox checked={billingForm.entregarInicial} onChange={(e) => setBillingForm(prev => ({ ...prev, entregarInicial: e.target.checked }))} />}
+              label="Entrega inicial"
+            />
+            {billingForm.entregarInicial && (
+              <Box sx={{ pl: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                 <RadioGroup
+                    row
+                    value={billingForm.usePorcentaje ? 'porcentaje' : 'monto'}
+                    onChange={(e) => setBillingForm(prev => ({ ...prev, usePorcentaje: e.target.value === 'porcentaje' }))}
+                 >
+                    <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
+                    <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
+                 </RadioGroup>
+                 {billingForm.usePorcentaje ? (
+                     <TextField
+                        label="Porcentaje de entrega"
+                        type="number"
+                        value={billingForm.porcentajeEntregaInicial}
+                        onChange={(e) => setBillingForm(prev => ({ ...prev, porcentajeEntregaInicial: parseFloat(e.target.value) || 0 }))}
+                        InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                     />
+                 ) : (
+                     <TextField
+                        label="Monto de entrega"
+                        type="number"
+                        value={billingForm.montoEntregaInicial}
+                        onChange={(e) => setBillingForm(prev => ({ ...prev, montoEntregaInicial: parseFloat(e.target.value) || 0 }))}
+                        InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                     />
+                 )}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBillingDialog}>Cancelar</Button>
+          <Button variant="contained" onClick={submitBillingDialog}>Confirmar Facturación</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

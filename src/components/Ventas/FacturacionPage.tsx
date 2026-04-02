@@ -35,6 +35,8 @@ import {
   RadioGroup,
   Radio,
   InputAdornment,
+  Checkbox,
+  FormGroup,
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
@@ -152,6 +154,21 @@ type NotaCartItem = {
   stockVerificado?: boolean;
 };
 
+// When FINANCIACION_PROPIA and no explicit entrega is configured,
+// default to 40% down payment so the backend always gets the correct split.
+function resolveEntregaFields(
+  metodoPago: string,
+  entregaActiva: boolean,
+  usePorcentaje: boolean,
+  porcentaje: number | null,
+  montoFijo: number | null,
+): { porcentajeEntregaInicial?: number; montoEntregaInicial?: number } {
+  if (entregaActiva && usePorcentaje && porcentaje != null) return { porcentajeEntregaInicial: porcentaje };
+  if (entregaActiva && !usePorcentaje && montoFijo != null) return { montoEntregaInicial: montoFijo };
+  if (metodoPago === 'FINANCIACION_PROPIA') return { porcentajeEntregaInicial: 40 };
+  return {};
+}
+
 const FacturacionPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
@@ -188,7 +205,26 @@ const FacturacionPage = () => {
   const [notaCantidadCuotas, setNotaCantidadCuotas] = useState<number | null>(null);
   const [notaTipoFinanciacion, setNotaTipoFinanciacion] = useState<string>('MENSUAL');
   const [notaPrimerVencimiento, setNotaPrimerVencimiento] = useState<string>('');
-  
+
+  // Entrega inicial (manual invoice)
+  const [entregarInicial, setEntregarInicial] = useState(false);
+  const [usePorcentaje, setUsePorcentaje] = useState(true);
+  const [porcentajeEntrega, setPorcentajeEntrega] = useState<number | null>(null);
+  const [montoFijoEntrega, setMontoFijoEntrega] = useState<number | null>(null);
+
+  // Entrega inicial (nota de pedido)
+  const [notaEntregaInicial, setNotaEntregaInicial] = useState(false);
+  const [notaUsePorcentaje, setNotaUsePorcentaje] = useState(true);
+  const [notaPorcentajeEntrega, setNotaPorcentajeEntrega] = useState<number | null>(null);
+  const [notaMontoFijoEntrega, setNotaMontoFijoEntrega] = useState<number | null>(null);
+
+  // Entrega info captured for success dialog
+  const [facturaEntregaInfo, setFacturaEntregaInfo] = useState<{
+    montoEntrega: number;
+    montoFinanciado: number;
+    cantidadCuotas: number | null;
+  } | null>(null);
+
   // Estado management dialog
   const [estadoDialogOpen, setEstadoDialogOpen] = useState(false);
   const [selectedDocumento, setSelectedDocumento] = useState<DocumentoComercial | null>(null);
@@ -371,17 +407,36 @@ const FacturacionPage = () => {
     if (!selectedOpcionId) return 0;
     const selectedOpcion = opcionesFinanciamiento[selectedOpcionId];
     if (!selectedOpcion || selectedOpcion.tasaInteres === 0) return 0;
-    return notaSubtotal * (selectedOpcion.tasaInteres / 100);
+    return (notaSubtotal * 0.6) * (selectedOpcion.tasaInteres / 100);
   }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento]);
 
   const notaIvaAmount = useMemo(() => {
-    if (!selectedNotaPedido) return 0;
-    const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any).tipoIva)?.rate || 0.21;
+    const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any)?.tipoIva)?.rate || 0.21;
     const subtotalConFinanciamiento = notaSubtotal + notaFinancingAdjustment;
     return subtotalConFinanciamiento * ivaRate;
   }, [notaSubtotal, notaFinancingAdjustment, selectedNotaPedido]);
 
   const notaTotalVenta = useMemo(() => notaSubtotal + notaFinancingAdjustment + notaIvaAmount, [notaSubtotal, notaFinancingAdjustment, notaIvaAmount]);
+
+  // Entrega inicial computed (manual)
+  const montoEntregaCalculado = useMemo(() => {
+    if (!entregarInicial) return 0;
+    if (usePorcentaje) return totalVenta * (porcentajeEntrega || 0) / 100;
+    return montoFijoEntrega || 0;
+  }, [entregarInicial, usePorcentaje, totalVenta, porcentajeEntrega, montoFijoEntrega]);
+
+  const montoFinanciado = useMemo(() => totalVenta - montoEntregaCalculado, [totalVenta, montoEntregaCalculado]);
+  const cuotaEstimada = useMemo(() => (cantidadCuotas ? montoFinanciado / cantidadCuotas : 0), [montoFinanciado, cantidadCuotas]);
+
+  // Entrega inicial computed (nota de pedido)
+  const notaMontoEntregaCalculado = useMemo(() => {
+    if (!notaEntregaInicial) return 0;
+    if (notaUsePorcentaje) return notaTotalVenta * (notaPorcentajeEntrega || 0) / 100;
+    return notaMontoFijoEntrega || 0;
+  }, [notaEntregaInicial, notaUsePorcentaje, notaTotalVenta, notaPorcentajeEntrega, notaMontoFijoEntrega]);
+
+  const notaMontoFinanciado = useMemo(() => notaTotalVenta - notaMontoEntregaCalculado, [notaTotalVenta, notaMontoEntregaCalculado]);
+  const notaCuotaEstimada = useMemo(() => (notaCantidadCuotas ? notaMontoFinanciado / notaCantidadCuotas : 0), [notaMontoFinanciado, notaCantidadCuotas]);
 
   // Sort and filter Notas de Pedido
   const sortedNotasPedido = useMemo(() => {
@@ -461,6 +516,10 @@ const FacturacionPage = () => {
     setCantidadCuotas(null);
     setTipoFinanciacion('MENSUAL');
     setPrimerVencimiento('');
+    setEntregarInicial(false);
+    setUsePorcentaje(true);
+    setPorcentajeEntrega(null);
+    setMontoFijoEntrega(null);
     setDueDate(dayjs().add(30, 'days').format('YYYY-MM-DD'));
     setNotes('');
     setCart([]);
@@ -729,6 +788,15 @@ const FacturacionPage = () => {
     if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
+    if (paymentMethod === 'FINANCIACION_PROPIA') {
+      if (cantidadCuotas != null && cantidadCuotas < 1) return setError('Mínimo 1 cuota');
+      if (entregarInicial) {
+        if (usePorcentaje && (porcentajeEntrega ?? 0) > 100) return setError('El porcentaje no puede superar 100%');
+        if (montoEntregaCalculado < 0) return setError('La entrega no puede ser negativa');
+        if (montoEntregaCalculado >= totalVenta) return setError('La entrega no puede ser igual o mayor al total');
+      }
+    }
+
     // Verificar stock de equipos antes de crear factura
     const equiposEnCarrito = cart.filter(item => item.tipoItem === 'EQUIPO' && item.recetaId);
     
@@ -832,6 +900,12 @@ const FacturacionPage = () => {
           const capturedCuotas = cantidadCuotas;
           const capturedTipoFin = tipoFinanciacion;
           const capturedVencimiento = primerVencimiento;
+          const capturedEntregaInicial1 = entregarInicial;
+          const capturedUsePorcentaje1 = usePorcentaje;
+          const capturedPorcentajeEntrega1 = porcentajeEntrega;
+          const capturedMontoFijoEntrega1 = montoFijoEntrega;
+          const capturedMontoEntrega1 = montoEntregaCalculado;
+          const capturedMontoFinanciado1 = montoFinanciado;
           pendingDeudaRef.current = async () => {
             setLoading(true);
             try {
@@ -851,12 +925,16 @@ const FacturacionPage = () => {
                 const facturaRetry = await documentoApi.convertToFactura({
                   notaPedidoId: retryNota.id,
                   confirmarConDeudaPendiente: true,
-                  ...(capturedPayment === 'FINANCIACION_PROPIA' && capturedCuotas != null && {
-                    cantidadCuotas: capturedCuotas,
-                    tipoFinanciacion: capturedTipoFin,
-                    ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
-                  }),
+                  ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
+                  tipoFinanciacion: capturedTipoFin,
+                  ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
+                  ...resolveEntregaFields(capturedPayment, capturedEntregaInicial1, capturedUsePorcentaje1, capturedPorcentajeEntrega1, capturedMontoFijoEntrega1),
                 });
+                if (capturedPayment === 'FINANCIACION_PROPIA' && capturedEntregaInicial1 && capturedMontoEntrega1 > 0) {
+                  setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega1, montoFinanciado: capturedMontoFinanciado1, cantidadCuotas: capturedCuotas });
+                } else {
+                  setFacturaEntregaInfo(null);
+                }
                 setCreatedFactura(facturaRetry);
                 setSuccessDialogOpen(true);
                 clearForm();
@@ -895,6 +973,7 @@ const FacturacionPage = () => {
               cantidadCuotas,
               tipoFinanciacion,
               ...(primerVencimiento && { primerVencimiento }),
+              ...resolveEntregaFields(paymentMethod, entregarInicial, usePorcentaje, porcentajeEntrega, montoFijoEntrega),
             }),
           });
         } catch (facturaErr: any) {
@@ -906,18 +985,28 @@ const FacturacionPage = () => {
             const capturedCuotas = cantidadCuotas;
             const capturedTipoFin = tipoFinanciacion;
             const capturedVencimiento = primerVencimiento;
+            const capturedEntregaInicial2 = entregarInicial;
+            const capturedUsePorcentaje2 = usePorcentaje;
+            const capturedPorcentajeEntrega2 = porcentajeEntrega;
+            const capturedMontoFijoEntrega2 = montoFijoEntrega;
+            const capturedMontoEntrega2 = montoEntregaCalculado;
+            const capturedMontoFinanciado2 = montoFinanciado;
             pendingDeudaRef.current = async () => {
               setLoading(true);
               try {
                 const facturaRetry = await documentoApi.convertToFactura({
                   notaPedidoId: notaId,
                   confirmarConDeudaPendiente: true,
-                  ...(capturedPayment === 'FINANCIACION_PROPIA' && capturedCuotas != null && {
-                    cantidadCuotas: capturedCuotas,
-                    tipoFinanciacion: capturedTipoFin,
-                    ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
-                  }),
+                  ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
+                  tipoFinanciacion: capturedTipoFin,
+                  ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
+                  ...resolveEntregaFields(capturedPayment, capturedEntregaInicial2, capturedUsePorcentaje2, capturedPorcentajeEntrega2, capturedMontoFijoEntrega2),
                 });
+                if (capturedPayment === 'FINANCIACION_PROPIA' && capturedEntregaInicial2 && capturedMontoEntrega2 > 0) {
+                  setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega2, montoFinanciado: capturedMontoFinanciado2, cantidadCuotas: capturedCuotas });
+                } else {
+                  setFacturaEntregaInfo(null);
+                }
                 setCreatedFactura(facturaRetry);
                 setSuccessDialogOpen(true);
                 clearForm();
@@ -936,6 +1025,11 @@ const FacturacionPage = () => {
           throw facturaErr;
         }
 
+        if (paymentMethod === 'FINANCIACION_PROPIA' && entregarInicial && montoEntregaCalculado > 0) {
+          setFacturaEntregaInfo({ montoEntrega: montoEntregaCalculado, montoFinanciado, cantidadCuotas });
+        } else {
+          setFacturaEntregaInfo(null);
+        }
         setCreatedFactura(factura);
         setSuccessDialogOpen(true);
         clearForm();
@@ -1005,15 +1099,24 @@ const FacturacionPage = () => {
         notaPedidoId: notaParaAsignacion.id,
         equiposAsignaciones: asignaciones,
         ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
-        ...(cuotasParaEnviar != null && {
-          cantidadCuotas: cuotasParaEnviar,
-          tipoFinanciacion: isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion,
-          ...((isManualInvoice ? primerVencimiento : notaPrimerVencimiento) && {
-            primerVencimiento: isManualInvoice ? primerVencimiento : notaPrimerVencimiento,
-          }),
+        ...(cuotasParaEnviar != null && { cantidadCuotas: cuotasParaEnviar }),
+        tipoFinanciacion: isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion,
+        ...((isManualInvoice ? primerVencimiento : notaPrimerVencimiento) && {
+          primerVencimiento: isManualInvoice ? primerVencimiento : notaPrimerVencimiento,
         }),
+        ...(isManualInvoice
+          ? resolveEntregaFields(paymentMethod, entregarInicial, usePorcentaje, porcentajeEntrega, montoFijoEntrega)
+          : resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega)),
       });
 
+      const entregaActiva = isManualInvoice ? entregarInicial : notaEntregaInicial;
+      const entregaMonto = isManualInvoice ? montoEntregaCalculado : notaMontoEntregaCalculado;
+      const entregaFinanciado = isManualInvoice ? montoFinanciado : notaMontoFinanciado;
+      if (entregaActiva && entregaMonto > 0) {
+        setFacturaEntregaInfo({ montoEntrega: entregaMonto, montoFinanciado: entregaFinanciado, cantidadCuotas: cuotasParaEnviar });
+      } else {
+        setFacturaEntregaInfo(null);
+      }
       setAsignarEquiposDialogOpen(false);
       setNotaParaAsignacion(null);
       setCreatedFactura(factura);
@@ -1038,9 +1141,16 @@ const FacturacionPage = () => {
         setDeudaError(deudaEquiposData);
         const notaId = notaParaAsignacion.id;
         const capturedIsManual = isManualInvoice;
+        const capturedMetodoPago3 = isManualInvoice ? paymentMethod : (selectedNotaPedido?.metodoPago ?? '');
         const capturedCuotas = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
         const capturedTipoFin = isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion;
         const capturedVencimiento = isManualInvoice ? primerVencimiento : notaPrimerVencimiento;
+        const capturedEntregaInicial3 = isManualInvoice ? entregarInicial : notaEntregaInicial;
+        const capturedUsePorcentaje3 = isManualInvoice ? usePorcentaje : notaUsePorcentaje;
+        const capturedPorcentajeEntrega3 = isManualInvoice ? porcentajeEntrega : notaPorcentajeEntrega;
+        const capturedMontoFijoEntrega3 = isManualInvoice ? montoFijoEntrega : notaMontoFijoEntrega;
+        const capturedMontoEntrega3 = isManualInvoice ? montoEntregaCalculado : notaMontoEntregaCalculado;
+        const capturedMontoFinanciado3 = isManualInvoice ? montoFinanciado : notaMontoFinanciado;
         pendingDeudaRef.current = async () => {
           setLoading(true);
           try {
@@ -1048,12 +1158,16 @@ const FacturacionPage = () => {
               notaPedidoId: notaId,
               equiposAsignaciones: asignaciones,
               confirmarConDeudaPendiente: true,
-              ...(capturedCuotas != null && {
-                cantidadCuotas: capturedCuotas,
-                tipoFinanciacion: capturedTipoFin,
-                ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
-              }),
+              ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
+              tipoFinanciacion: capturedTipoFin,
+              ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
+              ...resolveEntregaFields(capturedMetodoPago3, capturedEntregaInicial3, capturedUsePorcentaje3, capturedPorcentajeEntrega3, capturedMontoFijoEntrega3),
             });
+            if (capturedEntregaInicial3 && capturedMontoEntrega3 > 0) {
+              setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega3, montoFinanciado: capturedMontoFinanciado3, cantidadCuotas: capturedCuotas });
+            } else {
+              setFacturaEntregaInfo(null);
+            }
             setAsignarEquiposDialogOpen(false);
             setNotaParaAsignacion(null);
             setCreatedFactura(facturaRetry);
@@ -1170,10 +1284,23 @@ const FacturacionPage = () => {
     setNotaCantidadCuotas(null);
     setNotaTipoFinanciacion('MENSUAL');
     setNotaPrimerVencimiento('');
+    setNotaEntregaInicial(false);
+    setNotaUsePorcentaje(true);
+    setNotaPorcentajeEntrega(null);
+    setNotaMontoFijoEntrega(null);
   };
 
   const handleConvertNotaToFactura = async () => {
     if (!selectedNotaPedido) return;
+
+    if (selectedNotaPedido.metodoPago === 'FINANCIACION_PROPIA') {
+      if (notaCantidadCuotas != null && notaCantidadCuotas < 1) return setError('Mínimo 1 cuota');
+      if (notaEntregaInicial) {
+        if (notaUsePorcentaje && (notaPorcentajeEntrega ?? 0) > 100) return setError('El porcentaje no puede superar 100%');
+        if (notaMontoEntregaCalculado < 0) return setError('La entrega no puede ser negativa');
+        if (notaMontoEntregaCalculado >= notaTotalVenta) return setError('La entrega no puede ser igual o mayor al total');
+      }
+    }
 
     setLoading(true);
     setError(null);
@@ -1202,12 +1329,16 @@ const FacturacionPage = () => {
         // No equipos, proceed directly with factura creation
         const factura = await documentoApi.convertToFactura({
           notaPedidoId: notaId,
-          ...(notaCantidadCuotas != null && {
-            cantidadCuotas: notaCantidadCuotas,
-            tipoFinanciacion: notaTipoFinanciacion,
-            ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
-          }),
+          ...(notaCantidadCuotas != null && { cantidadCuotas: notaCantidadCuotas }),
+          tipoFinanciacion: notaTipoFinanciacion,
+          ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
+          ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
         });
+        if (notaEntregaInicial && notaMontoEntregaCalculado > 0) {
+          setFacturaEntregaInfo({ montoEntrega: notaMontoEntregaCalculado, montoFinanciado: notaMontoFinanciado, cantidadCuotas: notaCantidadCuotas });
+        } else {
+          setFacturaEntregaInfo(null);
+        }
         setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
         handleCloseConvertDialog();
         setCreatedFactura(factura);
@@ -1286,8 +1417,10 @@ const FacturacionPage = () => {
     // Convert templates to financing options with calculated amounts
     const opcionesCalculadas: OpcionFinanciamientoDTO[] = plantillasFinanciamiento.map((template) => {
       const tasaDecimal = template.tasaInteres / 100;
-      const montoTotal = totalVenta * (1 + tasaDecimal);
-      const montoCuota = montoTotal / template.cantidadCuotas;
+      const pagoAnticipo = totalVenta * 0.4;
+      const pagoFinanciado = totalVenta * 0.6 * (1 + tasaDecimal);
+      const montoTotal = pagoAnticipo + pagoFinanciado;
+      const montoCuota = pagoFinanciado / template.cantidadCuotas;
       
       return {
         nombre: template.nombre,
@@ -1312,20 +1445,24 @@ const FacturacionPage = () => {
       return;
     }
 
-    const montoConInteres = totalVenta * (1 + tasaInteres / 100);
-    const newOpcion: OpcionFinanciamientoDTO = {
-      nombre,
-      metodoPago,
-      cantidadCuotas,
-      tasaInteres,
-      montoTotal: montoConInteres,
-      montoCuota: montoConInteres / cantidadCuotas,
-      descripcion,
-      ordenPresentacion: opcionesFinanciamiento.length + 1,
-    };
+      const pagoAnticipo = totalVenta * 0.4;
+      const pagoFinanciado = totalVenta * 0.6 * (1 + tasaInteres / 100);
+      const montoConInteres = pagoAnticipo + pagoFinanciado;
+      const montoCuota = pagoFinanciado / cantidadCuotas;
 
-    setOpcionesFinanciamiento([...opcionesFinanciamiento, newOpcion]);
-    setShowNewOpcionForm(false);
+      const newOpcion: OpcionFinanciamientoDTO = {
+        nombre,
+        metodoPago,
+        cantidadCuotas,
+        tasaInteres,
+        montoTotal: montoConInteres,
+        montoCuota: montoCuota,
+        descripcion,
+        ordenPresentacion: opcionesFinanciamiento.length + 1,
+      };
+
+      setOpcionesFinanciamiento([...opcionesFinanciamiento, newOpcion]);
+      setShowNewOpcionForm(false);
     setNewOpcionForm({
       nombre: '',
       metodoPago: 'EFECTIVO',
@@ -1730,6 +1867,90 @@ const FacturacionPage = () => {
                         InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
+
+                    <Grid item xs={12}>
+                      <FormGroup>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={entregarInicial}
+                              onChange={(e) => setEntregarInicial(e.target.checked)}
+                            />
+                          }
+                          label="Entrega inicial"
+                        />
+                      </FormGroup>
+                    </Grid>
+
+                    {entregarInicial && (
+                      <>
+                        <Grid item xs={12}>
+                          <RadioGroup
+                            row
+                            value={usePorcentaje ? 'porcentaje' : 'monto'}
+                            onChange={(e) => setUsePorcentaje(e.target.value === 'porcentaje')}
+                          >
+                            <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
+                            <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
+                          </RadioGroup>
+                        </Grid>
+
+                        {usePorcentaje ? (
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              type="number"
+                              label="Porcentaje de entrega"
+                              value={porcentajeEntrega ?? ''}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setPorcentajeEntrega(isNaN(v) ? null : v);
+                              }}
+                              inputProps={{ min: 0, max: 100, step: 1 }}
+                              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                              helperText={porcentajeEntrega != null && totalVenta > 0
+                                ? `= $${montoEntregaCalculado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                                : undefined}
+                            />
+                          </Grid>
+                        ) : (
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              type="number"
+                              label="Monto de entrega"
+                              value={montoFijoEntrega ?? ''}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setMontoFijoEntrega(isNaN(v) ? null : v);
+                              }}
+                              inputProps={{ min: 0 }}
+                              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                            />
+                          </Grid>
+                        )}
+
+                        <Grid item xs={12} md={4}>
+                          <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+                            <Typography variant="caption" color="text.secondary">Monto financiado</Typography>
+                            <Typography variant="h6" color="primary">
+                              ${montoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                            </Typography>
+                          </Box>
+                        </Grid>
+
+                        {cantidadCuotas && cantidadCuotas > 0 && (
+                          <Grid item xs={12} md={4}>
+                            <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+                              <Typography variant="caption" color="text.secondary">Cuota estimada</Typography>
+                              <Typography variant="h6">
+                                ${cuotaEstimada.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        )}
+                      </>
+                    )}
                   </>
                 )}
 
@@ -2122,6 +2343,90 @@ const FacturacionPage = () => {
                         InputLabelProps={{ shrink: true }}
                       />
                     </Grid>
+
+                    <Grid item xs={12}>
+                      <FormGroup>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={notaEntregaInicial}
+                              onChange={(e) => setNotaEntregaInicial(e.target.checked)}
+                            />
+                          }
+                          label="Entrega inicial"
+                        />
+                      </FormGroup>
+                    </Grid>
+
+                    {notaEntregaInicial && (
+                      <>
+                        <Grid item xs={12}>
+                          <RadioGroup
+                            row
+                            value={notaUsePorcentaje ? 'porcentaje' : 'monto'}
+                            onChange={(e) => setNotaUsePorcentaje(e.target.value === 'porcentaje')}
+                          >
+                            <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
+                            <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
+                          </RadioGroup>
+                        </Grid>
+
+                        {notaUsePorcentaje ? (
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              type="number"
+                              label="Porcentaje de entrega"
+                              value={notaPorcentajeEntrega ?? ''}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setNotaPorcentajeEntrega(isNaN(v) ? null : v);
+                              }}
+                              inputProps={{ min: 0, max: 100, step: 1 }}
+                              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                              helperText={notaPorcentajeEntrega != null && notaTotalVenta > 0
+                                ? `= $${notaMontoEntregaCalculado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                                : undefined}
+                            />
+                          </Grid>
+                        ) : (
+                          <Grid item xs={12} md={4}>
+                            <TextField
+                              fullWidth
+                              type="number"
+                              label="Monto de entrega"
+                              value={notaMontoFijoEntrega ?? ''}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setNotaMontoFijoEntrega(isNaN(v) ? null : v);
+                              }}
+                              inputProps={{ min: 0 }}
+                              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                            />
+                          </Grid>
+                        )}
+
+                        <Grid item xs={12} md={4}>
+                          <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+                            <Typography variant="caption" color="text.secondary">Monto financiado</Typography>
+                            <Typography variant="h6" color="primary">
+                              ${notaMontoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                            </Typography>
+                          </Box>
+                        </Grid>
+
+                        {notaCantidadCuotas && notaCantidadCuotas > 0 && (
+                          <Grid item xs={12} md={4}>
+                            <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+                              <Typography variant="caption" color="text.secondary">Cuota estimada</Typography>
+                              <Typography variant="h6">
+                                ${notaCuotaEstimada.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        )}
+                      </>
+                    )}
                   </Grid>
                 </Box>
               )}
@@ -2323,7 +2628,7 @@ const FacturacionPage = () => {
                     Total con interés:
                   </Typography>
                   <Typography variant="h6">
-                    ${(totalVenta * (1 + newOpcionForm.tasaInteres / 100)).toFixed(2)}
+                    ${(totalVenta * 0.4 + (totalVenta * 0.6 * (1 + newOpcionForm.tasaInteres / 100))).toFixed(2)}
                   </Typography>
                 </Grid>
                 <Grid item xs={12}>
@@ -2538,6 +2843,7 @@ const FacturacionPage = () => {
         onClose={() => {
           setSuccessDialogOpen(false);
           setCreatedFactura(null);
+          setFacturaEntregaInfo(null);
         }}
         title="¡Factura Creada Exitosamente!"
         message="La factura ha sido generada correctamente"
@@ -2545,6 +2851,11 @@ const FacturacionPage = () => {
           { label: 'Número de Documento', value: createdFactura.numeroDocumento },
           { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
           { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+          ...(facturaEntregaInfo ? [
+            { label: 'Entrega inicial (CC débito)', value: `$${facturaEntregaInfo.montoEntrega.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+            { label: 'Monto financiado', value: `$${facturaEntregaInfo.montoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+            ...(facturaEntregaInfo.cantidadCuotas ? [{ label: 'Cuotas', value: `${facturaEntregaInfo.cantidadCuotas} × $${(facturaEntregaInfo.montoFinanciado / facturaEntregaInfo.cantidadCuotas).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }] : []),
+          ] : []),
           ...(createdFactura.prestamoId ? [{ label: 'Préstamo generado', value: `#${createdFactura.prestamoId}` }] : []),
         ] : []}
         actions={[
@@ -2588,3 +2899,5 @@ const FacturacionPage = () => {
 };
 
 export default FacturacionPage;
+
+
