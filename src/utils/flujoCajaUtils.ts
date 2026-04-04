@@ -36,14 +36,12 @@ import {
 export const getPaymentMethodLabel = (metodo: MetodoPago): string => {
   const labels: Record<MetodoPago, string> = {
     EFECTIVO: 'Efectivo',
-    TRANSFERENCIA_BANCARIA: 'Transferencia',
+    TRANSFERENCIA: 'Transferencia',
     CHEQUE: 'Cheque',
     TARJETA_CREDITO: 'Tarjeta Crédito',
     TARJETA_DEBITO: 'Tarjeta Débito',
-    FINANCIACION_PROPIA: 'Financiación',
-    MERCADO_PAGO: 'Mercado Pago',
+    FINANCIAMIENTO: 'Financiamiento',
     CUENTA_CORRIENTE: 'Cuenta Corriente',
-    OTRO: 'Otro',
   };
   return labels[metodo] || metodo;
 };
@@ -54,14 +52,12 @@ export const getPaymentMethodLabel = (metodo: MetodoPago): string => {
 export const getPaymentMethodIcon = (metodo: MetodoPago) => {
   const icons: Record<MetodoPago, typeof CashIcon> = {
     EFECTIVO: CashIcon,
-    TRANSFERENCIA_BANCARIA: BankIcon,
+    TRANSFERENCIA: BankIcon,
     CHEQUE: ChequeIcon,
     TARJETA_CREDITO: CreditCardIcon,
     TARJETA_DEBITO: DebitCardIcon,
-    FINANCIACION_PROPIA: FinanciacionIcon,
-    MERCADO_PAGO: DebitCardIcon, // Icono de pago similar a tarjeta
-    CUENTA_CORRIENTE: BankIcon, // Icono de banco/cuenta
-    OTRO: OtherIcon,
+    FINANCIAMIENTO: FinanciacionIcon,
+    CUENTA_CORRIENTE: BankIcon,
   };
   return icons[metodo] || OtherIcon;
 };
@@ -72,14 +68,12 @@ export const getPaymentMethodIcon = (metodo: MetodoPago) => {
 export const getPaymentMethodColor = (metodo: MetodoPago): string => {
   const colors: Record<MetodoPago, string> = {
     EFECTIVO: '#4CAF50', // verde
-    TRANSFERENCIA_BANCARIA: '#2196F3', // azul
+    TRANSFERENCIA: '#2196F3', // azul
     CHEQUE: '#FF9800', // naranja
     TARJETA_CREDITO: '#9C27B0', // morado
     TARJETA_DEBITO: '#00BCD4', // cyan
-    FINANCIACION_PROPIA: '#FFC107', // amarillo
-    MERCADO_PAGO: '#00B1EA', // celeste (color de Mercado Pago)
+    FINANCIAMIENTO: '#FFC107', // amarillo
     CUENTA_CORRIENTE: '#795548', // marrón
-    OTRO: '#9E9E9E', // gris
   };
   return colors[metodo] || '#9E9E9E';
 };
@@ -125,12 +119,12 @@ export const aggregateByPaymentMethod = (
   // Inicializar todos los métodos de pago con valores en 0
   const allMethods: MetodoPago[] = [
     'EFECTIVO',
-    'TRANSFERENCIA_BANCARIA',
+    'TRANSFERENCIA',
     'CHEQUE',
     'TARJETA_CREDITO',
     'TARJETA_DEBITO',
-    'FINANCIACION_PROPIA',
-    'OTRO',
+    'FINANCIAMIENTO',
+    'CUENTA_CORRIENTE',
   ];
 
   allMethods.forEach((metodo) => {
@@ -146,7 +140,7 @@ export const aggregateByPaymentMethod = (
 
   // Agregar movimientos por método de pago
   movimientos.forEach((mov) => {
-    const metodo = mov.metodoPago || 'OTRO';
+    const metodo = mov.metodoPago || 'EFECTIVO';
     const current = aggregationMap.get(metodo)!;
 
     if (mov.tipo === 'INGRESO') {

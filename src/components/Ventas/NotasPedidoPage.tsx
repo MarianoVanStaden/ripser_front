@@ -45,6 +45,10 @@ import {
   Receipt as ReceiptIcon,
   CheckCircle as CheckCircleIcon,
   Search as SearchIcon,
+  Payment as PaymentIcon,
+  AttachMoney as MoneyIcon,
+  CreditCard as CreditCardIcon,
+  AccountBalance as BankIcon,
 } from "@mui/icons-material";
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
@@ -112,6 +116,7 @@ const NotasPedidoPage: React.FC = () => {
   const [convertForm, setConvertForm] = useState<ConvertFormData>(initialConvertForm);
   const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
   const [notaForAsignacion, setNotaForAsignacion] = useState<DocumentoComercial | null>(null);
+  const pendingBillingDataRef = useRef<any>(null);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdNota, setCreatedNota] = useState<DocumentoComercial | null>(null);
   const [facturaSuccessDialogOpen, setFacturaSuccessDialogOpen] = useState(false);
@@ -126,6 +131,16 @@ const NotasPedidoPage: React.FC = () => {
     message: '',
     severity: 'success'
   });
+  const [opcionesConvertDialog, setOpcionesConvertDialog] = useState<OpcionFinanciamientoDTO[]>([]);
+  const [selectedOpcionConvertId, setSelectedOpcionConvertId] = useState<number | null>(null);
+
+  const [financiamientoDialogOpen, setFinanciamientoDialogOpen] = useState(false);
+  const [notaParaFinanciamiento, setNotaParaFinanciamiento] = useState<DocumentoComercial | null>(null);
+  const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
+  const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
+  const [notasFinanciamiento, setNotasFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
+  const [opcionesSonFallback, setOpcionesSonFallback] = useState(false);
+
   const [leadConversionDialogOpen, setLeadConversionDialogOpen] = useState(false);
   const [leadToConvert, setLeadToConvert] = useState<DocumentoComercial | null>(null);
   void setLeadConversionDialogOpen; // Used in future implementation
@@ -176,6 +191,91 @@ const NotasPedidoPage: React.FC = () => {
     pendingDeudaRef.current = null;
   }, []);
 
+  const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
+    switch (metodoPago) {
+      case 'EFECTIVO': return <MoneyIcon fontSize="small" />;
+      case 'TARJETA_CREDITO':
+      case 'TARJETA_DEBITO': return <CreditCardIcon fontSize="small" />;
+      case 'TRANSFERENCIA':
+      case 'TRANSFERENCIA_BANCARIA':
+      case 'FINANCIAMIENTO':
+      case 'FINANCIACION_PROPIA':
+      case 'CUENTA_CORRIENTE': return <BankIcon fontSize="small" />;
+      default: return <MoneyIcon fontSize="small" />;
+    }
+  };
+
+  const handleOpenFinanciamiento = useCallback(async (nota: DocumentoComercial) => {
+    setNotaParaFinanciamiento(nota);
+    setFinanciamientoDialogOpen(true);
+    setOpcionesSonFallback(false);
+
+    let opciones = notasFinanciamiento[nota.id] ?? [];
+    if (opciones.length === 0) {
+      try {
+        opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
+        // Fallback: si la nota tiene 0 o solo 1 opción (el backend solo copió la seleccionada),
+        // cargar el set completo del presupuesto de origen (esos IDs NO pertenecen a la nota)
+        if (opciones.length <= 1 && nota.documentoOrigenId) {
+          const opcionesOrigen = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.documentoOrigenId);
+          if (opcionesOrigen.length > opciones.length) {
+            opciones = opcionesOrigen;
+          }
+        }
+        if (opciones.length > 0) {
+          setNotasFinanciamiento(prev => ({ ...prev, [nota.id]: opciones }));
+        }
+      } catch (error) {
+        console.error('Error fetching financing options:', error);
+      }
+    }
+
+    setOpcionesFinanciamiento(opciones);
+    // Detect fallback every time: if none of the cached option IDs matches the nota's selected ID,
+    // the options came from the presupuesto de origen (IDs are foreign to the nota)
+    const isFallback = opciones.length > 0 && nota.documentoOrigenId != null
+      && !opciones.some(o => o.id === nota.opcionFinanciamientoSeleccionadaId);
+    setOpcionesSonFallback(isFallback);
+    let preSelected: OpcionFinanciamientoDTO | undefined;
+    if (isFallback) {
+      // Prioritize esSeleccionada (set in cache after last confirm) over metodoPago match,
+      // since multiple options can share the same metodoPago (e.g. 12 and 18 cuotas both FINANCIAMIENTO)
+      preSelected = opciones.find(o => o.esSeleccionada)
+        ?? opciones.find(o => o.metodoPago === nota.metodoPago || (o.metodoPago as string) === nota.metodoPago);
+    } else {
+      preSelected = opciones.find(o => o.id === nota.opcionFinanciamientoSeleccionadaId)
+        ?? opciones.find(o => o.esSeleccionada);
+    }
+    setSelectedOpcionId(preSelected?.id ?? null);
+  }, [notasFinanciamiento]);
+
+  const handleSelectOpcion = useCallback(async () => {
+    if (!notaParaFinanciamiento || !selectedOpcionId) return;
+    const opcionSeleccionada = opcionesFinanciamiento.find(o => o.id === selectedOpcionId);
+    if (!opcionSeleccionada) return;
+    try {
+      let updated: DocumentoComercial;
+      if (opcionesSonFallback) {
+        // Las opciones son del presupuesto de origen — sus IDs no pertenecen a la nota.
+        // Solo actualizamos el metodoPago.
+        updated = await documentoApi.changeMetodoPago(notaParaFinanciamiento.id, opcionSeleccionada.metodoPago);
+      } else {
+        updated = await documentoApi.selectFinanciamientoNotaPedido(notaParaFinanciamiento.id, selectedOpcionId);
+      }
+      setNotasPedido(prev => prev.map(n => n.id === notaParaFinanciamiento.id ? updated : n));
+      // Update cache: mark the selected option so it pre-selects correctly on reopen
+      const opcionesActualizadas = opcionesFinanciamiento.map(o => ({
+        ...o,
+        esSeleccionada: o.id === selectedOpcionId,
+      }));
+      setNotasFinanciamiento(prev => ({ ...prev, [notaParaFinanciamiento.id]: opcionesActualizadas }));
+      setSnackbar({ open: true, message: 'Financiamiento seleccionado', severity: 'success' });
+      setFinanciamientoDialogOpen(false);
+    } catch {
+      setSnackbar({ open: true, message: 'No se pudo seleccionar el financiamiento', severity: 'error' });
+    }
+  }, [notaParaFinanciamiento, selectedOpcionId, opcionesFinanciamiento, opcionesSonFallback]);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -208,7 +308,27 @@ const NotasPedidoPage: React.FC = () => {
       });
       
       setNotasPedido(sortedNotas);
-      
+
+      // Extract embedded opcionesFinanciamiento from each nota (same as PresupuestosPage)
+      const embeddedMap: Record<number, OpcionFinanciamientoDTO[]> = {};
+      notasArray.forEach((nota: any) => {
+        if (Array.isArray(nota.opcionesFinanciamiento) && nota.opcionesFinanciamiento.length > 0) {
+          embeddedMap[nota.id] = nota.opcionesFinanciamiento.map((o: any) => ({
+            id: o.id,
+            nombre: o.nombre ?? '',
+            metodoPago: o.metodoPago ?? 'EFECTIVO',
+            cantidadCuotas: o.cantidadCuotas ?? 0,
+            tasaInteres: o.tasaInteres ?? 0,
+            montoTotal: o.montoTotal ?? 0,
+            montoCuota: o.montoCuota ?? 0,
+            descripcion: o.descripcion,
+            ordenPresentacion: o.ordenPresentacion,
+            esSeleccionada: o.esSeleccionada,
+          }));
+        }
+      });
+      setNotasFinanciamiento(embeddedMap);
+
       // Backend requires PRESUPUESTO in PENDIENTE state for conversion
       const pendientes = Array.isArray(presupuestosData)
         ? presupuestosData
@@ -297,16 +417,30 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, []);
 
-  const getMetodoPagoLabel = (metodo: MetodoPago): string => {
+  const getSelectedFinancingOption = useCallback((nota: DocumentoComercial): OpcionFinanciamientoDTO | undefined => {
+    const opciones = notasFinanciamiento[nota.id] ?? [];
+    const selectedId = nota.opcionFinanciamientoSeleccionadaId;
+    if (selectedId) {
+      const found = opciones.find(o => o.id === selectedId);
+      if (found) return found;
+    }
+    return opciones.find(o => o.esSeleccionada);
+  }, [notasFinanciamiento]);
+
+  const getMetodoPagoLabel = (metodo: MetodoPago | string): string => {
     const labels: Record<string, string> = {
       EFECTIVO: "Efectivo",
       TARJETA_CREDITO: "Tarjeta de Crédito",
       TARJETA_DEBITO: "Tarjeta de Débito",
-      TRANSFERENCIA_BANCARIA: "Transferencia Bancaria",
       TRANSFERENCIA: "Transferencia Bancaria",
+      TRANSFERENCIA_BANCARIA: "Transferencia Bancaria",
       CHEQUE: "Cheque",
+      FINANCIAMIENTO: "Financiamiento",
+      FINANCIACION_PROPIA: "Financiamiento",
+      CUENTA_CORRIENTE: "Cuenta Corriente",
+      MERCADO_PAGO: "Mercado Pago",
     };
-    return labels[metodo] || metodo;
+    return labels[metodo] || String(metodo);
   };
 
   const getTipoIvaLabel = (tipo: TipoIva): string => {
@@ -328,6 +462,8 @@ const NotasPedidoPage: React.FC = () => {
     setConvertDialogOpen(false);
     setConvertForm(initialConvertForm);
     setSelectedPresupuesto(null);
+    setOpcionesConvertDialog([]);
+    setSelectedOpcionConvertId(null);
     setError(null);
     deudaYaConfirmadaRef.current = false;
   }, []);
@@ -336,6 +472,10 @@ const NotasPedidoPage: React.FC = () => {
     const presupuesto = presupuestos.find(p => p.id.toString() === presupuestoId);
     setSelectedPresupuesto(presupuesto || null);
     deudaYaConfirmadaRef.current = false;
+
+    // Reset opciones de financiamiento
+    setOpcionesConvertDialog([]);
+    setSelectedOpcionConvertId(null);
 
     // If presupuesto has tipoIva defined, set it in the form
     if (presupuesto && presupuesto.tipoIva) {
@@ -346,6 +486,26 @@ const NotasPedidoPage: React.FC = () => {
       }));
     } else {
       setConvertForm(prev => ({ ...prev, presupuestoId }));
+    }
+
+    // Fetch financing options for this presupuesto and pre-select the active one
+    if (presupuesto) {
+      try {
+        const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
+        if (opciones.length > 0) {
+          setOpcionesConvertDialog(opciones);
+          const seleccionada = opciones.find(o => o.id === presupuesto.opcionFinanciamientoSeleccionadaId)
+            ?? opciones.find(o => o.esSeleccionada);
+          const opcionId = seleccionada?.id ?? opciones[0].id;
+          setSelectedOpcionConvertId(opcionId ?? null);
+          const opcionMetodo = opciones.find(o => o.id === opcionId)?.metodoPago;
+          if (opcionMetodo) {
+            setConvertForm(prev => ({ ...prev, metodoPago: opcionMetodo }));
+          }
+        }
+      } catch {
+        // Non-fatal: user can still select manually
+      }
     }
 
     // Debt check on selection so the warning appears before the user fills the form
@@ -682,13 +842,28 @@ const NotasPedidoPage: React.FC = () => {
   });
 
   const handleOpenBillingDialog = useCallback((nota: DocumentoComercial) => {
-    if (nota.metodoPago === 'FINANCIACION_PROPIA') {
+    const esFinanciamiento = nota.metodoPago === 'FINANCIAMIENTO' || nota.metodoPago === 'FINANCIACION_PROPIA';
+    if (esFinanciamiento) {
+      // Pre-populate cuotas from selected option; default entrega inicial 40%
+      const opciones = notasFinanciamiento[nota.id] ?? [];
+      const opcionSeleccionada = opciones.find(o => o.id === nota.opcionFinanciamientoSeleccionadaId)
+        ?? opciones.find(o => o.esSeleccionada);
+      const cuotas = opcionSeleccionada?.cantidadCuotas ?? 1;
+      setBillingForm({
+        cantidadCuotas: cuotas,
+        tipoFinanciacion: 'MENSUAL',
+        primerVencimiento: '',
+        entregarInicial: true,
+        usePorcentaje: true,
+        porcentajeEntregaInicial: 40,
+        montoEntregaInicial: 0,
+      });
       setNotaToBill(nota);
       setBillingDialogOpen(true);
     } else {
       handleConvertToFactura(nota.id);
     }
-  }, [notasPedido]);
+  }, [notasPedido, notasFinanciamiento]);
 
   const handleCloseBillingDialog = () => {
     setBillingDialogOpen(false);
@@ -759,7 +934,7 @@ const NotasPedidoPage: React.FC = () => {
 
     // Payload for Facturacion
     const baseFacturaPayload: any = { notaPedidoId: notaId };
-    if (extraData && nota?.metodoPago === 'FINANCIACION_PROPIA') {
+    if (extraData && (nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA')) {
       baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
       baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
       if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
@@ -776,6 +951,9 @@ const NotasPedidoPage: React.FC = () => {
     const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
 
     if (detallesEquipo.length > 0) {
+      // Persist billing data so handleConfirmAsignacion can include it in the final payload
+      pendingBillingDataRef.current = Object.keys(baseFacturaPayload).length > 1 ? baseFacturaPayload : null;
+
       // Probe for debt BEFORE opening AsignarEquiposDialog so the warning appears first.
       try {
         const probeResult = await documentoApi.convertToFactura(baseFacturaPayload);
@@ -902,9 +1080,12 @@ const NotasPedidoPage: React.FC = () => {
       setError(null);
       setAsignarEquiposDialogOpen(false);
 
+      const billingData = pendingBillingDataRef.current ?? {};
+      pendingBillingDataRef.current = null;
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: notaForAsignacion.id,
         equiposAsignaciones: asignaciones,
+        ...billingData,
         ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
       });
 
@@ -923,9 +1104,12 @@ const NotasPedidoPage: React.FC = () => {
         pendingDeudaRef.current = async () => {
           try {
             setError(null);
+            const retryBillingData = pendingBillingDataRef.current ?? {};
+            pendingBillingDataRef.current = null;
             const facturaRetry = await documentoApi.convertToFactura({
               notaPedidoId: notaId,
               equiposAsignaciones: asignaciones,
+              ...retryBillingData,
               confirmarConDeudaPendiente: true,
             });
             setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
@@ -1061,7 +1245,7 @@ const NotasPedidoPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
                   <TableCell sx={{ minWidth: 120 }}>Fecha Emisión</TableCell>
                   <TableCell sx={{ minWidth: 150 }}>Fecha Vencimiento</TableCell>
-                  <TableCell sx={{ minWidth: 150 }}>Método de Pago</TableCell>
+                  <TableCell sx={{ minWidth: 160 }}>Financiamiento</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
                   <TableCell align="right" sx={{ minWidth: 120 }}>Total</TableCell>
                   <TableCell sx={{ minWidth: 130 }}>Creado por</TableCell>
@@ -1069,18 +1253,37 @@ const NotasPedidoPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedNotasPedido.map((nota) => (
+                {paginatedNotasPedido.map((nota) => {
+                  const selectedFinancing = getSelectedFinancingOption(nota);
+                  return (
                   <TableRow key={nota.id}>
                     <TableCell>{nota.numeroDocumento}</TableCell>
                     <TableCell>{nota.clienteNombre}</TableCell>
                     <TableCell>{new Date(nota.fechaEmision).toLocaleDateString("es-AR")}</TableCell>
                     <TableCell>
-                      {nota.fechaVencimiento 
+                      {nota.fechaVencimiento
                         ? new Date(nota.fechaVencimiento).toLocaleDateString("es-AR")
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {nota.metodoPago ? getMetodoPagoLabel(nota.metodoPago) : "-"}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: '160px' }}>
+                        {selectedFinancing ? (
+                          <Chip
+                            label={selectedFinancing.nombre}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ fontSize: '0.75rem' }}
+                          />
+                        ) : (
+                          <Chip
+                            label={nota.metodoPago ? getMetodoPagoLabel(nota.metodoPago) : "Sin seleccionar"}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.75rem' }}
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -1124,6 +1327,11 @@ const NotasPedidoPage: React.FC = () => {
                           <PrintIcon />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Opciones de financiamiento">
+                        <IconButton size="small" color="secondary" onClick={() => handleOpenFinanciamiento(nota)}>
+                          <PaymentIcon />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Enviar">
                         <IconButton size="small" color="primary">
                           <SendIcon />
@@ -1131,7 +1339,8 @@ const NotasPedidoPage: React.FC = () => {
                       </Tooltip>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
@@ -1281,24 +1490,64 @@ const NotasPedidoPage: React.FC = () => {
               </Paper>
             )}
 
-            <TextField
-              fullWidth
-              select
-              label="Método de Pago"
-              value={convertForm.metodoPago}
-              onChange={(e) => setConvertForm(prev => ({ 
-                ...prev, 
-                metodoPago: e.target.value as MetodoPago 
-              }))}
-              margin="normal"
-              required
-            >
-              <MenuItem value="EFECTIVO">Efectivo</MenuItem>
-              <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
-              <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
-              <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
-              <MenuItem value="CHEQUE">Cheque</MenuItem>
-            </TextField>
+            {opcionesConvertDialog.length > 0 ? (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>Opción de Financiamiento</Typography>
+                <RadioGroup
+                  value={selectedOpcionConvertId}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    setSelectedOpcionConvertId(id);
+                    const opcion = opcionesConvertDialog.find(o => o.id === id);
+                    if (opcion) setConvertForm(prev => ({ ...prev, metodoPago: opcion.metodoPago }));
+                  }}
+                >
+                  {opcionesConvertDialog.map((opcion) => (
+                    <Box key={opcion.id} sx={{ p: 1.5, border: '1px solid', borderColor: selectedOpcionConvertId === opcion.id ? 'primary.main' : 'divider', borderRadius: 1, mb: 1 }}>
+                      <FormControlLabel value={opcion.id} control={<Radio />} label={
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            {getMetodoPagoIcon(opcion.metodoPago)}
+                            <Typography variant="subtitle2">{opcion.nombre}</Typography>
+                            {opcion.tasaInteres < 0 && (
+                              <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0.5 }}>
+                            <Typography variant="caption">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
+                            <Typography variant="caption">Cuotas: {opcion.cantidadCuotas}</Typography>
+                            <Typography variant="caption">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                            <Typography variant="caption">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                          </Box>
+                          {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
+                        </Box>
+                      } />
+                    </Box>
+                  ))}
+                </RadioGroup>
+              </Box>
+            ) : (
+              <TextField
+                fullWidth
+                select
+                label="Método de Pago"
+                value={convertForm.metodoPago}
+                onChange={(e) => setConvertForm(prev => ({
+                  ...prev,
+                  metodoPago: e.target.value as MetodoPago
+                }))}
+                margin="normal"
+                required
+              >
+                <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                <MenuItem value="TRANSFERENCIA">Transferencia Bancaria</MenuItem>
+                <MenuItem value="CHEQUE">Cheque</MenuItem>
+                <MenuItem value="FINANCIAMIENTO">Financiamiento</MenuItem>
+                <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
+              </TextField>
+            )}
 
             <TextField
               fullWidth
@@ -1653,7 +1902,7 @@ const NotasPedidoPage: React.FC = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
-      {/* Billing Dialog for FINANCIACION_PROPIA */}
+      {/* Billing Dialog for FINANCIAMIENTO */}
       <Dialog open={billingDialogOpen} onClose={handleCloseBillingDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Datos de Financiación Propia</DialogTitle>
         <DialogContent>
@@ -1724,6 +1973,75 @@ const NotasPedidoPage: React.FC = () => {
         <DialogActions>
           <Button onClick={handleCloseBillingDialog}>Cancelar</Button>
           <Button variant="contained" onClick={submitBillingDialog}>Confirmar Facturación</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog: Opciones de Financiamiento */}
+      <Dialog
+        open={financiamientoDialogOpen}
+        onClose={() => setFinanciamientoDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        sx={{ '& .MuiDialog-paper': { maxHeight: { xs: '100%', sm: '90vh' }, m: { xs: 0, sm: 2 } } }}
+      >
+        <DialogTitle>
+          Opciones de Financiamiento
+          <Typography variant="body2" color="text.secondary">Seleccione la opción de pago preferida</Typography>
+        </DialogTitle>
+        <DialogContent>
+          {notaParaFinanciamiento && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">Nota de Pedido: {notaParaFinanciamiento.numeroDocumento}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {notaParaFinanciamiento.clienteNombre ? 'Cliente:' : 'Lead:'} {notaParaFinanciamiento.clienteNombre || notaParaFinanciamiento.leadNombre}
+                </Typography>
+              </Box>
+              <Typography variant="subtitle1" sx={{ mt: 1 }}>Subtotal: ${notaParaFinanciamiento.subtotal?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+            </Box>
+          )}
+          <Divider sx={{ mb: 2 }} />
+          {opcionesFinanciamiento.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>No hay opciones de financiamiento disponibles para este documento.</Typography>
+          ) : (
+            <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
+              {opcionesFinanciamiento.map((opcion) => (
+                <Box key={opcion.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
+                  <FormControlLabel value={opcion.id} control={<Radio />} label={
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        {getMetodoPagoIcon(opcion.metodoPago)}
+                        <Typography variant="subtitle1">{opcion.nombre}</Typography>
+                        {opcion.tasaInteres < 0 && (
+                          <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
+                        )}
+                      </Box>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
+                        <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
+                        <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
+                        <Typography variant="body2">Cuota*: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                        <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                      </Box>
+                      {opcion.metodoPago === 'FINANCIAMIENTO' && (
+                        <Alert severity="warning" sx={{ mt: 1, py: 0, '& .MuiAlert-message': { py: 0.5 } }}>
+                          <Typography variant="caption">
+                            * El valor de la cuota es estimado. Cálculos definitivos y la configuración de entrega inicial se definen al facturar.
+                          </Typography>
+                        </Alert>
+                      )}
+                      {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
+                    </Box>
+                  } />
+                </Box>
+              ))}
+            </RadioGroup>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFinanciamientoDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSelectOpcion} variant="contained" disabled={!selectedOpcionId}>
+            Confirmar selección
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

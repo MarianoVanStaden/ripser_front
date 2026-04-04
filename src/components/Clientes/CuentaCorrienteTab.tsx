@@ -374,12 +374,12 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
                 fullWidth
               >
                 <MenuItem value="EFECTIVO">💵 Efectivo</MenuItem>
-                <MenuItem value="TRANSFERENCIA_BANCARIA">🏦 Transferencia Bancaria</MenuItem>
+                <MenuItem value="TRANSFERENCIA">🏦 Transferencia Bancaria</MenuItem>
                 <MenuItem value="CHEQUE">📝 Cheque</MenuItem>
                 <MenuItem value="TARJETA_CREDITO">💳 Tarjeta de Crédito</MenuItem>
                 <MenuItem value="TARJETA_DEBITO">💳 Tarjeta de Débito</MenuItem>
-                <MenuItem value="MERCADO_PAGO">📱 Mercado Pago</MenuItem>
-                <MenuItem value="FINANCIACION_PROPIA">📋 Financiación Propia</MenuItem>
+                <MenuItem value="FINANCIAMIENTO">📋 Financiamiento</MenuItem>
+                <MenuItem value="CUENTA_CORRIENTE">🏦 Cuenta Corriente</MenuItem>
               </TextField>
             </Box>
           </DialogContent>

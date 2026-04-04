@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTheme, useMediaQuery } from '@mui/material';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Chip, IconButton,
   Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
@@ -53,6 +54,8 @@ const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefi
 const EquiposList: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [page] = useState(0);
@@ -461,6 +464,15 @@ const EquiposList: React.FC = () => {
     }
   };
 
+  const columnVisibilityModel = isMobile ? {
+    color: false,
+    asignado: false,
+    clienteNombre: false,
+    responsableNombre: false,
+    usuarioCreadorNombre: false,
+    fechaCreacion: false,
+  } : {};
+
   const columns: GridColDef[] = [
     {
       field: 'numeroHeladera',
@@ -774,9 +786,9 @@ const EquiposList: React.FC = () => {
   };
 
   return (
-    <Box p={3}>
-      <Paper elevation={2} sx={{ p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+    <Box sx={{ p: { xs: 1, sm: 3 } }}>
+      <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 3 } }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
           <Typography variant="h5" fontWeight="600">
             Gestión de Equipos Fabricados
           </Typography>
@@ -1107,7 +1119,7 @@ const EquiposList: React.FC = () => {
                       </Box>
                     </AccordionSummary>
                     <AccordionDetails sx={{ p: 0 }}>
-                      <Box sx={{ width: '100%' }}>
+                      <Box sx={{ width: '100%', overflowX: 'auto' }}>
                         <DataGrid
                           rows={equiposDelTipo}
                           columns={columns}
@@ -1116,6 +1128,7 @@ const EquiposList: React.FC = () => {
                           disableRowSelectionOnClick
                           pageSizeOptions={[25, 50, 100]}
                           getRowId={(row) => row.id || `temp-${row.numeroHeladera || Math.random()}`}
+                          columnVisibilityModel={columnVisibilityModel}
                           initialState={{
                             pagination: {
                               paginationModel: { pageSize: 25 },
@@ -1126,6 +1139,7 @@ const EquiposList: React.FC = () => {
                           }}
                           sx={{
                             border: 'none',
+                            minWidth: isMobile ? 480 : undefined,
                             '& .MuiDataGrid-columnHeaders': {
                               bgcolor: 'grey.50',
                             },

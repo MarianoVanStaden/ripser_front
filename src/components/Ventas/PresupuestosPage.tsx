@@ -67,7 +67,7 @@ const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinancia
     .map((opcion) => ({
       id: opcion.id,
       nombre: opcion.nombre ?? "",
-      metodoPago: (opcion.metodoPago ?? "OTRO") as MetodoPago,
+      metodoPago: (opcion.metodoPago ?? "EFECTIVO") as MetodoPago,
       cantidadCuotas: opcion.cantidadCuotas ?? 0,
       tasaInteres: opcion.tasaInteres ?? 0,
       montoTotal: opcion.montoTotal ?? 0,
@@ -374,9 +374,13 @@ const PresupuestosPage: React.FC = () => {
       case 'EFECTIVO':
         return <MoneyIcon fontSize="small" />;
       case 'TARJETA_CREDITO':
+      case 'TARJETA_DEBITO':
         return <CreditCardIcon fontSize="small" />;
+      case 'TRANSFERENCIA':
       case 'TRANSFERENCIA_BANCARIA':
+      case 'FINANCIAMIENTO':
       case 'FINANCIACION_PROPIA':
+      case 'CUENTA_CORRIENTE':
         return <BankIcon fontSize="small" />;
       default:
         return <MoneyIcon fontSize="small" />;
@@ -385,20 +389,17 @@ const PresupuestosPage: React.FC = () => {
 
   const getMetodoPagoLabel = (metodoPago: MetodoPago | string) => {
     switch (metodoPago) {
-      case 'EFECTIVO':
-        return 'Efectivo';
-      case 'TARJETA_CREDITO':
-        return 'Tarjeta de Crédito';
-      case 'TARJETA_DEBITO':
-        return 'Tarjeta de Débito';
-      case 'TRANSFERENCIA_BANCARIA':
-        return 'Transferencia bancaria';
-      case 'FINANCIACION_PROPIA':
-        return 'Financiación propia';
-      case 'CHEQUE':
-        return 'Cheque';
-      default:
-        return String(metodoPago);
+      case 'EFECTIVO': return 'Efectivo';
+      case 'TARJETA_CREDITO': return 'Tarjeta de Crédito';
+      case 'TARJETA_DEBITO': return 'Tarjeta de Débito';
+      case 'TRANSFERENCIA':
+      case 'TRANSFERENCIA_BANCARIA': return 'Transferencia bancaria';
+      case 'FINANCIAMIENTO':
+      case 'FINANCIACION_PROPIA': return 'Financiamiento';
+      case 'CHEQUE': return 'Cheque';
+      case 'CUENTA_CORRIENTE': return 'Cuenta Corriente';
+      case 'MERCADO_PAGO': return 'Mercado Pago';
+      default: return String(metodoPago);
     }
   };
 
@@ -1645,7 +1646,7 @@ const PresupuestosPage: React.FC = () => {
                           <Typography variant="body2">Cuota*: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
                           <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
                         </Box>
-                        {opcion.metodoPago === 'FINANCIACION_PROPIA' && (
+                        {opcion.metodoPago === 'FINANCIAMIENTO' && (
                           <Alert severity="warning" sx={{ mt: 1, py: 0, '& .MuiAlert-message': { py: 0.5 } }}>
                             <Typography variant="caption">
                               * El valor de la cuota es estimado. Cálculos definitivos y la configuración de entrega inicial se definen al facturar.

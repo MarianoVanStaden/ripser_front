@@ -214,12 +214,10 @@ const ConfiguracionFinanciamiento: React.FC = () => {
       EFECTIVO: 'Efectivo',
       TARJETA_CREDITO: 'Tarjeta de Crédito',
       TARJETA_DEBITO: 'Tarjeta de Débito',
-      TRANSFERENCIA_BANCARIA: 'Transferencia Bancaria',
+      TRANSFERENCIA: 'Transferencia Bancaria',
       CHEQUE: 'Cheque',
-      FINANCIACION_PROPIA: 'Financiación Propia',
+      FINANCIAMIENTO: 'Financiamiento',
       CUENTA_CORRIENTE: 'Cuenta Corriente',
-      MERCADO_PAGO: 'Mercado Pago',
-      OTRO: 'Otro',
     };
     return methods[method] || method;
   };
@@ -448,11 +446,10 @@ const ConfiguracionFinanciamiento: React.FC = () => {
                     <MenuItem value="EFECTIVO">Efectivo</MenuItem>
                     <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
                     <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
-                    <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
+                    <MenuItem value="TRANSFERENCIA">Transferencia Bancaria</MenuItem>
                     <MenuItem value="CHEQUE">Cheque</MenuItem>
-                    <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
+                    <MenuItem value="FINANCIAMIENTO">Financiamiento</MenuItem>
                     <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
-                    <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

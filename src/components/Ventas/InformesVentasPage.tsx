@@ -337,10 +337,10 @@ const loadData = async () => {
       EFECTIVO: 'Efectivo',
       TARJETA_CREDITO: 'Tarjeta de Crédito',
       TARJETA_DEBITO: 'Tarjeta de Débito',
-      TRANSFERENCIA_BANCARIA: 'Transferencia',
+      TRANSFERENCIA: 'Transferencia',
       CUENTA_CORRIENTE: 'Cuenta Corriente',
       CHEQUE: 'Cheque',
-      MERCADO_PAGO: 'Mercado Pago',
+      FINANCIAMIENTO: 'Financiamiento',
     };
     return methods[method] || method;
   };
@@ -956,10 +956,10 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
                   <MenuItem value="EFECTIVO">Efectivo</MenuItem>
                   <MenuItem value="CHEQUE">Cheque</MenuItem>
                   <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
-                  <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                  <MenuItem value="FINANCIAMIENTO">Financiamiento</MenuItem>
                   <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
                   <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
-                  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia</MenuItem>
+                  <MenuItem value="TRANSFERENCIA">Transferencia</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

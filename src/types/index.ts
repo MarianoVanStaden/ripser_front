@@ -1548,7 +1548,7 @@ export interface Venta {
   detalleVentas: DetalleVenta[];
   prestamoId?: number | null;
 }
-export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE'| 'FINANCIACION_PROPIA' | 'CUENTA_CORRIENTE' | 'MERCADO_PAGO' | 'OTRO';
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIAMIENTO' | 'CUENTA_CORRIENTE';
 
 // Enums para equipos fabricados
 export type ColorEquipo =

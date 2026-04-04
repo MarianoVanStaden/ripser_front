@@ -91,7 +91,7 @@ const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
   { value: 'CHEQUE', label: 'Cheque' },
   { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
   { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
-  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia Bancaria' },
+  { value: 'TRANSFERENCIA', label: 'Transferencia Bancaria' },
 ];
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
@@ -154,7 +154,7 @@ type NotaCartItem = {
   stockVerificado?: boolean;
 };
 
-// When FINANCIACION_PROPIA and no explicit entrega is configured,
+// When FINANCIAMIENTO and no explicit entrega is configured,
 // default to 40% down payment so the backend always gets the correct split.
 function resolveEntregaFields(
   metodoPago: string,
@@ -165,7 +165,7 @@ function resolveEntregaFields(
 ): { porcentajeEntregaInicial?: number; montoEntregaInicial?: number } {
   if (entregaActiva && usePorcentaje && porcentaje != null) return { porcentajeEntregaInicial: porcentaje };
   if (entregaActiva && !usePorcentaje && montoFijo != null) return { montoEntregaInicial: montoFijo };
-  if (metodoPago === 'FINANCIACION_PROPIA') return { porcentajeEntregaInicial: 40 };
+  if (metodoPago === 'FINANCIAMIENTO') return { porcentajeEntregaInicial: 40 };
   return {};
 }
 
@@ -489,8 +489,8 @@ const FacturacionPage = () => {
         return <MoneyIcon fontSize="small" />;
       case 'TARJETA_CREDITO':
         return <CreditCardIcon fontSize="small" />;
-      case 'TRANSFERENCIA_BANCARIA':
-      case 'FINANCIACION_PROPIA':
+      case 'TRANSFERENCIA':
+      case 'FINANCIAMIENTO':
         return <BankIcon fontSize="small" />;
       default:
         return <MoneyIcon fontSize="small" />;
@@ -502,8 +502,8 @@ const FacturacionPage = () => {
       case 'EFECTIVO': return 'Efectivo';
       case 'TARJETA_CREDITO': return 'Tarjeta de Crédito';
       case 'TARJETA_DEBITO': return 'Tarjeta de Débito';
-      case 'TRANSFERENCIA_BANCARIA': return 'Transferencia bancaria';
-      case 'FINANCIACION_PROPIA': return 'Financiación propia';
+      case 'TRANSFERENCIA': return 'Transferencia bancaria';
+      case 'FINANCIAMIENTO': return 'Financiación propia';
       case 'CHEQUE': return 'Cheque';
       default: return String(metodoPago);
     }
@@ -788,7 +788,7 @@ const FacturacionPage = () => {
     if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
-    if (paymentMethod === 'FINANCIACION_PROPIA') {
+    if (paymentMethod === 'FINANCIAMIENTO') {
       if (cantidadCuotas != null && cantidadCuotas < 1) return setError('Mínimo 1 cuota');
       if (entregarInicial) {
         if (usePorcentaje && (porcentajeEntrega ?? 0) > 100) return setError('El porcentaje no puede superar 100%');
@@ -930,7 +930,7 @@ const FacturacionPage = () => {
                   ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
                   ...resolveEntregaFields(capturedPayment, capturedEntregaInicial1, capturedUsePorcentaje1, capturedPorcentajeEntrega1, capturedMontoFijoEntrega1),
                 });
-                if (capturedPayment === 'FINANCIACION_PROPIA' && capturedEntregaInicial1 && capturedMontoEntrega1 > 0) {
+                if (capturedPayment === 'FINANCIAMIENTO' && capturedEntregaInicial1 && capturedMontoEntrega1 > 0) {
                   setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega1, montoFinanciado: capturedMontoFinanciado1, cantidadCuotas: capturedCuotas });
                 } else {
                   setFacturaEntregaInfo(null);
@@ -969,7 +969,7 @@ const FacturacionPage = () => {
         try {
           factura = await documentoApi.convertToFactura({
             notaPedidoId: nota.id,
-            ...(paymentMethod === 'FINANCIACION_PROPIA' && cantidadCuotas != null && {
+            ...(paymentMethod === 'FINANCIAMIENTO' && cantidadCuotas != null && {
               cantidadCuotas,
               tipoFinanciacion,
               ...(primerVencimiento && { primerVencimiento }),
@@ -1002,7 +1002,7 @@ const FacturacionPage = () => {
                   ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
                   ...resolveEntregaFields(capturedPayment, capturedEntregaInicial2, capturedUsePorcentaje2, capturedPorcentajeEntrega2, capturedMontoFijoEntrega2),
                 });
-                if (capturedPayment === 'FINANCIACION_PROPIA' && capturedEntregaInicial2 && capturedMontoEntrega2 > 0) {
+                if (capturedPayment === 'FINANCIAMIENTO' && capturedEntregaInicial2 && capturedMontoEntrega2 > 0) {
                   setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega2, montoFinanciado: capturedMontoFinanciado2, cantidadCuotas: capturedCuotas });
                 } else {
                   setFacturaEntregaInfo(null);
@@ -1025,7 +1025,7 @@ const FacturacionPage = () => {
           throw facturaErr;
         }
 
-        if (paymentMethod === 'FINANCIACION_PROPIA' && entregarInicial && montoEntregaCalculado > 0) {
+        if (paymentMethod === 'FINANCIAMIENTO' && entregarInicial && montoEntregaCalculado > 0) {
           setFacturaEntregaInfo({ montoEntrega: montoEntregaCalculado, montoFinanciado, cantidadCuotas });
         } else {
           setFacturaEntregaInfo(null);
@@ -1293,7 +1293,7 @@ const FacturacionPage = () => {
   const handleConvertNotaToFactura = async () => {
     if (!selectedNotaPedido) return;
 
-    if (selectedNotaPedido.metodoPago === 'FINANCIACION_PROPIA') {
+    if (selectedNotaPedido.metodoPago === 'FINANCIAMIENTO') {
       if (notaCantidadCuotas != null && notaCantidadCuotas < 1) return setError('Mínimo 1 cuota');
       if (notaEntregaInicial) {
         if (notaUsePorcentaje && (notaPorcentajeEntrega ?? 0) > 100) return setError('El porcentaje no puede superar 100%');
@@ -1826,7 +1826,7 @@ const FacturacionPage = () => {
                   />
                 </Grid>
 
-                {paymentMethod === 'FINANCIACION_PROPIA' && (
+                {paymentMethod === 'FINANCIAMIENTO' && (
                   <>
                     <Grid item xs={12} md={4}>
                       <TextField
@@ -2299,8 +2299,8 @@ const FacturacionPage = () => {
                 </Box>
               )}
 
-              {/* Financing fields for FINANCIACION_PROPIA */}
-              {selectedNotaPedido?.metodoPago === 'FINANCIACION_PROPIA' && (
+              {/* Financing fields for FINANCIAMIENTO */}
+              {selectedNotaPedido?.metodoPago === 'FINANCIAMIENTO' && (
                 <Box mb={3}>
                   <Typography variant="subtitle1" gutterBottom>Datos de Financiación Propia</Typography>
                   <Grid container spacing={2}>

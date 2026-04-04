@@ -70,7 +70,7 @@ const OpcionesFinanciamientoManager: React.FC<OpcionesFinanciamientoManagerProps
     { value: "TARJETA_CREDITO", label: "Tarjeta de Crédito" },
     { value: "TARJETA_DEBITO", label: "Tarjeta de Débito" },
     { value: "TRANSFERENCIA", label: "Transferencia Bancaria" },
-    { value: "FINANCIACION_PROPIA", label: "Financiación Propia" },
+    { value: "FINANCIAMIENTO", label: "Financiamiento" },
     { value: "CHEQUE", label: "Cheque" },
   ];
 

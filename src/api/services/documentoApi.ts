@@ -58,6 +58,22 @@ export const documentoApi = {
     const response = await api.put(`/api/documentos/${id}/estado`, nuevoEstado);
     return response.data;
   },
+  // Change metodoPago of documento
+  changeMetodoPago: async (id: number, metodoPago: MetodoPago): Promise<DocumentoComercial> => {
+    const response = await api.put<DocumentoComercial>(
+      `/api/documentos/${id}/metodo-pago`,
+      JSON.stringify(metodoPago),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    return response.data;
+  },
+  // Seleccionar opción de financiamiento en nota de pedido
+  selectFinanciamientoNotaPedido: async (notaPedidoId: number, opcionId: number): Promise<DocumentoComercial> => {
+    const response = await api.put<DocumentoComercial>(
+      `/api/documentos/nota-pedido/${notaPedidoId}/opcion-financiamiento/${opcionId}`
+    );
+    return response.data;
+  },
   // Search documentos by numeroDocumento - Note: This endpoint doesn't exist in backend
   searchByNumero: async (_term: string): Promise<DocumentoComercial[]> => {
   void _term;

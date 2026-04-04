@@ -319,7 +319,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
         },
         {
           nombre: '3 Cuotas - Financiación Propia',
-          metodoPago: 'FINANCIACION_PROPIA',
+          metodoPago: 'FINANCIAMIENTO',
           cantidadCuotas: 3,
           tasaInteres: 0,
           montoTotal: baseAmount,
@@ -330,7 +330,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
         },
         {
           nombre: '6 Cuotas - Financiación Propia',
-          metodoPago: 'FINANCIACION_PROPIA',
+          metodoPago: 'FINANCIAMIENTO',
           cantidadCuotas: 6,
           tasaInteres: 0,
           montoTotal: baseAmount,
@@ -341,7 +341,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
         },
         {
           nombre: '12 Cuotas - Financiación Propia',
-          metodoPago: 'FINANCIACION_PROPIA',
+          metodoPago: 'FINANCIAMIENTO',
           cantidadCuotas: 12,
           tasaInteres: 0,
           montoTotal: baseAmount,
@@ -374,10 +374,10 @@ const OpcionesFinanciamientoPage: React.FC = () => {
       EFECTIVO: 'Efectivo',
       TARJETA_CREDITO: 'Tarjeta de Crédito',
       TARJETA_DEBITO: 'Tarjeta de Débito',
-      TRANSFERENCIA_BANCARIA: 'Transferencia Bancaria',
+      TRANSFERENCIA: 'Transferencia Bancaria',
       CHEQUE: 'Cheque',
-      FINANCIACION_PROPIA: 'Financiación Propia',
-      OTRO: 'Otro',
+      FINANCIAMIENTO: 'Financiamiento',
+      CUENTA_CORRIENTE: 'Cuenta Corriente',
     };
     return methods[method] || method;
   };
@@ -645,10 +645,10 @@ const OpcionesFinanciamientoPage: React.FC = () => {
                     <MenuItem value="EFECTIVO">Efectivo</MenuItem>
                     <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
                     <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
-                    <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
+                    <MenuItem value="TRANSFERENCIA">Transferencia Bancaria</MenuItem>
                     <MenuItem value="CHEQUE">Cheque</MenuItem>
-                    <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
-                    <MenuItem value="OTRO">Otro</MenuItem>
+                    <MenuItem value="FINANCIAMIENTO">Financiamiento</MenuItem>
+                    <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
