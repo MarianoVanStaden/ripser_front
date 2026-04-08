@@ -1073,9 +1073,16 @@ const RegistroVentasPage: React.FC = () => {
                     </>
                   )}
                 </Box>
-                <Typography variant="h5" color="primary" fontWeight="bold">
-                  Total: ${(viewingSale.total || 0).toLocaleString()}
-                </Typography>
+                <Box textAlign="right">
+                  <Typography variant="h5" color="primary" fontWeight="bold">
+                    Total: ${(viewingSale.total || 0).toLocaleString()}
+                  </Typography>
+                  {viewingSale.prestamoId && (
+                    <Typography variant="caption" color="text.secondary">
+                      Total sin interés de financiamiento · ver préstamo para el monto real
+                    </Typography>
+                  )}
+                </Box>
               </Box>
             </Box>
           )}

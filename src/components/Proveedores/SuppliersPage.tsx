@@ -36,10 +36,12 @@ import {
   Business as BusinessIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
+  Inventory as InventoryIcon,
 } from '@mui/icons-material';
 import { supplierApi } from '../../api/services/supplierApi';
 import type { ProveedorDTO, CreateProveedorDTO, ProvinciaEnum } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
+import ProveedorProductosDialog from './ProveedorProductosDialog';
 
 const SuppliersPage: React.FC = () => {
   const theme = useTheme();
@@ -75,6 +77,10 @@ const SuppliersPage: React.FC = () => {
   // Pagination states
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Gestión de productos por proveedor
+  const [productosDialogOpen, setProductosDialogOpen] = useState(false);
+  const [proveedorParaProductos, setProveedorParaProductos] = useState<ProveedorDTO | null>(null);
 
   useEffect(() => {
     loadData();
@@ -430,10 +436,17 @@ const SuppliersPage: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell align="center">
-                        <IconButton onClick={() => handleEdit(supplier)} size="small">
+                        <IconButton onClick={() => handleEdit(supplier)} size="small" title="Editar">
                           <EditIcon />
                         </IconButton>
-                        <IconButton onClick={() => handleDelete(supplier.id)} size="small">
+                        <IconButton
+                          size="small"
+                          title="Gestionar productos"
+                          onClick={() => { setProveedorParaProductos(supplier); setProductosDialogOpen(true); }}
+                        >
+                          <InventoryIcon />
+                        </IconButton>
+                        <IconButton onClick={() => handleDelete(supplier.id)} size="small" title="Eliminar">
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
@@ -572,6 +585,12 @@ const SuppliersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ProveedorProductosDialog
+        open={productosDialogOpen}
+        proveedor={proveedorParaProductos}
+        onClose={() => setProductosDialogOpen(false)}
+      />
     </Box>
   );
 };
