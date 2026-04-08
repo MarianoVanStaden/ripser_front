@@ -5,12 +5,14 @@ export type TipoActivoAmortizable =
   | 'MATERIA_PRIMA'
   | 'AGUINALDOS'
   | 'DESEMPLEO'
+  | 'MAQUINARIA'
   | 'OTRO';
 
 export type MetodoAmortizacion =
   | 'PORCENTAJE_FIJO'
   | 'POR_KILOMETROS'
-  | 'MONTO_FIJO_MENSUAL';
+  | 'MONTO_FIJO_MENSUAL'
+  | 'SIN_AMORTIZACION';
 
 export interface ActivoAmortizableDTO {
   id: number;

@@ -22,6 +22,7 @@ const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
   MATERIA_PRIMA: 'Materia prima',
   AGUINALDOS: 'Aguinaldos',
   DESEMPLEO: 'Desempleo',
+  MAQUINARIA: 'Maquinaria',
   OTRO: 'Otro',
 };
 
@@ -29,6 +30,7 @@ const METODO_LABEL: Record<MetodoAmortizacion, string> = {
   PORCENTAJE_FIJO: 'Porcentaje fijo',
   POR_KILOMETROS: 'Por km',
   MONTO_FIJO_MENSUAL: 'Monto fijo',
+  SIN_AMORTIZACION: 'Sin amortización',
 };
 
 interface Props {
