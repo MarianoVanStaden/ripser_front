@@ -54,7 +54,8 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { supplierApi } from '../../api/services/supplierApi';
 import { compraApi} from '../../api/services/compraApi';
-import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO, Producto, OrdenCompra, CategoriaProducto } from '../../types';
+import { proveedorProductoApi } from '../../api/services/proveedorProductoApi';
+import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO, Producto, OrdenCompra, CategoriaProducto, ProveedorProductoDTO } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
@@ -95,6 +96,11 @@ const ComprasPedidosPage: React.FC = () => {
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [selectedOrden, setSelectedOrden] = useState<OrdenCompra | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Productos filtrados por proveedor seleccionado
+  const [productosProveedor, setProductosProveedor] = useState<ProveedorProductoDTO[]>([]);
+  const [loadingProductosProveedor, setLoadingProductosProveedor] = useState(false);
+  const [errorProductosProveedor, setErrorProductosProveedor] = useState<string | null>(null);
 
   // Price change confirmation dialog
   const [openPriceChangeDialog, setOpenPriceChangeDialog] = useState(false);
@@ -272,6 +278,24 @@ const loadCategorias = async () => {
   }
 };
 
+const loadProductosDelProveedor = async (proveedorId: string) => {
+  if (!proveedorId) {
+    setProductosProveedor([]);
+    return;
+  }
+  try {
+    setLoadingProductosProveedor(true);
+    setErrorProductosProveedor(null);
+    const data = await proveedorProductoApi.getActivosByProveedor(parseInt(proveedorId));
+    setProductosProveedor(data);
+  } catch (err: any) {
+    setErrorProductosProveedor('Error al cargar los productos del proveedor');
+    setProductosProveedor([]);
+  } finally {
+    setLoadingProductosProveedor(false);
+  }
+};
+
 // Handle opening the reception dialog
 const handleOpenRecepcion = async (orden: OrdenCompra) => {
   setOrdenToReceive(orden);
@@ -395,6 +419,9 @@ const handleEditOrden = (orden: OrdenCompra) => {
       precioUnitario: item.precioUnitario,
     })),
   });
+  if (orden.supplierId) {
+    loadProductosDelProveedor(orden.supplierId.toString());
+  }
   setOpenOrdenDialog(true);
 };
 // Function to create new products
@@ -644,9 +671,9 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
       }],
     });
     setError(null);
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-    setError(`Error al guardar la compra: ${errorMessage}`);
+  } catch (err: any) {
+    const errorMessage = err.response?.data?.message || err.message || 'Error desconocido';
+    setError(errorMessage);
     console.error('Error saving compra:', err);
   } finally {
     setLoading(false);
@@ -969,6 +996,8 @@ const handleDeleteCompra = async (id: number) => {
                 onClick={() => {
                   setIsEditMode(false);
                   setSelectedOrden(null);
+                  setProductosProveedor([]);
+                  setErrorProductosProveedor(null);
                   setOpenOrdenDialog(true);
                 }}
                 fullWidth
@@ -1254,7 +1283,15 @@ const handleDeleteCompra = async (id: number) => {
         select
         label="Proveedor"
         value={newOrden.supplierId}
-        onChange={(e) => setNewOrden({ ...newOrden, supplierId: e.target.value })}
+        onChange={(e) => {
+          const newSupplierId = e.target.value;
+          setNewOrden({
+            ...newOrden,
+            supplierId: newSupplierId,
+            items: [{ productoId: '', nombreProductoTemporal: '', descripcionProductoTemporal: '', codigoProductoTemporal: '', categoriaId: '', esProductoNuevo: false, cantidad: 1, precioUnitario: 0 }],
+          });
+          loadProductosDelProveedor(newSupplierId);
+        }}
         margin="normal"
         required
         disabled={isEditMode}
@@ -1324,14 +1361,47 @@ const handleDeleteCompra = async (id: number) => {
       <Typography variant="h6" sx={{ mt: 2 }}>
         Items de la Orden
       </Typography>
-      {newOrden.items.map((item, index) => (
+
+      {loadingProductosProveedor && (
+        <Box display="flex" alignItems="center" gap={1} my={1}>
+          <CircularProgress size={16} />
+          <Typography variant="body2" color="text.secondary">
+            Cargando productos del proveedor...
+          </Typography>
+        </Box>
+      )}
+
+      {errorProductosProveedor && (
+        <Alert severity="error" sx={{ mb: 2 }} action={
+          <Button size="small" onClick={() => loadProductosDelProveedor(newOrden.supplierId)}>
+            Reintentar
+          </Button>
+        }>
+          {errorProductosProveedor}
+        </Alert>
+      )}
+
+      {newOrden.supplierId && !loadingProductosProveedor && !errorProductosProveedor && productosProveedor.length === 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Este proveedor no tiene productos configurados. Ir a Proveedores → Productos para asociarlos.
+        </Alert>
+      )}
+
+      {newOrden.items.map((item, index) => {
+        const opcionesProducto = productosProveedor.map((pp) => ({
+          id: pp.productoId,
+          nombre: pp.productoNombre,
+          codigo: pp.productoCodigo,
+          precio: pp.precioProveedor ?? 0,
+          stockActual: 0,
+        } as Producto));
+        return (
   <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
     <Box display="flex" gap={2} alignItems="flex-start" mb={2}>
       <Autocomplete
-        freeSolo
-        options={productos}
+        options={opcionesProducto}
         getOptionLabel={(option) =>
-          typeof option === 'string' ? option : `${option.nombre} (Stock: ${option.stockActual})`
+          typeof option === 'string' ? option : `${option.nombre} (${option.codigo || 'sin código'})`
         }
         getOptionKey={(option) =>
           typeof option === 'string' ? option : option.id.toString()
@@ -1341,12 +1411,12 @@ const handleDeleteCompra = async (id: number) => {
         }
         value={
           item.productoId
-            ? productos.find((p) => p.id.toString() === item.productoId) || null
+            ? opcionesProducto.find((p) => p.id.toString() === item.productoId) || null
             : null
         }
         inputValue={
           item.productoId
-            ? productos.find((p) => p.id.toString() === item.productoId)?.nombre || ''
+            ? opcionesProducto.find((p) => p.id.toString() === item.productoId)?.nombre || ''
             : item.nombreProductoTemporal || ''
         }
         onChange={(_, newValue) => {
@@ -1418,9 +1488,9 @@ const handleDeleteCompra = async (id: number) => {
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Producto (selecciona existente o escribe nuevo)"
+            label="Producto"
             required
-            helperText={item.esProductoNuevo ? 'Producto nuevo' : item.productoId ? 'Producto existente' : ''}
+            helperText={item.productoId ? 'Producto seleccionado' : ''}
           />
         )}
         sx={{ flex: 1 }}
@@ -1490,8 +1560,14 @@ const handleDeleteCompra = async (id: number) => {
       />
     </Box>
   </Box>
-))}
-      <Button onClick={handleAddItem} sx={{ mb: 2 }} startIcon={<AddIcon />}>
+        );
+      })}
+      <Button
+        onClick={handleAddItem}
+        sx={{ mb: 2 }}
+        startIcon={<AddIcon />}
+        disabled={newOrden.supplierId !== '' && productosProveedor.length === 0 && !loadingProductosProveedor}
+      >
         Agregar Item
       </Button>
       <Typography>

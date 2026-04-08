@@ -121,6 +121,7 @@ const NotasPedidoPage: React.FC = () => {
   const [createdNota, setCreatedNota] = useState<DocumentoComercial | null>(null);
   const [facturaSuccessDialogOpen, setFacturaSuccessDialogOpen] = useState(false);
   const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
+  const [facturaTotalConFinanciamiento, setFacturaTotalConFinanciamiento] = useState<number | null>(null);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -906,6 +907,16 @@ const NotasPedidoPage: React.FC = () => {
 
   const submitBillingDialog = () => {
     if (!notaToBill) return;
+    // Compute the real total with interest so the success dialog shows the correct value
+    const montoBase = notaToBill.subtotal ?? 0;
+    const entregaInicial = billingForm.entregarInicial
+      ? (billingForm.usePorcentaje
+          ? montoBase * (billingForm.porcentajeEntregaInicial / 100)
+          : billingForm.montoEntregaInicial)
+      : 0;
+    const saldoFinanciado = montoBase - entregaInicial;
+    const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
+    setFacturaTotalConFinanciamiento(billingForm.tasaInteres > 0 ? montoBase + interesTotal : null);
     handleConvertToFactura(notaToBill.id, false, billingForm);
     handleCloseBillingDialog();
   };
@@ -1805,11 +1816,20 @@ const NotasPedidoPage: React.FC = () => {
         }}
         title="¡Nota de Pedido Creada Exitosamente!"
         message="La nota de pedido ha sido generada correctamente"
-        details={createdNota ? [
-          { label: 'Número de Documento', value: createdNota.numeroDocumento },
-          { label: 'Cliente', value: createdNota.clienteNombre || '-' },
-          { label: 'Total', value: `$${createdNota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-        ] : []}
+        details={(() => {
+          if (!createdNota) return [];
+          const selectedOpcion = createdNota.id != null
+            ? (notasFinanciamiento[createdNota.id] ?? []).find(o => o.esSeleccionada || o.id === createdNota.opcionFinanciamientoSeleccionadaId)
+            : undefined;
+          return [
+            { label: 'Número de Documento', value: createdNota.numeroDocumento },
+            { label: 'Cliente', value: createdNota.clienteNombre || '-' },
+            { label: 'Total del producto', value: `$${createdNota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+            ...(selectedOpcion && selectedOpcion.tasaInteres > 0
+              ? [{ label: 'Financiamiento', value: `${selectedOpcion.cantidadCuotas} cuotas · ${selectedOpcion.tasaInteres}% interés (interés aplicado al momento de facturar)` }]
+              : []),
+          ];
+        })()}
       />
 
       {/* Success Dialog - Factura Creada */}
@@ -1818,13 +1838,14 @@ const NotasPedidoPage: React.FC = () => {
         onClose={() => {
           setFacturaSuccessDialogOpen(false);
           setCreatedFactura(null);
+          setFacturaTotalConFinanciamiento(null);
         }}
         title="¡Factura Creada Exitosamente!"
         message="La nota de pedido ha sido facturada correctamente"
         details={createdFactura ? [
           { label: 'Número de Factura', value: createdFactura.numeroDocumento },
           { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
-          { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+          { label: facturaTotalConFinanciamiento != null ? 'Total con financiamiento' : 'Total', value: `$${(facturaTotalConFinanciamiento ?? createdFactura.total)?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
         ] : []}
       />
 

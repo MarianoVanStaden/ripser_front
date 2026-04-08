@@ -1952,6 +1952,24 @@ export interface CreateProveedorDTO {
   provincia?: ProvinciaEnum;
   codigoPostal?: string;
 }
+export interface ProveedorProductoDTO {
+  id: number;
+  proveedorId: number;
+  proveedorNombre: string;
+  productoId: number;
+  productoNombre: string;
+  productoCodigo: string;
+  precioProveedor: number | null;
+  activo: boolean;
+  fechaAlta: string;
+}
+
+export interface CreateProveedorProductoDTO {
+  proveedorId: number;
+  productoId: number;
+  precioProveedor?: number;
+}
+
 export interface Proveedor {
   id: number;
   nombre?: string;

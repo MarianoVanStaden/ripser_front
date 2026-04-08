@@ -8,8 +8,12 @@ import {
 import {
   Visibility, Add, Search, Phone,
 } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
 import {
   EstadoGestionCobranza,
@@ -25,6 +29,18 @@ import { formatPrice } from '../../../utils/priceCalculations';
 import { usePagination } from '../../../hooks/usePagination';
 import { NuevaGestionDialog } from './NuevaGestionDialog';
 
+type FechaGestionFiltro = 'VENCIDAS' | 'HOY' | 'MANANA' | 'ESTA_SEMANA' | 'PROXIMOS_7' | 'ESTE_MES' | 'SIN_FECHA';
+
+const FECHA_FILTRO_OPTIONS: { value: FechaGestionFiltro; label: string; color: string }[] = [
+  { value: 'VENCIDAS',     label: 'Vencidas',       color: '#d32f2f' },
+  { value: 'HOY',          label: 'Hoy',             color: '#ed6c02' },
+  { value: 'MANANA',       label: 'Mañana',          color: '#0288d1' },
+  { value: 'ESTA_SEMANA',  label: 'Esta semana',     color: '#7b1fa2' },
+  { value: 'PROXIMOS_7',   label: 'Próximos 7 días', color: '#2e7d32' },
+  { value: 'ESTE_MES',     label: 'Este mes',        color: '#00796b' },
+  { value: 'SIN_FECHA',    label: 'Sin fecha',       color: '#757575' },
+];
+
 interface CobranzaFilters {
   term?: string;
 }
@@ -34,6 +50,9 @@ export const CobranzasListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstados, setSelectedEstados] = useState<EstadoGestionCobranza[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadCobranza[]>([]);
+  const [selectedFechaFiltro, setSelectedFechaFiltro] = useState<FechaGestionFiltro | null>(null);
+  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(null);
+  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(null);
   const [soloActivas, setSoloActivas] = useState(true);
   const [nuevaGestionOpen, setNuevaGestionOpen] = useState(false);
 
@@ -94,10 +113,51 @@ export const CobranzasListPage: React.FC = () => {
     );
   };
 
-  // Filtrado client-side por estado y prioridad
+  const hasCustomRange = fechaDesde != null || fechaHasta != null;
+
+  // Filtrado client-side por estado, prioridad y fecha próxima gestión
   const gestionesFiltradas = gestiones.filter((g) => {
     if (selectedEstados.length > 0 && !selectedEstados.includes(g.estado)) return false;
     if (selectedPrioridades.length > 0 && (g.prioridad == null || !selectedPrioridades.includes(g.prioridad))) return false;
+
+    if (hasCustomRange) {
+      const fecha = g.fechaProximaGestion ? dayjs(g.fechaProximaGestion) : null;
+      if (!fecha) return false;
+      if (fechaDesde && fecha.isBefore(fechaDesde, 'day')) return false;
+      if (fechaHasta && fecha.isAfter(fechaHasta, 'day')) return false;
+    } else if (selectedFechaFiltro) {
+      const today = dayjs().startOf('day');
+      const fecha = g.fechaProximaGestion ? dayjs(g.fechaProximaGestion) : null;
+      switch (selectedFechaFiltro) {
+        case 'VENCIDAS':
+          if (!fecha || !fecha.isBefore(today, 'day')) return false;
+          break;
+        case 'HOY':
+          if (!fecha || !fecha.isSame(today, 'day')) return false;
+          break;
+        case 'MANANA':
+          if (!fecha || !fecha.isSame(today.add(1, 'day'), 'day')) return false;
+          break;
+        case 'ESTA_SEMANA': {
+          const startOfWeek = today.startOf('week');
+          const endOfWeek = today.endOf('week');
+          if (!fecha || fecha.isBefore(startOfWeek, 'day') || fecha.isAfter(endOfWeek, 'day')) return false;
+          break;
+        }
+        case 'PROXIMOS_7':
+          if (!fecha || fecha.isBefore(today, 'day') || fecha.isAfter(today.add(7, 'day'), 'day')) return false;
+          break;
+        case 'ESTE_MES': {
+          const startOfMonth = today.startOf('month');
+          const endOfMonth = today.endOf('month');
+          if (!fecha || fecha.isBefore(startOfMonth, 'day') || fecha.isAfter(endOfMonth, 'day')) return false;
+          break;
+        }
+        case 'SIN_FECHA':
+          if (g.fechaProximaGestion != null) return false;
+          break;
+      }
+    }
     return true;
   });
 
@@ -180,6 +240,62 @@ export const CobranzasListPage: React.FC = () => {
             })}
           </Box>
 
+          {/* Fecha próxima gestión chips */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Próxima gestión:</Typography>
+            {FECHA_FILTRO_OPTIONS.map(({ value, label, color }) => {
+              const selected = !hasCustomRange && selectedFechaFiltro === value;
+              return (
+                <Chip
+                  key={value}
+                  label={label}
+                  size="small"
+                  onClick={() => {
+                    setFechaDesde(null);
+                    setFechaHasta(null);
+                    setSelectedFechaFiltro(selected ? null : value);
+                  }}
+                  variant={selected ? 'filled' : 'outlined'}
+                  sx={{
+                    borderColor: color,
+                    color: selected ? 'white' : color,
+                    bgcolor: selected ? color : 'transparent',
+                    opacity: hasCustomRange ? 0.45 : 1,
+                  }}
+                />
+              );
+            })}
+          </Box>
+
+          {/* Rango personalizado */}
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary">Rango personalizado:</Typography>
+              <DatePicker
+                label="Desde"
+                value={fechaDesde}
+                onChange={(v) => { setFechaDesde(v as Dayjs | null); setSelectedFechaFiltro(null); }}
+                slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
+                format="DD/MM/YYYY"
+              />
+              <DatePicker
+                label="Hasta"
+                value={fechaHasta}
+                minDate={fechaDesde ?? undefined}
+                onChange={(v) => { setFechaHasta(v as Dayjs | null); setSelectedFechaFiltro(null); }}
+                slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
+                format="DD/MM/YYYY"
+              />
+              {hasCustomRange && (
+                <Button size="small" variant="text" color="inherit"
+                  onClick={() => { setFechaDesde(null); setFechaHasta(null); }}
+                >
+                  Limpiar rango
+                </Button>
+              )}
+            </Box>
+          </LocalizationProvider>
+
           {/* Prioridad chips */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
             <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Prioridad:</Typography>
@@ -201,7 +317,7 @@ export const CobranzasListPage: React.FC = () => {
                 />
               );
             })}
-            {(selectedEstados.length > 0 || selectedPrioridades.length > 0) && (
+            {(selectedEstados.length > 0 || selectedPrioridades.length > 0 || selectedFechaFiltro != null) && (
               <Button
                 size="small"
                 variant="text"
@@ -209,6 +325,7 @@ export const CobranzasListPage: React.FC = () => {
                 onClick={() => {
                   setSelectedEstados([]);
                   setSelectedPrioridades([]);
+                  setSelectedFechaFiltro(null);
                   setFilters({});
                 }}
               >

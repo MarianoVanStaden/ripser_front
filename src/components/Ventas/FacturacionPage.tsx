@@ -407,8 +407,18 @@ const FacturacionPage = () => {
     if (!selectedOpcionId) return 0;
     const selectedOpcion = opcionesFinanciamiento[selectedOpcionId];
     if (!selectedOpcion || selectedOpcion.tasaInteres === 0) return 0;
-    return (notaSubtotal * 0.6) * (selectedOpcion.tasaInteres / 100);
-  }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento]);
+    // Compute actual financed amount based on user's down payment choice (not a hardcoded 40/60 split)
+    let entregaInicial = 0;
+    if (notaEntregaInicial) {
+      if (notaUsePorcentaje && notaPorcentajeEntrega != null) {
+        entregaInicial = notaSubtotal * notaPorcentajeEntrega / 100;
+      } else if (!notaUsePorcentaje && notaMontoFijoEntrega != null) {
+        entregaInicial = notaMontoFijoEntrega;
+      }
+    }
+    const financiado = notaSubtotal - entregaInicial;
+    return financiado > 0 ? financiado * (selectedOpcion.tasaInteres / 100) : 0;
+  }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento, notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega]);
 
   const notaIvaAmount = useMemo(() => {
     const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any)?.tipoIva)?.rate || 0.21;
@@ -428,12 +438,13 @@ const FacturacionPage = () => {
   const montoFinanciado = useMemo(() => totalVenta - montoEntregaCalculado, [totalVenta, montoEntregaCalculado]);
   const cuotaEstimada = useMemo(() => (cantidadCuotas ? montoFinanciado / cantidadCuotas : 0), [montoFinanciado, cantidadCuotas]);
 
-  // Entrega inicial computed (nota de pedido)
+  // Entrega inicial computed (nota de pedido) — based on product subtotal, not on notaTotalVenta,
+  // so the down payment percentage applies to the product price (matching backend behaviour).
   const notaMontoEntregaCalculado = useMemo(() => {
     if (!notaEntregaInicial) return 0;
-    if (notaUsePorcentaje) return notaTotalVenta * (notaPorcentajeEntrega || 0) / 100;
+    if (notaUsePorcentaje) return notaSubtotal * (notaPorcentajeEntrega || 0) / 100;
     return notaMontoFijoEntrega || 0;
-  }, [notaEntregaInicial, notaUsePorcentaje, notaTotalVenta, notaPorcentajeEntrega, notaMontoFijoEntrega]);
+  }, [notaEntregaInicial, notaUsePorcentaje, notaSubtotal, notaPorcentajeEntrega, notaMontoFijoEntrega]);
 
   const notaMontoFinanciado = useMemo(() => notaTotalVenta - notaMontoEntregaCalculado, [notaTotalVenta, notaMontoEntregaCalculado]);
   const notaCuotaEstimada = useMemo(() => (notaCantidadCuotas ? notaMontoFinanciado / notaCantidadCuotas : 0), [notaMontoFinanciado, notaCantidadCuotas]);
@@ -2850,12 +2861,14 @@ const FacturacionPage = () => {
         details={createdFactura ? [
           { label: 'Número de Documento', value: createdFactura.numeroDocumento },
           { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
-          { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-          ...(facturaEntregaInfo ? [
-            { label: 'Entrega inicial (CC débito)', value: `$${facturaEntregaInfo.montoEntrega.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-            { label: 'Monto financiado', value: `$${facturaEntregaInfo.montoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-            ...(facturaEntregaInfo.cantidadCuotas ? [{ label: 'Cuotas', value: `${facturaEntregaInfo.cantidadCuotas} × $${(facturaEntregaInfo.montoFinanciado / facturaEntregaInfo.cantidadCuotas).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }] : []),
-          ] : []),
+          ...(facturaEntregaInfo
+            ? [
+                { label: 'Total con financiamiento', value: `$${(facturaEntregaInfo.montoEntrega + facturaEntregaInfo.montoFinanciado).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+                { label: 'Entrega inicial (CC débito)', value: `$${facturaEntregaInfo.montoEntrega.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+                { label: 'Monto financiado', value: `$${facturaEntregaInfo.montoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+                ...(facturaEntregaInfo.cantidadCuotas ? [{ label: 'Cuotas', value: `${facturaEntregaInfo.cantidadCuotas} × $${(facturaEntregaInfo.montoFinanciado / facturaEntregaInfo.cantidadCuotas).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }] : []),
+              ]
+            : [{ label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }]),
           ...(createdFactura.prestamoId ? [{ label: 'Préstamo generado', value: `#${createdFactura.prestamoId}` }] : []),
         ] : []}
         actions={[
