@@ -929,6 +929,22 @@ const NotasPedidoPage: React.FC = () => {
       return;
     }
 
+    // Build payload early so it's available for all code paths (including early returns)
+    const baseFacturaPayload: any = { notaPedidoId: notaId };
+    if (extraData && (nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA')) {
+      baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
+      baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
+      baseFacturaPayload.tasaInteres = extraData.tasaInteres ?? 0;
+      if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
+      if (extraData.entregarInicial) {
+        if (extraData.usePorcentaje) {
+          baseFacturaPayload.porcentajeEntregaInicial = extraData.porcentajeEntregaInicial;
+        } else {
+          baseFacturaPayload.montoEntregaInicial = extraData.montoEntregaInicial;
+        }
+      }
+    }
+
     // Preemptive debt check (same pattern as convert-to-nota flow)
     if (!confirmarConDeudaPendiente && !deudaYaConfirmadaRef.current) {
       const clienteId = nota.clienteId;
@@ -959,6 +975,8 @@ const NotasPedidoPage: React.FC = () => {
             });
             const tieneEquipos = (nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []).length > 0;
             if (tieneEquipos) {
+              // Persist billing data so handleConfirmAsignacion can include it
+              pendingBillingDataRef.current = Object.keys(baseFacturaPayload).length > 1 ? baseFacturaPayload : null;
               // Skip probe; go directly to equipment selection with debt already confirmed
               pendingDeudaRef.current = () => {
                 deudaYaConfirmadaRef.current = true;
@@ -976,22 +994,6 @@ const NotasPedidoPage: React.FC = () => {
       }
     }
     deudaYaConfirmadaRef.current = false;
-
-    // Payload for Facturacion
-    const baseFacturaPayload: any = { notaPedidoId: notaId };
-    if (extraData && (nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA')) {
-      baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
-      baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
-      baseFacturaPayload.tasaInteres = extraData.tasaInteres ?? 0;
-      if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
-      if (extraData.entregarInicial) {
-        if (extraData.usePorcentaje) {
-          baseFacturaPayload.porcentajeEntregaInicial = extraData.porcentajeEntregaInicial;
-        } else {
-          baseFacturaPayload.montoEntregaInicial = extraData.montoEntregaInicial;
-        }
-      }
-    }
 
     // Check if there are EQUIPO items in the detalles
     const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];

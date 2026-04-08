@@ -1548,7 +1548,7 @@ export interface Venta {
   detalleVentas: DetalleVenta[];
   prestamoId?: number | null;
 }
-export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIAMIENTO' | 'CUENTA_CORRIENTE';
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIAMIENTO' | 'FINANCIACION_PROPIA' | 'CUENTA_CORRIENTE';
 
 // Enums para equipos fabricados
 export type ColorEquipo =
@@ -2436,6 +2436,7 @@ export interface ConvertToFacturaDTO {
   primerVencimiento?: string;
   porcentajeEntregaInicial?: number | null;
   montoEntregaInicial?: number | null;
+  tasaInteres?: number;
   confirmarConDeudaPendiente?: boolean;
 }
 
