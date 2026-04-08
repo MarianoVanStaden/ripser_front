@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  MenuItem,
   Alert,
   CircularProgress,
   Chip,
@@ -28,6 +27,8 @@ import {
   Tooltip,
   useMediaQuery,
   useTheme,
+  Autocomplete,
+  MenuItem,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -368,21 +369,26 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
             Filtros
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-            <TextField
-              select
-              label="Proveedor"
-              value={selectedProveedor?.id || ''}
-              onChange={(e) => handleProveedorChange(Number(e.target.value))}
-              sx={{ minWidth: { xs: '100%', sm: 200 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
+            <Autocomplete
+              options={proveedores}
+              getOptionLabel={(p) => p.razonSocial || p.nombre}
+              value={selectedProveedor}
+              onChange={(_, value) => value ? handleProveedorChange(value.id) : (setSelectedProveedor(null), setMovimientos([]))}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              sx={{ minWidth: { xs: '100%', sm: 220 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               size={isMobile ? 'small' : 'medium'}
-            >
-              <MenuItem value="">Todos los proveedores</MenuItem>
-              {proveedores.map((proveedor) => (
-                <MenuItem key={proveedor.id} value={proveedor.id}>
-                  {proveedor.razonSocial || proveedor.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
+              renderOption={(props, option) => {
+                const { key, ...otherProps } = props;
+                return (
+                  <li key={option.id} {...otherProps}>
+                    {option.razonSocial || option.nombre}
+                  </li>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Proveedor" placeholder="Buscar proveedor..." />
+              )}
+            />
 
             <TextField
               label="Buscar"

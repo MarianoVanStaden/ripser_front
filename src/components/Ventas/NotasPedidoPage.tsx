@@ -710,6 +710,37 @@ const NotasPedidoPage: React.FC = () => {
       const notaEnriquecida = { ...notaConDetalles, detalles: enrichedDetalles };
       setNotasPedido(prev => prev.map(n => n.id === notaEnriquecida.id ? notaEnriquecida : n));
 
+      // Populate financing options cache for the new nota so the table shows the selected
+      // option name (e.g. "18 cuotas - 45% interés") instead of the generic metodoPago label.
+      if (nuevaNota.id && opcionesConvertDialog.length > 0) {
+        const opcionesConSelected = opcionesConvertDialog.map(o => ({
+          ...o,
+          esSeleccionada: o.id === selectedOpcionConvertId,
+        }));
+        setNotasFinanciamiento(prev => ({ ...prev, [nuevaNota.id]: opcionesConSelected }));
+      }
+
+      // Persist the selected financing option on the new nota so the backend uses its
+      // tasaInteres when creating the personal credit during billing.
+      if (nuevaNota.id && selectedOpcionConvertId) {
+        try {
+          // Fetch the nota's own financing options (backend copies them on creation).
+          const notaOpciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nuevaNota.id);
+          const selectedPresupOp = opcionesConvertDialog.find(o => o.id === selectedOpcionConvertId);
+          // Match the nota option by nombre (backend preserves names when copying).
+          const matchedNotaOp = selectedPresupOp
+            ? notaOpciones.find(o => o.nombre === selectedPresupOp.nombre)
+            : null;
+          const idToSelect = matchedNotaOp?.id ?? (notaOpciones.length === 0 ? selectedOpcionConvertId : null);
+          if (idToSelect) {
+            const updatedNota = await documentoApi.selectFinanciamientoNotaPedido(nuevaNota.id, idToSelect);
+            setNotasPedido(prev => prev.map(n => n.id === updatedNota.id ? { ...n, opcionFinanciamientoSeleccionadaId: updatedNota.opcionFinanciamientoSeleccionadaId } : n));
+          }
+        } catch {
+          // Non-fatal: billing will still work but without financing cost increment.
+        }
+      }
+
       // Resolve stock for each EQUIPO detalle using the unified backend endpoint.
       // Backend applies P1 → P2 → P3 automatically and creates the DetalleEquipoAsignacion link.
       const detallesEquipo = enrichedDetalles.filter(d => d.tipoItem === 'EQUIPO');
@@ -816,7 +847,7 @@ const NotasPedidoPage: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
-  }, [convertForm, handleCloseConvertDialog, recetas]);
+  }, [convertForm, handleCloseConvertDialog, recetas, opcionesConvertDialog, selectedOpcionConvertId]);
 
   const handleViewNota = useCallback((nota: DocumentoComercial) => {
     setSelectedNota(nota);
@@ -839,6 +870,7 @@ const NotasPedidoPage: React.FC = () => {
     usePorcentaje: true,
     porcentajeEntregaInicial: 0,
     montoEntregaInicial: 0,
+    tasaInteres: 0,
   });
 
   const handleOpenBillingDialog = useCallback((nota: DocumentoComercial) => {
@@ -849,6 +881,7 @@ const NotasPedidoPage: React.FC = () => {
       const opcionSeleccionada = opciones.find(o => o.id === nota.opcionFinanciamientoSeleccionadaId)
         ?? opciones.find(o => o.esSeleccionada);
       const cuotas = opcionSeleccionada?.cantidadCuotas ?? 1;
+      const tasa = (opcionSeleccionada?.tasaInteres ?? 0) > 0 ? opcionSeleccionada!.tasaInteres : 0;
       setBillingForm({
         cantidadCuotas: cuotas,
         tipoFinanciacion: 'MENSUAL',
@@ -857,6 +890,7 @@ const NotasPedidoPage: React.FC = () => {
         usePorcentaje: true,
         porcentajeEntregaInicial: 40,
         montoEntregaInicial: 0,
+        tasaInteres: tasa,
       });
       setNotaToBill(nota);
       setBillingDialogOpen(true);
@@ -937,6 +971,7 @@ const NotasPedidoPage: React.FC = () => {
     if (extraData && (nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA')) {
       baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
       baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
+      baseFacturaPayload.tasaInteres = extraData.tasaInteres ?? 0;
       if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
       if (extraData.entregarInicial) {
         if (extraData.usePorcentaje) {
@@ -1968,6 +2003,50 @@ const NotasPedidoPage: React.FC = () => {
                  )}
               </Box>
             )}
+            <TextField
+              label="Tasa de interés"
+              type="number"
+              fullWidth
+              value={billingForm.tasaInteres}
+              onChange={(e) => setBillingForm(prev => ({ ...prev, tasaInteres: parseFloat(e.target.value) || 0 }))}
+              inputProps={{ min: 0, max: 999, step: 0.5 }}
+              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+              helperText="Interés simple sobre el saldo financiado. 0% = sin interés."
+            />
+            {(() => {
+              const montoTotal = notaToBill?.subtotal ?? 0;
+              const entregaInicial = billingForm.entregarInicial
+                ? (billingForm.usePorcentaje
+                    ? montoTotal * (billingForm.porcentajeEntregaInicial / 100)
+                    : billingForm.montoEntregaInicial)
+                : 0;
+              const saldoFinanciado = montoTotal - entregaInicial;
+              const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
+              const montoConInteres = saldoFinanciado + interesTotal;
+              const valorCuota = billingForm.cantidadCuotas > 0 ? montoConInteres / billingForm.cantidadCuotas : 0;
+              const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              return (
+                <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>Resumen del financiamiento</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
+                    <Typography variant="body2">Total documento:</Typography>
+                    <Typography variant="body2" fontWeight={600}>${fmt(montoTotal)}</Typography>
+                    <Typography variant="body2">Entrega inicial:</Typography>
+                    <Typography variant="body2">${fmt(entregaInicial)}</Typography>
+                    <Typography variant="body2">Saldo financiado:</Typography>
+                    <Typography variant="body2">${fmt(saldoFinanciado)}</Typography>
+                    {billingForm.tasaInteres > 0 && <>
+                      <Typography variant="body2">Interés ({billingForm.tasaInteres}%):</Typography>
+                      <Typography variant="body2" color="warning.main">${fmt(interesTotal)}</Typography>
+                      <Typography variant="body2">Total a financiar:</Typography>
+                      <Typography variant="body2" fontWeight={600}>${fmt(montoConInteres)}</Typography>
+                    </>}
+                    <Typography variant="body2">Valor cuota ({billingForm.cantidadCuotas}x):</Typography>
+                    <Typography variant="body2" fontWeight={600} color="primary.main">${fmt(valorCuota)}</Typography>
+                  </Box>
+                </Box>
+              );
+            })()}
           </Box>
         </DialogContent>
         <DialogActions>

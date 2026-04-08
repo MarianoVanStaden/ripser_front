@@ -8,7 +8,7 @@ import {
 import {
   ArrowBack, Edit, Payment, Add, Send, CheckCircle,
   Phone, Email, WhatsApp, Videocam, PersonPin, Groups,
-  Delete, Notifications, Receipt, Undo,
+  Delete, Notifications, Receipt, Undo, Autorenew,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -248,6 +248,16 @@ export const PrestamoDetailPage: React.FC = () => {
         {prestamo.documentoId && (
           <Button variant="outlined" color="secondary" startIcon={<Receipt />} onClick={() => navigate('/ventas/registro')}>
             Ver Factura #{prestamo.documentoId}
+          </Button>
+        )}
+        {['ACTIVO', 'EN_MORA', 'EN_LEGAL'].includes(prestamo.estado) && (
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<Autorenew />}
+            onClick={() => navigate(`/prestamos/${prestamoId}/refinanciar`)}
+          >
+            Refinanciar
           </Button>
         )}
         <Button variant="outlined" startIcon={<Edit />} onClick={() => setEditOpen(true)}>Editar</Button>

@@ -92,6 +92,7 @@ import {
   PrestamosResumenPage,
   PrestamosListPage,
   PrestamoDetailPage,
+  RefinanciacionPage,
 } from './components/Prestamos';
 import {
   CobranzasResumenPage,
@@ -212,6 +213,7 @@ function App() {
               <Route path="prestamos/resumen" element={<PrivateRoute><PrestamosResumenPage /></PrivateRoute>} />
               <Route path="prestamos/lista" element={<PrivateRoute><PrestamosListPage /></PrivateRoute>} />
               <Route path="prestamos/:id" element={<PrivateRoute><PrestamoDetailPage /></PrivateRoute>} />
+              <Route path="prestamos/:id/refinanciar" element={<PrivateRoute><RefinanciacionPage /></PrivateRoute>} />
               {/* COBRANZAS Module */}
               <Route path="cobranzas/resumen" element={<PrivateRoute><CobranzasResumenPage /></PrivateRoute>} />
               <Route path="cobranzas/lista" element={<PrivateRoute><CobranzasListPage /></PrivateRoute>} />

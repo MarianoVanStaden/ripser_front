@@ -18,6 +18,7 @@ export const EstadoPrestamo = {
   EN_MORA: 'EN_MORA',
   EN_LEGAL: 'EN_LEGAL',
   CANCELADO: 'CANCELADO',
+  REFINANCIADO: 'REFINANCIADO',
 } as const;
 export type EstadoPrestamo = typeof EstadoPrestamo[keyof typeof EstadoPrestamo];
 
@@ -34,6 +35,7 @@ export const EstadoCuota = {
   PAGADA: 'PAGADA',
   VENCIDA: 'VENCIDA',
   PARCIAL: 'PARCIAL',
+  REFINANCIADA: 'REFINANCIADA',
 } as const;
 export type EstadoCuota = typeof EstadoCuota[keyof typeof EstadoCuota];
 
@@ -65,6 +67,7 @@ export const ESTADO_PRESTAMO_LABELS: Record<EstadoPrestamo, string> = {
   EN_MORA: 'En Mora',
   EN_LEGAL: 'En Legal',
   CANCELADO: 'Cancelado',
+  REFINANCIADO: 'Refinanciado',
 };
 
 export const CATEGORIA_PRESTAMO_LABELS: Record<CategoriaPrestamo, string> = {
@@ -79,6 +82,7 @@ export const ESTADO_CUOTA_LABELS: Record<EstadoCuota, string> = {
   PAGADA: 'Pagada',
   VENCIDA: 'Vencida',
   PARCIAL: 'Parcial',
+  REFINANCIADA: 'Refinanciada',
 };
 
 export const TIPO_INTERACCION_PRESTAMO_LABELS: Record<TipoInteraccionPrestamo, string> = {
@@ -98,6 +102,7 @@ export const ESTADO_PRESTAMO_COLORS: Record<EstadoPrestamo, string> = {
   EN_MORA: '#FF9800',
   EN_LEGAL: '#F44336',
   CANCELADO: '#9E9E9E',
+  REFINANCIADO: '#9C27B0',
 };
 
 export const CATEGORIA_PRESTAMO_COLORS: Record<CategoriaPrestamo, string> = {
@@ -112,6 +117,7 @@ export const ESTADO_CUOTA_COLORS: Record<EstadoCuota, string> = {
   PAGADA: '#4CAF50',
   VENCIDA: '#F44336',
   PARCIAL: '#FF9800',
+  REFINANCIADA: '#9C27B0',
 };
 
 // ==================== DTOs ====================

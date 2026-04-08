@@ -1,6 +1,7 @@
 export { PrestamosResumenPage } from './PrestamosResumenPage';
 export { PrestamosListPage } from './PrestamosListPage';
 export { PrestamoDetailPage } from './PrestamoDetailPage';
+export { RefinanciacionPage } from './RefinanciacionPage';
 export { PrestamoFormDialog } from './PrestamoFormDialog';
 export { RegistrarPagoDialog } from './RegistrarPagoDialog';
 export { RevertirPagoDialog } from './RevertirPagoDialog';
