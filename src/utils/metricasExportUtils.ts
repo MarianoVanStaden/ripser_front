@@ -12,8 +12,9 @@ import type {
   EquipoInteresItemDTO,
   TendenciaMensualDTO
 } from '../api/services/leadMetricasApi';
+import { addCorporateHeader, addCorporateFooter } from './pdfExportUtils';
 
-// Colores corporativos de Ripser
+// Colores corporativos de Ripser (local copy para los autoTable calls)
 const COLORS = {
   darkBlue: [20, 66, 114] as [number, number, number],      // #144272 - Barra superior
   lightBlue: [205, 226, 239] as [number, number, number],   // #CDE2EF - Fondo
@@ -23,80 +24,6 @@ const COLORS = {
   mediumGray: [128, 128, 128] as [number, number, number],  // #808080
   red: [255, 0, 0] as [number, number, number],             // #FF0000
   green: [0, 128, 0] as [number, number, number],           // #008000
-};
-
-/**
- * Agrega el encabezado corporativo de Ripser a un PDF
- */
-const addCorporateHeader = (pdf: jsPDF, title: string): number => {
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 10;
-  let yPosition = margin;
-
-  // Barra superior azul con logo
-  pdf.setFillColor(...COLORS.darkBlue);
-  pdf.rect(margin, yPosition, pageWidth - (margin * 2), 25, 'F');
-
-  // Logo texto "Ripser" en cursiva
-  pdf.setTextColor(...COLORS.white);
-  pdf.setFontSize(24);
-  pdf.setFont('times', 'italic');
-  pdf.text('Ripser', margin + 5, yPosition + 12);
-
-  // "INSTALACIONES COMERCIALES" debajo del logo
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('INSTALACIONES', margin + 5, yPosition + 16);
-  pdf.text('COMERCIALES', margin + 5, yPosition + 19);
-
-  // Información de contacto (derecha)
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'normal');
-  const contactX = pageWidth - margin - 5;
-  pdf.text('@RipserInstalacionesComerciales', contactX, yPosition + 10, { align: 'right' });
-  pdf.text('www.ripser.com.ar', contactX, yPosition + 14, { align: 'right' });
-  pdf.text('+54 2235332796', contactX, yPosition + 18, { align: 'right' });
-
-  // Fondo gris claro para el resto del documento
-  pdf.setFillColor(...COLORS.lightBlue);
-  pdf.rect(margin, yPosition + 25, pageWidth - (margin * 2), pageHeight - yPosition - 35, 'F');
-
-  yPosition += 30;
-
-  // Título del documento en caja blanca
-  pdf.setFillColor(...COLORS.white);
-  pdf.rect(margin + 1, yPosition, pageWidth - (margin * 2) - 2, 8, 'F');
-
-  pdf.setTextColor(...COLORS.darkBlue);
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text(title.toUpperCase(), pageWidth / 2, yPosition + 5.5, { align: 'center' });
-
-  yPosition += 10;
-
-  // Fecha de generación
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(...COLORS.black);
-  pdf.text(`Fecha de generación: ${new Date().toLocaleString('es-AR')}`, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 8;
-
-  return yPosition;
-};
-
-/**
- * Agrega el footer corporativo de Ripser a un PDF
- */
-const addCorporateFooter = (pdf: jsPDF): void => {
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const footerY = pageHeight - 15;
-
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'italic');
-  pdf.setTextColor(...COLORS.darkGray);
-  pdf.text('Ripser - Instalaciones Comerciales', pageWidth / 2, footerY, { align: 'center' });
 };
 
 /**
@@ -385,17 +312,23 @@ export const generarNombreArchivo = (extension: 'xlsx' | 'csv' | 'pdf' = 'xlsx')
  * @param metaMensualLeads - Meta mensual de leads (opcional)
  * @param metaPresupuestoMensual - Meta mensual de presupuesto (opcional)
  */
-export const exportarMetricasPDF = (
+export const exportarMetricasPDF = async (
   metricas: LeadMetricasResponseDTO,
   nombreArchivo: string = 'metricas-leads.pdf',
   metaMensualLeads?: number,
   metaPresupuestoMensual?: number,
-  sucursalNombre?: string
-) => {
+  sucursalNombre?: string,
+  chartImages?: {
+    embudoImgData?: string | null;
+    canalImgData?: string | null;
+    prioridadImgData?: string | null;
+    tendenciasImgData?: string | null;
+  }
+): Promise<void> => {
   try {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
-    void doc.internal.pageSize.getHeight();
+    const pageHeight = doc.internal.pageSize.getHeight(); // used for chart overflow checks
 
     // Agregar encabezado corporativo
     let yPosition = addCorporateHeader(doc, 'Informe de Métricas de Leads');
@@ -477,7 +410,33 @@ export const exportarMetricasPDF = (
 
     yPosition = (doc as any).lastAutoTable.finalY + 10;
 
+    // Helper local para insertar gráfico con aspect ratio correcto
+    const insertChart = (imgData: string, label: string) => {
+      const maxWidth = pageWidth - 30;
+      const props = (doc as any).getImageProperties(imgData);
+      const aspectRatio = props.width / props.height;
+      let finalWidth = maxWidth;
+      let finalHeight = maxWidth / aspectRatio;
+      if (finalHeight > 110) {
+        finalHeight = 110;
+        finalWidth = finalHeight * aspectRatio;
+      }
+      const xOffset = 15 + (maxWidth - finalWidth) / 2;
+      const needed = 5 + 8 + finalHeight + 10;
+      if (yPosition + needed > pageHeight - 20) {
+        doc.addPage(); yPosition = addCorporateHeader(doc, 'Informe de Métricas de Leads (cont.)');
+      }
+      yPosition += 5;
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...COLORS.darkBlue);
+      doc.text(label, 15, yPosition); yPosition += 8;
+      doc.addImage(imgData, 'PNG', xOffset, yPosition, finalWidth, finalHeight);
+      yPosition += finalHeight + 10;
+    };
+
     // === EMBUDO DE VENTAS ===
+    if (chartImages?.embudoImgData) {
+      insertChart(chartImages.embudoImgData, 'Embudo de Ventas');
+    }
     if (yPosition > 240) {
       doc.addPage();
       yPosition = addCorporateHeader(doc, 'Informe de Métricas de Leads (cont.)');
@@ -516,6 +475,9 @@ export const exportarMetricasPDF = (
     yPosition = (doc as any).lastAutoTable.finalY + 10;
 
     // === MÉTRICAS POR CANAL ===
+    if (chartImages?.canalImgData) {
+      insertChart(chartImages.canalImgData, 'Métricas por Canal');
+    }
     if (yPosition > 240) {
       doc.addPage();
       yPosition = addCorporateHeader(doc, 'Informe de Métricas de Leads (cont.)');
@@ -556,6 +518,9 @@ export const exportarMetricasPDF = (
     yPosition = (doc as any).lastAutoTable.finalY + 10;
 
     // === MÉTRICAS POR PRIORIDAD ===
+    if (chartImages?.prioridadImgData) {
+      insertChart(chartImages.prioridadImgData, 'Métricas por Prioridad');
+    }
     if (yPosition > 240) {
       doc.addPage();
       yPosition = addCorporateHeader(doc, 'Informe de Métricas de Leads (cont.)');
@@ -594,6 +559,11 @@ export const exportarMetricasPDF = (
     });
 
     yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+    // Tendencias Temporales chart
+    if (chartImages?.tendenciasImgData) {
+      insertChart(chartImages.tendenciasImgData, 'Tendencias Temporales');
+    }
 
     // === TOP 5 EQUIPOS ===
     if (metricas.productosInteres.equipos.length > 0) {

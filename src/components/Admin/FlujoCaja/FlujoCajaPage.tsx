@@ -43,11 +43,12 @@ import {
   convertEvolucionToTimeSeries,
   calculateKPIsFromBackend,
 } from '../../../utils/flujoCajaUtils';
-import { generateFlujoCajaPDF } from '../../../utils/pdfExportUtils';
+import { generateFlujoCajaPDF, captureElementAsImage } from '../../../utils/pdfExportUtils';
 import FlujoCajaKPICards from './components/FlujoCajaKPICards';
 import FlujoCajaCharts from './components/FlujoCajaCharts';
 import FlujoCajaPaymentBreakdown from './components/FlujoCajaPaymentBreakdown';
 import FlujoCajaMovimientosTable from './components/FlujoCajaMovimientosTable';
+import CajasAhorroUSDSection from './components/CajasAhorroUSDSection';
 import MovimientoExtraDialog from './dialogs/MovimientoExtraDialog';
 import { movimientoExtraApi } from '../../../api/services/movimientoExtraApi';
 
@@ -156,6 +157,11 @@ const FlujoCajaPage: React.FC = () => {
   // Handlers
   const handleExportPDF = async () => {
     try {
+      const [pieImg, barImg, lineImg] = await Promise.all([
+        captureElementAsImage('flujo-pie-chart'),
+        captureElementAsImage('flujo-bar-chart'),
+        captureElementAsImage('flujo-line-chart'),
+      ]);
       await generateFlujoCajaPDF(
         movimientos,
         {
@@ -167,11 +173,12 @@ const FlujoCajaPage: React.FC = () => {
           totalEgresos,
           flujoNeto,
           totalMovimientos,
-        }
+        },
+        { pieChartImgData: pieImg, barChartImgData: barImg, lineChartImgData: lineImg }
       );
     } catch (err) {
       console.error('Error generating PDF:', err);
-      setError('Error al generar el PDF. Intente nuevamente.');
+      setLocalError('Error al generar el PDF. Intente nuevamente.');
     }
   };
 
@@ -456,6 +463,13 @@ const FlujoCajaPage: React.FC = () => {
         {/* KPI Cards */}
         <Box mb={4}>
           <FlujoCajaKPICards kpis={kpis} loading={isFetching} />
+        </Box>
+
+        <Divider sx={{ my: 4 }} />
+
+        {/* Cajas de Ahorro USD */}
+        <Box mb={4}>
+          <CajasAhorroUSDSection />
         </Box>
 
         <Divider sx={{ my: 4 }} />

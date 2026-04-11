@@ -19,7 +19,7 @@ const COLORS = {
  * @param title Título del documento (ej: "Informe de Ventas")
  * @returns La posición Y donde debe comenzar el contenido
  */
-const addCorporateHeader = (pdf: jsPDF, title: string): number => {
+export const addCorporateHeader = (pdf: jsPDF, title: string): number => {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 10;
@@ -80,7 +80,7 @@ const addCorporateHeader = (pdf: jsPDF, title: string): number => {
  * Agrega el footer corporativo de Ripser a un PDF
  * @param pdf Instancia de jsPDF
  */
-const addCorporateFooter = (pdf: jsPDF): void => {
+export const addCorporateFooter = (pdf: jsPDF): void => {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const footerY = pageHeight - 15;
@@ -113,7 +113,11 @@ export const generateSalesReportPDF = async (
     totalTransactions: number;
     averageOrderValue: number;
   },
-  groupBy: string
+  groupBy: string,
+  chartImages?: {
+    chartImgData: string | null;
+    chartLabel: string;
+  }
 ) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -166,6 +170,12 @@ export const generateSalesReportPDF = async (
   yPosition += 6;
   pdf.text(`Valor Promedio: $${totals.averageOrderValue.toFixed(2)}`, 20, yPosition);
   yPosition += 10;
+
+  // Gráfico (si fue capturado)
+  if (chartImages?.chartImgData) {
+    yPosition = insertChartImage(pdf, chartImages.chartImgData, chartImages.chartLabel,
+      yPosition, pageWidth, pageHeight);
+  }
 
   // Tabla de datos agrupados
   pdf.setFontSize(12);
@@ -1734,6 +1744,11 @@ export const generateFlujoCajaPDF = async (
     totalEgresos: number;
     flujoNeto: number;
     totalMovimientos: number;
+  },
+  chartImages?: {
+    pieChartImgData?: string | null;
+    barChartImgData?: string | null;
+    lineChartImgData?: string | null;
   }
 ) => {
   const pdf = new jsPDF('l', 'mm', 'a4'); // landscape orientation
@@ -1797,6 +1812,26 @@ export const generateFlujoCajaPDF = async (
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(...COLORS.black);
   yPosition += 10;
+
+  // Página de gráficos (si fueron capturados)
+  if (chartImages?.pieChartImgData || chartImages?.barChartImgData || chartImages?.lineChartImgData) {
+    pdf.addPage();
+    yPosition = addCorporateHeader(pdf, 'Flujo de Caja - Visualizaciones');
+    if (chartImages.pieChartImgData) {
+      yPosition = insertChartImage(pdf, chartImages.pieChartImgData,
+        'Distribución por Método de Pago', yPosition, pageWidth, pageHeight, 15, 65);
+    }
+    if (chartImages.barChartImgData) {
+      yPosition = insertChartImage(pdf, chartImages.barChartImgData,
+        'Ingresos vs Egresos por Método de Pago', yPosition, pageWidth, pageHeight, 15, 65);
+    }
+    if (chartImages.lineChartImgData) {
+      yPosition = insertChartImage(pdf, chartImages.lineChartImgData,
+        'Evolución del Flujo de Caja', yPosition, pageWidth, pageHeight, 15, 65);
+    }
+    pdf.addPage();
+    yPosition = addCorporateHeader(pdf, 'Flujo de Caja - Detalle de Movimientos');
+  }
 
   // Tabla de movimientos
   pdf.setFillColor(...COLORS.white);
@@ -1929,6 +1964,430 @@ export const generateFlujoCajaPDF = async (
   addCorporateFooter(pdf);
 
   pdf.save(`flujo-caja-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+/**
+ * Genera un PDF del Dashboard de Estados de Equipos
+ */
+export const generateReportesEstadosPDF = async (
+  estadisticas: {
+    DISPONIBLE: number;
+    RESERVADO: number;
+    FACTURADO: number;
+    EN_TRANSITO: number;
+    ENTREGADO: number;
+    PENDIENTE_TERMINACION: number;
+    total: number;
+  },
+  equipos: any[],
+  filters: {
+    estado: string;
+    tipo: string;
+    modelo: string;
+    fechaDesde: string;
+    fechaHasta: string;
+  },
+  chartImages?: {
+    pieChartImgData?: string | null;
+    barChartImgData?: string | null;
+  }
+): Promise<void> => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 15;
+
+  let yPosition = addCorporateHeader(pdf, 'Dashboard de Estados de Equipos');
+
+  // Filtros aplicados
+  const activeFilters: string[] = [];
+  if (filters.estado !== 'TODOS') activeFilters.push(`Estado: ${filters.estado}`);
+  if (filters.tipo !== 'TODOS') activeFilters.push(`Tipo: ${filters.tipo}`);
+  if (filters.modelo) activeFilters.push(`Modelo: ${filters.modelo}`);
+  if (filters.fechaDesde) activeFilters.push(`Desde: ${filters.fechaDesde}`);
+  if (filters.fechaHasta) activeFilters.push(`Hasta: ${filters.fechaHasta}`);
+
+  if (activeFilters.length > 0) {
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text('Filtros aplicados:', margin, yPosition);
+    yPosition += 5;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...COLORS.black);
+    pdf.text(activeFilters.join('   |   '), margin, yPosition);
+    yPosition += 8;
+  }
+
+  // Resumen KPIs
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Resumen de Estados:', margin, yPosition);
+  yPosition += 7;
+
+  const kpis = [
+    { label: 'Total Equipos', value: estadisticas.total },
+    { label: 'Disponibles', value: estadisticas.DISPONIBLE },
+    { label: 'Reservados', value: estadisticas.RESERVADO },
+    { label: 'Facturados', value: estadisticas.FACTURADO },
+    { label: 'En Tránsito', value: estadisticas.EN_TRANSITO },
+    { label: 'Entregados', value: estadisticas.ENTREGADO },
+    { label: 'Pend. Terminación', value: estadisticas.PENDIENTE_TERMINACION },
+  ];
+
+  const colW = (pageWidth - margin * 2) / 4;
+  let col = 0;
+  let rowY = yPosition;
+
+  kpis.forEach((kpi) => {
+    const x = margin + col * colW;
+    pdf.setFillColor(...COLORS.white);
+    pdf.rect(x, rowY, colW - 2, 10, 'F');
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text(kpi.label, x + 2, rowY + 4);
+    pdf.setFontSize(11);
+    pdf.setTextColor(...COLORS.black);
+    pdf.text(String(kpi.value), x + 2, rowY + 9);
+    col++;
+    if (col === 4) { col = 0; rowY += 13; }
+  });
+  yPosition = rowY + (col > 0 ? 13 : 0) + 5;
+
+  // Gráficos
+  if (chartImages?.pieChartImgData) {
+    yPosition = insertChartImage(pdf, chartImages.pieChartImgData,
+      'Distribución por Estado de Asignación', yPosition, pageWidth, pageHeight, margin);
+  }
+  if (chartImages?.barChartImgData) {
+    yPosition = insertChartImage(pdf, chartImages.barChartImgData,
+      'Cantidad por Estado de Asignación', yPosition, pageWidth, pageHeight, margin);
+  }
+
+  // Tabla de equipos
+  if (yPosition + 20 > pageHeight - 20) {
+    pdf.addPage();
+    yPosition = 20;
+  }
+
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text(`Detalle de Equipos (${equipos.length} registros):`, margin, yPosition);
+  yPosition += 6;
+
+  // Encabezados
+  pdf.setFillColor(...COLORS.darkBlue);
+  pdf.rect(margin, yPosition - 1, pageWidth - margin * 2, 5, 'F');
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.white);
+  const c1 = margin + 1, c2 = margin + 28, c3 = margin + 65, c4 = margin + 95, c5 = margin + 130, c6 = margin + 155;
+  pdf.text('Código', c1, yPosition + 2.5);
+  pdf.text('Modelo', c2, yPosition + 2.5);
+  pdf.text('Tipo', c3, yPosition + 2.5);
+  pdf.text('Estado', c4, yPosition + 2.5);
+  pdf.text('Asignación', c5, yPosition + 2.5);
+  pdf.text('Fecha Fab.', c6, yPosition + 2.5);
+  yPosition += 5;
+
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(6.5);
+  let rowAlt = false;
+  equipos.forEach((e) => {
+    if (yPosition > pageHeight - 20) {
+      pdf.addPage();
+      yPosition = 20;
+    }
+    if (rowAlt) {
+      pdf.setFillColor(240, 246, 252);
+      pdf.rect(margin, yPosition - 1, pageWidth - margin * 2, 4, 'F');
+    }
+    rowAlt = !rowAlt;
+    pdf.setTextColor(...COLORS.black);
+    pdf.text(String(e.codigoEquipo || '-').substring(0, 14), c1, yPosition + 2);
+    pdf.text(String(e.modelo || '-').substring(0, 22), c2, yPosition + 2);
+    pdf.text(String(e.tipo || '-').substring(0, 12), c3, yPosition + 2);
+    pdf.text(String(e.estado || '-').substring(0, 15), c4, yPosition + 2);
+    pdf.text(String(e.estadoAsignacion || '-').substring(0, 14), c5, yPosition + 2);
+    const fecha = e.fechaFabricacion ? new Date(e.fechaFabricacion).toLocaleDateString('es-AR') : '-';
+    pdf.text(fecha, c6, yPosition + 2);
+    yPosition += 4;
+  });
+
+  addCorporateFooter(pdf);
+  pdf.save(`reporte-estados-equipos-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+/**
+ * Genera un PDF del Reporte de Garantías
+ */
+export const generateGarantiaReportPDF = async (
+  stats: {
+    total: number;
+    vigentes: number;
+    vencidas: number;
+    anuladas: number;
+    porVencer: number;
+    totalReclamos: number;
+    reclamosPendientes: number;
+    reclamosEnProceso: number;
+    reclamosResueltos: number;
+    reclamosRechazados: number;
+  },
+  modelStats: Array<{
+    modelo: string;
+    total: number;
+    conReclamos: number;
+    sinReclamos: number;
+    tasaReclamos: string;
+  }>,
+  garantiasPorVencer: any[],
+  reclamosRecientes: any[],
+  filters: {
+    periodFilter: string;
+  }
+): Promise<void> => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 15;
+
+  let yPosition = addCorporateHeader(pdf, 'Reporte de Garantías');
+
+  // Período
+  const periodoLabel: Record<string, string> = {
+    '30': 'Últimos 30 días', '90': 'Últimos 90 días',
+    '180': 'Últimos 180 días', '365': 'Último año', 'all': 'Todo el período'
+  };
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text(`Período: ${periodoLabel[filters.periodFilter] || filters.periodFilter}`, margin, yPosition);
+  yPosition += 8;
+
+  // KPIs Garantías
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Garantías:', margin, yPosition);
+  yPosition += 6;
+
+  const garantiaKPIs = [
+    { label: 'Total', value: stats.total },
+    { label: 'Vigentes', value: stats.vigentes },
+    { label: 'Por Vencer (30d)', value: stats.porVencer },
+    { label: 'Vencidas', value: stats.vencidas },
+    { label: 'Anuladas', value: stats.anuladas },
+  ];
+  const colW = (pageWidth - margin * 2) / 5;
+  garantiaKPIs.forEach((kpi, i) => {
+    const x = margin + i * colW;
+    pdf.setFillColor(...COLORS.white);
+    pdf.rect(x, yPosition, colW - 2, 10, 'F');
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text(kpi.label, x + 2, yPosition + 4);
+    pdf.setFontSize(11);
+    pdf.setTextColor(...COLORS.black);
+    pdf.text(String(kpi.value), x + 2, yPosition + 9);
+  });
+  yPosition += 14;
+
+  // KPIs Reclamos
+  pdf.setFontSize(11);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text('Reclamos:', margin, yPosition);
+  yPosition += 6;
+
+  const reclamoKPIs = [
+    { label: 'Total Reclamos', value: stats.totalReclamos },
+    { label: 'Pendientes', value: stats.reclamosPendientes },
+    { label: 'En Proceso', value: stats.reclamosEnProceso },
+    { label: 'Resueltos', value: stats.reclamosResueltos },
+    { label: 'Rechazados', value: stats.reclamosRechazados },
+  ];
+  reclamoKPIs.forEach((kpi, i) => {
+    const x = margin + i * colW;
+    pdf.setFillColor(...COLORS.white);
+    pdf.rect(x, yPosition, colW - 2, 10, 'F');
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text(kpi.label, x + 2, yPosition + 4);
+    pdf.setFontSize(11);
+    pdf.setTextColor(...COLORS.black);
+    pdf.text(String(kpi.value), x + 2, yPosition + 9);
+  });
+  yPosition += 16;
+
+  // Tabla: Garantías por Modelo
+  const drawTableSection = (title: string, headers: string[], rows: string[][], colPositions: number[]) => {
+    if (yPosition + 20 > pageHeight - 20) { pdf.addPage(); yPosition = 20; }
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text(title, margin, yPosition);
+    yPosition += 5;
+
+    pdf.setFillColor(...COLORS.darkBlue);
+    pdf.rect(margin, yPosition - 1, pageWidth - margin * 2, 5, 'F');
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.white);
+    headers.forEach((h, i) => pdf.text(h, colPositions[i], yPosition + 2.5));
+    yPosition += 5;
+
+    pdf.setFont('helvetica', 'normal');
+    let alt = false;
+    rows.forEach((row) => {
+      if (yPosition > pageHeight - 20) { pdf.addPage(); yPosition = 20; }
+      if (alt) { pdf.setFillColor(240, 246, 252); pdf.rect(margin, yPosition - 1, pageWidth - margin * 2, 4, 'F'); }
+      alt = !alt;
+      pdf.setTextColor(...COLORS.black);
+      row.forEach((cell, i) => pdf.text(String(cell).substring(0, 30), colPositions[i], yPosition + 2));
+      yPosition += 4;
+    });
+    yPosition += 5;
+  };
+
+  drawTableSection(
+    `Garantías por Modelo (Top ${modelStats.length})`,
+    ['Modelo', 'Total', 'Con Reclamos', 'Sin Reclamos', 'Tasa Reclamos'],
+    modelStats.map(m => [m.modelo, String(m.total), String(m.conReclamos), String(m.sinReclamos), `${m.tasaReclamos}%`]),
+    [margin + 1, margin + 70, margin + 90, margin + 115, margin + 140]
+  );
+
+  drawTableSection(
+    `Garantías por Vencer (próximos 30 días) — ${garantiasPorVencer.length} registros`,
+    ['N° Serie Equipo', 'Modelo', 'Fecha Vencimiento', 'Días Restantes'],
+    garantiasPorVencer.map(g => {
+      const dias = Math.ceil((new Date(g.fechaVencimiento).getTime() - Date.now()) / 86400000);
+      return [
+        String(g.equipoFabricadoNumeroSerie || g.equipoFabricadoId || '-'),
+        String(g.equipoFabricadoModelo || '-'),
+        new Date(g.fechaVencimiento).toLocaleDateString('es-AR'),
+        String(dias),
+      ];
+    }),
+    [margin + 1, margin + 50, margin + 110, margin + 155]
+  );
+
+  drawTableSection(
+    `Reclamos Recientes — ${reclamosRecientes.length} registros`,
+    ['Tipo Falla', 'Descripción', 'Estado', 'Fecha Reclamo'],
+    reclamosRecientes.map(r => [
+      String(r.tipoFalla || '-'),
+      String(r.descripcion || '-').substring(0, 35),
+      String(r.estado || '-'),
+      r.fechaReclamo ? new Date(r.fechaReclamo).toLocaleDateString('es-AR') : '-',
+    ]),
+    [margin + 1, margin + 40, margin + 120, margin + 150]
+  );
+
+  addCorporateFooter(pdf);
+  pdf.save(`reporte-garantias-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+
+/**
+ * Captura un elemento HTML por ID y retorna la imagen como base64 PNG.
+ * Para elementos que contienen un <canvas> (Chart.js), usa toDataURL() directamente
+ * en lugar de html2canvas para evitar problemas de captura.
+ * Retorna null si el elemento no se encuentra.
+ */
+export const captureElementAsImage = async (elementId: string): Promise<string | null> => {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    console.warn(`[captureElementAsImage] Elemento "${elementId}" no encontrado`);
+    return null;
+  }
+  try {
+    // Si contiene un <canvas> (Chart.js), capturar directamente desde el canvas
+    // Es más confiable que html2canvas para gráficos Chart.js
+    const chartCanvas = element.querySelector('canvas');
+    if (chartCanvas && chartCanvas.width > 0 && chartCanvas.height > 0) {
+      // Crear canvas temporal con fondo blanco para que el PNG no sea transparente
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = chartCanvas.width;
+      tempCanvas.height = chartCanvas.height;
+      const ctx = tempCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        ctx.drawImage(chartCanvas, 0, 0);
+        return tempCanvas.toDataURL('image/png');
+      }
+    }
+    // Para SVG (Recharts) y componentes MUI customizados: usar html2canvas
+    const captured = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    });
+    return captured.toDataURL('image/png');
+  } catch (error) {
+    console.error(`[captureElementAsImage] Error al capturar "${elementId}":`, error);
+    return null;
+  }
+};
+
+/**
+ * Inserta una imagen de gráfico en el PDF con label encima.
+ * Calcula el alto automáticamente respetando la relación de aspecto de la imagen.
+ * Maneja el overflow añadiendo una nueva página si es necesario.
+ * @returns nueva posición Y después de insertar el gráfico
+ */
+const insertChartImage = (
+  pdf: jsPDF,
+  imgData: string,
+  label: string,
+  yPosition: number,
+  pageWidth: number,
+  pageHeight: number,
+  margin: number = 15,
+  maxChartHeight: number = 110
+): number => {
+  const maxWidth = pageWidth - margin * 2;
+
+  // Calcular dimensiones respetando la relación de aspecto
+  const props = pdf.getImageProperties(imgData);
+  const aspectRatio = props.width / props.height;
+  let finalWidth = maxWidth;
+  let finalHeight = maxWidth / aspectRatio;
+
+  // Si supera el alto máximo, reducir ambas dimensiones proporcionalmente
+  if (finalHeight > maxChartHeight) {
+    finalHeight = maxChartHeight;
+    finalWidth = finalHeight * aspectRatio;
+  }
+
+  // Centrar horizontalmente si el ancho fue reducido
+  const xOffset = margin + (maxWidth - finalWidth) / 2;
+
+  const totalNeeded = 5 + 8 + finalHeight + 10;
+  if (yPosition + totalNeeded > pageHeight - 20) {
+    pdf.addPage();
+    yPosition = 20;
+  }
+
+  yPosition += 5; // margen superior
+
+  // Label sobre el gráfico
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text(label, margin, yPosition);
+  yPosition += 8;
+
+  pdf.addImage(imgData, 'PNG', xOffset, yPosition, finalWidth, finalHeight);
+  yPosition += finalHeight + 10; // margen inferior
+
+  return yPosition;
 };
 
 /**

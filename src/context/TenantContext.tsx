@@ -136,8 +136,8 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (esSuperAdmin) return true;
     if (!rolActual) return false;
 
-    // ADMIN_EMPRESA y GERENTE_SUCURSAL pueden cambiar
-    return rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL';
+    // ADMIN_EMPRESA, GERENTE_SUCURSAL y SUPERVISOR (Vendedores) pueden cambiar
+    return rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR';
   }, [esSuperAdmin, rolActual]);
 
   // Cargar UsuarioEmpresa al iniciar (para obtener rol y sucursal defecto)

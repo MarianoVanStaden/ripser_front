@@ -41,6 +41,7 @@ import { ProductosInteresTables } from '../../components/metricas/ProductosInter
 import { RankingVendedoresTable } from '../../components/metricas/RankingVendedoresTable';
 import { TendenciasTemporalesChart } from '../../components/metricas/TendenciasTemporalesChart';
 import { exportarMetricasExcel, exportarMetricasPDF, generarNombreArchivo } from '../../utils/metricasExportUtils';
+import { captureElementAsImage } from '../../utils/pdfExportUtils';
 
 // Configurar dayjs en español
 dayjs.locale('es');
@@ -165,13 +166,22 @@ export const LeadMetricasPage = () => {
     }
   };
 
-  const handleExportarPDF = () => {
+  const handleExportarPDF = async () => {
     if (!metricas) return;
 
     try {
+      const [embudoImgData, canalImgData, prioridadImgData, tendenciasImgData] = await Promise.all([
+        captureElementAsImage('metricas-embudo-chart'),
+        captureElementAsImage('metricas-canal-chart'),
+        captureElementAsImage('metricas-prioridad-chart'),
+        captureElementAsImage('metricas-tendencias-chart'),
+      ]);
       const nombreArchivo = generarNombreArchivo('pdf');
-      exportarMetricasPDF(metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre);
-      setError(null); // Limpiar errores previos si fue exitoso
+      await exportarMetricasPDF(
+        metricas, nombreArchivo, metaMensualLeads, metaPresupuestoMensual, sucursalActualNombre,
+        { embudoImgData, canalImgData, prioridadImgData, tendenciasImgData }
+      );
+      setError(null);
     } catch (err: any) {
       console.error('Error al exportar PDF:', err);
       setError(`Error al exportar a PDF: ${err.message || 'Verifique que los datos estén completos.'}`);
@@ -513,22 +523,30 @@ export const LeadMetricasPage = () => {
 
             {/* Embudo de Ventas */}
             <Grid item xs={12} md={6}>
-              <EmbudoVentasChart data={metricas.embudoVentas} />
+              <div id="metricas-embudo-chart" style={{ background: '#fff' }}>
+                <EmbudoVentasChart data={metricas.embudoVentas} />
+              </div>
             </Grid>
 
             {/* Métricas por Canal */}
             <Grid item xs={12} md={6}>
-              <MetricasCanalChart data={metricas.metricasPorCanal} />
+              <div id="metricas-canal-chart" style={{ background: '#fff' }}>
+                <MetricasCanalChart data={metricas.metricasPorCanal} />
+              </div>
             </Grid>
 
             {/* Métricas por Prioridad */}
             <Grid item xs={12} md={6}>
-              <MetricasPrioridadChart data={metricas.metricasPorPrioridad} />
+              <div id="metricas-prioridad-chart" style={{ background: '#fff' }}>
+                <MetricasPrioridadChart data={metricas.metricasPorPrioridad} />
+              </div>
             </Grid>
 
             {/* Tendencias Temporales */}
             <Grid item xs={12} md={6}>
-              <TendenciasTemporalesChart data={metricas.tendenciasTemporales} />
+              <div id="metricas-tendencias-chart" style={{ background: '#fff' }}>
+                <TendenciasTemporalesChart data={metricas.tendenciasTemporales} />
+              </div>
             </Grid>
 
             {/* Distribución Geográfica */}

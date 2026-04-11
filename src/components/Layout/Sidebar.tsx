@@ -48,6 +48,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import SavingsIcon from '@mui/icons-material/Savings';
 // import GavelIcon from '@mui/icons-material/Gavel';
 import PhoneCallbackIcon from '@mui/icons-material/PhoneCallback';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -215,6 +216,7 @@ const navigation: NavigationSection[] = [
       { text: 'Balance Anual', icon: <AssessmentIcon />, path: '/admin/balance' },
       { text: 'Amortizaciones', icon: <ReceiptLongIcon />, path: '/admin/amortizaciones' },
       { text: 'Posición Patrimonial', icon: <AccountBalanceIcon />, path: '/admin/patrimonio' },
+      { text: 'Cajas de Ahorro USD', icon: <SavingsIcon />, path: '/admin/cajas-ahorro' },
       { text: 'Bancos', icon: <AccountBalanceIcon />, path: '/admin/bancos' },
       { text: 'Cuentas Bancarias', icon: <AccountBalanceIcon />, path: '/admin/cuentas-bancarias' },
       { text: 'Empresas', icon: <BusinessIcon />, path: '/admin/empresas' },

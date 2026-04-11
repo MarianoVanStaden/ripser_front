@@ -283,7 +283,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableRestoreFocus>
       <DialogTitle>
         Registrar Interacción
         <Typography variant="body2" color="text.secondary">
@@ -459,7 +459,7 @@ const ReprogramarDialog: React.FC<ReprogramarDialogProps> = ({
     : `Lead #${recordatorio?.leadId}`;
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth disableRestoreFocus>
       <DialogTitle>
         Reprogramar Recordatorio
         <Typography variant="body2" color="text.secondary">
@@ -595,7 +595,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth disableRestoreFocus>
       <DialogTitle>
         Nuevo Recordatorio
         <Typography variant="body2" color="text.secondary">
@@ -765,13 +765,22 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   // ── Usuarios (asesores) ──
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   useEffect(() => {
-    usuarioApi.getActivos().then(setUsuarios).catch(() => {});
+    usuarioApi
+      .getVendedores()
+      .then((data) => {
+        if (data.length > 0) setUsuarios(data);
+        else return usuarioApi.getActivos().then(setUsuarios);
+      })
+      .catch(() => usuarioApi.getActivos().then(setUsuarios).catch(() => {}));
   }, []);
   const usuarioNombre = useCallback(
     (id?: number) => {
       if (!id) return '—';
       const u = usuarios.find((u) => u.id === id);
-      return u ? `${u.nombre}${u.apellido ? ' ' + u.apellido : ''}` : `#${id}`;
+      if (!u) return `#${id}`;
+      const nombre = u.nombre || (u as any).username || '';
+      const apellido = u.apellido || '';
+      return nombre ? `${nombre}${apellido ? ' ' + apellido : ''}` : `#${id}`;
     },
     [usuarios]
   );
@@ -798,7 +807,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
 
     if (filterPrioridad) filters.prioridad = filterPrioridad;
     if (filterTipo) filters.tipo = filterTipo;
-    if (soloMios && user?.id) filters.usuarioId = user.id;
+    if (soloMios) filters.soloMisRecordatorios = true;
     else if (filterUsuarioId) filters.usuarioId = filterUsuarioId;
     if (sucursalFiltro) filters.sucursalId = sucursalFiltro;
 
@@ -1096,12 +1105,15 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
               <Select
                 value={soloMios ? '' : filterUsuarioId}
                 label="Asesor"
-                onChange={(e) => setFilterUsuarioId(e.target.value as number | '')}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFilterUsuarioId(v === '' ? '' : Number(v));
+                }}
               >
                 <MenuItem value=""><em>Todos</em></MenuItem>
                 {usuarios.map((u) => (
                   <MenuItem key={u.id} value={u.id}>
-                    {u.nombre}{u.apellido ? ' ' + u.apellido : ''}
+                    {u.nombre || (u as any).username || `#${u.id}`}{u.apellido ? ' ' + u.apellido : ''}
                   </MenuItem>
                 ))}
               </Select>
@@ -1155,8 +1167,8 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
             No hay recordatorios pendientes
           </Typography>
           <Typography variant="body2" color="text.disabled" mt={0.5}>
-            {datePreset !== 'todos'
-              ? 'Pruebe cambiando los filtros de fecha.'
+            {datePreset !== 'todos' || filterPrioridad || filterTipo || filterUsuarioId || soloMios
+              ? 'Pruebe cambiando los filtros.'
               : '¡Excelente trabajo! Todo al día.'}
           </Typography>
         </Paper>

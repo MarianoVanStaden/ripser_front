@@ -3834,3 +3834,6 @@ export * from './stockPlanificacion.types';
 
 // Posición Patrimonial
 export * from './posicionPatrimonial.types';
+
+// Cajas de Ahorro en USD
+export * from './cajasAhorro.types';
