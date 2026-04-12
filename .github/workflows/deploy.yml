@@ -1,0 +1,89 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  RELEASE: ${{ github.run_number }}
+  RELEASES_DIR: /var/www/frontend/releases
+  CURRENT_LINK: /var/www/frontend/current
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      # Crea la carpeta del release en el VPS antes de copiar
+      - name: Create release directory on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: mkdir -p ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
+
+      # Copia dist/ a releases/<run_number>/ en el VPS
+      - name: Copy dist to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: dist/
+          target: ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
+          strip_components: 1
+
+      # Swap atómico del symlink + limpieza de releases viejos
+      - name: Activate release (atomic symlink swap)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            ln -sfn ${{ env.RELEASES_DIR }}/${{ env.RELEASE }} ${{ env.CURRENT_LINK }}
+            sudo systemctl reload nginx || sudo systemctl reload apache2 || true
+            echo "Release ${{ env.RELEASE }} activado."
+            # Mantiene solo los últimos 5 releases
+            ls -1dt ${{ env.RELEASES_DIR }}/*/ | tail -n +6 | xargs -r rm -rf
+            echo "Releases disponibles:"
+            ls -1t ${{ env.RELEASES_DIR }}/
+
+      # Rollback: solo corre si algún paso anterior falló
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "Deploy fallido. Iniciando rollback..."
+            # Elimina el release incompleto
+            rm -rf ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
+            # Apunta el symlink al release anterior más reciente
+            PREV=$(ls -1dt ${{ env.RELEASES_DIR }}/*/ 2>/dev/null | head -1)
+            if [ -n "$PREV" ]; then
+              ln -sfn "$PREV" ${{ env.CURRENT_LINK }}
+              sudo systemctl reload nginx || sudo systemctl reload apache2 || true
+              echo "Rollback exitoso. Sirviendo: $PREV"
+            else
+              echo "Sin release previo disponible para rollback."
+            fi
