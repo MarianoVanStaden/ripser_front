@@ -117,7 +117,7 @@ function TabPanel(props: TabPanelProps) {
 
 const HistorialComprasPage: React.FC = () => {
   const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [_productos, setProductos] = useState<Producto[]>([]);
   const [compras, setCompras] = useState<CompraHistorial[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasCompra | null>(null);
   const [loading, setLoading] = useState(true);

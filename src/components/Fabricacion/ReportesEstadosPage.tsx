@@ -82,6 +82,7 @@ const ReportesEstadosPage: React.FC = () => {
         FACTURADO: 0,    // Incluido en factura
         EN_TRANSITO: 0,  // En viaje hacia el cliente
         ENTREGADO: 0,    // Entregado al cliente
+        PENDIENTE_TERMINACION: 0,
         total: equiposData.length,
       };
 

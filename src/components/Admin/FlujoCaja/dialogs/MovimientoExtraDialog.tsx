@@ -72,14 +72,13 @@ const CATEGORIAS_COBRO: CategoriaCobroExtra[] = [
 
 const METODOS_PAGO: MetodoPago[] = [
   'EFECTIVO',
-  'TRANSFERENCIA_BANCARIA',
+  'TRANSFERENCIA',
   'CHEQUE',
   'TARJETA_CREDITO',
   'TARJETA_DEBITO',
   'FINANCIACION_PROPIA',
-  'MERCADO_PAGO',
+  'FINANCIAMIENTO',
   'CUENTA_CORRIENTE',
-  'OTRO',
 ];
 
 const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({

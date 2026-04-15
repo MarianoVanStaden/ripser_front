@@ -4,6 +4,7 @@ import * as realCuentaCorrienteApi from './cuentaCorrienteApi';
 import * as realSupplierApi from './supplierApi';
 import { mockClienteApi, mockContactoClienteApi, mockCuentaCorrienteApi, mockSupplierApi, mockGarantias } from './mockData';
 import { arrayToPage } from '../../types/pagination.types';
+import type { PaginationParams } from '../../types/pagination.types';
 
 let backendAvailable: boolean | null = null;
 
@@ -122,11 +123,11 @@ export const cuentaCorrienteApiWithFallback = {
 
 // Wrapper for supplier API
 export const supplierApiWithFallback = {
-  getAll: async (pagination: PaginationParams = {}) => {
+  getAll: async (_pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
-    return isBackendAvailable 
-      ? realSupplierApi.supplierApi.getAll(pagination) 
-      : mockSupplierApi.getAll(pagination);
+    return isBackendAvailable
+      ? realSupplierApi.supplierApi.getAll()
+      : mockSupplierApi.getAll();
   },
 
   getById: async (id: number) => {

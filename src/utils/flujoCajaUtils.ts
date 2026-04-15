@@ -41,6 +41,7 @@ export const getPaymentMethodLabel = (metodo: MetodoPago): string => {
     TARJETA_CREDITO: 'Tarjeta Crédito',
     TARJETA_DEBITO: 'Tarjeta Débito',
     FINANCIAMIENTO: 'Financiamiento',
+    FINANCIACION_PROPIA: 'Financiación Propia',
     CUENTA_CORRIENTE: 'Cuenta Corriente',
   };
   return labels[metodo] || metodo;
@@ -57,6 +58,7 @@ export const getPaymentMethodIcon = (metodo: MetodoPago) => {
     TARJETA_CREDITO: CreditCardIcon,
     TARJETA_DEBITO: DebitCardIcon,
     FINANCIAMIENTO: FinanciacionIcon,
+    FINANCIACION_PROPIA: FinanciacionIcon,
     CUENTA_CORRIENTE: BankIcon,
   };
   return icons[metodo] || OtherIcon;
@@ -73,6 +75,7 @@ export const getPaymentMethodColor = (metodo: MetodoPago): string => {
     TARJETA_CREDITO: '#9C27B0', // morado
     TARJETA_DEBITO: '#00BCD4', // cyan
     FINANCIAMIENTO: '#FFC107', // amarillo
+    FINANCIACION_PROPIA: '#FF5722', // naranja oscuro
     CUENTA_CORRIENTE: '#795548', // marrón
   };
   return colors[metodo] || '#9E9E9E';

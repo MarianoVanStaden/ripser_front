@@ -25,7 +25,6 @@ import 'dayjs/locale/es';
 import { useFlujoCaja } from '../../../hooks/useFlujoCaja';
 import { useSmartRefresh, formatLastUpdated } from '../../../hooks/useSmartRefresh';
 import type {
-  FlujoCajaResponseEnhanced,
   MetodoPago,
   PaymentMethodAggregation,
   ChequeStatusAggregation,

@@ -1,6 +1,5 @@
 import api from '../config';
 import type { Cliente, CreateClienteRequest, PageResponse, PaginationParams } from '../../types';
-import { arrayToPage } from '../../types/pagination.types';
 import { mockClienteApi } from './mockApi';
 
 // Flag to determine if we should use mock data
@@ -59,7 +58,7 @@ export const clienteApi = {
       },
       async () => {
         const mockData = await mockClienteApi.getAll();
-        return arrayToPage<Cliente>(mockData, pagination.page ?? 0, pagination.size ?? 20);
+        return mockData;
       }
     );
   },

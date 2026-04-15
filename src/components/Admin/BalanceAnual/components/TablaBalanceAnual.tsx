@@ -8,7 +8,6 @@ import {
   Paper,
   Box,
   Typography,
-  Button,
   FormControlLabel,
   Switch,
   IconButton,
@@ -39,7 +38,7 @@ interface Props {
   onCerrar: (mes: number) => void;
 }
 
-export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, onCalcular, onCerrar }: Props) {
+export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, onCalcular: _onCalcular, onCerrar }: Props) {
   const navigate = useNavigate();
   const suffix = moneda === 'pesos' ? 'Pesos' : 'Dolares';
   const simbolo = moneda === 'pesos' ? '$' : 'USD';

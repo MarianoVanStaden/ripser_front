@@ -177,9 +177,7 @@ const OpcionesFinanciamientoPage: React.FC = () => {
 
         // Calculate with interest
           // El anticipo (40%) va sin recargo, el interés se aplica al financiado (60%)
-          const montoAnticipo = montoBase * 0.4;
           const montoFinanciado = montoBase * 0.6 * (1 + tasa / 100);
-          const montoConInteres = montoAnticipo + montoFinanciado;
           const montoPorCuota = cuotas > 0 ? montoFinanciado / cuotas : 0;
         updated.montoCuota = parseFloat(montoPorCuota.toFixed(2));
       }

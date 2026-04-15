@@ -1129,8 +1129,6 @@ const TabVencimientos: React.FC = () => {
 
   useEffect(() => { load(dias); }, [load, dias]);
 
-  const _today = getTodayStr();
-
   const getVencimientoRowBg = (fecha: string) => {
     const days = getDaysUntil(fecha);
     if (days < 0) return 'error.50';

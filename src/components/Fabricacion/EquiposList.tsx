@@ -7,7 +7,7 @@ import {
   Grid, Tabs, Tab, Divider, Accordion, AccordionSummary, AccordionDetails,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending, Brush,
@@ -464,7 +464,7 @@ const EquiposList: React.FC = () => {
     }
   };
 
-  const columnVisibilityModel = isMobile ? {
+  const columnVisibilityModel: GridColumnVisibilityModel = isMobile ? {
     color: false,
     asignado: false,
     clienteNombre: false,

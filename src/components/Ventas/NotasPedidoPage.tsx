@@ -1623,7 +1623,7 @@ const NotasPedidoPage: React.FC = () => {
           </Button>
           <Button
             variant="contained"
-            onClick={handleConvertToNotaPedido}
+            onClick={() => handleConvertToNotaPedido()}
             disabled={formLoading || !convertForm.presupuestoId}
             startIcon={formLoading ? <CircularProgress size={20} /> : <CheckCircleIcon />}
           >

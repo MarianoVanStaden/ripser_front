@@ -68,7 +68,7 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
     formState: { errors },
     reset,
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues: {
       tipo: '',
       modelo: '',

@@ -74,7 +74,7 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
     formState: { errors },
     reset,
   } = useForm<FormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues: {
       recetaId: 0,
       depositoOrigenId: 0,

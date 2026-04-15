@@ -1320,11 +1320,12 @@ const FacturacionPage = () => {
     setLoading(true);
     setError(null);
 
+    const cuotasParaEnviar = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
+    const tasaInteresParaEnviar = isManualInvoice
+      ? (manualTasaInteres > 0 ? manualTasaInteres : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0))
+      : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0);
+
     try {
-      const cuotasParaEnviar = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
-      const tasaInteresParaEnviar = isManualInvoice
-        ? (manualTasaInteres > 0 ? manualTasaInteres : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0))
-        : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0);
       const deudaPreconfirmada = deudaYaConfirmadaRef.current;
       deudaYaConfirmadaRef.current = false; // reset before the call
       const factura = await documentoApi.convertToFactura({

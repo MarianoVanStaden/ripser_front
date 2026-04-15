@@ -285,21 +285,6 @@ const EmpleadosPage: React.FC = () => {
     }
   };
 
-  const _handleChangeEstado = async (empleado: Empleado, nuevoEstado: string) => {
-    try {
-      await employeeApi.changeEstado(empleado.id, nuevoEstado);
-      if (nuevoEstado === 'INACTIVO' && empleado.usuarioId !== null) {
-        setInactiveWarning(
-          `El empleado fue marcado como inactivo. Los accesos del usuario vinculado (#${empleado.usuarioId}) fueron desactivados automáticamente.`
-        );
-        setTimeout(() => setInactiveWarning(null), 8000);
-      }
-      await loadData();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al cambiar estado');
-    }
-  };
-
   const handleOpenVincularDialog = async (empleado: Empleado) => {
     setVincularEmpleadoTarget(empleado);
     setSelectedUsuario(null);

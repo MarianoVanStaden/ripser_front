@@ -2355,7 +2355,7 @@ const insertChartImage = (
   const maxWidth = pageWidth - margin * 2;
 
   // Calcular dimensiones respetando la relación de aspecto
-  const props = pdf.getImageProperties(imgData);
+  const props = (pdf as any).getImageProperties(imgData);
   const aspectRatio = props.width / props.height;
   let finalWidth = maxWidth;
   let finalHeight = maxWidth / aspectRatio;

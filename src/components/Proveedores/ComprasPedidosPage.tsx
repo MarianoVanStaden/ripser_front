@@ -142,7 +142,7 @@ const [newOrden, setNewOrden] = useState({
   fechaEntregaEstimada: dayjs().add(15, 'day'),
   observaciones: '',
   estado: 'PENDIENTE', // Add estado field
-  metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO',
+  metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA',
   items: [{
     productoId: '',
     nombreProductoTemporal: '',
@@ -407,7 +407,7 @@ const handleEditOrden = (orden: OrdenCompra) => {
     fechaEntregaEstimada: dayjs(orden.fechaEntregaEstimada),
     observaciones: orden.observaciones || '',
     estado: orden.estado || 'PENDIENTE', // Set estado from the selected order
-    metodoPago: (orden.metodoPago || '') as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO',
+    metodoPago: (orden.metodoPago || '') as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA',
     items: orden.items.map((item) => ({
       productoId: item.productoId ? item.productoId.toString() : '',
       nombreProductoTemporal: item.nombreProductoTemporal || item.descripcion || '',
@@ -658,7 +658,7 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
       fechaEntregaEstimada: dayjs().add(15, 'day'),
       observaciones: '',
       estado: 'PENDIENTE',
-      metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO',
+      metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA',
       items: [{
         productoId: '',
         nombreProductoTemporal: '',
@@ -1328,17 +1328,16 @@ const handleDeleteCompra = async (id: number) => {
   select
   label="Forma de Pago"
   value={newOrden.metodoPago || ''}
-  onChange={(e) => setNewOrden({ ...newOrden, metodoPago: e.target.value as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA_BANCARIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' | 'OTRO' })}
+  onChange={(e) => setNewOrden({ ...newOrden, metodoPago: e.target.value as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA' })}
   margin="normal"
 >
   <MenuItem value="">Seleccione...</MenuItem>
   <MenuItem value="EFECTIVO">Efectivo</MenuItem>
   <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
   <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
-  <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
+  <MenuItem value="TRANSFERENCIA">Transferencia Bancaria</MenuItem>
   <MenuItem value="CHEQUE">Cheque</MenuItem>
   <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
-  <MenuItem value="OTRO">Otro</MenuItem>
 </TextField>
 
       <DatePicker
@@ -1681,10 +1680,9 @@ const handleDeleteCompra = async (id: number) => {
                           {selectedOrden.metodoPago === 'EFECTIVO' && 'Efectivo'}
                           {selectedOrden.metodoPago === 'TARJETA_CREDITO' && 'Tarjeta de Crédito'}
                           {selectedOrden.metodoPago === 'TARJETA_DEBITO' && 'Tarjeta de Débito'}
-                          {selectedOrden.metodoPago === 'TRANSFERENCIA_BANCARIA' && 'Transferencia Bancaria'}
+                          {selectedOrden.metodoPago === 'TRANSFERENCIA' && 'Transferencia Bancaria'}
                           {selectedOrden.metodoPago === 'CHEQUE' && 'Cheque'}
                           {selectedOrden.metodoPago === 'FINANCIACION_PROPIA' && 'Financiación Propia'}
-                          {selectedOrden.metodoPago === 'OTRO' && 'Otro'}
                         </Typography>
                       </Box>
                     )}

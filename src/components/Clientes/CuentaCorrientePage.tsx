@@ -125,12 +125,6 @@ const CuentaCorrientePage: React.FC = () => {
     loadInitialData();
   }, [location.state]);
 
-  const handleClienteChange = (clienteId: number) => {
-    const cliente = clientes.find(c => c.id === clienteId) || null;
-    setSelectedCliente(cliente);
-    setPage(0);
-    // React Query hace el fetch automáticamente cuando cambia selectedCliente
-  };
 
   const handleSaveMovimiento = async () => {
     if (!selectedCliente) {

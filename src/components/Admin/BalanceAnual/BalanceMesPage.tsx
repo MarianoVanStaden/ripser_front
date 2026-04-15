@@ -38,6 +38,8 @@ const n = (v: number | null | undefined): number | undefined => v ?? undefined;
 
 function dtoToForm(dto: BalanceMensualDTO): FormValues {
   return {
+    anio: dto.anio,
+    mes: dto.mes,
     valorDolar: n(dto.valorDolar),
     saldoInicialPesos: n(dto.saldoInicialPesos),
     totalCobradoPesos: n(dto.totalCobradoPesos),
@@ -69,6 +71,8 @@ function dtoToForm(dto: BalanceMensualDTO): FormValues {
 }
 
 const EMPTY_FORM: FormValues = {
+  anio: 0,
+  mes: 0,
   valorDolar: undefined,
   saldoInicialPesos: undefined,
   totalCobradoPesos: undefined,

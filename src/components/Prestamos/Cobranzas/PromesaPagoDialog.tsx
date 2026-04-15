@@ -186,7 +186,7 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
           <DatePicker
             label="Fecha de promesa *"
             value={fechaPromesa}
-            onChange={setFechaPromesa}
+            onChange={(value) => setFechaPromesa(value as any)}
             minDate={dayjs().add(1, 'day')}
             slotProps={{
               textField: {
