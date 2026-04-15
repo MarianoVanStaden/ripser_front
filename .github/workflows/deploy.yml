@@ -42,10 +42,10 @@ jobs:
       - name: Debug SSH user
         uses: appleboy/ssh-action@v1.0.3
         with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        script: whoami && id && ls -la /var/www/frontend/
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: whoami && id && ls -la /var/www/frontend/
 
 
 
