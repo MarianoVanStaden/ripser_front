@@ -18,6 +18,7 @@ const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
   MATERIA_PRIMA: 'Materia prima',
   AGUINALDOS: 'Aguinaldos',
   DESEMPLEO: 'Desempleo',
+  MAQUINARIA: 'Maquinaria',
   OTRO: 'Otro',
 };
 

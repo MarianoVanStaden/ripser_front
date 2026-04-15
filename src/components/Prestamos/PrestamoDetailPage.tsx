@@ -385,27 +385,31 @@ export const PrestamoDetailPage: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <Stack direction="row" spacing={0} justifyContent="center">
-                      {c.estado !== 'PAGADA' && (
-                        <Tooltip title="Registrar Pago">
-                          <IconButton size="small" onClick={() => { setSelectedCuota(c); setPagoDialogOpen(true); }}>
-                            <Payment fontSize="small" />
+                    {prestamo?.estado === 'REFINANCIADO' ? (
+                      <Typography variant="caption" color="text.disabled">Sin acciones</Typography>
+                    ) : (
+                      <Stack direction="row" spacing={0} justifyContent="center">
+                        {c.estado !== 'PAGADA' && (
+                          <Tooltip title="Registrar Pago">
+                            <IconButton size="small" onClick={() => { setSelectedCuota(c); setPagoDialogOpen(true); }}>
+                              <Payment fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {(c.estado === 'PAGADA' || c.estado === 'PARCIAL') && c.montoPagado > 0 && (
+                          <Tooltip title="Revertir pago">
+                            <IconButton size="small" color="warning" onClick={() => { setSelectedCuotaRevertir(c); setRevertirOpen(true); }}>
+                              <Undo fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Agregar Recordatorio">
+                          <IconButton size="small" onClick={() => { setRecordatorioCuotaId(c.id); setEditingRecordatorio(null); setRecordatorioOpen(true); }}>
+                            <Notifications fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                      )}
-                      {(c.estado === 'PAGADA' || c.estado === 'PARCIAL') && c.montoPagado > 0 && (
-                        <Tooltip title="Revertir pago">
-                          <IconButton size="small" color="warning" onClick={() => { setSelectedCuotaRevertir(c); setRevertirOpen(true); }}>
-                            <Undo fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      <Tooltip title="Agregar Recordatorio">
-                        <IconButton size="small" onClick={() => { setRecordatorioCuotaId(c.id); setEditingRecordatorio(null); setRecordatorioOpen(true); }}>
-                          <Notifications fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
+                      </Stack>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

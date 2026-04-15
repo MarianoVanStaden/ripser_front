@@ -7,8 +7,9 @@ import {
 } from '@mui/material';
 import {
   Inventory, Assignment, CheckCircle, LocalShipping,
-  TrendingUp, PieChart as PieChartIcon,
+  TrendingUp, PieChart as PieChartIcon, GetApp as GetAppIcon,
 } from '@mui/icons-material';
+import { generateReportesEstadosPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import dayjs from 'dayjs';
 import api from '../../api/config';
@@ -207,15 +208,37 @@ const ReportesEstadosPage: React.FC = () => {
     );
   }
 
+  const handleExportPDF = async () => {
+    try {
+      const [pieImg, barImg] = await Promise.all([
+        captureElementAsImage('estados-pie-chart'),
+        captureElementAsImage('estados-bar-chart'),
+      ]);
+      await generateReportesEstadosPDF(
+        estadisticas,
+        filteredEquipos,
+        { estado: filtroEstado, tipo: filtroTipo, modelo: filtroModelo, fechaDesde, fechaHasta },
+        { pieChartImgData: pieImg, barChartImgData: barImg }
+      );
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+    }
+  };
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="600">
           Dashboard de Estados de Equipos
         </Typography>
-        <Button variant="outlined" onClick={loadData}>
-          Actualizar
-        </Button>
+        <Box display="flex" gap={1}>
+          <Button variant="outlined" onClick={loadData}>
+            Actualizar
+          </Button>
+          <Button variant="contained" startIcon={<GetAppIcon />} onClick={handleExportPDF}>
+            Exportar PDF
+          </Button>
+        </Box>
       </Box>
 
       {/* Cards de resumen */}
@@ -343,26 +366,28 @@ const ReportesEstadosPage: React.FC = () => {
                     <PieChartIcon /> Distribución por Estado de Asignación
                   </Typography>
                   {pieChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={pieChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {pieChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <div id="estados-pie-chart" style={{ background: '#fff' }}>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={pieChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {pieChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                   ) : (
                     <Box display="flex" justifyContent="center" alignItems="center" height={300}>
                       <Typography color="text.secondary">
@@ -380,15 +405,17 @@ const ReportesEstadosPage: React.FC = () => {
                   <Typography variant="h6" gutterBottom>
                     Cantidad por Estado de Asignación
                   </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={barChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="estado" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="cantidad" fill="#2196f3" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div id="estados-bar-chart" style={{ background: '#fff' }}>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={barChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="estado" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="cantidad" fill="#2196f3" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
             </Grid>

@@ -92,8 +92,8 @@ const LegajosPage: React.FC = () => {
       console.log('Empleados data:', empleadosData);
       
       // Mapear los legajos para incluir el objeto empleado completo
-      const legajosConEmpleado = Array.isArray(legajosData) 
-        ? legajosData.map((legajo: any) => {
+      const legajosArray = Array.isArray(legajosData) ? legajosData : (legajosData?.content ?? []);
+      const legajosConEmpleado = legajosArray.map((legajo: any) => {
             const empleado = empleadosData.find((e: any) => e.id === legajo.empleadoId);
             return {
               ...legajo,
@@ -104,8 +104,7 @@ const LegajosPage: React.FC = () => {
                 dni: legajo.empleadoDni || ''
               }
             };
-          })
-        : [];
+          });
       
       console.log('Legajos mapped:', legajosConEmpleado);
       

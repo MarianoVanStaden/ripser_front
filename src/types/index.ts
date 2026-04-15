@@ -1548,7 +1548,7 @@ export interface Venta {
   detalleVentas: DetalleVenta[];
   prestamoId?: number | null;
 }
-export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIAMIENTO' | 'CUENTA_CORRIENTE';
+export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIAMIENTO' | 'FINANCIACION_PROPIA' | 'CUENTA_CORRIENTE';
 
 // Enums para equipos fabricados
 export type ColorEquipo =
@@ -1952,6 +1952,24 @@ export interface CreateProveedorDTO {
   provincia?: ProvinciaEnum;
   codigoPostal?: string;
 }
+export interface ProveedorProductoDTO {
+  id: number;
+  proveedorId: number;
+  proveedorNombre: string;
+  productoId: number;
+  productoNombre: string;
+  productoCodigo: string;
+  precioProveedor: number | null;
+  activo: boolean;
+  fechaAlta: string;
+}
+
+export interface CreateProveedorProductoDTO {
+  proveedorId: number;
+  productoId: number;
+  precioProveedor?: number;
+}
+
 export interface Proveedor {
   id: number;
   nombre?: string;
@@ -2418,6 +2436,7 @@ export interface ConvertToFacturaDTO {
   primerVencimiento?: string;
   porcentajeEntregaInicial?: number | null;
   montoEntregaInicial?: number | null;
+  tasaInteres?: number;
   confirmarConDeudaPendiente?: boolean;
 }
 
@@ -3815,3 +3834,6 @@ export * from './stockPlanificacion.types';
 
 // Posición Patrimonial
 export * from './posicionPatrimonial.types';
+
+// Cajas de Ahorro en USD
+export * from './cajasAhorro.types';

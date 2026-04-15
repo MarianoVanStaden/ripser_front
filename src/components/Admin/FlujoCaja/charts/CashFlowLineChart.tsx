@@ -173,7 +173,7 @@ const CashFlowLineChart: React.FC<CashFlowLineChartProps> = ({
   }
 
   return (
-    <Paper sx={{ p: { xs: 2, sm: 3 }, height: { xs: 'auto', sm: 450 } }}>
+    <Paper id="flujo-line-chart" sx={{ p: { xs: 2, sm: 3 }, height: { xs: 'auto', sm: 450 } }}>
       <Box
         display="flex"
         flexDirection={{ xs: 'column', sm: 'row' }}

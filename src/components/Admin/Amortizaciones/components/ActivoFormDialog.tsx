@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -25,7 +25,7 @@ import type {
 import type { Vehiculo } from '../../../../types';
 
 const TIPOS: TipoActivoAmortizable[] = [
-  'VEHICULO', 'HERRAMIENTAS', 'INFRAESTRUCTURA', 'MATERIA_PRIMA', 'AGUINALDOS', 'DESEMPLEO', 'OTRO',
+  'VEHICULO', 'HERRAMIENTAS', 'INFRAESTRUCTURA', 'MATERIA_PRIMA', 'AGUINALDOS', 'DESEMPLEO', 'MAQUINARIA', 'OTRO',
 ];
 
 const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
@@ -35,17 +35,19 @@ const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
   MATERIA_PRIMA: 'Materia prima',
   AGUINALDOS: 'Aguinaldos',
   DESEMPLEO: 'Desempleo',
+  MAQUINARIA: 'Maquinaria',
   OTRO: 'Otro',
 };
 
 const METODOS: MetodoAmortizacion[] = [
-  'PORCENTAJE_FIJO', 'POR_KILOMETROS', 'MONTO_FIJO_MENSUAL',
+  'PORCENTAJE_FIJO', 'POR_KILOMETROS', 'MONTO_FIJO_MENSUAL', 'SIN_AMORTIZACION',
 ];
 
 const METODO_LABEL: Record<MetodoAmortizacion, string> = {
   PORCENTAJE_FIJO: 'Porcentaje fijo mensual',
   POR_KILOMETROS: 'Por kilómetros (vehículos)',
   MONTO_FIJO_MENSUAL: 'Monto fijo mensual',
+  SIN_AMORTIZACION: 'Sin amortización',
 };
 
 const schema = yup.object({
@@ -91,6 +93,7 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: yupResolver(schema) as any,
@@ -109,6 +112,13 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
 
   const tipoVal = watch('tipo');
   const metodoVal = watch('metodo');
+  const isMaquinaria = tipoVal === 'MAQUINARIA';
+
+  useEffect(() => {
+    if (isMaquinaria) {
+      setValue('metodo', 'SIN_AMORTIZACION');
+    }
+  }, [isMaquinaria, setValue]);
 
   useEffect(() => {
     if (!open) return;
@@ -235,8 +245,9 @@ export default function ActivoFormDialog({ open, mode, activo, onClose, onSaved 
                     label="Método *"
                     fullWidth
                     size="small"
+                    disabled={isMaquinaria}
                     error={!!errors.metodo}
-                    helperText={errors.metodo?.message}
+                    helperText={isMaquinaria ? 'Maquinaria no se amortiza' : errors.metodo?.message}
                   >
                     {METODOS.map((m) => (
                       <MenuItem key={m} value={m}>{METODO_LABEL[m]}</MenuItem>

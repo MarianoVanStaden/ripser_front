@@ -32,8 +32,8 @@ describe('sucursalPermissions', () => {
       expect(canChangeSucursal('GERENTE_SUCURSAL', false)).toBe(true);
     });
 
-    it('returns false for SUPERVISOR', () => {
-      expect(canChangeSucursal('SUPERVISOR', false)).toBe(false);
+    it('returns true for SUPERVISOR', () => {
+      expect(canChangeSucursal('SUPERVISOR', false)).toBe(true);
     });
 
     it('returns false for USUARIO_SUCURSAL', () => {
@@ -48,7 +48,7 @@ describe('sucursalPermissions', () => {
   describe('canViewAllSucursales', () => {
     it('delegates to canChangeSucursal', () => {
       expect(canViewAllSucursales('ADMIN_EMPRESA', false)).toBe(true);
-      expect(canViewAllSucursales('SUPERVISOR', false)).toBe(false);
+      expect(canViewAllSucursales('SUPERVISOR', false)).toBe(true);
       expect(canViewAllSucursales(null, true)).toBe(true);
     });
   });

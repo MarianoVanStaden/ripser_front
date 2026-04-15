@@ -53,9 +53,10 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import { proveedorApi } from '../../api/services/proveedorApi';
+import { supplierApi } from '../../api/services/supplierApi';
 import { compraApi } from '../../api/services/compraApi';
-import type { ProveedorDTO, CompraDTO } from '../../types';
+import { productApi } from '../../api/services/productApi';
+import type { ProveedorDTO, CompraDTO, Producto } from '../../types';
 import { exportToPDF } from '../../utils/exportPDF';
 import { exportToExcel } from '../../utils/exportExcel';
 
@@ -76,7 +77,9 @@ interface CompraHistorial {
 
 interface CompraItem {
   id: number;
+  productoId?: number;
   descripcion: string;
+  codigo: string;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -114,6 +117,7 @@ function TabPanel(props: TabPanelProps) {
 
 const HistorialComprasPage: React.FC = () => {
   const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [compras, setCompras] = useState<CompraHistorial[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasCompra | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,36 +147,58 @@ const HistorialComprasPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const suppliersResponse = await proveedorApi.getAll();
-      const suppliersList = (suppliersResponse.content ?? []) as unknown as ProveedorDTO[];
+      const [suppliersData, productosPage, comprasResponse] = await Promise.all([
+        supplierApi.getAll(),
+        productApi.getAll({ size: 10000 }),
+        compraApi.getAll({ size: 1000 }),
+      ]);
+
+      const suppliersList = Array.isArray(suppliersData) ? suppliersData : [];
       setSuppliers(suppliersList);
 
-      // Get compras from API
-      const comprasResponse = await compraApi.getAll();
+      const productosList: Producto[] = Array.isArray(productosPage)
+        ? productosPage
+        : (productosPage?.content ?? []);
+      setProductos(productosList);
+
       const comprasData = (comprasResponse.content ?? []) as unknown as CompraDTO[];
 
-      // Map API data to CompraHistorial
-      const comprasWithSuppliers: CompraHistorial[] = comprasData.map(compra => {
-        const detalles = compra.detalles || [];
-        return {
-          id: compra.id,
-          numero: compra.numero || `COMP-${compra.id}`,
-          supplierId: compra.proveedorId,
-          supplier: suppliersList.find(s => s.id === compra.proveedorId) as unknown as ProveedorDTO,
-          fecha: compra.fechaCreacion || compra.fechaEntrega || '',
-          total: detalles.reduce((sum, item) => sum + (item.cantidad || 0) * (item.costoUnitario || 0), 0),
-          estado: compra.estado,
-          metodoPago: compra.metodoPago || 'Sin método',
-          observaciones: compra.observaciones,
-          items: detalles.map(item => ({
-            id: item.id || 0,
-            descripcion: item.nombreProductoTemporal || item.descripcionProductoTemporal || 'Sin descripción',
-            cantidad: item.cantidad || 0,
-            precioUnitario: item.costoUnitario || 0,
-            subtotal: (item.cantidad || 0) * (item.costoUnitario || 0),
-          })),
-        };
-      });
+      // Map API data to CompraHistorial, ordenado de más nuevo a más viejo
+      const comprasWithSuppliers: CompraHistorial[] = comprasData
+        .slice()
+        .sort((a, b) => {
+          const fa = (a as any).fechaCreacion || a.fechaEntrega || '';
+          const fb = (b as any).fechaCreacion || b.fechaEntrega || '';
+          return dayjs(fb).diff(dayjs(fa));
+        })
+        .map(compra => {
+          const detalles = compra.detalles || [];
+          return {
+            id: compra.id,
+            numero: compra.numero || `COMP-${compra.id}`,
+            supplierId: compra.proveedorId,
+            supplier: suppliersList.find(s => s.id === compra.proveedorId) as unknown as ProveedorDTO,
+            fecha: (compra as any).fechaCreacion || compra.fechaEntrega || '',
+            total: detalles.reduce((sum, item) => sum + (item.cantidad || 0) * (item.costoUnitario || 0), 0),
+            estado: compra.estado,
+            metodoPago: compra.metodoPago || 'Sin método',
+            observaciones: compra.observaciones,
+            items: detalles.map(item => {
+              const producto = (item as any).productoId
+                ? productosList.find(p => p.id === (item as any).productoId)
+                : null;
+              return {
+                id: item.id || 0,
+                productoId: (item as any).productoId || undefined,
+                descripcion: item.nombreProductoTemporal || item.descripcionProductoTemporal || producto?.nombre || 'Sin descripción',
+                codigo: item.codigoProductoTemporal || producto?.codigo || '',
+                cantidad: item.cantidad || 0,
+                precioUnitario: item.costoUnitario || 0,
+                subtotal: (item.cantidad || 0) * (item.costoUnitario || 0),
+              };
+            }),
+          };
+        });
 
       setCompras(comprasWithSuppliers);
 
@@ -224,9 +250,13 @@ const HistorialComprasPage: React.FC = () => {
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
-      case 'PAGADA': return 'success';
+      case 'PAGADA':
+      case 'RECIBIDA': return 'success';
       case 'PENDIENTE': return 'warning';
-      case 'VENCIDA': return 'error';
+      case 'CONFIRMADA': return 'info';
+      case 'EN_TRANSITO': return 'primary';
+      case 'VENCIDA':
+      case 'CANCELADA': return 'error';
       default: return 'default';
     }
   };
@@ -450,7 +480,7 @@ const HistorialComprasPage: React.FC = () => {
                     <Typography variant="h6">Total Compras</Typography>
                   </Box>
                   <Typography variant="h4">
-                    {getComprasPorEstado('PAGADA') + getComprasPorEstado('PENDIENTE') + getComprasPorEstado('VENCIDA')}
+                    {filteredCompras.length}
                   </Typography>
                 </CardContent>
               </Card>
@@ -474,7 +504,7 @@ const HistorialComprasPage: React.FC = () => {
                     <Typography variant="h6">Pagadas</Typography>
                   </Box>
                   <Typography variant="h4" color="success.main">
-                    {getComprasPorEstado('PAGADA')}
+                    {getComprasPorEstado('PAGADA') + getComprasPorEstado('RECIBIDA')}
                   </Typography>
                 </CardContent>
               </Card>
@@ -486,7 +516,7 @@ const HistorialComprasPage: React.FC = () => {
                     <Typography variant="h6">Pendientes</Typography>
                   </Box>
                   <Typography variant="h4" color="warning.main">
-                    {getComprasPorEstado('PENDIENTE') + getComprasPorEstado('VENCIDA')}
+                    {getComprasPorEstado('PENDIENTE') + getComprasPorEstado('CONFIRMADA') + getComprasPorEstado('EN_TRANSITO')}
                   </Typography>
                 </CardContent>
               </Card>
@@ -546,9 +576,11 @@ const HistorialComprasPage: React.FC = () => {
                   fullWidth
                 >
                   <MenuItem value="">Todos</MenuItem>
-                  <MenuItem value="PAGADA">Pagada</MenuItem>
                   <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                  <MenuItem value="VENCIDA">Vencida</MenuItem>
+                  <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
+                  <MenuItem value="EN_TRANSITO">En tránsito</MenuItem>
+                  <MenuItem value="RECIBIDA">Recibida</MenuItem>
+                  <MenuItem value="CANCELADA">Cancelada</MenuItem>
                 </TextField>
 
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, width: { xs: '100%', sm: 'auto' } }}>
@@ -832,7 +864,15 @@ const HistorialComprasPage: React.FC = () => {
                     </Box>
                     <Box>
                       <Typography variant="body2" color="text.secondary">Método de Pago</Typography>
-                      <Typography variant="body1">{selectedCompra.metodoPago}</Typography>
+                      <Typography variant="body1">
+                        {selectedCompra.metodoPago === 'EFECTIVO' ? 'Efectivo'
+                          : selectedCompra.metodoPago === 'TARJETA_CREDITO' ? 'Tarjeta de Crédito'
+                          : selectedCompra.metodoPago === 'TARJETA_DEBITO' ? 'Tarjeta de Débito'
+                          : selectedCompra.metodoPago === 'TRANSFERENCIA_BANCARIA' ? 'Transferencia Bancaria'
+                          : selectedCompra.metodoPago === 'CHEQUE' ? 'Cheque'
+                          : selectedCompra.metodoPago === 'FINANCIACION_PROPIA' ? 'Financiación Propia'
+                          : selectedCompra.metodoPago || 'Sin método'}
+                      </Typography>
                     </Box>
                   </Box>
                   {selectedCompra.observaciones && (
@@ -864,7 +904,16 @@ const HistorialComprasPage: React.FC = () => {
                       <TableBody>
                         {selectedCompra.items.map((item) => (
                           <TableRow key={item.id}>
-                            <TableCell>{item.descripcion}</TableCell>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="medium">
+                                {item.descripcion}
+                              </Typography>
+                              {item.codigo && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  Código: {item.codigo}
+                                </Typography>
+                              )}
+                            </TableCell>
                             <TableCell align="right">{item.cantidad}</TableCell>
                             <TableCell align="right">${item.precioUnitario.toLocaleString()}</TableCell>
                             <TableCell align="right">${item.subtotal.toLocaleString()}</TableCell>

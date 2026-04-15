@@ -43,7 +43,7 @@ import {
 import { documentoApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
 import { Bar, Pie, Line } from 'react-chartjs-2';
-import { generateSalesReportPDF, generateSaleDetailPDF } from '../../utils/pdfExportUtils';
+import { generateSalesReportPDF, generateSaleDetailPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -604,6 +604,7 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
 
   const handleExportPDF = async () => {
     try {
+      const chartImgData = await captureElementAsImage('ventas-chart-container');
       await generateSalesReportPDF(
         salesReport,
         {
@@ -620,7 +621,8 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
           totalTransactions,
           averageOrderValue,
         },
-        groupBy
+        groupBy,
+        chartImgData ? { chartImgData, chartLabel: `Distribución de Ventas por ${groupBy}` } : undefined
       );
     } catch (error) {
       console.error('Error al generar PDF:', error);
@@ -1035,7 +1037,7 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
           <Typography variant="h6" gutterBottom>
             Visualización del Informe
           </Typography>
-          <Box sx={{ height: 400, mb: 3 }}>
+          <Box id="ventas-chart-container" sx={{ height: 400, mb: 3, backgroundColor: '#fff' }}>
             {chartType === 'bar' && <Bar data={chartData} options={chartOptions} />}
             {chartType === 'pie' && <Pie data={chartData} options={chartOptions} />}
             {chartType === 'line' && <Line data={chartData} options={chartOptions} />}

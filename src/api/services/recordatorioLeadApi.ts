@@ -28,6 +28,7 @@ export interface RecordatorioGlobalFilterParams {
   fechaDesde?: string;
   fechaHasta?: string;
   usuarioId?: number;
+  soloMisRecordatorios?: boolean;
   prioridad?: PrioridadLeadEnum;
   tipo?: TipoRecordatorioEnum;
   sucursalId?: number;

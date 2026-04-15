@@ -67,7 +67,7 @@ const IncomeExpenseBarChart: React.FC<IncomeExpenseBarChartProps> = ({
   }
 
   return (
-    <Paper sx={{ p: 3, height: 450 }}>
+    <Paper id="flujo-bar-chart" sx={{ p: 3, height: 450 }}>
       <Typography variant="h6" gutterBottom>
         Ingresos vs Egresos
       </Typography>

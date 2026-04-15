@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Card, CardContent, Grid, Stack, Chip,
+  Box, Typography, Card, CardContent, Grid, Stack, Chip, Button,
   CircularProgress, Alert, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, FormControl,
   InputLabel, Select, MenuItem
@@ -10,8 +10,10 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Warning as WarningIcon,
-  Build as BuildIcon
+  Build as BuildIcon,
+  GetApp as GetAppIcon,
 } from '@mui/icons-material';
+import { generateGarantiaReportPDF } from '../../utils/pdfExportUtils';
 import dayjs from 'dayjs';
 import { garantiaApi, type GarantiaDTO } from '../../api/services/garantiaApi';
 import { reclamoGarantiaApi, type ReclamoGarantiaDTO } from '../../api/services/reclamoGarantiaApi';
@@ -140,6 +142,14 @@ const GarantiaReportPage: React.FC = () => {
     );
   }
 
+  const handleExportPDF = async () => {
+    try {
+      await generateGarantiaReportPDF(stats, modelStats, garantiasPorVencer, reclamosRecientes, { periodFilter });
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+    }
+  };
+
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
@@ -147,20 +157,25 @@ const GarantiaReportPage: React.FC = () => {
           Reporte de Garantías
         </Typography>
 
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Período</InputLabel>
-          <Select
-            value={periodFilter}
-            label="Período"
-            onChange={(e) => setPeriodFilter(e.target.value as any)}
-          >
-            <MenuItem value="30">Últimos 30 días</MenuItem>
-            <MenuItem value="90">Últimos 90 días</MenuItem>
-            <MenuItem value="180">Últimos 6 meses</MenuItem>
-            <MenuItem value="365">Último año</MenuItem>
-            <MenuItem value="all">Todo el período</MenuItem>
-          </Select>
-        </FormControl>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Período</InputLabel>
+            <Select
+              value={periodFilter}
+              label="Período"
+              onChange={(e) => setPeriodFilter(e.target.value as any)}
+            >
+              <MenuItem value="30">Últimos 30 días</MenuItem>
+              <MenuItem value="90">Últimos 90 días</MenuItem>
+              <MenuItem value="180">Últimos 6 meses</MenuItem>
+              <MenuItem value="365">Último año</MenuItem>
+              <MenuItem value="all">Todo el período</MenuItem>
+            </Select>
+          </FormControl>
+          <Button variant="contained" startIcon={<GetAppIcon />} onClick={handleExportPDF} disabled={loading}>
+            Exportar PDF
+          </Button>
+        </Stack>
       </Stack>
 
       {error && (

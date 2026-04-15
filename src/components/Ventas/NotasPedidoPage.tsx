@@ -121,6 +121,7 @@ const NotasPedidoPage: React.FC = () => {
   const [createdNota, setCreatedNota] = useState<DocumentoComercial | null>(null);
   const [facturaSuccessDialogOpen, setFacturaSuccessDialogOpen] = useState(false);
   const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
+  const [facturaTotalConFinanciamiento, setFacturaTotalConFinanciamiento] = useState<number | null>(null);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -906,6 +907,16 @@ const NotasPedidoPage: React.FC = () => {
 
   const submitBillingDialog = () => {
     if (!notaToBill) return;
+    // Compute the real total with interest so the success dialog shows the correct value
+    const montoBase = notaToBill.subtotal ?? 0;
+    const entregaInicial = billingForm.entregarInicial
+      ? (billingForm.usePorcentaje
+          ? montoBase * (billingForm.porcentajeEntregaInicial / 100)
+          : billingForm.montoEntregaInicial)
+      : 0;
+    const saldoFinanciado = montoBase - entregaInicial;
+    const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
+    setFacturaTotalConFinanciamiento(billingForm.tasaInteres > 0 ? montoBase + interesTotal : null);
     handleConvertToFactura(notaToBill.id, false, billingForm);
     handleCloseBillingDialog();
   };
@@ -916,6 +927,22 @@ const NotasPedidoPage: React.FC = () => {
     if (!nota) {
       setError("Nota de pedido no encontrada");
       return;
+    }
+
+    // Build payload early so it's available for all code paths (including early returns)
+    const baseFacturaPayload: any = { notaPedidoId: notaId };
+    if (extraData && (nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA')) {
+      baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
+      baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
+      baseFacturaPayload.tasaInteres = extraData.tasaInteres ?? 0;
+      if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
+      if (extraData.entregarInicial) {
+        if (extraData.usePorcentaje) {
+          baseFacturaPayload.porcentajeEntregaInicial = extraData.porcentajeEntregaInicial;
+        } else {
+          baseFacturaPayload.montoEntregaInicial = extraData.montoEntregaInicial;
+        }
+      }
     }
 
     // Preemptive debt check (same pattern as convert-to-nota flow)
@@ -948,6 +975,8 @@ const NotasPedidoPage: React.FC = () => {
             });
             const tieneEquipos = (nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []).length > 0;
             if (tieneEquipos) {
+              // Persist billing data so handleConfirmAsignacion can include it
+              pendingBillingDataRef.current = Object.keys(baseFacturaPayload).length > 1 ? baseFacturaPayload : null;
               // Skip probe; go directly to equipment selection with debt already confirmed
               pendingDeudaRef.current = () => {
                 deudaYaConfirmadaRef.current = true;
@@ -965,22 +994,6 @@ const NotasPedidoPage: React.FC = () => {
       }
     }
     deudaYaConfirmadaRef.current = false;
-
-    // Payload for Facturacion
-    const baseFacturaPayload: any = { notaPedidoId: notaId };
-    if (extraData && (nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA')) {
-      baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
-      baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
-      baseFacturaPayload.tasaInteres = extraData.tasaInteres ?? 0;
-      if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
-      if (extraData.entregarInicial) {
-        if (extraData.usePorcentaje) {
-          baseFacturaPayload.porcentajeEntregaInicial = extraData.porcentajeEntregaInicial;
-        } else {
-          baseFacturaPayload.montoEntregaInicial = extraData.montoEntregaInicial;
-        }
-      }
-    }
 
     // Check if there are EQUIPO items in the detalles
     const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
@@ -1805,11 +1818,20 @@ const NotasPedidoPage: React.FC = () => {
         }}
         title="¡Nota de Pedido Creada Exitosamente!"
         message="La nota de pedido ha sido generada correctamente"
-        details={createdNota ? [
-          { label: 'Número de Documento', value: createdNota.numeroDocumento },
-          { label: 'Cliente', value: createdNota.clienteNombre || '-' },
-          { label: 'Total', value: `$${createdNota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-        ] : []}
+        details={(() => {
+          if (!createdNota) return [];
+          const selectedOpcion = createdNota.id != null
+            ? (notasFinanciamiento[createdNota.id] ?? []).find(o => o.esSeleccionada || o.id === createdNota.opcionFinanciamientoSeleccionadaId)
+            : undefined;
+          return [
+            { label: 'Número de Documento', value: createdNota.numeroDocumento },
+            { label: 'Cliente', value: createdNota.clienteNombre || '-' },
+            { label: 'Total del producto', value: `$${createdNota.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+            ...(selectedOpcion && selectedOpcion.tasaInteres > 0
+              ? [{ label: 'Financiamiento', value: `${selectedOpcion.cantidadCuotas} cuotas · ${selectedOpcion.tasaInteres}% interés (interés aplicado al momento de facturar)` }]
+              : []),
+          ];
+        })()}
       />
 
       {/* Success Dialog - Factura Creada */}
@@ -1818,13 +1840,14 @@ const NotasPedidoPage: React.FC = () => {
         onClose={() => {
           setFacturaSuccessDialogOpen(false);
           setCreatedFactura(null);
+          setFacturaTotalConFinanciamiento(null);
         }}
         title="¡Factura Creada Exitosamente!"
         message="La nota de pedido ha sido facturada correctamente"
         details={createdFactura ? [
           { label: 'Número de Factura', value: createdFactura.numeroDocumento },
           { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
-          { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+          { label: facturaTotalConFinanciamiento != null ? 'Total con financiamiento' : 'Total', value: `$${(facturaTotalConFinanciamiento ?? createdFactura.total)?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
         ] : []}
       />
 

@@ -92,7 +92,10 @@ const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
   { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
   { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
   { value: 'TRANSFERENCIA', label: 'Transferencia Bancaria' },
+  { value: 'FINANCIACION_PROPIA', label: 'Financiación Propia' },
 ];
+
+const isFinanciamiento = (m: string) => m === 'FINANCIAMIENTO' || m === 'FINANCIACION_PROPIA';
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 const IVA_OPTIONS: { value: TipoIva; label: string; rate: number }[] = [
@@ -165,9 +168,205 @@ function resolveEntregaFields(
 ): { porcentajeEntregaInicial?: number; montoEntregaInicial?: number } {
   if (entregaActiva && usePorcentaje && porcentaje != null) return { porcentajeEntregaInicial: porcentaje };
   if (entregaActiva && !usePorcentaje && montoFijo != null) return { montoEntregaInicial: montoFijo };
-  if (metodoPago === 'FINANCIAMIENTO') return { porcentajeEntregaInicial: 40 };
+  if (isFinanciamiento(metodoPago)) return { porcentajeEntregaInicial: 40 };
   return {};
 }
+
+// Extracted outside FacturacionPage so React keeps a stable component reference
+// across re-renders, preventing input focus loss when editing cart fields.
+const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, products, recetas }: {
+  items: CartItem[] | NotaCartItem[];
+  onUpdate: (index: number, field: any, value: any) => void;
+  onRemove: (index: number) => void;
+  editable?: boolean;
+  products: Producto[];
+  recetas: RecetaFabricacionDTO[];
+}) => (
+  <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto', width: '100%', maxWidth: '100%' }}>
+    <Table stickyHeader size="small" sx={{ minWidth: { xs: 700, md: 900 }, width: '100%' }}>
+      <TableHead>
+        <TableRow>
+          {editable && <TableCell sx={{ minWidth: { xs: 100, md: 120 } }}>Tipo</TableCell>}
+          <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto/Equipo</TableCell>
+          <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Color</TableCell>
+          <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Medida</TableCell>
+          <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Cantidad</TableCell>
+          <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Precio Unit.</TableCell>
+          <TableCell align="right" sx={{ minWidth: { xs: 90, md: 120 } }}>Desc. %</TableCell>
+          <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Subtotal</TableCell>
+          {editable && <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Acciones</TableCell>}
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {items.map((item, index) => {
+          const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
+          const itemAny = item as any;
+          return (
+            <TableRow key={index} hover>
+              {editable && (
+                <TableCell>
+                  <Select
+                    fullWidth
+                    size="small"
+                    value={itemAny.tipoItem || 'PRODUCTO'}
+                    onChange={(e) => onUpdate(index, 'tipoItem', e.target.value)}
+                  >
+                    <MenuItem value="PRODUCTO">Producto</MenuItem>
+                    <MenuItem value="EQUIPO">Equipo</MenuItem>
+                  </Select>
+                </TableCell>
+              )}
+              <TableCell>
+                {editable ? (
+                  itemAny.tipoItem === 'EQUIPO' ? (
+                    <Select
+                      fullWidth
+                      size="small"
+                      value={itemAny.recetaId || ''}
+                      onChange={(e) => onUpdate(index, 'recetaId', e.target.value)}
+                    >
+                      {recetas.map((r) => (
+                        <MenuItem key={r.id} value={r.id}>
+                          {r.nombre} - {r.modelo} ({r.tipoEquipo})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Select
+                      fullWidth
+                      size="small"
+                      value={itemAny.productoId || ''}
+                      onChange={(e) => onUpdate(index, 'productoId', e.target.value)}
+                    >
+                      {products.filter(p => p && p.id).map((p) => (
+                        <MenuItem key={p.id} value={p.id}>{p.nombre || 'Producto sin nombre'}</MenuItem>
+                      ))}
+                    </Select>
+                  )
+                ) : (
+                  <Typography noWrap maxWidth={360}>
+                    {itemAny.tipoItem === 'EQUIPO'
+                      ? `${itemAny.recetaNombre || ''} ${itemAny.recetaModelo ? `- ${itemAny.recetaModelo}` : ''}`
+                      : item.productoNombre}
+                  </Typography>
+                )}
+              </TableCell>
+              <TableCell>
+                {editable && itemAny.tipoItem === 'EQUIPO' ? (
+                  <Select
+                    fullWidth
+                    size="small"
+                    value={itemAny.color || ''}
+                    onChange={(e) => onUpdate(index, 'color', e.target.value)}
+                    displayEmpty
+                  >
+                    <MenuItem value="">Sin especificar</MenuItem>
+                    {COLORES_EQUIPO.map((color) => (
+                      <MenuItem key={color} value={color}>
+                        {color.replace(/_/g, ' ')}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                ) : (
+                  <Typography>{itemAny.color ? itemAny.color.replace(/_/g, ' ') : '-'}</Typography>
+                )}
+              </TableCell>
+              <TableCell>
+                {editable && itemAny.tipoItem === 'EQUIPO' ? (
+                  <Select
+                    fullWidth
+                    size="small"
+                    value={itemAny.medida || ''}
+                    onChange={(e) => onUpdate(index, 'medida', e.target.value)}
+                    displayEmpty
+                  >
+                    <MenuItem value="">Sin especificar</MenuItem>
+                    {MEDIDAS_EQUIPO.map((medida) => (
+                      <MenuItem key={medida} value={medida}>
+                        {medida}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                ) : (
+                  <Typography>{itemAny.medida || '-'}</Typography>
+                )}
+              </TableCell>
+              <TableCell align="center">
+                <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+                  {editable ? (
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={item.cantidad}
+                      onChange={(e) => onUpdate(index, 'cantidad', e.target.value)}
+                      inputProps={{ min: 1 }}
+                      sx={{ width: 90 }}
+                    />
+                  ) : (
+                    <Typography align="center">{item.cantidad}</Typography>
+                  )}
+                  {itemAny.tipoItem === 'EQUIPO' && itemAny.stockVerificado && (
+                    <Tooltip
+                      title={`Stock disponible: ${itemAny.stockDisponible || 0} unidades`}
+                      arrow
+                    >
+                      <Chip
+                        size="small"
+                        label={itemAny.requiereFabricacion ? `Stock: ${itemAny.stockDisponible}` : '✓ Stock OK'}
+                        color={itemAny.requiereFabricacion ? 'warning' : 'success'}
+                        sx={{ fontSize: '0.7rem', height: 20 }}
+                      />
+                    </Tooltip>
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell align="right">
+                {editable ? (
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={item.precioUnitario}
+                    onChange={(e) => onUpdate(index, 'precioUnitario', e.target.value)}
+                    inputProps={{ min: 0, step: 0.01 }}
+                    sx={{ width: 140 }}
+                  />
+                ) : (
+                  <Typography align="right">${item.precioUnitario.toFixed(2)}</Typography>
+                )}
+              </TableCell>
+              <TableCell align="right">
+                {editable ? (
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={item.descuento}
+                    onChange={(e) => onUpdate(index, 'descuento', e.target.value)}
+                    inputProps={{ min: 0, max: 100 }}
+                    sx={{ width: 100 }}
+                  />
+                ) : (
+                  <Typography align="right">{item.descuento}%</Typography>
+                )}
+              </TableCell>
+              <TableCell align="right">
+                <Typography variant="body2" fontWeight="bold">
+                  ${subtotal.toFixed(2)}
+                </Typography>
+              </TableCell>
+              {editable && (
+                <TableCell align="center">
+                  <IconButton size="small" onClick={() => onRemove(index)} color="error">
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              )}
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  </TableContainer>
+));
 
 const FacturacionPage = () => {
   const navigate = useNavigate();
@@ -205,6 +404,9 @@ const FacturacionPage = () => {
   const [notaCantidadCuotas, setNotaCantidadCuotas] = useState<number | null>(null);
   const [notaTipoFinanciacion, setNotaTipoFinanciacion] = useState<string>('MENSUAL');
   const [notaPrimerVencimiento, setNotaPrimerVencimiento] = useState<string>('');
+
+  // Financiación propia (manual invoice)
+  const [manualTasaInteres, setManualTasaInteres] = useState<number>(0);
 
   // Entrega inicial (manual invoice)
   const [entregarInicial, setEntregarInicial] = useState(false);
@@ -407,8 +609,18 @@ const FacturacionPage = () => {
     if (!selectedOpcionId) return 0;
     const selectedOpcion = opcionesFinanciamiento[selectedOpcionId];
     if (!selectedOpcion || selectedOpcion.tasaInteres === 0) return 0;
-    return (notaSubtotal * 0.6) * (selectedOpcion.tasaInteres / 100);
-  }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento]);
+    // Compute actual financed amount based on user's down payment choice (not a hardcoded 40/60 split)
+    let entregaInicial = 0;
+    if (notaEntregaInicial) {
+      if (notaUsePorcentaje && notaPorcentajeEntrega != null) {
+        entregaInicial = notaSubtotal * notaPorcentajeEntrega / 100;
+      } else if (!notaUsePorcentaje && notaMontoFijoEntrega != null) {
+        entregaInicial = notaMontoFijoEntrega;
+      }
+    }
+    const financiado = notaSubtotal - entregaInicial;
+    return financiado > 0 ? financiado * (selectedOpcion.tasaInteres / 100) : 0;
+  }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento, notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega]);
 
   const notaIvaAmount = useMemo(() => {
     const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any)?.tipoIva)?.rate || 0.21;
@@ -426,14 +638,17 @@ const FacturacionPage = () => {
   }, [entregarInicial, usePorcentaje, totalVenta, porcentajeEntrega, montoFijoEntrega]);
 
   const montoFinanciado = useMemo(() => totalVenta - montoEntregaCalculado, [totalVenta, montoEntregaCalculado]);
-  const cuotaEstimada = useMemo(() => (cantidadCuotas ? montoFinanciado / cantidadCuotas : 0), [montoFinanciado, cantidadCuotas]);
+  const interesManualTotal = useMemo(() => montoFinanciado * (manualTasaInteres / 100), [montoFinanciado, manualTasaInteres]);
+  const totalConInteres = useMemo(() => montoFinanciado + interesManualTotal, [montoFinanciado, interesManualTotal]);
+  const cuotaEstimada = useMemo(() => (cantidadCuotas ? totalConInteres / cantidadCuotas : 0), [totalConInteres, cantidadCuotas]);
 
-  // Entrega inicial computed (nota de pedido)
+  // Entrega inicial computed (nota de pedido) — based on product subtotal, not on notaTotalVenta,
+  // so the down payment percentage applies to the product price (matching backend behaviour).
   const notaMontoEntregaCalculado = useMemo(() => {
     if (!notaEntregaInicial) return 0;
-    if (notaUsePorcentaje) return notaTotalVenta * (notaPorcentajeEntrega || 0) / 100;
+    if (notaUsePorcentaje) return notaSubtotal * (notaPorcentajeEntrega || 0) / 100;
     return notaMontoFijoEntrega || 0;
-  }, [notaEntregaInicial, notaUsePorcentaje, notaTotalVenta, notaPorcentajeEntrega, notaMontoFijoEntrega]);
+  }, [notaEntregaInicial, notaUsePorcentaje, notaSubtotal, notaPorcentajeEntrega, notaMontoFijoEntrega]);
 
   const notaMontoFinanciado = useMemo(() => notaTotalVenta - notaMontoEntregaCalculado, [notaTotalVenta, notaMontoEntregaCalculado]);
   const notaCuotaEstimada = useMemo(() => (notaCantidadCuotas ? notaMontoFinanciado / notaCantidadCuotas : 0), [notaMontoFinanciado, notaCantidadCuotas]);
@@ -491,6 +706,7 @@ const FacturacionPage = () => {
         return <CreditCardIcon fontSize="small" />;
       case 'TRANSFERENCIA':
       case 'FINANCIAMIENTO':
+      case 'FINANCIACION_PROPIA':
         return <BankIcon fontSize="small" />;
       default:
         return <MoneyIcon fontSize="small" />;
@@ -504,6 +720,7 @@ const FacturacionPage = () => {
       case 'TARJETA_DEBITO': return 'Tarjeta de Débito';
       case 'TRANSFERENCIA': return 'Transferencia bancaria';
       case 'FINANCIAMIENTO': return 'Financiación propia';
+      case 'FINANCIACION_PROPIA': return 'Financiación Propia';
       case 'CHEQUE': return 'Cheque';
       default: return String(metodoPago);
     }
@@ -516,6 +733,7 @@ const FacturacionPage = () => {
     setCantidadCuotas(null);
     setTipoFinanciacion('MENSUAL');
     setPrimerVencimiento('');
+    setManualTasaInteres(0);
     setEntregarInicial(false);
     setUsePorcentaje(true);
     setPorcentajeEntrega(null);
@@ -788,7 +1006,7 @@ const FacturacionPage = () => {
     if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
-    if (paymentMethod === 'FINANCIAMIENTO') {
+    if (isFinanciamiento(paymentMethod)) {
       if (cantidadCuotas != null && cantidadCuotas < 1) return setError('Mínimo 1 cuota');
       if (entregarInicial) {
         if (usePorcentaje && (porcentajeEntrega ?? 0) > 100) return setError('El porcentaje no puede superar 100%');
@@ -821,6 +1039,12 @@ const FacturacionPage = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
+    // Use the user-entered tasaInteres (for FINANCIACION_PROPIA),
+    // falling back to the selected financing template (for FINANCIAMIENTO with templates)
+    const tasaInteresManual = manualTasaInteres > 0
+      ? manualTasaInteres
+      : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0);
 
     try {
       const presupuesto = await documentoApi.createPresupuesto({
@@ -906,6 +1130,7 @@ const FacturacionPage = () => {
           const capturedMontoFijoEntrega1 = montoFijoEntrega;
           const capturedMontoEntrega1 = montoEntregaCalculado;
           const capturedMontoFinanciado1 = montoFinanciado;
+          const capturedTasaInteres1 = tasaInteresManual;
           pendingDeudaRef.current = async () => {
             setLoading(true);
             try {
@@ -927,10 +1152,11 @@ const FacturacionPage = () => {
                   confirmarConDeudaPendiente: true,
                   ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
                   tipoFinanciacion: capturedTipoFin,
+                  tasaInteres: capturedTasaInteres1,
                   ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
                   ...resolveEntregaFields(capturedPayment, capturedEntregaInicial1, capturedUsePorcentaje1, capturedPorcentajeEntrega1, capturedMontoFijoEntrega1),
                 });
-                if (capturedPayment === 'FINANCIAMIENTO' && capturedEntregaInicial1 && capturedMontoEntrega1 > 0) {
+                if (isFinanciamiento(capturedPayment) && capturedEntregaInicial1 && capturedMontoEntrega1 > 0) {
                   setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega1, montoFinanciado: capturedMontoFinanciado1, cantidadCuotas: capturedCuotas });
                 } else {
                   setFacturaEntregaInfo(null);
@@ -969,9 +1195,10 @@ const FacturacionPage = () => {
         try {
           factura = await documentoApi.convertToFactura({
             notaPedidoId: nota.id,
-            ...(paymentMethod === 'FINANCIAMIENTO' && cantidadCuotas != null && {
+            ...(isFinanciamiento(paymentMethod) && cantidadCuotas != null && {
               cantidadCuotas,
               tipoFinanciacion,
+              tasaInteres: tasaInteresManual,
               ...(primerVencimiento && { primerVencimiento }),
               ...resolveEntregaFields(paymentMethod, entregarInicial, usePorcentaje, porcentajeEntrega, montoFijoEntrega),
             }),
@@ -991,6 +1218,7 @@ const FacturacionPage = () => {
             const capturedMontoFijoEntrega2 = montoFijoEntrega;
             const capturedMontoEntrega2 = montoEntregaCalculado;
             const capturedMontoFinanciado2 = montoFinanciado;
+            const capturedTasaInteres2 = tasaInteresManual;
             pendingDeudaRef.current = async () => {
               setLoading(true);
               try {
@@ -999,10 +1227,11 @@ const FacturacionPage = () => {
                   confirmarConDeudaPendiente: true,
                   ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
                   tipoFinanciacion: capturedTipoFin,
+                  tasaInteres: capturedTasaInteres2,
                   ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
                   ...resolveEntregaFields(capturedPayment, capturedEntregaInicial2, capturedUsePorcentaje2, capturedPorcentajeEntrega2, capturedMontoFijoEntrega2),
                 });
-                if (capturedPayment === 'FINANCIAMIENTO' && capturedEntregaInicial2 && capturedMontoEntrega2 > 0) {
+                if (isFinanciamiento(capturedPayment) && capturedEntregaInicial2 && capturedMontoEntrega2 > 0) {
                   setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega2, montoFinanciado: capturedMontoFinanciado2, cantidadCuotas: capturedCuotas });
                 } else {
                   setFacturaEntregaInfo(null);
@@ -1025,7 +1254,7 @@ const FacturacionPage = () => {
           throw facturaErr;
         }
 
-        if (paymentMethod === 'FINANCIAMIENTO' && entregarInicial && montoEntregaCalculado > 0) {
+        if (isFinanciamiento(paymentMethod) && entregarInicial && montoEntregaCalculado > 0) {
           setFacturaEntregaInfo({ montoEntrega: montoEntregaCalculado, montoFinanciado, cantidadCuotas });
         } else {
           setFacturaEntregaInfo(null);
@@ -1093,6 +1322,9 @@ const FacturacionPage = () => {
 
     try {
       const cuotasParaEnviar = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
+      const tasaInteresParaEnviar = isManualInvoice
+        ? (manualTasaInteres > 0 ? manualTasaInteres : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0))
+        : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0);
       const deudaPreconfirmada = deudaYaConfirmadaRef.current;
       deudaYaConfirmadaRef.current = false; // reset before the call
       const factura = await documentoApi.convertToFactura({
@@ -1101,6 +1333,7 @@ const FacturacionPage = () => {
         ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
         ...(cuotasParaEnviar != null && { cantidadCuotas: cuotasParaEnviar }),
         tipoFinanciacion: isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion,
+        tasaInteres: tasaInteresParaEnviar,
         ...((isManualInvoice ? primerVencimiento : notaPrimerVencimiento) && {
           primerVencimiento: isManualInvoice ? primerVencimiento : notaPrimerVencimiento,
         }),
@@ -1151,6 +1384,7 @@ const FacturacionPage = () => {
         const capturedMontoFijoEntrega3 = isManualInvoice ? montoFijoEntrega : notaMontoFijoEntrega;
         const capturedMontoEntrega3 = isManualInvoice ? montoEntregaCalculado : notaMontoEntregaCalculado;
         const capturedMontoFinanciado3 = isManualInvoice ? montoFinanciado : notaMontoFinanciado;
+        const capturedTasaInteres3 = tasaInteresParaEnviar;
         pendingDeudaRef.current = async () => {
           setLoading(true);
           try {
@@ -1160,6 +1394,7 @@ const FacturacionPage = () => {
               confirmarConDeudaPendiente: true,
               ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
               tipoFinanciacion: capturedTipoFin,
+              tasaInteres: capturedTasaInteres3,
               ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
               ...resolveEntregaFields(capturedMetodoPago3, capturedEntregaInicial3, capturedUsePorcentaje3, capturedPorcentajeEntrega3, capturedMontoFijoEntrega3),
             });
@@ -1293,7 +1528,7 @@ const FacturacionPage = () => {
   const handleConvertNotaToFactura = async () => {
     if (!selectedNotaPedido) return;
 
-    if (selectedNotaPedido.metodoPago === 'FINANCIAMIENTO') {
+    if (isFinanciamiento(selectedNotaPedido.metodoPago)) {
       if (notaCantidadCuotas != null && notaCantidadCuotas < 1) return setError('Mínimo 1 cuota');
       if (notaEntregaInicial) {
         if (notaUsePorcentaje && (notaPorcentajeEntrega ?? 0) > 100) return setError('El porcentaje no puede superar 100%');
@@ -1327,10 +1562,12 @@ const FacturacionPage = () => {
         setLoading(false);
       } else {
         // No equipos, proceed directly with factura creation
+        const notaTasaInteres = opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0;
         const factura = await documentoApi.convertToFactura({
           notaPedidoId: notaId,
           ...(notaCantidadCuotas != null && { cantidadCuotas: notaCantidadCuotas }),
           tipoFinanciacion: notaTipoFinanciacion,
+          tasaInteres: notaTasaInteres,
           ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
           ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
         });
@@ -1472,197 +1709,7 @@ const FacturacionPage = () => {
     });
   };
 
-  const ProductsTable = ({ items, onUpdate, onRemove, editable = true }: {
-    items: CartItem[] | NotaCartItem[];
-    onUpdate: (index: number, field: any, value: any) => void;
-    onRemove: (index: number) => void;
-    editable?: boolean;
-  }) => (
-    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto', width: '100%', maxWidth: '100%' }}>
-      <Table stickyHeader size="small" sx={{ minWidth: { xs: 700, md: 900 }, width: '100%' }}>
-        <TableHead>
-          <TableRow>
-            {editable && <TableCell sx={{ minWidth: { xs: 100, md: 120 } }}>Tipo</TableCell>}
-            <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto/Equipo</TableCell>
-            <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Color</TableCell>
-            <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Medida</TableCell>
-            <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Cantidad</TableCell>
-            <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Precio Unit.</TableCell>
-            <TableCell align="right" sx={{ minWidth: { xs: 90, md: 120 } }}>Desc. %</TableCell>
-            <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Subtotal</TableCell>
-            {editable && <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Acciones</TableCell>}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map((item, index) => {
-            const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
-            const itemAny = item as any; // Type assertion for optional fields
-            return (
-              <TableRow key={index} hover>
-                {editable && (
-                  <TableCell>
-                    <Select
-                      fullWidth
-                      size="small"
-                      value={itemAny.tipoItem || 'PRODUCTO'}
-                      onChange={(e) => onUpdate(index, 'tipoItem', e.target.value)}
-                    >
-                      <MenuItem value="PRODUCTO">Producto</MenuItem>
-                      <MenuItem value="EQUIPO">Equipo</MenuItem>
-                    </Select>
-                  </TableCell>
-                )}
-                <TableCell>
-                  {editable ? (
-                    itemAny.tipoItem === 'EQUIPO' ? (
-                      <Select
-                        fullWidth
-                        size="small"
-                        value={itemAny.recetaId || ''}
-                        onChange={(e) => onUpdate(index, 'recetaId', e.target.value)}
-                      >
-                        {recetas.map((r) => (
-                          <MenuItem key={r.id} value={r.id}>
-                            {r.nombre} - {r.modelo} ({r.tipoEquipo})
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    ) : (
-                      <Select
-                        fullWidth
-                        size="small"
-                        value={itemAny.productoId || ''}
-                        onChange={(e) => onUpdate(index, 'productoId', e.target.value)}
-                      >
-                        {products.filter(p => p && p.id).map((p) => (
-                          <MenuItem key={p.id} value={p.id}>{p.nombre || 'Producto sin nombre'}</MenuItem>
-                        ))}
-                      </Select>
-                    )
-                  ) : (
-                    <Typography noWrap maxWidth={360}>
-                      {itemAny.tipoItem === 'EQUIPO'
-                        ? `${itemAny.recetaNombre || ''} ${itemAny.recetaModelo ? `- ${itemAny.recetaModelo}` : ''}`
-                        : item.productoNombre}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editable && itemAny.tipoItem === 'EQUIPO' ? (
-                    <Select
-                      fullWidth
-                      size="small"
-                      value={itemAny.color || ''}
-                      onChange={(e) => onUpdate(index, 'color', e.target.value)}
-                      displayEmpty
-                    >
-                      <MenuItem value="">Sin especificar</MenuItem>
-                      {COLORES_EQUIPO.map((color) => (
-                        <MenuItem key={color} value={color}>
-                          {color.replace(/_/g, ' ')}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Typography>{itemAny.color ? itemAny.color.replace(/_/g, ' ') : '-'}</Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editable && itemAny.tipoItem === 'EQUIPO' ? (
-                    <Select
-                      fullWidth
-                      size="small"
-                      value={itemAny.medida || ''}
-                      onChange={(e) => onUpdate(index, 'medida', e.target.value)}
-                      displayEmpty
-                    >
-                      <MenuItem value="">Sin especificar</MenuItem>
-                      {MEDIDAS_EQUIPO.map((medida) => (
-                        <MenuItem key={medida} value={medida}>
-                          {medida}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Typography>{itemAny.medida || '-'}</Typography>
-                  )}
-                </TableCell>
-                <TableCell align="center">
-                  <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
-                    {editable ? (
-                      <TextField
-                        type="number"
-                        size="small"
-                        value={item.cantidad}
-                        onChange={(e) => onUpdate(index, 'cantidad', e.target.value)}
-                        inputProps={{ min: 1 }}
-                        sx={{ width: 90 }}
-                      />
-                    ) : (
-                      <Typography align="center">{item.cantidad}</Typography>
-                    )}
-                    {itemAny.tipoItem === 'EQUIPO' && itemAny.stockVerificado && (
-                      <Tooltip 
-                        title={`Stock disponible: ${itemAny.stockDisponible || 0} unidades`}
-                        arrow
-                      >
-                        <Chip
-                          size="small"
-                          label={itemAny.requiereFabricacion ? `Stock: ${itemAny.stockDisponible}` : '✓ Stock OK'}
-                          color={itemAny.requiereFabricacion ? 'warning' : 'success'}
-                          sx={{ fontSize: '0.7rem', height: 20 }}
-                        />
-                      </Tooltip>
-                    )}
-                  </Box>
-                </TableCell>
-                <TableCell align="right">
-                  {editable ? (
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={item.precioUnitario}
-                      onChange={(e) => onUpdate(index, 'precioUnitario', e.target.value)}
-                      inputProps={{ min: 0, step: 0.01 }}
-                      sx={{ width: 140 }}
-                    />
-                  ) : (
-                    <Typography align="right">${item.precioUnitario.toFixed(2)}</Typography>
-                  )}
-                </TableCell>
-                <TableCell align="right">
-                  {editable ? (
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={item.descuento}
-                      onChange={(e) => onUpdate(index, 'descuento', e.target.value)}
-                      inputProps={{ min: 0, max: 100 }}
-                      sx={{ width: 100 }}
-                    />
-                  ) : (
-                    <Typography align="right">{item.descuento}%</Typography>
-                  )}
-                </TableCell>
-                <TableCell align="right">
-                  <Typography variant="body2" fontWeight="bold">
-                    ${subtotal.toFixed(2)}
-                  </Typography>
-                </TableCell>
-                {editable && (
-                  <TableCell align="center">
-                    <IconButton size="small" onClick={() => onRemove(index)} color="error">
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                )}
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+  // ProductsTable is defined outside FacturacionPage (see above)
 
   if (loading && !products.length) {
     return (
@@ -1826,7 +1873,7 @@ const FacturacionPage = () => {
                   />
                 </Grid>
 
-                {paymentMethod === 'FINANCIAMIENTO' && (
+                {isFinanciamiento(paymentMethod) && (
                   <>
                     <Grid item xs={12} md={4}>
                       <TextField
@@ -1929,27 +1976,51 @@ const FacturacionPage = () => {
                             />
                           </Grid>
                         )}
-
-                        <Grid item xs={12} md={4}>
-                          <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                            <Typography variant="caption" color="text.secondary">Monto financiado</Typography>
-                            <Typography variant="h6" color="primary">
-                              ${montoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                            </Typography>
-                          </Box>
-                        </Grid>
-
-                        {cantidadCuotas && cantidadCuotas > 0 && (
-                          <Grid item xs={12} md={4}>
-                            <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                              <Typography variant="caption" color="text.secondary">Cuota estimada</Typography>
-                              <Typography variant="h6">
-                                ${cuotaEstimada.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        )}
                       </>
+                    )}
+
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Tasa de interés"
+                        value={manualTasaInteres}
+                        onChange={(e) => setManualTasaInteres(parseFloat(e.target.value) || 0)}
+                        inputProps={{ min: 0, max: 999, step: 0.5 }}
+                        InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                        helperText="Interés simple sobre el saldo financiado. 0% = sin interés."
+                      />
+                    </Grid>
+
+                    {totalVenta > 0 && (
+                      <Grid item xs={12}>
+                        {(() => {
+                          const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                          return (
+                            <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary" fontWeight={600}>Resumen del financiamiento</Typography>
+                              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
+                                <Typography variant="body2">Total documento:</Typography>
+                                <Typography variant="body2" fontWeight={600}>${fmt(totalVenta)}</Typography>
+                                <Typography variant="body2">Entrega inicial:</Typography>
+                                <Typography variant="body2">${fmt(montoEntregaCalculado)}</Typography>
+                                <Typography variant="body2">Saldo financiado:</Typography>
+                                <Typography variant="body2">${fmt(montoFinanciado)}</Typography>
+                                {manualTasaInteres > 0 && <>
+                                  <Typography variant="body2">Interés ({manualTasaInteres}%):</Typography>
+                                  <Typography variant="body2" color="warning.main">${fmt(interesManualTotal)}</Typography>
+                                  <Typography variant="body2">Total a financiar:</Typography>
+                                  <Typography variant="body2" fontWeight={600}>${fmt(totalConInteres)}</Typography>
+                                </>}
+                                {cantidadCuotas && cantidadCuotas > 0 && <>
+                                  <Typography variant="body2">Valor cuota ({cantidadCuotas}x):</Typography>
+                                  <Typography variant="body2" fontWeight={600} color="primary.main">${fmt(cuotaEstimada)}</Typography>
+                                </>}
+                              </Box>
+                            </Box>
+                          );
+                        })()}
+                      </Grid>
                     )}
                   </>
                 )}
@@ -1985,6 +2056,8 @@ const FacturacionPage = () => {
                     items={cart}
                     onUpdate={updateCartItem}
                     onRemove={removeItemFromCart}
+                    products={products}
+                    recetas={recetas}
                   />
                 ) : (
                   <Paper sx={{ p: 3, textAlign: 'center', width: '100%' }}>
@@ -2300,7 +2373,7 @@ const FacturacionPage = () => {
               )}
 
               {/* Financing fields for FINANCIAMIENTO */}
-              {selectedNotaPedido?.metodoPago === 'FINANCIAMIENTO' && (
+              {isFinanciamiento(selectedNotaPedido?.metodoPago ?? '') && (
                 <Box mb={3}>
                   <Typography variant="subtitle1" gutterBottom>Datos de Financiación Propia</Typography>
                   <Grid container spacing={2}>
@@ -2451,6 +2524,8 @@ const FacturacionPage = () => {
                 onUpdate={updateNotaCartItem}
                 onRemove={() => {}}
                 editable={editingNotaItems}
+                products={products}
+                recetas={recetas}
               />
 
               <Box mt={3}>
@@ -2850,12 +2925,14 @@ const FacturacionPage = () => {
         details={createdFactura ? [
           { label: 'Número de Documento', value: createdFactura.numeroDocumento },
           { label: 'Cliente', value: createdFactura.clienteNombre || '-' },
-          { label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-          ...(facturaEntregaInfo ? [
-            { label: 'Entrega inicial (CC débito)', value: `$${facturaEntregaInfo.montoEntrega.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-            { label: 'Monto financiado', value: `$${facturaEntregaInfo.montoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
-            ...(facturaEntregaInfo.cantidadCuotas ? [{ label: 'Cuotas', value: `${facturaEntregaInfo.cantidadCuotas} × $${(facturaEntregaInfo.montoFinanciado / facturaEntregaInfo.cantidadCuotas).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }] : []),
-          ] : []),
+          ...(facturaEntregaInfo
+            ? [
+                { label: 'Total con financiamiento', value: `$${(facturaEntregaInfo.montoEntrega + facturaEntregaInfo.montoFinanciado).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+                { label: 'Entrega inicial (CC débito)', value: `$${facturaEntregaInfo.montoEntrega.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+                { label: 'Monto financiado', value: `$${facturaEntregaInfo.montoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` },
+                ...(facturaEntregaInfo.cantidadCuotas ? [{ label: 'Cuotas', value: `${facturaEntregaInfo.cantidadCuotas} × $${(facturaEntregaInfo.montoFinanciado / facturaEntregaInfo.cantidadCuotas).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }] : []),
+              ]
+            : [{ label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }]),
           ...(createdFactura.prestamoId ? [{ label: 'Préstamo generado', value: `#${createdFactura.prestamoId}` }] : []),
         ] : []}
         actions={[

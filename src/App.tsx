@@ -102,6 +102,7 @@ import {
 import { BalanceAnualPage, BalanceMesPage } from './components/Admin/BalanceAnual';
 import { AmortizacionesPage, AmortizacionMesPage } from './components/Admin/Amortizaciones';
 import PosicionPatrimonialPage from './components/Admin/PosicionPatrimonial';
+import { CajasAhorroListPage, CajaMovimientosPage } from './components/Admin/CajasAhorro';
 
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -187,6 +188,8 @@ function App() {
               <Route path="admin/amortizaciones" element={<PrivateRoute><AmortizacionesPage /></PrivateRoute>} />
               <Route path="admin/amortizaciones/:anio/:mes" element={<PrivateRoute><AmortizacionMesPage /></PrivateRoute>} />
               <Route path="admin/patrimonio" element={<PrivateRoute><PosicionPatrimonialPage /></PrivateRoute>} />
+              <Route path="admin/cajas-ahorro" element={<PrivateRoute><CajasAhorroListPage /></PrivateRoute>} />
+              <Route path="admin/cajas-ahorro/:id" element={<PrivateRoute><CajaMovimientosPage /></PrivateRoute>} />
               {/* VENTAS Module */}
               <Route path="ventas/dashboard" element={<PrivateRoute><VentasDashboard /></PrivateRoute>} />
               <Route path="ventas/notas-pedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
