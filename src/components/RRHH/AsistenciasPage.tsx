@@ -1,5 +1,5 @@
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -97,6 +97,7 @@ import dayjs from 'dayjs';
 const AsistenciasPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isFirstRender = useRef(true);
   // Tab state
   const [tabValue, setTabValue] = useState(0);
 
@@ -180,6 +181,10 @@ const AsistenciasPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (fechaDesde && fechaHasta) {
       loadAsistenciasByPeriodo();
     }

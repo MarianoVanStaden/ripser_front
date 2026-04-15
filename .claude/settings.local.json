@@ -73,7 +73,8 @@
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\services\\impl"
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\services\\impl",
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\repositories"
     ]
   }
 }
