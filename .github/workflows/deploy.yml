@@ -31,13 +31,23 @@ jobs:
         run: npm run build
 
       # Crea la carpeta del release en el VPS antes de copiar
-      - name: Create release directory on VPS
+      #- name: Create release directory on VPS
+      #  uses: appleboy/ssh-action@v1.0.3
+      #  with:
+      #    host: ${{ secrets.VPS_HOST }}
+      #    username: ${{ secrets.VPS_USER }}
+      #    key: ${{ secrets.VPS_SSH_KEY }}
+      #    script: mkdir -p ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
+
+      - name: Debug SSH user
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: mkdir -p ${{ env.RELEASES_DIR }}/${{ env.RELEASE }}
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: whoami && id && ls -la /var/www/frontend/
+
+
 
       # Copia dist/ a releases/<run_number>/ en el VPS
       - name: Copy dist to VPS
