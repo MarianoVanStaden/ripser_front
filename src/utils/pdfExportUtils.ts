@@ -1819,15 +1819,15 @@ export const generateFlujoCajaPDF = async (
     yPosition = addCorporateHeader(pdf, 'Flujo de Caja - Visualizaciones');
     if (chartImages.pieChartImgData) {
       yPosition = insertChartImage(pdf, chartImages.pieChartImgData,
-        'Distribución por Método de Pago', yPosition, pageWidth, pageHeight, 15, 65);
+        'Distribución por Método de Pago', yPosition, pageWidth, pageHeight, 15, 110);
     }
     if (chartImages.barChartImgData) {
       yPosition = insertChartImage(pdf, chartImages.barChartImgData,
-        'Ingresos vs Egresos por Método de Pago', yPosition, pageWidth, pageHeight, 15, 65);
+        'Ingresos vs Egresos por Método de Pago', yPosition, pageWidth, pageHeight, 15, 110);
     }
     if (chartImages.lineChartImgData) {
       yPosition = insertChartImage(pdf, chartImages.lineChartImgData,
-        'Evolución del Flujo de Caja', yPosition, pageWidth, pageHeight, 15, 65);
+        'Evolución del Flujo de Caja', yPosition, pageWidth, pageHeight, 15, 110);
     }
     pdf.addPage();
     yPosition = addCorporateHeader(pdf, 'Flujo de Caja - Detalle de Movimientos');

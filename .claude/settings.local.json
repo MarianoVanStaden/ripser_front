@@ -71,6 +71,9 @@
       "Bash(tee c:/Users/santi/tsc-errors.txt)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\services\\impl"
+    ]
   }
 }
