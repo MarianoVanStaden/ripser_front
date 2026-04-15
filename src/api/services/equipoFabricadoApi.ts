@@ -32,6 +32,12 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  findByIds: async (ids: number[]): Promise<EquipoFabricadoDTO[]> => {
+    if (ids.length === 0) return [];
+    const response = await api.post<EquipoFabricadoDTO[]>('/api/equipos-fabricados/by-ids', ids);
+    return response.data;
+  },
+
   findByNumeroHeladera: async (numeroHeladera: string) => {
     const response = await api.get<EquipoFabricadoDTO>(`/api/equipos-fabricados/numero/${numeroHeladera}`);
     return response.data;

@@ -174,34 +174,46 @@ const EntregasEquiposPage2: React.FC = () => {
       setError(null);
 
       const facturas = await documentoApi.getByTipo('FACTURA');
+
+      // Collect all unique equipo IDs across all facturas in one pass
+      const facturaEquipoIdsMap = new Map<number, number[]>();
+      const allEquipoIds: number[] = [];
+
+      for (const factura of facturas) {
+        const ids: number[] = [];
+        factura.detalles?.forEach(detalle => {
+          if (detalle.tipoItem === 'EQUIPO' && detalle.equiposFabricadosIds) {
+            ids.push(...detalle.equiposFabricadosIds);
+          }
+        });
+        if (ids.length > 0) {
+          facturaEquipoIdsMap.set(factura.id, ids);
+          allEquipoIds.push(...ids);
+        }
+      }
+
+      if (allEquipoIds.length === 0) {
+        setFacturasConEquipos([]);
+        return;
+      }
+
+      // Single bulk request instead of one per equipo
+      const uniqueIds = [...new Set(allEquipoIds)];
+      const allEquipos = await equipoFabricadoApi.findByIds(uniqueIds);
+      const equipoMap = new Map(allEquipos.map(e => [e.id, e]));
+
       const facturasConEquiposData: FacturaConEquipos[] = [];
 
       for (const factura of facturas) {
-        const equiposIds: number[] = [];
+        const ids = facturaEquipoIdsMap.get(factura.id);
+        if (!ids) continue;
 
-        factura.detalles?.forEach(detalle => {
-          if (detalle.tipoItem === 'EQUIPO' && detalle.equiposFabricadosIds) {
-            equiposIds.push(...detalle.equiposFabricadosIds);
-          }
-        });
-
-        if (equiposIds.length === 0) continue;
-
-        const equiposPromises = equiposIds.map(id =>
-          equipoFabricadoApi.findById(id).catch(() => null)
-        );
-        const equipos = (await Promise.all(equiposPromises)).filter(Boolean) as EquipoFabricadoDTO[];
-
-        const equiposPorEntregar = equipos.filter(
-          equipo => equipo.estadoAsignacion === 'FACTURADO'
-        );
+        const equiposPorEntregar = ids
+          .map(id => equipoMap.get(id))
+          .filter((e): e is EquipoFabricadoDTO => !!e && e.estadoAsignacion === 'FACTURADO');
 
         if (equiposPorEntregar.length > 0) {
-          facturasConEquiposData.push({
-            factura,
-            equiposPorEntregar,
-            expanded: false,
-          });
+          facturasConEquiposData.push({ factura, equiposPorEntregar, expanded: false });
         }
       }
 

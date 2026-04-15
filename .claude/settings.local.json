@@ -74,7 +74,9 @@
     "ask": [],
     "additionalDirectories": [
       "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\services\\impl",
-      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\repositories"
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\repositories",
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\services",
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\controllers"
     ]
   }
 }
