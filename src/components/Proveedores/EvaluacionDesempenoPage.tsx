@@ -80,6 +80,7 @@ const EvaluacionDesempenoPage = () => {
   });
   const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
   const exportMenuOpen = Boolean(exportAnchorEl);
+  const [formErrors, setFormErrors] = useState<{ calificacion?: string; evaluadoPor?: string }>({});
 
   // Helper to get evaluations for the selected supplier (typed)
   const getSupplierEvaluations = (supplierId: number | ''): EvaluacionProveedorDTO[] => {
@@ -191,18 +192,25 @@ const EvaluacionDesempenoPage = () => {
       evaluadoPor: '',
     });
     setEditingId(null);
+    setFormErrors({});
     setDialogOpen(true);
   };
 
   const handleSaveEvaluation = async () => {
+    const errors: { calificacion?: string; evaluadoPor?: string } = {};
+
     if (formData.calificacion < 0 || formData.calificacion > 5) {
-      setSnackbar({
-        open: true,
-        message: 'La calificación debe estar entre 0 y 5.',
-        severity: 'error',
-      });
+      errors.calificacion = 'La calificación debe estar entre 0 y 5.';
+    }
+    if (!formData.evaluadoPor.trim()) {
+      errors.evaluadoPor = 'El nombre del evaluador es obligatorio.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors({});
 
     try {
       if (editingId) {
@@ -532,6 +540,7 @@ const EvaluacionDesempenoPage = () => {
                                 criterio: evaluacion.criterio,
                                 evaluadoPor: evaluacion.evaluadoPor,
                               });
+                              setFormErrors({});
                               setDialogOpen(true);
                             }}
                           >
@@ -575,11 +584,16 @@ const EvaluacionDesempenoPage = () => {
               </Select>
             </FormControl>
             <TextField
-              label="Calificación"
+              label="Calificación (0 – 5)"
               type="number"
               value={formData.calificacion}
-              onChange={(e) => setFormData({ ...formData, calificacion: Number(e.target.value) })}
+              onChange={(e) => {
+                setFormData({ ...formData, calificacion: Number(e.target.value) });
+                if (formErrors.calificacion) setFormErrors(prev => ({ ...prev, calificacion: undefined }));
+              }}
               inputProps={{ min: 0, max: 5, step: 0.1 }}
+              error={!!formErrors.calificacion}
+              helperText={formErrors.calificacion}
             />
             <TextField
               label="Comentario"
@@ -591,7 +605,13 @@ const EvaluacionDesempenoPage = () => {
             <TextField
               label="Evaluado Por"
               value={formData.evaluadoPor}
-              onChange={(e) => setFormData({ ...formData, evaluadoPor: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, evaluadoPor: e.target.value });
+                if (formErrors.evaluadoPor) setFormErrors(prev => ({ ...prev, evaluadoPor: undefined }));
+              }}
+              required
+              error={!!formErrors.evaluadoPor}
+              helperText={formErrors.evaluadoPor}
             />
           </Stack>
         </DialogContent>
