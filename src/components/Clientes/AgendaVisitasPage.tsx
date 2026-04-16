@@ -66,6 +66,8 @@ const AgendaVisitasPage: React.FC = () => {
   const [editingVisita, setEditingVisita] = useState<VisitaAgenda | null>(null);
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const [filterEstado, setFilterEstado] = useState<string>('');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<{
     clienteId: string;
@@ -230,10 +232,22 @@ const AgendaVisitasPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta visita?')) {
-      setVisitas(prev => prev.filter(v => v.id !== id));
+  const handleDeleteClick = (id: number) => {
+    setDeleteTargetId(id);
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteTargetId !== null) {
+      setVisitas(prev => prev.filter(v => v.id !== deleteTargetId));
     }
+    setConfirmDeleteOpen(false);
+    setDeleteTargetId(null);
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDeleteOpen(false);
+    setDeleteTargetId(null);
   };
 
   const getEstadoColor = (estado: string) => {
@@ -422,7 +436,7 @@ const AgendaVisitasPage: React.FC = () => {
                       <IconButton onClick={() => handleOpenDialog(visita)}>
                         <EditIcon />
                       </IconButton>
-                      <IconButton onClick={() => handleDelete(visita.id)} color="error">
+                      <IconButton onClick={() => handleDeleteClick(visita.id)} color="error">
                         <DeleteIcon />
                       </IconButton>
                     </ListItemSecondaryAction>
@@ -521,6 +535,20 @@ const AgendaVisitasPage: React.FC = () => {
               </Button>
             </DialogActions>
           </form>
+        </Dialog>
+
+        {/* Confirm Delete Dialog */}
+        <Dialog open={confirmDeleteOpen} onClose={handleCancelDelete} maxWidth="xs" fullWidth>
+          <DialogTitle>Eliminar visita</DialogTitle>
+          <DialogContent>
+            <Typography>¿Está seguro de que desea eliminar esta visita? Esta acción no se puede deshacer.</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelDelete}>Cancelar</Button>
+            <Button onClick={handleConfirmDelete} color="error" variant="contained">
+              Eliminar
+            </Button>
+          </DialogActions>
         </Dialog>
 
         {/* Floating Action Button */}

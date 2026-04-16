@@ -195,18 +195,27 @@ const EvaluacionDesempenoPage = () => {
   };
 
   const handleSaveEvaluation = async () => {
+    if (formData.calificacion < 0 || formData.calificacion > 5) {
+      setSnackbar({
+        open: true,
+        message: 'La calificación debe estar entre 0 y 5.',
+        severity: 'error',
+      });
+      return;
+    }
+
     try {
       if (editingId) {
         // La API no tiene endpoint de actualización, así que eliminamos y creamos
         await evaluacionProveedorApi.eliminar(editingId);
       }
-      
+
       await evaluacionProveedorApi.crear(formData);
-      
+
       // Recargar evaluaciones y estadísticas
       await loadEvaluaciones();
       await loadEstadisticas();
-      
+
       setDialogOpen(false);
       setFormData({
         proveedorId: Number(selectedSupplier),
@@ -216,9 +225,18 @@ const EvaluacionDesempenoPage = () => {
         evaluadoPor: '',
       });
       setEditingId(null);
+      setSnackbar({
+        open: true,
+        message: editingId ? 'Evaluación actualizada correctamente.' : 'Evaluación guardada correctamente.',
+        severity: 'success',
+      });
     } catch (error) {
       console.error('Error saving evaluation:', error);
-      alert('Error al guardar la evaluación');
+      setSnackbar({
+        open: true,
+        message: 'Error al guardar la evaluación.',
+        severity: 'error',
+      });
     }
   };
 
