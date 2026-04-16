@@ -283,17 +283,18 @@ const loadData = async () => {
     setClients(Array.from(uniqueClientsMap.values()));
     setUsuarios(usuariosData);
 
-    // Load opciones de financiamiento for each factura
+    // Load opciones de financiamiento for all facturas in a single batch request
     const opcionesMap: Record<number, unknown[]> = {};
-    for (const sale of enrichedSales) {
-      try {
-        const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(sale.id);
+    try {
+      const ids = enrichedSales.map((sale: any) => sale.id);
+      const batch = await opcionFinanciamientoApi.obtenerOpcionesPorDocumentosBatch(ids);
+      Object.entries(batch).forEach(([id, opciones]) => {
         if (opciones && opciones.length > 0) {
-          opcionesMap[sale.id] = opciones;
+          opcionesMap[Number(id)] = opciones;
         }
-      } catch (err) {
-        console.warn(`No se pudieron cargar las opciones de financiamiento para la factura ${sale.id}:`, err);
-      }
+      });
+    } catch (err) {
+      console.warn('No se pudieron cargar las opciones de financiamiento:', err);
     }
     setOpcionesFinanciamiento(opcionesMap);
 

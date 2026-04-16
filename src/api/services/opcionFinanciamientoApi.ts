@@ -45,6 +45,15 @@ class OpcionFinanciamientoApi {
     await api.delete(`/api/opciones-financiamiento/${id}`);
   }
 
+  // Obtener opciones de múltiples documentos en una sola llamada
+  async obtenerOpcionesPorDocumentosBatch(documentoIds: number[]): Promise<Record<number, OpcionFinanciamientoDTO[]>> {
+    const { data } = await api.post<Record<number, OpcionFinanciamientoDTO[]>>(
+      '/api/opciones-financiamiento/documentos/batch',
+      documentoIds
+    );
+    return data;
+  }
+
   // Eliminar todas las opciones de un documento
   async eliminarPorDocumento(documentoId: number): Promise<void> {
     await api.delete(`/api/opciones-financiamiento/documento/${documentoId}`);
