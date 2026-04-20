@@ -22,6 +22,18 @@ export { default as opcionFinanciamientoApi } from "./opcionFinanciamientoApi";
 export { default as opcionFinanciamientoTemplateApi } from "./opcionFinanciamientoTemplateApi";
 export { movimientoStockApi } from "./movimientoStockApi";
 export { categoriaProductoApi } from "./categoriaProductoApi";
+export { productoTerminadoApi } from "./productoTerminadoApi";
+export {
+  isCategoriaReventa,
+  isReventa,
+  getTipoEntidadByCategoria,
+  getProductoEndpoint,
+  fetchProductoById,
+  updateProducto,
+  deleteProducto,
+  fetchProductosUnificados,
+} from "./productoRouting";
+export type { ProductoUnificado } from "./productoRouting";
 export { sueldoApi } from "./sueldoApi";
 export { legajoApi } from "./legajoApi";
 export { parametroSistemaApi } from "./parametroSistemaApi";

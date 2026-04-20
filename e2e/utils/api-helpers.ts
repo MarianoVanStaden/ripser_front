@@ -95,6 +95,42 @@ export class ApiHelpers {
     },
   };
 
+  // ─── Productos Terminados (reventa) ───────────────────────────────────────
+
+  readonly productosTerminados = {
+    create: async (data: object) => {
+      const res = await this.client.post('/api/productos-terminados', data);
+      return res.data;
+    },
+
+    update: async (id: number, data: object) => {
+      const res = await this.client.put(`/api/productos-terminados/${id}`, data);
+      return res.data;
+    },
+
+    delete: async (id: number) => {
+      await this.client.delete(`/api/productos-terminados/${id}`);
+    },
+
+    getById: async (id: number) => {
+      const res = await this.client.get(`/api/productos-terminados/${id}`);
+      return res.data;
+    },
+  };
+
+  // ─── Categorías de Producto ───────────────────────────────────────────────
+
+  readonly categoriasProducto = {
+    create: async (data: object) => {
+      const res = await this.client.post('/api/categorias-productos', data);
+      return res.data;
+    },
+
+    delete: async (id: number) => {
+      await this.client.delete(`/api/categorias-productos/${id}`);
+    },
+  };
+
   // ─── Leads ─────────────────────────────────────────────────────────────────
 
   readonly leads = {

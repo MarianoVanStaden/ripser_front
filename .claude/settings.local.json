@@ -68,7 +68,8 @@
       "Bash(npx vitest:*)",
       "Bash(npm show:*)",
       "Bash(npm audit:*)",
-      "Bash(tee c:/Users/santi/tsc-errors.txt)"
+      "Bash(tee c:/Users/santi/tsc-errors.txt)",
+      "Bash(npx playwright *)"
     ],
     "deny": [],
     "ask": [],

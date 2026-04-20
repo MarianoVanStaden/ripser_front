@@ -25,6 +25,12 @@ export const productApi = {
   // ... other methods
   },
 
+  // Get active products
+  getActivos: async (): Promise<Producto[]> => {
+    const response = await api.get('/api/productos/activos');
+    return response.data;
+  },
+
   // Get product by ID
   getById: async (id: number): Promise<Producto> => {
     const response = await api.get(`/api/productos/${id}`);

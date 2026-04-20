@@ -59,6 +59,40 @@ export class DataFactory {
     };
   }
 
+  static categoriaProducto(overrides: Partial<{ nombre: string; descripcion: string; activo: boolean; esReventa: boolean }> = {}) {
+    return {
+      nombre: this.uniqueName('Cat'),
+      descripcion: faker.commerce.department(),
+      activo: true,
+      esReventa: false,
+      ...overrides,
+    };
+  }
+
+  static productoTerminado(overrides: Partial<{
+    nombre: string;
+    descripcion: string;
+    precio: number;
+    costo: number;
+    stockActual: number;
+    stockMinimo: number;
+    codigo: string;
+    categoriaProductoId: number;
+    activo: boolean;
+  }> = {}) {
+    return {
+      nombre: this.uniqueName('Reventa'),
+      descripcion: faker.commerce.productDescription(),
+      precio: Number(faker.commerce.price({ min: 100_000, max: 1_500_000, dec: 2 })),
+      costo: Number(faker.commerce.price({ min: 50_000, max: 1_000_000, dec: 2 })),
+      stockActual: faker.number.int({ min: 1, max: 50 }),
+      stockMinimo: faker.number.int({ min: 1, max: 5 }),
+      codigo: 'REV-' + faker.string.alphanumeric(6).toUpperCase(),
+      activo: true,
+      ...overrides,
+    };
+  }
+
   // ─── Ventas ────────────────────────────────────────────────────────────────
 
   static presupuesto(clienteId: number, items: { productoId: number; cantidad: number }[]) {

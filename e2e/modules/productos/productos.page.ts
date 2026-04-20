@@ -44,11 +44,13 @@ export class StockPage extends BasePage {
 
     // Edit dialog fields (visible once the dialog is open)
     this.editDialog = page.getByRole('dialog');
-    this.editNombreInput = page.getByLabel('Nombre');
-    this.editPrecioInput = page.getByLabel('Precio');
+    this.editNombreInput = page.getByLabel('Nombre', { exact: true });
+    // "Precio de Venta" is the actual label; using substring 'Precio' matches both
+    // "Precio de Venta" AND "Costo (Precio de Compra)" → strict-mode failure.
+    this.editPrecioInput = page.getByLabel('Precio de Venta');
     this.editStockMinimoInput = page.getByLabel('Stock Mínimo');
     // The "Activo" toggle is a FormControlLabel with a Switch
-    this.editActivoSwitch = page.getByRole('checkbox', { name: 'Activo' });
+    this.editActivoSwitch = page.getByRole('checkbox', { name: /producto activo|activo/i });
     this.editSaveButton = page.getByRole('button', { name: /guardar/i });
   }
 
@@ -159,5 +161,47 @@ export class StockPage extends BasePage {
   async assertInMovimientos(nombre: string): Promise<void> {
     await this.gotoMovimientosTab();
     await expect(this.getProductRow(nombre)).toBeVisible({ timeout: 10_000 });
+  }
+
+  /**
+   * Assert that the product appears in the "Bajo Stock" tab/section.
+   * The current implementation uses tabs labelled Inventario / Movimientos,
+   * but bajo-stock items can be detected by the row's "Stock Bajo" / "Sin Stock" chip.
+   */
+  async assertInBajoStock(nombre: string): Promise<void> {
+    await this.gotoInventoryTab();
+    await this.searchProduct(nombre);
+    const row = this.getProductRow(nombre);
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toContainText(/stock bajo|sin stock/i);
+  }
+
+  /**
+   * Assert that the row for a product shows the Reventa chip
+   * (added by the productos-terminados routing implementation).
+   */
+  async assertProductTipo(nombre: string, tipo: 'Material' | 'Reventa'): Promise<void> {
+    const row = this.getProductRow(nombre);
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toContainText(tipo);
+  }
+
+  /**
+   * Filter the inventory by tipo entidad.
+   * Uses the "Tipo" Select introduced by the reventa-routing change.
+   * MUI v6 Selects require the combobox role + name lookup (label text alone is unreliable).
+   */
+  async filterByTipo(tipo: 'Todos' | 'Materiales' | 'Reventa'): Promise<void> {
+    await this.page.getByRole('combobox', { name: 'Tipo' }).click();
+    await this.page.getByRole('option', { name: tipo, exact: true }).click();
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  /**
+   * Assert that the edit dialog has closed (StockPage does not emit a toast on save).
+   * Use this instead of assertToastVisible after saveEditForm.
+   */
+  async assertEditDialogClosed(): Promise<void> {
+    await expect(this.editDialog).not.toBeVisible({ timeout: 10_000 });
   }
 }

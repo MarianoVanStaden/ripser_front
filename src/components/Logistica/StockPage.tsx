@@ -41,10 +41,16 @@ import {
   Edit as EditIcon,
   GetApp as GetAppIcon,
 } from '@mui/icons-material';
-import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
-import type { Producto, MovimientoStock, CategoriaProducto } from '../../types';
+import {
+  fetchProductosUnificados,
+  updateProducto,
+  isCategoriaReventa,
+} from '../../api/services/productoRouting';
+import type { ProductoUnificado } from '../../api/services/productoRouting';
+import type { MovimientoStock, CategoriaProducto } from '../../types';
+import { TipoEntidadProducto } from '../../types';
 import { generateStockInventoryPDF } from '../../utils/pdfExportUtils';
 import { loadPriceCalculationParams, calculateSellingPrice } from '../../utils/priceCalculations';
 import type { PriceCalculationParams } from '../../utils/priceCalculations';
@@ -73,14 +79,15 @@ function TabPanel(props: TabPanelProps) {
 const StockPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [products, setProducts] = useState<Producto[]>([]);
+  const [products, setProducts] = useState<ProductoUnificado[]>([]);
   const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductoUnificado | null>(null);
+  const [tipoEntidadFilter, setTipoEntidadFilter] = useState<'all' | 'MATERIAL' | 'PRODUCTO_TERMINADO'>('all');
   const [editForm, setEditForm] = useState({
     nombre: '',
     codigo: '',
@@ -140,14 +147,12 @@ const StockPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      // Request all products with a large page size to avoid pagination issues
-      const [productsData, movementsData, categoriasData] = await Promise.all([
-        productApi.getAll({ page: 0, size: 10000 }),
+      // Pedimos materiales + productos de reventa unificados, anotando tipoEntidad.
+      const [productsList, movementsData, categoriasData] = await Promise.all([
+        fetchProductosUnificados(),
         movimientoStockApi.getAll({ page: 0, size: 10000 }),
         categoriaProductoApi.getAll(),
       ]);
-
-      const productsList = productsData.content ?? [];
 
       setProducts(productsList);
       setStockMovements(movementsData.content ?? []);
@@ -166,7 +171,7 @@ const StockPage: React.FC = () => {
     }
   };
 
-  const handleEditProduct = (product: Producto) => {
+  const handleEditProduct = (product: ProductoUnificado) => {
     setSelectedProduct(product);
     setEditForm({
       nombre: product.nombre,
@@ -187,15 +192,20 @@ const StockPage: React.FC = () => {
 
     try {
       setLoading(true);
-      await productApi.update(selectedProduct.id, {
-        nombre: editForm.nombre,
-        descripcion: editForm.descripcion,
-        precio: editForm.precio,
-        costo: editForm.costo,
-        stockMinimo: editForm.stockMinimo,
-        categoriaProductoId: editForm.categoriaProductoId,
-        activo: editForm.activo,
-      });
+      // Rutea al endpoint correcto según si el producto es material o reventa.
+      await updateProducto(
+        selectedProduct.id,
+        {
+          nombre: editForm.nombre,
+          descripcion: editForm.descripcion,
+          precio: editForm.precio,
+          costo: editForm.costo,
+          stockMinimo: editForm.stockMinimo,
+          categoriaProductoId: editForm.categoriaProductoId,
+          activo: editForm.activo,
+        },
+        selectedProduct.tipoEntidad,
+      );
 
       await loadData();
       setEditDialogOpen(false);
@@ -256,7 +266,10 @@ const StockPage: React.FC = () => {
         matchesEstado = product.activo;
       }
 
-      const passes = matchesSearch && matchesCategoria && matchesEstado;
+      const matchesTipo =
+        tipoEntidadFilter === 'all' || product.tipoEntidad === tipoEntidadFilter;
+
+      const passes = matchesSearch && matchesCategoria && matchesEstado && matchesTipo;
 
       if (!passes && categoriaFilter !== 'all') {
         console.log(`❌ Producto filtrado: ${product.nombre}`, {
@@ -276,7 +289,7 @@ const StockPage: React.FC = () => {
 
     console.log('✅ Productos después del filtro:', filtered.length);
     return filtered;
-  }, [products, searchTerm, categoriaFilter, estadoFilter]);
+  }, [products, searchTerm, categoriaFilter, estadoFilter, tipoEntidadFilter]);
 
   // Paginate filtered products
   const paginatedProducts = useMemo(() => {
@@ -479,7 +492,7 @@ const StockPage: React.FC = () => {
             <Box display="flex" alignItems="center" gap={1} mb={2}>
               <Typography variant="h6">Filtros</Typography>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -499,9 +512,21 @@ const StockPage: React.FC = () => {
                   <MenuItem value="all">Todas</MenuItem>
                   {categorias.map((cat) => (
                     <MenuItem key={cat.id} value={cat.id.toString()}>
-                      {cat.nombre}
+                      {cat.nombre}{cat.esReventa ? ' (Reventa)' : ''}
                     </MenuItem>
                   ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo</InputLabel>
+                <Select
+                  value={tipoEntidadFilter}
+                  label="Tipo"
+                  onChange={(e) => setTipoEntidadFilter(e.target.value as 'all' | 'MATERIAL' | 'PRODUCTO_TERMINADO')}
+                >
+                  <MenuItem value="all">Todos</MenuItem>
+                  <MenuItem value="MATERIAL">Materiales</MenuItem>
+                  <MenuItem value="PRODUCTO_TERMINADO">Reventa</MenuItem>
                 </Select>
               </FormControl>
               <FormControl fullWidth size="small">
@@ -531,6 +556,7 @@ const StockPage: React.FC = () => {
                   <TableRow>
                     <TableCell sx={{ minWidth: 100 }}>Código</TableCell>
                     <TableCell sx={{ minWidth: 200 }}>Producto</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Tipo</TableCell>
                     <TableCell sx={{ minWidth: 100 }} align="center">Stock Actual</TableCell>
                     <TableCell sx={{ minWidth: 100 }} align="center">Stock Mínimo</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Categoría</TableCell>
@@ -553,6 +579,13 @@ const StockPage: React.FC = () => {
                             {product.descripcion}
                           </Typography>
                         </Box>
+                      </TableCell>
+                      <TableCell>
+                        {product.tipoEntidad === TipoEntidadProducto.PRODUCTO_TERMINADO ? (
+                          <Chip label="Reventa" color="secondary" size="small" />
+                        ) : (
+                          <Chip label="Material" color="primary" size="small" variant="outlined" />
+                        )}
                       </TableCell>
                       <TableCell align="center">
                         <Typography variant="h6" fontWeight="bold">
@@ -594,7 +627,7 @@ const StockPage: React.FC = () => {
                   ))}
                   {filteredProducts.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9} align="center">
+                      <TableCell colSpan={10} align="center">
                         <Box textAlign="center" py={4}>
                           <Typography variant="body1" color="text.secondary">
                             No se encontraron productos con los filtros aplicados
@@ -852,11 +885,21 @@ const StockPage: React.FC = () => {
                 label="Categoría"
                 onChange={(e) => setEditForm({ ...editForm, categoriaProductoId: e.target.value as number })}
               >
-                {categorias.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.nombre}
-                  </MenuItem>
-                ))}
+                {categorias
+                  .filter((cat) => {
+                    // El backend rechaza mover entre tablas: materiales solo aceptan categorías no-reventa,
+                    // productos terminados solo categorías reventa.
+                    if (!selectedProduct) return true;
+                    const esReventa = isCategoriaReventa(cat);
+                    return selectedProduct.tipoEntidad === TipoEntidadProducto.PRODUCTO_TERMINADO
+                      ? esReventa
+                      : !esReventa;
+                  })
+                  .map((cat) => (
+                    <MenuItem key={cat.id} value={cat.id}>
+                      {cat.nombre}{cat.esReventa ? ' (Reventa)' : ''}
+                    </MenuItem>
+                  ))}
               </Select>
             </FormControl>
 

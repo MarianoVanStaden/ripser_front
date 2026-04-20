@@ -596,6 +596,13 @@ export interface Product {
 }
 
 // Producto interface matches ProductoDTO from backend
+// Discrimina si un producto vive en /api/productos (materiales) o /api/productos-terminados (reventa)
+export const TipoEntidadProducto = {
+  MATERIAL: 'MATERIAL',
+  PRODUCTO_TERMINADO: 'PRODUCTO_TERMINADO',
+} as const;
+export type TipoEntidadProducto = typeof TipoEntidadProducto[keyof typeof TipoEntidadProducto];
+
 export interface Producto {
   id: number;
   nombre: string;
@@ -610,6 +617,7 @@ export interface Producto {
   categoriaProductoNombre?: string;
   activo: boolean;
   fechaCreacion?: string; // ISO string
+  tipoEntidad?: TipoEntidadProducto;
 }
 
 // ProductoCreateDTO interface for product creation
@@ -790,12 +798,16 @@ export interface ProductoTerminado {
   nombre: string;
   descripcion?: string;
   precio: number;
+  costo?: number | null;
   stockActual: number;
   stockMinimo: number;
   codigo: string;
   categoriaProducto?: CategoriaProducto;
+  categoriaProductoId?: number;
+  categoriaProductoNombre?: string;
   activo: boolean;
   fechaCreacion: string;
+  tipoEntidad?: TipoEntidadProducto;
 }
 
 export interface MaterialUtilizado {
@@ -851,6 +863,7 @@ export interface CategoriaProducto {
   nombre: string;
   descripcion?: string;
   activo: boolean;
+  esReventa?: boolean;
 }
 
 // Enum types using const assertions
@@ -2013,18 +2026,23 @@ export interface ProductoTerminado {
   nombre: string;
   descripcion?: string;
   precio: number;
+  costo?: number | null;
   stockActual: number;
   stockMinimo: number;
   codigo: string;
   categoriaProducto?: CategoriaProducto;
+  categoriaProductoId?: number;
+  categoriaProductoNombre?: string;
   activo: boolean;
   fechaCreacion: string;
+  tipoEntidad?: TipoEntidadProducto;
 }
 export interface CategoriaProducto {
   id: number;
   nombre: string;
   descripcion?: string;
   activo: boolean;
+  esReventa?: boolean;
 }
 
 export interface DetalleCompraDTO {

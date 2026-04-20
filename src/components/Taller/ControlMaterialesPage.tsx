@@ -38,16 +38,16 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material';
 import { materialUtilizadoApi } from '../../api/services/materialUtilizadoApi';
-import { productoTerminadoApi } from '../../api/services/productoTerminadoApi';
+import { productApi } from '../../api/services/productApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
-import type { MaterialUtilizado, ProductoTerminado, OrdenServicio } from '../../types';
+import type { MaterialUtilizado, Producto, OrdenServicio } from '../../types';
 
 const ControlMaterialesPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [materiales, setMateriales] = useState<MaterialUtilizado[]>([]);
   const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
-  const [productos, setProductos] = useState<ProductoTerminado[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -105,7 +105,7 @@ const ControlMaterialesPage: React.FC = () => {
 
   const loadProductos = async () => {
     try {
-      const data = await productoTerminadoApi.getActivos();
+      const data = await productApi.getActivos();
       setProductos(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error loading productos:', err);
