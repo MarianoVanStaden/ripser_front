@@ -188,11 +188,11 @@ export class StockPage extends BasePage {
 
   /**
    * Filter the inventory by tipo entidad.
-   * Uses the "Tipo" Select introduced by the reventa-routing change.
-   * MUI v6 Selects require the combobox role + name lookup (label text alone is unreliable).
+   * Uses the "Tipo" MUI Select introduced by the reventa-routing change.
+   * Pattern matches the rest of the project (e.g. ClienteFormPage estadoSelect).
    */
   async filterByTipo(tipo: 'Todos' | 'Materiales' | 'Reventa'): Promise<void> {
-    await this.page.getByRole('combobox', { name: 'Tipo' }).click();
+    await this.page.getByLabel('Tipo', { exact: true }).click();
     await this.page.getByRole('option', { name: tipo, exact: true }).click();
     await this.page.waitForLoadState('networkidle');
   }

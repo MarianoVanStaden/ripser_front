@@ -410,7 +410,7 @@ test.describe('Productos — Routing de Reventa', () => {
 
     // Abrimos el dropdown de Categoría DENTRO del diálogo de edición (no el de filtro).
     const dialog = page.getByRole('dialog');
-    await dialog.getByRole('combobox', { name: 'Categoría' }).click();
+    await dialog.getByLabel('Categoría', { exact: true }).click();
     const listbox = page.getByRole('listbox');
 
     await expect(listbox.getByRole('option', { name: /Equipos de Reventa/i })).toBeVisible();
@@ -429,7 +429,7 @@ test.describe('Productos — Routing de Reventa', () => {
     await stockPage.clickEditProduct(productoMaterial.nombre);
 
     const dialog = page.getByRole('dialog');
-    await dialog.getByRole('combobox', { name: 'Categoría' }).click();
+    await dialog.getByLabel('Categoría', { exact: true }).click();
     const listbox = page.getByRole('listbox');
 
     await expect(listbox.getByRole('option', { name: 'Materias Primas', exact: true })).toBeVisible();
