@@ -1,6 +1,7 @@
 // Export balance and amortizacion types
 export * from './balance.types';
 export * from './amortizacion.types';
+export * from './provision.types';
 
 // Export new multi-tenant types
 export * from './auth.types';

@@ -214,6 +214,7 @@ const navigation: NavigationSection[] = [
       { text: 'Flujo de Caja', icon: <BarChartIcon />, path: '/admin/flujo-caja' },
       { text: 'Balance Anual', icon: <AssessmentIcon />, path: '/admin/balance' },
       { text: 'Amortizaciones', icon: <ReceiptLongIcon />, path: '/admin/amortizaciones' },
+      { text: 'Provisiones RRHH', icon: <SavingsIcon />, path: '/admin/provisiones' },
       { text: 'Posición Patrimonial', icon: <AccountBalanceIcon />, path: '/admin/patrimonio' },
       { text: 'Cajas de Ahorro USD', icon: <SavingsIcon />, path: '/admin/cajas-ahorro' },
       { text: 'Bancos', icon: <AccountBalanceIcon />, path: '/admin/bancos' },

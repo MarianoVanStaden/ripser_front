@@ -101,6 +101,7 @@ import {
 } from './components/Prestamos/Cobranzas';
 import { BalanceAnualPage, BalanceMesPage } from './components/Admin/BalanceAnual';
 import { AmortizacionesPage, AmortizacionMesPage } from './components/Admin/Amortizaciones';
+import { ProvisionesPage, ProvisionResumenAnualPage } from './components/Admin/Provisiones';
 import PosicionPatrimonialPage from './components/Admin/PosicionPatrimonial';
 import { CajasAhorroListPage, CajaMovimientosPage } from './components/Admin/CajasAhorro';
 
@@ -187,6 +188,9 @@ function App() {
               <Route path="admin/balance/:anio/:mes" element={<PrivateRoute><BalanceMesPage /></PrivateRoute>} />
               <Route path="admin/amortizaciones" element={<PrivateRoute><AmortizacionesPage /></PrivateRoute>} />
               <Route path="admin/amortizaciones/:anio/:mes" element={<PrivateRoute><AmortizacionMesPage /></PrivateRoute>} />
+              <Route path="admin/provisiones" element={<PrivateRoute><ProvisionesPage /></PrivateRoute>} />
+              <Route path="admin/provisiones/:anio/:mes" element={<PrivateRoute><ProvisionesPage /></PrivateRoute>} />
+              <Route path="admin/provisiones/resumen/:tipo/:anio" element={<PrivateRoute><ProvisionResumenAnualPage /></PrivateRoute>} />
               <Route path="admin/patrimonio" element={<PrivateRoute><PosicionPatrimonialPage /></PrivateRoute>} />
               <Route path="admin/cajas-ahorro" element={<PrivateRoute><CajasAhorroListPage /></PrivateRoute>} />
               <Route path="admin/cajas-ahorro/:id" element={<PrivateRoute><CajaMovimientosPage /></PrivateRoute>} />
