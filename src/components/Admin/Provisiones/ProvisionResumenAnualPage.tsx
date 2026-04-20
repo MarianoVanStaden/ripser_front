@@ -203,10 +203,11 @@ export default function ProvisionResumenAnualPage() {
                 <XAxis dataKey="mes" />
                 <YAxis tickFormatter={(v) => `$${new Intl.NumberFormat('es-AR', { notation: 'compact' }).format(v)}`} />
                 <RechartsTooltip
-                  formatter={(value: number | undefined, name: string) => [
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={((value: any, name: any) => [
                     `$${fmt(value ?? 0)}`,
                     name === 'provisionado' ? 'Provisionado' : 'Pagado',
-                  ] as [string, string]}
+                  ]) as any}
                 />
                 <Legend formatter={(value) => value === 'provisionado' ? 'Provisionado' : 'Pagado'} />
                 <Bar dataKey="provisionado" fill="#1976d2" name="provisionado" />
