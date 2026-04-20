@@ -1,12 +1,71 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('../../api/services/parametroSistemaApi', () => ({
+  parametroSistemaApi: {
+    getByClave: vi.fn(),
+  },
+}));
+
+import { parametroSistemaApi } from '../../api/services/parametroSistemaApi';
 import {
   calculateSellingPrice,
   calculateMarginPercentage,
   formatPrice,
+  loadPriceCalculationParams,
   PRECIO_PARAMETROS,
 } from '../priceCalculations';
 
 describe('priceCalculations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('loadPriceCalculationParams', () => {
+    it('loads both parameters from API when available', async () => {
+      vi.mocked(parametroSistemaApi.getByClave)
+        .mockResolvedValueOnce({ valor: '35.5' } as any)
+        .mockResolvedValueOnce({ valor: '50' } as any);
+
+      const result = await loadPriceCalculationParams();
+
+      expect(parametroSistemaApi.getByClave).toHaveBeenNthCalledWith(
+        1,
+        PRECIO_PARAMETROS.PORCENTAJE_GANANCIA
+      );
+      expect(parametroSistemaApi.getByClave).toHaveBeenNthCalledWith(
+        2,
+        PRECIO_PARAMETROS.REDONDEO_PRECIO
+      );
+      expect(result).toEqual({ porcentajeGanancia: 35.5, redondeo: 50 });
+    });
+
+    it('uses defaults when both API calls fail', async () => {
+      vi.mocked(parametroSistemaApi.getByClave)
+        .mockRejectedValueOnce(new Error('missing porcentaje'))
+        .mockRejectedValueOnce(new Error('missing redondeo'));
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await loadPriceCalculationParams();
+
+      expect(result).toEqual({ porcentajeGanancia: 27.671993, redondeo: 100 });
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      warnSpy.mockRestore();
+    });
+
+    it('uses mixed fallback when only one API call fails', async () => {
+      vi.mocked(parametroSistemaApi.getByClave)
+        .mockResolvedValueOnce({ valor: '22' } as any)
+        .mockRejectedValueOnce(new Error('missing redondeo'));
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await loadPriceCalculationParams();
+
+      expect(result).toEqual({ porcentajeGanancia: 22, redondeo: 100 });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      warnSpy.mockRestore();
+    });
+  });
+
   describe('calculateSellingPrice', () => {
     it('applies profit margin and rounding correctly', () => {
       // costo=1000, ganancia=27.67%, redondeo=100
