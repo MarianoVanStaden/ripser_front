@@ -188,11 +188,15 @@ export class StockPage extends BasePage {
 
   /**
    * Filter the inventory by tipo entidad.
-   * Uses the "Tipo" MUI Select introduced by the reventa-routing change.
-   * Pattern matches the rest of the project (e.g. ClienteFormPage estadoSelect).
+   * MUI v6 Selects don't expose the InputLabel as a queryable label/name reliably,
+   * so we locate by the FormControl that contains the "Tipo" text.
    */
   async filterByTipo(tipo: 'Todos' | 'Materiales' | 'Reventa'): Promise<void> {
-    await this.page.getByLabel('Tipo', { exact: true }).click();
+    const tipoFormControl = this.page
+      .locator('.MuiFormControl-root')
+      .filter({ has: this.page.getByText('Tipo', { exact: true }) })
+      .first();
+    await tipoFormControl.locator('[role="combobox"]').click();
     await this.page.getByRole('option', { name: tipo, exact: true }).click();
     await this.page.waitForLoadState('networkidle');
   }
