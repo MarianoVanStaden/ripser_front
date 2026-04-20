@@ -31,6 +31,7 @@ import {
   useMediaQuery,
   useTheme,
   Autocomplete,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,11 +43,13 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
   Link as LinkIcon,
   LinkOff as LinkOffIcon,
   Badge as BadgeIcon,
+  VpnKey as VpnKeyIcon,
 } from '@mui/icons-material';
-import usuarioAdminApi, { type TipoRol } from '../../api/services/usuarioAdminApi';
+import usuarioAdminApi, { type TipoRol, type ChangePasswordDTO } from '../../api/services/usuarioAdminApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { Empleado } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -92,6 +95,14 @@ const UsersPage: React.FC = () => {
   const [viewingUser, setViewingUser] = useState<UsuarioWithEmpresa | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Change password
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<UsuarioWithEmpresa | null>(null);
+  const [passwordForm, setPasswordForm] = useState<ChangePasswordDTO>({ currentPassword: '', newPassword: '' });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Vincular empleado
   const [vincularEmpleadoDialogOpen, setVincularEmpleadoDialogOpen] = useState(false);
@@ -531,6 +542,36 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  const openPasswordDialog = (user: UsuarioWithEmpresa) => {
+    setPasswordTarget(user);
+    setPasswordForm({ currentPassword: '', newPassword: '' });
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setPasswordError(null);
+    setPasswordDialogOpen(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordTarget) return;
+    try {
+      setPasswordError(null);
+      if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+        setPasswordError('Debe completar ambos campos');
+        return;
+      }
+      if (passwordForm.newPassword.length < 8) {
+        setPasswordError('La nueva contraseña debe tener al menos 8 caracteres');
+        return;
+      }
+      await usuarioAdminApi.changePassword(passwordTarget.id, passwordForm);
+      setSuccess('Contraseña cambiada correctamente');
+      setPasswordDialogOpen(false);
+      setPasswordTarget(null);
+    } catch (err: any) {
+      setPasswordError(err.response?.data?.message || 'Error al cambiar la contraseña');
+    }
+  };
+
   const handleDesvincularEmpleado = async (user: UsuarioWithEmpresa) => {
     if (!window.confirm('¿Desvincular el empleado de este usuario?')) return;
     try {
@@ -694,6 +735,11 @@ const UsersPage: React.FC = () => {
                         <Tooltip title="Editar">
                           <IconButton onClick={() => handleEdit(user)} size="small" color="primary">
                             <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Cambiar Contraseña">
+                          <IconButton onClick={() => openPasswordDialog(user)} size="small" color="warning">
+                            <VpnKeyIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Eliminar">
@@ -1467,6 +1513,59 @@ const UsersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      {/* Change Password Dialog */}
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+        <DialogTitle>Cambiar Contraseña: {passwordTarget?.username}</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            {passwordError && (
+              <Alert severity="error" onClose={() => setPasswordError(null)}>
+                {passwordError}
+              </Alert>
+            )}
+            <TextField
+              fullWidth
+              label="Contraseña Actual *"
+              type={showCurrentPassword ? 'text' : 'password'}
+              value={passwordForm.currentPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end">
+                      {showCurrentPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Nueva Contraseña *"
+              type={showNewPassword ? 'text' : 'password'}
+              value={passwordForm.newPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              helperText="Mínimo 8 caracteres"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end">
+                      {showNewPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPasswordDialogOpen(false)}>Cancelar</Button>
+          <Button variant="contained" color="warning" onClick={handleChangePassword}>
+            Cambiar Contraseña
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Vincular Empleado Dialog */}
       <Dialog
         open={vincularEmpleadoDialogOpen}
