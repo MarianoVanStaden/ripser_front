@@ -857,6 +857,8 @@ export interface OrdenServicio {
   responsableNombre?: string; // Nombre del responsable desde el backend DTO
   materiales: MaterialUtilizado[];
   tareas: TareaServicio[];
+  /** Equipos físicos vinculados a esta orden (poblado desde OrdenServicioEquipo) */
+  equipos?: EquipoEnOrdenDTO[];
 }
 
 export interface CategoriaProducto {
@@ -2893,6 +2895,35 @@ export interface StockDepositoCreateDTO {
   cantidad: number;
   stockMinimo?: number;
   stockMaximo?: number;
+}
+
+// ── Desglose por Modelo (Ubicación de Equipos — Tab server-side) ──────────
+/**
+ * Agrupación de equipos físicos por tipo y modelo con conteos calculados
+ * server-side en una sola query SQL (endpoint GET /api/equipos-fabricados/desglose-modelo).
+ */
+export interface DesgloseModeloDTO {
+  tipo: string;
+  modelo: string;
+  total: number;
+  /** Equipos en pipeline comercial: RESERVADO | FACTURADO */
+  asignados: number;
+  /** Equipos con OrdenServicio activa (PENDIENTE | EN_PROCESO) */
+  enService: number;
+  /** Equipos estadoAsignacion=DISPONIBLE sin orden activa */
+  disponibles: number;
+  /** Lista de numeroHeladera de los equipos disponibles (para columna NUMEROS) */
+  numerosDisponibles: string[];
+}
+
+/** Equipo físico asociado a una OrdenServicio (dentro de OrdenServicioDTO) */
+export interface EquipoEnOrdenDTO {
+  equipoFabricadoId: number;
+  numeroHeladera: string;
+  modelo: string;
+  tipo: string;
+  descripcionFalla?: string;
+  fechaIngresoServicio: string;
 }
 
 // Ubicación de Equipos Fabricados

@@ -47,6 +47,7 @@ import { usePermisos } from '../../../hooks/usePermisos';
 import type {
   UbicacionEquipo,
   Deposito,
+  DesgloseModeloDTO,
   EquipoFabricadoDTO,
   MovimientoEquipo,
   TipoEquipo,
@@ -80,6 +81,10 @@ const UbicacionEquiposPage: React.FC = () => {
 
   // Tab state
   const [tabValue, setTabValue] = useState(0);
+
+  // Server-side desglose (tab 3)
+  const [desgloseServidor, setDesgloseServidor] = useState<DesgloseModeloDTO[]>([]);
+  const [loadingDesglose, setLoadingDesglose] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -457,61 +462,37 @@ const UbicacionEquiposPage: React.FC = () => {
     );
   }, [equipos, ubicaciones]);
 
-  // Desglose by tipo → modelo for the new tab
-  const desgloseData = useMemo(() => {
-    // Exclude units physically off-site (in transit or delivered to client)
-    const equiposFisicos = equipos.filter(
-      (e) => e.estadoAsignacion !== 'EN_TRANSITO' && e.estadoAsignacion !== 'ENTREGADO',
-    );
+  const TIPO_LABEL: Record<string, string> = {
+    HELADERA: 'HELADERAS',
+    COOLBOX: 'COOLBOX',
+    EXHIBIDOR: 'EXHIBIDORES',
+    OTRO: 'OTROS',
+  };
+  const TIPO_ORDER: TipoEquipo[] = ['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'];
 
-    const tipoOrder: TipoEquipo[] = ['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'];
-    const TIPO_LABEL: Record<string, string> = {
-      HELADERA: 'HELADERAS',
-      COOLBOX: 'COOLBOX',
-      EXHIBIDOR: 'EXHIBIDORES',
-      OTRO: 'OTROS',
-    };
-
-    return tipoOrder
-      .filter((tipo) => equiposFisicos.some((e) => e.tipo === tipo))
+  /**
+   * Agrupación de desgloseServidor por tipo para el renderizado.
+   * Los conteos vienen calculados server-side — no hay cálculo client-side.
+   */
+  const desgloseAgrupado = useMemo(() => {
+    return TIPO_ORDER
+      .filter((tipo) => desgloseServidor.some((d) => d.tipo === tipo))
       .map((tipo) => {
-        const equiposDeTipo = equiposFisicos.filter((e) => e.tipo === tipo);
-
-        const modelosMap: Record<string, EquipoFabricadoDTO[]> = {};
-        for (const equipo of equiposDeTipo) {
-          if (!modelosMap[equipo.modelo]) modelosMap[equipo.modelo] = [];
-          modelosMap[equipo.modelo].push(equipo);
-        }
-
-        const modelos = Object.entries(modelosMap)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([modelo, items]) => {
-            const disponibles = items.filter((e) => e.estadoAsignacion === 'DISPONIBLE');
-            const asignados = items.filter(
-              (e) => e.estadoAsignacion === 'RESERVADO' || e.estadoAsignacion === 'FACTURADO',
-            );
-            return {
-              modelo,
-              total: items.length,
-              asignados: asignados.length,
-              enService: 0,
-              disponibles: disponibles.length,
-              numeros: disponibles.map((e) => e.numeroHeladera).join(', '),
-            };
-          });
-
+        const modelos = desgloseServidor.filter((d) => d.tipo === tipo);
         return {
           tipo,
           label: TIPO_LABEL[tipo] || tipo,
           modelos,
           totalTipo: {
-            total: modelos.reduce((s, m) => s + m.total, 0),
-            asignados: modelos.reduce((s, m) => s + m.asignados, 0),
+            total:       modelos.reduce((s, m) => s + m.total, 0),
+            asignados:   modelos.reduce((s, m) => s + m.asignados, 0),
+            enService:   modelos.reduce((s, m) => s + m.enService, 0),
             disponibles: modelos.reduce((s, m) => s + m.disponibles, 0),
           },
         };
       });
-  }, [equipos]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [desgloseServidor]);
 
   if (!tienePermiso('LOGISTICA')) {
     return (
@@ -622,7 +603,23 @@ const UbicacionEquiposPage: React.FC = () => {
 
       {/* Tabs */}
       <Card sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
+        <Tabs
+          value={tabValue}
+          onChange={async (_, newValue: number) => {
+            setTabValue(newValue);
+            if (newValue === 3 && desgloseServidor.length === 0) {
+              try {
+                setLoadingDesglose(true);
+                const data = await equipoFabricadoApi.getDesgloseModelo();
+                setDesgloseServidor(data);
+              } catch {
+                setError('Error al cargar el desglose por modelo');
+              } finally {
+                setLoadingDesglose(false);
+              }
+            }
+          }}
+        >
           <Tab label="Todos los Equipos" />
           <Tab label="Por Depósito" />
           <Tab label="Buscar Equipo" />
@@ -921,14 +918,14 @@ const UbicacionEquiposPage: React.FC = () => {
 
       <TabPanel value={tabValue} index={3}>
         {/* Desglose por Modelo */}
-        {loading ? (
+        {loadingDesglose ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
             <CircularProgress />
           </Box>
-        ) : desgloseData.length === 0 ? (
+        ) : desgloseAgrupado.length === 0 ? (
           <Alert severity="info">No hay equipos registrados</Alert>
         ) : (
-          desgloseData.map(({ tipo, label, modelos, totalTipo }) => (
+          desgloseAgrupado.map(({ tipo, label, modelos, totalTipo }) => (
             <Box key={tipo} sx={{ mb: 4 }}>
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
@@ -963,7 +960,7 @@ const UbicacionEquiposPage: React.FC = () => {
                         <TableCell align="right">{row.enService}</TableCell>
                         <TableCell align="right">{row.disponibles}</TableCell>
                         <TableCell sx={{ typography: 'caption', color: 'text.secondary', maxWidth: 300, wordBreak: 'break-word' }}>
-                          {row.numeros || '—'}
+                          {row.numerosDisponibles.join(', ') || '—'}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -979,7 +976,7 @@ const UbicacionEquiposPage: React.FC = () => {
                         {totalTipo.asignados}
                       </TableCell>
                       <TableCell align="right" sx={{ fontWeight: 'bold', color: 'common.white' }}>
-                        0
+                        {totalTipo.enService}
                       </TableCell>
                       <TableCell align="right" sx={{ fontWeight: 'bold', color: 'common.white' }}>
                         {totalTipo.disponibles}

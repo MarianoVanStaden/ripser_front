@@ -13,6 +13,7 @@ import type {
   AplicarTerminacionDTO,
   EtapaTerminacionDTO,
   HistorialFabricacionDTO,
+  DesgloseModeloDTO,
   PageResponse,
   PaginationParams,
 } from '../../types';
@@ -357,6 +358,16 @@ export const equipoFabricadoApi = {
     const response = await api.get<number>('/api/equipos-fabricados/bases-disponibles/count', {
       params: { modelo, ...(medida ? { medida } : {}) },
     });
+    return response.data;
+  },
+
+  /**
+   * Desglose de equipos físicos agrupados por tipo y modelo con conteos server-side.
+   * Usado por la pestaña "Desglose por Modelo" en Ubicación de Equipos.
+   * Una sola query SQL — sin N+1, sin cálculo client-side.
+   */
+  getDesgloseModelo: async (): Promise<DesgloseModeloDTO[]> => {
+    const response = await api.get<DesgloseModeloDTO[]>('/api/equipos-fabricados/desglose-modelo');
     return response.data;
   },
 };
