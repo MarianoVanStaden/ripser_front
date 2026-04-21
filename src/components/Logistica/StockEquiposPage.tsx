@@ -141,18 +141,18 @@ const StockEquiposPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [equiposData, movimientosData, entregasData] = await Promise.all([
+      const [equiposData, movimientosData, todasEntregas] = await Promise.all([
         equipoFabricadoApi.findAll({ page: 0, size: 1000 }),
         movimientoStockFabricacionApi.findAll(),
-        entregaViajeApi.getByEstado('ENTREGADA'),
+        entregaViajeApi.getAll(),
       ]);
 
       setEquipos(equiposData.content || equiposData || []);
       setMovimientosStock(movimientosData || []);
       setEntregasHistorial(
-        (entregasData || []).sort(
-          (a, b) => new Date(b.fechaEntrega).getTime() - new Date(a.fechaEntrega).getTime()
-        )
+        (todasEntregas || [])
+          .filter((e) => e.estado === 'ENTREGADA')
+          .sort((a, b) => (b.fechaEntrega > a.fechaEntrega ? 1 : -1))
       );
       setError(null);
     } catch (err) {
@@ -221,7 +221,7 @@ const StockEquiposPage: React.FC = () => {
 
         return matchesSearch && matchesTipo && matchesEstado && matchesAsignado;
       })
-      .sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
+      .sort((a, b) => (b.fechaCreacion > a.fechaCreacion ? 1 : -1));
   }, [equipos, searchEquipos, tipoEquipoFilter, estadoEquipoFilter, asignadoFilter]);
 
   const paginatedEquipos = useMemo(() => {
@@ -376,9 +376,7 @@ const StockEquiposPage: React.FC = () => {
       m.tipo === 'SALIDA_FABRICACION' ||
       m.tipo === 'REINGRESO_CANCELACION_FABRICACION'
     )
-    .sort((a, b) =>
-      new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-    );
+    .sort((a, b) => (b.fecha > a.fecha ? 1 : -1));
 
   const filteredMateriasPrimas = useMemo(() => {
     return materiasPrimasMovimientos.filter((movimiento) => {
