@@ -6,7 +6,7 @@ export const movimientoStockFabricacionApi = {
    * Obtener todos los movimientos de stock
    */
   findAll: async (): Promise<MovimientoStock[]> => {
-    const response = await api.get<any>('/api/movimientos-stock');
+    const response = await api.get<any>('/api/movimientos-stock', { params: { page: 0, size: 10000 } });
     return Array.isArray(response.data) ? response.data : (response.data?.content ?? []);
   },
 

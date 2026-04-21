@@ -47,11 +47,13 @@ import {
 } from '@mui/icons-material';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import { movimientoStockFabricacionApi } from '../../api/services/movimientoStockFabricacionApi';
+import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import type {
   EquipoFabricadoDTO,
   TipoEquipo,
   EstadoFabricacion,
   MovimientoStock,
+  EntregaViaje,
 } from '../../types';
 import { generateEquiposInventoryPDF } from '../../utils/pdfExportUtils';
 
@@ -93,6 +95,7 @@ const StockEquiposPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [equipos, setEquipos] = useState<EquipoFabricadoDTO[]>([]);
   const [movimientosStock, setMovimientosStock] = useState<MovimientoStock[]>([]);
+  const [entregasHistorial, setEntregasHistorial] = useState<EntregaViaje[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -138,13 +141,19 @@ const StockEquiposPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [equiposData, movimientosData] = await Promise.all([
+      const [equiposData, movimientosData, entregasData] = await Promise.all([
         equipoFabricadoApi.findAll({ page: 0, size: 1000 }),
         movimientoStockFabricacionApi.findAll(),
+        entregaViajeApi.getByEstado('ENTREGADA'),
       ]);
 
       setEquipos(equiposData.content || equiposData || []);
       setMovimientosStock(movimientosData || []);
+      setEntregasHistorial(
+        (entregasData || []).sort(
+          (a, b) => new Date(b.fechaEntrega).getTime() - new Date(a.fechaEntrega).getTime()
+        )
+      );
       setError(null);
     } catch (err) {
       const error = err as { response?: { status?: number } };
@@ -197,20 +206,22 @@ const StockEquiposPage: React.FC = () => {
 
   // Tab 0: Filter and paginate Equipos
   const filteredEquipos = useMemo(() => {
-    return equipos.filter((equipo) => {
-      const matchesSearch = searchEquipos === '' ||
-        equipo.numeroHeladera.toLowerCase().includes(searchEquipos.toLowerCase()) ||
-        equipo.modelo.toLowerCase().includes(searchEquipos.toLowerCase()) ||
-        equipo.clienteNombre?.toLowerCase().includes(searchEquipos.toLowerCase());
+    return equipos
+      .filter((equipo) => {
+        const matchesSearch = searchEquipos === '' ||
+          equipo.numeroHeladera.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+          equipo.modelo.toLowerCase().includes(searchEquipos.toLowerCase()) ||
+          equipo.clienteNombre?.toLowerCase().includes(searchEquipos.toLowerCase());
 
-      const matchesTipo = tipoEquipoFilter === 'all' || equipo.tipo === tipoEquipoFilter;
-      const matchesEstado = estadoEquipoFilter === 'all' || equipo.estado === estadoEquipoFilter;
-      const matchesAsignado = asignadoFilter === 'all' ||
-        (asignadoFilter === 'asignado' && equipo.asignado) ||
-        (asignadoFilter === 'no-asignado' && !equipo.asignado);
+        const matchesTipo = tipoEquipoFilter === 'all' || equipo.tipo === tipoEquipoFilter;
+        const matchesEstado = estadoEquipoFilter === 'all' || equipo.estado === estadoEquipoFilter;
+        const matchesAsignado = asignadoFilter === 'all' ||
+          (asignadoFilter === 'asignado' && equipo.asignado) ||
+          (asignadoFilter === 'no-asignado' && !equipo.asignado);
 
-      return matchesSearch && matchesTipo && matchesEstado && matchesAsignado;
-    });
+        return matchesSearch && matchesTipo && matchesEstado && matchesAsignado;
+      })
+      .sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
   }, [equipos, searchEquipos, tipoEquipoFilter, estadoEquipoFilter, asignadoFilter]);
 
   const paginatedEquipos = useMemo(() => {
@@ -398,25 +409,19 @@ const StockEquiposPage: React.FC = () => {
     setPageMateriasPrimas(0);
   };
 
-  // Filtrar equipos entregados para el historial de entregas
+  // Filtrar historial de entregas completadas (desde entregaViajeApi)
   const filteredEntregas = useMemo(() => {
-    return equipos.filter((equipo) => {
-      const matchesSearch = searchEntregas === '' ||
-        equipo.numeroHeladera?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
-        equipo.modelo?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
-        equipo.clienteNombre?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
-        equipo.receptorNombre?.toLowerCase().includes(searchEntregas.toLowerCase()) ||
-        equipo.receptorDni?.toLowerCase().includes(searchEntregas.toLowerCase());
-
-      // Solo mostrar equipos en estado ENTREGADO que tienen fecha de entrega
-      return equipo.estadoAsignacion === 'ENTREGADO' && equipo.fechaEntrega && matchesSearch;
-    }).sort((a, b) => {
-      // Ordenar por fecha de entrega descendente (más reciente primero)
-      const dateA = new Date(a.fechaEntrega || 0).getTime();
-      const dateB = new Date(b.fechaEntrega || 0).getTime();
-      return dateB - dateA;
-    });
-  }, [equipos, searchEntregas]);
+    if (searchEntregas === '') return entregasHistorial;
+    const q = searchEntregas.toLowerCase();
+    return entregasHistorial.filter((e) =>
+      e.receptorNombre?.toLowerCase().includes(q) ||
+      e.receptorDni?.toLowerCase().includes(q) ||
+      e.direccionEntrega?.toLowerCase().includes(q) ||
+      e.observaciones?.toLowerCase().includes(q) ||
+      e.documentoComercial?.clienteNombre?.toLowerCase().includes(q) ||
+      e.documentoComercial?.numeroDocumento?.toLowerCase().includes(q)
+    );
+  }, [entregasHistorial, searchEntregas]);
 
   const paginatedEntregas = useMemo(() => {
     return filteredEntregas.slice(
@@ -424,6 +429,12 @@ const StockEquiposPage: React.FC = () => {
       pageEntregas * rowsPerPageEntregas + rowsPerPageEntregas
     );
   }, [filteredEntregas, pageEntregas, rowsPerPageEntregas]);
+
+  const getClienteNombreEntrega = (e: EntregaViaje): string => {
+    if (e.documentoComercial?.clienteNombre) return e.documentoComercial.clienteNombre;
+    const match = e.direccionEntrega?.match(/^Cliente:\s*(.+)$/i);
+    return match ? match[1] : e.direccionEntrega || '-';
+  };
 
   const handleChangePageEntregas = (_event: unknown, newPage: number) => {
     setPageEntregas(newPage);
@@ -1044,72 +1055,66 @@ const StockEquiposPage: React.FC = () => {
                 Entregas Completadas ({filteredEntregas.length})
               </Typography>
             </Box>
-            
+
             <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-              <Table sx={{ minWidth: { xs: 1000, md: 'auto' } }}>
+              <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ minWidth: 140 }}>Número Equipo</TableCell>
-                    <TableCell sx={{ minWidth: 100 }}>Tipo</TableCell>
-                    <TableCell sx={{ minWidth: 120 }}>Modelo</TableCell>
-                    <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
                     <TableCell sx={{ minWidth: 140 }}>Fecha Entrega</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Cliente</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Comprobante</TableCell>
                     <TableCell sx={{ minWidth: 150 }}>Receptor</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>DNI Receptor</TableCell>
                     <TableCell sx={{ minWidth: 200 }}>Observaciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {paginatedEntregas.map((equipo) => (
-                    <TableRow key={equipo.id}>
+                  {paginatedEntregas.map((entrega) => (
+                    <TableRow key={entrega.id}>
                       <TableCell>
-                        <Typography variant="body2" fontWeight="bold">
-                          {equipo.numeroHeladera}
+                        <Typography variant="body2">
+                          {new Date(entrega.fechaEntrega).toLocaleString('es-ES', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </Typography>
                       </TableCell>
-                      <TableCell>{getTipoChip(equipo.tipo)}</TableCell>
-                      <TableCell>{equipo.modelo}</TableCell>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
                           <PersonIcon fontSize="small" color="action" />
                           <Typography variant="body2">
-                            {equipo.clienteNombre || '-'}
+                            {getClienteNombreEntrega(entrega)}
                           </Typography>
                         </Box>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {equipo.fechaEntrega 
-                            ? new Date(equipo.fechaEntrega).toLocaleString('es-ES', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                            : '-'}
+                          {entrega.documentoComercial?.numeroDocumento || (entrega.documentoComercialId ? `#${entrega.documentoComercialId}` : '-')}
                         </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight="medium" color="primary">
-                          {equipo.receptorNombre || '-'}
+                          {entrega.receptorNombre || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {equipo.receptorDni || '-'}
+                          {entrega.receptorDni || '-'}
                         </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ maxWidth: 200 }}>
-                          {equipo.observaciones || '-'}
+                          {entrega.observaciones || '-'}
                         </Typography>
                       </TableCell>
                     </TableRow>
                   ))}
                   {filteredEntregas.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Box textAlign="center" py={4}>
                           <Typography variant="body1" color="text.secondary">
                             No se encontraron entregas completadas
