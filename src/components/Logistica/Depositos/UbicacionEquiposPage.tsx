@@ -445,11 +445,73 @@ const UbicacionEquiposPage: React.FC = () => {
     }
   };
 
-  // Get equipos sin ubicación - filter out null/undefined IDs
+  // Get equipos sin ubicación - filter out null/undefined IDs and units physically off-site
   const equiposSinUbicacion = useMemo(() => {
     const ubicacionesIds = new Set(ubicaciones.map((u) => u.equipoFabricadoId));
-    return equipos.filter((e) => e.id != null && !ubicacionesIds.has(e.id));
+    return equipos.filter(
+      (e) =>
+        e.id != null &&
+        !ubicacionesIds.has(e.id) &&
+        e.estadoAsignacion !== 'EN_TRANSITO' &&
+        e.estadoAsignacion !== 'ENTREGADO',
+    );
   }, [equipos, ubicaciones]);
+
+  // Desglose by tipo → modelo for the new tab
+  const desgloseData = useMemo(() => {
+    // Exclude units physically off-site (in transit or delivered to client)
+    const equiposFisicos = equipos.filter(
+      (e) => e.estadoAsignacion !== 'EN_TRANSITO' && e.estadoAsignacion !== 'ENTREGADO',
+    );
+
+    const tipoOrder: TipoEquipo[] = ['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'];
+    const TIPO_LABEL: Record<string, string> = {
+      HELADERA: 'HELADERAS',
+      COOLBOX: 'COOLBOX',
+      EXHIBIDOR: 'EXHIBIDORES',
+      OTRO: 'OTROS',
+    };
+
+    return tipoOrder
+      .filter((tipo) => equiposFisicos.some((e) => e.tipo === tipo))
+      .map((tipo) => {
+        const equiposDeTipo = equiposFisicos.filter((e) => e.tipo === tipo);
+
+        const modelosMap: Record<string, EquipoFabricadoDTO[]> = {};
+        for (const equipo of equiposDeTipo) {
+          if (!modelosMap[equipo.modelo]) modelosMap[equipo.modelo] = [];
+          modelosMap[equipo.modelo].push(equipo);
+        }
+
+        const modelos = Object.entries(modelosMap)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([modelo, items]) => {
+            const disponibles = items.filter((e) => e.estadoAsignacion === 'DISPONIBLE');
+            const asignados = items.filter(
+              (e) => e.estadoAsignacion === 'RESERVADO' || e.estadoAsignacion === 'FACTURADO',
+            );
+            return {
+              modelo,
+              total: items.length,
+              asignados: asignados.length,
+              enService: 0,
+              disponibles: disponibles.length,
+              numeros: disponibles.map((e) => e.numeroHeladera).join(', '),
+            };
+          });
+
+        return {
+          tipo,
+          label: TIPO_LABEL[tipo] || tipo,
+          modelos,
+          totalTipo: {
+            total: modelos.reduce((s, m) => s + m.total, 0),
+            asignados: modelos.reduce((s, m) => s + m.asignados, 0),
+            disponibles: modelos.reduce((s, m) => s + m.disponibles, 0),
+          },
+        };
+      });
+  }, [equipos]);
 
   if (!tienePermiso('LOGISTICA')) {
     return (
@@ -564,6 +626,7 @@ const UbicacionEquiposPage: React.FC = () => {
           <Tab label="Todos los Equipos" />
           <Tab label="Por Depósito" />
           <Tab label="Buscar Equipo" />
+          <Tab label="Desglose por Modelo" />
         </Tabs>
       </Card>
 
@@ -853,6 +916,81 @@ const UbicacionEquiposPage: React.FC = () => {
           </TableContainer>
         ) : (
           <Alert severity="info">Ingrese un número de heladera y presione Buscar</Alert>
+        )}
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={3}>
+        {/* Desglose por Modelo */}
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+            <CircularProgress />
+          </Box>
+        ) : desgloseData.length === 0 ? (
+          <Alert severity="info">No hay equipos registrados</Alert>
+        ) : (
+          desgloseData.map(({ tipo, label, modelos, totalTipo }) => (
+            <Box key={tipo} sx={{ mb: 4 }}>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'primary.dark' }}>
+                      <TableCell sx={{ color: 'common.white', fontWeight: 'bold', width: '28%' }}>
+                        EQUIPOS
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'common.white', fontWeight: 'bold' }}>
+                        CANT TOTAL
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'common.white', fontWeight: 'bold' }}>
+                        CANT ASIGNADOS
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'common.white', fontWeight: 'bold' }}>
+                        CANT EN SERVICE
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: 'common.white', fontWeight: 'bold' }}>
+                        CANT DISPONIBLE
+                      </TableCell>
+                      <TableCell sx={{ color: 'common.white', fontWeight: 'bold' }}>
+                        NUMEROS
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {modelos.map((row) => (
+                      <TableRow key={row.modelo} hover>
+                        <TableCell>{row.modelo}</TableCell>
+                        <TableCell align="right">{row.total}</TableCell>
+                        <TableCell align="right">{row.asignados}</TableCell>
+                        <TableCell align="right">{row.enService}</TableCell>
+                        <TableCell align="right">{row.disponibles}</TableCell>
+                        <TableCell sx={{ typography: 'caption', color: 'text.secondary', maxWidth: 300, wordBreak: 'break-word' }}>
+                          {row.numeros || '—'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {/* Subtotal row */}
+                    <TableRow sx={{ bgcolor: 'primary.light' }}>
+                      <TableCell sx={{ fontWeight: 'bold', color: 'common.white' }}>
+                        TOTAL {label}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: 'common.white' }}>
+                        {totalTipo.total}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: 'common.white' }}>
+                        {totalTipo.asignados}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: 'common.white' }}>
+                        0
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: 'common.white' }}>
+                        {totalTipo.disponibles}
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          ))
         )}
       </TabPanel>
 
