@@ -44,6 +44,7 @@ import { depositoApi } from '../../../api/services/depositoApi';
 import { equipoFabricadoApi } from '../../../api/services';
 import { movimientoEquipoApi } from '../../../api/services/movimientosApi';
 import { usePermisos } from '../../../hooks/usePermisos';
+import LoadingOverlay from '../../common/LoadingOverlay';
 import type {
   UbicacionEquipo,
   Deposito,
@@ -78,6 +79,10 @@ const UbicacionEquiposPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Estado para la operación de registro masivo
+  const [submitting, setSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState({ current: 0, total: 0 });
 
   // Tab state
   const [tabValue, setTabValue] = useState(0);
@@ -359,33 +364,33 @@ const UbicacionEquiposPage: React.FC = () => {
       return;
     }
 
+    const total = createForm.equiposSeleccionados.length;
+    setSubmitting(true);
+    setSubmitProgress({ current: 0, total });
+
     try {
-      setLoading(true);
       let exitosos = 0;
       let errores = 0;
 
-      // Crear ubicación para cada equipo seleccionado
-      for (const numeroHeladera of createForm.equiposSeleccionados) {
-        try {
-          // Buscar el equipo por número para obtener el ID
-          const equipo = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera);
+      for (let i = 0; i < createForm.equiposSeleccionados.length; i++) {
+        const numeroHeladera = createForm.equiposSeleccionados[i];
+        setSubmitProgress({ current: i + 1, total });
 
-          // Si el equipo tiene id null, usar el numeroHeladera directamente
-          if (equipo.id == null) {
-            await ubicacionEquipoApi.create({
-              equipoFabricadoId: numeroHeladera as any, // Workaround para backend
-              depositoId: Number(createForm.depositoId),
-              ubicacionInterna: createForm.ubicacionInterna,
-              observaciones: createForm.observaciones,
-            });
-          } else {
-            await ubicacionEquipoApi.create({
-              equipoFabricadoId: equipo.id,
-              depositoId: Number(createForm.depositoId),
-              ubicacionInterna: createForm.ubicacionInterna,
-              observaciones: createForm.observaciones,
-            });
-          }
+        // Usar los datos ya cargados en equiposSearchResults — sin request extra por equipo
+        const equipo = equiposSearchResults.find((e) => e.numeroHeladera === numeroHeladera);
+        if (!equipo || equipo.id == null) {
+          console.warn(`⚠️ No se encontró ID para ${numeroHeladera}, omitiendo`);
+          errores++;
+          continue;
+        }
+
+        try {
+          await ubicacionEquipoApi.create({
+            equipoFabricadoId: equipo.id,
+            depositoId: Number(createForm.depositoId),
+            ubicacionInterna: createForm.ubicacionInterna,
+            observaciones: createForm.observaciones,
+          });
           exitosos++;
         } catch (err: any) {
           console.error(`❌ Error creando ubicación para ${numeroHeladera}:`, err);
@@ -410,7 +415,8 @@ const UbicacionEquiposPage: React.FC = () => {
       console.error('❌ Error general:', err);
       setError('Error al registrar las ubicaciones');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
+      setSubmitProgress({ current: 0, total: 0 });
     }
   };
 
@@ -605,6 +611,9 @@ const UbicacionEquiposPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <Tabs
           value={tabValue}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           onChange={async (_, newValue: number) => {
             setTabValue(newValue);
             if (newValue === 3 && desgloseServidor.length === 0) {
@@ -1286,16 +1295,23 @@ const UbicacionEquiposPage: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setCreateDialogOpen(false)} disabled={submitting}>Cancelar</Button>
           <Button
             onClick={handleCreate}
             variant="contained"
-            disabled={createForm.equiposSeleccionados.length === 0 || !createForm.depositoId}
+            disabled={createForm.equiposSeleccionados.length === 0 || !createForm.depositoId || submitting}
           >
             Registrar ({createForm.equiposSeleccionados.length})
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Loading overlay para operaciones masivas */}
+      <LoadingOverlay
+        open={submitting}
+        message="Registrando ubicaciones..."
+        progress={submitProgress.total > 0 ? submitProgress : undefined}
+      />
 
       {/* Historial Dialog */}
       <Dialog

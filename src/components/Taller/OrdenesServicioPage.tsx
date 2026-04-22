@@ -183,8 +183,14 @@ const OrdenesServicioPage: React.FC = () => {
     resetEquiposState();
   };
 
+  const MIN_QUERY_LENGTH = 5; // ej: "HEL-1" — evita llamadas con prefijos incompletos
+
   const handleBuscarEquipo = async () => {
-    if (!equipoQuery.trim()) return;
+    const query = equipoQuery.trim();
+    if (query.length < MIN_QUERY_LENGTH) {
+      setEquipoError(`Ingrese al menos ${MIN_QUERY_LENGTH} caracteres para buscar`);
+      return;
+    }
     setBuscandoEquipo(true);
     setEquipoEncontrado(null);
     setEquipoError(null);
@@ -987,6 +993,7 @@ const OrdenesServicioPage: React.FC = () => {
                     placeholder="Ej: HEL-0001"
                     size="small"
                     sx={{ bgcolor: 'white' }}
+                    helperText="Ingrese el número completo del equipo"
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -999,7 +1006,7 @@ const OrdenesServicioPage: React.FC = () => {
                     variant="outlined"
                     color="warning"
                     onClick={handleBuscarEquipo}
-                    disabled={!equipoQuery.trim() || buscandoEquipo}
+                    disabled={equipoQuery.trim().length < MIN_QUERY_LENGTH || buscandoEquipo}
                     sx={{ minWidth: 110, height: 40, whiteSpace: 'nowrap' }}
                   >
                     {buscandoEquipo ? <CircularProgress size={18} color="warning" /> : 'Buscar'}
