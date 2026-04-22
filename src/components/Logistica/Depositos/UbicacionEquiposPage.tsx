@@ -141,9 +141,9 @@ const UbicacionEquiposPage: React.FC = () => {
     try {
       setLoading(true);
       const [ubicacionesResponse, depositosResponse, equiposResponse] = await Promise.all([
-        ubicacionEquipoApi.getAll(),
+        ubicacionEquipoApi.getAll({ size: 5000 }), // Traer todas para el filtro de búsqueda
         depositoApi.getActivos(),
-        equipoFabricadoApi.findAll({ page: 0, size: 1000 }), // Reducido para mejor rendimiento
+        equipoFabricadoApi.findAll({ page: 0, size: 1000 }),
       ]);
       // Handle paginated responses
       const ubicacionesData = Array.isArray(ubicacionesResponse)
@@ -370,6 +370,7 @@ const UbicacionEquiposPage: React.FC = () => {
 
     try {
       let exitosos = 0;
+      let yaRegistrados = 0;
       let errores = 0;
 
       for (let i = 0; i < createForm.equiposSeleccionados.length; i++) {
@@ -393,23 +394,37 @@ const UbicacionEquiposPage: React.FC = () => {
           });
           exitosos++;
         } catch (err: any) {
-          console.error(`❌ Error creando ubicación para ${numeroHeladera}:`, err);
-          errores++;
+          const backendMsg: string = err?.response?.data?.message || '';
+          if (backendMsg.toLowerCase().includes('ya tiene una ubicación')) {
+            // El equipo fue registrado en una operación previa — no es un error real
+            yaRegistrados++;
+          } else {
+            console.error(`❌ Error creando ubicación para ${numeroHeladera}:`, err);
+            errores++;
+          }
         }
       }
 
       // Mensaje de resultado
-      if (exitosos > 0 && errores === 0) {
-        setSuccess(`Se registraron ${exitosos} ubicaciones correctamente`);
-      } else if (exitosos > 0 && errores > 0) {
-        setError(`Se registraron ${exitosos} ubicaciones, pero ${errores} fallaron`);
-      } else {
-        setError('No se pudo registrar ninguna ubicación');
-      }
-
       await loadData();
-      if (exitosos > 0) {
+
+      if (exitosos > 0 && errores === 0 && yaRegistrados === 0) {
+        setSuccess(`Se registraron ${exitosos} ubicaciones correctamente`);
         setCreateDialogOpen(false);
+      } else if (exitosos > 0) {
+        const partes = [`${exitosos} registradas`];
+        if (yaRegistrados > 0) partes.push(`${yaRegistrados} ya tenían ubicación`);
+        if (errores > 0) partes.push(`${errores} con error`);
+        setSuccess(partes.join(' · '));
+        setCreateDialogOpen(false);
+      } else if (yaRegistrados > 0 && errores === 0) {
+        setError(
+          `Todos los equipos seleccionados ya tienen ubicación registrada. ` +
+          `Verificá en la pestaña "Todos los Equipos". ` +
+          `(${yaRegistrados} ya registrados)`
+        );
+      } else {
+        setError(`No se pudo registrar ninguna ubicación (${errores} errores)`);
       }
     } catch (err: any) {
       console.error('❌ Error general:', err);
