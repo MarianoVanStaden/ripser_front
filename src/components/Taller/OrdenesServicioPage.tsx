@@ -44,7 +44,8 @@ import {
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import { employeeApi } from '../../api/services/employeeApi';
-import type { OrdenServicio, Cliente, Empleado } from '../../types';
+import { equipoFabricadoApi } from '../../api/services';
+import type { OrdenServicio, Cliente, Empleado, EquipoFabricadoDTO } from '../../types';
 
 
 const OrdenesServicioPage: React.FC = () => {
@@ -80,6 +81,14 @@ const OrdenesServicioPage: React.FC = () => {
     fechaEstimada: '',
     estado: 'PENDIENTE'
   });
+
+  // Estado para equipos en service vinculados a la orden
+  const [equiposOrden, setEquiposOrden] = useState<EquipoFabricadoDTO[]>([]);
+  const [descripcionFalla, setDescripcionFalla] = useState('');
+  const [equipoQuery, setEquipoQuery] = useState('');
+  const [equipoEncontrado, setEquipoEncontrado] = useState<EquipoFabricadoDTO | null>(null);
+  const [buscandoEquipo, setBuscandoEquipo] = useState(false);
+  const [equipoError, setEquipoError] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrdenes();
@@ -152,6 +161,14 @@ const OrdenesServicioPage: React.FC = () => {
     setFormOpen(true);
   };
 
+  const resetEquiposState = () => {
+    setEquiposOrden([]);
+    setDescripcionFalla('');
+    setEquipoQuery('');
+    setEquipoEncontrado(null);
+    setEquipoError(null);
+  };
+
   const handleCloseForm = () => {
     setFormOpen(false);
     setEditingOrden(null);
@@ -163,18 +180,60 @@ const OrdenesServicioPage: React.FC = () => {
       fechaEstimada: '',
       estado: 'PENDIENTE'
     });
+    resetEquiposState();
+  };
+
+  const handleBuscarEquipo = async () => {
+    if (!equipoQuery.trim()) return;
+    setBuscandoEquipo(true);
+    setEquipoEncontrado(null);
+    setEquipoError(null);
+    try {
+      const equipo = await equipoFabricadoApi.findByNumeroHeladera(equipoQuery.trim());
+      setEquipoEncontrado(equipo);
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        setEquipoError(`No se encontró ningún equipo con número "${equipoQuery.trim()}"`);
+      } else {
+        setEquipoError('Error al buscar el equipo');
+      }
+    } finally {
+      setBuscandoEquipo(false);
+    }
+  };
+
+  const handleAgregarEquipo = () => {
+    if (!equipoEncontrado) return;
+    if (equipoEncontrado.id != null && equiposOrden.some((e) => e.id === equipoEncontrado.id)) {
+      setEquipoError('Este equipo ya fue agregado a la orden');
+      return;
+    }
+    setEquiposOrden((prev) => [...prev, equipoEncontrado]);
+    setEquipoEncontrado(null);
+    setEquipoQuery('');
+    setEquipoError(null);
+  };
+
+  const handleQuitarEquipo = (equipoId: number) => {
+    setEquiposOrden((prev) => prev.filter((e) => e.id !== equipoId));
   };
 
   const handleSaveOrden = async () => {
     try {
+      const equipoIds = equiposOrden
+        .map((e) => e.id)
+        .filter((id): id is number => id != null);
+
       const ordenData: any = {
         clienteId: parseInt(formData.clienteId),
         responsableId: formData.responsableId ? parseInt(formData.responsableId) : undefined,
         descripcionTrabajo: formData.descripcionTrabajo,
         observaciones: formData.observaciones,
         estado: formData.estado,
-        materiales: [], // Los materiales se agregan después
-        tareas: [] // Las tareas se agregan después
+        materiales: [],
+        tareas: [],
+        ...(equipoIds.length > 0 && { equipoIds }),
+        ...(descripcionFalla.trim() && { descripcionFalla: descripcionFalla.trim() }),
       };
 
       // Solo agregar fechaEstimada si tiene valor y es futura
@@ -184,7 +243,6 @@ const OrdenesServicioPage: React.FC = () => {
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(0, 0, 0, 0);
 
-        // Solo enviar si la fecha es al menos mañana
         if (selectedDate >= tomorrow) {
           ordenData.fechaEstimada = selectedDate.toISOString();
         }
@@ -638,6 +696,50 @@ const OrdenesServicioPage: React.FC = () => {
                 </Card>
               </Grid>
 
+              {/* Equipos en Service */}
+              {selected.equipos && selected.equipos.length > 0 && (
+                // @ts-ignore
+                <Grid item xs={12}>
+                  <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" color="warning.dark" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
+                        🔧 Equipos en Service
+                      </Typography>
+                      <TableContainer sx={{ borderRadius: 1, border: '1px solid', borderColor: 'grey.200' }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow sx={{ bgcolor: 'warning.50' }}>
+                              <TableCell sx={{ fontWeight: 600 }}>N° Heladera</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Tipo</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Modelo</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Falla Reportada</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Ingreso</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {selected.equipos.map((eq, idx) => (
+                              <TableRow key={eq.equipoFabricadoId ?? idx} hover>
+                                <TableCell sx={{ fontWeight: 600 }}>{eq.numeroHeladera}</TableCell>
+                                <TableCell>{eq.tipo}</TableCell>
+                                <TableCell>{eq.modelo}</TableCell>
+                                <TableCell sx={{ color: 'text.secondary' }}>
+                                  {eq.descripcionFalla || '—'}
+                                </TableCell>
+                                <TableCell>
+                                  {eq.fechaIngresoServicio
+                                    ? new Date(eq.fechaIngresoServicio).toLocaleDateString('es-AR')
+                                    : '—'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )}
+
               {/* Materiales Utilizados */}
               {selected.materiales && selected.materiales.length > 0 && (
                 // @ts-ignore
@@ -850,6 +952,170 @@ const OrdenesServicioPage: React.FC = () => {
                     sx={{ bgcolor: 'white' }}
                   />
                 </Stack>
+              </Paper>
+
+              {/* Equipos en Service */}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  bgcolor: 'warning.50',
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'warning.200',
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight="700" color="warning.dark" gutterBottom sx={{ mb: 0.5 }}>
+                  🔧 EQUIPOS EN SERVICE
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                  Opcional — vincula los equipos físicos que ingresan a reparación. El conteo "En Service" se actualiza automáticamente.
+                </Typography>
+
+                {/* Búsqueda por número de heladera */}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="Número de Heladera"
+                    value={equipoQuery}
+                    onChange={(e) => {
+                      setEquipoQuery(e.target.value);
+                      setEquipoEncontrado(null);
+                      setEquipoError(null);
+                    }}
+                    onKeyPress={(e) => e.key === 'Enter' && handleBuscarEquipo()}
+                    placeholder="Ej: HEL-0001"
+                    size="small"
+                    sx={{ bgcolor: 'white' }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    onClick={handleBuscarEquipo}
+                    disabled={!equipoQuery.trim() || buscandoEquipo}
+                    sx={{ minWidth: 110, height: 40, whiteSpace: 'nowrap' }}
+                  >
+                    {buscandoEquipo ? <CircularProgress size={18} color="warning" /> : 'Buscar'}
+                  </Button>
+                </Stack>
+
+                {/* Error de búsqueda */}
+                {equipoError && (
+                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setEquipoError(null)}>
+                    {equipoError}
+                  </Alert>
+                )}
+
+                {/* Resultado encontrado — confirmar antes de agregar */}
+                {equipoEncontrado && (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      mb: 2,
+                      bgcolor: 'success.50',
+                      border: '1px solid',
+                      borderColor: 'success.300',
+                      borderRadius: 1.5,
+                    }}
+                  >
+                    <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="700">
+                          {equipoEncontrado.numeroHeladera}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {equipoEncontrado.tipo} · {equipoEncontrado.modelo}
+                          {equipoEncontrado.color ? ` · ${equipoEncontrado.color}` : ''}
+                        </Typography>
+                        <Box mt={0.5}>
+                          <Chip label={equipoEncontrado.estadoAsignacion} size="small" />
+                        </Box>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        onClick={handleAgregarEquipo}
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        + Agregar
+                      </Button>
+                    </Box>
+                  </Paper>
+                )}
+
+                {/* Lista de equipos ya agregados */}
+                {equiposOrden.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography
+                      variant="caption"
+                      fontWeight="700"
+                      color="text.secondary"
+                      sx={{ mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: 0.5 }}
+                    >
+                      Equipos vinculados ({equiposOrden.length})
+                    </Typography>
+                    <Stack spacing={0.75}>
+                      {equiposOrden.map((equipo) => (
+                        <Box
+                          key={equipo.id ?? equipo.numeroHeladera}
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          sx={{
+                            px: 1.5,
+                            py: 1,
+                            bgcolor: 'white',
+                            borderRadius: 1,
+                            border: '1px solid',
+                            borderColor: 'grey.300',
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="body2" fontWeight="600">
+                              {equipo.numeroHeladera}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {equipo.tipo} · {equipo.modelo}
+                            </Typography>
+                          </Box>
+                          <Tooltip title="Quitar equipo">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => equipo.id != null && handleQuitarEquipo(equipo.id)}
+                            >
+                              <CancelIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                {/* Descripción de la falla */}
+                <TextField
+                  fullWidth
+                  label="Descripción de la Falla"
+                  multiline
+                  rows={2}
+                  value={descripcionFalla}
+                  onChange={(e) => setDescripcionFalla(e.target.value)}
+                  placeholder="Describa el problema o falla reportada..."
+                  size="small"
+                  sx={{ bgcolor: 'white' }}
+                  disabled={equiposOrden.length === 0}
+                  helperText={equiposOrden.length === 0 ? 'Agregue al menos un equipo para ingresar la falla' : undefined}
+                />
               </Paper>
 
               {/* Fechas y Estado */}
