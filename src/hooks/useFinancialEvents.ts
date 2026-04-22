@@ -37,6 +37,11 @@ const MAX_DEDUP_IDS             = 100;    // rolling window for client-side dedu
 // 5xx, 429, and network errors are retriable via the library's built-in back-off.
 const NON_RETRIABLE_STATUS = new Set([400, 401, 403, 404, 410, 422]);
 
+// Exponential back-off for retriable errors (5xx, network failures).
+// Delays: 1s → 2s → 4s → 8s → 16s → 30s → 30s → …
+const BASE_RETRY_MS = 1_000;
+const MAX_RETRY_MS  = 30_000;
+
 // ---------------------------------------------------------------------------
 // Custom error for fatal (non-retriable) connection failures
 // ---------------------------------------------------------------------------
@@ -79,6 +84,8 @@ export function useFinancialEvents(): void {
   const processedIdsRef  = useRef<Set<string>>(new Set());
   const lastEventTimeRef = useRef<number>(Date.now());
   const healthCheckRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Counts consecutive retriable failures — reset to 0 on successful open.
+  const retryCountRef    = useRef<number>(0);
 
   // ---------------------------------------------------------------------------
   // Visibility: when the tab regains focus, invalidate all SSE-tracked queries.
@@ -113,6 +120,10 @@ export function useFinancialEvents(): void {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+
+    // Fresh connection attempt (triggered by auth change or health-check reconnect)
+    // — reset the back-off counter so we start at 1s again.
+    retryCountRef.current = 0;
 
     // ---- Health check -------------------------------------------------------
     // Detects "zombie" connections: TCP appears alive but no data flows.
@@ -190,6 +201,7 @@ export function useFinancialEvents(): void {
 
       onopen: async (response: Response) => {
         if (response.ok) {
+          retryCountRef.current = 0; // successful connection — reset back-off
           lastEventTimeRef.current = Date.now();
           console.log('[SSE CONNECTED] empresaId:', empresaId);
           return;
@@ -200,7 +212,7 @@ export function useFinancialEvents(): void {
           throw new FatalSSEError(response.status);
         }
         // Retriable server error (5xx, 429, etc.) — plain Error.
-        // onerror returns undefined → library retries with back-off.
+        // onerror will compute and return the back-off delay.
         throw new Error(`[SSE] Server error ${response.status}`);
       },
 
@@ -241,17 +253,19 @@ export function useFinancialEvents(): void {
       },
 
       onerror: (err: unknown) => {
-        console.error('[SSE ERROR]', err);
-
         if (err instanceof FatalSSEError) {
           // Re-throw → library stops retrying permanently.
           throw err;
         }
 
-        // All other errors (network failures, 5xx, etc.):
-        // return undefined → library retries with exponential back-off
-        // starting at 1s (or the server's retry field if set).
-        return undefined;
+        // Exponential back-off: 1s, 2s, 4s, 8s, 16s, 30s, 30s, …
+        retryCountRef.current += 1;
+        const delay = Math.min(BASE_RETRY_MS * 2 ** (retryCountRef.current - 1), MAX_RETRY_MS);
+        console.error(`[SSE ERROR] retry ${retryCountRef.current} in ${delay / 1000}s`, err);
+
+        // Returning a number tells the library to wait exactly that many ms
+        // before the next attempt (overrides its own fixed 1s default).
+        return delay;
       },
     });
 
