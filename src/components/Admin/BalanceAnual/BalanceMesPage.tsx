@@ -8,7 +8,6 @@ import {
   Grid2 as Grid,
   Paper,
   Alert,
-  CircularProgress,
   Divider,
   Chip,
   Stack,
@@ -20,6 +19,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import { balanceAnualApi } from '../../../api/services/balanceAnualApi';
 import type { BalanceMensualDTO, GuardarBalanceMensualDTO } from '../../../types';
 import EstadoBalanceBadge from './components/EstadoBalanceBadge';
+import LoadingOverlay from '../../common/LoadingOverlay';
 
 const MESES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -242,16 +242,9 @@ export default function BalanceMesPage() {
     }
   };
 
-  if (loadingInit) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3}>
+      <LoadingOverlay open={loadingInit} message="Cargando balance..." />
       <Box display="flex" alignItems="center" gap={1} mb={1}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/balance')} size="small">
           Balance Anual

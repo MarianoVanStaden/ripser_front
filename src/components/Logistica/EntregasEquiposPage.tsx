@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   Chip,
   TextField,
@@ -37,6 +36,7 @@ import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import type { DocumentoComercial, EquipoFabricadoDTO } from '../../types';
 import api from '../../api/config';
 import SuccessDialog from '../common/SuccessDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 // Custom hook for responsive breakpoints
 const useResponsive = () => {
@@ -536,17 +536,9 @@ const EntregasEquiposPage2: React.FC = () => {
     );
   };
 
-  if (loading && facturasConEquipos.length === 0) {
-    return (
-      <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="400px" gap={2}>
-        <CircularProgress />
-        <Typography color="text.secondary">Cargando entregas pendientes...</Typography>
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ pb: isMobile ? 10 : 3, minHeight: '100vh' }}>
+      <LoadingOverlay open={loading} message="Cargando entregas pendientes..." />
       {/* Header - Sin card de fondo */}
       <Box
         display="flex"

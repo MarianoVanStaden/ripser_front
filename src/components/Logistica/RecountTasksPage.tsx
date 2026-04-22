@@ -30,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { movimientoStockApi } from '../../api/services';
 import type { MovimientoStock } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface RecountTask extends MovimientoStock {
   // All fields from MovimientoStock, particularly:
@@ -167,17 +168,10 @@ const RecountTasksPage: React.FC = () => {
     return '-';
   };
 
-  if (loading && tasks.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-      <Box 
+      <LoadingOverlay open={loading} message="Cargando tareas de recuento..." />
+      <Box
         sx={{ 
           display: 'flex', 
           flexDirection: { xs: 'column', sm: 'row' },

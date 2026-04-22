@@ -3,7 +3,7 @@ import {
   Box, Card, CardContent, Typography, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton, Chip, Dialog,
   DialogTitle, DialogContent, DialogActions, TextField, Grid, FormControl,
-  InputLabel, Select, MenuItem, Alert, CircularProgress, Tooltip, Stack,
+  InputLabel, Select, MenuItem, Alert, Tooltip, Stack,
   Switch, FormControlLabel, Slider, InputAdornment, Divider
 } from '@mui/material';
 import {
@@ -23,6 +23,7 @@ import type {
   UpdateOpcionFinanciamientoTemplateDTO,
 } from '../../api/services/opcionFinanciamientoTemplateApi';
 import type { MetodoPago } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const ConfiguracionFinanciamiento: React.FC = () => {
   const [templates, setTemplates] = useState<OpcionFinanciamientoTemplateDTO[]>([]);
@@ -222,16 +223,9 @@ const ConfiguracionFinanciamiento: React.FC = () => {
     return methods[method] || method;
   };
 
-  if (loading && templates.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando plantillas..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <SettingsIcon />

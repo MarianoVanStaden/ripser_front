@@ -52,6 +52,7 @@ import type { Cliente, TipoMovimiento, MetodoPago } from '../../types';
 import { useCuentaCorrienteCliente } from '../../hooks/useCuentaCorrienteCliente';
 import { useSmartRefresh, formatLastUpdated } from '../../hooks/useSmartRefresh';
 import { generateCuentaCorrienteClientePDF } from '../../utils/pdfExportUtils';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 dayjs.locale('es');
 
@@ -244,17 +245,10 @@ const CuentaCorrientePage: React.FC = () => {
     setPage(0); // Reset to first page when changing rows per page
   };
 
-  if (clientesLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box p={{ xs: 2, sm: 3 }}>
+        <LoadingOverlay open={clientesLoading} message="Cargando clientes..." />
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
           <Box>

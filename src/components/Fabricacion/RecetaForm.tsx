@@ -22,6 +22,7 @@ import type {
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 import api from '../../api/config';
 import SuccessDialog from '../common/SuccessDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const schema = yup.object().shape({
   nombre: yup.string().required('El nombre es obligatorio'),
@@ -238,16 +239,9 @@ const RecetaForm: React.FC = () => {
     });
   };
 
-  if (loading && isEdit) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading && isEdit} message="Cargando receta..." />
       <Box display="flex" alignItems="center" gap={2} mb={3}>
         <IconButton onClick={() => navigate('/fabricacion/recetas')}>
           <ArrowBack />

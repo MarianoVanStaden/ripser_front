@@ -8,7 +8,6 @@ import {
   Grid,
   InputAdornment,
   Button,
-  CircularProgress,
   Alert,
   FormLabel,
   Rating,
@@ -26,6 +25,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { TipoCliente, EstadoCliente, ProvinciaEnum } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const ClienteFormPage: React.FC = () => {
   const navigate = useNavigate();
@@ -176,16 +176,9 @@ const ClienteFormPage: React.FC = () => {
 
   const handleCancel = () => navigate('/clientes/gestion');
 
-  if (loading && isEdit) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ maxWidth: 'lg', mx: 'auto', p: { xs: 2, md: 3 } }}>
+      <LoadingOverlay open={loading && isEdit} message="Cargando cliente..." />
       {/* Header */}
       <Box display="flex" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
         <Button startIcon={<ArrowBackIcon />} onClick={handleCancel} size={isMobile ? 'small' : 'medium'}>

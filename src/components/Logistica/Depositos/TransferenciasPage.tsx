@@ -69,6 +69,7 @@ import type {
   StockDeposito,
   EquipoFabricadoDTO,
 } from '../../../types';
+import LoadingOverlay from '../../common/LoadingOverlay';
 import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
 import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
 import {
@@ -807,18 +808,11 @@ const TransferenciasPage: React.FC = () => {
       .slice(0, 5);
   }, [transferencias]);
 
-  if (loading && transferencias.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
       <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-        <Box 
+        <LoadingOverlay open={loading} message="Cargando transferencias..." />
+        <Box
           sx={{ 
             display: 'flex', 
             flexDirection: { xs: 'column', sm: 'row' },

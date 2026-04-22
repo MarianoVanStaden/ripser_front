@@ -18,7 +18,6 @@ import {
   InputAdornment,
   MenuItem,
   Tooltip,
-  CircularProgress,
   Rating,
   TablePagination,
   useMediaQuery,
@@ -42,6 +41,7 @@ import { clienteApi, type ClienteFilterParams } from '../../api/services/cliente
 import { useTenant } from '../../context/TenantContext';
 import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const ClientesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -131,14 +131,6 @@ const ClientesPage: React.FC = () => {
     setOpenDialog(true);
   };
 
-  if (loading && clientes.length === 0) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box
       sx={{
@@ -148,6 +140,7 @@ const ClientesPage: React.FC = () => {
         mx: 'auto',
       }}
     >
+      <LoadingOverlay open={loading} message="Cargando clientes..." />
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" component="h1" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>

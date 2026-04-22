@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Box, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TableSortLabel, TablePagination, IconButton, Typography,
-  Tooltip, CircularProgress, Alert, TextField, InputAdornment,
+  Tooltip, Alert, TextField, InputAdornment,
   Chip, Stack, Button, Menu, MenuItem, Dialog, DialogTitle,
   DialogContent, DialogContentText, DialogActions,
 } from '@mui/material';
@@ -19,6 +19,7 @@ import {
 import type { PrestamoPersonalDTO } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'clienteNombre' | 'montoTotal' | 'cuotaActual' | 'estado' | 'categoria' | 'diasVencido' | 'saldoPendiente';
@@ -155,6 +156,7 @@ export const PrestamosListPage: React.FC = () => {
 
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando préstamos..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Gestión de Préstamos</Typography>
         <Button
@@ -220,11 +222,7 @@ export const PrestamosListPage: React.FC = () => {
       </Box>
 
       {/* Table */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
+      {!loading && (
         <TableContainer component={Paper}>
           <Table sx={{ minWidth: 900 }}>
             <TableHead>

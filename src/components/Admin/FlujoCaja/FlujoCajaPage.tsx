@@ -50,6 +50,7 @@ import FlujoCajaMovimientosTable from './components/FlujoCajaMovimientosTable';
 import CajasAhorroUSDSection from './components/CajasAhorroUSDSection';
 import MovimientoExtraDialog from './dialogs/MovimientoExtraDialog';
 import { movimientoExtraApi } from '../../../api/services/movimientoExtraApi';
+import LoadingOverlay from '../../common/LoadingOverlay';
 
 dayjs.locale('es');
 
@@ -217,17 +218,10 @@ const FlujoCajaPage: React.FC = () => {
     }
   };
 
-  if (isLoading && !rawData) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress size={60} />
-      </Box>
-    );
-  }
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box p={{ xs: 2, sm: 3 }}>
+        <LoadingOverlay open={isLoading} message="Cargando flujo de caja..." />
         {/* Header */}
         <Box
           display="flex"

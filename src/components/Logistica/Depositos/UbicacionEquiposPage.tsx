@@ -512,15 +512,16 @@ const UbicacionEquiposPage: React.FC = () => {
 
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+      <LoadingOverlay open={loading} message="Cargando ubicaciones..." />
       {/* Header */}
-      <Box 
-        sx={{ 
-          display: 'flex', 
+      <Box
+        sx={{
+          display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'space-between', 
+          justifyContent: 'space-between',
           alignItems: { xs: 'stretch', sm: 'center' },
           gap: 2,
-          mb: 3 
+          mb: 3
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -746,11 +747,7 @@ const UbicacionEquiposPage: React.FC = () => {
       {/* Content */}
       <TabPanel value={tabValue} index={0}>
         {/* Todos los Equipos */}
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
+        {!loading && (
           <TableContainer component={Paper}>
             <Table>
               <TableHead>

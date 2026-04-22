@@ -24,6 +24,7 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import StockErrorDialog, { type ProductoInsuficiente } from '../common/StockErrorDialog';
 import EquipoSuccessDialog, { type EquipoCreado } from '../common/EquipoSuccessDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 
 const schema = yup.object().shape({
@@ -373,16 +374,9 @@ const EquipoForm: React.FC = () => {
     }
   };
 
-  if (loading && isEdit) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading && isEdit} message="Cargando equipo..." />
       <Box display="flex" alignItems="center" gap={2} mb={3}>
         <IconButton onClick={() => navigate('/fabricacion/equipos')}>
           <ArrowBack />
