@@ -129,6 +129,8 @@ const UbicacionEquiposPage: React.FC = () => {
   const [equipoSearchTerm, setEquipoSearchTerm] = useState('');
   const [equiposSearchResults, setEquiposSearchResults] = useState<EquipoFabricadoDTO[]>([]);
   const [searchingEquipos, setSearchingEquipos] = useState(false);
+  // Error local del diálogo (se muestra dentro del modal, no detrás)
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   useEffect(() => {
     if (tienePermiso('LOGISTICA')) {
@@ -290,68 +292,53 @@ const UbicacionEquiposPage: React.FC = () => {
     setEquipoSearchType('');
     setEquipoSearchTerm('');
     setEquiposSearchResults([]);
+    setDialogError(null);
     setCreateDialogOpen(true);
   };
 
   const handleSearchEquipos = async () => {
     if (!equipoSearchType) {
-      setError('Debe seleccionar un tipo de equipo');
-      return;
-    }
-
-    if (!equipoSearchTerm.trim()) {
-      setError('Debe ingresar un término de búsqueda');
+      setDialogError('Debe seleccionar un tipo de equipo');
       return;
     }
 
     try {
       setSearchingEquipos(true);
-      setError(null);
+      setDialogError(null);
 
-      // Obtener equipos por tipo
       const response = await equipoFabricadoApi.findByTipo(equipoSearchType as TipoEquipo);
-
-      // La respuesta puede ser un array directamente o un objeto con content
       const equiposPorTipo = Array.isArray(response) ? response : (response as any)?.content || [];
 
-      // Filtrar localmente por el término de búsqueda
-      const searchLower = equipoSearchTerm.toLowerCase();
-      // Crear Sets tanto para IDs como para números de heladera para filtrar equipos ya ubicados
+      const searchLower = equipoSearchTerm.trim().toLowerCase();
       const ubicacionesIds = new Set(ubicaciones.map((u) => u.equipoFabricadoId));
       const ubicacionesNumeros = new Set(ubicaciones.map((u) => u.equipoNumeroHeladera?.toLowerCase()));
 
       const filteredResults = equiposPorTipo.filter((equipo: any) => {
-        // Solo equipos disponibles
-        if (equipo.estadoAsignacion !== 'DISPONIBLE') {
-          return false;
-        }
+        if (equipo.estadoAsignacion !== 'DISPONIBLE') return false;
+        if (equipo.id != null && ubicacionesIds.has(equipo.id)) return false;
+        if (equipo.numeroHeladera && ubicacionesNumeros.has(equipo.numeroHeladera.toLowerCase())) return false;
 
-        // Excluir equipos que ya tienen ubicación (verificar por ID y por número de heladera)
-        if (equipo.id != null && ubicacionesIds.has(equipo.id)) {
-          return false;
-        }
-        
-        // También verificar por número de heladera (para casos donde el ID es null)
-        if (equipo.numeroHeladera && ubicacionesNumeros.has(equipo.numeroHeladera.toLowerCase())) {
-          return false;
-        }
+        // Si no hay término de búsqueda, mostrar todos sin ubicación del tipo seleccionado
+        if (!searchLower) return true;
 
-        // Filtrar por término de búsqueda (número de heladera o modelo)
-        const matchesSearch =
+        return (
           equipo.numeroHeladera?.toLowerCase().includes(searchLower) ||
-          equipo.modelo?.toLowerCase().includes(searchLower);
-
-        return matchesSearch;
+          equipo.modelo?.toLowerCase().includes(searchLower)
+        );
       });
 
       setEquiposSearchResults(filteredResults);
 
       if (filteredResults.length === 0) {
-        setError('No se encontraron equipos sin ubicación que coincidan con la búsqueda');
+        setDialogError(
+          searchLower
+            ? 'No se encontraron equipos sin ubicación que coincidan con la búsqueda'
+            : `No hay equipos de ese tipo sin ubicación asignada`
+        );
       }
     } catch (err: any) {
       console.error('❌ Error searching equipos:', err);
-      setError('Error al buscar equipos');
+      setDialogError('Error al buscar equipos');
       setEquiposSearchResults([]);
     } finally {
       setSearchingEquipos(false);
@@ -360,7 +347,7 @@ const UbicacionEquiposPage: React.FC = () => {
 
   const handleCreate = async () => {
     if (createForm.equiposSeleccionados.length === 0 || !createForm.depositoId) {
-      setError('Debe seleccionar al menos un equipo y un depósito');
+      setDialogError('Debe seleccionar al menos un equipo y un depósito');
       return;
     }
 
@@ -1119,6 +1106,13 @@ const UbicacionEquiposPage: React.FC = () => {
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Registrar Ubicación de Equipo</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
+          {/* Error local del diálogo — se muestra dentro del modal */}
+          {dialogError && (
+            <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setDialogError(null)}>
+              {dialogError}
+            </Alert>
+          )}
+
           <Grid container spacing={2}>
             {/* Búsqueda de Equipos */}
             <Grid item xs={12}>
@@ -1134,6 +1128,7 @@ const UbicacionEquiposPage: React.FC = () => {
                   onChange={(e) => {
                     setEquipoSearchType(e.target.value as TipoEquipo);
                     setEquiposSearchResults([]);
+                    setDialogError(null);
                     setCreateForm({ ...createForm, equiposSeleccionados: [] });
                   }}
                   label="Tipo de Equipo"
@@ -1148,10 +1143,10 @@ const UbicacionEquiposPage: React.FC = () => {
             <Grid item xs={12} sm={5}>
               <TextField
                 fullWidth
-                label="Buscar por Número o Modelo"
+                label="Filtrar por Número o Modelo"
                 value={equipoSearchTerm}
                 onChange={(e) => setEquipoSearchTerm(e.target.value)}
-                placeholder="Ingrese número de heladera o modelo..."
+                placeholder="Opcional — vacío muestra todos sin ubicación"
                 onKeyPress={(e) => e.key === 'Enter' && handleSearchEquipos()}
                 disabled={!equipoSearchType}
                 InputProps={{
@@ -1168,7 +1163,7 @@ const UbicacionEquiposPage: React.FC = () => {
                 fullWidth
                 variant="outlined"
                 onClick={handleSearchEquipos}
-                disabled={!equipoSearchType || !equipoSearchTerm.trim() || searchingEquipos}
+                disabled={!equipoSearchType || searchingEquipos}
                 sx={{ height: '56px' }}
               >
                 {searchingEquipos ? <CircularProgress size={24} /> : 'Buscar'}

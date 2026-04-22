@@ -65,6 +65,8 @@ const OrdenesServicioPage: React.FC = () => {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
+  const [saving, setSaving] = useState(false);
+
   // Estados del formulario
   const [formData, setFormData] = useState<{
     clienteId: string;
@@ -225,6 +227,7 @@ const OrdenesServicioPage: React.FC = () => {
   };
 
   const handleSaveOrden = async () => {
+    setSaving(true);
     try {
       const equipoIds = equiposOrden
         .map((e) => e.id)
@@ -260,12 +263,15 @@ const OrdenesServicioPage: React.FC = () => {
         await ordenServicioApi.create(ordenData);
       }
 
-      await loadOrdenes();
+      // Close the form immediately so the user has clear feedback,
+      // then refresh the list in the background.
       handleCloseForm();
-      setError(null);
+      loadOrdenes(); // intentionally not awaited — runs in background
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al guardar la orden de servicio');
       console.error('Error saving orden:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1201,10 +1207,11 @@ const OrdenesServicioPage: React.FC = () => {
             onClick={handleSaveOrden}
             variant="contained"
             size="large"
-            disabled={!formData.clienteId || !formData.descripcionTrabajo}
+            disabled={!formData.clienteId || !formData.descripcionTrabajo || saving}
             sx={{ minWidth: 160 }}
+            startIcon={saving ? <CircularProgress size={18} color="inherit" /> : undefined}
           >
-            {editingOrden ? '💾 Guardar Cambios' : '➕ Crear Orden'}
+            {saving ? 'Guardando...' : (editingOrden ? '💾 Guardar Cambios' : '➕ Crear Orden')}
           </Button>
         </DialogActions>
       </Dialog>
