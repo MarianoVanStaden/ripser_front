@@ -15,6 +15,7 @@ import {
 import { Save as SaveIcon } from '@mui/icons-material';
 import { parametroSistemaApi } from '../../api/services';
 import type { ParametroSistema } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const COSTEO_FIELDS: { clave: string; label: string }[] = [
   { clave: 'COSTEO_MANO_OBRA_PCT', label: 'Mano de obra' },
@@ -87,16 +88,9 @@ const CosteoParametrosPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3} maxWidth={500}>
+      <LoadingOverlay open={loading} message="Cargando parámetros de costeo..." />
       <Typography variant="h5" fontWeight={600} mb={1}>
         Porcentajes de Costeo
       </Typography>

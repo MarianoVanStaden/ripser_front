@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
   Dialog,
@@ -23,6 +22,7 @@ import {
   LocationOn as LocationIcon,
 } from '@mui/icons-material';
 import { clientApi } from '../../api/services';
+import LoadingOverlay from '../common/LoadingOverlay';
 import type { Client, CreateClientRequest } from '../../types';
 
 const ClientsPage: React.FC = () => {
@@ -115,16 +115,9 @@ const ClientsPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando clientes..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Clients

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Grid, Stack, IconButton, Tooltip, Chip, Alert, CircularProgress,
+  TextField, Grid, Stack, IconButton, Tooltip, Chip, Alert,
   Autocomplete, FormControlLabel, Switch, useMediaQuery, useTheme
 } from '@mui/material';
 import {
@@ -25,6 +25,7 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
 import DocumentManager from '../shared/DocumentManager';
 import type { Legajo, Empleado, DocumentoEmpleado } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 // Categorías de documentos para empleados (compartidas con EmpleadosPage)
 const CATEGORIAS_EMPLEADO = [
@@ -265,16 +266,9 @@ const LegajosPage: React.FC = () => {
       .map(l => l.empleado.id)
   ).size;
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando legajos..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" fontWeight="700" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Legajos

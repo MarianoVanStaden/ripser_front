@@ -14,7 +14,6 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress,
   Chip,
   List,
   ListItem,
@@ -40,6 +39,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import LoadingOverlay from '../common/LoadingOverlay';
 import type { Cliente } from '../../types';
 
 dayjs.locale('es');
@@ -274,17 +274,10 @@ const AgendaVisitasPage: React.FC = () => {
   const visitasHoy = visitas.filter(v => v.fecha === dayjs().format('YYYY-MM-DD'));
   const visitasPendientes = visitas.filter(v => v.estado === 'PROGRAMADA' && dayjs(v.fecha).isAfter(dayjs().subtract(1, 'day')));
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
       <Box>
+        <LoadingOverlay open={loading} message="Cargando agenda..." />
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" component="h1">

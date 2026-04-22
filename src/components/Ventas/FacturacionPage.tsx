@@ -64,6 +64,7 @@ import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO }
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import SuccessDialog from "../common/SuccessDialog";
+import LoadingOverlay from "../common/LoadingOverlay";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
 import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import { useAuth } from '../../context/AuthContext';
@@ -1712,17 +1713,12 @@ const FacturacionPage = () => {
 
   // ProductsTable is defined outside FacturacionPage (see above)
 
-  if (loading && !products.length) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-        <Typography ml={2}>Cargando datos iniciales...</Typography>
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, width: '100%', maxWidth: '100%', mx: 0 }}>
+      <LoadingOverlay
+        open={loading}
+        message={products.length ? 'Procesando...' : 'Cargando datos iniciales...'}
+      />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <ReceiptIcon />

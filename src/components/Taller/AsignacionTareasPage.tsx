@@ -16,7 +16,6 @@ import {
   Button,
   Dialog,
   Stack,
-  CircularProgress,
   Alert,
   TextField,
   MenuItem,
@@ -45,6 +44,7 @@ import { tareaServicioApi } from '../../api/services/tareaServicioApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { TareaServicio, OrdenServicio, Empleado } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const AsignacionTareasPage: React.FC = () => {
   const theme = useTheme();
@@ -329,16 +329,9 @@ const AsignacionTareasPage: React.FC = () => {
     return filtered.sort((a, b) => b.id - a.id);
   }, [tareas, estadoFilter, ordenFilter, empleadoFilter, searchTerm]);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando tareas..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Asignación de Tareas

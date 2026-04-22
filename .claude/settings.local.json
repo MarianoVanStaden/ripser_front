@@ -69,7 +69,8 @@
       "Bash(npm show:*)",
       "Bash(npm audit:*)",
       "Bash(tee c:/Users/santi/tsc-errors.txt)",
-      "Bash(npx playwright *)"
+      "Bash(npx playwright *)",
+      "Bash(echo \"EXIT=$?\")"
     ],
     "deny": [],
     "ask": [],

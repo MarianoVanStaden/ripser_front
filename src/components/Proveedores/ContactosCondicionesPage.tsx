@@ -14,7 +14,6 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress,
   Chip,
   InputAdornment,
   Avatar,
@@ -38,6 +37,7 @@ import 'dayjs/locale/es';
 import { supplierApiWithFallback as supplierApi } from '../../api/services/apiWithFallback';
 import { contactoApi } from '../../api/services/contactoApi';
 import type { ProveedorDTO, ContactoProveedorDTO } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 dayjs.locale('es');
 
@@ -159,17 +159,10 @@ const ContactosCondicionesPage: React.FC = () => {
     ? contactos.filter(c => c.proveedorId === selectedProveedor.id)
     : [];
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
+        <LoadingOverlay open={loading} message="Cargando contactos..." />
         {/* Header */}
         <Box 
           sx={{ 

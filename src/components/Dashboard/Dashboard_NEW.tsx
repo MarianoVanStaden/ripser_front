@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   Paper,
   Chip,
@@ -21,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { clientApi, productApi, saleApi } from '../../api/services';
 import { testConnection } from '../../api/testConnection';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface DashboardStats {
   totalClients: number;
@@ -148,21 +148,9 @@ const Dashboard: React.FC = () => {
     fetchDashboardData();
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-        <Box sx={{ textAlign: 'center' }}>
-          <CircularProgress />
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            Loading dashboard data...
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
-
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando dashboard..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
           Dashboard

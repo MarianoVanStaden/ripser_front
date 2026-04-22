@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton, TextField, Stack,
-  Chip, Alert, CircularProgress, Grid, InputAdornment, Autocomplete, Dialog,
+  Chip, Alert, Grid, InputAdornment, Autocomplete, Dialog,
   MenuItem, Select, FormControl, InputLabel, TablePagination
 } from '@mui/material';
 import { 
@@ -19,6 +19,7 @@ import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import { documentoApi } from '../../api/documentoApi';
 import GarantiaFormDialog from './GarantiaFormDialog';
 import GarantiaDetailPage from './GarantiaDetailPage';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const GarantiasPage: React.FC = () => {
   const [garantias, setGarantias] = useState<GarantiaDTO[]>([]);
@@ -169,16 +170,9 @@ const GarantiasPage: React.FC = () => {
     !garantias.some(garantia => garantia.equipoFabricadoId === equipo.id)
   );
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando garantías..." />
       <Typography variant="h4" mb={3} fontWeight="bold">
         Gestión de Garantías
       </Typography>

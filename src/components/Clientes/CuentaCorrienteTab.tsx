@@ -12,7 +12,6 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress,
   Chip,
   Table,
   TableBody,
@@ -33,6 +32,7 @@ import {
 import dayjs from 'dayjs';
 import type { CuentaCorriente, CreateCuentaCorrienteRequest, TipoMovimiento, MetodoPago } from '../../types';
 import { cuentaCorrienteApiWithFallback as cuentaCorrienteApi } from '../../api/services/apiWithFallback';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface CuentaCorrienteTabProps {
   clienteId: number;
@@ -163,16 +163,9 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
 
   const paginatedMovimientos = movimientos.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando cuenta corriente..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h6">
           Cuenta Corriente

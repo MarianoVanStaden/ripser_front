@@ -48,6 +48,7 @@ import type { Producto, RecetaFabricacionListDTO, ColorEquipo, MedidaEquipo } fr
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
 import { useTenant } from '../../context/TenantContext';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 export const LeadFormPage = () => {
   const navigate = useNavigate();
@@ -350,16 +351,9 @@ export const LeadFormPage = () => {
     });
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando lead..." />
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}

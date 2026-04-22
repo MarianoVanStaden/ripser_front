@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   Table,
   TableBody,
@@ -56,6 +55,7 @@ import type {
   EntregaViaje,
 } from '../../types';
 import { generateEquiposInventoryPDF } from '../../utils/pdfExportUtils';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -501,16 +501,9 @@ const StockEquiposPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando stock de equipos..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <Inventory2Icon />

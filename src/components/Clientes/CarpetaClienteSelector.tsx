@@ -10,7 +10,6 @@ import {
   TextField,
   InputAdornment,
   Alert,
-  CircularProgress,
   Avatar,
   Chip,
   Grid,
@@ -24,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import LoadingOverlay from '../common/LoadingOverlay';
 import type { Cliente } from '../../types';
 
 const CarpetaClienteSelector: React.FC = () => {
@@ -92,16 +92,9 @@ const CarpetaClienteSelector: React.FC = () => {
     navigate(`/clientes/carpeta/${clienteId}`);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ px: { sm: 2, md: 3, lg: 4 }, py: { sm: 2, md: 3 }, maxWidth: '1600px', mx: 'auto' }}>
+      <LoadingOverlay open={loading} message="Cargando clientes..." />
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1" display="flex" alignItems="center" gap={1.5}>

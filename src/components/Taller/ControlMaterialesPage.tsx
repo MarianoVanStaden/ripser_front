@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogActions,
   Stack,
-  CircularProgress,
   Alert,
   TextField,
   IconButton,
@@ -41,6 +40,7 @@ import { materialUtilizadoApi } from '../../api/services/materialUtilizadoApi';
 import { productApi } from '../../api/services/productApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { MaterialUtilizado, Producto, OrdenServicio } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const ControlMaterialesPage: React.FC = () => {
   const theme = useTheme();
@@ -285,16 +285,9 @@ const ControlMaterialesPage: React.FC = () => {
     }
   }, [formData.productoId, productos]);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando materiales..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Control de Materiales

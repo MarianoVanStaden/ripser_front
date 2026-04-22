@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   Paper,
   Chip,
@@ -52,6 +51,7 @@ import AdminDashboard from './AdminDashboard';
 import VendedorDashboard from './VendedorDashboard';
 import ProduccionDashboard from './ProduccionDashboard';
 import TallerDashboard from './TallerDashboard';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface DashboardStats {
   totalClients: number;
@@ -494,21 +494,8 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: { xs: 280, sm: 360, md: 400 }, px: 2 }}>
-        <Box sx={{ textAlign: 'center' }}>
-          <CircularProgress />
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            Loading dashboard data...
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
-
   // Check if user has a specific dashboard
-  const specificDashboard = renderDashboard();
+  const specificDashboard = loading ? null : renderDashboard();
   if (specificDashboard) {
     return (
       <Box
@@ -518,6 +505,7 @@ const Dashboard: React.FC = () => {
           mx: 'auto',
         }}
       >
+        <LoadingOverlay open={loading} message="Cargando dashboard..." />
         {specificDashboard}
       </Box>
     );
@@ -532,6 +520,7 @@ const Dashboard: React.FC = () => {
         mx: 'auto',
       }}
     >
+      <LoadingOverlay open={loading} message="Cargando dashboard..." />
       {/* Header responsive */}
       <Box
         sx={{

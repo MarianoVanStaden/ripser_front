@@ -16,7 +16,6 @@ import {
   Dialog,
   Stack,
   TextField,
-  CircularProgress,
   Alert,
   IconButton,
   Tooltip,
@@ -51,6 +50,7 @@ import { capacitacionApi } from '../../api/services/capacitacionApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { Capacitacion, Empleado } from '../../types';
 import dayjs from 'dayjs';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const CapacitacionesPage: React.FC = () => {
   const theme = useTheme();
@@ -296,16 +296,9 @@ const CapacitacionesPage: React.FC = () => {
       .map(c => c.empleado.id)
   ).size;
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando capacitaciones..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Capacitaciones

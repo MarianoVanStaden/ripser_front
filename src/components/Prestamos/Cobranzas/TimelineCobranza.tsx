@@ -1,4 +1,4 @@
-import { Box, Typography, CircularProgress, Alert, Chip } from '@mui/material';
+import { Box, Typography, Alert, Chip } from '@mui/material';
 import {
   FolderOpen, Warning, Handshake, Cancel, CheckCircle,
   AttachMoney, TrendingUp, Gavel, Lock, WarningAmber,
@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import type { EventoCobranzaDTO } from '../../../types/cobranza.types';
 import { TIPO_EVENTO_LABELS, TipoEventoCobranza } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
+import LoadingOverlay from '../../common/LoadingOverlay';
 
 interface TimelineCobranzaProps {
   eventos: EventoCobranzaDTO[];
@@ -42,28 +43,29 @@ export const TimelineCobranza: React.FC<TimelineCobranzaProps> = ({
   loading,
   error,
 }) => {
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress size={32} />
-      </Box>
-    );
-  }
-
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return (
+      <>
+        <LoadingOverlay open={!!loading} message="Cargando eventos..." />
+        <Alert severity="error">{error}</Alert>
+      </>
+    );
   }
 
   if (eventos.length === 0) {
     return (
-      <Typography color="text.secondary" py={3} textAlign="center">
-        No hay eventos registrados aún.
-      </Typography>
+      <>
+        <LoadingOverlay open={!!loading} message="Cargando eventos..." />
+        <Typography color="text.secondary" py={3} textAlign="center">
+          No hay eventos registrados aún.
+        </Typography>
+      </>
     );
   }
 
   return (
     <Box sx={{ position: 'relative', pl: 3 }}>
+      <LoadingOverlay open={!!loading} message="Cargando eventos..." />
       {/* Línea vertical */}
       <Box
         sx={{

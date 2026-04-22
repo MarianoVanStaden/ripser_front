@@ -51,6 +51,7 @@ import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoCom
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 import { useClienteSearch } from '../../hooks/useClienteSearch';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const RegistroVentasPage: React.FC = () => {
   const navigate = useNavigate();
@@ -565,16 +566,18 @@ const RegistroVentasPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay
+        open={loading || viewLoading || editLoading}
+        message={
+          editLoading
+            ? 'Guardando cambios...'
+            : viewLoading
+            ? 'Cargando detalle...'
+            : 'Cargando ventas...'
+        }
+      />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <ReceiptIcon />

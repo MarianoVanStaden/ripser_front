@@ -13,7 +13,6 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress,
   Chip,
 } from '@mui/material';
 import {
@@ -26,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import type { ContactoCliente, CreateContactoClienteRequest, TipoContacto } from '../../types';
 import { contactoClienteApiWithFallback as contactoClienteApi } from '../../api/services/apiWithFallback';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface ContactosTabProps {
   clienteId: number;
@@ -169,16 +169,9 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando contactos..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h6">
           Historial de Contactos ({contactos.length})

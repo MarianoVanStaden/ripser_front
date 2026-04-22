@@ -16,7 +16,6 @@ import {
   Dialog,
   Stack,
   TextField,
-  CircularProgress,
   Alert,
   IconButton,
   Tooltip,
@@ -93,6 +92,7 @@ import { excepcionAsistenciaApi } from '../../api/services/excepcionAsistenciaAp
 import { asistenciaAutomaticaApi } from '../../api/services/asistenciaAutomaticaApi';
 import type { RegistroAsistencia, Empleado } from '../../types';
 import dayjs from 'dayjs';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const AsistenciasPage: React.FC = () => {
   const theme = useTheme();
@@ -965,16 +965,9 @@ const AsistenciasPage: React.FC = () => {
     }
   ] : [];
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando asistencias..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Asistencias - Sistema Inteligente

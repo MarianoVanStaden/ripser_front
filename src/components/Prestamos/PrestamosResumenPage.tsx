@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Grid, Card, CardContent, Typography, CircularProgress, Alert,
+  Box, Grid, Card, CardContent, Typography, Alert,
   Button, Collapse, List, ListItem, ListItemText, Divider, Badge,
   Chip, IconButton, Tooltip, Paper,
 } from '@mui/material';
@@ -16,6 +16,7 @@ import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
 import type { ResumenPrestamosDTO, CuotaPrestamoDTO } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface StatCardProps {
   title: string;
@@ -119,16 +120,9 @@ export const PrestamosResumenPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando préstamos..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Resumen de Préstamos</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>

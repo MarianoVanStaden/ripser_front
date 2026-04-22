@@ -5,7 +5,6 @@ import {
   Typography,
   Card,
   CardContent,
-  CircularProgress,
   Alert,
   Grid,
   Table,
@@ -34,6 +33,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { adminFlujoCajaApi } from '../../api/services/adminFlujoCajaApi';
 import { generateFlujoCajaPDF } from '../../utils/pdfExportUtils';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 dayjs.locale('es');
 
@@ -137,17 +137,10 @@ const FlujoCajaPage: React.FC = () => {
     setPage(0);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box p={3}>
+        <LoadingOverlay open={loading} message="Cargando flujo de caja..." />
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Box>

@@ -19,6 +19,7 @@ import {
 import { historialEstadoEquipoApi } from '../../api/historialEstadoEquipoApi';
 import api from '../../api/config';
 import type { EquipoFabricadoDTO, HistorialEstadoEquipo } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 
 const EquipoDetail: React.FC = () => {
@@ -276,11 +277,7 @@ const loadClientes = async () => {
   };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingOverlay open={true} message="Cargando equipo..." />;
   }
 
   if (!equipo) {

@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
   Dialog,
@@ -39,6 +38,7 @@ import {
 } from '@mui/icons-material';
 import { parametroSistemaApi } from '../../api/services';
 import type { ParametroSistema } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const SettingsPage: React.FC = () => {
   const theme = useTheme();
@@ -178,16 +178,9 @@ const SettingsPage: React.FC = () => {
     GENERAL: 'General',
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando parámetros..." />
       {/* Header */}
       <Box
         display="flex"

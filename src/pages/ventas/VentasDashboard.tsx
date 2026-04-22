@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   Button,
   Chip,
@@ -48,6 +47,7 @@ import type { LeadDTO, RecordatorioLeadDTO } from '../../types/lead.types';
 import type { LeadMetricasResponseDTO } from '../../api/services/leadMetricasApi';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 // Import existing chart components
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
@@ -282,16 +282,9 @@ export const VentasDashboard = () => {
     loadDashboardData();
   };
 
-  if (loading && !quickStats) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <LoadingOverlay open={loading} message="Cargando dashboard..." />
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Box sx={{ 

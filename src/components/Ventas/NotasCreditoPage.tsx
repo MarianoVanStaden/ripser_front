@@ -15,6 +15,7 @@ import api from '../../api/config';
 import { documentoApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
 import type { DocumentoComercial, EquipoFabricadoDTO } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface NotaCreditoForm {
   facturaId: number | null;
@@ -344,6 +345,10 @@ const NotasCreditoPage: React.FC = () => {
 
   return (
     <Box>
+      <LoadingOverlay
+        open={creating}
+        message="Creando nota de crédito..."
+      />
       {/* Header */}
       <Box
         display="flex"

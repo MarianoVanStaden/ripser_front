@@ -43,6 +43,7 @@ import {
 import type { DetalleRecetaCreateDTO, RecetaFabricacionDTO } from  '../../types';
 import api from '../../api/config';
 import RecetaCosteoSection from './RecetaCosteoSection';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface Producto {
   id: number;
@@ -227,11 +228,7 @@ const RecetaDetail: React.FC = () => {
   const totalCost = receta?.detalles.reduce((sum, d) => sum + d.subtotal, 0) || 0;
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingOverlay open={true} message="Cargando receta..." />;
   }
 
   if (!receta) {

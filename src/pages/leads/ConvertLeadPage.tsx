@@ -32,6 +32,7 @@ import type {
 } from '../../types/lead.types';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 export const ConvertLeadPage = () => {
   const navigate = useNavigate();
@@ -217,17 +218,10 @@ export const ConvertLeadPage = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (!lead) {
     return (
       <Box sx={{ p: 3 }}>
+        <LoadingOverlay open={loading} message="Cargando lead..." />
         <Alert severity="error">Lead no encontrado</Alert>
       </Box>
     );
@@ -320,6 +314,7 @@ export const ConvertLeadPage = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando lead..." />
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}

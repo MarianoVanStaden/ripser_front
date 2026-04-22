@@ -48,6 +48,7 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
+import LoadingOverlay from '../common/LoadingOverlay';
 import type { Cliente, DocumentoCliente } from '../../types';
 
 // Categorías de documentos para clientes
@@ -337,17 +338,10 @@ const CarpetaClientePage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (error || !cliente) {
     return (
       <Box p={3}>
+        <LoadingOverlay open={loading} message="Cargando cliente..." />
         <Alert severity="error">{error || 'Cliente no encontrado'}</Alert>
       </Box>
     );
@@ -355,6 +349,7 @@ const CarpetaClientePage: React.FC = () => {
 
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando cliente..." />
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1" display="flex" alignItems="center">

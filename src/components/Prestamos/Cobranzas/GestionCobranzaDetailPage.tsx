@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Box, Grid, Card, CardContent, Typography, CircularProgress, Alert,
+  Box, Grid, Card, CardContent, Typography, Alert,
   Button, Chip, Tabs, Tab, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, IconButton, Tooltip, Snackbar,
   Stack, Menu, MenuItem, Divider,
@@ -44,6 +44,7 @@ import {
   ESTADO_PROMESA_LABELS,
   ESTADO_PROMESA_COLORS,
 } from '../../../types/cobranza.types';
+import LoadingOverlay from '../../common/LoadingOverlay';
 
 // ── Icons per tipo acción ─────────────────────────────────────────────────────
 const TIPO_ACCION_ICONS: Record<string, React.ReactElement> = {
@@ -192,17 +193,10 @@ export const GestionCobranzaDetailPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (error || !gestion) {
     return (
       <Box>
+        <LoadingOverlay open={loading} message="Cargando gestión..." />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/cobranzas/lista')} sx={{ mb: 2 }}>
           Volver
         </Button>
@@ -216,6 +210,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
 
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando gestión..." />
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

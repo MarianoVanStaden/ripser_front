@@ -20,7 +20,6 @@ import {
   Paper,
   Chip,
   Alert,
-  CircularProgress,
   Stack,
   Divider,
 } from '@mui/material';
@@ -33,6 +32,7 @@ import {
   AccountBalance as AccountBalanceIcon,
 } from '@mui/icons-material';
 import { generateFlujoCajaPDF } from '../../utils/pdfExportUtils';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 // Tipos de movimiento
 type TipoMovimiento = 'INGRESO' | 'EGRESO';
@@ -319,16 +319,9 @@ const FlujoCajaPage: React.FC = () => {
     return labels[origen] || origen;
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando flujo de caja..." />
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>

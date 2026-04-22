@@ -14,7 +14,6 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress,
   Chip,
   Table,
   TableBody,
@@ -38,6 +37,7 @@ import {
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import LoadingOverlay from '../common/LoadingOverlay';
 import type { Cliente } from '../../types';
 
 interface CreditoPersonal {
@@ -300,16 +300,9 @@ const CreditoPersonalPage: React.FC = () => {
   const montoTotalSolicitado = creditos.reduce((sum, c) => sum + c.montoSolicitado, 0);
   const montoTotalAprobado = creditos.reduce((sum, c) => sum + c.montoAprobado, 0);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando créditos..." />
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1">

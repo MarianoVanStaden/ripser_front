@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
   Dialog,
@@ -36,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import type { Producto, CategoriaProducto, InventoryAdjustment, MovimientoStock } from '../../types';
 import { productApi, movimientoStockApi, categoriaProductoApi } from '../../api/services';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const InventoryPage: React.FC = () => {
   const [products, setProducts] = useState<Producto[]>([]);
@@ -339,17 +339,10 @@ const InventoryPage: React.FC = () => {
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-      <Box 
+      <LoadingOverlay open={loading} message="Cargando inventario..." />
+      <Box
         sx={{ 
           display: 'flex', 
           flexDirection: { xs: 'column', sm: 'row' },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Grid, Card, CardContent, CircularProgress,
+  Box, Typography, Grid, Card, CardContent,
   TextField, MenuItem, Button, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TablePagination,
   Select, FormControl, InputLabel,
@@ -14,6 +14,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Ba
 import dayjs from 'dayjs';
 import api from '../../api/config';
 import type { EquipoFabricadoDTO, EstadoAsignacionEquipo } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface EstadisticasEstados {
   DISPONIBLE: number;
@@ -201,14 +202,6 @@ const ReportesEstadosPage: React.FC = () => {
     (estadisticas.DISPONIBLE > 0 || estadisticas.RESERVADO > 0 || 
      estadisticas.FACTURADO > 0 || estadisticas.EN_TRANSITO > 0 || estadisticas.ENTREGADO > 0);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   const handleExportPDF = async () => {
     try {
       const [pieImg, barImg] = await Promise.all([
@@ -228,6 +221,7 @@ const ReportesEstadosPage: React.FC = () => {
 
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando reportes de estados..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="600">
           Dashboard de Estados de Equipos

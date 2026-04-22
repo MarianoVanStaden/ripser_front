@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Card, CardContent, CircularProgress, Grid, Typography, Alert, Chip, Stack } from '@mui/material';
+import { Box, Card, CardContent, Grid, Typography, Alert, Chip, Stack } from '@mui/material';
+import LoadingOverlay from '../common/LoadingOverlay';
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
@@ -144,17 +145,10 @@ const DevKPIs: React.FC = () => {
     };
   }, [data]);
 
-  if (loading) {
-    return (
-      <Box p={3} display="flex" alignItems="center" justifyContent="center">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (error) {
     return (
       <Box p={3}>
+        <LoadingOverlay open={loading} message="Cargando KPIs..." />
         <Alert severity="error" sx={{ mb: 2 }}>No se pudo cargar el reporte: {error}</Alert>
         <Typography variant="body2">
           Generá el archivo con: <code>npm run kpis -- --out public/kpis/kpis-latest.json</code>
@@ -163,12 +157,19 @@ const DevKPIs: React.FC = () => {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Box p={3}>
+        <LoadingOverlay open={loading} message="Cargando KPIs..." />
+      </Box>
+    );
+  }
 
   const s = data.summary;
 
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando KPIs..." />
       <Typography variant="h5" gutterBottom>KPIs de Desarrollo</Typography>
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Ventana: últimos {data.params.sinceDays} días. Última generación: {new Date(data.generatedAt).toLocaleString()}.

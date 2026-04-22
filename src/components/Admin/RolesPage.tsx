@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
   Dialog,
@@ -39,6 +38,7 @@ import {
   Shield as ShieldIcon,
 } from '@mui/icons-material';
 import type { Role, Permission } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 // Mock data for development
 const mockPermissions: Permission[] = [
@@ -214,16 +214,9 @@ const RolesPage: React.FC = () => {
     return acc;
   }, {} as Record<string, Permission[]>);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando roles..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <ShieldIcon sx={{ fontSize: { xs: 24, sm: 35 } }} />

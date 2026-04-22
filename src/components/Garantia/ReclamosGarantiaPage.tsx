@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, TextField, Stack, Chip,
-  IconButton, Alert, CircularProgress, Grid, MenuItem, Select, FormControl,
+  IconButton, Alert, Grid, MenuItem, Select, FormControl,
   InputLabel, InputAdornment, Autocomplete, TablePagination
 } from '@mui/material';
 import { 
@@ -21,6 +21,7 @@ import {
 } from '../../api/services/reclamoGarantiaApi';
 import { garantiaApi } from '../../api/services/garantiaApi';
 import ReclamoFormDialog from './ReclamoFormDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const ReclamosGarantiaPage: React.FC = () => {
   const [reclamos, setReclamos] = useState<ReclamoGarantiaDTO[]>([]);
@@ -130,16 +131,9 @@ const ReclamosGarantiaPage: React.FC = () => {
     resueltos: reclamos.filter(r => r.estado === 'RESUELTO').length,
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando reclamos..." />
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="bold">
           Reclamos de Garantía

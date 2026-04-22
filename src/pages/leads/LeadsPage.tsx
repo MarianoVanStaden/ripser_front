@@ -12,7 +12,6 @@ import {
   IconButton,
   Typography,
   Tooltip,
-  CircularProgress,
   Alert
 } from '@mui/material';
 import {
@@ -32,6 +31,7 @@ import { CanalBadge } from '../../components/leads/CanalBadge';
 import { LeadFilters } from '../../components/leads/LeadFilters';
 import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
 import { useTenant } from '../../context/TenantContext';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 export const LeadsPage = () => {
   const navigate = useNavigate();
@@ -176,16 +176,9 @@ export const LeadsPage = () => {
            lead.estadoLead !== EstadoLeadEnum.DESCARTADO;
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando leads..." />
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">

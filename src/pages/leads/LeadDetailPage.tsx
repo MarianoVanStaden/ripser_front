@@ -7,7 +7,6 @@ import {
   Grid,
   Typography,
   Alert,
-  CircularProgress,
   Divider,
   Chip,
   IconButton,
@@ -33,6 +32,7 @@ import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
 import { InteraccionesTimeline } from '../../components/leads/InteraccionesTimeline';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 export const LeadDetailPage = () => {
   const navigate = useNavigate();
@@ -153,17 +153,10 @@ export const LeadDetailPage = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (error || !lead) {
     return (
       <Box sx={{ p: 3 }}>
+        <LoadingOverlay open={loading} message="Cargando lead..." />
         <Alert severity="error">{error || 'Lead no encontrado'}</Alert>
         <Button
           startIcon={<ArrowBackIcon />}
@@ -178,6 +171,7 @@ export const LeadDetailPage = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando lead..." />
       {/* Header */}
       <Box sx={{ mb: 3 }}>
         <Button

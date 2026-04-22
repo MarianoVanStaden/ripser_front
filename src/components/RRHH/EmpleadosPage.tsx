@@ -62,6 +62,7 @@ import { sucursalService } from '../../services/sucursalService';
 import { useTenant } from '../../context/TenantContext';
 import DocumentManager from '../shared/DocumentManager';
 import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 // Categorías de documentos para empleados
 const CATEGORIAS_EMPLEADO = [
@@ -349,16 +350,9 @@ const EmpleadosPage: React.FC = () => {
     return matchesEstado && matchesPuesto && matchesSearch;
   });
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando empleados..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
           <PersonIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main' }} />

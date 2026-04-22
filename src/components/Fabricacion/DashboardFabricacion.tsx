@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Paper, Typography, Card, CardContent, Grid, CircularProgress,
+  Box, Paper, Typography, Card, CardContent, Grid,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Chip, Stack, TextField,
 } from '@mui/material';
@@ -12,6 +12,7 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface KPI {
   label: string;
@@ -46,14 +47,6 @@ const DashboardFabricacion: React.FC = () => {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   // Calcular KPIs
   const totalEquipos = equipos.length;
@@ -141,6 +134,7 @@ const DashboardFabricacion: React.FC = () => {
 
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando dashboard de fabricación..." />
       <Typography variant="h5" fontWeight="600" mb={3}>
         Dashboard de Fabricación
       </Typography>

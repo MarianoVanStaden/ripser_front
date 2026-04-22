@@ -12,7 +12,6 @@ import {
   IconButton,
   Typography,
   Tooltip,
-  CircularProgress,
   Alert,
   TextField,
   InputAdornment,
@@ -39,6 +38,7 @@ import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStat
 import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
 import { useTenant } from '../../context/TenantContext';
 import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'nombre' | 'telefono' | 'provincia' | 'canal' | 'estadoLead' | 'prioridad' | 'dias' | 'fechaPrimerContacto' | 'fechaUltimoContacto';
@@ -320,16 +320,9 @@ export const LeadsTablePage = () => {
     EstadoLeadEnum.DESCARTADO
   ];
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: 2 }}>
+      <LoadingOverlay open={loading} message="Cargando leads..." />
       {/* Header compacto */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" component="h1">

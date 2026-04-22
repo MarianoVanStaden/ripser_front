@@ -61,6 +61,7 @@ import { usuarioEmpresaIntegrationService } from '../../services/usuarioEmpresaI
 import { getAvailableRolesForUser, getRolEmpresaOption, mapRolEmpresaToSystemRole } from '../../utils/roleMapper';
 import type { CreateUsuarioWithEmpresaDTO, UsuarioWithEmpresa, RolEmpresaOption } from '../../types/usuario-enhanced.types';
 import type { Empresa, Sucursal, RolEmpresa } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 // Available roles with labels and colors
 const availableRoles = [
@@ -592,16 +593,9 @@ const UsersPage: React.FC = () => {
     return availableRoles.find(r => r.value === role) || { label: role, color: '#757575' };
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando usuarios..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <PersonIcon sx={{ fontSize: { xs: 24, sm: 35 } }} />

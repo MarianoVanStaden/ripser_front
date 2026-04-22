@@ -55,6 +55,7 @@ import {
   Article as ArticleIcon,
 } from '@mui/icons-material';
 import type { EntregaViaje, Viaje, Cliente, EstadoEntrega, DocumentoComercial, EstadoAsignacionEquipo } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { entregaViajeDocumentoApi } from '../../api/services/entregaViajeDocumentoApi';
 import type { DocumentoEntrega } from '../../api/services/entregaViajeDocumentoApi';
@@ -695,14 +696,6 @@ const DeliveriesPage2: React.FC = () => {
     return trip ? `Viaje #${trip.id}` : 'N/A';
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   // Mobile Delivery Card Component
   const MobileDeliveryCard = ({ delivery }: { delivery: EntregaViaje }) => {
     const isExpanded = expandedCard === delivery.id;
@@ -833,6 +826,7 @@ const DeliveriesPage2: React.FC = () => {
 
   return (
     <Box sx={{ pb: isMobile ? 10 : 3, minHeight: '100vh' }}>
+      <LoadingOverlay open={loading} message="Cargando entregas..." />
       {/* Inputs de archivo ocultos — siempre montados para que los refs funcionen en mobile y desktop */}
       <input
         ref={fileInputRef}

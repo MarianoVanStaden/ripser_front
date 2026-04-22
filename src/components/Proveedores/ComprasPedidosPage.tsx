@@ -61,6 +61,7 @@ import { productApi } from '../../api/services/productApi';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
+import LoadingOverlay from '../common/LoadingOverlay';
 interface ErrorBoundaryProps {
   children: React.ReactNode;
 }
@@ -945,18 +946,11 @@ const handleDeleteCompra = async (id: number) => {
     await Promise.all([loadProveedores(), loadCompras()]);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <ErrorBoundary>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
+          <LoadingOverlay open={loading} message="Cargando compras..." />
           {/* Header */}
           <Box 
             sx={{ 

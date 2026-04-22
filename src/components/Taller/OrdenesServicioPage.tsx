@@ -46,6 +46,7 @@ import { clienteApi } from '../../api/services/clienteApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import { equipoFabricadoApi } from '../../api/services';
 import type { OrdenServicio, Cliente, Empleado, EquipoFabricadoDTO } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 
 const OrdenesServicioPage: React.FC = () => {
@@ -341,16 +342,9 @@ const OrdenesServicioPage: React.FC = () => {
     setOpen(true);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando órdenes de servicio..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Órdenes de Servicio

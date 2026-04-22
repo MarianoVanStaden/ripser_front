@@ -71,6 +71,7 @@ import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
 import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import UsuarioBadge from "../common/UsuarioBadge";
+import LoadingOverlay from "../common/LoadingOverlay";
 import { generarNotaPedidoPDF } from "../../services/pdfService";
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
@@ -1180,16 +1181,12 @@ const NotasPedidoPage: React.FC = () => {
     setNotaForAsignacion(null);
   }, []);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <LoadingOverlay
+        open={loading || formLoading}
+        message={formLoading ? "Convirtiendo presupuesto..." : "Cargando notas de pedido..."}
+      />
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Notas de Pedido

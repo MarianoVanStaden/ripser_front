@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Box, Grid, Card, CardContent, Typography, CircularProgress, Alert, Button,
+  Box, Grid, Card, CardContent, Typography, Alert, Button,
 } from '@mui/material';
 import {
   Gavel, Warning, AttachMoney, Schedule, CheckCircle,
@@ -15,6 +15,7 @@ import {
   EstadoGestionCobranza,
 } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
+import LoadingOverlay from '../../common/LoadingOverlay';
 
 interface StatCardProps {
   title: string;
@@ -84,16 +85,9 @@ export const CobranzasResumenPage: React.FC = () => {
     loadResumen();
   }, []);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando cobranzas..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Resumen de Cobranzas</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>

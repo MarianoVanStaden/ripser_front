@@ -12,7 +12,6 @@ import {
   TableRow,
   Paper,
   Alert,
-  CircularProgress,
   Card,
   CardContent,
   Grid2 as Grid,
@@ -24,6 +23,7 @@ import { amortizacionApi } from '../../../api/services/amortizacionApi';
 import type { ActivoAmortizableDTO, AmortizacionMensualDTO } from '../../../types';
 import AmortizacionMesRow from './components/AmortizacionMesRow';
 import CierreMensualDialog from './components/CierreMensualDialog';
+import LoadingOverlay from '../../common/LoadingOverlay';
 
 const MESES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -74,16 +74,9 @@ export default function AmortizacionMesPage() {
   const registrados = detalles.length;
   const pendientes = activos.length - registrados;
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando amortizaciones..." />
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={1} flexWrap="wrap" gap={1}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/admin/amortizaciones')} size="small">
           Activos

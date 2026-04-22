@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
   Dialog,
@@ -42,6 +41,7 @@ import { supplierApi } from '../../api/services/supplierApi';
 import type { ProveedorDTO, CreateProveedorDTO, ProvinciaEnum } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import ProveedorProductosDialog from './ProveedorProductosDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const SuppliersPage: React.FC = () => {
   const theme = useTheme();
@@ -280,16 +280,9 @@ const SuppliersPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando proveedores..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <BusinessIcon />

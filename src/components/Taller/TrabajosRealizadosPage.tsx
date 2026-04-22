@@ -16,7 +16,6 @@ import {
   Button,
   Dialog,
   Stack,
-  CircularProgress,
   Alert,
   TextField,
   MenuItem,
@@ -43,6 +42,7 @@ import {
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { OrdenServicio } from '../../types';
 import dayjs from 'dayjs';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const TrabajosRealizadosPage: React.FC = () => {
   const theme = useTheme();
@@ -147,16 +147,9 @@ const TrabajosRealizadosPage: React.FC = () => {
     return orden.tareas.reduce((sum, tarea) => sum + (tarea.horasReales || 0), 0);
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando trabajos..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Trabajos Realizados

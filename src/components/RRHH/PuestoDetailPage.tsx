@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Button,
-  CircularProgress,
   Alert,
   IconButton,
   Tooltip,
@@ -53,6 +52,7 @@ import { formatPrice } from '../../utils/priceCalculations';
 import PuestoFormDialog from './PuestoFormDialog';
 import TareaFormDialog from './TareaFormDialog';
 import SubtareaFormDialog from './SubtareaFormDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 import dayjs from 'dayjs';
 
 interface TabPanelProps {
@@ -208,11 +208,7 @@ const PuestoDetailPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingOverlay open={true} message="Cargando puesto..." />;
   }
 
   if (error || !puesto) {

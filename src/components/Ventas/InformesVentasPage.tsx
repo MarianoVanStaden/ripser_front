@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
   Table,
@@ -41,6 +40,7 @@ import {
   BarChart as BarChartIcon,
 } from '@mui/icons-material';
 import { documentoApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
+import LoadingOverlay from '../common/LoadingOverlay';
 import { useTenant } from '../../context/TenantContext';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import { generateSalesReportPDF, generateSaleDetailPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
@@ -748,16 +748,9 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
     } : {},
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando informe de ventas..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <BarChartIcon />

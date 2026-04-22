@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { parametroSistemaApi } from '../../api/services/parametroSistemaApi';
 import type { ParametroSistema } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const ConfiguracionTallerPage: React.FC = () => {
   const theme = useTheme();
@@ -98,16 +99,9 @@ const ConfiguracionTallerPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando configuración..." />
       <Box display="flex" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
         <SettingsIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main', mr: { xs: 1, sm: 2 } }} />
         <Box>

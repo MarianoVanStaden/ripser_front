@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
   TextField,
@@ -55,6 +54,7 @@ import {
   KeyboardArrowRight as NextIcon,
 } from '@mui/icons-material';
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 import { viajeApi } from '../../api/services/viajeApi';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -608,14 +608,6 @@ const TripsPage2: React.FC = () => {
     return formData.destino && formData.conductorId && formData.vehiculoId && formData.fechaViaje;
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   // Render wizard step content
   const renderWizardStep = () => {
     switch (activeStep) {
@@ -1081,6 +1073,7 @@ const TripsPage2: React.FC = () => {
 
   return (
     <Box sx={{ pb: isMobile ? 10 : 3, minHeight: '100vh' }}>
+      <LoadingOverlay open={loading} message="Cargando viajes..." />
       {/* Header - Sin card de fondo */}
       <Box
         sx={{ mb: 3 }}

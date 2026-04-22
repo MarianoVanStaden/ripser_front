@@ -39,6 +39,7 @@ import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWith
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import { ContactosTab, CuentaCorrienteTab } from './index';
 import DocumentManager from '../shared/DocumentManager';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -145,17 +146,10 @@ const ClienteDetailPage: React.FC = () => {
     navigate('/clientes/gestion');
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (error) {
     return (
       <Box>
+        <LoadingOverlay open={loading} message="Cargando cliente..." />
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
@@ -169,6 +163,7 @@ const ClienteDetailPage: React.FC = () => {
   if (!cliente) {
     return (
       <Box>
+        <LoadingOverlay open={loading} message="Cargando cliente..." />
         <Alert severity="warning" sx={{ mb: 2 }}>
           Cliente no encontrado
         </Alert>
@@ -181,6 +176,7 @@ const ClienteDetailPage: React.FC = () => {
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando cliente..." />
       {/* Header */}
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
         <Box display="flex" alignItems="center" flexWrap="wrap" gap={1}>

@@ -16,7 +16,6 @@ import {
   Dialog,
   Stack,
   TextField,
-  CircularProgress,
   Alert,
   IconButton,
   Tooltip,
@@ -47,6 +46,7 @@ import { usePermisos } from '../../hooks/usePermisos';
 import type { PuestoListDTO } from '../../types';
 import PuestoFormDialog from './PuestoFormDialog';
 import { formatPrice } from '../../utils/priceCalculations';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const PuestosPage: React.FC = () => {
   const navigate = useNavigate();
@@ -170,16 +170,9 @@ const PuestosPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando puestos..." />
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Box display="flex" alignItems="center" gap={2}>

@@ -16,7 +16,6 @@ import {
   Dialog,
   Stack,
   TextField,
-  CircularProgress,
   Alert,
   IconButton,
   Tooltip,
@@ -52,6 +51,7 @@ import { licenciaApi } from '../../api/services/licenciaApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { Licencia, Empleado, TipoLicencia, EstadoLicencia } from '../../types';
 import dayjs from 'dayjs';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const LicenciasPage: React.FC = () => {
   const theme = useTheme();
@@ -372,16 +372,9 @@ const LicenciasPage: React.FC = () => {
   const totalRechazadas = licencias.filter(l => l.estado === 'RECHAZADA').length;
   const totalDiasLicencia = filteredLicencias.reduce((sum, l) => sum + l.dias, 0);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Cargando licencias..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Licencias

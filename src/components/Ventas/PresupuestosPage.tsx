@@ -53,6 +53,7 @@ import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
+import LoadingOverlay from "../common/LoadingOverlay";
 import { useAuth } from "../../context/AuthContext";
 import { useTenant } from "../../context/TenantContext";
 import SuccessDialog from "../common/SuccessDialog";
@@ -780,16 +781,12 @@ const PresupuestosPage: React.FC = () => {
   };
   void _loadPresupuestos;
 
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 400 }}>
-        <CircularProgress aria-label="Cargando datos" />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
+      <LoadingOverlay
+        open={loading || formLoading}
+        message={formLoading ? "Guardando presupuesto..." : "Cargando presupuestos..."}
+      />
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3, flexWrap: "wrap", gap: 2 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Presupuestos

@@ -56,6 +56,7 @@ import {
   Save as SaveIcon,
 } from '@mui/icons-material';
 import { reconciliacionApi } from '../../../api/services/reconciliacionApi';
+import LoadingOverlay from '../../common/LoadingOverlay';
 import type {
   ReconciliacionStockDTO,
   ReconciliacionDetalladaDTO,
@@ -648,16 +649,9 @@ const ReconciliacionStockPage: React.FC = () => {
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+      <LoadingOverlay open={loading} message="Cargando reconciliaciones..." />
       {/* Header */}
       <Box
         sx={{

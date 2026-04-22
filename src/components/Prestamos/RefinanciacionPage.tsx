@@ -22,6 +22,7 @@ import type {
 } from '../../types/refinanciacion.types';
 import { TipoIncremento, TIPO_INCREMENTO_LABELS } from '../../types/refinanciacion.types';
 import { useDebounce } from '../../hooks/useDebounce';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 // ==================== HELPERS ====================
 
@@ -208,17 +209,10 @@ export const RefinanciacionPage: React.FC = () => {
     : '(+) Recargo fijo';
 
   // ── Loading / error ────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (loadError || !prestamo) {
     return (
       <Box>
+        <LoadingOverlay open={loading} message="Cargando préstamo..." />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')} sx={{ mb: 2 }}>
           Volver
         </Button>
@@ -230,6 +224,7 @@ export const RefinanciacionPage: React.FC = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Box sx={{ pb: 8 }}>
+      <LoadingOverlay open={loading} message="Cargando préstamo..." />
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2, flexWrap: 'wrap' }}>
         <Button startIcon={<ArrowBack />} onClick={() => navigate(`/prestamos/${prestamoId}`)}>

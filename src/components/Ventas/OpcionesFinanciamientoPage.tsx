@@ -25,7 +25,6 @@ import {
   Select,
   MenuItem,
   Alert,
-  CircularProgress,
   Tooltip,
   Divider,
   Stack,
@@ -44,6 +43,7 @@ import {
 import { opcionFinanciamientoApi, documentoApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
 import type { OpcionFinanciamientoDTO, MetodoPago, DocumentoComercial } from '../../types';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const OpcionesFinanciamientoPage: React.FC = () => {
   const { empresaId } = useTenant();
@@ -380,16 +380,9 @@ const OpcionesFinanciamientoPage: React.FC = () => {
     return methods[method] || method;
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box p={{ xs: 2, sm: 3 }}>
+      <LoadingOverlay open={loading} message="Procesando opciones de financiamiento..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" display="flex" alignItems="center" gap={1} sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           <PaymentIcon />

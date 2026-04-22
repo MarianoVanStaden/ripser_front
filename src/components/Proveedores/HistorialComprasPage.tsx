@@ -14,7 +14,6 @@ import {
   TextField,
   MenuItem,
   Alert,
-  CircularProgress,
   Chip,
   Table,
   TableBody,
@@ -59,6 +58,7 @@ import { productApi } from '../../api/services/productApi';
 import type { ProveedorDTO, CompraDTO, Producto } from '../../types';
 import { exportToPDF } from '../../utils/exportPDF';
 import { exportToExcel } from '../../utils/exportExcel';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 dayjs.locale('es');
 
@@ -382,17 +382,10 @@ const HistorialComprasPage: React.FC = () => {
     handleExportClose();
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box p={{ xs: 1.5, sm: 2, md: 3 }}>
+        <LoadingOverlay open={loading} message="Cargando historial..." />
         {/* Header */}
         <Box 
           sx={{ 

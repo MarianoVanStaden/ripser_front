@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Box, Grid, Card, CardContent, Typography, CircularProgress, Alert,
+  Box, Grid, Card, CardContent, Typography, Alert,
   Button, Chip, Tabs, Tab, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, IconButton, Tooltip, Snackbar, Stack,
   Menu, MenuItem, List, ListItem, ListItemText, ListItemIcon,
@@ -34,6 +34,7 @@ import { RegistrarPagoDialog } from './RegistrarPagoDialog';
 import { RevertirPagoDialog } from './RevertirPagoDialog';
 import { SeguimientoFormDialog } from './SeguimientoFormDialog';
 import { RecordatorioFormDialog } from './RecordatorioFormDialog';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const TIPO_INTERACCION_ICONS: Record<string, React.ReactElement> = {
   LLAMADA: <Phone fontSize="small" />,
@@ -220,17 +221,10 @@ export const PrestamoDetailPage: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   if (error || !prestamo) {
     return (
       <Box>
+        <LoadingOverlay open={loading} message="Cargando préstamo..." />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')} sx={{ mb: 2 }}>Volver</Button>
         <Alert severity="error">{error || 'Préstamo no encontrado'}</Alert>
       </Box>
@@ -239,6 +233,7 @@ export const PrestamoDetailPage: React.FC = () => {
 
   return (
     <Box>
+      <LoadingOverlay open={loading} message="Cargando préstamo..." />
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')}>Volver</Button>

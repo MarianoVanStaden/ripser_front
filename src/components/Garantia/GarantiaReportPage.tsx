@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, Stack, Chip, Button,
-  CircularProgress, Alert, Table, TableBody, TableCell,
+  Alert, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, FormControl,
   InputLabel, Select, MenuItem
 } from '@mui/material';
@@ -17,6 +17,7 @@ import { generateGarantiaReportPDF } from '../../utils/pdfExportUtils';
 import dayjs from 'dayjs';
 import { garantiaApi, type GarantiaDTO } from '../../api/services/garantiaApi';
 import { reclamoGarantiaApi, type ReclamoGarantiaDTO } from '../../api/services/reclamoGarantiaApi';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const GarantiaReportPage: React.FC = () => {
   const [garantias, setGarantias] = useState<GarantiaDTO[]>([]);
@@ -134,14 +135,6 @@ const GarantiaReportPage: React.FC = () => {
     .sort((a, b) => dayjs(b.fechaReclamo).diff(dayjs(a.fechaReclamo)))
     .slice(0, 10);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   const handleExportPDF = async () => {
     try {
       await generateGarantiaReportPDF(stats, modelStats, garantiasPorVencer, reclamosRecientes, { periodFilter });
@@ -152,6 +145,7 @@ const GarantiaReportPage: React.FC = () => {
 
   return (
     <Box p={3}>
+      <LoadingOverlay open={loading} message="Cargando reporte de garantías..." />
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight="bold">
           Reporte de Garantías
