@@ -1207,15 +1207,25 @@ const PresupuestosPage: React.FC = () => {
                         : null
                       : null
                 }
-                onChange={(_, newValue) => {
+                onChange={async (_, newValue) => {
                   if (newValue) {
                     if (newValue.type === 'cliente') {
                       setFormData({ ...formData, clienteId: newValue.id.toString(), leadId: '' });
+                      deudaYaConfirmadaRef.current = false;
+                      const deudaData = await checkClienteDeuda(newValue.id);
+                      if (deudaData) {
+                        setDeudaError(deudaData);
+                        pendingDeudaRef.current = () => {
+                          deudaYaConfirmadaRef.current = true;
+                        };
+                      }
                     } else {
                       setFormData({ ...formData, leadId: newValue.id?.toString() || '', clienteId: '' });
+                      deudaYaConfirmadaRef.current = false;
                     }
                   } else {
                     setFormData({ ...formData, clienteId: '', leadId: '' });
+                    deudaYaConfirmadaRef.current = false;
                   }
                   setHasUnsavedChanges(true);
                 }}

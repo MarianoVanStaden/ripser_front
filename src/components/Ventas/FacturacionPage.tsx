@@ -1640,6 +1640,18 @@ const FacturacionPage = () => {
     );
     setEditingNotaItems(false);
     setConvertDialogOpen(true);
+    deudaYaConfirmadaRef.current = false;
+
+    // Preemptive debt check on open so the warning appears before the user fills anything
+    if (nota.clienteId) {
+      const deudaData = await checkClienteDeuda(nota.clienteId);
+      if (deudaData) {
+        setDeudaError(deudaData);
+        pendingDeudaRef.current = () => {
+          deudaYaConfirmadaRef.current = true;
+        };
+      }
+    }
 
     // Load financing options for the nota
     try {
@@ -1984,7 +1996,20 @@ const FacturacionPage = () => {
                     <InputLabel>Cliente</InputLabel>
                     <Select
                       value={selectedClientId}
-                      onChange={(e) => setSelectedClientId(e.target.value as number)}
+                      onChange={async (e) => {
+                        const newId = e.target.value as number;
+                        setSelectedClientId(newId);
+                        deudaYaConfirmadaRef.current = false;
+                        if (newId) {
+                          const deudaData = await checkClienteDeuda(Number(newId));
+                          if (deudaData) {
+                            setDeudaError(deudaData);
+                            pendingDeudaRef.current = () => {
+                              deudaYaConfirmadaRef.current = true;
+                            };
+                          }
+                        }
+                      }}
                       label="Cliente"
                     >
                       <MenuItem value="">Seleccionar Cliente</MenuItem>
@@ -2061,155 +2086,11 @@ const FacturacionPage = () => {
                 </Grid>
 
                 {isFinanciamiento(paymentMethod) && (
-                  <>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        required
-                        type="number"
-                        label="Cantidad de Cuotas"
-                        value={cantidadCuotas ?? ''}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value);
-                          setCantidadCuotas(isNaN(v) || v < 1 ? null : v);
-                        }}
-                        inputProps={{ min: 1 }}
-                        placeholder="Ej: 12"
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <FormControl fullWidth>
-                        <InputLabel>Tipo de Financiación</InputLabel>
-                        <Select
-                          value={tipoFinanciacion}
-                          onChange={(e) => setTipoFinanciacion(e.target.value)}
-                          label="Tipo de Financiación"
-                        >
-                          {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
-                            <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Primer Vencimiento"
-                        type="date"
-                        value={primerVencimiento}
-                        onChange={(e) => setPrimerVencimiento(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <FormGroup>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={entregarInicial}
-                              onChange={(e) => setEntregarInicial(e.target.checked)}
-                            />
-                          }
-                          label="Entrega inicial"
-                        />
-                      </FormGroup>
-                    </Grid>
-
-                    {entregarInicial && (
-                      <>
-                        <Grid item xs={12}>
-                          <RadioGroup
-                            row
-                            value={usePorcentaje ? 'porcentaje' : 'monto'}
-                            onChange={(e) => setUsePorcentaje(e.target.value === 'porcentaje')}
-                          >
-                            <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
-                            <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
-                          </RadioGroup>
-                        </Grid>
-
-                        {usePorcentaje ? (
-                          <Grid item xs={12} md={4}>
-                            <TextField
-                              fullWidth
-                              type="number"
-                              label="Porcentaje de entrega"
-                              value={porcentajeEntrega ?? ''}
-                              onChange={(e) => {
-                                const v = parseFloat(e.target.value);
-                                setPorcentajeEntrega(isNaN(v) ? null : v);
-                              }}
-                              inputProps={{ min: 0, max: 100, step: 1 }}
-                              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                              helperText={porcentajeEntrega != null && totalVenta > 0
-                                ? `= $${montoEntregaCalculado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
-                                : undefined}
-                            />
-                          </Grid>
-                        ) : (
-                          <Grid item xs={12} md={4}>
-                            <TextField
-                              fullWidth
-                              type="number"
-                              label="Monto de entrega"
-                              value={montoFijoEntrega ?? ''}
-                              onChange={(e) => {
-                                const v = parseFloat(e.target.value);
-                                setMontoFijoEntrega(isNaN(v) ? null : v);
-                              }}
-                              inputProps={{ min: 0 }}
-                              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-                            />
-                          </Grid>
-                        )}
-                      </>
-                    )}
-
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        label="Tasa de interés"
-                        value={manualTasaInteres}
-                        onChange={(e) => setManualTasaInteres(parseFloat(e.target.value) || 0)}
-                        inputProps={{ min: 0, max: 999, step: 0.5 }}
-                        InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                        helperText="Interés simple sobre el saldo financiado. 0% = sin interés."
-                      />
-                    </Grid>
-
-                    {totalVenta > 0 && (
-                      <Grid item xs={12}>
-                        {(() => {
-                          const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                          return (
-                            <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <Typography variant="caption" color="text.secondary" fontWeight={600}>Resumen del financiamiento</Typography>
-                              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
-                                <Typography variant="body2">Total documento:</Typography>
-                                <Typography variant="body2" fontWeight={600}>${fmt(totalVenta)}</Typography>
-                                <Typography variant="body2">Entrega inicial:</Typography>
-                                <Typography variant="body2">${fmt(montoEntregaCalculado)}</Typography>
-                                <Typography variant="body2">Saldo financiado:</Typography>
-                                <Typography variant="body2">${fmt(montoFinanciado)}</Typography>
-                                {manualTasaInteres > 0 && <>
-                                  <Typography variant="body2">Interés ({manualTasaInteres}%):</Typography>
-                                  <Typography variant="body2" color="warning.main">${fmt(interesManualTotal)}</Typography>
-                                  <Typography variant="body2">Total a financiar:</Typography>
-                                  <Typography variant="body2" fontWeight={600}>${fmt(totalConInteres)}</Typography>
-                                </>}
-                                {cantidadCuotas && cantidadCuotas > 0 && <>
-                                  <Typography variant="body2">Valor cuota ({cantidadCuotas}x):</Typography>
-                                  <Typography variant="body2" fontWeight={600} color="primary.main">${fmt(cuotaEstimada)}</Typography>
-                                </>}
-                              </Box>
-                            </Box>
-                          );
-                        })()}
-                      </Grid>
-                    )}
-                  </>
+                  <Grid item xs={12}>
+                    <Alert severity="info">
+                      Los datos de financiación (cuotas, tasa, entrega inicial) se configuran al confirmar la factura.
+                    </Alert>
+                  </Grid>
                 )}
 
                 <Grid item xs={12}>
@@ -2559,135 +2440,12 @@ const FacturacionPage = () => {
                 </Box>
               )}
 
-              {/* Financing fields for FINANCIAMIENTO */}
+              {/* Financing fields configured in modal — same UX as NotasPedidoPage */}
               {isFinanciamiento(selectedNotaPedido?.metodoPago ?? '') && (
                 <Box mb={3}>
-                  <Typography variant="subtitle1" gutterBottom>Datos de Financiación Propia</Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        required
-                        type="number"
-                        label="Cantidad de Cuotas"
-                        value={notaCantidadCuotas ?? ''}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value);
-                          setNotaCantidadCuotas(isNaN(v) || v < 1 ? null : v);
-                        }}
-                        inputProps={{ min: 1 }}
-                        placeholder="Ej: 12"
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <FormControl fullWidth>
-                        <InputLabel>Tipo de Financiación</InputLabel>
-                        <Select
-                          value={notaTipoFinanciacion}
-                          onChange={(e) => setNotaTipoFinanciacion(e.target.value)}
-                          label="Tipo de Financiación"
-                        >
-                          {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
-                            <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Primer Vencimiento"
-                        type="date"
-                        value={notaPrimerVencimiento}
-                        onChange={(e) => setNotaPrimerVencimiento(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <FormGroup>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={notaEntregaInicial}
-                              onChange={(e) => setNotaEntregaInicial(e.target.checked)}
-                            />
-                          }
-                          label="Entrega inicial"
-                        />
-                      </FormGroup>
-                    </Grid>
-
-                    {notaEntregaInicial && (
-                      <>
-                        <Grid item xs={12}>
-                          <RadioGroup
-                            row
-                            value={notaUsePorcentaje ? 'porcentaje' : 'monto'}
-                            onChange={(e) => setNotaUsePorcentaje(e.target.value === 'porcentaje')}
-                          >
-                            <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
-                            <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
-                          </RadioGroup>
-                        </Grid>
-
-                        {notaUsePorcentaje ? (
-                          <Grid item xs={12} md={4}>
-                            <TextField
-                              fullWidth
-                              type="number"
-                              label="Porcentaje de entrega"
-                              value={notaPorcentajeEntrega ?? ''}
-                              onChange={(e) => {
-                                const v = parseFloat(e.target.value);
-                                setNotaPorcentajeEntrega(isNaN(v) ? null : v);
-                              }}
-                              inputProps={{ min: 0, max: 100, step: 1 }}
-                              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                              helperText={notaPorcentajeEntrega != null && notaTotalVenta > 0
-                                ? `= $${notaMontoEntregaCalculado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
-                                : undefined}
-                            />
-                          </Grid>
-                        ) : (
-                          <Grid item xs={12} md={4}>
-                            <TextField
-                              fullWidth
-                              type="number"
-                              label="Monto de entrega"
-                              value={notaMontoFijoEntrega ?? ''}
-                              onChange={(e) => {
-                                const v = parseFloat(e.target.value);
-                                setNotaMontoFijoEntrega(isNaN(v) ? null : v);
-                              }}
-                              inputProps={{ min: 0 }}
-                              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-                            />
-                          </Grid>
-                        )}
-
-                        <Grid item xs={12} md={4}>
-                          <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                            <Typography variant="caption" color="text.secondary">Monto financiado</Typography>
-                            <Typography variant="h6" color="primary">
-                              ${notaMontoFinanciado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                            </Typography>
-                          </Box>
-                        </Grid>
-
-                        {notaCantidadCuotas && notaCantidadCuotas > 0 && (
-                          <Grid item xs={12} md={4}>
-                            <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                              <Typography variant="caption" color="text.secondary">Cuota estimada</Typography>
-                              <Typography variant="h6">
-                                ${notaCuotaEstimada.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        )}
-                      </>
-                    )}
-                  </Grid>
+                  <Alert severity="info">
+                    Los datos de financiación (cuotas, tasa, entrega inicial) se configuran al confirmar la factura.
+                  </Alert>
                 </Box>
               )}
 
