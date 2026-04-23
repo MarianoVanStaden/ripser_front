@@ -34,9 +34,12 @@ export default defineConfig({
   build: {
     target: 'es2020',
     cssCodeSplit: true,
-    // exceljs dynamic chunk is legitimately ~900 KB raw — users only pay
-    // for it when they click "Export". Bump above that to avoid noise.
-    chunkSizeWarningLimit: 1000,
+    // Two chunks are legitimately large:
+    //   - `vendor-exceljs` (~900 KB raw) — only loads on "Export to Excel"
+    //   - `vendor` (~1.8 MB raw / ~540 KB gzip) — consolidated core, see
+    //     the comment in manualChunks(). Gzip size is what the user actually
+    //     downloads, so the raw-byte warning is misleading here.
+    chunkSizeWarningLimit: 2000,
     sourcemap: false,
     rollupOptions: {
       output: {
@@ -48,10 +51,23 @@ export default defineConfig({
         //   - Everything else (query, forms, dayjs, axios, etc.) lives in
         //     ONE `vendor` chunk — tiny deps don't deserve separate HTTP
         //     requests, and consolidating improves gzip ratio + cache hits.
+        // Chunking philosophy (after debugging cross-chunk runtime errors):
+        //
+        // Only split libs that are BOTH heavy AND route-conditional. Do NOT
+        // split react/react-dom or any "eager core" — Rollup's CJS↔ESM interop
+        // breaks across chunks for libs that use `import React from 'react'`
+        // (seen in `react-mui-sidebar` and similar non-ESM deps), producing
+        // "Cannot read properties of undefined (reading 'createContext')" at
+        // runtime. Likewise, never split @mui internals from @mui/material —
+        // their circular deps cause TDZ errors ("Cannot access X before
+        // initialization").
+        //
+        // Rule of thumb: when in doubt, let it fall into `vendor`. Splitting
+        // is an optimization, not a default.
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
-          // Route-conditional heavy libs — check FIRST so they don't get
+          // Route-conditional heavy libs — check first so they don't get
           // swept into a broader rule below.
           if (id.includes('/@mui/icons-material/')) return 'vendor-mui-icons'
           if (id.includes('/@mui/x-data-grid'))     return 'vendor-mui-datagrid'
@@ -60,28 +76,11 @@ export default defineConfig({
           if (id.includes('/exceljs/')) return 'vendor-exceljs'
           if (id.includes('/jspdf'))    return 'vendor-jspdf'
 
-          // Stable eager core — changes rarely, keep separate for caching.
-          if (
-            id.includes('/react/') ||
-            id.includes('/react-dom/') ||
-            id.includes('/scheduler/') ||
-            id.includes('/react-router') ||
-            id.includes('/react-router-dom/')
-          ) {
-            return 'vendor-react'
-          }
-
-          // ALL remaining MUI + emotion goes together. Splitting
-          // @mui/material from its internals (@mui/utils, @mui/system,
-          // @mui/private-theming, @mui/styled-engine, @mui/base, …) causes
-          // cross-chunk circular deps and TDZ errors at runtime
-          // ("Cannot access X before initialization").
-          if (id.includes('/@mui/') || id.includes('/@emotion/')) {
-            return 'vendor-mui'
-          }
-
-          // Everything else (query, forms, dayjs, axios, hookform, yup,
-          // misc utilities) — one catch-all cacheable chunk.
+          // Everything else (react, react-dom, react-router, @mui/material
+          // + internals, @emotion, query, forms, dayjs, axios, …) → one
+          // `vendor` chunk. Merging avoids all the cross-chunk interop
+          // footguns and still gives us good caching: this chunk only
+          // changes when we bump a dep.
           return 'vendor'
         },
       },
