@@ -51,6 +51,15 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
+          // Route-conditional heavy libs — check FIRST so they don't get
+          // swept into a broader rule below.
+          if (id.includes('/@mui/icons-material/')) return 'vendor-mui-icons'
+          if (id.includes('/@mui/x-data-grid'))     return 'vendor-mui-datagrid'
+          if (id.includes('/@mui/x-date-pickers'))  return 'vendor-mui-pickers'
+          if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-recharts'
+          if (id.includes('/exceljs/')) return 'vendor-exceljs'
+          if (id.includes('/jspdf'))    return 'vendor-jspdf'
+
           // Stable eager core — changes rarely, keep separate for caching.
           if (
             id.includes('/react/') ||
@@ -61,22 +70,15 @@ export default defineConfig({
           ) {
             return 'vendor-react'
           }
-          if (
-            id.includes('/@mui/material/') ||
-            id.includes('/@mui/system/') ||
-            id.includes('/@mui/lab/') ||
-            id.includes('/@emotion/')
-          ) {
+
+          // ALL remaining MUI + emotion goes together. Splitting
+          // @mui/material from its internals (@mui/utils, @mui/system,
+          // @mui/private-theming, @mui/styled-engine, @mui/base, …) causes
+          // cross-chunk circular deps and TDZ errors at runtime
+          // ("Cannot access X before initialization").
+          if (id.includes('/@mui/') || id.includes('/@emotion/')) {
             return 'vendor-mui'
           }
-
-          // Heavy, route-conditional libs — isolate.
-          if (id.includes('/@mui/icons-material/')) return 'vendor-mui-icons'
-          if (id.includes('/@mui/x-data-grid/')) return 'vendor-mui-datagrid'
-          if (id.includes('/@mui/x-date-pickers/')) return 'vendor-mui-pickers'
-          if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-recharts'
-          if (id.includes('/exceljs/')) return 'vendor-exceljs'
-          if (id.includes('/jspdf')) return 'vendor-jspdf'
 
           // Everything else (query, forms, dayjs, axios, hookform, yup,
           // misc utilities) — one catch-all cacheable chunk.
