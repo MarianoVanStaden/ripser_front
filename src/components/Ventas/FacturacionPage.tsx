@@ -36,7 +36,6 @@ import {
   Radio,
   InputAdornment,
   Checkbox,
-  FormGroup,
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
@@ -704,9 +703,6 @@ const FacturacionPage = () => {
   }, [entregarInicial, usePorcentaje, totalVenta, porcentajeEntrega, montoFijoEntrega]);
 
   const montoFinanciado = useMemo(() => totalVenta - montoEntregaCalculado, [totalVenta, montoEntregaCalculado]);
-  const interesManualTotal = useMemo(() => montoFinanciado * (manualTasaInteres / 100), [montoFinanciado, manualTasaInteres]);
-  const totalConInteres = useMemo(() => montoFinanciado + interesManualTotal, [montoFinanciado, interesManualTotal]);
-  const cuotaEstimada = useMemo(() => (cantidadCuotas ? totalConInteres / cantidadCuotas : 0), [totalConInteres, cantidadCuotas]);
 
   // Entrega inicial computed (nota de pedido) — based on product subtotal, not on notaTotalVenta,
   // so the down payment percentage applies to the product price (matching backend behaviour).
@@ -717,7 +713,6 @@ const FacturacionPage = () => {
   }, [notaEntregaInicial, notaUsePorcentaje, notaSubtotal, notaPorcentajeEntrega, notaMontoFijoEntrega]);
 
   const notaMontoFinanciado = useMemo(() => notaTotalVenta - notaMontoEntregaCalculado, [notaTotalVenta, notaMontoEntregaCalculado]);
-  const notaCuotaEstimada = useMemo(() => (notaCantidadCuotas ? notaMontoFinanciado / notaCantidadCuotas : 0), [notaMontoFinanciado, notaCantidadCuotas]);
 
   // Sort and filter Notas de Pedido
   const sortedNotasPedido = useMemo(() => {
