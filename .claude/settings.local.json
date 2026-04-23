@@ -88,7 +88,12 @@
       "Bash(echo \"FRONT=$?\")",
       "Bash(npx vite *)",
       "Bash(./mvnw.cmd compile *)",
-      "Bash(awk '{print $2}')"
+      "Bash(awk '{print $2}')",
+      "Bash(./mvnw compile *)",
+      "Bash(cmd //c \"mvnw.cmd compile -q -DskipTests -o 2>&1\")",
+      "Bash(cmd.exe //c mvnw.cmd compile -q -DskipTests)",
+      "Bash(cmd.exe //c \"cd /d C:\\\\Users\\\\santi\\\\Documents\\\\GitHub\\\\ripser_back && mvnw.cmd compile -q -DskipTests 2>&1\")",
+      "Bash(cmd.exe //c \"cd /d C:\\\\Users\\\\santi\\\\Documents\\\\GitHub\\\\ripser_back && .\\\\mvnw.cmd compile -q -DskipTests 2>&1\")"
     ],
     "deny": [],
     "ask": [],
