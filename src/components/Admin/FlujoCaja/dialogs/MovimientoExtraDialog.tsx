@@ -25,14 +25,37 @@ import type {
   CreateMovimientoExtraDTO,
   CategoriaGastoExtra,
   CategoriaCobroExtra,
-  MetodoPago,
 } from '../../../../types';
 import { movimientoExtraApi } from '../../../../api/services/movimientoExtraApi';
 import {
   getCategoriaGastoLabel,
   getCategoriaCobroLabel,
-  getPaymentMethodLabel,
 } from '../../../../utils/flujoCajaUtils';
+
+// Enum alineado con com.ripser_back.enums.MetodoPago del backend.
+// El tipo global `MetodoPago` en src/types/index.ts está desalineado
+// (usa `TRANSFERENCIA` y `FINANCIAMIENTO`, valores que el backend rechaza),
+// por eso definimos uno local exclusivo para este diálogo.
+type MetodoPagoExtra =
+  | 'EFECTIVO'
+  | 'TRANSFERENCIA_BANCARIA'
+  | 'CHEQUE'
+  | 'TARJETA_CREDITO'
+  | 'TARJETA_DEBITO'
+  | 'MERCADO_PAGO'
+  | 'CUENTA_CORRIENTE'
+  | 'FINANCIACION_PROPIA';
+
+const METODO_PAGO_LABELS: Record<MetodoPagoExtra, string> = {
+  EFECTIVO: 'Efectivo',
+  TRANSFERENCIA_BANCARIA: 'Transferencia Bancaria',
+  CHEQUE: 'Cheque',
+  TARJETA_CREDITO: 'Tarjeta de Crédito',
+  TARJETA_DEBITO: 'Tarjeta de Débito',
+  MERCADO_PAGO: 'Mercado Pago',
+  CUENTA_CORRIENTE: 'Cuenta Corriente',
+  FINANCIACION_PROPIA: 'Financiación Propia',
+};
 
 interface MovimientoExtraDialogProps {
   open: boolean;
@@ -70,15 +93,15 @@ const CATEGORIAS_COBRO: CategoriaCobroExtra[] = [
   'OTROS',
 ];
 
-const METODOS_PAGO: MetodoPago[] = [
+const METODOS_PAGO: MetodoPagoExtra[] = [
   'EFECTIVO',
-  'TRANSFERENCIA',
+  'TRANSFERENCIA_BANCARIA',
   'CHEQUE',
   'TARJETA_CREDITO',
   'TARJETA_DEBITO',
-  'FINANCIACION_PROPIA',
-  'FINANCIAMIENTO',
+  'MERCADO_PAGO',
   'CUENTA_CORRIENTE',
+  'FINANCIACION_PROPIA',
 ];
 
 const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
@@ -94,7 +117,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
   const [fecha, setFecha] = useState<Dayjs>(dayjs());
   const [concepto, setConcepto] = useState('');
   const [importe, setImporte] = useState('');
-  const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
+  const [metodoPago, setMetodoPago] = useState<MetodoPagoExtra>('EFECTIVO');
   const [numeroComprobante, setNumeroComprobante] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [responsableNombre, setResponsableNombre] = useState('');
@@ -121,7 +144,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
       setFecha(dayjs(editingMovimiento.fecha));
       setConcepto(editingMovimiento.concepto);
       setImporte(editingMovimiento.importe.toString());
-      setMetodoPago(editingMovimiento.metodoPago || 'EFECTIVO');
+      setMetodoPago((editingMovimiento.metodoPago as MetodoPagoExtra) || 'EFECTIVO');
       setNumeroComprobante(editingMovimiento.numeroComprobante || '');
       setObservaciones(editingMovimiento.observaciones || '');
       setResponsableNombre(editingMovimiento.responsableNombre || '');
@@ -175,7 +198,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
           : { categoriaCobro: categoria as CategoriaCobroExtra }),
         descripcion: concepto.trim(),
         monto: parseFloat(importe), // Backend espera 'monto', no 'importe'
-        metodoPago,
+        metodoPago: metodoPago as CreateMovimientoExtraDTO['metodoPago'],
         numeroComprobante: numeroComprobante.trim() || undefined,
         observaciones: observaciones.trim() || undefined,
       };
@@ -312,13 +335,13 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
                   value={metodoPago}
-                  onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
+                  onChange={(e) => setMetodoPago(e.target.value as MetodoPagoExtra)}
                   label="Método de Pago"
                   disabled={loading}
                 >
                   {METODOS_PAGO.map((metodo) => (
                     <MenuItem key={metodo} value={metodo}>
-                      {getPaymentMethodLabel(metodo)}
+                      {METODO_PAGO_LABELS[metodo]}
                     </MenuItem>
                   ))}
                 </Select>

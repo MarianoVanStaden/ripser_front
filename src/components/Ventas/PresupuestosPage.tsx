@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Button,
@@ -51,7 +51,9 @@ import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services"
 import { documentoApi } from "../../api/services/documentoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead } from "../../types";
+import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
+import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead, DeudaClienteError } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
 import LoadingOverlay from "../common/LoadingOverlay";
 import { useAuth } from "../../context/AuthContext";
@@ -60,6 +62,7 @@ import SuccessDialog from "../common/SuccessDialog";
 import { generarPresupuestoPDF } from "../../services/pdfService";
 import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import UsuarioBadge from "../common/UsuarioBadge";
+import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
 
 const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string }>): OpcionFinanciamientoDTO[] => {
   if (!Array.isArray(opciones)) return [];
@@ -185,6 +188,89 @@ const PresupuestosPage: React.FC = () => {
   const [presupuestosFinanciamiento, setPresupuestosFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdPresupuesto, setCreatedPresupuesto] = useState<DocumentoComercial | null>(null);
+
+  // Deuda cliente confirmation
+  const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
+  const pendingDeudaRef = useRef<(() => void) | null>(null);
+  const deudaYaConfirmadaRef = useRef(false);
+
+  const parseDeudaError = (err: any): DeudaClienteError | null => {
+    const data = err?.response?.data;
+    if (!data) return null;
+    if (data.requiereConfirmacion || data.cuotasPendientes != null) {
+      return {
+        error: data.error || 'Cliente con deuda pendiente',
+        message: data.message || '',
+        cuotasPendientes: data.cuotasPendientes ?? 0,
+        montoCuotasPendientes: data.montoCuotasPendientes ?? null,
+        deudaCuentaCorriente: data.deudaCuentaCorriente ?? null,
+        requiereConfirmacion: true,
+      };
+    }
+    if (typeof data.message === 'string' && data.message.toLowerCase().includes('deuda pendiente')) {
+      return {
+        error: 'Cliente con deuda pendiente',
+        message: data.message,
+        cuotasPendientes: 0,
+        deudaCuentaCorriente: null,
+        requiereConfirmacion: true,
+      };
+    }
+    return null;
+  };
+
+  const handleDeudaConfirm = useCallback(() => {
+    setDeudaError(null);
+    const fn = pendingDeudaRef.current;
+    pendingDeudaRef.current = null;
+    fn?.();
+  }, []);
+
+  const handleDeudaCancel = useCallback(() => {
+    setDeudaError(null);
+    pendingDeudaRef.current = null;
+    deudaYaConfirmadaRef.current = false;
+    setConfirmDialogOpen(false);
+    setConfirmDialogAction(null);
+    setDialogOpen(false);
+    setEditingPresupuesto(null);
+    setFormData(initialFormData);
+    setDetalles([]);
+    setHasUnsavedChanges(false);
+  }, []);
+
+  const checkClienteDeuda = useCallback(async (clienteId: number): Promise<DeudaClienteError | null> => {
+    try {
+      const [prestamos, ccPage] = await Promise.all([
+        prestamoPersonalApi.getByCliente(clienteId),
+        cuentaCorrienteApi.getByClienteId(clienteId),
+      ]);
+      const activoStates = ['ACTIVO', 'EN_MORA', 'EN_LEGAL'];
+      const prestamosActivos = prestamos.filter((p: any) => activoStates.includes(p.estado));
+      const cuotasPendientes = prestamosActivos.reduce((sum: number, p: any) => sum + (p.cuotasPendientes || 0), 0);
+      const montoCuotasPendientes = prestamosActivos.reduce((sum: number, p: any) => sum + (p.saldoPendiente || 0), 0);
+      const movements = ccPage.content;
+      const lastMovement = [...movements].sort(
+        (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      )[0];
+      const saldo = lastMovement?.saldo ?? 0;
+      const deudaCC = saldo < 0 ? saldo : null;
+      if (cuotasPendientes > 0 || deudaCC !== null) {
+        return {
+          error: 'Cliente con deuda pendiente',
+          message: '',
+          cuotasPendientes,
+          montoCuotasPendientes: cuotasPendientes > 0 ? montoCuotasPendientes : null,
+          deudaCuentaCorriente: deudaCC,
+          requiereConfirmacion: true,
+        };
+      }
+      return null;
+    } catch (err) {
+      console.warn('No se pudo verificar deuda del cliente de forma preventiva:', err);
+      return null;
+    }
+  }, []);
 
   // Main fetch data function
   const fetchData = useCallback(async () => {
@@ -525,6 +611,7 @@ const PresupuestosPage: React.FC = () => {
       setDetalles([]);
       setError(null);
       setHasUnsavedChanges(false);
+      deudaYaConfirmadaRef.current = false;
     }
   }, [hasUnsavedChanges, user, readOnly]);
 
@@ -537,6 +624,7 @@ const PresupuestosPage: React.FC = () => {
     setError(null);
     setHasUnsavedChanges(false);
     setConfirmDialogAction(null);
+    deudaYaConfirmadaRef.current = false;
   }, [user]);
 
   const handleSavePresupuesto = useCallback(async () => {
@@ -613,6 +701,19 @@ const PresupuestosPage: React.FC = () => {
         }
       }
 
+      // Pre-check de deuda del cliente antes de crear el presupuesto
+      if (!editingPresupuesto && formData.clienteId && !deudaYaConfirmadaRef.current) {
+        const deudaData = await checkClienteDeuda(Number(formData.clienteId));
+        if (deudaData) {
+          setDeudaError(deudaData);
+          pendingDeudaRef.current = () => {
+            deudaYaConfirmadaRef.current = true;
+            handleSavePresupuesto();
+          };
+          return;
+        }
+      }
+
       setFormLoading(true);
       setError(null);
 
@@ -623,9 +724,24 @@ const PresupuestosPage: React.FC = () => {
         setPresupuestos((prev) => prev.map((p) => (p.id === editingPresupuesto.id ? savedPresupuesto : p)));
       } else {
         console.log("Enviando datos:", JSON.stringify(payload));
-        savedPresupuesto = await documentoApi.createPresupuesto(payload);
+        try {
+          savedPresupuesto = await documentoApi.createPresupuesto(payload);
+        } catch (createErr: any) {
+          const deudaData = parseDeudaError(createErr);
+          if (deudaData) {
+            setDeudaError(deudaData);
+            pendingDeudaRef.current = () => {
+              deudaYaConfirmadaRef.current = true;
+              handleSavePresupuesto();
+            };
+            return;
+          }
+          throw createErr;
+        }
         setPresupuestos((prev) => [savedPresupuesto, ...prev]);
       }
+
+      deudaYaConfirmadaRef.current = false;
 
       setConfirmDialogOpen(false);
       setConfirmDialogAction(null);
@@ -663,7 +779,7 @@ const PresupuestosPage: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
-  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose]);
+  }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose, checkClienteDeuda]);
 
   // Financiamiento handlers
   const handleOpenFinanciamiento = useCallback(async (presupuesto: DocumentoComercial) => {
@@ -1694,6 +1810,14 @@ const PresupuestosPage: React.FC = () => {
             variant: 'outlined',
           },
         ]}
+      />
+
+      {/* Deuda cliente confirmation dialog */}
+      <DeudaClienteConfirmDialog
+        open={deudaError !== null}
+        error={deudaError}
+        onConfirm={handleDeudaConfirm}
+        onCancel={handleDeudaCancel}
       />
     </Box>
   );

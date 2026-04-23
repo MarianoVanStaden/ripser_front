@@ -515,6 +515,18 @@ const FacturacionPage = () => {
   const handleDeudaCancel = useCallback(() => {
     setDeudaError(null);
     pendingDeudaRef.current = null;
+    deudaYaConfirmadaRef.current = false;
+    billingConfirmedRef.current = false;
+    setBillingDialogOpen(false);
+    setConvertDialogOpen(false);
+    setAsignarEquiposDialogOpen(false);
+    setNotaParaAsignacion(null);
+    setSelectedNotaPedido(null);
+    setNotaCart([]);
+    setEditingNotaItems(false);
+    setSelectedOpcionId(null);
+    setOpcionesFinanciamiento([]);
+    setIsManualInvoice(false);
   }, []);
 
   // Billing Dialog state (Datos de Financiación Propia) — mirrors NotasPedidoPage

@@ -191,6 +191,14 @@ const NotasPedidoPage: React.FC = () => {
   const handleDeudaCancel = useCallback(() => {
     setDeudaError(null);
     pendingDeudaRef.current = null;
+    deudaYaConfirmadaRef.current = false;
+    setConvertDialogOpen(false);
+    setConvertForm(initialConvertForm);
+    setSelectedPresupuesto(null);
+    setOpcionesConvertDialog([]);
+    setSelectedOpcionConvertId(null);
+    setBillingDialogOpen(false);
+    setNotaToBill(null);
   }, []);
 
   const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
