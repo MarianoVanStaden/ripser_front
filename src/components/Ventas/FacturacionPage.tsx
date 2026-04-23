@@ -1136,10 +1136,24 @@ const FacturacionPage = () => {
     setError(null);
     setSuccess(null);
 
+    // Financing data source: once the billing modal has been confirmed (Gate 1 passed),
+    // read from billingForm rather than state. The setTimeout re-entry from submitBillingDialog
+    // sees a stale closure where the setCantidadCuotas/etc writes have not yet been committed,
+    // so state-backed reads return pre-modal defaults (cantidadCuotas=null → empty financing
+    // payload → backend falls back to defaults). billingForm was already captured with the
+    // user's latest inputs at click time, so it is safe to use directly.
+    const fin = billingForm;
+    const finPorcentajeEntrega = fin.usePorcentaje ? fin.porcentajeEntregaInicial : null;
+    const finMontoFijoEntrega = !fin.usePorcentaje ? fin.montoEntregaInicial : null;
+    const finMontoEntregaCalculado = fin.entregarInicial
+      ? (fin.usePorcentaje ? subtotalVenta * (fin.porcentajeEntregaInicial / 100) : fin.montoEntregaInicial)
+      : 0;
+    const finMontoFinanciado = subtotalVenta - finMontoEntregaCalculado;
+
     // Use the user-entered tasaInteres (for FINANCIACION_PROPIA),
     // falling back to the selected financing template (for FINANCIAMIENTO with templates)
-    const tasaInteresManual = manualTasaInteres > 0
-      ? manualTasaInteres
+    const tasaInteresManual = fin.tasaInteres > 0
+      ? fin.tasaInteres
       : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0);
 
     try {
@@ -1218,15 +1232,15 @@ const FacturacionPage = () => {
           const presupuestoId = presupuesto.id;
           const capturedPayment = paymentMethod;
           const capturedIva = selectedIva;
-          const capturedCuotas = cantidadCuotas;
-          const capturedTipoFin = tipoFinanciacion;
-          const capturedVencimiento = primerVencimiento;
-          const capturedEntregaInicial1 = entregarInicial;
-          const capturedUsePorcentaje1 = usePorcentaje;
-          const capturedPorcentajeEntrega1 = porcentajeEntrega;
-          const capturedMontoFijoEntrega1 = montoFijoEntrega;
-          const capturedMontoEntrega1 = montoEntregaCalculado;
-          const capturedMontoFinanciado1 = montoFinanciado;
+          const capturedCuotas = fin.cantidadCuotas;
+          const capturedTipoFin = fin.tipoFinanciacion;
+          const capturedVencimiento = fin.primerVencimiento;
+          const capturedEntregaInicial1 = fin.entregarInicial;
+          const capturedUsePorcentaje1 = fin.usePorcentaje;
+          const capturedPorcentajeEntrega1 = finPorcentajeEntrega;
+          const capturedMontoFijoEntrega1 = finMontoFijoEntrega;
+          const capturedMontoEntrega1 = finMontoEntregaCalculado;
+          const capturedMontoFinanciado1 = finMontoFinanciado;
           const capturedTasaInteres1 = tasaInteresManual;
           pendingDeudaRef.current = async () => {
             setLoading(true);
@@ -1293,12 +1307,12 @@ const FacturacionPage = () => {
           factura = await documentoApi.convertToFactura({
             notaPedidoId: nota.id,
             ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
-            ...(isFinanciamiento(paymentMethod) && cantidadCuotas != null && {
-              cantidadCuotas,
-              tipoFinanciacion,
+            ...(isFinanciamiento(paymentMethod) && {
+              cantidadCuotas: fin.cantidadCuotas,
+              tipoFinanciacion: fin.tipoFinanciacion,
               tasaInteres: tasaInteresManual,
-              ...(primerVencimiento && { primerVencimiento }),
-              ...resolveEntregaFields(paymentMethod, entregarInicial, usePorcentaje, porcentajeEntrega, montoFijoEntrega),
+              ...(fin.primerVencimiento && { primerVencimiento: fin.primerVencimiento }),
+              ...resolveEntregaFields(paymentMethod, fin.entregarInicial, fin.usePorcentaje, finPorcentajeEntrega, finMontoFijoEntrega),
             }),
           });
         } catch (facturaErr: any) {
@@ -1307,15 +1321,15 @@ const FacturacionPage = () => {
             setDeudaError(deudaFacturaData);
             const notaId = nota.id;
             const capturedPayment = paymentMethod;
-            const capturedCuotas = cantidadCuotas;
-            const capturedTipoFin = tipoFinanciacion;
-            const capturedVencimiento = primerVencimiento;
-            const capturedEntregaInicial2 = entregarInicial;
-            const capturedUsePorcentaje2 = usePorcentaje;
-            const capturedPorcentajeEntrega2 = porcentajeEntrega;
-            const capturedMontoFijoEntrega2 = montoFijoEntrega;
-            const capturedMontoEntrega2 = montoEntregaCalculado;
-            const capturedMontoFinanciado2 = montoFinanciado;
+            const capturedCuotas = fin.cantidadCuotas;
+            const capturedTipoFin = fin.tipoFinanciacion;
+            const capturedVencimiento = fin.primerVencimiento;
+            const capturedEntregaInicial2 = fin.entregarInicial;
+            const capturedUsePorcentaje2 = fin.usePorcentaje;
+            const capturedPorcentajeEntrega2 = finPorcentajeEntrega;
+            const capturedMontoFijoEntrega2 = finMontoFijoEntrega;
+            const capturedMontoEntrega2 = finMontoEntregaCalculado;
+            const capturedMontoFinanciado2 = finMontoFinanciado;
             const capturedTasaInteres2 = tasaInteresManual;
             pendingDeudaRef.current = async () => {
               setLoading(true);
@@ -1352,8 +1366,8 @@ const FacturacionPage = () => {
           throw facturaErr;
         }
 
-        if (isFinanciamiento(paymentMethod) && entregarInicial && montoEntregaCalculado > 0) {
-          setFacturaEntregaInfo({ montoEntrega: montoEntregaCalculado, montoFinanciado, cantidadCuotas });
+        if (isFinanciamiento(paymentMethod) && fin.entregarInicial && finMontoEntregaCalculado > 0) {
+          setFacturaEntregaInfo({ montoEntrega: finMontoEntregaCalculado, montoFinanciado: finMontoFinanciado, cantidadCuotas: fin.cantidadCuotas });
         } else {
           setFacturaEntregaInfo(null);
         }

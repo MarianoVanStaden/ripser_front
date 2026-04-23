@@ -21,7 +21,6 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -250,7 +249,6 @@ const CajaMovimientosPage: React.FC = () => {
                 const montoColor = esExtraccion ? 'error.main' : 'success.main';
                 const prefix = esExtraccion ? '−' : '+';
                 const desc = mov.descripcion ?? '';
-                const descTruncated = desc.length > 45 ? `${desc.slice(0, 42)}…` : desc;
 
                 return (
                   <TableRow key={mov.id} hover>
@@ -291,14 +289,8 @@ const CajaMovimientosPage: React.FC = () => {
                         : '—'}
                     </TableCell>
                     <TableCell align="right">{formatPesos(mov.valorDolar)}</TableCell>
-                    <TableCell>
-                      {desc.length > 45 ? (
-                        <Tooltip title={desc}>
-                          <span>{descTruncated}</span>
-                        </Tooltip>
-                      ) : (
-                        descTruncated
-                      )}
+                    <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 360 }}>
+                      {desc}
                     </TableCell>
                   </TableRow>
                 );

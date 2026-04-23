@@ -86,7 +86,8 @@
       "Bash(echo \"BACK=$?\")",
       "Bash(npm ls *)",
       "Bash(echo \"FRONT=$?\")",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(./mvnw.cmd compile *)"
     ],
     "deny": [],
     "ask": [],
