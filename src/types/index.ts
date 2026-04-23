@@ -2914,6 +2914,8 @@ export interface DesgloseModeloDTO {
   disponibles: number;
   /** Lista de numeroHeladera de los equipos disponibles (para columna NUMEROS) */
   numerosDisponibles: string[];
+  /** Lista de numeroHeladera de los equipos con OrdenServicio activa (se muestran en naranja) */
+  numerosEnService?: string[];
 }
 
 /** Equipo físico asociado a una OrdenServicio (dentro de OrdenServicioDTO) */
@@ -3887,3 +3889,6 @@ export * from './posicionPatrimonial.types';
 
 // Cajas de Ahorro en USD
 export * from './cajasAhorro.types';
+
+// Cajas en Pesos (ARS) reales
+export * from './cajasPesos.types';

@@ -104,6 +104,7 @@ import { AmortizacionesPage, AmortizacionMesPage } from './components/Admin/Amor
 import { ProvisionesPage, ProvisionResumenAnualPage } from './components/Admin/Provisiones';
 import PosicionPatrimonialPage from './components/Admin/PosicionPatrimonial';
 import { CajasAhorroListPage, CajaMovimientosPage } from './components/Admin/CajasAhorro';
+import { CajasPesosListPage, CajaPesosMovimientosPage } from './components/Admin/CajasPesos';
 
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -194,6 +195,8 @@ function App() {
               <Route path="admin/patrimonio" element={<PrivateRoute><PosicionPatrimonialPage /></PrivateRoute>} />
               <Route path="admin/cajas-ahorro" element={<PrivateRoute><CajasAhorroListPage /></PrivateRoute>} />
               <Route path="admin/cajas-ahorro/:id" element={<PrivateRoute><CajaMovimientosPage /></PrivateRoute>} />
+              <Route path="admin/cajas-pesos" element={<PrivateRoute><CajasPesosListPage /></PrivateRoute>} />
+              <Route path="admin/cajas-pesos/:id" element={<PrivateRoute><CajaPesosMovimientosPage /></PrivateRoute>} />
               {/* VENTAS Module */}
               <Route path="ventas/dashboard" element={<PrivateRoute><VentasDashboard /></PrivateRoute>} />
               <Route path="ventas/notas-pedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />

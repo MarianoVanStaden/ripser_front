@@ -9,12 +9,14 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
-  FormHelperText,
   Grid2 as Grid,
+  IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Paper,
   Select,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -25,11 +27,17 @@ import {
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useForm, Controller, useWatch } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import { amortizacionApi } from '../../../../api/services/amortizacionApi';
 import { cajasAhorroApi } from '../../../../api/services/cajasAhorroApi';
-import type { CajaAhorroDolares, DisponibleConversionDTO } from '../../../../types';
+import { cajasPesosApi } from '../../../../api/services/cajasPesosApi';
+import type {
+  CajaAhorroDolares,
+  CajaPesos,
+  DisponibleConversionDTO,
+  OrigenConversionItemDTO,
+} from '../../../../types';
 import { extractError, formatPesos, formatUSD, MONTH_NAMES } from '../utils';
 
 interface Props {
@@ -39,19 +47,18 @@ interface Props {
   onSuccess: () => void;
 }
 
-interface Step1FormData {
-  montoPesos: string;
-  valorDolar: string;
-  cajaAhorroId: string;
-  descripcion: string;
+interface FilaOrigen {
+  cajaId: string;
+  monto: string;
 }
+
+const nuevaFila = (): FilaOrigen => ({ cajaId: '', monto: '' });
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
 const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
-
-const max2dec = (v: unknown) =>
-  v == null || v === '' || /^\d+(\.\d{1,2})?$/.test(String(v));
 
 const ConvertirAmortizacionDialog: React.FC<Props> = ({
   open,
@@ -66,76 +73,44 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
   const [loadingDisponibles, setLoadingDisponibles] = useState(false);
   const [errorDisponibles, setErrorDisponibles] = useState<string | null>(null);
   const [selected, setSelected] = useState<DisponibleConversionDTO | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const schemaStep1 = useMemo(
-    () =>
-      yup.object({
-        montoPesos: yup
-          .string()
-          .required('Requerido')
-          .test('pos', 'Debe ser mayor a 0', (v) => parseFloat(v ?? '') > 0)
-          .test('dec', 'Máximo 2 decimales', max2dec)
-          .test('max', 'Supera el monto disponible', (v) => {
-            if (!selected) return true;
-            return parseFloat(v ?? '') <= selected.montoPesosDisponible;
-          }),
-        valorDolar: yup
-          .string()
-          .required('Requerido')
-          .test('pos', 'Debe ser mayor a 0', (v) => parseFloat(v ?? '') > 0),
-        cajaAhorroId: yup
-          .string()
-          .required('Seleccione una caja')
-          .test('valid', 'Seleccione una caja', (v) => !!v && v !== ''),
-        descripcion: yup.string(),
-      }),
-    [selected]
-  );
+  const [cajasPesos, setCajasPesos] = useState<CajaPesos[]>([]);
+  const [loadingCajasPesos, setLoadingCajasPesos] = useState(false);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-    reset: resetForm,
-    setValue,
-  } = useForm<Step1FormData>({
-    resolver: yupResolver(schemaStep1) as any,
-    defaultValues: { montoPesos: '', valorDolar: '', cajaAhorroId: '', descripcion: '' },
-  });
+  const [destinoId, setDestinoId] = useState<string>('');
+  const [tipoCambio, setTipoCambio] = useState<string>('');
+  const [descripcion, setDescripcion] = useState<string>('');
+  const [origenes, setOrigenes] = useState<FilaOrigen[]>([nuevaFila()]);
 
-  const montoPesosVal = useWatch({ control, name: 'montoPesos' });
-  const valorDolarVal = useWatch({ control, name: 'valorDolar' });
-  const cajaIdVal = useWatch({ control, name: 'cajaAhorroId' });
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Reset todo al abrir/cerrar
+  // Reset al abrir
   useEffect(() => {
-    if (open) {
-      setStep(0);
-      setDisponibles([]);
-      setSelected(null);
-      setApiError(null);
-      setErrorDisponibles(null);
-      setSearched(false);
-      resetForm({ montoPesos: '', valorDolar: '', cajaAhorroId: '', descripcion: '' });
-    }
-  }, [open, resetForm]);
+    if (!open) return;
+    setStep(0);
+    setDisponibles([]);
+    setSelected(null);
+    setSearched(false);
+    setApiError(null);
+    setErrorDisponibles(null);
+    setDestinoId('');
+    setTipoCambio('');
+    setDescripcion('');
+    setOrigenes([nuevaFila()]);
+  }, [open]);
 
-  // Reset form al cambiar selección
+  // Cargar cajas pesos cuando entra al paso 1
   useEffect(() => {
-    if (selected) {
-      resetForm({
-        montoPesos: '',
-        valorDolar: selected.valorDolarSugerido != null
-          ? String(selected.valorDolarSugerido)
-          : '',
-        cajaAhorroId: cajasActivas.length === 1 ? String(cajasActivas[0].id) : '',
-        descripcion: '',
-      });
-    }
-  }, [selected, cajasActivas, resetForm]);
+    if (step !== 1) return;
+    setLoadingCajasPesos(true);
+    cajasPesosApi
+      .getAll()
+      .then((data) => setCajasPesos(data.filter((c) => c.estado === 'ACTIVA')))
+      .catch((err) => setApiError(extractError(err)))
+      .finally(() => setLoadingCajasPesos(false));
+  }, [step]);
 
   const buscarDisponibles = useCallback(async () => {
     setDisponibles([]);
@@ -156,6 +131,12 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
   const handleSelectRow = (row: DisponibleConversionDTO) => {
     setSelected(row);
     setApiError(null);
+    setDestinoId(cajasActivas.length === 1 ? String(cajasActivas[0].id) : '');
+    setTipoCambio(
+      row.valorDolarSugerido != null ? String(row.valorDolarSugerido) : ''
+    );
+    setOrigenes([nuevaFila()]);
+    setDescripcion('');
     setStep(1);
   };
 
@@ -164,27 +145,83 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
     setStep(0);
   };
 
-  const montoPesos = parseFloat(montoPesosVal);
-  const valorDolar = parseFloat(valorDolarVal);
-  const showPreview =
-    !isNaN(montoPesos) && montoPesos > 0 && !isNaN(valorDolar) && valorDolar > 0;
-  const previewUsd = showPreview
-    ? Math.round((montoPesos / valorDolar) * 100) / 100
-    : 0;
+  // ── Derived state ───────────────────────────────────────────────
+  const cajasPesosById = useMemo(
+    () => new Map(cajasPesos.map((c) => [c.id, c])),
+    [cajasPesos]
+  );
 
-  const selectedCaja = cajasActivas.find((c) => String(c.id) === cajaIdVal);
+  const cajasPesosDisponiblesFactory = useMemo(() => {
+    const usadas = new Set(origenes.map((o) => o.cajaId).filter(Boolean));
+    return (filaActual: string) =>
+      cajasPesos.filter((c) => {
+        if (String(c.id) === filaActual) return true;
+        return !usadas.has(String(c.id));
+      });
+  }, [cajasPesos, origenes]);
 
-  const onSubmit = async (data: Step1FormData) => {
-    if (!selected) return;
+  const totalIngresado = useMemo(
+    () => origenes.reduce((acc, o) => acc + (parseFloat(o.monto) || 0), 0),
+    [origenes]
+  );
+
+  const disponibleAmort = selected?.montoPesosDisponible ?? 0;
+  const diferencia = round2(disponibleAmort - totalIngresado);
+  const coincide = Math.abs(diferencia) < 0.005;
+
+  const tc = parseFloat(tipoCambio);
+  const previewUsd =
+    totalIngresado > 0 && tc > 0 ? round2(totalIngresado / tc) : 0;
+
+  const updateFila = (idx: number, patch: Partial<FilaOrigen>) =>
+    setOrigenes((prev) =>
+      prev.map((f, i) => (i === idx ? { ...f, ...patch } : f))
+    );
+  const agregarFila = () =>
+    setOrigenes((prev) => [...prev, nuevaFila()]);
+  const eliminarFila = (idx: number) =>
+    setOrigenes((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev
+    );
+
+  const errorFila = (f: FilaOrigen): string | null => {
+    if (!f.cajaId) return 'Seleccione caja';
+    const monto = parseFloat(f.monto);
+    if (isNaN(monto) || monto <= 0) return 'Monto > 0';
+    const caja = cajasPesosById.get(Number(f.cajaId));
+    if (caja && monto > caja.saldoActual)
+      return `Excede saldo (${formatPesos(caja.saldoActual)})`;
+    return null;
+  };
+
+  const erroresFilas = origenes.map(errorFila);
+  const hayErroresFilas = erroresFilas.some((e) => e !== null);
+
+  const tcValido = !isNaN(tc) && tc > 0;
+  const canSubmit =
+    !!selected &&
+    !!destinoId &&
+    tcValido &&
+    !hayErroresFilas &&
+    coincide &&
+    totalIngresado > 0 &&
+    !saving;
+
+  const onSubmit = async () => {
+    if (!canSubmit || !selected) return;
     setSaving(true);
     setApiError(null);
     try {
-      await cajasAhorroApi.convertirAmortizacion({
-        amortizacionMensualId: selected.amortizacionMensualId,
-        montoPesos: parseFloat(data.montoPesos),
-        valorDolar: parseFloat(data.valorDolar),
-        cajaAhorroId: Number(data.cajaAhorroId),
-        descripcion: data.descripcion || undefined,
+      const montoPesosTotal = round2(totalIngresado);
+      await amortizacionApi.convertirUsd(selected.amortizacionMensualId, {
+        montoPesosTotal,
+        tipoCambio: round2(tc),
+        destinoCajaUsdId: Number(destinoId),
+        origenes: origenes.map<OrigenConversionItemDTO>((f) => ({
+          cajaId: Number(f.cajaId),
+          monto: round2(parseFloat(f.monto)),
+        })),
+        descripcion: descripcion || undefined,
       });
       onSuccess();
     } catch (err) {
@@ -200,7 +237,7 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
         Convertir amortización → USD
         {step === 1 && selected && (
           <Typography variant="body2" color="text.secondary">
-            Paso 2: Configurar conversión
+            Paso 2: Orígenes (pesos) + destino (USD)
           </Typography>
         )}
       </DialogTitle>
@@ -324,7 +361,7 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
 
         {step === 1 && selected && (
           <>
-            <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
+            <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
               <Typography variant="body2" color="text.secondary">
                 Activo seleccionado
               </Typography>
@@ -333,8 +370,7 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
               </Typography>
               <Typography variant="body2">
                 Período: {MONTH_NAMES[selected.mes - 1]} {selected.anio} &nbsp;·&nbsp;
-                Disponible:{' '}
-                <strong>{formatPesos(selected.montoPesosDisponible)}</strong>
+                Disponible: <strong>{formatPesos(selected.montoPesosDisponible)}</strong>
               </Typography>
             </Paper>
 
@@ -344,109 +380,202 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
               </Alert>
             )}
 
-            <form id="convertir-form" onSubmit={handleSubmit(onSubmit)}>
-              <Grid container spacing={2}>
-                <Grid size={12}>
-                  <Box display="flex" gap={1} alignItems="flex-start">
-                    <Controller
-                      name="montoPesos"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          label="Monto a convertir (pesos) *"
-                          type="number"
-                          inputProps={{ step: '0.01', min: '0.01' }}
-                          error={!!errors.montoPesos}
-                          helperText={
-                            errors.montoPesos?.message ??
-                            `Máx: ${formatPesos(selected.montoPesosDisponible)}`
-                          }
-                        />
-                      )}
-                    />
-                    <Button
-                      variant="outlined"
-                      sx={{ mt: 1, whiteSpace: 'nowrap', minWidth: 130 }}
-                      onClick={() =>
-                        setValue('montoPesos', String(selected.montoPesosDisponible))
-                      }
-                    >
-                      Convertir todo
-                    </Button>
-                  </Box>
-                </Grid>
-                <Grid size={6}>
-                  <Controller
-                    name="valorDolar"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label="Tipo de cambio *"
-                        type="number"
-                        inputProps={{ step: '0.01', min: '0.01' }}
-                        error={!!errors.valorDolar}
-                        helperText={
-                          errors.valorDolar?.message ?? 'Pesos por dólar (snapshot histórico)'
-                        }
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid size={6}>
-                  <Controller
-                    name="cajaAhorroId"
-                    control={control}
-                    render={({ field }) => (
-                      <FormControl fullWidth error={!!errors.cajaAhorroId}>
-                        <InputLabel>Caja destino *</InputLabel>
-                        <Select {...field} label="Caja destino *">
-                          <MenuItem value="">— Seleccionar —</MenuItem>
-                          {cajasActivas.map((c) => (
-                            <MenuItem key={c.id} value={String(c.id)}>
-                              {c.nombre}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.cajaAhorroId && (
-                          <FormHelperText>{errors.cajaAhorroId.message}</FormHelperText>
-                        )}
-                      </FormControl>
-                    )}
-                  />
-                </Grid>
-                <Grid size={12}>
-                  <Controller
-                    name="descripcion"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField {...field} fullWidth label="Descripción" multiline rows={2} />
-                    )}
-                  />
-                </Grid>
-              </Grid>
-            </form>
+            {loadingCajasPesos && (
+              <Box display="flex" justifyContent="center" py={2}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
 
-            {showPreview && (
-              <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'info.50' }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Vista previa
+            {!loadingCajasPesos && cajasPesos.length === 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                No hay cajas en pesos activas. Creá al menos una desde{' '}
+                <strong>Admin → Cajas en Pesos</strong> antes de convertir.
+              </Alert>
+            )}
+
+            {!loadingCajasPesos && cajasPesos.length > 0 && (
+              <>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={6}>
+                    <TextField
+                      fullWidth
+                      label="Tipo de cambio *"
+                      type="number"
+                      value={tipoCambio}
+                      onChange={(e) => setTipoCambio(e.target.value)}
+                      inputProps={{ step: '0.01', min: '0.01' }}
+                      helperText={tcValido ? `1 USD = ${formatPesos(tc)}` : 'Pesos por dólar'}
+                      error={tipoCambio !== '' && !tcValido}
+                    />
+                  </Grid>
+                  <Grid size={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Caja USD destino *</InputLabel>
+                      <Select
+                        value={destinoId}
+                        label="Caja USD destino *"
+                        onChange={(e) => setDestinoId(String(e.target.value))}
+                      >
+                        <MenuItem value="">— Seleccionar —</MenuItem>
+                        {cajasActivas.map((c) => (
+                          <MenuItem key={c.id} value={String(c.id)}>
+                            {c.nombre} ({formatUSD(c.saldoActual)})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+
+                <Typography variant="subtitle2" fontWeight={700} mb={1}>
+                  Orígenes en pesos
                 </Typography>
-                <Typography variant="body1">
-                  {formatPesos(montoPesos)} ÷ TC {formatPesos(valorDolar)}
-                </Typography>
-                <Typography variant="h6" fontWeight={700} color="info.main">
-                  = {formatUSD(previewUsd)}
-                </Typography>
-                {selectedCaja && (
-                  <Typography variant="body2" color="text.secondary">
-                    Caja: {selectedCaja.nombre}
-                  </Typography>
-                )}
-              </Paper>
+
+                <Paper variant="outlined" sx={{ mb: 1 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.100' }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Caja</TableCell>
+                        <TableCell sx={{ fontWeight: 700, width: 220 }} align="right">
+                          Monto $
+                        </TableCell>
+                        <TableCell sx={{ width: 60 }} />
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {origenes.map((fila, idx) => {
+                        const err = erroresFilas[idx];
+                        return (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <FormControl
+                                fullWidth
+                                size="small"
+                                error={!!err && !fila.cajaId}
+                                disabled={saving}
+                              >
+                                <Select
+                                  value={fila.cajaId}
+                                  displayEmpty
+                                  onChange={(e) =>
+                                    updateFila(idx, { cajaId: String(e.target.value) })
+                                  }
+                                >
+                                  <MenuItem value="">— Seleccionar —</MenuItem>
+                                  {cajasPesosDisponiblesFactory(fila.cajaId).map((c) => (
+                                    <MenuItem key={c.id} value={String(c.id)}>
+                                      {c.nombre} ({formatPesos(c.saldoActual)})
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            </TableCell>
+                            <TableCell align="right">
+                              <TextField
+                                size="small"
+                                type="number"
+                                value={fila.monto}
+                                onChange={(e) =>
+                                  updateFila(idx, { monto: e.target.value })
+                                }
+                                inputProps={{ step: '0.01', min: '0.01' }}
+                                error={!!err && fila.monto !== ''}
+                                helperText={err ?? ' '}
+                                disabled={saving}
+                                InputProps={{
+                                  startAdornment: (
+                                    <InputAdornment position="start">$</InputAdornment>
+                                  ),
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <IconButton
+                                size="small"
+                                onClick={() => eliminarFila(idx)}
+                                disabled={origenes.length === 1 || saving}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Paper>
+
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={agregarFila}
+                  size="small"
+                  sx={{ mb: 2 }}
+                  disabled={saving}
+                >
+                  Agregar origen
+                </Button>
+
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, mb: 2, bgcolor: coincide ? 'success.50' : 'warning.50' }}
+                >
+                  <Stack direction="row" spacing={4} flexWrap="wrap">
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Disponible amortización
+                      </Typography>
+                      <Typography variant="h6" fontWeight={700}>
+                        {formatPesos(disponibleAmort)}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Total ingresado
+                      </Typography>
+                      <Typography variant="h6" fontWeight={700}>
+                        {formatPesos(totalIngresado)}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Diferencia
+                      </Typography>
+                      <Typography
+                        variant="h6"
+                        fontWeight={700}
+                        color={coincide ? 'success.main' : 'warning.main'}
+                      >
+                        {formatPesos(diferencia)}
+                      </Typography>
+                    </Box>
+                    {tcValido && totalIngresado > 0 && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          USD a acreditar
+                        </Typography>
+                        <Typography variant="h6" fontWeight={700} color="info.main">
+                          {formatUSD(previewUsd)}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                  {!coincide && totalIngresado > 0 && (
+                    <Alert severity="warning" sx={{ mt: 1 }}>
+                      La suma de orígenes debe coincidir con el monto disponible de la amortización.
+                    </Alert>
+                  )}
+                </Paper>
+
+                <TextField
+                  fullWidth
+                  label="Descripción"
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  multiline
+                  rows={2}
+                  disabled={saving}
+                />
+              </>
             )}
           </>
         )}
@@ -462,11 +591,10 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
               Cambiar selección
             </Button>
             <Button
-              type="submit"
-              form="convertir-form"
               variant="contained"
               color="info"
-              disabled={saving}
+              disabled={!canSubmit}
+              onClick={onSubmit}
             >
               {saving ? <CircularProgress size={20} /> : 'Confirmar conversión'}
             </Button>

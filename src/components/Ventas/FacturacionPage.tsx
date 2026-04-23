@@ -63,6 +63,8 @@ import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi'
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
+import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
+import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
 import SuccessDialog from "../common/SuccessDialog";
 import LoadingOverlay from "../common/LoadingOverlay";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
@@ -395,7 +397,7 @@ const FacturacionPage = () => {
   const [dueDate, setDueDate] = useState(dayjs().add(30, 'days').format('YYYY-MM-DD'));
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedIva, setSelectedIva] = useState<TipoIva>('IVA_21');
+  const [selectedIva, setSelectedIva] = useState<TipoIva>('EXENTO');
   
   // From Nota de Pedido
   const [selectedNotaPedido, setSelectedNotaPedido] = useState<DocumentoComercial | null>(null);
@@ -513,6 +515,57 @@ const FacturacionPage = () => {
   const handleDeudaCancel = useCallback(() => {
     setDeudaError(null);
     pendingDeudaRef.current = null;
+  }, []);
+
+  // Billing Dialog state (Datos de Financiación Propia) — mirrors NotasPedidoPage
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
+  const [billingMode, setBillingMode] = useState<'manual' | 'nota'>('manual');
+  const [billingForm, setBillingForm] = useState({
+    cantidadCuotas: 1,
+    tipoFinanciacion: 'MENSUAL',
+    primerVencimiento: '',
+    entregarInicial: true,
+    usePorcentaje: true,
+    porcentajeEntregaInicial: 40,
+    montoEntregaInicial: 0,
+    tasaInteres: 0,
+  });
+  // True right after the user confirms the billing modal, so the submit handler can proceed.
+  const billingConfirmedRef = useRef(false);
+
+  // Preemptive debt check — runs before any API side-effects so the warning appears first.
+  // Same logic as NotasPedidoPage.
+  const checkClienteDeuda = useCallback(async (clienteId: number): Promise<DeudaClienteError | null> => {
+    try {
+      const [prestamos, ccPage] = await Promise.all([
+        prestamoPersonalApi.getByCliente(clienteId),
+        cuentaCorrienteApi.getByClienteId(clienteId),
+      ]);
+      const activoStates = ['ACTIVO', 'EN_MORA', 'EN_LEGAL'];
+      const prestamosActivos = prestamos.filter((p: any) => activoStates.includes(p.estado));
+      const cuotasPendientes = prestamosActivos.reduce((sum: number, p: any) => sum + (p.cuotasPendientes || 0), 0);
+      const montoCuotasPendientes = prestamosActivos.reduce((sum: number, p: any) => sum + (p.saldoPendiente || 0), 0);
+      const movements = ccPage.content;
+      const lastMovement = [...movements].sort(
+        (a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      )[0];
+      const saldo = (lastMovement as any)?.saldo ?? 0;
+      const deudaCC = saldo < 0 ? saldo : null;
+      if (cuotasPendientes > 0 || deudaCC !== null) {
+        return {
+          error: 'Cliente con deuda pendiente',
+          message: '',
+          cuotasPendientes,
+          montoCuotasPendientes: cuotasPendientes > 0 ? montoCuotasPendientes : null,
+          deudaCuentaCorriente: deudaCC,
+          requiereConfirmacion: true,
+        };
+      }
+      return null;
+    } catch {
+      // Non-fatal: proceed; backend will still catch debt on its end.
+      return null;
+    }
   }, []);
 
   const loadData = async () => {
@@ -742,9 +795,11 @@ const FacturacionPage = () => {
     setDueDate(dayjs().add(30, 'days').format('YYYY-MM-DD'));
     setNotes('');
     setCart([]);
-    setSelectedIva('IVA_21');
+    setSelectedIva('EXENTO');
     setError(null);
     setSuccess(null);
+    billingConfirmedRef.current = false;
+    deudaYaConfirmadaRef.current = false;
   };
 
   const addItemToCart = () => {
@@ -1016,6 +1071,39 @@ const FacturacionPage = () => {
       }
     }
 
+    // Gate 1 — Financiación Propia modal (same UX as NotasPedidoPage):
+    // if the user picked financiamiento and hasn't confirmed the billing form yet,
+    // open the modal so they set entrega inicial + diferencia financiada + tasa de interés.
+    if (isFinanciamiento(paymentMethod) && !billingConfirmedRef.current) {
+      setBillingMode('manual');
+      setBillingForm({
+        cantidadCuotas: cantidadCuotas ?? 1,
+        tipoFinanciacion: tipoFinanciacion || 'MENSUAL',
+        primerVencimiento: primerVencimiento || '',
+        entregarInicial: true,
+        usePorcentaje: usePorcentaje,
+        porcentajeEntregaInicial: porcentajeEntrega ?? 40,
+        montoEntregaInicial: montoFijoEntrega ?? 0,
+        tasaInteres: manualTasaInteres || 0,
+      });
+      setBillingDialogOpen(true);
+      return;
+    }
+
+    // Gate 2 — Preemptive debt check before generating the presupuesto.
+    // Same pattern as NotasPedidoPage.handleConvertToNotaPedido.
+    if (!deudaYaConfirmadaRef.current) {
+      const deudaData = await checkClienteDeuda(Number(selectedClientId));
+      if (deudaData) {
+        setDeudaError(deudaData);
+        pendingDeudaRef.current = () => {
+          deudaYaConfirmadaRef.current = true;
+          handleSubmitManualInvoice();
+        };
+        return;
+      }
+    }
+
     // Verificar stock de equipos antes de crear factura
     const equiposEnCarrito = cart.filter(item => item.tipoItem === 'EQUIPO' && item.recetaId);
     
@@ -1114,6 +1202,7 @@ const FacturacionPage = () => {
           presupuestoId: presupuesto.id,
           metodoPago: paymentMethod,
           tipoIva: selectedIva,
+          ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
         });
       } catch (notaErr: any) {
         const deudaNotaData = parseDeudaError(notaErr);
@@ -1196,6 +1285,7 @@ const FacturacionPage = () => {
         try {
           factura = await documentoApi.convertToFactura({
             notaPedidoId: nota.id,
+            ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
             ...(isFinanciamiento(paymentMethod) && cantidadCuotas != null && {
               cantidadCuotas,
               tipoFinanciacion,
@@ -1322,9 +1412,14 @@ const FacturacionPage = () => {
     setError(null);
 
     const cuotasParaEnviar = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
+    // For the nota flow, prefer the billing modal's tasa when the user set one; otherwise
+    // fall back to the selected financing option's tasa.
+    const notaMetodoEsFinanciamiento = isFinanciamiento(selectedNotaPedido?.metodoPago ?? '');
     const tasaInteresParaEnviar = isManualInvoice
       ? (manualTasaInteres > 0 ? manualTasaInteres : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0))
-      : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0);
+      : (notaMetodoEsFinanciamiento && billingForm.tasaInteres > 0
+          ? billingForm.tasaInteres
+          : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0));
 
     try {
       const deudaPreconfirmada = deudaYaConfirmadaRef.current;
@@ -1467,6 +1562,45 @@ const FacturacionPage = () => {
     setIsManualInvoice(false);
   };
 
+  const handleCloseBillingDialog = () => {
+    setBillingDialogOpen(false);
+  };
+
+  // Apply billing form to the relevant state slice (manual vs nota) and re-trigger the submit.
+  // Using setTimeout(0) so the state updates commit before the submit handler reads them.
+  const submitBillingDialog = () => {
+    billingConfirmedRef.current = true;
+    if (billingMode === 'manual') {
+      setCantidadCuotas(billingForm.cantidadCuotas);
+      setTipoFinanciacion(billingForm.tipoFinanciacion);
+      setPrimerVencimiento(billingForm.primerVencimiento);
+      setEntregarInicial(billingForm.entregarInicial);
+      setUsePorcentaje(billingForm.usePorcentaje);
+      setPorcentajeEntrega(billingForm.usePorcentaje ? billingForm.porcentajeEntregaInicial : null);
+      setMontoFijoEntrega(!billingForm.usePorcentaje ? billingForm.montoEntregaInicial : null);
+      setManualTasaInteres(billingForm.tasaInteres);
+      setBillingDialogOpen(false);
+      setTimeout(() => handleSubmitManualInvoice(), 0);
+    } else {
+      setNotaCantidadCuotas(billingForm.cantidadCuotas);
+      setNotaTipoFinanciacion(billingForm.tipoFinanciacion);
+      setNotaPrimerVencimiento(billingForm.primerVencimiento);
+      setNotaEntregaInicial(billingForm.entregarInicial);
+      setNotaUsePorcentaje(billingForm.usePorcentaje);
+      setNotaPorcentajeEntrega(billingForm.usePorcentaje ? billingForm.porcentajeEntregaInicial : null);
+      setNotaMontoFijoEntrega(!billingForm.usePorcentaje ? billingForm.montoEntregaInicial : null);
+      setBillingDialogOpen(false);
+      setTimeout(() => handleConvertNotaToFactura(), 0);
+    }
+  };
+
+  // Base total used by the billing dialog's summary. In 'manual' mode use the cart subtotal
+  // (entrega inicial should apply to the product total, not the post-IVA total). In 'nota'
+  // mode use the selected nota's subtotal.
+  const billingBaseTotal = billingMode === 'manual'
+    ? subtotalVenta
+    : (selectedNotaPedido?.subtotal ?? notaSubtotal);
+
   const handleOpenConvertDialog = async (nota: DocumentoComercial) => {
     setSelectedNotaPedido(nota);
     setNotaCart(
@@ -1525,6 +1659,8 @@ const FacturacionPage = () => {
     setNotaUsePorcentaje(true);
     setNotaPorcentajeEntrega(null);
     setNotaMontoFijoEntrega(null);
+    billingConfirmedRef.current = false;
+    deudaYaConfirmadaRef.current = false;
   };
 
   const handleConvertNotaToFactura = async () => {
@@ -1536,6 +1672,43 @@ const FacturacionPage = () => {
         if (notaUsePorcentaje && (notaPorcentajeEntrega ?? 0) > 100) return setError('El porcentaje no puede superar 100%');
         if (notaMontoEntregaCalculado < 0) return setError('La entrega no puede ser negativa');
         if (notaMontoEntregaCalculado >= notaTotalVenta) return setError('La entrega no puede ser igual o mayor al total');
+      }
+    }
+
+    // Gate 1 — Financiación Propia modal (same UX as NotasPedidoPage):
+    // force the user to confirm entrega inicial + diferencia financiada + tasa before billing.
+    if (isFinanciamiento(selectedNotaPedido.metodoPago) && !billingConfirmedRef.current) {
+      const opcionSeleccionada = opcionesFinanciamiento.find(o => o.id === selectedOpcionId)
+        ?? opcionesFinanciamiento.find(o => o.esSeleccionada);
+      const cuotasPrefill = notaCantidadCuotas ?? opcionSeleccionada?.cantidadCuotas ?? 1;
+      const tasaPrefill = notaCantidadCuotas != null
+        ? 0
+        : (opcionSeleccionada && opcionSeleccionada.tasaInteres > 0 ? opcionSeleccionada.tasaInteres : 0);
+      setBillingMode('nota');
+      setBillingForm({
+        cantidadCuotas: cuotasPrefill,
+        tipoFinanciacion: notaTipoFinanciacion || 'MENSUAL',
+        primerVencimiento: notaPrimerVencimiento || '',
+        entregarInicial: true,
+        usePorcentaje: notaUsePorcentaje,
+        porcentajeEntregaInicial: notaPorcentajeEntrega ?? 40,
+        montoEntregaInicial: notaMontoFijoEntrega ?? 0,
+        tasaInteres: tasaPrefill,
+      });
+      setBillingDialogOpen(true);
+      return;
+    }
+
+    // Gate 2 — Preemptive debt check before invoicing.
+    if (!deudaYaConfirmadaRef.current && selectedNotaPedido.clienteId) {
+      const deudaData = await checkClienteDeuda(selectedNotaPedido.clienteId);
+      if (deudaData) {
+        setDeudaError(deudaData);
+        pendingDeudaRef.current = () => {
+          deudaYaConfirmadaRef.current = true;
+          handleConvertNotaToFactura();
+        };
+        return;
       }
     }
 
@@ -1564,9 +1737,14 @@ const FacturacionPage = () => {
         setLoading(false);
       } else {
         // No equipos, proceed directly with factura creation
-        const notaTasaInteres = opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0;
+        // When FINANCIACION_PROPIA, prefer the manual tasa from the billing modal over the financing option's tasa.
+        const metodoEsFinanciamiento = isFinanciamiento(selectedNotaPedido?.metodoPago ?? '');
+        const notaTasaInteres = metodoEsFinanciamiento && billingForm.tasaInteres > 0
+          ? billingForm.tasaInteres
+          : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0);
         const factura = await documentoApi.convertToFactura({
           notaPedidoId: notaId,
+          ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
           ...(notaCantidadCuotas != null && { cantidadCuotas: notaCantidadCuotas }),
           tipoFinanciacion: notaTipoFinanciacion,
           tasaInteres: notaTasaInteres,
@@ -2960,6 +3138,124 @@ const FacturacionPage = () => {
         detallesEquipo={notaParaAsignacion?.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
         notaPedidoId={notaParaAsignacion?.id}
       />
+
+      {/* Billing Dialog — Datos de Financiación Propia */}
+      <Dialog open={billingDialogOpen} onClose={handleCloseBillingDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Datos de Financiación Propia</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Cantidad de Cuotas"
+              type="number"
+              fullWidth
+              value={billingForm.cantidadCuotas}
+              onChange={(e) => setBillingForm(prev => ({ ...prev, cantidadCuotas: parseInt(e.target.value) || 1 }))}
+              inputProps={{ min: 1 }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>Tipo de Financiación</InputLabel>
+              <Select
+                value={billingForm.tipoFinanciacion}
+                onChange={(e) => setBillingForm(prev => ({ ...prev, tipoFinanciacion: e.target.value }))}
+                label="Tipo de Financiación"
+              >
+                {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
+                  <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Primer Vencimiento"
+              type="date"
+              fullWidth
+              value={billingForm.primerVencimiento}
+              onChange={(e) => setBillingForm(prev => ({ ...prev, primerVencimiento: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+            <FormControlLabel
+              control={<Checkbox checked={billingForm.entregarInicial} onChange={(e) => setBillingForm(prev => ({ ...prev, entregarInicial: e.target.checked }))} />}
+              label="Entrega inicial"
+            />
+            {billingForm.entregarInicial && (
+              <Box sx={{ pl: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <RadioGroup
+                  row
+                  value={billingForm.usePorcentaje ? 'porcentaje' : 'monto'}
+                  onChange={(e) => setBillingForm(prev => ({ ...prev, usePorcentaje: e.target.value === 'porcentaje' }))}
+                >
+                  <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
+                  <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
+                </RadioGroup>
+                {billingForm.usePorcentaje ? (
+                  <TextField
+                    label="Porcentaje de entrega"
+                    type="number"
+                    value={billingForm.porcentajeEntregaInicial}
+                    onChange={(e) => setBillingForm(prev => ({ ...prev, porcentajeEntregaInicial: parseFloat(e.target.value) || 0 }))}
+                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                  />
+                ) : (
+                  <TextField
+                    label="Monto de entrega"
+                    type="number"
+                    value={billingForm.montoEntregaInicial}
+                    onChange={(e) => setBillingForm(prev => ({ ...prev, montoEntregaInicial: parseFloat(e.target.value) || 0 }))}
+                    InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                  />
+                )}
+              </Box>
+            )}
+            <TextField
+              label="Tasa de interés"
+              type="number"
+              fullWidth
+              value={billingForm.tasaInteres}
+              onChange={(e) => setBillingForm(prev => ({ ...prev, tasaInteres: parseFloat(e.target.value) || 0 }))}
+              inputProps={{ min: 0, max: 999, step: 0.5 }}
+              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+              helperText="Interés simple sobre el saldo financiado. 0% = sin interés."
+            />
+            {(() => {
+              const montoTotal = billingBaseTotal;
+              const entregaInicial = billingForm.entregarInicial
+                ? (billingForm.usePorcentaje
+                    ? montoTotal * (billingForm.porcentajeEntregaInicial / 100)
+                    : billingForm.montoEntregaInicial)
+                : 0;
+              const saldoFinanciado = montoTotal - entregaInicial;
+              const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
+              const montoConInteres = saldoFinanciado + interesTotal;
+              const valorCuota = billingForm.cantidadCuotas > 0 ? montoConInteres / billingForm.cantidadCuotas : 0;
+              const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              return (
+                <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>Resumen del financiamiento</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
+                    <Typography variant="body2">Total documento:</Typography>
+                    <Typography variant="body2" fontWeight={600}>${fmt(montoTotal)}</Typography>
+                    <Typography variant="body2">Entrega inicial:</Typography>
+                    <Typography variant="body2">${fmt(entregaInicial)}</Typography>
+                    <Typography variant="body2">Saldo financiado:</Typography>
+                    <Typography variant="body2">${fmt(saldoFinanciado)}</Typography>
+                    {billingForm.tasaInteres > 0 && <>
+                      <Typography variant="body2">Interés ({billingForm.tasaInteres}%):</Typography>
+                      <Typography variant="body2" color="warning.main">${fmt(interesTotal)}</Typography>
+                      <Typography variant="body2">Total a financiar:</Typography>
+                      <Typography variant="body2" fontWeight={600}>${fmt(montoConInteres)}</Typography>
+                    </>}
+                    <Typography variant="body2">Valor cuota ({billingForm.cantidadCuotas}x):</Typography>
+                    <Typography variant="body2" fontWeight={600} color="primary.main">${fmt(valorCuota)}</Typography>
+                  </Box>
+                </Box>
+              );
+            })()}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseBillingDialog}>Cancelar</Button>
+          <Button variant="contained" onClick={submitBillingDialog}>Confirmar Facturación</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Deuda cliente confirmation dialog */}
       <DeudaClienteConfirmDialog

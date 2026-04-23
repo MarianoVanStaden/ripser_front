@@ -41,14 +41,6 @@ export interface DepositoExtraCajaDTO {
   descripcion?: string;
 }
 
-export interface ConvertirAmortizacionDTO {
-  amortizacionMensualId: number;
-  montoPesos: number;
-  valorDolar: number;
-  cajaAhorroId: number;
-  descripcion?: string;
-}
-
 export interface DisponibleConversionDTO {
   amortizacionMensualId: number;
   activoId: number;

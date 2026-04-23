@@ -111,7 +111,7 @@ const initialFormData: FormData = {
   fechaEmision: new Date().toISOString().split("T")[0],
   observaciones: "",
   estado: EstadoDocumentoEnum.PENDIENTE,
-  tipoIva: 'IVA_21',
+  tipoIva: 'EXENTO',
 };
 
 const initialDetalle: DetalleForm = {

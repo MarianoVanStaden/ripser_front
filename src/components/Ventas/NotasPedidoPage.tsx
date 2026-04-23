@@ -85,7 +85,7 @@ interface ConvertFormData {
 const initialConvertForm: ConvertFormData = {
   presupuestoId: "",
   metodoPago: "EFECTIVO" as MetodoPago,
-  tipoIva: "IVA_21",
+  tipoIva: "EXENTO",
 };
 
 const NotasPedidoPage: React.FC = () => {

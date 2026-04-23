@@ -140,3 +140,36 @@ export interface AmortizacionEjecucionResponse {
   ejecutadaAt: string;
   origenes: OrigenEjecutadoDTO[];
 }
+
+export interface OrigenConversionItemDTO {
+  cajaId: number;
+  monto: number;
+}
+
+export interface ConvertirAmortizacionMultiDTO {
+  montoPesosTotal: number;
+  tipoCambio: number;
+  destinoCajaUsdId: number;
+  origenes: OrigenConversionItemDTO[];
+  descripcion?: string;
+}
+
+export interface OrigenEjecutadoPesosDTO {
+  cajaId: number;
+  cajaNombre: string;
+  monto: number;
+  movimientoEgresoPesosId: number;
+}
+
+export interface ConversionAmortizacionResponseDTO {
+  conversionId: number;
+  amortizacionMensualId: number;
+  destinoCajaUsdId: number;
+  destinoCajaUsdNombre: string;
+  montoPesosTotal: number;
+  tipoCambio: number;
+  montoUsd: number;
+  fecha: string;
+  fechaCreacion: string;
+  origenes: OrigenEjecutadoPesosDTO[];
+}

@@ -75,7 +75,13 @@
       "Bash(./mvnw.cmd -q -DskipTests compile)",
       "Bash(cmd //c \"mvnw.cmd -q -DskipTests compile\")",
       "Bash(cmd //c \"mvnw.cmd -DskipTests compile\")",
-      "Bash(./mvnw.cmd -DskipTests compile)"
+      "Bash(./mvnw.cmd -DskipTests compile)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(./mvnw.cmd -DskipTests clean compile)",
+      "Bash(echo \"BACK_EXIT=$?\")",
+      "Bash(./mvnw.cmd -q -Dtest=EquipoFabricadoDesgloseServiceTest test)",
+      "Bash(echo \"FRONT_EXIT=$?\")",
+      "Bash(./mvnw.cmd -Dtest=EquipoFabricadoDesgloseServiceTest test)"
     ],
     "deny": [],
     "ask": [],

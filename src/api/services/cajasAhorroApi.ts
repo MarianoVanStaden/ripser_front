@@ -5,7 +5,6 @@ import type {
   CreateCajaAhorroDolaresDTO,
   MovimientoCajaAhorro,
   DepositoExtraCajaDTO,
-  ConvertirAmortizacionDTO,
   DisponibleConversionDTO,
 } from '../../types';
 
@@ -43,11 +42,6 @@ export const cajasAhorroApi = {
 
   extraer: async (id: number, dto: DepositoExtraCajaDTO): Promise<MovimientoCajaAhorro> => {
     const res = await api.post<MovimientoCajaAhorro>(`${BASE}/${id}/extraccion`, dto);
-    return res.data;
-  },
-
-  convertirAmortizacion: async (dto: ConvertirAmortizacionDTO): Promise<MovimientoCajaAhorro> => {
-    const res = await api.post<MovimientoCajaAhorro>(`${BASE}/convertir-amortizacion`, dto);
     return res.data;
   },
 

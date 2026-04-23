@@ -967,8 +967,29 @@ const UbicacionEquiposPage: React.FC = () => {
                         <TableCell align="right">{row.asignados}</TableCell>
                         <TableCell align="right">{row.enService}</TableCell>
                         <TableCell align="right">{row.disponibles}</TableCell>
-                        <TableCell sx={{ typography: 'caption', color: 'text.secondary', maxWidth: 300, wordBreak: 'break-word' }}>
-                          {row.numerosDisponibles.join(', ') || '—'}
+                        <TableCell sx={{ typography: 'caption', maxWidth: 300, wordBreak: 'break-word' }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Box sx={{ color: 'text.secondary' }}>
+                              {row.numerosDisponibles.join(', ') || '—'}
+                            </Box>
+                            {row.numerosEnService && row.numerosEnService.length > 0 && (
+                              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexWrap: 'wrap' }}>
+                                <Chip
+                                  label="En Service"
+                                  size="small"
+                                  sx={{
+                                    bgcolor: 'warning.main',
+                                    color: 'common.white',
+                                    fontWeight: 'bold',
+                                    height: 20,
+                                  }}
+                                />
+                                <Box sx={{ color: 'warning.dark', fontWeight: 500 }}>
+                                  {row.numerosEnService.join(', ')}
+                                </Box>
+                              </Box>
+                            )}
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}

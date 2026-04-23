@@ -9,6 +9,8 @@ import type {
   ResultadoCierreMensualDTO,
   EjecutarAmortizacionRequest,
   AmortizacionEjecucionResponse,
+  ConvertirAmortizacionMultiDTO,
+  ConversionAmortizacionResponseDTO,
 } from '../../types';
 
 const ACTIVOS = '/api/admin/amortizaciones/activos';
@@ -68,6 +70,17 @@ export const amortizacionApi = {
   ): Promise<AmortizacionEjecucionResponse> => {
     const res = await api.post<AmortizacionEjecucionResponse>(
       `${BASE}/${id}/ejecutar`,
+      dto
+    );
+    return res.data;
+  },
+
+  convertirUsd: async (
+    amortizacionId: number,
+    dto: ConvertirAmortizacionMultiDTO
+  ): Promise<ConversionAmortizacionResponseDTO> => {
+    const res = await api.post<ConversionAmortizacionResponseDTO>(
+      `${BASE}/${amortizacionId}/convertir-usd`,
       dto
     );
     return res.data;
