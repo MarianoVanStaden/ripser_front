@@ -45,6 +45,8 @@ const TIPO_LABEL: Record<TipoMovimientoCajaPesos, string> = {
   EXTRACCION: 'Extracción',
   AJUSTE: 'Ajuste',
   CONVERSION_AMORTIZACION: 'Conversión → USD',
+  TRANSFERENCIA_EGRESO: 'Transferencia (egreso)',
+  TRANSFERENCIA_INGRESO: 'Transferencia (ingreso)',
 };
 
 const TIPO_COLOR: Record<TipoMovimientoCajaPesos, 'success' | 'error' | 'info' | 'default'> = {
@@ -52,10 +54,14 @@ const TIPO_COLOR: Record<TipoMovimientoCajaPesos, 'success' | 'error' | 'info' |
   EXTRACCION: 'error',
   AJUSTE: 'default',
   CONVERSION_AMORTIZACION: 'info',
+  TRANSFERENCIA_EGRESO: 'error',
+  TRANSFERENCIA_INGRESO: 'success',
 };
 
 const isEgreso = (tipo: TipoMovimientoCajaPesos) =>
-  tipo === 'EXTRACCION' || tipo === 'CONVERSION_AMORTIZACION';
+  tipo === 'EXTRACCION' ||
+  tipo === 'CONVERSION_AMORTIZACION' ||
+  tipo === 'TRANSFERENCIA_EGRESO';
 
 const CajaPesosMovimientosPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
