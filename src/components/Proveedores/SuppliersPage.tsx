@@ -36,7 +36,9 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   Inventory as InventoryIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { supplierApi } from '../../api/services/supplierApi';
 import type { ProveedorDTO, CreateProveedorDTO, ProvinciaEnum } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
@@ -45,6 +47,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 
 const SuppliersPage: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -288,14 +291,24 @@ const SuppliersPage: React.FC = () => {
           <BusinessIcon />
           Gestión de Proveedores
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAdd}
-          fullWidth={isMobile}
-        >
-          Agregar Proveedor
-        </Button>
+        <Box display="flex" gap={1} flexWrap="wrap" width={isMobile ? '100%' : 'auto'}>
+          <Button
+            variant="outlined"
+            startIcon={<SearchIcon />}
+            onClick={() => navigate('/proveedores/buscar')}
+            fullWidth={isMobile}
+          >
+            Buscar por producto
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAdd}
+            fullWidth={isMobile}
+          >
+            Agregar Proveedor
+          </Button>
+        </Box>
       </Box>
 
       {error && (

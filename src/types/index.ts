@@ -3907,3 +3907,25 @@ export * from './cajasAhorro.types';
 
 // Cajas en Pesos (ARS) reales
 export * from './cajasPesos.types';
+
+// Búsqueda de proveedores por producto / categoría
+export interface SearchSuggestion {
+  id: number;
+  label: string;
+  codigo?: string;
+  tipo: 'PRODUCTO' | 'CATEGORIA';
+}
+
+export interface ProveedorOfertaDTO {
+  proveedorId: number;
+  razonSocial: string;
+  email?: string;
+  telefono?: string;
+  ciudad?: string;
+  provincia?: string;
+  productoId: number;
+  productoNombre: string;
+  productoCodigo?: string;
+  precioProveedor: number | null;
+  activo: boolean;
+}

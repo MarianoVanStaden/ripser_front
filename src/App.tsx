@@ -103,6 +103,7 @@ const ContactosCondicionesPage = lazy(() => import('./components/Proveedores/Con
 const HistorialComprasPage = lazy(() => import('./components/Proveedores/HistorialComprasPage'));
 const EvaluacionDesempenoPage = lazy(() => import('./components/Proveedores/EvaluacionDesempenoPage'));
 const CuentaCorrienteProveedoresPage = lazy(() => import('./components/Proveedores/CuentaCorrienteProveedoresPage'));
+const BuscarProveedorPorProductoPage = lazy(() => import('./components/Proveedores/BuscarProveedorPorProductoPage'));
 
 // Garantías
 const GarantiasPage = lazy(() => import('./components/Garantia/GarantiasPage'));
@@ -267,6 +268,7 @@ function App() {
 
                   {/* PROVEEDORES */}
                   <Route path="proveedores/gestion" element={priv(<SuppliersPage />)} />
+                  <Route path="proveedores/buscar" element={priv(<BuscarProveedorPorProductoPage />)} />
                   <Route path="proveedores/compras" element={priv(<ComprasPedidosPage />)} />
                   <Route path="proveedores/cuenta-corriente" element={priv(<CuentaCorrienteProveedoresPage />)} />
                   <Route path="proveedores/contactos" element={priv(<ContactosCondicionesPage />)} />
