@@ -7,6 +7,8 @@ import type {
   RegistrarAmortizacionDTO,
   ProcesarCierreMensualDTO,
   ResultadoCierreMensualDTO,
+  EjecutarAmortizacionRequest,
+  AmortizacionEjecucionResponse,
 } from '../../types';
 
 const ACTIVOS = '/api/admin/amortizaciones/activos';
@@ -57,6 +59,17 @@ export const amortizacionApi = {
 
   procesarCierreMensual: async (dto: ProcesarCierreMensualDTO): Promise<ResultadoCierreMensualDTO> => {
     const res = await api.post<ResultadoCierreMensualDTO>(`${BASE}/proceso-mensual`, dto);
+    return res.data;
+  },
+
+  ejecutarAmortizacion: async (
+    id: number,
+    dto: EjecutarAmortizacionRequest
+  ): Promise<AmortizacionEjecucionResponse> => {
+    const res = await api.post<AmortizacionEjecucionResponse>(
+      `${BASE}/${id}/ejecutar`,
+      dto
+    );
     return res.data;
   },
 };

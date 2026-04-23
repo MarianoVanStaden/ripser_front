@@ -62,6 +62,8 @@ export interface AmortizacionMensualDTO {
   valorDolar: number;
   comprasPesos: number;
   fechaCreacion: string;
+  ejecutadaAt?: string | null;
+  cajaDestinoId?: number | null;
 }
 
 export interface ResumenAmortizacionAnualDTO {
@@ -112,4 +114,29 @@ export interface ResultadoCierreMensualDTO {
   flujoDisponiblePesos: number;
   registros: RegistroCierreMensualDTO[];
   advertencias: string[];
+}
+
+export interface OrigenFondoDTO {
+  cajaId: number;
+  monto: number;
+}
+
+export interface EjecutarAmortizacionRequest {
+  destinoCajaId: number;
+  origenes: OrigenFondoDTO[];
+}
+
+export interface OrigenEjecutadoDTO {
+  cajaId: number;
+  cajaNombre: string;
+  monto: number;
+  movimientoSalidaId: number;
+}
+
+export interface AmortizacionEjecucionResponse {
+  amortizacionId: number;
+  destinoCajaId: number;
+  montoTotalUsd: number;
+  ejecutadaAt: string;
+  origenes: OrigenEjecutadoDTO[];
 }

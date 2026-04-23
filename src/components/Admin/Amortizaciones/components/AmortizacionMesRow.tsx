@@ -11,9 +11,12 @@ import {
   Alert,
   Typography,
   Chip,
+  Stack,
 } from '@mui/material';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { amortizacionApi } from '../../../../api/services/amortizacionApi';
 import type { ActivoAmortizableDTO, AmortizacionMensualDTO, TipoActivoAmortizable, MetodoAmortizacion } from '../../../../types';
+import EjecutarAmortizacionDialog from './EjecutarAmortizacionDialog';
 
 const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
   VEHICULO: 'Vehículo',
@@ -48,11 +51,18 @@ function fmt(n: number | null | undefined): string {
 
 export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, onRegistered }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [ejecutarOpen, setEjecutarOpen] = useState(false);
   const [valorDolar, setValorDolar] = useState('');
   const [kmRecorridos, setKmRecorridos] = useState('');
   const [comprasPesos, setComprasPesos] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const yaEjecutada = !!amortizacion?.ejecutadaAt;
+  const puedeEjecutar =
+    !!amortizacion &&
+    !yaEjecutada &&
+    amortizacion.montoAmortizadoDolares > 0;
 
   const handleOpen = () => {
     if (amortizacion) {
@@ -123,17 +133,51 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
         </TableCell>
         <TableCell>
           {amortizacion ? (
-            <Chip label="Registrado" color="success" size="small" />
+            yaEjecutada ? (
+              <Chip label="Ejecutada" color="info" size="small" />
+            ) : (
+              <Chip label="Registrado" color="success" size="small" />
+            )
           ) : (
             <Chip label="Pendiente" size="small" />
           )}
         </TableCell>
         <TableCell>
-          <Button size="small" variant={amortizacion ? 'outlined' : 'contained'} onClick={handleOpen}>
-            {amortizacion ? 'Editar' : 'Registrar'}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant={amortizacion ? 'outlined' : 'contained'}
+              onClick={handleOpen}
+              disabled={yaEjecutada}
+            >
+              {amortizacion ? 'Editar' : 'Registrar'}
+            </Button>
+            {puedeEjecutar && (
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                startIcon={<PlayArrowIcon />}
+                onClick={() => setEjecutarOpen(true)}
+              >
+                Ejecutar
+              </Button>
+            )}
+          </Stack>
         </TableCell>
       </TableRow>
+
+      {amortizacion && (
+        <EjecutarAmortizacionDialog
+          open={ejecutarOpen}
+          amortizacion={amortizacion}
+          onClose={() => setEjecutarOpen(false)}
+          onSuccess={() => {
+            setEjecutarOpen(false);
+            onRegistered();
+          }}
+        />
+      )}
 
       <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>

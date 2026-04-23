@@ -70,7 +70,12 @@
       "Bash(npm audit:*)",
       "Bash(tee c:/Users/santi/tsc-errors.txt)",
       "Bash(npx playwright *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(./mvnw -q -DskipTests compile)",
+      "Bash(./mvnw.cmd -q -DskipTests compile)",
+      "Bash(cmd //c \"mvnw.cmd -q -DskipTests compile\")",
+      "Bash(cmd //c \"mvnw.cmd -DskipTests compile\")",
+      "Bash(./mvnw.cmd -DskipTests compile)"
     ],
     "deny": [],
     "ask": [],
