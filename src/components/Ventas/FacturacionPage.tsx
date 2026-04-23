@@ -1853,6 +1853,47 @@ const FacturacionPage = () => {
     setNotaCart(newCart);
   };
 
+  // Resolve an option from the list using the same key convention used by the RadioGroup
+  // (falls back to index when the option has no persisted id).
+  const findOpcionByValue = useCallback(
+    (optionValue: number | null) => {
+      if (optionValue === null) return undefined;
+      return opcionesFinanciamiento.find(
+        (o, idx) => (o.id !== undefined ? o.id : idx) === optionValue
+      );
+    },
+    [opcionesFinanciamiento]
+  );
+
+  // Selecting a financing option must keep the main payment method in sync: the option
+  // carries its own metodoPago, so the rest of the submit flow (gate 1 modal, payload
+  // construction, etc.) needs paymentMethod to reflect it. Without this the option and
+  // the main Select would drift and Opciones de Financiamiento would effectively do nothing.
+  const handleSelectOpcionFinanciamiento = useCallback(
+    (optionValue: number) => {
+      setSelectedOpcionId(optionValue);
+      const opcion = findOpcionByValue(optionValue);
+      if (opcion?.metodoPago) {
+        setPaymentMethod(opcion.metodoPago as MetodoPago);
+      }
+    },
+    [findOpcionByValue]
+  );
+
+  // Changing the method manually should drop a stale option whose metodoPago no longer matches.
+  const handleChangePaymentMethod = useCallback(
+    (newMethod: MetodoPago) => {
+      setPaymentMethod(newMethod);
+      if (selectedOpcionId !== null) {
+        const currentOpcion = findOpcionByValue(selectedOpcionId);
+        if (currentOpcion && currentOpcion.metodoPago !== newMethod) {
+          setSelectedOpcionId(null);
+        }
+      }
+    },
+    [findOpcionByValue, selectedOpcionId]
+  );
+
   const handleOpenFinanciamiento = async () => {
     setFinanciamientoDialogOpen(true);
     setShowNewOpcionForm(false);
@@ -2054,7 +2095,7 @@ const FacturacionPage = () => {
                     <InputLabel>Método de Pago</InputLabel>
                     <Select
                       value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value as MetodoPago)}
+                      onChange={(e) => handleChangePaymentMethod(e.target.value as MetodoPago)}
                       label="Método de Pago"
                     >
                       {PAYMENT_METHODS.map((method) => (
@@ -2694,7 +2735,7 @@ const FacturacionPage = () => {
 
           <RadioGroup
             value={selectedOpcionId !== null ? String(selectedOpcionId) : ''}
-            onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
+            onChange={(e) => handleSelectOpcionFinanciamiento(Number(e.target.value))}
           >
             <Grid container spacing={2}>
               {opcionesFinanciamiento.map((opcion, index) => {
@@ -2709,7 +2750,7 @@ const FacturacionPage = () => {
                         border: selectedOpcionId === optionValue ? '2px solid' : '1px solid',
                         borderColor: selectedOpcionId === optionValue ? 'primary.main' : 'divider',
                       }}
-                      onClick={() => setSelectedOpcionId(optionValue)}
+                      onClick={() => handleSelectOpcionFinanciamiento(optionValue)}
                     >
                       <FormControlLabel
                         value={optionValue}
