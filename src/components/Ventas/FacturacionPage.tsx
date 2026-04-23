@@ -1865,22 +1865,28 @@ const FacturacionPage = () => {
     [opcionesFinanciamiento]
   );
 
-  // Selecting a financing option must keep the main payment method in sync: the option
-  // carries its own metodoPago, so the rest of the submit flow (gate 1 modal, payload
-  // construction, etc.) needs paymentMethod to reflect it. Without this the option and
-  // the main Select would drift and Opciones de Financiamiento would effectively do nothing.
-  const handleSelectOpcionFinanciamiento = useCallback(
-    (optionValue: number) => {
-      setSelectedOpcionId(optionValue);
-      const opcion = findOpcionByValue(optionValue);
-      if (opcion?.metodoPago) {
-        setPaymentMethod(opcion.metodoPago as MetodoPago);
-      }
-    },
-    [findOpcionByValue]
-  );
+  // Selecting a financing option is just a setState; the effect below syncs paymentMethod.
+  // This keeps the Opciones dialog as the single source of truth for financing method:
+  // whichever path writes selectedOpcionId (card click, radio, external logic) is picked up.
+  const handleSelectOpcionFinanciamiento = useCallback((optionValue: number) => {
+    setSelectedOpcionId(optionValue);
+  }, []);
 
-  // Changing the method manually should drop a stale option whose metodoPago no longer matches.
+  // Effect-based sync: whenever the selected option changes, mirror its metodoPago into
+  // paymentMethod so Gate 1 (billing modal), payload construction and UI all agree.
+  // Declarative and robust to any caller that sets selectedOpcionId directly.
+  useEffect(() => {
+    if (selectedOpcionId === null) return;
+    const opcion = findOpcionByValue(selectedOpcionId);
+    if (opcion?.metodoPago) {
+      setPaymentMethod((current) =>
+        current === opcion.metodoPago ? current : (opcion.metodoPago as MetodoPago)
+      );
+    }
+  }, [selectedOpcionId, findOpcionByValue]);
+
+  // Reverse direction: changing the method manually drops a stale option whose metodoPago
+  // no longer matches, so the UI doesn't show a radio button that is effectively dead.
   const handleChangePaymentMethod = useCallback(
     (newMethod: MetodoPago) => {
       setPaymentMethod(newMethod);
