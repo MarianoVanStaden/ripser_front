@@ -37,9 +37,11 @@ export const getPaymentMethodLabel = (metodo: MetodoPago): string => {
   const labels: Record<MetodoPago, string> = {
     EFECTIVO: 'Efectivo',
     TRANSFERENCIA: 'Transferencia',
+    TRANSFERENCIA_BANCARIA: 'Transferencia Bancaria',
     CHEQUE: 'Cheque',
     TARJETA_CREDITO: 'Tarjeta Crédito',
     TARJETA_DEBITO: 'Tarjeta Débito',
+    MERCADO_PAGO: 'Mercado Pago',
     FINANCIAMIENTO: 'Financiamiento',
     FINANCIACION_PROPIA: 'Financiación Propia',
     CUENTA_CORRIENTE: 'Cuenta Corriente',
@@ -54,9 +56,11 @@ export const getPaymentMethodIcon = (metodo: MetodoPago) => {
   const icons: Record<MetodoPago, typeof CashIcon> = {
     EFECTIVO: CashIcon,
     TRANSFERENCIA: BankIcon,
+    TRANSFERENCIA_BANCARIA: BankIcon,
     CHEQUE: ChequeIcon,
     TARJETA_CREDITO: CreditCardIcon,
     TARJETA_DEBITO: DebitCardIcon,
+    MERCADO_PAGO: CreditCardIcon,
     FINANCIAMIENTO: FinanciacionIcon,
     FINANCIACION_PROPIA: FinanciacionIcon,
     CUENTA_CORRIENTE: BankIcon,
@@ -71,9 +75,11 @@ export const getPaymentMethodColor = (metodo: MetodoPago): string => {
   const colors: Record<MetodoPago, string> = {
     EFECTIVO: '#4CAF50', // verde
     TRANSFERENCIA: '#2196F3', // azul
+    TRANSFERENCIA_BANCARIA: '#2196F3', // azul
     CHEQUE: '#FF9800', // naranja
     TARJETA_CREDITO: '#9C27B0', // morado
     TARJETA_DEBITO: '#00BCD4', // cyan
+    MERCADO_PAGO: '#00B1EA', // azul mercado pago
     FINANCIAMIENTO: '#FFC107', // amarillo
     FINANCIACION_PROPIA: '#FF5722', // naranja oscuro
     CUENTA_CORRIENTE: '#795548', // marrón

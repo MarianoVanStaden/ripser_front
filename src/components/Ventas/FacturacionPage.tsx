@@ -87,17 +87,31 @@ import type {
 import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 
-// Types
+// Aligned with backend enum com.ripser_back.enums.MetodoPago. The order here is the one
+// shown in the Select; keep it consistent with other pages that expose the same options.
 const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
   { value: 'EFECTIVO', label: 'Efectivo' },
   { value: 'CHEQUE', label: 'Cheque' },
   { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
   { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
-  { value: 'TRANSFERENCIA', label: 'Transferencia Bancaria' },
+  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia Bancaria' },
+  { value: 'MERCADO_PAGO', label: 'Mercado Pago' },
   { value: 'FINANCIACION_PROPIA', label: 'Financiación Propia' },
 ];
 
+// FINANCIAMIENTO is kept as a legacy alias here: the backend enum only has
+// FINANCIACION_PROPIA, but older plantillas/opciones may still carry FINANCIAMIENTO.
 const isFinanciamiento = (m: string) => m === 'FINANCIAMIENTO' || m === 'FINANCIACION_PROPIA';
+
+// Plantillas/templates come from the prestamo enum (MetodoPago in prestamo.types.ts)
+// which uses TRANSFERENCIA_BANCARIA / MERCADO_PAGO — the same names the backend enum
+// uses. Older places in the UI still emit 'TRANSFERENCIA' for the same concept, so we
+// normalize to the backend value before writing into paymentMethod.
+const normalizeMetodoPagoToBackend = (m: string | undefined | null): MetodoPago | null => {
+  if (!m) return null;
+  if (m === 'TRANSFERENCIA') return 'TRANSFERENCIA_BANCARIA';
+  return m as MetodoPago;
+};
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 const IVA_OPTIONS: { value: TipoIva; label: string; rate: number }[] = [
@@ -1874,25 +1888,28 @@ const FacturacionPage = () => {
 
   // Effect-based sync: whenever the selected option changes, mirror its metodoPago into
   // paymentMethod so Gate 1 (billing modal), payload construction and UI all agree.
-  // Declarative and robust to any caller that sets selectedOpcionId directly.
+  // Normalizes legacy 'TRANSFERENCIA' to backend 'TRANSFERENCIA_BANCARIA' so the Select
+  // actually finds a matching MenuItem (otherwise it renders blank).
   useEffect(() => {
     if (selectedOpcionId === null) return;
     const opcion = findOpcionByValue(selectedOpcionId);
-    if (opcion?.metodoPago) {
-      setPaymentMethod((current) =>
-        current === opcion.metodoPago ? current : (opcion.metodoPago as MetodoPago)
-      );
+    const normalized = normalizeMetodoPagoToBackend(opcion?.metodoPago);
+    if (normalized) {
+      setPaymentMethod((current) => (current === normalized ? current : normalized));
     }
   }, [selectedOpcionId, findOpcionByValue]);
 
   // Reverse direction: changing the method manually drops a stale option whose metodoPago
   // no longer matches, so the UI doesn't show a radio button that is effectively dead.
+  // Compares after normalization so legacy 'TRANSFERENCIA' options stay linked to the
+  // backend 'TRANSFERENCIA_BANCARIA' value in the Select.
   const handleChangePaymentMethod = useCallback(
     (newMethod: MetodoPago) => {
       setPaymentMethod(newMethod);
       if (selectedOpcionId !== null) {
         const currentOpcion = findOpcionByValue(selectedOpcionId);
-        if (currentOpcion && currentOpcion.metodoPago !== newMethod) {
+        const opcionMethod = normalizeMetodoPagoToBackend(currentOpcion?.metodoPago);
+        if (currentOpcion && opcionMethod !== newMethod) {
           setSelectedOpcionId(null);
         }
       }

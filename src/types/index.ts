@@ -1564,7 +1564,22 @@ export interface Venta {
   detalleVentas: DetalleVenta[];
   prestamoId?: number | null;
 }
-export type MetodoPago = 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIAMIENTO' | 'FINANCIACION_PROPIA' | 'CUENTA_CORRIENTE';
+// Kept aligned with backend enum com.ripser_back.enums.MetodoPago:
+//   EFECTIVO, TARJETA_CREDITO, TARJETA_DEBITO, TRANSFERENCIA_BANCARIA,
+//   CUENTA_CORRIENTE, CHEQUE, MERCADO_PAGO, FINANCIACION_PROPIA
+// 'TRANSFERENCIA' and 'FINANCIAMIENTO' are kept as legacy aliases used by older UI code
+// (NotasPedidoPage Select, opciones-financiamiento lists) while the codebase converges.
+export type MetodoPago =
+  | 'EFECTIVO'
+  | 'TARJETA_CREDITO'
+  | 'TARJETA_DEBITO'
+  | 'TRANSFERENCIA'
+  | 'TRANSFERENCIA_BANCARIA'
+  | 'CHEQUE'
+  | 'MERCADO_PAGO'
+  | 'FINANCIAMIENTO'
+  | 'FINANCIACION_PROPIA'
+  | 'CUENTA_CORRIENTE';
 
 // Enums para equipos fabricados
 export type ColorEquipo =
