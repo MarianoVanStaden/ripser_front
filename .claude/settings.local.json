@@ -87,7 +87,8 @@
       "Bash(npm ls *)",
       "Bash(echo \"FRONT=$?\")",
       "Bash(npx vite *)",
-      "Bash(./mvnw.cmd compile *)"
+      "Bash(./mvnw.cmd compile *)",
+      "Bash(awk '{print $2}')"
     ],
     "deny": [],
     "ask": [],

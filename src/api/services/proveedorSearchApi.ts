@@ -1,17 +1,39 @@
 import api from '../config';
 import type { ProveedorOfertaDTO, SearchSuggestion, PageResponse } from '../../types';
 
+// Log de error limitado para no inundar consola mientras el backend /search no está listo.
+let searchErrorWarned = false;
+const warnSearchError = (endpoint: string, err: unknown) => {
+  if (searchErrorWarned) return;
+  searchErrorWarned = true;
+  console.warn(
+    `[proveedorSearchApi] ${endpoint} no está disponible, devolviendo []. ` +
+      `Verificá que el backend tenga el endpoint implementado.`,
+    err,
+  );
+};
+
 export const proveedorSearchApi = {
   searchProductos: async (q: string, limit = 10): Promise<SearchSuggestion[]> => {
     if (!q || q.trim().length < 2) return [];
-    const { data } = await api.get('/api/productos/search', { params: { q: q.trim(), limit } });
-    return Array.isArray(data) ? data : [];
+    try {
+      const { data } = await api.get('/api/productos/search', { params: { q: q.trim(), limit } });
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      warnSearchError('/api/productos/search', err);
+      return [];
+    }
   },
 
   searchCategorias: async (q: string, limit = 10): Promise<SearchSuggestion[]> => {
     if (!q || q.trim().length < 2) return [];
-    const { data } = await api.get('/api/categorias-productos/search', { params: { q: q.trim(), limit } });
-    return Array.isArray(data) ? data : [];
+    try {
+      const { data } = await api.get('/api/categorias-productos/search', { params: { q: q.trim(), limit } });
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      warnSearchError('/api/categorias-productos/search', err);
+      return [];
+    }
   },
 
   proveedoresPorProducto: async (productoId: number): Promise<ProveedorOfertaDTO[]> => {
