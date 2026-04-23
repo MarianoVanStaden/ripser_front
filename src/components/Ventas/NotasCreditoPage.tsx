@@ -183,20 +183,21 @@ const NotasCreditoPage: React.FC = () => {
       const equiposResponses = await Promise.all(equiposPromises);
       const equipos = equiposResponses.map(res => res.data);
 
-      // Filtrar solo equipos ENTREGADOS
-      const equiposEntregados = equipos.filter(
-        (equipo: EquipoFabricadoDTO) => equipo.estadoAsignacion === 'ENTREGADO'
+      // Equipos elegibles para devolución: FACTURADO (vendido), EN_TRANSITO (asignado) o ENTREGADO
+      const estadosElegibles = ['FACTURADO', 'EN_TRANSITO', 'ENTREGADO'];
+      const equiposElegibles = equipos.filter(
+        (equipo: EquipoFabricadoDTO) => estadosElegibles.includes(equipo.estadoAsignacion as string)
       );
 
-      if (equiposEntregados.length === 0) {
+      if (equiposElegibles.length === 0) {
         setAlert({
           open: true,
-          message: 'No hay equipos en estado ENTREGADO disponibles para devolver',
+          message: 'No hay equipos elegibles para devolver (estados permitidos: FACTURADO, EN_TRANSITO, ENTREGADO)',
           severity: 'warning',
         });
       }
 
-      setEquiposFactura(equiposEntregados);
+      setEquiposFactura(equiposElegibles);
     } catch (error) {
       console.error('Error loading equipos:', error);
       setAlert({
@@ -378,7 +379,8 @@ const NotasCreditoPage: React.FC = () => {
               Notas de Crédito
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Generar notas de crédito por devolución de equipos
+              Generar notas de crédito por devolución o anulación de ventas
+              (equipos en estado FACTURADO, EN_TRANSITO o ENTREGADO)
             </Typography>
           </Box>
         </Box>
@@ -566,7 +568,8 @@ const NotasCreditoPage: React.FC = () => {
                   </Box>
                 ) : equiposFactura.length === 0 ? (
                   <Alert severity="info" sx={{ borderRadius: 2 }}>
-                    No hay equipos en estado ENTREGADO disponibles para devolver en esta factura.
+                    No hay equipos elegibles para devolver en esta factura
+                    (se permiten equipos en estado FACTURADO, EN_TRANSITO o ENTREGADO).
                   </Alert>
                 ) : (
                   <>
@@ -624,7 +627,13 @@ const NotasCreditoPage: React.FC = () => {
                                 <TableCell>
                                   <Chip
                                     label={equipo.estadoAsignacion}
-                                    color="success"
+                                    color={
+                                      equipo.estadoAsignacion === 'ENTREGADO'
+                                        ? 'success'
+                                        : equipo.estadoAsignacion === 'EN_TRANSITO'
+                                          ? 'warning'
+                                          : 'info'
+                                    }
                                     size="small"
                                     variant="outlined"
                                   />
