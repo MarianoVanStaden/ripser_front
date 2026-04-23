@@ -22,6 +22,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import { cajasPesosApi } from '../../../api/services/cajasPesosApi';
 import type { CajaPesos } from '../../../types';
@@ -29,6 +30,7 @@ import { extractError, formatPesos } from '../CajasAhorro/utils';
 import CajaPesosFormDialog from './dialogs/CajaPesosFormDialog';
 import DepositarPesosDialog from './dialogs/DepositarPesosDialog';
 import ExtraerPesosDialog from './dialogs/ExtraerPesosDialog';
+import TransferirPesosDialog from './dialogs/TransferirPesosDialog';
 
 const CajasPesosListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +44,8 @@ const CajasPesosListPage: React.FC = () => {
 
   const [depositarOpen, setDepositarOpen] = useState(false);
   const [extraerOpen, setExtraerOpen] = useState(false);
+  const [transferirOpen, setTransferirOpen] = useState(false);
+  const [transferirOrigenId, setTransferirOrigenId] = useState<number | undefined>(undefined);
 
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -100,7 +104,18 @@ const CajasPesosListPage: React.FC = () => {
             Cajas en Pesos (ARS)
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button
+            variant="outlined"
+            startIcon={<SwapHorizIcon />}
+            onClick={() => {
+              setTransferirOrigenId(undefined);
+              setTransferirOpen(true);
+            }}
+            disabled={cajas.filter((c) => c.estado === 'ACTIVA').length < 2}
+          >
+            Transferir entre cajas
+          </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -118,9 +133,13 @@ const CajasPesosListPage: React.FC = () => {
       {!loading && cajas.length > 0 && (
         <Box mb={2}>
           <Typography variant="body2" color="text.secondary">
-            Saldo total activo
+            Saldo total activo {saldoTotal < 0 && '(en deuda)'}
           </Typography>
-          <Typography variant="h5" fontWeight={700} color="success.main">
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            color={saldoTotal < 0 ? 'error.main' : 'success.main'}
+          >
             {formatPesos(saldoTotal)}
           </Typography>
         </Box>
@@ -191,7 +210,7 @@ const CajasPesosListPage: React.FC = () => {
                     <Typography
                       variant="h5"
                       fontWeight={700}
-                      color="success.main"
+                      color={caja.saldoActual < 0 ? 'error.main' : 'success.main'}
                       mt={1}
                       mb={2}
                     >
@@ -229,6 +248,19 @@ const CajasPesosListPage: React.FC = () => {
                           }}
                         >
                           Extraer
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<SwapHorizIcon />}
+                          onClick={() => {
+                            setTransferirOrigenId(caja.id);
+                            setTransferirOpen(true);
+                          }}
+                          disabled={cajas.filter((c) => c.estado === 'ACTIVA').length < 2}
+                        >
+                          Transferir
                         </Button>
                         <Box display="flex" gap={0.5}>
                           <IconButton
@@ -292,6 +324,17 @@ const CajasPesosListPage: React.FC = () => {
         onClose={() => setExtraerOpen(false)}
         onSuccess={() => {
           setExtraerOpen(false);
+          load();
+        }}
+      />
+
+      <TransferirPesosDialog
+        open={transferirOpen}
+        cajasActivas={cajas.filter((c) => c.estado === 'ACTIVA')}
+        defaultOrigenId={transferirOrigenId}
+        onClose={() => setTransferirOpen(false)}
+        onSuccess={() => {
+          setTransferirOpen(false);
           load();
         }}
       />

@@ -16,6 +16,7 @@ import {
   Refresh as RefreshIcon,
   MoneyOff as MoneyOffIcon,
   AttachMoney as AttachMoneyIcon,
+  SwapHoriz as SwapHorizIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -49,6 +50,7 @@ import FlujoCajaPaymentBreakdown from './components/FlujoCajaPaymentBreakdown';
 import FlujoCajaMovimientosTable from './components/FlujoCajaMovimientosTable';
 import CajasAhorroUSDSection from './components/CajasAhorroUSDSection';
 import MovimientoExtraDialog from './dialogs/MovimientoExtraDialog';
+import TransferirPesosDialog from '../CajasPesos/dialogs/TransferirPesosDialog';
 import { movimientoExtraApi } from '../../../api/services/movimientoExtraApi';
 import LoadingOverlay from '../../common/LoadingOverlay';
 
@@ -70,6 +72,9 @@ const FlujoCajaPage: React.FC = () => {
   const [movimientoDialogOpen, setMovimientoDialogOpen] = useState(false);
   const [editingMovimiento, setEditingMovimiento] = useState<FlujoCajaMovimientoEnhanced | null>(null);
   const [tipoDialogInicial, setTipoDialogInicial] = useState<'INGRESO' | 'EGRESO'>('EGRESO');
+
+  // Transferencia entre cajas pesos
+  const [transferirDialogOpen, setTransferirDialogOpen] = useState(false);
 
   // React Query — datos del flujo de caja
   const {
@@ -287,6 +292,16 @@ const FlujoCajaPage: React.FC = () => {
               size={isMobile ? 'medium' : 'medium'}
             >
               {isMobile ? 'Cobro Extra' : 'Registrar Cobro Extra'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={!isMobile && <SwapHorizIcon />}
+              onClick={() => setTransferirDialogOpen(true)}
+              fullWidth={isMobile}
+              size={isMobile ? 'medium' : 'medium'}
+            >
+              {isMobile ? 'Transferir' : 'Transferir entre cajas'}
             </Button>
             <Button
               variant="contained"
@@ -535,6 +550,15 @@ const FlujoCajaPage: React.FC = () => {
           }}
           editingMovimiento={editingMovimiento}
           tipoInicial={tipoDialogInicial}
+        />
+
+        <TransferirPesosDialog
+          open={transferirDialogOpen}
+          onClose={() => setTransferirDialogOpen(false)}
+          onSuccess={() => {
+            invalidate();
+            setTransferirDialogOpen(false);
+          }}
         />
       </Box>
     </LocalizationProvider>

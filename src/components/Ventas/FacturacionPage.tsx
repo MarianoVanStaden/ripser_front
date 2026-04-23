@@ -530,8 +530,6 @@ const FacturacionPage = () => {
     montoEntregaInicial: 0,
     tasaInteres: 0,
   });
-  // True right after the user confirms the billing modal, so the submit handler can proceed.
-  const billingConfirmedRef = useRef(false);
 
   // Preemptive debt check — runs before any API side-effects so the warning appears first.
   // Same logic as NotasPedidoPage.
@@ -798,7 +796,6 @@ const FacturacionPage = () => {
     setSelectedIva('EXENTO');
     setError(null);
     setSuccess(null);
-    billingConfirmedRef.current = false;
     deudaYaConfirmadaRef.current = false;
   };
 
@@ -1074,7 +1071,7 @@ const FacturacionPage = () => {
     // Gate 1 — Financiación Propia modal (same UX as NotasPedidoPage):
     // if the user picked financiamiento and hasn't confirmed the billing form yet,
     // open the modal so they set entrega inicial + diferencia financiada + tasa de interés.
-    if (isFinanciamiento(paymentMethod) && !billingConfirmedRef.current) {
+    if (isFinanciamiento(paymentMethod) && !billingConfirmed) {
       setBillingMode('manual');
       setBillingForm({
         cantidadCuotas: cantidadCuotas ?? 1,
@@ -1569,7 +1566,6 @@ const FacturacionPage = () => {
   // Apply billing form to the relevant state slice (manual vs nota) and re-trigger the submit.
   // Using setTimeout(0) so the state updates commit before the submit handler reads them.
   const submitBillingDialog = () => {
-    billingConfirmedRef.current = true;
     if (billingMode === 'manual') {
       setCantidadCuotas(billingForm.cantidadCuotas);
       setTipoFinanciacion(billingForm.tipoFinanciacion);
@@ -1659,7 +1655,6 @@ const FacturacionPage = () => {
     setNotaUsePorcentaje(true);
     setNotaPorcentajeEntrega(null);
     setNotaMontoFijoEntrega(null);
-    billingConfirmedRef.current = false;
     deudaYaConfirmadaRef.current = false;
   };
 
@@ -1677,7 +1672,7 @@ const FacturacionPage = () => {
 
     // Gate 1 — Financiación Propia modal (same UX as NotasPedidoPage):
     // force the user to confirm entrega inicial + diferencia financiada + tasa before billing.
-    if (isFinanciamiento(selectedNotaPedido.metodoPago) && !billingConfirmedRef.current) {
+    if (isFinanciamiento(selectedNotaPedido.metodoPago) && !billingConfirmed) {
       const opcionSeleccionada = opcionesFinanciamiento.find(o => o.id === selectedOpcionId)
         ?? opcionesFinanciamiento.find(o => o.esSeleccionada);
       const cuotasPrefill = notaCantidadCuotas ?? opcionSeleccionada?.cantidadCuotas ?? 1;

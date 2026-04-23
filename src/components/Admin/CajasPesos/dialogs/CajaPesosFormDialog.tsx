@@ -7,14 +7,20 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   Grid2 as Grid,
+  InputLabel,
+  MenuItem,
+  Select,
   TextField,
+  Typography,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { cajasPesosApi } from '../../../../api/services/cajasPesosApi';
 import type { CajaPesos } from '../../../../types';
+import { MetodoPago, METODO_PAGO_LABELS } from '../../../../types/prestamo.types';
 import { extractError } from '../../CajasAhorro/utils';
 
 interface Props {
@@ -29,6 +35,7 @@ interface FormData {
   nombre: string;
   descripcion: string;
   sucursalId: string;
+  metodoPagoDefault: string;
 }
 
 const schema = yup.object({
@@ -38,6 +45,7 @@ const schema = yup.object({
     .max(100, 'Máximo 100 caracteres'),
   descripcion: yup.string().max(500, 'Máximo 500 caracteres'),
   sucursalId: yup.string(),
+  metodoPagoDefault: yup.string(),
 });
 
 const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSaved }) => {
@@ -49,9 +57,10 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSav
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<FormData>({
     resolver: yupResolver(schema) as any,
-    defaultValues: { nombre: '', descripcion: '', sucursalId: '' },
+    defaultValues: { nombre: '', descripcion: '', sucursalId: '', metodoPagoDefault: '' },
   });
 
   useEffect(() => {
@@ -62,12 +71,16 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSav
           nombre: caja.nombre,
           descripcion: caja.descripcion ?? '',
           sucursalId: caja.sucursalId != null ? String(caja.sucursalId) : '',
+          metodoPagoDefault: caja.metodoPagoDefault ?? '',
         });
       } else {
-        reset({ nombre: '', descripcion: '', sucursalId: '' });
+        reset({ nombre: '', descripcion: '', sucursalId: '', metodoPagoDefault: '' });
       }
     }
   }, [open, mode, caja, reset]);
+
+  const mpWatch = watch('metodoPagoDefault');
+  const showNoReportarWarning = mode === 'create' && (!mpWatch || mpWatch === '');
 
   const onSubmit = async (data: FormData) => {
     setSaving(true);
@@ -77,6 +90,10 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSav
         nombre: data.nombre,
         descripcion: data.descripcion || undefined,
         sucursalId: data.sucursalId ? Number(data.sucursalId) : undefined,
+        metodoPagoDefault:
+          data.metodoPagoDefault && data.metodoPagoDefault !== ''
+            ? (data.metodoPagoDefault as any)
+            : null,
       };
       if (mode === 'edit' && caja) {
         await cajasPesosApi.update(caja.id, dto);
@@ -154,6 +171,46 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSav
                   />
                 )}
               />
+            </Grid>
+            <Grid size={12}>
+              <Controller
+                name="metodoPagoDefault"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Método de pago para reportes de Flujo de Caja</InputLabel>
+                    <Select
+                      {...field}
+                      label="Método de pago para reportes de Flujo de Caja"
+                    >
+                      <MenuItem value="">
+                        <em>— No reportar en Flujo de Caja legacy —</em>
+                      </MenuItem>
+                      {Object.values(MetodoPago).map((v) => (
+                        <MenuItem key={v} value={v}>
+                          {METODO_PAGO_LABELS[v]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, ml: 1.5 }}
+                    >
+                      Al transferir o mover dinero, se genera un MovimientoExtra
+                      con este método. Si lo dejás vacío, la caja no aparecerá en
+                      el reporte legacy de Flujo de Caja — pero sus movimientos
+                      reales siguen registrándose normalmente.
+                    </Typography>
+                  </FormControl>
+                )}
+              />
+              {showNoReportarWarning && (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  Sin método de pago configurado, esta caja no aparecerá en el reporte
+                  legacy de Flujo de Caja. Podés asignarlo ahora o más tarde.
+                </Alert>
+              )}
             </Grid>
           </Grid>
         </DialogContent>

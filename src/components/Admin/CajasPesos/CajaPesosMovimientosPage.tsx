@@ -182,7 +182,11 @@ const CajaPesosMovimientosPage: React.FC = () => {
                 {caja.descripcion}
               </Typography>
             )}
-            <Typography variant="h4" fontWeight={700} color="success.main">
+            <Typography
+              variant="h4"
+              fontWeight={700}
+              color={caja.saldoActual < 0 ? 'error.main' : 'success.main'}
+            >
               {formatPesos(caja.saldoActual)}
             </Typography>
           </Box>

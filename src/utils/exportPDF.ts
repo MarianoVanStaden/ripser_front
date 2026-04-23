@@ -1,6 +1,17 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import dayjs from 'dayjs';
+
+// jspdf + jspdf-autotable are ~400kB (gzip) combined. Defer until the user
+// triggers an export. `exportToPDF` becomes async; callers that didn't await
+// it previously still work (fire-and-forget), and any that want to show a
+// spinner can await the returned promise.
+const loadJsPdf = async () => {
+  const [{ default: jsPDF }, autoTableModule] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+  const autoTable = (autoTableModule as any).default ?? autoTableModule;
+  return { jsPDF, autoTable };
+};
 
 // Colores del diseño Ripser (matching presupuesto style)
 const COLORS = {
@@ -38,8 +49,9 @@ export interface PDFExportConfig {
  * Exporta datos a un archivo PDF con el estilo de marca Ripser
  * @param config Configuración de la exportación
  */
-export const exportToPDF = (config: PDFExportConfig): void => {
+export const exportToPDF = async (config: PDFExportConfig): Promise<void> => {
   try {
+    const { jsPDF, autoTable } = await loadJsPdf();
     const doc = new jsPDF({
       orientation: config.orientation || 'portrait',
       unit: 'mm',
@@ -202,7 +214,7 @@ export const exportToPDF = (config: PDFExportConfig): void => {
           fillColor: [245, 248, 250],
         },
         margin: { left: margin + 1, right: margin + 1 },
-        didDrawPage: (data) => {
+        didDrawPage: (data: any) => {
           // Pie de página
           const pageCount = (doc as any).internal.getNumberOfPages();
           const pageHeight = doc.internal.pageSize.height;
@@ -274,11 +286,11 @@ export const exportSimpleTableToPDF = (
   columns: Array<{ key: string; header: string }>,
   fileName: string,
   title: string
-): void => {
+): Promise<void> => {
   const headers = columns.map((col) => col.header);
   const rows = data.map((row) => columns.map((col) => row[col.key] ?? ''));
 
-  exportToPDF({
+  return exportToPDF({
     fileName,
     title,
     tables: [
@@ -358,7 +370,7 @@ export const exportStatisticsPDF = (config: {
   title: string;
   statistics: Array<{ label: string; value: string | number }>;
   additionalTables?: PDFExportConfig['tables'];
-}): void => {
+}): Promise<void> => {
   const statsRows = config.statistics.map((stat) => [stat.label, String(stat.value)]);
 
   const tables: PDFExportConfig['tables'] = [
@@ -373,7 +385,7 @@ export const exportStatisticsPDF = (config: {
     tables.push(...config.additionalTables);
   }
 
-  exportToPDF({
+  return exportToPDF({
     fileName: config.fileName,
     title: config.title,
     tables,

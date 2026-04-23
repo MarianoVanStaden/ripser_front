@@ -81,7 +81,12 @@
       "Bash(echo \"BACK_EXIT=$?\")",
       "Bash(./mvnw.cmd -q -Dtest=EquipoFabricadoDesgloseServiceTest test)",
       "Bash(echo \"FRONT_EXIT=$?\")",
-      "Bash(./mvnw.cmd -Dtest=EquipoFabricadoDesgloseServiceTest test)"
+      "Bash(./mvnw.cmd -Dtest=EquipoFabricadoDesgloseServiceTest test)",
+      "Bash(git reset *)",
+      "Bash(echo \"BACK=$?\")",
+      "Bash(npm ls *)",
+      "Bash(echo \"FRONT=$?\")",
+      "Bash(npx vite *)"
     ],
     "deny": [],
     "ask": [],

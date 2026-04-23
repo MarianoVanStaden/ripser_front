@@ -1,22 +1,18 @@
 import React from 'react';
-import { Bar } from 'react-chartjs-2';
 import { Box, Paper, Typography, CircularProgress } from '@mui/material';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-} from 'chart.js';
-import type { ChartData } from 'chart.js';
+  ResponsiveContainer,
+} from 'recharts';
 import type { PaymentMethodAggregation } from '../../../../types';
 import { getPaymentMethodLabel } from '../../../../utils/flujoCajaUtils';
-import { barChartOptions, chartColors } from '../../../../config/chartConfig';
-
-// Registrar componentes de Chart.js
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+import { chartColors, formatARS } from '../../../../config/chartConfig';
 
 interface IncomeExpenseBarChartProps {
   data: PaymentMethodAggregation[];
@@ -27,26 +23,11 @@ const IncomeExpenseBarChart: React.FC<IncomeExpenseBarChartProps> = ({
   data,
   loading = false,
 }) => {
-  // Preparar datos para el gráfico
-  const chartData: ChartData<'bar'> = {
-    labels: data.map((item) => getPaymentMethodLabel(item.metodoPago)),
-    datasets: [
-      {
-        label: 'Ingresos',
-        data: data.map((item) => item.totalIngresos),
-        backgroundColor: chartColors.ingresos,
-        borderColor: chartColors.ingresos,
-        borderWidth: 1,
-      },
-      {
-        label: 'Egresos',
-        data: data.map((item) => item.totalEgresos),
-        backgroundColor: chartColors.egresos,
-        borderColor: chartColors.egresos,
-        borderWidth: 1,
-      },
-    ],
-  };
+  const chartData = data.map((item) => ({
+    name: getPaymentMethodLabel(item.metodoPago),
+    Ingresos: item.totalIngresos,
+    Egresos: item.totalEgresos,
+  }));
 
   if (loading) {
     return (
@@ -74,8 +55,18 @@ const IncomeExpenseBarChart: React.FC<IncomeExpenseBarChartProps> = ({
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Comparación por método de pago
       </Typography>
-      <Box sx={{ height: 350, position: 'relative', mt: 2 }}>
-        <Bar data={chartData} options={barChartOptions} />
+      <Box sx={{ height: 350, mt: 2 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tickFormatter={formatARS} tick={{ fontSize: 11 }} />
+            <Tooltip formatter={(value) => formatARS(value as number)} />
+            <Legend />
+            <Bar dataKey="Ingresos" fill={chartColors.ingresos} />
+            <Bar dataKey="Egresos" fill={chartColors.egresos} />
+          </BarChart>
+        </ResponsiveContainer>
       </Box>
     </Paper>
   );

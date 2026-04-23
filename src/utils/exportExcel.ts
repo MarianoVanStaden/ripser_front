@@ -1,5 +1,7 @@
-import ExcelJS from 'exceljs';
 import dayjs from 'dayjs';
+
+// ExcelJS is ~900kB (gzip). Only pay for it when the user actually exports.
+const loadExcelJS = () => import('exceljs').then((m) => m.default ?? m);
 
 /**
  * Interfaz para configurar la exportación a Excel
@@ -37,6 +39,7 @@ const downloadBuffer = (buffer: ArrayBuffer, fileName: string): void => {
  */
 export const exportToExcel = async (config: ExcelExportConfig): Promise<void> => {
   try {
+    const ExcelJS = await loadExcelJS();
     const workbook = new ExcelJS.Workbook();
 
     // Agregar metadata como primera hoja si existe

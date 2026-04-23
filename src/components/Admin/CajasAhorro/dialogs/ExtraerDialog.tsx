@@ -84,12 +84,6 @@ const ExtraerDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) => {
   const onSubmit = async (data: FormData) => {
     if (!caja) return;
     const montoNum = parseFloat(data.montoUsd);
-    if (montoNum > caja.saldoActual) {
-      setApiError(
-        `El monto supera el saldo disponible (${formatUSD(caja.saldoActual)})`
-      );
-      return;
-    }
     setSaving(true);
     setApiError(null);
     try {
@@ -107,6 +101,8 @@ const ExtraerDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) => {
     }
   };
 
+  const saldoFinal = !isNaN(monto) && monto > 0 && caja ? caja.saldoActual - monto : null;
+
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} maxWidth="sm" fullWidth>
       <DialogTitle>Extraer de {caja?.nombre}</DialogTitle>
@@ -115,10 +111,18 @@ const ExtraerDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) => {
           {caja && (
             <Box mb={2}>
               <Chip
-                label={`Saldo disponible: ${formatUSD(caja.saldoActual)}`}
-                color="info"
+                label={`Saldo actual: ${formatUSD(caja.saldoActual)}`}
+                color={caja.saldoActual < 0 ? 'error' : 'info'}
                 variant="outlined"
               />
+              {saldoFinal != null && (
+                <Chip
+                  label={`Quedará: ${formatUSD(saldoFinal)}`}
+                  color={saldoFinal < 0 ? 'error' : 'success'}
+                  variant="outlined"
+                  sx={{ ml: 1 }}
+                />
+              )}
             </Box>
           )}
 

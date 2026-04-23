@@ -57,8 +57,21 @@ import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import type { Modulo } from '../../types';
 import SucursalSelector from '../Sucursal/SucursalSelector';
+import { prefetch } from '../../utils/prefetch';
 
 const drawerWidth = 240;
+
+// Prefetch registry for high-traffic routes. Populate on measurement, not
+// intuition: only routes that > ~30% of sessions visit belong here.
+// Adding too many wastes bandwidth and can stampede the backend on hover.
+const ROUTE_PREFETCH: Record<string, () => Promise<unknown>> = {
+  '/': () => import('../Dashboard/Dashboard'),
+  '/ventas/dashboard':   () => import('../../pages/ventas/VentasDashboard'),
+  '/ventas/facturacion': () => import('../Ventas/FacturacionPage'),
+  '/clientes/gestion':   () => import('../Clientes/ClientesPage'),
+  '/prestamos/resumen':  () => import('../Prestamos/PrestamosResumenPage'),
+  '/cobranzas/resumen':  () => import('../Prestamos/Cobranzas/CobranzasResumenPage'),
+};
 
 interface NavigationSection {
   title: string;
@@ -399,6 +412,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
                 >
                   <ListItemButton
                     onClick={() => handleNavigation(item.path)}
+                    onMouseEnter={ROUTE_PREFETCH[item.path] ? prefetch(ROUTE_PREFETCH[item.path]) : undefined}
+                    onFocus={ROUTE_PREFETCH[item.path] ? prefetch(ROUTE_PREFETCH[item.path]) : undefined}
                     selected={location.pathname === item.path}
                     sx={{
                       color: location.pathname === item.path ? '#00B8A9' : '#fff',

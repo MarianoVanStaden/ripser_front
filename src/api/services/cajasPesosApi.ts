@@ -5,6 +5,8 @@ import type {
   CreateCajaPesosDTO,
   MovimientoCajaPesos,
   DepositoExtraccionCajaPesosDTO,
+  TransferenciaCajaPesosRequestDTO,
+  TransferenciaCajaPesosResponseDTO,
 } from '../../types';
 
 const BASE = '/api/cajas-pesos';
@@ -57,6 +59,16 @@ export const cajasPesosApi = {
     const res = await api.get<PageResponse<MovimientoCajaPesos>>(
       `${BASE}/${id}/movimientos`,
       { params }
+    );
+    return res.data;
+  },
+
+  transferir: async (
+    dto: TransferenciaCajaPesosRequestDTO
+  ): Promise<TransferenciaCajaPesosResponseDTO> => {
+    const res = await api.post<TransferenciaCajaPesosResponseDTO>(
+      `${BASE}/transferencias`,
+      dto
     );
     return res.data;
   },

@@ -42,36 +42,27 @@ import {
 import { documentoApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { useTenant } from '../../context/TenantContext';
-import { Bar, Pie, Line } from 'react-chartjs-2';
-import { generateSalesReportPDF, generateSaleDetailPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  Legend as RLegend,
+  ResponsiveContainer,
+} from 'recharts';
+import { generateSalesReportPDF, generateSaleDetailPDF, captureElementAsImage } from '../../utils/pdfExportUtils';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SaleRecord = any;
@@ -649,103 +640,30 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
     }
   };
 
-  // Prepare chart data
+  // Paleta categórica (misma cadencia que chartConfig.categoricalPalette,
+  // copiada localmente para preservar los colores originales del dashboard).
   const chartColors = [
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
     '#FF99E6', '#4169E1', '#FFD700', '#32CD32', '#FF4500', '#9932CC',
   ];
 
-  const chartData = {
-    labels: Object.keys(salesReport),
-    datasets: [
-      {
-        label: 'Total Ventas ($)',
-        data: Object.values(salesReport).map(item => item.total),
-        backgroundColor: chartType === 'pie' ? chartColors : 'rgba(75, 192, 192, 0.6)',
-        borderColor: chartType === 'pie' ? chartColors.map(c => c) : 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-        fill: chartType === 'line' ? false : true,
-      },
-    ],
-  };
+  // recharts consume un array de objetos, no {labels, datasets}.
+  const chartData = Object.entries(salesReport).map(([key, item]) => ({
+    label: key,
+    total: item.total,
+  }));
+  const totalSum = chartData.reduce((acc, row) => acc + row.total, 0);
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'right' as const,
-        labels: {
-          padding: 15,
-          font: {
-            size: 12,
-          },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          generateLabels: chartType === 'pie' ? (chart: any) => {
-            const data = chart.data;
-            if (data.labels.length && data.datasets.length) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const total = data.datasets[0].data.reduce((a: number, b: number) => a + b, 0);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              return data.labels.map((label: string, i: number) => {
-                const value = data.datasets[0].data[i];
-                const percentage = ((value / total) * 100).toFixed(1);
-                return {
-                  text: `${label}: ${percentage}%`,
-                  fillStyle: data.datasets[0].backgroundColor[i],
-                  hidden: false,
-                  index: i,
-                };
-              });
-            }
-            return [];
-          } : undefined,
-        },
-      },
-      title: {
-        display: true,
-        text: `Ventas por ${groupBy}`,
-        font: {
-          size: 16,
-          weight: 'bold' as const,
-        },
-        padding: 20,
-      },
-      tooltip: {
-        callbacks: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label: function(context: any) {
-            const label = context.label || '';
-            const value = context.parsed || context.parsed.y || 0;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `${label}: $${value.toLocaleString()} (${percentage}%)`;
-          },
-        },
-      },
-    },
-    scales: chartType !== 'pie' ? {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Total ($)',
-        },
-        ticks: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          callback: function(value: any) {
-            return '$' + value.toLocaleString();
-          },
-        },
-      },
-      x: {
-        title: {
-          display: true,
-          text: groupBy,
-        },
-      },
-    } : {},
+  const currencyFormatter = (value: number | string | undefined): string => {
+    if (value === undefined || value === null) return '';
+    const n = typeof value === 'number' ? value : Number(value);
+    if (Number.isNaN(n)) return String(value);
+    return '$' + n.toLocaleString();
+  };
+  const tooltipFormatter = (value: number | string | undefined): [string, string] => {
+    const n = typeof value === 'number' ? value : Number(value ?? 0);
+    const pct = totalSum > 0 ? ((n / totalSum) * 100).toFixed(1) : '0.0';
+    return [`${currencyFormatter(n)} (${pct}%)`, 'Total'];
   };
 
   return (
@@ -994,21 +912,21 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} lg={3}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
                 <DatePicker
                   label="Desde"
-                  value={dateFromFilter}
-                  onChange={(newValue) => setDateFromFilter(newValue as Date | null)}
+                  value={dateFromFilter ? dayjs(dateFromFilter) : null}
+                  onChange={(newValue) => setDateFromFilter(newValue ? newValue.toDate() : null)}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                 />
               </LocalizationProvider>
             </Grid>
             <Grid item xs={12} sm={6} lg={3}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
                 <DatePicker
                   label="Hasta"
-                  value={dateToFilter}
-                  onChange={(newValue) => setDateToFilter(newValue as Date | null)}
+                  value={dateToFilter ? dayjs(dateToFilter) : null}
+                  onChange={(newValue) => setDateToFilter(newValue ? newValue.toDate() : null)}
                   slotProps={{ textField: { fullWidth: true, size: 'small' } }}
                 />
               </LocalizationProvider>
@@ -1032,9 +950,55 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
             Visualización del Informe
           </Typography>
           <Box id="ventas-chart-container" sx={{ height: 400, mb: 3, backgroundColor: '#fff' }}>
-            {chartType === 'bar' && <Bar data={chartData} options={chartOptions} />}
-            {chartType === 'pie' && <Pie data={chartData} options={chartOptions} />}
-            {chartType === 'line' && <Line data={chartData} options={chartOptions} />}
+            <ResponsiveContainer width="100%" height="100%">
+              {chartType === 'bar' ? (
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} />
+                  <RTooltip formatter={tooltipFormatter} />
+                  <RLegend />
+                  <Bar dataKey="total" name={`Ventas por ${groupBy}`} fill="rgba(75, 192, 192, 0.6)" />
+                </BarChart>
+              ) : chartType === 'line' ? (
+                <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} />
+                  <RTooltip formatter={tooltipFormatter} />
+                  <RLegend />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    name={`Ventas por ${groupBy}`}
+                    stroke="rgba(75, 192, 192, 1)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              ) : (
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    dataKey="total"
+                    nameKey="label"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={130}
+                    label={(entry: any) => {
+                      const pct = totalSum > 0 ? ((entry.total / totalSum) * 100).toFixed(1) : '0.0';
+                      return `${entry.label}: ${pct}%`;
+                    }}
+                  >
+                    {chartData.map((entry, i) => (
+                      <Cell key={entry.label} fill={chartColors[i % chartColors.length]} />
+                    ))}
+                  </Pie>
+                  <RTooltip formatter={tooltipFormatter} />
+                  <RLegend verticalAlign="middle" align="right" layout="vertical" />
+                </PieChart>
+              )}
+            </ResponsiveContainer>
           </Box>
           <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
             <Table sx={{ minWidth: { xs: 500, sm: 'auto' } }}>

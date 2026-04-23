@@ -1,154 +1,188 @@
+import { lazy, Suspense } from 'react';
+import type { ComponentType } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline, Box, Typography } from '@mui/material';
+import { CssBaseline, Box, Typography, CircularProgress } from '@mui/material';
 import theme from './theme';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
-import DevKPIs from './components/Dashboard/DevKPIs';
-import { AuthProvider } from "./context/AuthContext";
-import { TenantProvider } from "./context/TenantContext";
-import LoginPage from "./components/Auth/LoginPage";
-import { useAuth } from "./context/AuthContext";
-import {
-  ClientesPage, 
-  ClienteFormPage, 
-  ClienteDetailPage,
-  AgendaVisitasPage,
-  CarpetaClientePage,
-  CarpetaClienteSelector,
-  CuentaCorrientePage
-} from './components/Clientes';
-import { LeadsPage } from './pages/leads/LeadsPage';
-import { LeadsTablePage } from './pages/leads/LeadsTablePage';
-import { LeadFormPage } from './pages/leads/LeadFormPage';
-import { LeadDetailPage } from './pages/leads/LeadDetailPage';
-import { ConvertLeadPage } from './pages/leads/ConvertLeadPage';
-import { LeadMetricasPage } from './pages/leads/LeadMetricasPage';
-import { GestionGlobalRecordatoriosPage } from './pages/leads/GestionGlobalRecordatoriosPage';
-import { VentasDashboard } from './pages/ventas/VentasDashboard';
-import NotasPedidoPage from './components/Ventas/NotasPedidoPage';
-import PresupuestosPage from './components/Ventas/PresupuestosPage';
-import OpcionesFinanciamientoPage from './components/Ventas/OpcionesFinanciamientoPage';
-import ConfiguracionFinanciamiento from './components/Ventas/ConfiguracionFinanciamiento';
-import RegistroVentasPage from './components/Ventas/RegistroVentasPage';
-import FacturacionPage from './components/Ventas/FacturacionPage';
-import InformesVentasPage from './components/Ventas/InformesVentasPage';
-import NotasCreditoPage from './components/Ventas/NotasCreditoPage';
-import { ChequesPage } from './components/Cheques';
-import { BancosPage } from './components/Bancos';
-import { CuentasBancariasPage } from './components/CuentasBancarias';
-import UsersPage from './components/Admin/UsersPage';
-import RolesPage from './components/Admin/RolesPage';
-import SettingsPage from './components/Admin/SettingsPage';
-import FlujoCajaPage from './components/Admin/FlujoCaja/FlujoCajaPage';
-import { EmpresasPage } from './components/Admin/EmpresasPage';
-import { SucursalesPage } from './components/Admin/SucursalesPage';
-import { TenantSelector } from './components/Tenant';
-import {
-  SuppliersPage,
-  ComprasPedidosPage,
-  ContactosCondicionesPage,
-  HistorialComprasPage,
-  EvaluacionDesempenoPage
-} from './components/Proveedores';
-import CuentaCorrienteProveedoresPage from './components/Proveedores/CuentaCorrienteProveedoresPage';
-import GarantiasPage from './components/Garantia/GarantiasPage';
-import ReclamosGarantiaPage from './components/Garantia/ReclamosGarantiaPage';
-import GarantiaReportPage from './components/Garantia/GarantiaReportPage';
-import StockPage from './components/Logistica/StockPage';
-import StockEquiposPage from './components/Logistica/StockEquiposPage';
-import InventoryPage from './components/Logistica/InventoryPage';
-import RecountTasksPage from './components/Logistica/RecountTasksPage';
-import TripsPage from './components/Logistica/TripsPage';
-import DeliveriesPage from './components/Logistica/DeliveriesPage';
-import EntregasEquiposPage from './components/Logistica/EntregasEquiposPage';
-import IncidenciasVehiculoPage from './components/Logistica/IncidenciasVehiculoPage';
-import TrabajosRealizadosPage from './components/Taller/TrabajosRealizadosPage';
-import OrdenesServicioPage from './components/Taller/OrdenesServicioPage';
-import ControlMaterialesPage from './components/Taller/ControlMaterialesPage';
-import AsignacionTareasPage from './components/Taller/AsignacionTareasPage';
-import ConfiguracionTallerPage from './components/Taller/ConfiguracionTallerPage';
-import { EmpleadosPage, PuestosPage, PuestoDetailPage, AsistenciasPage, LicenciasPage, CapacitacionesPage, SueldosPage, LegajosPage } from './components/RRHH';
-import {
-  RecetasList,
-  RecetaDetail,
-  RecetaForm,
-  EquiposList,
-  EquipoDetail,
-  EquipoForm,
-  DashboardFabricacion,
-  StockPlanificacionPage,
-} from './components/Fabricacion';
-import ReportesEstadosPage from './components/Fabricacion/ReportesEstadosPage';
-import {
-  DepositosPage,
-  InventarioDepositoPage,
-  UbicacionEquiposPage,
-  AuditoriaPage,
-  TransferenciasPage,
-  ReconciliacionStockPage
-} from './components/Logistica/Depositos';
-import {
-  PrestamosResumenPage,
-  PrestamosListPage,
-  PrestamoDetailPage,
-  RefinanciacionPage,
-} from './components/Prestamos';
-import {
-  CobranzasResumenPage,
-  CobranzasListPage,
-  GestionCobranzaDetailPage,
-} from './components/Prestamos/Cobranzas';
-import { BalanceAnualPage, BalanceMesPage } from './components/Admin/BalanceAnual';
-import { AmortizacionesPage, AmortizacionMesPage } from './components/Admin/Amortizaciones';
-import { ProvisionesPage, ProvisionResumenAnualPage } from './components/Admin/Provisiones';
-import PosicionPatrimonialPage from './components/Admin/PosicionPatrimonial';
-import { CajasAhorroListPage, CajaMovimientosPage } from './components/Admin/CajasAhorro';
-import { CajasPesosListPage, CajaPesosMovimientosPage } from './components/Admin/CajasPesos';
+import LoginPage from './components/Auth/LoginPage';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { TenantProvider } from './context/TenantContext';
 
+// ---------------------------------------------------------------------------
+// Lazy route helpers
+// ---------------------------------------------------------------------------
+// React.lazy needs a module with a `default` export. Many pages in this repo
+// are named exports re-exported through barrel files. `lazyNamed` pulls the
+// right export and adapts it to lazy()'s shape without eagerly evaluating the
+// module.
+const lazyNamed = <T extends ComponentType<any>>(
+  loader: () => Promise<Record<string, any>>,
+  name: string,
+) => lazy(async () => {
+  const mod = await loader();
+  return { default: mod[name] as T };
+});
+
+// ---------------------------------------------------------------------------
+// Pages (code-split per route)
+// ---------------------------------------------------------------------------
+// Dashboard / dev
+const DevKPIs = lazy(() => import('./components/Dashboard/DevKPIs'));
+
+// Admin
+const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
+const RolesPage = lazy(() => import('./components/Admin/RolesPage'));
+const SettingsPage = lazy(() => import('./components/Admin/SettingsPage'));
+const FlujoCajaPage = lazy(() => import('./components/Admin/FlujoCaja/FlujoCajaPage'));
+const EmpresasPage = lazyNamed(() => import('./components/Admin/EmpresasPage'), 'EmpresasPage');
+const SucursalesPage = lazyNamed(() => import('./components/Admin/SucursalesPage'), 'SucursalesPage');
+const BalanceAnualPage = lazy(() => import('./components/Admin/BalanceAnual/BalanceAnualPage'));
+const BalanceMesPage = lazy(() => import('./components/Admin/BalanceAnual/BalanceMesPage'));
+const AmortizacionesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionesPage'));
+const AmortizacionMesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionMesPage'));
+const ProvisionesPage = lazy(() => import('./components/Admin/Provisiones/ProvisionesPage'));
+const ProvisionResumenAnualPage = lazy(() => import('./components/Admin/Provisiones/ProvisionResumenAnualPage'));
+const PosicionPatrimonialPage = lazy(() => import('./components/Admin/PosicionPatrimonial/PosicionPatrimonialPage'));
+const CajasAhorroListPage = lazy(() => import('./components/Admin/CajasAhorro/CajasAhorroListPage'));
+const CajaMovimientosPage = lazy(() => import('./components/Admin/CajasAhorro/CajaMovimientosPage'));
+const CajasPesosListPage = lazy(() => import('./components/Admin/CajasPesos/CajasPesosListPage'));
+const CajaPesosMovimientosPage = lazy(() => import('./components/Admin/CajasPesos/CajaPesosMovimientosPage'));
+
+// Bancos / cheques
+const BancosPage = lazy(() => import('./components/Bancos/BancosPage'));
+const CuentasBancariasPage = lazy(() => import('./components/CuentasBancarias/CuentasBancariasPage'));
+const ChequesPage = lazy(() => import('./components/Cheques/ChequesPage'));
+
+// Tenant
+const TenantSelector = lazyNamed(() => import('./components/Tenant/TenantSelector'), 'TenantSelector');
+
+// Clientes
+const ClientesPage = lazy(() => import('./components/Clientes/ClientesPage'));
+const ClienteFormPage = lazy(() => import('./components/Clientes/ClienteFormPage'));
+const ClienteDetailPage = lazy(() => import('./components/Clientes/ClienteDetailPage'));
+const AgendaVisitasPage = lazy(() => import('./components/Clientes/AgendaVisitasPage'));
+const CarpetaClientePage = lazy(() => import('./components/Clientes/CarpetaClientePage'));
+const CarpetaClienteSelector = lazy(() => import('./components/Clientes/CarpetaClienteSelector'));
+const CuentaCorrientePage = lazy(() => import('./components/Clientes/CuentaCorrientePage'));
+
+// Leads
+const LeadsPage = lazyNamed(() => import('./pages/leads/LeadsPage'), 'LeadsPage');
+const LeadsTablePage = lazyNamed(() => import('./pages/leads/LeadsTablePage'), 'LeadsTablePage');
+const LeadFormPage = lazyNamed(() => import('./pages/leads/LeadFormPage'), 'LeadFormPage');
+const LeadDetailPage = lazyNamed(() => import('./pages/leads/LeadDetailPage'), 'LeadDetailPage');
+const ConvertLeadPage = lazyNamed(() => import('./pages/leads/ConvertLeadPage'), 'ConvertLeadPage');
+const LeadMetricasPage = lazy(() => import('./pages/leads/LeadMetricasPage'));
+const GestionGlobalRecordatoriosPage = lazy(() => import('./pages/leads/GestionGlobalRecordatoriosPage'));
+
+// Ventas
+const VentasDashboard = lazyNamed(() => import('./pages/ventas/VentasDashboard'), 'VentasDashboard');
+const NotasPedidoPage = lazy(() => import('./components/Ventas/NotasPedidoPage'));
+const PresupuestosPage = lazy(() => import('./components/Ventas/PresupuestosPage'));
+const OpcionesFinanciamientoPage = lazy(() => import('./components/Ventas/OpcionesFinanciamientoPage'));
+const ConfiguracionFinanciamiento = lazy(() => import('./components/Ventas/ConfiguracionFinanciamiento'));
+const RegistroVentasPage = lazy(() => import('./components/Ventas/RegistroVentasPage'));
+const FacturacionPage = lazy(() => import('./components/Ventas/FacturacionPage'));
+const InformesVentasPage = lazy(() => import('./components/Ventas/InformesVentasPage'));
+const NotasCreditoPage = lazy(() => import('./components/Ventas/NotasCreditoPage'));
+
+// Préstamos / cobranzas
+const PrestamosResumenPage = lazyNamed(() => import('./components/Prestamos/PrestamosResumenPage'), 'PrestamosResumenPage');
+const PrestamosListPage = lazyNamed(() => import('./components/Prestamos/PrestamosListPage'), 'PrestamosListPage');
+const PrestamoDetailPage = lazyNamed(() => import('./components/Prestamos/PrestamoDetailPage'), 'PrestamoDetailPage');
+const RefinanciacionPage = lazyNamed(() => import('./components/Prestamos/RefinanciacionPage'), 'RefinanciacionPage');
+const CobranzasResumenPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/CobranzasResumenPage'), 'CobranzasResumenPage');
+const CobranzasListPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/CobranzasListPage'), 'CobranzasListPage');
+const GestionCobranzaDetailPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/GestionCobranzaDetailPage'), 'GestionCobranzaDetailPage');
+
+// Proveedores
+const SuppliersPage = lazy(() => import('./components/Proveedores/SuppliersPage'));
+const ComprasPedidosPage = lazy(() => import('./components/Proveedores/ComprasPedidosPage'));
+const ContactosCondicionesPage = lazy(() => import('./components/Proveedores/ContactosCondicionesPage'));
+const HistorialComprasPage = lazy(() => import('./components/Proveedores/HistorialComprasPage'));
+const EvaluacionDesempenoPage = lazy(() => import('./components/Proveedores/EvaluacionDesempenoPage'));
+const CuentaCorrienteProveedoresPage = lazy(() => import('./components/Proveedores/CuentaCorrienteProveedoresPage'));
+
+// Garantías
+const GarantiasPage = lazy(() => import('./components/Garantia/GarantiasPage'));
+const ReclamosGarantiaPage = lazy(() => import('./components/Garantia/ReclamosGarantiaPage'));
+const GarantiaReportPage = lazy(() => import('./components/Garantia/GarantiaReportPage'));
+
+// Logística
+const StockPage = lazy(() => import('./components/Logistica/StockPage'));
+const StockEquiposPage = lazy(() => import('./components/Logistica/StockEquiposPage'));
+const InventoryPage = lazy(() => import('./components/Logistica/InventoryPage'));
+const RecountTasksPage = lazy(() => import('./components/Logistica/RecountTasksPage'));
+const TripsPage = lazy(() => import('./components/Logistica/TripsPage'));
+const DeliveriesPage = lazy(() => import('./components/Logistica/DeliveriesPage'));
+const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
+const IncidenciasVehiculoPage = lazy(() => import('./components/Logistica/IncidenciasVehiculoPage'));
+const DepositosPage = lazy(() => import('./components/Logistica/Depositos/DepositosPage'));
+const InventarioDepositoPage = lazy(() => import('./components/Logistica/Depositos/InventarioDepositoPage'));
+const UbicacionEquiposPage = lazy(() => import('./components/Logistica/Depositos/UbicacionEquiposPage'));
+const AuditoriaPage = lazy(() => import('./components/Logistica/Depositos/AuditoriaPage'));
+const TransferenciasPage = lazy(() => import('./components/Logistica/Depositos/TransferenciasPage'));
+const ReconciliacionStockPage = lazy(() => import('./components/Logistica/Depositos/ReconciliacionStockPage'));
+
+// Taller
+const TrabajosRealizadosPage = lazy(() => import('./components/Taller/TrabajosRealizadosPage'));
+const OrdenesServicioPage = lazy(() => import('./components/Taller/OrdenesServicioPage'));
+const ControlMaterialesPage = lazy(() => import('./components/Taller/ControlMaterialesPage'));
+const AsignacionTareasPage = lazy(() => import('./components/Taller/AsignacionTareasPage'));
+const ConfiguracionTallerPage = lazy(() => import('./components/Taller/ConfiguracionTallerPage'));
+
+// RRHH
+const EmpleadosPage = lazy(() => import('./components/RRHH/EmpleadosPage'));
+const PuestosPage = lazy(() => import('./components/RRHH/PuestosPage'));
+const PuestoDetailPage = lazy(() => import('./components/RRHH/PuestoDetailPage'));
+const AsistenciasPage = lazy(() => import('./components/RRHH/AsistenciasPage'));
+const LicenciasPage = lazy(() => import('./components/RRHH/LicenciasPage'));
+const CapacitacionesPage = lazy(() => import('./components/RRHH/CapacitacionesPage'));
+const SueldosPage = lazy(() => import('./components/RRHH/SueldosPage'));
+const LegajosPage = lazy(() => import('./components/RRHH/LegajosPage'));
+
+// Fabricación
+const RecetasList = lazy(() => import('./components/Fabricacion/RecetasList'));
+const RecetaDetail = lazy(() => import('./components/Fabricacion/RecetaDetail'));
+const RecetaForm = lazy(() => import('./components/Fabricacion/RecetaForm'));
+const EquiposList = lazy(() => import('./components/Fabricacion/EquiposList'));
+const EquipoDetail = lazy(() => import('./components/Fabricacion/EquipoDetail'));
+const EquipoForm = lazy(() => import('./components/Fabricacion/EquipoForm'));
+const DashboardFabricacion = lazy(() => import('./components/Fabricacion/DashboardFabricacion'));
+const ReportesEstadosPage = lazy(() => import('./components/Fabricacion/ReportesEstadosPage'));
+const StockPlanificacionPage = lazyNamed(() => import('./components/Fabricacion/StockPlanificacion'), 'StockPlanificacionPage');
+
+// ---------------------------------------------------------------------------
+// Guards and Suspense fallback
+// ---------------------------------------------------------------------------
+const CenteredFallback: React.FC<{ label?: string }> = ({ label = 'Cargando...' }) => (
+  <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '60vh', gap: 2 }}>
+    <CircularProgress size={32} />
+    <Typography color="text.secondary">{label}</Typography>
+  </Box>
+);
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Cargando...</Typography>
-      </Box>
-    );
-  }
-
+  if (loading) return <CenteredFallback />;
   if (!user) {
     console.warn('⚠️ PrivateRoute: No user found, redirecting to login');
     return <Navigate to="/login" replace />;
   }
-
   return <>{children}</>;
 };
 
 const SuperAdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, esSuperAdmin, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Cargando...</Typography>
-      </Box>
-    );
-  }
-
-  if (!user) {
-    console.warn('⚠️ SuperAdminRoute: No user found, redirecting to login');
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!esSuperAdmin) {
-    console.warn('⚠️ SuperAdminRoute: User is not super admin, redirecting to dashboard');
-    return <Navigate to="/" replace />;
-  }
-
+  if (loading) return <CenteredFallback />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!esSuperAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
+
+// Small helper so each route doesn't repeat `<PrivateRoute>...</PrivateRoute>`.
+const priv = (el: React.ReactElement) => <PrivateRoute>{el}</PrivateRoute>;
 
 function App() {
   return (
@@ -157,166 +191,157 @@ function App() {
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <Router>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/"
-              element={
-                <PrivateRoute>
-                  <Layout />
-                </PrivateRoute>
-              }
-            >
-              <Route index element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-              {/* Explicit dashboard path so navigating to /dashboard works */}
-              <Route path="dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-              {/* Dev KPIs */}
-              <Route path="dashboard/dev-kpis" element={<PrivateRoute><DevKPIs /></PrivateRoute>} />
-              {/* ADMIN Module */}
-              <Route path="admin/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
-              <Route path="admin/roles" element={<PrivateRoute><RolesPage /></PrivateRoute>} />
-              <Route path="admin/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
-              <Route path="admin/flujo-caja" element={<PrivateRoute><FlujoCajaPage /></PrivateRoute>} />
-              <Route path="admin/bancos" element={<PrivateRoute><BancosPage /></PrivateRoute>} />
-              <Route path="admin/cuentas-bancarias" element={<PrivateRoute><CuentasBancariasPage /></PrivateRoute>} />
-              {/* Multi-Tenant Admin */}
-              <Route path="admin/empresas" element={<PrivateRoute><EmpresasPage /></PrivateRoute>} />
-              <Route path="admin/sucursales" element={<PrivateRoute><SucursalesPage /></PrivateRoute>} />
-              {/* Selector de contexto - Solo SUPER_ADMIN */}
-              <Route path="admin/tenant-selector" element={<SuperAdminRoute><TenantSelector /></SuperAdminRoute>} />
-              {/* Balance Anual + Amortizaciones */}
-              <Route path="admin/balance" element={<PrivateRoute><BalanceAnualPage /></PrivateRoute>} />
-              <Route path="admin/balance/:anio/:mes" element={<PrivateRoute><BalanceMesPage /></PrivateRoute>} />
-              <Route path="admin/amortizaciones" element={<PrivateRoute><AmortizacionesPage /></PrivateRoute>} />
-              <Route path="admin/amortizaciones/:anio/:mes" element={<PrivateRoute><AmortizacionMesPage /></PrivateRoute>} />
-              <Route path="admin/provisiones" element={<PrivateRoute><ProvisionesPage /></PrivateRoute>} />
-              <Route path="admin/provisiones/:anio/:mes" element={<PrivateRoute><ProvisionesPage /></PrivateRoute>} />
-              <Route path="admin/provisiones/resumen/:tipo/:anio" element={<PrivateRoute><ProvisionResumenAnualPage /></PrivateRoute>} />
-              <Route path="admin/patrimonio" element={<PrivateRoute><PosicionPatrimonialPage /></PrivateRoute>} />
-              <Route path="admin/cajas-ahorro" element={<PrivateRoute><CajasAhorroListPage /></PrivateRoute>} />
-              <Route path="admin/cajas-ahorro/:id" element={<PrivateRoute><CajaMovimientosPage /></PrivateRoute>} />
-              <Route path="admin/cajas-pesos" element={<PrivateRoute><CajasPesosListPage /></PrivateRoute>} />
-              <Route path="admin/cajas-pesos/:id" element={<PrivateRoute><CajaPesosMovimientosPage /></PrivateRoute>} />
-              {/* VENTAS Module */}
-              <Route path="ventas/dashboard" element={<PrivateRoute><VentasDashboard /></PrivateRoute>} />
-              <Route path="ventas/notas-pedido" element={<PrivateRoute><NotasPedidoPage /></PrivateRoute>} />
-              <Route path="ventas/presupuestos" element={<PrivateRoute><PresupuestosPage /></PrivateRoute>} />
-              {/* Financing routes (aliases to match sidebar paths) */}
-              <Route path="ventas/opciones-financiamiento" element={<PrivateRoute><OpcionesFinanciamientoPage /></PrivateRoute>} />
-              <Route path="ventas/configuracion-financiamiento" element={<PrivateRoute><ConfiguracionFinanciamiento /></PrivateRoute>} />
-              <Route path="ventas/registro" element={<PrivateRoute><RegistroVentasPage /></PrivateRoute>} />
-              <Route path="ventas/facturacion" element={<PrivateRoute><FacturacionPage /></PrivateRoute>} />
-              <Route path="ventas/notas-credito" element={<PrivateRoute><NotasCreditoPage /></PrivateRoute>} />
-              <Route path="ventas/informes" element={<PrivateRoute><InformesVentasPage /></PrivateRoute>} />
-              <Route path="ventas/cheques" element={<PrivateRoute><ChequesPage /></PrivateRoute>} />
+            <Suspense fallback={<CenteredFallback />}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/" element={priv(<Layout />)}>
+                  <Route index element={priv(<Dashboard />)} />
+                  <Route path="dashboard" element={priv(<Dashboard />)} />
+                  <Route path="dashboard/dev-kpis" element={priv(<DevKPIs />)} />
 
-              {/* CLIENTES Module */}
-              <Route path="clientes/gestion" element={<PrivateRoute><ClientesPage /></PrivateRoute>} />
-              <Route path="clientes/nuevo" element={<PrivateRoute><ClienteFormPage /></PrivateRoute>} />
-              <Route path="clientes/editar/:id" element={<PrivateRoute><ClienteFormPage /></PrivateRoute>} />
-              <Route path="clientes/detalle/:id" element={<PrivateRoute><ClienteDetailPage /></PrivateRoute>} />
-              <Route path="clientes/carpeta" element={<PrivateRoute><CarpetaClienteSelector /></PrivateRoute>} />
-              <Route path="clientes/carpeta/:id" element={<PrivateRoute><CarpetaClientePage /></PrivateRoute>} />
-              <Route path="clientes/agenda" element={<PrivateRoute><AgendaVisitasPage /></PrivateRoute>} />
-              <Route path="clientes/cuenta-corriente" element={<PrivateRoute><CuentaCorrientePage /></PrivateRoute>} />
-              {/* PRESTAMOS Module */}
-              <Route path="prestamos/resumen" element={<PrivateRoute><PrestamosResumenPage /></PrivateRoute>} />
-              <Route path="prestamos/lista" element={<PrivateRoute><PrestamosListPage /></PrivateRoute>} />
-              <Route path="prestamos/:id" element={<PrivateRoute><PrestamoDetailPage /></PrivateRoute>} />
-              <Route path="prestamos/:id/refinanciar" element={<PrivateRoute><RefinanciacionPage /></PrivateRoute>} />
-              {/* COBRANZAS Module */}
-              <Route path="cobranzas/resumen" element={<PrivateRoute><CobranzasResumenPage /></PrivateRoute>} />
-              <Route path="cobranzas/lista" element={<PrivateRoute><CobranzasListPage /></PrivateRoute>} />
-              <Route path="cobranzas/:id" element={<PrivateRoute><GestionCobranzaDetailPage /></PrivateRoute>} />
-              {/* LEADS Module */}
-              <Route path="leads" element={<PrivateRoute><LeadsPage /></PrivateRoute>} />
-              <Route path="leads/table" element={<PrivateRoute><LeadsTablePage /></PrivateRoute>} />
-              <Route path="leads/metricas" element={<PrivateRoute><LeadMetricasPage /></PrivateRoute>} />
-              <Route path="leads/recordatorios" element={<PrivateRoute><GestionGlobalRecordatoriosPage /></PrivateRoute>} />
-              <Route path="leads/nuevo" element={<PrivateRoute><LeadFormPage /></PrivateRoute>} />
-              <Route path="leads/:id" element={<PrivateRoute><LeadDetailPage /></PrivateRoute>} />
-              <Route path="leads/:id/editar" element={<PrivateRoute><LeadFormPage /></PrivateRoute>} />
-              <Route path="leads/:id/convertir" element={<PrivateRoute><ConvertLeadPage /></PrivateRoute>} />
-              {/* PROVEEDORES Module */}
-              <Route path="proveedores/gestion" element={<PrivateRoute><SuppliersPage /></PrivateRoute>} />
-              <Route path="proveedores/compras" element={<PrivateRoute><ComprasPedidosPage /></PrivateRoute>} />
-              <Route path="proveedores/cuenta-corriente" element={<PrivateRoute><CuentaCorrienteProveedoresPage /></PrivateRoute>} />
-              <Route path="proveedores/contactos" element={<PrivateRoute><ContactosCondicionesPage /></PrivateRoute>} />
-              <Route path="proveedores/historial" element={<PrivateRoute><HistorialComprasPage /></PrivateRoute>} />
-              <Route path="proveedores/evaluacion" element={<PrivateRoute><EvaluacionDesempenoPage /></PrivateRoute>} />
-              {/* GARANTÍAS Module */}
-              <Route path="garantias/registro" element={<PrivateRoute><GarantiasPage /></PrivateRoute>} />
-              <Route path="garantias/reclamos" element={<PrivateRoute><ReclamosGarantiaPage /></PrivateRoute>} />
-              <Route path="garantias/reporte" element={<PrivateRoute><GarantiaReportPage /></PrivateRoute>} />
-              {/* RRHH Module */}
-              <Route path="rrhh/empleados" element={<PrivateRoute><EmpleadosPage /></PrivateRoute>} />
-<Route path="rrhh/puestos" element={<PrivateRoute><PuestosPage /></PrivateRoute>} />
-              <Route path="rrhh/puestos/:id" element={<PrivateRoute><PuestoDetailPage /></PrivateRoute>} />
-              <Route path="rrhh/asistencia" element={<PrivateRoute><AsistenciasPage /></PrivateRoute>} />
-              <Route path="rrhh/licencias" element={<PrivateRoute><LicenciasPage /></PrivateRoute>} />
-              <Route path="rrhh/capacitaciones" element={<PrivateRoute><CapacitacionesPage /></PrivateRoute>} />
-              <Route path="rrhh/sueldos" element={<PrivateRoute><SueldosPage /></PrivateRoute>} />
-              <Route path="rrhh/legajos" element={<PrivateRoute><LegajosPage /></PrivateRoute>} />
-              {/* LOGÍSTICA Module - Reorganizado en submódulos */}
+                  {/* ADMIN */}
+                  <Route path="admin/users" element={priv(<UsersPage />)} />
+                  <Route path="admin/roles" element={priv(<RolesPage />)} />
+                  <Route path="admin/settings" element={priv(<SettingsPage />)} />
+                  <Route path="admin/flujo-caja" element={priv(<FlujoCajaPage />)} />
+                  <Route path="admin/bancos" element={priv(<BancosPage />)} />
+                  <Route path="admin/cuentas-bancarias" element={priv(<CuentasBancariasPage />)} />
+                  <Route path="admin/empresas" element={priv(<EmpresasPage />)} />
+                  <Route path="admin/sucursales" element={priv(<SucursalesPage />)} />
+                  <Route path="admin/tenant-selector" element={<SuperAdminRoute><TenantSelector /></SuperAdminRoute>} />
+                  <Route path="admin/balance" element={priv(<BalanceAnualPage />)} />
+                  <Route path="admin/balance/:anio/:mes" element={priv(<BalanceMesPage />)} />
+                  <Route path="admin/amortizaciones" element={priv(<AmortizacionesPage />)} />
+                  <Route path="admin/amortizaciones/:anio/:mes" element={priv(<AmortizacionMesPage />)} />
+                  <Route path="admin/provisiones" element={priv(<ProvisionesPage />)} />
+                  <Route path="admin/provisiones/:anio/:mes" element={priv(<ProvisionesPage />)} />
+                  <Route path="admin/provisiones/resumen/:tipo/:anio" element={priv(<ProvisionResumenAnualPage />)} />
+                  <Route path="admin/patrimonio" element={priv(<PosicionPatrimonialPage />)} />
+                  <Route path="admin/cajas-ahorro" element={priv(<CajasAhorroListPage />)} />
+                  <Route path="admin/cajas-ahorro/:id" element={priv(<CajaMovimientosPage />)} />
+                  <Route path="admin/cajas-pesos" element={priv(<CajasPesosListPage />)} />
+                  <Route path="admin/cajas-pesos/:id" element={priv(<CajaPesosMovimientosPage />)} />
 
-              {/* INVENTARIO - Gestión de stock, productos y conteo */}
-              <Route path="logistica/stock" element={<PrivateRoute><StockPage /></PrivateRoute>} />
-              <Route path="logistica/inventario/depositos" element={<PrivateRoute><InventarioDepositoPage /></PrivateRoute>} />
-              <Route path="logistica/inventario/stock-equipos" element={<PrivateRoute><StockEquiposPage /></PrivateRoute>} />
-              <Route path="logistica/inventario/ubicaciones" element={<PrivateRoute><UbicacionEquiposPage /></PrivateRoute>} />
-              <Route path="logistica/inventario/recuentos" element={<PrivateRoute><RecountTasksPage /></PrivateRoute>} />
-              <Route path="logistica/inventario/reconciliacion" element={<PrivateRoute><ReconciliacionStockPage /></PrivateRoute>} />
-              <Route path="logistica/inventario/stock-productos" element={<PrivateRoute><StockPage /></PrivateRoute>} />
-              
-              {/* DISTRIBUCIÓN - Logística de salida y última milla */}
-              <Route path="logistica/distribucion/viajes" element={<PrivateRoute><TripsPage /></PrivateRoute>} />
-              <Route path="logistica/distribucion/entregas-productos" element={<PrivateRoute><DeliveriesPage /></PrivateRoute>} />
-              <Route path="logistica/distribucion/entregas-equipos" element={<PrivateRoute><EntregasEquiposPage /></PrivateRoute>} />
-              <Route path="logistica/vehiculos/incidencias" element={<PrivateRoute><IncidenciasVehiculoPage /></PrivateRoute>} />
+                  {/* VENTAS */}
+                  <Route path="ventas/dashboard" element={priv(<VentasDashboard />)} />
+                  <Route path="ventas/notas-pedido" element={priv(<NotasPedidoPage />)} />
+                  <Route path="ventas/presupuestos" element={priv(<PresupuestosPage />)} />
+                  <Route path="ventas/opciones-financiamiento" element={priv(<OpcionesFinanciamientoPage />)} />
+                  <Route path="ventas/configuracion-financiamiento" element={priv(<ConfiguracionFinanciamiento />)} />
+                  <Route path="ventas/registro" element={priv(<RegistroVentasPage />)} />
+                  <Route path="ventas/facturacion" element={priv(<FacturacionPage />)} />
+                  <Route path="ventas/notas-credito" element={priv(<NotasCreditoPage />)} />
+                  <Route path="ventas/informes" element={priv(<InformesVentasPage />)} />
+                  <Route path="ventas/cheques" element={priv(<ChequesPage />)} />
 
-              {/* MOVIMIENTOS - Trazabilidad y transferencias internas */}
-              <Route path="logistica/movimientos/transferencias" element={<PrivateRoute><TransferenciasPage /></PrivateRoute>} />
-              <Route path="logistica/movimientos/auditoria" element={<PrivateRoute><AuditoriaPage /></PrivateRoute>} />
+                  {/* CLIENTES */}
+                  <Route path="clientes/gestion" element={priv(<ClientesPage />)} />
+                  <Route path="clientes/nuevo" element={priv(<ClienteFormPage />)} />
+                  <Route path="clientes/editar/:id" element={priv(<ClienteFormPage />)} />
+                  <Route path="clientes/detalle/:id" element={priv(<ClienteDetailPage />)} />
+                  <Route path="clientes/carpeta" element={priv(<CarpetaClienteSelector />)} />
+                  <Route path="clientes/carpeta/:id" element={priv(<CarpetaClientePage />)} />
+                  <Route path="clientes/agenda" element={priv(<AgendaVisitasPage />)} />
+                  <Route path="clientes/cuenta-corriente" element={priv(<CuentaCorrientePage />)} />
 
-              {/* CONFIGURACIÓN - Administración de infraestructura */}
-              <Route path="logistica/configuracion/depositos" element={<PrivateRoute><DepositosPage /></PrivateRoute>} />
+                  {/* PRÉSTAMOS */}
+                  <Route path="prestamos/resumen" element={priv(<PrestamosResumenPage />)} />
+                  <Route path="prestamos/lista" element={priv(<PrestamosListPage />)} />
+                  <Route path="prestamos/:id" element={priv(<PrestamoDetailPage />)} />
+                  <Route path="prestamos/:id/refinanciar" element={priv(<RefinanciacionPage />)} />
 
-              {/* REDIRECTS LEGACY - Mantener URLs antiguas funcionando */}
-              <Route path="logistica/stock" element={<Navigate to="/logistica/inventario/stock-productos" replace />} />
-              <Route path="logistica/stock-equipos" element={<Navigate to="/logistica/inventario/stock-equipos" replace />} />
-              <Route path="logistica/inventario" element={<PrivateRoute><InventoryPage /></PrivateRoute>} />
-              <Route path="logistica/recuentos" element={<Navigate to="/logistica/inventario/recuentos" replace />} />
-              <Route path="logistica/viajes" element={<Navigate to="/logistica/distribucion/viajes" replace />} />
-              <Route path="logistica/entregas" element={<Navigate to="/logistica/distribucion/entregas-productos" replace />} />
-              <Route path="logistica/entregas-equipos" element={<Navigate to="/logistica/distribucion/entregas-equipos" replace />} />
-              <Route path="logistica/depositos" element={<Navigate to="/logistica/configuracion/depositos" replace />} />
-              <Route path="logistica/inventario-deposito" element={<Navigate to="/logistica/inventario/depositos" replace />} />
-              <Route path="logistica/ubicacion-equipos" element={<Navigate to="/logistica/inventario/ubicaciones" replace />} />
-              <Route path="logistica/auditoria" element={<Navigate to="/logistica/movimientos/auditoria" replace />} />
-              <Route path="logistica/transferencias" element={<Navigate to="/logistica/movimientos/transferencias" replace />} />
-              <Route path="logistica/reconciliacion" element={<Navigate to="/logistica/inventario/reconciliacion" replace />} />
-              {/* TALLER Module */}
-              <Route path="taller/trabajos" element={<PrivateRoute><TrabajosRealizadosPage /></PrivateRoute>} />
-              <Route path="taller/ordenes" element={<PrivateRoute><OrdenesServicioPage /></PrivateRoute>} />
-              <Route path="taller/materiales" element={<PrivateRoute><ControlMaterialesPage /></PrivateRoute>} />
-              <Route path="taller/tareas" element={<PrivateRoute><AsignacionTareasPage /></PrivateRoute>} />
-              <Route path="taller/configuracion" element={<PrivateRoute><ConfiguracionTallerPage /></PrivateRoute>} />
-              {/* FABRICACIÓN Module */}
-              <Route path="fabricacion/dashboard" element={<PrivateRoute><DashboardFabricacion /></PrivateRoute>} />
-              <Route path="fabricacion/recetas" element={<PrivateRoute><RecetasList /></PrivateRoute>} />
-              <Route path="fabricacion/recetas/:id" element={<PrivateRoute><RecetaDetail /></PrivateRoute>} />
-              <Route path="fabricacion/recetas/nueva" element={<PrivateRoute><RecetaForm /></PrivateRoute>} />
-              <Route path="fabricacion/recetas/editar/:id" element={<PrivateRoute><RecetaForm /></PrivateRoute>} />
-              <Route path="fabricacion/equipos" element={<PrivateRoute><EquiposList /></PrivateRoute>} />
-              <Route path="fabricacion/equipos/:id" element={<PrivateRoute><EquipoDetail /></PrivateRoute>} />
-              <Route path="fabricacion/equipos/nuevo" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
-              <Route path="fabricacion/equipos/editar/:id" element={<PrivateRoute><EquipoForm /></PrivateRoute>} />
-              <Route path="fabricacion/reportes-estados" element={<PrivateRoute><ReportesEstadosPage /></PrivateRoute>} />
-              <Route path="fabricacion/stock-planificacion" element={<PrivateRoute><StockPlanificacionPage /></PrivateRoute>} />
-            </Route>
-          </Routes>
-        </Router>
-      </ThemeProvider>
+                  {/* COBRANZAS */}
+                  <Route path="cobranzas/resumen" element={priv(<CobranzasResumenPage />)} />
+                  <Route path="cobranzas/lista" element={priv(<CobranzasListPage />)} />
+                  <Route path="cobranzas/:id" element={priv(<GestionCobranzaDetailPage />)} />
+
+                  {/* LEADS */}
+                  <Route path="leads" element={priv(<LeadsPage />)} />
+                  <Route path="leads/table" element={priv(<LeadsTablePage />)} />
+                  <Route path="leads/metricas" element={priv(<LeadMetricasPage />)} />
+                  <Route path="leads/recordatorios" element={priv(<GestionGlobalRecordatoriosPage />)} />
+                  <Route path="leads/nuevo" element={priv(<LeadFormPage />)} />
+                  <Route path="leads/:id" element={priv(<LeadDetailPage />)} />
+                  <Route path="leads/:id/editar" element={priv(<LeadFormPage />)} />
+                  <Route path="leads/:id/convertir" element={priv(<ConvertLeadPage />)} />
+
+                  {/* PROVEEDORES */}
+                  <Route path="proveedores/gestion" element={priv(<SuppliersPage />)} />
+                  <Route path="proveedores/compras" element={priv(<ComprasPedidosPage />)} />
+                  <Route path="proveedores/cuenta-corriente" element={priv(<CuentaCorrienteProveedoresPage />)} />
+                  <Route path="proveedores/contactos" element={priv(<ContactosCondicionesPage />)} />
+                  <Route path="proveedores/historial" element={priv(<HistorialComprasPage />)} />
+                  <Route path="proveedores/evaluacion" element={priv(<EvaluacionDesempenoPage />)} />
+
+                  {/* GARANTÍAS */}
+                  <Route path="garantias/registro" element={priv(<GarantiasPage />)} />
+                  <Route path="garantias/reclamos" element={priv(<ReclamosGarantiaPage />)} />
+                  <Route path="garantias/reporte" element={priv(<GarantiaReportPage />)} />
+
+                  {/* RRHH */}
+                  <Route path="rrhh/empleados" element={priv(<EmpleadosPage />)} />
+                  <Route path="rrhh/puestos" element={priv(<PuestosPage />)} />
+                  <Route path="rrhh/puestos/:id" element={priv(<PuestoDetailPage />)} />
+                  <Route path="rrhh/asistencia" element={priv(<AsistenciasPage />)} />
+                  <Route path="rrhh/licencias" element={priv(<LicenciasPage />)} />
+                  <Route path="rrhh/capacitaciones" element={priv(<CapacitacionesPage />)} />
+                  <Route path="rrhh/sueldos" element={priv(<SueldosPage />)} />
+                  <Route path="rrhh/legajos" element={priv(<LegajosPage />)} />
+
+                  {/* LOGÍSTICA */}
+                  <Route path="logistica/stock" element={priv(<StockPage />)} />
+                  <Route path="logistica/inventario/depositos" element={priv(<InventarioDepositoPage />)} />
+                  <Route path="logistica/inventario/stock-equipos" element={priv(<StockEquiposPage />)} />
+                  <Route path="logistica/inventario/ubicaciones" element={priv(<UbicacionEquiposPage />)} />
+                  <Route path="logistica/inventario/recuentos" element={priv(<RecountTasksPage />)} />
+                  <Route path="logistica/inventario/reconciliacion" element={priv(<ReconciliacionStockPage />)} />
+                  <Route path="logistica/inventario/stock-productos" element={priv(<StockPage />)} />
+                  <Route path="logistica/distribucion/viajes" element={priv(<TripsPage />)} />
+                  <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
+                  <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} />
+                  <Route path="logistica/vehiculos/incidencias" element={priv(<IncidenciasVehiculoPage />)} />
+                  <Route path="logistica/movimientos/transferencias" element={priv(<TransferenciasPage />)} />
+                  <Route path="logistica/movimientos/auditoria" element={priv(<AuditoriaPage />)} />
+                  <Route path="logistica/configuracion/depositos" element={priv(<DepositosPage />)} />
+
+                  {/* Legacy redirects */}
+                  <Route path="logistica/stock-equipos" element={<Navigate to="/logistica/inventario/stock-equipos" replace />} />
+                  <Route path="logistica/inventario" element={priv(<InventoryPage />)} />
+                  <Route path="logistica/recuentos" element={<Navigate to="/logistica/inventario/recuentos" replace />} />
+                  <Route path="logistica/viajes" element={<Navigate to="/logistica/distribucion/viajes" replace />} />
+                  <Route path="logistica/entregas" element={<Navigate to="/logistica/distribucion/entregas-productos" replace />} />
+                  <Route path="logistica/entregas-equipos" element={<Navigate to="/logistica/distribucion/entregas-equipos" replace />} />
+                  <Route path="logistica/depositos" element={<Navigate to="/logistica/configuracion/depositos" replace />} />
+                  <Route path="logistica/inventario-deposito" element={<Navigate to="/logistica/inventario/depositos" replace />} />
+                  <Route path="logistica/ubicacion-equipos" element={<Navigate to="/logistica/inventario/ubicaciones" replace />} />
+                  <Route path="logistica/auditoria" element={<Navigate to="/logistica/movimientos/auditoria" replace />} />
+                  <Route path="logistica/transferencias" element={<Navigate to="/logistica/movimientos/transferencias" replace />} />
+                  <Route path="logistica/reconciliacion" element={<Navigate to="/logistica/inventario/reconciliacion" replace />} />
+
+                  {/* TALLER */}
+                  <Route path="taller/trabajos" element={priv(<TrabajosRealizadosPage />)} />
+                  <Route path="taller/ordenes" element={priv(<OrdenesServicioPage />)} />
+                  <Route path="taller/materiales" element={priv(<ControlMaterialesPage />)} />
+                  <Route path="taller/tareas" element={priv(<AsignacionTareasPage />)} />
+                  <Route path="taller/configuracion" element={priv(<ConfiguracionTallerPage />)} />
+
+                  {/* FABRICACIÓN */}
+                  <Route path="fabricacion/dashboard" element={priv(<DashboardFabricacion />)} />
+                  <Route path="fabricacion/recetas" element={priv(<RecetasList />)} />
+                  <Route path="fabricacion/recetas/:id" element={priv(<RecetaDetail />)} />
+                  <Route path="fabricacion/recetas/nueva" element={priv(<RecetaForm />)} />
+                  <Route path="fabricacion/recetas/editar/:id" element={priv(<RecetaForm />)} />
+                  <Route path="fabricacion/equipos" element={priv(<EquiposList />)} />
+                  <Route path="fabricacion/equipos/:id" element={priv(<EquipoDetail />)} />
+                  <Route path="fabricacion/equipos/nuevo" element={priv(<EquipoForm />)} />
+                  <Route path="fabricacion/equipos/editar/:id" element={priv(<EquipoForm />)} />
+                  <Route path="fabricacion/reportes-estados" element={priv(<ReportesEstadosPage />)} />
+                  <Route path="fabricacion/stock-planificacion" element={priv(<StockPlanificacionPage />)} />
+                </Route>
+              </Routes>
+            </Suspense>
+          </Router>
+        </ThemeProvider>
       </TenantProvider>
     </AuthProvider>
   );

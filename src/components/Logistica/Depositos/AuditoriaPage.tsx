@@ -49,8 +49,8 @@ import {
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { es } from 'date-fns/locale';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import 'dayjs/locale/es';
 import { movimientoStockDepositoApi, movimientoEquipoApi } from '../../../api/services/movimientosApi';
 import { depositoApi } from '../../../api/services/depositoApi';
 import { productApi } from '../../../api/services/productApi';
@@ -669,7 +669,7 @@ const AuditoriaPage: React.FC = () => {
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
       <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
         {/* Header */}
         <Box 
@@ -903,16 +903,16 @@ const AuditoriaPage: React.FC = () => {
               <Grid item xs={12} md={3}>
                 <DatePicker
                   label="Fecha Inicio"
-                  value={fechaInicio}
-                  onChange={(newValue) => setFechaInicio(newValue as Date | null)}
+                  value={fechaInicio ? dayjs(fechaInicio) : null}
+                  onChange={(newValue) => setFechaInicio(newValue ? newValue.toDate() : null)}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>
               <Grid item xs={12} md={3}>
                 <DatePicker
                   label="Fecha Fin"
-                  value={fechaFin}
-                  onChange={(newValue) => setFechaFin(newValue as Date | null)}
+                  value={fechaFin ? dayjs(fechaFin) : null}
+                  onChange={(newValue) => setFechaFin(newValue ? newValue.toDate() : null)}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>

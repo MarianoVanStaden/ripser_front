@@ -1,10 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Card, CardContent, Grid, Typography, Alert, Chip, Stack } from '@mui/material';
 import LoadingOverlay from '../common/LoadingOverlay';
-import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
-
-ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title);
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  Legend as RLegend,
+  ResponsiveContainer,
+} from 'recharts';
+import { categoricalPalette } from '../../config/chartConfig';
 
 type Histogram = { byHour: number[]; byDOW: number[] };
 type AuthorTop = { name: string; count: number };
@@ -83,66 +93,26 @@ const DevKPIs: React.FC = () => {
 
   const dowNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-  const hourChart = useMemo(() => {
+  const hourData = useMemo(() => {
     if (!data) return null;
-    return {
-      data: {
-        labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
-        datasets: [{
-          label: 'Commits',
-          data: data.histograms.byHour,
-          backgroundColor: 'rgba(33, 150, 243, 0.5)',
-        }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, title: { display: true, text: 'Commits por hora' } },
-      } as const,
-    };
+    return data.histograms.byHour.map((count, i) => ({ label: `${i}:00`, Commits: count }));
   }, [data]);
 
-  const dowChart = useMemo(() => {
+  const dowData = useMemo(() => {
     if (!data) return null;
-    return {
-      data: {
-        labels: dowNames,
-        datasets: [{
-          label: 'Commits',
-          data: data.histograms.byDOW,
-          backgroundColor: 'rgba(76, 175, 80, 0.5)',
-        }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false }, title: { display: true, text: 'Commits por día de la semana' } },
-      } as const,
-    };
+    return data.histograms.byDOW.map((count, i) => ({ label: dowNames[i], Commits: count }));
   }, [data]);
 
-  const typeChart = useMemo(() => {
+  const typeData = useMemo(() => {
     if (!data) return null;
-    const entries = Object.entries(data.typeDistribution).filter(([, v]) => v > 0);
-    const labels = entries.map(([k]) => k);
-    const values = entries.map(([, v]) => v);
-    const colors = ['#42a5f5','#66bb6a','#ffa726','#ab47bc','#ef5350','#29b6f6','#9ccc65','#ffca28','#8d6e63','#26a69a','#ec407a','#78909c'];
-    return {
-      data: {
-        labels,
-        datasets: [{ data: values, backgroundColor: labels.map((_, i) => colors[i % colors.length]) }],
-      },
-      options: { responsive: true, plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Tipos de commits' } } } as const,
-    };
+    return Object.entries(data.typeDistribution)
+      .filter(([, v]) => v > 0)
+      .map(([k, v], i) => ({ name: k, value: v, color: categoricalPalette[i % categoricalPalette.length] }));
   }, [data]);
 
-  const topAuthorsChart = useMemo(() => {
+  const topAuthorsData = useMemo(() => {
     if (!data) return null;
-    return {
-      data: {
-        labels: data.authorsTop.map(a => a.name),
-        datasets: [{ label: 'Commits', data: data.authorsTop.map(a => a.count), backgroundColor: 'rgba(255, 99, 132, 0.5)' }],
-      },
-      options: { responsive: true, plugins: { legend: { display: false }, title: { display: true, text: 'Top autores (commits)' } } } as const,
-    };
+    return data.authorsTop.map(a => ({ label: a.name, Commits: a.count }));
   }, [data]);
 
   if (error) {
@@ -216,14 +186,40 @@ const DevKPIs: React.FC = () => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              {hourChart && <Bar data={hourChart.data} options={hourChart.options} />}
+              <Typography variant="subtitle2" gutterBottom>Commits por hora</Typography>
+              {hourData && (
+                <Box sx={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={hourData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={1} />
+                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <RTooltip />
+                      <Bar dataKey="Commits" fill="rgba(33, 150, 243, 0.6)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              {dowChart && <Bar data={dowChart.data} options={dowChart.options} />}
+              <Typography variant="subtitle2" gutterBottom>Commits por día de la semana</Typography>
+              {dowData && (
+                <Box sx={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dowData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <RTooltip />
+                      <Bar dataKey="Commits" fill="rgba(76, 175, 80, 0.7)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -231,14 +227,42 @@ const DevKPIs: React.FC = () => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              {typeChart && <Doughnut data={typeChart.data} options={typeChart.options} />}
+              <Typography variant="subtitle2" gutterBottom>Tipos de commits</Typography>
+              {typeData && (
+                <Box sx={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={typeData} dataKey="value" nameKey="name" outerRadius={90} label>
+                        {typeData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RTooltip />
+                      <RLegend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              {topAuthorsChart && <Bar data={topAuthorsChart.data} options={topAuthorsChart.options} />}
+              <Typography variant="subtitle2" gutterBottom>Top autores (commits)</Typography>
+              {topAuthorsData && (
+                <Box sx={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topAuthorsData} layout="vertical" margin={{ left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={100} />
+                      <RTooltip />
+                      <Bar dataKey="Commits" fill="rgba(255, 99, 132, 0.7)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>

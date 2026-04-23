@@ -85,11 +85,6 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
       .finally(() => setLoading(false));
   }, [open]);
 
-  const cajasById = useMemo(
-    () => new Map(cajas.map((c) => [c.id, c])),
-    [cajas]
-  );
-
   const cajasOrigenPosibles = useMemo(() => {
     const usadas = new Set(origenes.map((o) => o.cajaId).filter(Boolean));
     return (filaActual: string) =>
@@ -123,9 +118,6 @@ const EjecutarAmortizacionDialog: React.FC<Props> = ({
     if (!f.cajaId) return 'Seleccione caja';
     const monto = parseFloat(f.monto);
     if (isNaN(monto) || monto <= 0) return 'Monto > 0';
-    const caja = cajasById.get(Number(f.cajaId));
-    if (caja && monto > caja.saldoActual)
-      return `Excede saldo (USD ${fmtUsd(caja.saldoActual)})`;
     return null;
   };
 

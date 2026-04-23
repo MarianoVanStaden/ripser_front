@@ -199,7 +199,13 @@ const CajasAhorroListPage: React.FC = () => {
                     )}
 
                     {/* Saldo */}
-                    <Typography variant="h5" fontWeight={700} color="success.main" mt={1} mb={2}>
+                    <Typography
+                      variant="h5"
+                      fontWeight={700}
+                      color={caja.saldoActual < 0 ? 'error.main' : 'success.main'}
+                      mt={1}
+                      mb={2}
+                    >
                       {formatUSD(caja.saldoActual)}
                     </Typography>
 

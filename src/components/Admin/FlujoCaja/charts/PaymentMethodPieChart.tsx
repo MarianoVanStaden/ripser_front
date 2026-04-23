@@ -1,19 +1,16 @@
 import React from 'react';
-import { Doughnut } from 'react-chartjs-2';
 import { Box, Paper, Typography, CircularProgress } from '@mui/material';
 import {
-  Chart as ChartJS,
-  ArcElement,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip,
   Legend,
-} from 'chart.js';
-import type { ChartData } from 'chart.js';
+  ResponsiveContainer,
+} from 'recharts';
 import type { PaymentMethodAggregation } from '../../../../types';
 import { getPaymentMethodLabel, getPaymentMethodColor } from '../../../../utils/flujoCajaUtils';
-import { pieChartOptions } from '../../../../config/chartConfig';
-
-// Registrar componentes de Chart.js
-ChartJS.register(ArcElement, Tooltip, Legend);
+import { formatARS } from '../../../../config/chartConfig';
 
 interface PaymentMethodPieChartProps {
   data: PaymentMethodAggregation[];
@@ -26,32 +23,12 @@ const PaymentMethodPieChart: React.FC<PaymentMethodPieChartProps> = ({
   onSliceClick,
   loading = false,
 }) => {
-  // Preparar datos para el gráfico
-  const chartData: ChartData<'doughnut'> = {
-    labels: data.map((item) => getPaymentMethodLabel(item.metodoPago)),
-    datasets: [
-      {
-        label: 'Distribución por Método de Pago',
-        data: data.map((item) => item.totalIngresos + item.totalEgresos),
-        backgroundColor: data.map((item) => getPaymentMethodColor(item.metodoPago)),
-        borderColor: '#fff',
-        borderWidth: 2,
-        hoverOffset: 10,
-      },
-    ],
-  };
-
-  // Configuración con evento de click
-  const optionsWithClick = {
-    ...pieChartOptions,
-    onClick: (_event: any, elements: any) => {
-      if (elements.length > 0 && onSliceClick) {
-        const index = elements[0].index;
-        const metodoPago = data[index].metodoPago;
-        onSliceClick(metodoPago);
-      }
-    },
-  };
+  const chartData = data.map((item) => ({
+    name: getPaymentMethodLabel(item.metodoPago),
+    value: item.totalIngresos + item.totalEgresos,
+    color: getPaymentMethodColor(item.metodoPago),
+    metodoPago: item.metodoPago,
+  }));
 
   if (loading) {
     return (
@@ -79,8 +56,42 @@ const PaymentMethodPieChart: React.FC<PaymentMethodPieChartProps> = ({
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Porcentaje del total de transacciones
       </Typography>
-      <Box sx={{ height: 350, position: 'relative', mt: 2 }}>
-        <Doughnut data={chartData} options={optionsWithClick} />
+      <Box sx={{ height: 350, mt: 2 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={110}
+              paddingAngle={2}
+              stroke="#fff"
+              strokeWidth={2}
+              onClick={(slice: any) => {
+                if (onSliceClick && slice?.payload?.metodoPago) {
+                  onSliceClick(slice.payload.metodoPago);
+                }
+              }}
+              cursor={onSliceClick ? 'pointer' : 'default'}
+            >
+              {chartData.map((entry) => (
+                <Cell key={entry.metodoPago} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value, _name, props: any) => {
+                const v = typeof value === 'number' ? value : Number(value);
+                const total = chartData.reduce((sum, d) => sum + d.value, 0);
+                const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0';
+                return [`${formatARS(v)} (${pct}%)`, props?.payload?.name ?? ''];
+              }}
+            />
+            <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
+          </PieChart>
+        </ResponsiveContainer>
       </Box>
     </Paper>
   );

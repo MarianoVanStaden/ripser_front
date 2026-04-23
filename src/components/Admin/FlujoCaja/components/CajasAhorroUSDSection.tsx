@@ -139,7 +139,13 @@ const CajaCard: React.FC<CajaCardProps> = ({ caja, onClick }) => {
         <Typography
           variant="h6"
           fontWeight={800}
-          color={activa ? 'success.main' : 'text.disabled'}
+          color={
+            !activa
+              ? 'text.disabled'
+              : caja.saldoActual < 0
+              ? 'error.main'
+              : 'success.main'
+          }
           sx={{ letterSpacing: '-0.5px', mt: 0.5 }}
         >
           {fmtUSD(caja.saldoActual)}
@@ -282,11 +288,15 @@ const CajasAhorroUSDSection: React.FC = () => {
           <Grid size={{ xs: 12, sm: 4 }}>
             <KpiMini
               icon={<TrendingUpIcon fontSize="inherit" />}
-              label="Total acumulado"
+              label={totalUSD < 0 ? 'Total acumulado (en deuda)' : 'Total acumulado'}
               value={fmtUSD(totalUSD)}
               sub={`en ${activas.length} caja${activas.length !== 1 ? 's' : ''} activa${activas.length !== 1 ? 's' : ''}`}
-              color={theme.palette.success.main}
-              bgColor={`${theme.palette.success.main}18`}
+              color={totalUSD < 0 ? theme.palette.error.main : theme.palette.success.main}
+              bgColor={
+                totalUSD < 0
+                  ? `${theme.palette.error.main}18`
+                  : `${theme.palette.success.main}18`
+              }
               loading={loading}
             />
           </Grid>

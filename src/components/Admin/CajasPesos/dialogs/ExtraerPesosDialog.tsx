@@ -34,21 +34,15 @@ interface FormData {
 const max2dec = (v: unknown) =>
   v == null || v === '' || /^\d+(\.\d{1,2})?$/.test(String(v));
 
-const buildSchema = (saldo: number) =>
-  yup.object({
-    monto: yup
-      .string()
-      .required('Requerido')
-      .test('pos', 'Debe ser mayor a 0', (v) => parseFloat(v ?? '') > 0)
-      .test('dec', 'Máximo 2 decimales', max2dec)
-      .test(
-        'max',
-        'Excede el saldo disponible',
-        (v) => parseFloat(v ?? '') <= saldo
-      ),
-    fecha: yup.string().required('La fecha es obligatoria'),
-    descripcion: yup.string(),
-  });
+const schema = yup.object({
+  monto: yup
+    .string()
+    .required('Requerido')
+    .test('pos', 'Debe ser mayor a 0', (v) => parseFloat(v ?? '') > 0)
+    .test('dec', 'Máximo 2 decimales', max2dec),
+  fecha: yup.string().required('La fecha es obligatoria'),
+  descripcion: yup.string(),
+});
 
 const ExtraerPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess }) => {
   const [saving, setSaving] = useState(false);
@@ -62,7 +56,7 @@ const ExtraerPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess })
     formState: { errors },
     reset,
   } = useForm<FormData>({
-    resolver: yupResolver(buildSchema(saldo)) as any,
+    resolver: yupResolver(schema) as any,
     defaultValues: { monto: '', fecha: todayString(), descripcion: '' },
   });
 
@@ -101,8 +95,12 @@ const ExtraerPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess })
               {apiError}
             </Alert>
           )}
-          <Typography variant="body2" color="text.secondary" mb={2}>
-            Saldo disponible: <strong>{formatPesos(saldo)}</strong>
+          <Typography
+            variant="body2"
+            color={saldo < 0 ? 'error.main' : 'text.secondary'}
+            mb={2}
+          >
+            Saldo actual: <strong>{formatPesos(saldo)}</strong>
           </Typography>
           <Grid container spacing={2}>
             <Grid size={6}>
@@ -115,7 +113,7 @@ const ExtraerPesosDialog: React.FC<Props> = ({ open, caja, onClose, onSuccess })
                     fullWidth
                     label="Monto $ *"
                     type="number"
-                    inputProps={{ step: '0.01', min: '0.01', max: saldo }}
+                    inputProps={{ step: '0.01', min: '0.01' }}
                     error={!!errors.monto}
                     helperText={errors.monto?.message}
                   />

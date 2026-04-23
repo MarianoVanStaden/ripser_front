@@ -146,11 +146,6 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
   };
 
   // ── Derived state ───────────────────────────────────────────────
-  const cajasPesosById = useMemo(
-    () => new Map(cajasPesos.map((c) => [c.id, c])),
-    [cajasPesos]
-  );
-
   const cajasPesosDisponiblesFactory = useMemo(() => {
     const usadas = new Set(origenes.map((o) => o.cajaId).filter(Boolean));
     return (filaActual: string) =>
@@ -188,9 +183,6 @@ const ConvertirAmortizacionDialog: React.FC<Props> = ({
     if (!f.cajaId) return 'Seleccione caja';
     const monto = parseFloat(f.monto);
     if (isNaN(monto) || monto <= 0) return 'Monto > 0';
-    const caja = cajasPesosById.get(Number(f.cajaId));
-    if (caja && monto > caja.saldoActual)
-      return `Excede saldo (${formatPesos(caja.saldoActual)})`;
     return null;
   };
 

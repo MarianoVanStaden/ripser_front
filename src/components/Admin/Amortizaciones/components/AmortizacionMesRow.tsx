@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import {
   TableRow,
   TableCell,
@@ -16,7 +16,10 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { amortizacionApi } from '../../../../api/services/amortizacionApi';
 import type { ActivoAmortizableDTO, AmortizacionMensualDTO, TipoActivoAmortizable, MetodoAmortizacion } from '../../../../types';
-import EjecutarAmortizacionDialog from './EjecutarAmortizacionDialog';
+
+// Loaded on demand: many rows render this component, but only the one the
+// user actually clicks needs the dialog bundle.
+const EjecutarAmortizacionDialog = lazy(() => import('./EjecutarAmortizacionDialog'));
 
 const TIPO_LABEL: Record<TipoActivoAmortizable, string> = {
   VEHICULO: 'Vehículo',
@@ -167,16 +170,18 @@ export default function AmortizacionMesRow({ activo, amortizacion, anio, mes, on
         </TableCell>
       </TableRow>
 
-      {amortizacion && (
-        <EjecutarAmortizacionDialog
-          open={ejecutarOpen}
-          amortizacion={amortizacion}
-          onClose={() => setEjecutarOpen(false)}
-          onSuccess={() => {
-            setEjecutarOpen(false);
-            onRegistered();
-          }}
-        />
+      {amortizacion && ejecutarOpen && (
+        <Suspense fallback={null}>
+          <EjecutarAmortizacionDialog
+            open={ejecutarOpen}
+            amortizacion={amortizacion}
+            onClose={() => setEjecutarOpen(false)}
+            onSuccess={() => {
+              setEjecutarOpen(false);
+              onRegistered();
+            }}
+          />
+        </Suspense>
       )}
 
       <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} maxWidth="xs" fullWidth>

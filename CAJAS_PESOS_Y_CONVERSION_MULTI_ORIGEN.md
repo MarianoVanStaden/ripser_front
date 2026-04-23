@@ -88,4 +88,5 @@ Soporta **conversiones parciales acumulativas**: el total acumulado de conversio
 - **BigDecimal** escala 2, `HALF_UP` en todos los cálculos monetarios.
 - **Continuidad de reportes**: el backend sigue generando un `MovimientoExtra` DEBITO por origen (además del movimiento en la caja pesos) para que los reportes existentes de flujo de caja no cambien.
 - **Tenant**: validado explícitamente en el service además del filtro de Hibernate.
+- **Overdraft permitido**: las cajas (USD y pesos) funcionan como cuentas corrientes — pueden quedar en saldo negativo (deuda) tras extracciones, conversiones o ejecuciones. No hay validación de "saldo suficiente" ni en backend ni en frontend. La UI colorea saldos negativos en rojo y el total acumulado en "Reservas en USD" muestra "(en deuda)" cuando es negativo.
 - **No hay "EjecutarAmortizacion"** acá: existe un endpoint `/{id}/ejecutar` separado (N cajas USD → 1 caja USD) para otro flujo distinto que no toca este cambio.
