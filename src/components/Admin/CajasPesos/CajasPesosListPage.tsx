@@ -301,6 +301,7 @@ const CajasPesosListPage: React.FC = () => {
         open={formOpen}
         mode={formMode}
         caja={selected}
+        cajas={cajas}
         onClose={() => setFormOpen(false)}
         onSaved={() => {
           setFormOpen(false);

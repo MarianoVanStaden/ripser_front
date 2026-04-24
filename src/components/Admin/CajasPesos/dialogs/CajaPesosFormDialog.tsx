@@ -28,6 +28,7 @@ interface Props {
   open: boolean;
   mode: 'create' | 'edit';
   caja?: CajaPesos | null;
+  cajas?: CajaPesos[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -51,7 +52,7 @@ const schema = yup.object({
   esDefault: yup.boolean(),
 });
 
-const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSaved }) => {
+const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], onClose, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -84,7 +85,14 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSav
   }, [open, mode, caja, reset]);
 
   const mpWatch = watch('metodoPago');
+  const esDefaultWatch = watch('esDefault');
   const sinMetodo = !mpWatch || mpWatch === '';
+
+  const cajaConflicto = (!sinMetodo && esDefaultWatch)
+    ? cajas.find(
+        (c) => c.metodoPago === mpWatch && c.esDefault && c.id !== caja?.id
+      ) ?? null
+    : null;
 
   const onSubmit = async (data: FormData) => {
     setSaving(true);
@@ -221,6 +229,13 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSav
                   />
                 )}
               />
+              {cajaConflicto && (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  La caja <strong>"{cajaConflicto.nombre}"</strong> ya es la predeterminada
+                  para este método de pago. Editá esa caja primero y desactivá su opción
+                  de predeterminada antes de asignársela a esta.
+                </Alert>
+              )}
             </Grid>
           </Grid>
         </DialogContent>
@@ -228,7 +243,7 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSav
           <Button onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button type="submit" variant="contained" disabled={saving}>
+          <Button type="submit" variant="contained" disabled={saving || !!cajaConflicto}>
             {saving ? <CircularProgress size={20} /> : 'Guardar'}
           </Button>
         </DialogActions>
