@@ -207,6 +207,20 @@ const CajasPesosListPage: React.FC = () => {
                       </Typography>
                     )}
 
+                    {caja.metodosAceptados && caja.metodosAceptados.length > 0 && (
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5} mb={1}>
+                        {caja.metodosAceptados.map((m) => (
+                          <Chip
+                            key={m.metodoPago}
+                            size="small"
+                            label={m.esDefault ? `⭐ ${m.metodoPago}` : m.metodoPago}
+                            variant={m.esDefault ? 'filled' : 'outlined'}
+                            color={m.esDefault ? 'primary' : 'default'}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+
                     <Typography
                       variant="h5"
                       fontWeight={700}

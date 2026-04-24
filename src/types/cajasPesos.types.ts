@@ -9,6 +9,11 @@ export type TipoMovimientoCajaPesos =
   | 'TRANSFERENCIA_EGRESO'
   | 'TRANSFERENCIA_INGRESO';
 
+export interface CajaMetodoPagoConfig {
+  metodoPago: MetodoPago;
+  esDefault: boolean;
+}
+
 export interface CajaPesos {
   id: number;
   empresaId: number;
@@ -17,8 +22,16 @@ export interface CajaPesos {
   descripcion: string | null;
   saldoActual: number;
   estado: EstadoCajaAhorro;
-  metodoPago: MetodoPago | null;
-  esDefault: boolean;
+  /** Métodos que acepta esta caja con sus flags de default. */
+  metodosAceptados: CajaMetodoPagoConfig[];
+  /** Derivado del back: primer método marcado como default, o null. */
+  metodoPagoPrincipal: MetodoPago | null;
+  /** Derivado del back: true si algún método aceptado es default. */
+  tieneMetodoDefault: boolean;
+  /** @deprecated viene del modelo viejo — puede estar presente durante la transición. */
+  metodoPago?: MetodoPago | null;
+  /** @deprecated idem. */
+  esDefault?: boolean;
   fechaCreacion: string;
   fechaActualizacion: string | null;
 }
@@ -27,7 +40,10 @@ export interface CreateCajaPesosDTO {
   nombre: string;
   descripcion?: string;
   sucursalId?: number;
+  metodosAceptados?: CajaMetodoPagoConfig[];
+  /** @deprecated usar metodosAceptados. */
   metodoPago?: MetodoPago | null;
+  /** @deprecated usar metodosAceptados. */
   esDefault?: boolean;
 }
 

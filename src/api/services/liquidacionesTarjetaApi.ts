@@ -29,4 +29,12 @@ export const liquidacionesTarjetaApi = {
     const res = await api.get<PageResponse<LiquidacionTarjeta>>(BASE, { params });
     return res.data;
   },
+
+  /**
+   * Revierte una liquidación. Devuelve la nueva fila (reversión), NO la original.
+   */
+  revertir: async (id: number): Promise<LiquidacionTarjeta> => {
+    const res = await api.post<LiquidacionTarjeta>(`${BASE}/${id}/revertir`);
+    return res.data;
+  },
 };

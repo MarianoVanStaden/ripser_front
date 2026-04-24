@@ -15,6 +15,9 @@ export interface LiquidacionTarjeta {
   movimientoComisionId: number | null;
   usuarioId: number | null;
   observaciones: string | null;
+  esReversion: boolean;
+  reversionDeId: number | null;
+  revertidaPorId: number | null;
   fechaCreacion: string;
   fechaActualizacion: string | null;
 }

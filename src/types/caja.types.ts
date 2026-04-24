@@ -42,14 +42,20 @@ export interface CajaRef {
   tipo: CajaTipo;
 }
 
+import type { CajaMetodoPagoConfig } from './cajasPesos.types';
+
 export interface CajaUnificada {
   id: number;
   tipo: CajaTipo;
   moneda: Moneda;
   nombre: string;
   saldoActual: number;
-  metodoPago: MetodoPago | null;
-  esDefault: boolean;
+  /** Lista de métodos que acepta la caja con sus flags de default. */
+  metodosAceptados: CajaMetodoPagoConfig[];
+  /** Primer método marcado como default (derivado del back). */
+  metodoPagoPrincipal: MetodoPago | null;
+  /** True si algún método aceptado es default. */
+  tieneMetodoDefault: boolean;
   sucursalId: number | null;
 }
 
@@ -62,10 +68,19 @@ export const toCajaUnificada = (
   moneda: tipo === 'PESOS' ? 'ARS' : 'USD',
   nombre: caja.nombre,
   saldoActual: caja.saldoActual,
-  metodoPago: caja.metodoPago,
-  esDefault: caja.esDefault,
+  metodosAceptados: caja.metodosAceptados ?? [],
+  metodoPagoPrincipal: caja.metodoPagoPrincipal ?? null,
+  tieneMetodoDefault: caja.tieneMetodoDefault ?? false,
   sucursalId: caja.sucursalId,
 });
+
+/** True si la caja acepta el método (sea o no default). */
+export const cajaAceptaMetodo = (caja: CajaUnificada, metodo: MetodoPago): boolean =>
+  caja.metodosAceptados?.some((m) => m.metodoPago === metodo) ?? false;
+
+/** True si la caja es default para el método en su empresa. */
+export const cajaEsDefaultPara = (caja: CajaUnificada, metodo: MetodoPago): boolean =>
+  caja.metodosAceptados?.some((m) => m.metodoPago === metodo && m.esDefault) ?? false;
 
 export interface CobroCajaFields {
   cajaPesosId?: number | null;

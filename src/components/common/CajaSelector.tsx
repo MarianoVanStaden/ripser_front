@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { cajasApi } from '../../api/services/cajasApi';
 import {
+  cajaEsDefaultPara,
   metodoPagoRequiereCaja,
   normalizeMetodoPago,
   type CajaRef,
@@ -68,8 +69,11 @@ export const CajaSelector: React.FC<Props> = ({
         const stillValid = current
           ? data.some((c) => c.id === current.id && c.tipo === current.tipo)
           : false;
-        if (!stillValid) {
-          const def = data.find((c) => c.esDefault) ?? (data.length === 1 ? data[0] : null);
+        if (!stillValid && canon) {
+          // Preferimos la caja marcada como default para este método específico.
+          // Si hay una sola caja aplicable, la tomamos como fallback.
+          const def = data.find((c) => cajaEsDefaultPara(c, canon))
+            ?? (data.length === 1 ? data[0] : null);
           onChange(def ? { id: def.id, tipo: def.tipo } : null);
         }
       })
@@ -141,7 +145,7 @@ export const CajaSelector: React.FC<Props> = ({
         items.push(
           <MenuItem key={refKey({ id: c.id, tipo: c.tipo })} value={refKey({ id: c.id, tipo: c.tipo })}>
             {c.nombre}
-            {c.esDefault ? ' · default' : ''}
+            {canon && cajaEsDefaultPara(c, canon) ? ' · default' : ''}
           </MenuItem>
         )
       );
@@ -152,7 +156,7 @@ export const CajaSelector: React.FC<Props> = ({
         items.push(
           <MenuItem key={refKey({ id: c.id, tipo: c.tipo })} value={refKey({ id: c.id, tipo: c.tipo })}>
             {c.nombre}
-            {c.esDefault ? ' · default' : ''}
+            {canon && cajaEsDefaultPara(c, canon) ? ' · default' : ''}
           </MenuItem>
         )
       );
@@ -161,7 +165,7 @@ export const CajaSelector: React.FC<Props> = ({
     cajas.forEach((c) =>
       items.push(
         <MenuItem key={refKey({ id: c.id, tipo: c.tipo })} value={refKey({ id: c.id, tipo: c.tipo })}>
-          {c.nombre} ({c.moneda}){c.esDefault ? ' · default' : ''}
+          {c.nombre} ({c.moneda}){canon && cajaEsDefaultPara(c, canon) ? ' · default' : ''}
         </MenuItem>
       )
     );

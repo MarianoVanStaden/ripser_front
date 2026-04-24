@@ -3,8 +3,15 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Paper,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -14,7 +21,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Undo as UndoIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { liquidacionesTarjetaApi } from '../../../api/services/liquidacionesTarjetaApi';
 import type { LiquidacionTarjeta } from '../../../types/liquidacionTarjeta.types';
@@ -29,6 +36,9 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmar, setConfirmar] = useState<LiquidacionTarjeta | null>(null);
+  const [revirtiendo, setRevirtiendo] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +61,35 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleRevertir = async () => {
+    if (!confirmar) return;
+    setRevirtiendo(true);
+    setError(null);
+    try {
+      const reversion = await liquidacionesTarjetaApi.revertir(confirmar.id);
+      setToast(`Liquidación #${confirmar.id} revertida — nueva fila #${reversion.id}`);
+      setConfirmar(null);
+      load();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? err?.message ?? 'Error al revertir');
+    } finally {
+      setRevirtiendo(false);
+    }
+  };
+
+  const renderEstado = (it: LiquidacionTarjeta) => {
+    if (it.esReversion) {
+      return <Chip size="small" color="warning" label={`Reversión de #${it.reversionDeId}`} />;
+    }
+    if (it.revertidaPorId != null) {
+      return <Chip size="small" color="default" label={`Revertida por #${it.revertidaPorId}`} />;
+    }
+    return <Chip size="small" color="success" label="Activa" />;
+  };
+
+  const puedeRevertir = (it: LiquidacionTarjeta) =>
+    !it.esReversion && it.revertidaPorId == null;
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
@@ -75,26 +114,29 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
         <Table size="small">
           <TableHead>
             <TableRow>
+              <TableCell>#</TableCell>
               <TableCell>Fecha</TableCell>
               <TableCell>Caja origen</TableCell>
               <TableCell>Caja destino</TableCell>
               <TableCell align="right">Bruto</TableCell>
               <TableCell align="right">Comisión</TableCell>
               <TableCell align="right">Neto</TableCell>
+              <TableCell>Estado</TableCell>
               <TableCell>Observaciones</TableCell>
+              <TableCell align="center">Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={10} align="center">
                   <CircularProgress size={20} />
                 </TableCell>
               </TableRow>
             )}
             {!loading && items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={10} align="center">
                   <Typography variant="body2" color="text.secondary">
                     Sin liquidaciones registradas en el período.
                   </Typography>
@@ -103,6 +145,7 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
             )}
             {items.map((it) => (
               <TableRow key={it.id} hover>
+                <TableCell>{it.id}</TableCell>
                 <TableCell>{dayjs(it.fechaLiquidacion).format('DD/MM/YYYY')}</TableCell>
                 <TableCell>{it.cajaOrigenNombre}</TableCell>
                 <TableCell>{it.cajaDestinoNombre}</TableCell>
@@ -111,7 +154,20 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
                 <TableCell align="right">
                   <strong>{formatPrice(it.montoNeto)}</strong>
                 </TableCell>
+                <TableCell>{renderEstado(it)}</TableCell>
                 <TableCell>{it.observaciones ?? ''}</TableCell>
+                <TableCell align="center">
+                  {puedeRevertir(it) && (
+                    <Button
+                      size="small"
+                      color="warning"
+                      startIcon={<UndoIcon />}
+                      onClick={() => setConfirmar(it)}
+                    >
+                      Revertir
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -137,6 +193,59 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
           setDialogOpen(false);
           load();
         }}
+      />
+
+      <Dialog
+        open={!!confirmar}
+        onClose={() => !revirtiendo && setConfirmar(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Revertir liquidación #{confirmar?.id}</DialogTitle>
+        <DialogContent>
+          {confirmar && (
+            <DialogContentText component="div">
+              <Typography gutterBottom>Se crearán contramovimientos por:</Typography>
+              <Typography variant="body2">
+                • <strong>+{formatPrice(confirmar.montoBruto)}</strong> de vuelta a{' '}
+                <strong>{confirmar.cajaOrigenNombre}</strong>
+              </Typography>
+              <Typography variant="body2">
+                • <strong>−{formatPrice(confirmar.montoNeto)}</strong> sacado de{' '}
+                <strong>{confirmar.cajaDestinoNombre}</strong>
+              </Typography>
+              {confirmar.comision > 0 && (
+                <Typography variant="body2">
+                  • <strong>+{formatPrice(confirmar.comision)}</strong> de reversión de comisión
+                </Typography>
+              )}
+              <Typography variant="body2" sx={{ mt: 2 }} color="text.secondary">
+                La liquidación original queda marcada como revertida. La operación crea una
+                nueva fila (la reversión) — el ledger de caja es inmutable.
+              </Typography>
+            </DialogContentText>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmar(null)} disabled={revirtiendo}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleRevertir}
+            disabled={revirtiendo}
+          >
+            {revirtiendo ? <CircularProgress size={20} /> : 'Confirmar reversión'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={5000}
+        onClose={() => setToast(null)}
+        message={toast}
       />
     </Box>
   );

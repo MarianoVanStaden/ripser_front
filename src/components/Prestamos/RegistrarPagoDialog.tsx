@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   Grid, TextField, Box, Typography, Alert, CircularProgress,
-  FormControl, InputLabel, Select, MenuItem,
+  FormControl, InputLabel, Select, MenuItem, Checkbox, FormControlLabel,
+  Paper,
 } from '@mui/material';
 import { Payment } from '@mui/icons-material';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
 import { clientApi } from '../../api/services/clientApi';
-import type { CuotaPrestamoDTO, MetodoPago } from '../../types/prestamo.types';
+import { bancoApi } from '../../api/services/bancoApi';
+import type { Banco } from '../../types';
+import type { CuotaPrestamoDTO, MetodoPago, ChequeCobroData } from '../../types/prestamo.types';
 import { METODO_PAGO_LABELS } from '../../types/prestamo.types';
 import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
 import { CajaSelector } from '../common/CajaSelector';
@@ -44,6 +47,23 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   const [saldoDisponible, setSaldoDisponible] = useState<number | null>(null);
   const [loadingSaldo, setLoadingSaldo] = useState(false);
 
+  // Estado del formulario de cheque (solo visible cuando metodoPago === 'CHEQUE').
+  const blankCheque = (): ChequeCobroData => ({
+    numeroCheque: '',
+    bancoId: 0,
+    titular: '',
+    cuitTitular: '',
+    fechaEmision: dayjs().format('YYYY-MM-DD'),
+    fechaCobro: dayjs().add(30, 'day').format('YYYY-MM-DD'),
+    numeroCuenta: '',
+    cbu: '',
+    esEcheq: false,
+    observaciones: '',
+  });
+  const [chequeData, setChequeData] = useState<ChequeCobroData>(blankCheque());
+  const [bancos, setBancos] = useState<Banco[]>([]);
+  const [loadingBancos, setLoadingBancos] = useState(false);
+
   useEffect(() => {
     if (open && cuota) {
       const saldoRestante = cuota.montoCuota - cuota.montoPagado;
@@ -51,10 +71,23 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       setFechaPago(dayjs().format('YYYY-MM-DD'));
       setMetodoPago('EFECTIVO');
       setCajaRef(null);
+      setChequeData(blankCheque());
       setError(null);
       setSaldoDisponible(null);
     }
   }, [open, cuota]);
+
+  // Carga lazy de bancos — solo cuando el usuario efectivamente elige CHEQUE.
+  useEffect(() => {
+    if (metodoPago === 'CHEQUE' && bancos.length === 0 && !loadingBancos) {
+      setLoadingBancos(true);
+      bancoApi
+        .getActivos()
+        .then((data) => setBancos(data))
+        .catch(() => setError('No se pudieron cargar los bancos'))
+        .finally(() => setLoadingBancos(false));
+    }
+  }, [metodoPago, bancos.length, loadingBancos]);
 
   useEffect(() => {
     setError(null);
@@ -77,6 +110,16 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   const requiereCaja = metodoPagoRequiereCaja(metodoPago);
   const cajaFaltante = requiereCaja && !cajaRef;
 
+  // Validación de los datos del cheque (solo cuando aplica).
+  const chequeInvalido = metodoPago === 'CHEQUE' && (
+    !chequeData.numeroCheque.trim() ||
+    !chequeData.bancoId ||
+    !chequeData.titular.trim() ||
+    !chequeData.fechaEmision ||
+    !chequeData.fechaCobro ||
+    dayjs(chequeData.fechaEmision).isAfter(dayjs(), 'day')
+  );
+
   const handleSave = async () => {
     if (!cuota) return;
     if (montoPagado <= 0) { setError('El monto debe ser mayor a 0'); return; }
@@ -86,6 +129,10 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
     }
     if (cajaFaltante) {
       setError('Seleccioná la caja donde ingresa el pago.');
+      return;
+    }
+    if (chequeInvalido) {
+      setError('Completá los datos obligatorios del cheque: número, banco, titular, fechas.');
       return;
     }
     try {
@@ -98,6 +145,20 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
         metodoPago,
         cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
         cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
+        ...(metodoPago === 'CHEQUE' && {
+          cheque: {
+            numeroCheque: chequeData.numeroCheque.trim(),
+            bancoId: chequeData.bancoId,
+            titular: chequeData.titular.trim(),
+            cuitTitular: chequeData.cuitTitular?.trim() || undefined,
+            fechaEmision: chequeData.fechaEmision,
+            fechaCobro: chequeData.fechaCobro,
+            numeroCuenta: chequeData.numeroCuenta?.trim() || undefined,
+            cbu: chequeData.cbu?.trim() || undefined,
+            esEcheq: !!chequeData.esEcheq,
+            observaciones: chequeData.observaciones?.trim() || undefined,
+          },
+        }),
       });
 
       // Task 2: refetch cuotas to detect cascade changes
@@ -207,6 +268,120 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 )}
               </Grid>
             )}
+
+            {metodoPago === 'CHEQUE' && (
+              <Grid item xs={12}>
+                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
+                    Datos del cheque recibido
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth required
+                        label="Número de cheque"
+                        value={chequeData.numeroCheque}
+                        onChange={(e) => setChequeData({ ...chequeData, numeroCheque: e.target.value })}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <FormControl fullWidth required>
+                        <InputLabel>Banco</InputLabel>
+                        <Select
+                          value={chequeData.bancoId || ''}
+                          label="Banco"
+                          onChange={(e) => setChequeData({ ...chequeData, bancoId: Number(e.target.value) })}
+                          disabled={loadingBancos}
+                        >
+                          {bancos.map(b => (
+                            <MenuItem key={b.id} value={b.id}>{b.nombre}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth required
+                        label="Titular"
+                        value={chequeData.titular}
+                        onChange={(e) => setChequeData({ ...chequeData, titular: e.target.value })}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="CUIT titular"
+                        value={chequeData.cuitTitular}
+                        onChange={(e) => setChequeData({ ...chequeData, cuitTitular: e.target.value })}
+                        placeholder="20-12345678-9"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth required
+                        label="Fecha de emisión"
+                        type="date"
+                        value={chequeData.fechaEmision}
+                        onChange={(e) => setChequeData({ ...chequeData, fechaEmision: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ max: dayjs().format('YYYY-MM-DD') }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth required
+                        label="Fecha de cobro"
+                        type="date"
+                        value={chequeData.fechaCobro}
+                        onChange={(e) => setChequeData({ ...chequeData, fechaCobro: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Número de cuenta"
+                        value={chequeData.numeroCuenta}
+                        onChange={(e) => setChequeData({ ...chequeData, numeroCuenta: e.target.value })}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="CBU (22 dígitos)"
+                        value={chequeData.cbu}
+                        onChange={(e) => setChequeData({ ...chequeData, cbu: e.target.value })}
+                        inputProps={{ maxLength: 22 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!chequeData.esEcheq}
+                            onChange={(e) => setChequeData({ ...chequeData, esEcheq: e.target.checked })}
+                          />
+                        }
+                        label="Es eCheq"
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth multiline rows={2}
+                        label="Observaciones"
+                        value={chequeData.observaciones}
+                        onChange={(e) => setChequeData({ ...chequeData, observaciones: e.target.value })}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="text.secondary">
+                        El monto del cheque será {formatPrice(montoPagado)} — lo toma del monto a pagar.
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              </Grid>
+            )}
           </Grid>
         </Box>
       </DialogContent>
@@ -215,7 +390,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
         <Button
           onClick={handleSave}
           variant="contained"
-          disabled={saving || saldoInsuficiente || loadingSaldo || cajaFaltante}
+          disabled={saving || saldoInsuficiente || loadingSaldo || cajaFaltante || chequeInvalido}
           startIcon={saving ? <CircularProgress size={20} /> : <Payment />}
         >
           Registrar Pago

@@ -214,6 +214,19 @@ export const METODO_PAGO_LABELS: Record<MetodoPago, string> = {
   FINANCIACION_PROPIA: 'Financiación Propia',
 };
 
+export interface ChequeCobroData {
+  numeroCheque: string;
+  bancoId: number;
+  titular: string;
+  cuitTitular?: string;
+  fechaEmision: string;
+  fechaCobro: string;
+  numeroCuenta?: string;
+  cbu?: string;
+  esEcheq?: boolean;
+  observaciones?: string;
+}
+
 export interface RegistrarPagoCuotaDTO {
   cuotaId: number;
   montoPagado: number;
@@ -221,6 +234,8 @@ export interface RegistrarPagoCuotaDTO {
   metodoPago: MetodoPago;
   cajaPesosId?: number | null;
   cajaAhorroId?: number | null;
+  /** Obligatorio cuando metodoPago === 'CHEQUE'. */
+  cheque?: ChequeCobroData;
 }
 
 export interface RevertirPagoCuotaRequest {

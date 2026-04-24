@@ -3,6 +3,9 @@ import type { MetodoPago } from './prestamo.types';
 export type EstadoCajaAhorro = 'ACTIVA' | 'INACTIVA';
 export type TipoMovimientoCaja = 'DEPOSITO' | 'EXTRACCION' | 'CONVERSION_AMORTIZACION';
 
+import type { CajaMetodoPagoConfig } from './cajasPesos.types';
+export type { CajaMetodoPagoConfig };
+
 export interface CajaAhorroDolares {
   id: number;
   empresaId: number;
@@ -11,8 +14,13 @@ export interface CajaAhorroDolares {
   descripcion: string | null;
   saldoActual: number;
   estado: EstadoCajaAhorro;
-  metodoPago: MetodoPago | null;
-  esDefault: boolean;
+  metodosAceptados: CajaMetodoPagoConfig[];
+  metodoPagoPrincipal: MetodoPago | null;
+  tieneMetodoDefault: boolean;
+  /** @deprecated viene del modelo viejo. */
+  metodoPago?: MetodoPago | null;
+  /** @deprecated. */
+  esDefault?: boolean;
   fechaCreacion: string;
   fechaActualizacion: string | null;
 }
@@ -21,7 +29,10 @@ export interface CreateCajaAhorroDolaresDTO {
   nombre: string;
   descripcion?: string;
   sucursalId?: number;
+  metodosAceptados?: CajaMetodoPagoConfig[];
+  /** @deprecated. */
   metodoPago?: MetodoPago | null;
+  /** @deprecated. */
   esDefault?: boolean;
 }
 
