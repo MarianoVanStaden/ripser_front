@@ -39,6 +39,22 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     systemRole: 'VENDEDOR'
   },
   {
+    value: 'TALLER',
+    label: 'Técnico de Taller',
+    description: 'Acceso a módulo de taller, garantías y logística',
+    color: '#5d4037',
+    requiresSucursal: true,
+    systemRole: 'TALLER'
+  },
+  {
+    value: 'OFICINA',
+    label: 'Personal de Oficina',
+    description: 'Acceso a ventas, clientes, proveedores y logística',
+    color: '#0288d1',
+    requiresSucursal: true,
+    systemRole: 'OFICINA'
+  },
+  {
     value: 'USUARIO_SUCURSAL',
     label: 'Usuario de Sucursal',
     description: 'Usuario básico de sucursal',

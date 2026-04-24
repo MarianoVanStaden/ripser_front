@@ -27,7 +27,7 @@ export const usuarioEmpresaIntegrationService = {
 
     try {
       // Step 1: Create global user
-      const systemRole = mapRolEmpresaToSystemRole(data.rolEmpresa);
+      const systemRole = data.systemRole ?? mapRolEmpresaToSystemRole(data.rolEmpresa);
       console.log(`Creating user with system role: ${systemRole} for empresa role: ${data.rolEmpresa}`);
 
       createdUsuario = await usuarioAdminApi.create({

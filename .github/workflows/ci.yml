@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # 1. LINT — ESLint. All branches.
+  # ──────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Caches ~/.npm keyed on package-lock.json hash
+          cache: 'npm'
+
+      - run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+
+  # ──────────────────────────────────────────────────────────────
+  # 2. TYPECHECK — TypeScript compiler, no emit.
+  # ──────────────────────────────────────────────────────────────
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - name: TypeScript type check
+        run: npm run typecheck
+
+  # ──────────────────────────────────────────────────────────────
+  # 3. TEST — Vitest with coverage.
+  #    NOTE: requires @vitest/coverage-v8 in devDependencies.
+  #    See docs/ci.md for setup instructions.
+  # ──────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - name: Run Vitest with coverage
+        run: npm run test:coverage
+
+  # ──────────────────────────────────────────────────────────────
+  # 4. BUILD — Vite production build. Uploads dist/ as artifact.
+  #    Depends on all quality gates passing.
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7

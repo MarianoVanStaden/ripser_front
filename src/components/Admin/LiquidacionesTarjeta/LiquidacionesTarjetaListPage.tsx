@@ -19,9 +19,10 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
-import { Add as AddIcon, Undo as UndoIcon } from '@mui/icons-material';
+import { Add as AddIcon, OpenInNew as OpenInNewIcon, Undo as UndoIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { liquidacionesTarjetaApi } from '../../../api/services/liquidacionesTarjetaApi';
 import type { LiquidacionTarjeta } from '../../../types/liquidacionTarjeta.types';
@@ -150,7 +151,23 @@ const LiquidacionesTarjetaListPage: React.FC = () => {
                 <TableCell>{it.cajaOrigenNombre}</TableCell>
                 <TableCell>{it.cajaDestinoNombre}</TableCell>
                 <TableCell align="right">{formatPrice(it.montoBruto)}</TableCell>
-                <TableCell align="right">{formatPrice(it.comision)}</TableCell>
+                <TableCell align="right">
+                  <Box display="flex" alignItems="center" justifyContent="flex-end" gap={0.5}>
+                    {formatPrice(it.comision)}
+                    {it.movimientoComisionId != null && (
+                      <Tooltip title={`Ver gasto extra #${it.movimientoComisionId}`}>
+                        <Chip
+                          size="small"
+                          icon={<OpenInNewIcon sx={{ fontSize: '0.75rem !important' }} />}
+                          label={`G#${it.movimientoComisionId}`}
+                          variant="outlined"
+                          color="default"
+                          sx={{ height: 20, fontSize: '0.65rem', cursor: 'default' }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Box>
+                </TableCell>
                 <TableCell align="right">
                   <strong>{formatPrice(it.montoNeto)}</strong>
                 </TableCell>

@@ -21,6 +21,7 @@ export interface CreateUsuarioWithEmpresaDTO {
 
   // Tenant assignment
   rolEmpresa: RolEmpresa;
+  systemRole?: TipoRol;  // Explicit system role override; if omitted, derived from rolEmpresa
   empresaId: number;  // Super Admin can choose, ADMIN_EMPRESA uses their own
   sucursalId?: number;  // Optional for branch-specific roles
   sucursalDefectoId?: number;  // Default branch

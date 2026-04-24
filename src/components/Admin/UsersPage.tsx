@@ -63,13 +63,26 @@ import type { CreateUsuarioWithEmpresaDTO, UsuarioWithEmpresa, RolEmpresaOption 
 import type { Empresa, Sucursal, RolEmpresa } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 
-// Available roles with labels and colors
+// Available roles with labels and colors (for table display)
 const availableRoles = [
-  { value: 'ADMIN' as TipoRol, label: 'Administrador', color: '#d32f2f' },
-  { value: 'VENDEDOR' as TipoRol, label: 'Vendedor', color: '#1976d2' },
-  { value: 'TALLER' as TipoRol, label: 'Taller', color: '#388e3c' },
-  { value: 'OFICINA' as TipoRol, label: 'Oficina', color: '#f57c00' },
+  { value: 'SUPER_ADMIN' as TipoRol, label: 'Super Administrador', color: '#d32f2f' },
+  { value: 'ADMIN' as TipoRol, label: 'Administrador', color: '#c62828' },
+  { value: 'GERENTE_SUCURSAL' as TipoRol, label: 'Gerente de Sucursal', color: '#1976d2' },
+  { value: 'VENDEDOR' as TipoRol, label: 'Vendedor', color: '#1565c0' },
+  { value: 'TALLER' as TipoRol, label: 'Técnico de Taller', color: '#5d4037' },
+  { value: 'OFICINA' as TipoRol, label: 'Personal de Oficina', color: '#0288d1' },
   { value: 'USUARIO' as TipoRol, label: 'Usuario', color: '#7b1fa2' },
+  { value: 'USER' as TipoRol, label: 'Usuario (básico)', color: '#6a1b9a' },
+];
+
+// System roles available for explicit assignment in the form
+const systemRoleOptions: { value: TipoRol; label: string; description: string; color: string }[] = [
+  { value: 'ADMIN', label: 'Administrador', description: 'Acceso completo a todos los módulos', color: '#c62828' },
+  { value: 'GERENTE_SUCURSAL', label: 'Gerente de Sucursal', description: 'Gestión completa de una sucursal', color: '#1976d2' },
+  { value: 'VENDEDOR', label: 'Vendedor', description: 'Acceso a ventas, clientes y garantías', color: '#1565c0' },
+  { value: 'TALLER', label: 'Técnico de Taller', description: 'Acceso a taller, garantías y logística', color: '#5d4037' },
+  { value: 'OFICINA', label: 'Personal de Oficina', description: 'Acceso a ventas, clientes, proveedores y logística', color: '#0288d1' },
+  { value: 'USUARIO', label: 'Usuario', description: 'Solo acceso al dashboard', color: '#7b1fa2' },
 ];
 
 const UsersPage: React.FC = () => {
@@ -137,6 +150,7 @@ const UsersPage: React.FC = () => {
     apellido: '',
     password: '',
     rolEmpresa: 'USUARIO_SUCURSAL',
+    systemRole: 'USUARIO',
     empresaId: currentEmpresaId || 0,
     sucursalId: undefined,
     sucursalDefectoId: undefined,
@@ -252,6 +266,7 @@ const UsersPage: React.FC = () => {
 
   const handleAdd = async () => {
     setEditingUser(null);
+    const defaultRolOption = getRolEmpresaOption('USUARIO_SUCURSAL');
     setFormData({
       username: '',
       email: '',
@@ -259,12 +274,13 @@ const UsersPage: React.FC = () => {
       apellido: '',
       password: '',
       rolEmpresa: 'USUARIO_SUCURSAL',
+      systemRole: defaultRolOption?.systemRole || 'USUARIO',
       empresaId: currentEmpresaId || (empresas.length > 0 ? empresas[0].id : 0),
       sucursalId: undefined,
       sucursalDefectoId: undefined,
       observaciones: '',
     });
-    setSelectedRolOption(getRolEmpresaOption('USUARIO_SUCURSAL') || null);
+    setSelectedRolOption(defaultRolOption || null);
 
     // Load sucursales for the selected empresa
     if (currentEmpresaId) {
@@ -296,6 +312,7 @@ const UsersPage: React.FC = () => {
       apellido: user.apellido || '',
       password: '',
       rolEmpresa: firstAssignment?.rol || 'USUARIO_SUCURSAL',
+      systemRole: (user.roles && user.roles.length > 0 ? user.roles[0] : undefined) as TipoRol | undefined,
       empresaId: firstAssignment?.empresaId || currentEmpresaId || 0,
       sucursalId: firstAssignment?.sucursalId || undefined,
       sucursalDefectoId: firstAssignment?.sucursalDefectoId || undefined,
@@ -422,7 +439,7 @@ const UsersPage: React.FC = () => {
 
       if (editingUser) {
         // Update existing user's basic info
-        const systemRole = mapRolEmpresaToSystemRole(formData.rolEmpresa);
+        const systemRole = formData.systemRole ?? mapRolEmpresaToSystemRole(formData.rolEmpresa);
         await usuarioAdminApi.update(editingUser.id, {
           email: formData.email,
           nombre: formData.nombre || undefined,
@@ -867,7 +884,12 @@ const UsersPage: React.FC = () => {
                     onChange={(e) => {
                       const rol = e.target.value as RolEmpresa;
                       const option = getRolEmpresaOption(rol);
-                      setFormData({ ...formData, rolEmpresa: rol, sucursalId: undefined });
+                      setFormData({
+                        ...formData,
+                        rolEmpresa: rol,
+                        systemRole: option?.systemRole,
+                        sucursalId: undefined,
+                      });
                       setSelectedRolOption(option || null);
                     }}
                     label="Rol en Empresa *"
@@ -892,6 +914,39 @@ const UsersPage: React.FC = () => {
                       />
                     </Box>
                   )}
+                </FormControl>
+
+                {/* System Role Selection */}
+                <FormControl fullWidth>
+                  <InputLabel>Rol del Sistema *</InputLabel>
+                  <Select
+                    value={formData.systemRole || ''}
+                    onChange={(e) => {
+                      setFormData({ ...formData, systemRole: e.target.value as TipoRol });
+                    }}
+                    label="Rol del Sistema *"
+                  >
+                    {[
+                      ...(esSuperAdmin ? [{ value: 'SUPER_ADMIN' as TipoRol, label: 'Super Administrador', description: 'Acceso completo al sistema', color: '#d32f2f' }] : []),
+                      ...systemRoleOptions,
+                    ].map(role => (
+                      <MenuItem key={role.value} value={role.value}>
+                        <Box display="flex" alignItems="center" gap={1} width="100%">
+                          <Chip
+                            label={role.label}
+                            size="small"
+                            sx={{ bgcolor: role.color, color: 'white', fontWeight: 600, minWidth: 130 }}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            {role.description}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    Define los permisos de acceso a módulos. Por defecto se deriva del Rol en Empresa.
+                  </FormHelperText>
                 </FormControl>
 
                 {/* Sucursal Selection (conditional based on role) */}

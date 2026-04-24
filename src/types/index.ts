@@ -3708,6 +3708,7 @@ export interface FlujoCajaMovimientoEnhanced {
   estado?: EstadoMovimiento;
   observaciones?: string | null;
   movimientoExtraId?: number | null; // Referencia a la entidad MovimientoExtra
+  liquidacionTarjetaId?: number | null; // Si es comisión de liquidación tarjeta, FK a esa liquidación
 
   // Audit fields (para movimientos extras) - matching backend naming
   fechaCreacion?: string; // ISO datetime string from backend

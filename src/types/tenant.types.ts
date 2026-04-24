@@ -53,6 +53,8 @@ export type RolEmpresa =
   | 'ADMIN_EMPRESA'
   | 'GERENTE_SUCURSAL'
   | 'SUPERVISOR'
+  | 'TALLER'
+  | 'OFICINA'
   | 'USUARIO_SUCURSAL';
 
 export interface CreateEmpresaDTO {
