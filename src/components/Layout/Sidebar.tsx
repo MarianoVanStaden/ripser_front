@@ -231,6 +231,7 @@ const navigation: NavigationSection[] = [
       { text: 'Posición Patrimonial', icon: <AccountBalanceIcon />, path: '/admin/patrimonio' },
       { text: 'Cajas de Ahorro USD', icon: <SavingsIcon />, path: '/admin/cajas-ahorro' },
       { text: 'Cajas en Pesos', icon: <SavingsIcon />, path: '/admin/cajas-pesos' },
+      { text: 'Liquidaciones Tarjeta', icon: <SwapHorizIcon />, path: '/admin/liquidaciones-tarjeta' },
       { text: 'Bancos', icon: <AccountBalanceIcon />, path: '/admin/bancos' },
       { text: 'Cuentas Bancarias', icon: <AccountBalanceIcon />, path: '/admin/cuentas-bancarias' },
       { text: 'Empresas', icon: <BusinessIcon />, path: '/admin/empresas' },

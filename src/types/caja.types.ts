@@ -7,7 +7,10 @@ export type Moneda = 'ARS' | 'USD';
 export const MONEDAS_POR_METODO_PAGO: Record<MetodoPago, readonly Moneda[]> = {
   EFECTIVO: ['ARS', 'USD'],
   TRANSFERENCIA_BANCARIA: ['ARS', 'USD'],
-  CHEQUE: ['ARS', 'USD'],
+  // CHEQUE no impacta caja al momento del cobro: el cheque entra al pipeline
+  // dedicado (EN_CARTERA → DEPOSITADO → COBRADO/RECHAZADO) y solo al pasar
+  // a COBRADO el backend impacta una caja de tipo TRANSFERENCIA_BANCARIA.
+  CHEQUE: [],
   TARJETA_CREDITO: ['ARS'],
   TARJETA_DEBITO: ['ARS'],
   MERCADO_PAGO: ['ARS'],

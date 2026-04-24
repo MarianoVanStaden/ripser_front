@@ -49,6 +49,7 @@ const CajasAhorroListPage = lazy(() => import('./components/Admin/CajasAhorro/Ca
 const CajaMovimientosPage = lazy(() => import('./components/Admin/CajasAhorro/CajaMovimientosPage'));
 const CajasPesosListPage = lazy(() => import('./components/Admin/CajasPesos/CajasPesosListPage'));
 const CajaPesosMovimientosPage = lazy(() => import('./components/Admin/CajasPesos/CajaPesosMovimientosPage'));
+const LiquidacionesTarjetaListPage = lazy(() => import('./components/Admin/LiquidacionesTarjeta/LiquidacionesTarjetaListPage'));
 
 // Bancos / cheques
 const BancosPage = lazy(() => import('./components/Bancos/BancosPage'));
@@ -222,6 +223,7 @@ function App() {
                   <Route path="admin/cajas-ahorro/:id" element={priv(<CajaMovimientosPage />)} />
                   <Route path="admin/cajas-pesos" element={priv(<CajasPesosListPage />)} />
                   <Route path="admin/cajas-pesos/:id" element={priv(<CajaPesosMovimientosPage />)} />
+                  <Route path="admin/liquidaciones-tarjeta" element={priv(<LiquidacionesTarjetaListPage />)} />
 
                   {/* VENTAS */}
                   <Route path="ventas/dashboard" element={priv(<VentasDashboard />)} />
