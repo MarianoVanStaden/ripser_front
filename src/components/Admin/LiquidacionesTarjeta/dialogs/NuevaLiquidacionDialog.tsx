@@ -61,18 +61,23 @@ const NuevaLiquidacionDialog: React.FC<Props> = ({ open, onClose, onSaved }) => 
       .finally(() => setLoadingCajas(false));
   }, [open]);
 
+  // Modelo N:M: una caja puede aceptar varios métodos. Filtramos por cualquier
+  // caja que acepte el método buscado (sea o no default).
+  const aceptaMetodo = (c: CajaPesos, metodo: MetodoTarjeta | 'TRANSFERENCIA_BANCARIA') =>
+    c.metodosAceptados?.some((m) => m.metodoPago === metodo) ?? false;
+
   const cajasOrigen = useMemo(
     () =>
       cajas.filter(
         (c) =>
           c.estado === 'ACTIVA' &&
-          (c.metodoPago === 'TARJETA_CREDITO' || c.metodoPago === 'TARJETA_DEBITO'),
+          (aceptaMetodo(c, 'TARJETA_CREDITO') || aceptaMetodo(c, 'TARJETA_DEBITO')),
       ),
     [cajas],
   );
 
   const cajasDestino = useMemo(
-    () => cajas.filter((c) => c.estado === 'ACTIVA' && c.metodoPago === 'TRANSFERENCIA_BANCARIA'),
+    () => cajas.filter((c) => c.estado === 'ACTIVA' && aceptaMetodo(c, 'TRANSFERENCIA_BANCARIA')),
     [cajas],
   );
 
@@ -143,11 +148,16 @@ const NuevaLiquidacionDialog: React.FC<Props> = ({ open, onClose, onSaved }) => 
                       <em>No hay cajas tarjeta activas</em>
                     </MenuItem>
                   )}
-                  {cajasOrigen.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.nombre} ({c.metodoPago as MetodoTarjeta}) · saldo {formatPrice(c.saldoActual)}
-                    </MenuItem>
-                  ))}
+                  {cajasOrigen.map((c) => {
+                    // Mostrar el método principal de tarjeta que acepta (puede aceptar ambos).
+                    const metodoMostrar: MetodoTarjeta = aceptaMetodo(c, 'TARJETA_CREDITO')
+                      ? 'TARJETA_CREDITO' : 'TARJETA_DEBITO';
+                    return (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.nombre} ({metodoMostrar}) · saldo {formatPrice(c.saldoActual)}
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>

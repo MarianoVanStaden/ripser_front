@@ -28,10 +28,6 @@ export interface CajaPesos {
   metodoPagoPrincipal: MetodoPago | null;
   /** Derivado del back: true si algún método aceptado es default. */
   tieneMetodoDefault: boolean;
-  /** @deprecated viene del modelo viejo — puede estar presente durante la transición. */
-  metodoPago?: MetodoPago | null;
-  /** @deprecated idem. */
-  esDefault?: boolean;
   fechaCreacion: string;
   fechaActualizacion: string | null;
 }
@@ -41,10 +37,6 @@ export interface CreateCajaPesosDTO {
   descripcion?: string;
   sucursalId?: number;
   metodosAceptados?: CajaMetodoPagoConfig[];
-  /** @deprecated usar metodosAceptados. */
-  metodoPago?: MetodoPago | null;
-  /** @deprecated usar metodosAceptados. */
-  esDefault?: boolean;
 }
 
 export interface MovimientoCajaPesos {

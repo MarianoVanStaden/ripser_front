@@ -17,10 +17,6 @@ export interface CajaAhorroDolares {
   metodosAceptados: CajaMetodoPagoConfig[];
   metodoPagoPrincipal: MetodoPago | null;
   tieneMetodoDefault: boolean;
-  /** @deprecated viene del modelo viejo. */
-  metodoPago?: MetodoPago | null;
-  /** @deprecated. */
-  esDefault?: boolean;
   fechaCreacion: string;
   fechaActualizacion: string | null;
 }
@@ -30,10 +26,6 @@ export interface CreateCajaAhorroDolaresDTO {
   descripcion?: string;
   sucursalId?: number;
   metodosAceptados?: CajaMetodoPagoConfig[];
-  /** @deprecated. */
-  metodoPago?: MetodoPago | null;
-  /** @deprecated. */
-  esDefault?: boolean;
 }
 
 export interface MovimientoCajaAhorro {

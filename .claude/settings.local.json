@@ -96,7 +96,8 @@
       "Bash(cmd.exe //c \"cd /d C:\\\\Users\\\\santi\\\\Documents\\\\GitHub\\\\ripser_back && .\\\\mvnw.cmd compile -q -DskipTests 2>&1\")",
       "Bash(mv C:/Users/santi/Documents/GitHub/ripser_front/src/components/Common/CajaSelector.tsx C:/Users/santi/Documents/GitHub/ripser_front/src/components/common/CajaSelector.tsx)",
       "Bash(rmdir C:/Users/santi/Documents/GitHub/ripser_front/src/components/Common)",
-      "Bash(powershell.exe *)"
+      "Bash(powershell.exe *)",
+      "Bash(docker version *)"
     ],
     "deny": [],
     "ask": [],
