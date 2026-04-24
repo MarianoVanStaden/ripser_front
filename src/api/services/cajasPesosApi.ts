@@ -8,12 +8,23 @@ import type {
   TransferenciaCajaPesosRequestDTO,
   TransferenciaCajaPesosResponseDTO,
 } from '../../types';
+import type { MetodoPago } from '../../types/prestamo.types';
 
 const BASE = '/api/cajas-pesos';
 
 export const cajasPesosApi = {
   getAll: async (): Promise<CajaPesos[]> => {
     const res = await api.get<CajaPesos[]>(BASE);
+    return res.data;
+  },
+
+  getByMetodoPago: async (
+    metodoPago: MetodoPago,
+    sucursalId?: number
+  ): Promise<CajaPesos[]> => {
+    const res = await api.get<CajaPesos[]>(BASE, {
+      params: { metodoPago, sucursalId, estado: 'ACTIVA' },
+    });
     return res.data;
   },
 

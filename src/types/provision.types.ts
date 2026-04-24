@@ -33,4 +33,7 @@ export interface GuardarProvisionDTO {
 
 export interface RegistrarPagoProvisionDTO {
   montoPagado: number;
+  metodoPago?: import('./prestamo.types').MetodoPago;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
 }

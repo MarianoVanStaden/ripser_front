@@ -129,11 +129,6 @@ const TransferirPesosDialog: React.FC<Props> = ({
     }
   };
 
-  // Advertencia de sync legacy si alguna caja no tiene metodoPagoDefault seteado.
-  const warningSyncLegacy =
-    (origen && origen.metodoPagoDefault == null) ||
-    (destino && destino.metodoPagoDefault == null);
-
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -303,23 +298,6 @@ const TransferirPesosDialog: React.FC<Props> = ({
             {mismasCajas && (
               <Alert severity="error" sx={{ mt: 1 }}>
                 La caja origen y destino no pueden ser la misma.
-              </Alert>
-            )}
-
-            {warningSyncLegacy && origen && destino && (
-              <Alert severity="info" sx={{ mt: 1 }}>
-                {origen.metodoPagoDefault == null && (
-                  <>
-                    La caja <strong>{origen.nombre}</strong> no tiene "Método de pago para
-                    reportes" configurado — el egreso no aparecerá en Flujo de Caja legacy.{' '}
-                  </>
-                )}
-                {destino.metodoPagoDefault == null && (
-                  <>
-                    La caja <strong>{destino.nombre}</strong> no tiene "Método de pago para
-                    reportes" configurado — el ingreso no aparecerá en Flujo de Caja legacy.
-                  </>
-                )}
               </Alert>
             )}
           </>

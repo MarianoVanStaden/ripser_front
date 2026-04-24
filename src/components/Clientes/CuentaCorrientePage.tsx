@@ -49,6 +49,8 @@ import 'dayjs/locale/es';
 import { clienteApi } from '../../api/services/clienteApi';
 import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
 import type { Cliente, TipoMovimiento, MetodoPago } from '../../types';
+import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
+import { CajaSelector } from '../common/CajaSelector';
 import { useCuentaCorrienteCliente } from '../../hooks/useCuentaCorrienteCliente';
 import { useSmartRefresh, formatLastUpdated } from '../../hooks/useSmartRefresh';
 import { generateCuentaCorrienteClientePDF } from '../../utils/pdfExportUtils';
@@ -76,6 +78,7 @@ const CuentaCorrientePage: React.FC = () => {
     numeroComprobante: '',
     metodoPago: 'EFECTIVO' as MetodoPago,
   });
+  const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
 
   // Pagination states
   const [page, setPage] = useState(0);
@@ -127,9 +130,17 @@ const CuentaCorrientePage: React.FC = () => {
   }, [location.state]);
 
 
+  const esCobro = newMovimiento.tipo === 'CREDITO';
+  const requiereCaja = esCobro && metodoPagoRequiereCaja(newMovimiento.metodoPago);
+  const cajaFaltante = requiereCaja && !cajaRef;
+
   const handleSaveMovimiento = async () => {
     if (!selectedCliente) {
       setLocalError('Debe seleccionar un cliente para registrar un movimiento.');
+      return;
+    }
+    if (cajaFaltante) {
+      setLocalError('Seleccioná la caja donde ingresa el cobro.');
       return;
     }
 
@@ -142,11 +153,14 @@ const CuentaCorrientePage: React.FC = () => {
         concepto: newMovimiento.concepto,
         numeroComprobante: newMovimiento.numeroComprobante || undefined,
         metodoPago: newMovimiento.metodoPago,
+        cajaPesosId: esCobro && cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+        cajaAhorroId: esCobro && cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
       };
 
       await cuentaCorrienteApi.create(payload);
 
       setNewMovimiento({ tipo: 'CREDITO', importe: 0, concepto: '', numeroComprobante: '', metodoPago: 'EFECTIVO' });
+      setCajaRef(null);
       setOpenMovimientoDialog(false);
 
       // Invalidar movimientos (React Query refetchea automáticamente)
@@ -549,14 +563,26 @@ const CuentaCorrientePage: React.FC = () => {
                 margin="normal"
                 required
               >
-                <MenuItem value="EFECTIVO">💵 Efectivo</MenuItem>
-                <MenuItem value="TRANSFERENCIA">🏦 Transferencia Bancaria</MenuItem>
-                <MenuItem value="CHEQUE">📝 Cheque</MenuItem>
-                <MenuItem value="TARJETA_CREDITO">💳 Tarjeta de Crédito</MenuItem>
-                <MenuItem value="TARJETA_DEBITO">💳 Tarjeta de Débito</MenuItem>
-                <MenuItem value="FINANCIAMIENTO">📋 Financiamiento</MenuItem>
-                <MenuItem value="CUENTA_CORRIENTE">🏦 Cuenta Corriente</MenuItem>
+                <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
+                <MenuItem value="CHEQUE">Cheque</MenuItem>
+                <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
+                <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
               </TextField>
+
+              {requiereCaja && (
+                <Box mt={2}>
+                  <CajaSelector
+                    metodoPago={newMovimiento.metodoPago}
+                    value={cajaRef}
+                    onChange={setCajaRef}
+                    direccion="ingreso"
+                  />
+                </Box>
+              )}
             </Box>
           </DialogContent>
           <DialogActions>
@@ -566,7 +592,7 @@ const CuentaCorrientePage: React.FC = () => {
             <Button 
               variant="contained" 
               onClick={handleSaveMovimiento}
-              disabled={!newMovimiento.concepto || newMovimiento.importe <= 0}
+              disabled={!newMovimiento.concepto || newMovimiento.importe <= 0 || cajaFaltante}
             >
               Guardar
             </Button>

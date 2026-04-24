@@ -9,6 +9,8 @@ import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
 import { clientApi } from '../../api/services/clientApi';
 import type { CuotaPrestamoDTO, MetodoPago } from '../../types/prestamo.types';
 import { METODO_PAGO_LABELS } from '../../types/prestamo.types';
+import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
+import { CajaSelector } from '../common/CajaSelector';
 import { formatPrice } from '../../utils/priceCalculations';
 import dayjs from 'dayjs';
 
@@ -36,6 +38,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   const [montoPagado, setMontoPagado] = useState<number>(0);
   const [fechaPago, setFechaPago] = useState<string>(dayjs().format('YYYY-MM-DD'));
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
+  const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saldoDisponible, setSaldoDisponible] = useState<number | null>(null);
@@ -47,6 +50,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       setMontoPagado(saldoRestante > 0 ? saldoRestante : cuota.montoCuota);
       setFechaPago(dayjs().format('YYYY-MM-DD'));
       setMetodoPago('EFECTIVO');
+      setCajaRef(null);
       setError(null);
       setSaldoDisponible(null);
     }
@@ -70,6 +74,9 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
     && saldoDisponible !== null
     && saldoDisponible < montoPagado;
 
+  const requiereCaja = metodoPagoRequiereCaja(metodoPago);
+  const cajaFaltante = requiereCaja && !cajaRef;
+
   const handleSave = async () => {
     if (!cuota) return;
     if (montoPagado <= 0) { setError('El monto debe ser mayor a 0'); return; }
@@ -77,10 +84,21 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       setError(`Saldo insuficiente. Disponible: ${formatPrice(saldoDisponible!)}`);
       return;
     }
+    if (cajaFaltante) {
+      setError('Seleccioná la caja donde ingresa el pago.');
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
-      await cuotaPrestamoApi.registrarPago({ cuotaId: cuota.id, montoPagado, fechaPago, metodoPago });
+      await cuotaPrestamoApi.registrarPago({
+        cuotaId: cuota.id,
+        montoPagado,
+        fechaPago,
+        metodoPago,
+        cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+        cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
+      });
 
       // Task 2: refetch cuotas to detect cascade changes
       const newCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
@@ -162,6 +180,16 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
+            {requiereCaja && (
+              <Grid item xs={12}>
+                <CajaSelector
+                  metodoPago={metodoPago}
+                  value={cajaRef}
+                  onChange={setCajaRef}
+                  direccion="ingreso"
+                />
+              </Grid>
+            )}
             {METODOS_CON_VALIDACION_SALDO.includes(metodoPago) && (
               <Grid item xs={12}>
                 {loadingSaldo ? (
@@ -187,7 +215,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
         <Button
           onClick={handleSave}
           variant="contained"
-          disabled={saving || saldoInsuficiente || loadingSaldo}
+          disabled={saving || saldoInsuficiente || loadingSaldo || cajaFaltante}
           startIcon={saving ? <CircularProgress size={20} /> : <Payment />}
         >
           Registrar Pago

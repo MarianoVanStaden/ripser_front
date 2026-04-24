@@ -2,12 +2,18 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Button,
+  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormControlLabel,
   Grid2 as Grid,
+  InputLabel,
+  MenuItem,
+  Select,
   TextField,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
@@ -15,6 +21,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { cajasAhorroApi } from '../../../../api/services/cajasAhorroApi';
 import type { CajaAhorroDolares } from '../../../../types';
+import { MetodoPago, METODO_PAGO_LABELS } from '../../../../types/prestamo.types';
+import { MONEDAS_POR_METODO_PAGO } from '../../../../types/caja.types';
 import { extractError } from '../utils';
 
 interface Props {
@@ -29,6 +37,8 @@ interface FormData {
   nombre: string;
   descripcion: string;
   sucursalId: string;
+  metodoPago: string;
+  esDefault: boolean;
 }
 
 const schema = yup.object({
@@ -38,7 +48,14 @@ const schema = yup.object({
     .max(100, 'Máximo 100 caracteres'),
   descripcion: yup.string().max(500, 'Máximo 500 caracteres'),
   sucursalId: yup.string(),
+  metodoPago: yup.string(),
+  esDefault: yup.boolean(),
 });
+
+// Solo métodos que aceptan USD (las cajas ahorro son dólares).
+const METODOS_USD = Object.values(MetodoPago).filter((v) =>
+  MONEDAS_POR_METODO_PAGO[v].includes('USD')
+);
 
 const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSaved }) => {
   const [saving, setSaving] = useState(false);
@@ -49,9 +66,10 @@ const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSaved })
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<FormData>({
     resolver: yupResolver(schema) as any,
-    defaultValues: { nombre: '', descripcion: '', sucursalId: '' },
+    defaultValues: { nombre: '', descripcion: '', sucursalId: '', metodoPago: '', esDefault: false },
   });
 
   useEffect(() => {
@@ -62,12 +80,17 @@ const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSaved })
           nombre: caja.nombre,
           descripcion: caja.descripcion ?? '',
           sucursalId: caja.sucursalId != null ? String(caja.sucursalId) : '',
+          metodoPago: caja.metodoPago ?? '',
+          esDefault: caja.esDefault ?? false,
         });
       } else {
-        reset({ nombre: '', descripcion: '', sucursalId: '' });
+        reset({ nombre: '', descripcion: '', sucursalId: '', metodoPago: '', esDefault: false });
       }
     }
   }, [open, mode, caja, reset]);
+
+  const mpWatch = watch('metodoPago');
+  const sinMetodo = !mpWatch || mpWatch === '';
 
   const onSubmit = async (data: FormData) => {
     setSaving(true);
@@ -77,6 +100,11 @@ const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSaved })
         nombre: data.nombre,
         descripcion: data.descripcion || undefined,
         sucursalId: data.sucursalId ? Number(data.sucursalId) : undefined,
+        metodoPago:
+          data.metodoPago && data.metodoPago !== ''
+            ? (data.metodoPago as any)
+            : null,
+        esDefault: !!data.esDefault && !!data.metodoPago,
       };
       if (mode === 'edit' && caja) {
         await cajasAhorroApi.update(caja.id, dto);
@@ -148,6 +176,51 @@ const CajaFormDialog: React.FC<Props> = ({ open, mode, caja, onClose, onSaved })
                     inputProps={{ min: 1 }}
                     error={!!errors.sucursalId}
                     helperText={errors.sucursalId?.message ?? 'Dejar vacío si no aplica'}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid size={12}>
+              <Controller
+                name="metodoPago"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Método de pago asociado</InputLabel>
+                    <Select {...field} label="Método de pago asociado">
+                      <MenuItem value="">
+                        <em>— Sin método asociado —</em>
+                      </MenuItem>
+                      {METODOS_USD.map((v) => (
+                        <MenuItem key={v} value={v}>
+                          {METODO_PAGO_LABELS[v]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              {sinMetodo && (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  Una caja sin método de pago no aparecerá como opción al registrar
+                  cobros/pagos en USD.
+                </Alert>
+              )}
+            </Grid>
+            <Grid size={12}>
+              <Controller
+                name="esDefault"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        disabled={sinMetodo}
+                      />
+                    }
+                    label="Marcar como caja predeterminada para este método de pago"
                   />
                 )}
               />

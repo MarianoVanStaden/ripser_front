@@ -7,12 +7,23 @@ import type {
   DepositoExtraCajaDTO,
   DisponibleConversionDTO,
 } from '../../types';
+import type { MetodoPago } from '../../types/prestamo.types';
 
 const BASE = '/api/cajas-ahorro';
 
 export const cajasAhorroApi = {
   getAll: async (): Promise<CajaAhorroDolares[]> => {
     const res = await api.get<CajaAhorroDolares[]>(BASE);
+    return res.data;
+  },
+
+  getByMetodoPago: async (
+    metodoPago: MetodoPago,
+    sucursalId?: number
+  ): Promise<CajaAhorroDolares[]> => {
+    const res = await api.get<CajaAhorroDolares[]>(BASE, {
+      params: { metodoPago, sucursalId, estado: 'ACTIVA' },
+    });
     return res.data;
   },
 

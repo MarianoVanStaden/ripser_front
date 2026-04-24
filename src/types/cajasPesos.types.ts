@@ -17,7 +17,8 @@ export interface CajaPesos {
   descripcion: string | null;
   saldoActual: number;
   estado: EstadoCajaAhorro;
-  metodoPagoDefault: MetodoPago | null;
+  metodoPago: MetodoPago | null;
+  esDefault: boolean;
   fechaCreacion: string;
   fechaActualizacion: string | null;
 }
@@ -26,7 +27,8 @@ export interface CreateCajaPesosDTO {
   nombre: string;
   descripcion?: string;
   sucursalId?: number;
-  metodoPagoDefault?: MetodoPago | null;
+  metodoPago?: MetodoPago | null;
+  esDefault?: boolean;
 }
 
 export interface MovimientoCajaPesos {

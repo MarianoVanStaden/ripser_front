@@ -100,6 +100,8 @@ export interface CreateMovimientoPayload {
   opcionFinanciamientoId?: number;
   metodoPago?: MetodoPago;
   chequeId?: number;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
 }
 
 
@@ -2037,6 +2039,9 @@ export interface CreateMovimientoProveedorPayload {
   concepto: string;
   numeroComprobante?: string;
   compraId?: number;
+  metodoPago?: MetodoPago;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
 }
 
 export interface ProductoTerminado {
@@ -2474,6 +2479,8 @@ export interface ConvertToFacturaDTO {
   montoEntregaInicial?: number | null;
   tasaInteres?: number;
   confirmarConDeudaPendiente?: boolean;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
 }
 
 export interface DeudaClienteError {
@@ -3883,6 +3890,8 @@ export interface CreateMovimientoExtraDTO {
   proveedorId?: number;
   chequeId?: number;
   observaciones?: string;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
 }
 
 // DTO para actualizar movimiento extra
@@ -3907,6 +3916,9 @@ export * from './cajasAhorro.types';
 
 // Cajas en Pesos (ARS) reales
 export * from './cajasPesos.types';
+
+// Tipos unificados de caja (pesos + ahorro) y mapping moneda ↔ método de pago
+export * from './caja.types';
 
 // Búsqueda de proveedores por producto / categoría
 export interface SearchSuggestion {

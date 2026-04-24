@@ -1,3 +1,5 @@
+import type { MetodoPago } from './prestamo.types';
+
 export type EstadoCajaAhorro = 'ACTIVA' | 'INACTIVA';
 export type TipoMovimientoCaja = 'DEPOSITO' | 'EXTRACCION' | 'CONVERSION_AMORTIZACION';
 
@@ -9,6 +11,8 @@ export interface CajaAhorroDolares {
   descripcion: string | null;
   saldoActual: number;
   estado: EstadoCajaAhorro;
+  metodoPago: MetodoPago | null;
+  esDefault: boolean;
   fechaCreacion: string;
   fechaActualizacion: string | null;
 }
@@ -17,6 +21,8 @@ export interface CreateCajaAhorroDolaresDTO {
   nombre: string;
   descripcion?: string;
   sucursalId?: number;
+  metodoPago?: MetodoPago | null;
+  esDefault?: boolean;
 }
 
 export interface MovimientoCajaAhorro {

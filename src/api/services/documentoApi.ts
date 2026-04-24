@@ -127,6 +127,8 @@ export const documentoApi = {
     metodoPago: MetodoPago;
     tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
     confirmarConDeudaPendiente?: boolean;
+    cajaPesosId?: number | null;
+    cajaAhorroId?: number | null;
   }): Promise<DocumentoComercial> => {
     const response = await api.post<DocumentoComercial>('/api/documentos/nota-pedido', dto);
     return response.data;

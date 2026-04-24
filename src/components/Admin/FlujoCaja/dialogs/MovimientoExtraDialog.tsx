@@ -31,6 +31,11 @@ import {
   getCategoriaGastoLabel,
   getCategoriaCobroLabel,
 } from '../../../../utils/flujoCajaUtils';
+import { CajaSelector } from '../../../common/CajaSelector';
+import {
+  metodoPagoRequiereCaja,
+  type CajaRef,
+} from '../../../../types/caja.types';
 
 // Enum alineado con com.ripser_back.enums.MetodoPago del backend.
 // El tipo global `MetodoPago` en src/types/index.ts está desalineado
@@ -121,8 +126,12 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
   const [numeroComprobante, setNumeroComprobante] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [responsableNombre, setResponsableNombre] = useState('');
+  const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const requiereCaja = metodoPagoRequiereCaja(metodoPago);
+  const cajaFaltante = requiereCaja && !cajaRef;
 
   // Categorías dinámicas según tipo
   const categoriasDisponibles = useMemo(() => {
@@ -159,6 +168,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
       setNumeroComprobante('');
       setObservaciones('');
       setResponsableNombre('');
+      setCajaRef(null);
       setError('');
     }
   }, [editingMovimiento, open, tipoInicial]);
@@ -181,6 +191,14 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
       setError('Por favor ingresá una fecha válida');
       return;
     }
+    if (cajaFaltante) {
+      setError(
+        tipo === 'INGRESO'
+          ? 'Seleccioná la caja donde ingresa el cobro.'
+          : 'Seleccioná la caja de donde sale el gasto.'
+      );
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -201,6 +219,8 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
         metodoPago: metodoPago as CreateMovimientoExtraDTO['metodoPago'],
         numeroComprobante: numeroComprobante.trim() || undefined,
         observaciones: observaciones.trim() || undefined,
+        cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+        cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
       };
 
       if (editingMovimiento?.movimientoExtraId) {
@@ -335,7 +355,10 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
                   value={metodoPago}
-                  onChange={(e) => setMetodoPago(e.target.value as MetodoPagoExtra)}
+                  onChange={(e) => {
+                    setMetodoPago(e.target.value as MetodoPagoExtra);
+                    setCajaRef(null);
+                  }}
                   label="Método de Pago"
                   disabled={loading}
                 >
@@ -347,6 +370,19 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
                 </Select>
               </FormControl>
             </Grid>
+
+            {/* Selector de caja */}
+            {requiereCaja && (
+              <Grid item xs={12}>
+                <CajaSelector
+                  metodoPago={metodoPago}
+                  value={cajaRef}
+                  onChange={setCajaRef}
+                  direccion={tipo === 'INGRESO' ? 'ingreso' : 'egreso'}
+                  disabled={loading}
+                />
+              </Grid>
+            )}
 
             {/* Número de comprobante */}
             <Grid item xs={12} sm={6}>
@@ -400,7 +436,7 @@ const MovimientoExtraDialog: React.FC<MovimientoExtraDialogProps> = ({
         <Button onClick={handleClose} disabled={loading}>
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={loading}>
+        <Button onClick={handleSubmit} variant="contained" disabled={loading || cajaFaltante}>
           {loading ? 'Guardando...' : 'Guardar'}
         </Button>
       </DialogActions>

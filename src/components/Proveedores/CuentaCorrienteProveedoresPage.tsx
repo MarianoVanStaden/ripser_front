@@ -47,6 +47,8 @@ import 'dayjs/locale/es';
 import { proveedorApi } from '../../api/services/proveedorApi';
 import { cuentaCorrienteProveedorApi } from '../../api/services/cuentaCorrienteProveedorApi';
 import type { CuentaCorrienteProveedor, TipoMovimiento, MetodoPago } from '../../types';
+import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
+import { CajaSelector } from '../common/CajaSelector';
 import { generateCuentaCorrienteProveedorPDF } from '../../utils/pdfExportUtils';
 import LoadingOverlay from '../common/LoadingOverlay';
 
@@ -79,6 +81,11 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
     numeroComprobante: '',
     metodoPago: 'EFECTIVO' as MetodoPago,
   });
+  const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
+
+  const esPago = newMovimiento.tipo === 'CREDITO';
+  const requiereCaja = esPago && metodoPagoRequiereCaja(newMovimiento.metodoPago);
+  const cajaFaltante = requiereCaja && !cajaRef;
 
   // Pagination states
   const [page, setPage] = useState(0);
@@ -144,11 +151,13 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
       setError("Debe seleccionar un proveedor para registrar un movimiento.");
       return;
     }
+    if (cajaFaltante) {
+      setError('Seleccioná la caja de donde sale el pago al proveedor.');
+      return;
+    }
 
     try {
       setLoading(true);
-      // Send date in local time format (without timezone suffix)
-      // Backend is configured to use Argentina timezone
       const localDateTime = dayjs().format('YYYY-MM-DDTHH:mm:ss');
 
       const payload = {
@@ -159,6 +168,8 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
         concepto: newMovimiento.concepto,
         numeroComprobante: newMovimiento.numeroComprobante || undefined,
         metodoPago: newMovimiento.metodoPago,
+        cajaPesosId: esPago && cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+        cajaAhorroId: esPago && cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
       };
 
       await cuentaCorrienteProveedorApi.create(payload);
@@ -170,6 +181,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
         numeroComprobante: '',
         metodoPago: 'EFECTIVO',
       });
+      setCajaRef(null);
       setOpenMovimientoDialog(false);
 
       // Refresh data
@@ -565,14 +577,25 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
                 margin="normal"
                 required
               >
-                <MenuItem value="EFECTIVO">💵 Efectivo</MenuItem>
-                <MenuItem value="TRANSFERENCIA_BANCARIA">🏦 Transferencia Bancaria</MenuItem>
-                <MenuItem value="CHEQUE">📝 Cheque</MenuItem>
-                <MenuItem value="TARJETA_CREDITO">💳 Tarjeta de Crédito</MenuItem>
-                <MenuItem value="TARJETA_DEBITO">💳 Tarjeta de Débito</MenuItem>
-                <MenuItem value="MERCADO_PAGO">📱 Mercado Pago</MenuItem>
-                <MenuItem value="FINANCIACION_PROPIA">📋 Financiación Propia</MenuItem>
+                <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
+                <MenuItem value="CHEQUE">Cheque</MenuItem>
+                <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
               </TextField>
+
+              {requiereCaja && (
+                <Box mt={2}>
+                  <CajaSelector
+                    metodoPago={newMovimiento.metodoPago}
+                    value={cajaRef}
+                    onChange={setCajaRef}
+                    direccion="egreso"
+                  />
+                </Box>
+              )}
             </Box>
           </DialogContent>
           <DialogActions>
@@ -582,7 +605,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
             <Button
               variant="contained"
               onClick={handleSaveMovimiento}
-              disabled={!newMovimiento.concepto || newMovimiento.importe <= 0}
+              disabled={!newMovimiento.concepto || newMovimiento.importe <= 0 || cajaFaltante}
             >
               Guardar
             </Button>

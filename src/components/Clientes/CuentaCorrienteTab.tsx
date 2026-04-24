@@ -31,6 +31,8 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import type { CuentaCorriente, CreateCuentaCorrienteRequest, TipoMovimiento, MetodoPago } from '../../types';
+import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
+import { CajaSelector } from '../common/CajaSelector';
 import { cuentaCorrienteApiWithFallback as cuentaCorrienteApi } from '../../api/services/apiWithFallback';
 import LoadingOverlay from '../common/LoadingOverlay';
 
@@ -55,6 +57,11 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
     numeroComprobante: '',
     metodoPago: 'EFECTIVO',
   });
+  const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
+
+  const esCobro = formData.tipo === 'CREDITO';
+  const requiereCaja = esCobro && metodoPagoRequiereCaja(formData.metodoPago);
+  const cajaFaltante = requiereCaja && !cajaRef;
 
   useEffect(() => {
     loadMovimientos();
@@ -85,6 +92,7 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
       numeroComprobante: '',
       metodoPago: 'EFECTIVO',
     });
+    setCajaRef(null);
     setDialogOpen(true);
   };
 
@@ -116,15 +124,19 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
       return;
     }
 
+    if (cajaFaltante) {
+      setError('Seleccioná la caja donde ingresa el cobro.');
+      return;
+    }
+
     try {
-      // Use current time for the selected date
       const currentTime = dayjs().format('HH:mm:ss');
       const requestData = {
         ...formData,
         fecha: `${formData.fecha}T${currentTime}`,
+        cajaPesosId: esCobro && cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+        cajaAhorroId: esCobro && cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
       };
-
-      console.log('Sending requestData:', JSON.stringify(requestData, null, 2));
 
       await cuentaCorrienteApi.create(requestData);
       handleCloseDialog();
@@ -366,21 +378,31 @@ const CuentaCorrienteTab: React.FC<CuentaCorrienteTabProps> = ({ clienteId }) =>
                 required
                 fullWidth
               >
-                <MenuItem value="EFECTIVO">💵 Efectivo</MenuItem>
-                <MenuItem value="TRANSFERENCIA">🏦 Transferencia Bancaria</MenuItem>
-                <MenuItem value="CHEQUE">📝 Cheque</MenuItem>
-                <MenuItem value="TARJETA_CREDITO">💳 Tarjeta de Crédito</MenuItem>
-                <MenuItem value="TARJETA_DEBITO">💳 Tarjeta de Débito</MenuItem>
-                <MenuItem value="FINANCIAMIENTO">📋 Financiamiento</MenuItem>
-                <MenuItem value="CUENTA_CORRIENTE">🏦 Cuenta Corriente</MenuItem>
+                <MenuItem value="EFECTIVO">Efectivo</MenuItem>
+                <MenuItem value="TRANSFERENCIA_BANCARIA">Transferencia Bancaria</MenuItem>
+                <MenuItem value="CHEQUE">Cheque</MenuItem>
+                <MenuItem value="TARJETA_CREDITO">Tarjeta de Crédito</MenuItem>
+                <MenuItem value="TARJETA_DEBITO">Tarjeta de Débito</MenuItem>
+                <MenuItem value="MERCADO_PAGO">Mercado Pago</MenuItem>
+                <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
+                <MenuItem value="CUENTA_CORRIENTE">Cuenta Corriente</MenuItem>
               </TextField>
+
+              {requiereCaja && (
+                <CajaSelector
+                  metodoPago={formData.metodoPago}
+                  value={cajaRef}
+                  onChange={setCajaRef}
+                  direccion="ingreso"
+                />
+              )}
             </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>
               Cancelar
             </Button>
-            <Button type="submit" variant="contained">
+            <Button type="submit" variant="contained" disabled={cajaFaltante}>
               Crear Movimiento
             </Button>
           </DialogActions>

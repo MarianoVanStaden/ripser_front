@@ -8,6 +8,10 @@ import {
   TextField,
   Grid2 as Grid,
   Alert,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Typography,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
@@ -15,6 +19,9 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { provisionApi } from '../../../../api/services/provisionApi';
 import type { TipoProvision } from '../../../../types';
+import { MetodoPago, METODO_PAGO_LABELS, type MetodoPago as MetodoPagoType } from '../../../../types/prestamo.types';
+import { metodoPagoRequiereCaja, type CajaRef } from '../../../../types/caja.types';
+import { CajaSelector } from '../../../common/CajaSelector';
 
 const TIPO_LABELS: Record<TipoProvision, string> = {
   AGUINALDO: 'Aguinaldo',
@@ -50,6 +57,8 @@ interface Props {
 export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, onSaved }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [metodoPago, setMetodoPago] = useState<MetodoPagoType>('EFECTIVO');
+  const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
 
   const {
     control,
@@ -64,14 +73,28 @@ export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, on
   useEffect(() => {
     if (!open) return;
     setApiError(null);
+    setMetodoPago('EFECTIVO');
+    setCajaRef(null);
     reset({ montoPagado: 0 });
   }, [open, reset]);
 
+  const requiereCaja = metodoPagoRequiereCaja(metodoPago);
+  const cajaFaltante = requiereCaja && !cajaRef;
+
   const onSubmit = async (data: FormData) => {
+    if (cajaFaltante) {
+      setApiError('Seleccioná la caja de donde sale el pago.');
+      return;
+    }
     setSaving(true);
     setApiError(null);
     try {
-      await provisionApi.registrarPago(tipo, anio, mes, { montoPagado: data.montoPagado });
+      await provisionApi.registrarPago(tipo, anio, mes, {
+        montoPagado: data.montoPagado,
+        metodoPago,
+        cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+        cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
+      });
       onSaved();
     } catch (err: any) {
       if (err?.response?.status === 404) {
@@ -119,6 +142,36 @@ export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, on
               />
             </Grid>
 
+            <Grid size={12}>
+              <FormControl fullWidth size="small" required>
+                <InputLabel>Método de pago</InputLabel>
+                <Select
+                  value={metodoPago}
+                  label="Método de pago"
+                  onChange={(e) => setMetodoPago(e.target.value as MetodoPagoType)}
+                >
+                  {Object.values(MetodoPago)
+                    .filter((m) => m !== 'CUENTA_CORRIENTE' && m !== 'FINANCIACION_PROPIA')
+                    .map((m) => (
+                      <MenuItem key={m} value={m}>
+                        {METODO_PAGO_LABELS[m]}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {requiereCaja && (
+              <Grid size={12}>
+                <CajaSelector
+                  metodoPago={metodoPago}
+                  value={cajaRef}
+                  onChange={setCajaRef}
+                  direccion="egreso"
+                />
+              </Grid>
+            )}
+
             {apiError && (
               <Grid size={12}>
                 <Alert severity="error">{apiError}</Alert>
@@ -128,7 +181,7 @@ export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, on
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose} disabled={saving}>Cancelar</Button>
-          <Button type="submit" variant="contained" color="success" disabled={saving}>
+          <Button type="submit" variant="contained" color="success" disabled={saving || cajaFaltante}>
             {saving ? 'Registrando...' : 'Registrar pago'}
           </Button>
         </DialogActions>

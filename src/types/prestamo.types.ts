@@ -219,6 +219,8 @@ export interface RegistrarPagoCuotaDTO {
   montoPagado: number;
   fechaPago?: string;
   metodoPago: MetodoPago;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
 }
 
 export interface RevertirPagoCuotaRequest {

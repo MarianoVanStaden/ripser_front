@@ -68,6 +68,8 @@ import SuccessDialog from "../common/SuccessDialog";
 import LoadingOverlay from "../common/LoadingOverlay";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
 import AuditoriaFlujo from "../common/AuditoriaFlujo";
+import { CajaSelector } from "../common/CajaSelector";
+import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import type {
@@ -102,6 +104,21 @@ const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
 // FINANCIAMIENTO is kept as a legacy alias here: the backend enum only has
 // FINANCIACION_PROPIA, but older plantillas/opciones may still carry FINANCIAMIENTO.
 const isFinanciamiento = (m: string) => m === 'FINANCIAMIENTO' || m === 'FINANCIACION_PROPIA';
+
+// Resuelve el payload de caja a spreadear en convertToFactura / convertToNotaPedido.
+// Para ventas financiadas no se carga caja (el dinero entra cuota a cuota).
+// Para ventas contado, la plata ingresa en la caja seleccionada por el usuario.
+const buildCajaPayload = (
+  metodoPago: string,
+  cajaRef: CajaRef | null
+): { cajaPesosId?: number | null; cajaAhorroId?: number | null } => {
+  if (isFinanciamiento(metodoPago)) return {};
+  if (!cajaRef) return {};
+  return {
+    cajaPesosId: cajaRef.tipo === 'PESOS' ? cajaRef.id : null,
+    cajaAhorroId: cajaRef.tipo === 'AHORRO' ? cajaRef.id : null,
+  };
+};
 
 // Plantillas/templates come from the prestamo enum (MetodoPago in prestamo.types.ts)
 // which uses TRANSFERENCIA_BANCARIA / MERCADO_PAGO — the same names the backend enum
@@ -404,6 +421,7 @@ const FacturacionPage = () => {
   const [selectedClientId, setSelectedClientId] = useState<number | ''>('');
   const [selectedUsuarioId, setSelectedUsuarioId] = useState<number | ''>(user?.id ?? '');
   const [paymentMethod, setPaymentMethod] = useState<MetodoPago>('EFECTIVO');
+  const [cajaContadoRef, setCajaContadoRef] = useState<CajaRef | null>(null);
   const [cantidadCuotas, setCantidadCuotas] = useState<number | null>(null);
   const [tipoFinanciacion, setTipoFinanciacion] = useState<string>('MENSUAL');
   const [primerVencimiento, setPrimerVencimiento] = useState<string>('');
@@ -1083,6 +1101,10 @@ const FacturacionPage = () => {
     if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
     if (cart.length === 0) return setError('Debe agregar al menos un producto al carrito.');
 
+    if (!isFinanciamiento(paymentMethod) && metodoPagoRequiereCaja(paymentMethod) && !cajaContadoRef) {
+      return setError('Seleccioná la caja donde ingresa el pago al contado.');
+    }
+
     if (isFinanciamiento(paymentMethod)) {
       if (cantidadCuotas != null && cantidadCuotas < 1) return setError('Mínimo 1 cuota');
       if (entregarInicial) {
@@ -1238,6 +1260,7 @@ const FacturacionPage = () => {
           metodoPago: paymentMethod,
           tipoIva: selectedIva,
           ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
+          ...buildCajaPayload(paymentMethod, cajaContadoRef),
         });
       } catch (notaErr: any) {
         const deudaNotaData = parseDeudaError(notaErr);
@@ -1280,6 +1303,7 @@ const FacturacionPage = () => {
                   tasaInteres: capturedTasaInteres1,
                   ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
                   ...resolveEntregaFields(capturedPayment, capturedEntregaInicial1, capturedUsePorcentaje1, capturedPorcentajeEntrega1, capturedMontoFijoEntrega1),
+                  ...buildCajaPayload(capturedPayment, cajaContadoRef),
                 });
                 if (isFinanciamiento(capturedPayment) && capturedEntregaInicial1 && capturedMontoEntrega1 > 0) {
                   setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega1, montoFinanciado: capturedMontoFinanciado1, cantidadCuotas: capturedCuotas });
@@ -1328,6 +1352,7 @@ const FacturacionPage = () => {
               ...(fin.primerVencimiento && { primerVencimiento: fin.primerVencimiento }),
               ...resolveEntregaFields(paymentMethod, fin.entregarInicial, fin.usePorcentaje, finPorcentajeEntrega, finMontoFijoEntrega),
             }),
+            ...buildCajaPayload(paymentMethod, cajaContadoRef),
           });
         } catch (facturaErr: any) {
           const deudaFacturaData = parseDeudaError(facturaErr);
@@ -1356,6 +1381,7 @@ const FacturacionPage = () => {
                   tasaInteres: capturedTasaInteres2,
                   ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
                   ...resolveEntregaFields(capturedPayment, capturedEntregaInicial2, capturedUsePorcentaje2, capturedPorcentajeEntrega2, capturedMontoFijoEntrega2),
+                  ...buildCajaPayload(capturedPayment, cajaContadoRef),
                 });
                 if (isFinanciamiento(capturedPayment) && capturedEntregaInicial2 && capturedMontoEntrega2 > 0) {
                   setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega2, montoFinanciado: capturedMontoFinanciado2, cantidadCuotas: capturedCuotas });
@@ -1472,6 +1498,10 @@ const FacturacionPage = () => {
         ...(isManualInvoice
           ? resolveEntregaFields(paymentMethod, entregarInicial, usePorcentaje, porcentajeEntrega, montoFijoEntrega)
           : resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega)),
+        ...buildCajaPayload(
+          isManualInvoice ? paymentMethod : (selectedNotaPedido?.metodoPago ?? ''),
+          cajaContadoRef
+        ),
       });
 
       const entregaActiva = isManualInvoice ? entregarInicial : notaEntregaInicial;
@@ -1529,6 +1559,7 @@ const FacturacionPage = () => {
               tasaInteres: capturedTasaInteres3,
               ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
               ...resolveEntregaFields(capturedMetodoPago3, capturedEntregaInicial3, capturedUsePorcentaje3, capturedPorcentajeEntrega3, capturedMontoFijoEntrega3),
+              ...buildCajaPayload(capturedMetodoPago3, cajaContadoRef),
             });
             if (capturedEntregaInicial3 && capturedMontoEntrega3 > 0) {
               setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega3, montoFinanciado: capturedMontoFinanciado3, cantidadCuotas: capturedCuotas });
@@ -1797,6 +1828,7 @@ const FacturacionPage = () => {
           tasaInteres: notaTasaInteres,
           ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
           ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
+          ...buildCajaPayload(selectedNotaPedido?.metodoPago ?? '', cajaContadoRef),
         });
         if (notaEntregaInicial && notaMontoEntregaCalculado > 0) {
           setFacturaEntregaInfo({ montoEntrega: notaMontoEntregaCalculado, montoFinanciado: notaMontoFinanciado, cantidadCuotas: notaCantidadCuotas });
@@ -1906,6 +1938,7 @@ const FacturacionPage = () => {
   const handleChangePaymentMethod = useCallback(
     (newMethod: MetodoPago) => {
       setPaymentMethod(newMethod);
+      setCajaContadoRef(null);
       if (selectedOpcionId !== null) {
         const currentOpcion = findOpcionByValue(selectedOpcionId);
         const opcionMethod = normalizeMetodoPagoToBackend(currentOpcion?.metodoPago);
@@ -2163,6 +2196,17 @@ const FacturacionPage = () => {
                     <Alert severity="info">
                       Los datos de financiación (cuotas, tasa, entrega inicial) se configuran al confirmar la factura.
                     </Alert>
+                  </Grid>
+                )}
+
+                {!isFinanciamiento(paymentMethod) && metodoPagoRequiereCaja(paymentMethod) && (
+                  <Grid item xs={12}>
+                    <CajaSelector
+                      metodoPago={paymentMethod}
+                      value={cajaContadoRef}
+                      onChange={setCajaContadoRef}
+                      direccion="ingreso"
+                    />
                   </Grid>
                 )}
 
