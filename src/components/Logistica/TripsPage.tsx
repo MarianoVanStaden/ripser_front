@@ -568,9 +568,7 @@ const TripsPage2: React.FC = () => {
 
     const facturaIds = tripDeliveries
       .map(d => {
-        // @ts-expect-error -- optional field not in type definition
         if (d.documentoComercialId) return d.documentoComercialId;
-        // @ts-expect-error -- optional field not in type definition
         if (d.documentoComercial?.id) return d.documentoComercial.id;
         if (d.ventaId) return d.ventaId;
         if (d.venta?.id) return d.venta.id;

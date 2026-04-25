@@ -78,16 +78,14 @@ const ClientesPage: React.FC = () => {
     initialSize: 12,
     defaultSort: 'nombre,asc',
     initialFilters: {
-      sucursalId: sucursalFiltro,
-      ...(tipoFilter ? { tipo: tipoFilter } : {}),
-      ...(estadoFilter ? { estado: estadoFilter } : {}),
+      ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
     },
   });
 
   // Update filters when search/filter values change
   React.useEffect(() => {
     setFilters({
-      sucursalId: sucursalFiltro,
+      ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
       ...(debouncedSearch ? { term: debouncedSearch } : {}),
       ...(tipoFilter ? { tipo: tipoFilter } : {}),
       ...(estadoFilter ? { estado: estadoFilter } : {}),
