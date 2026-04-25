@@ -661,8 +661,8 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
     if (Number.isNaN(n)) return String(value);
     return '$' + n.toLocaleString();
   };
-  const tooltipFormatter = (value: number | string | undefined): [string, string] => {
-    const n = typeof value === 'number' ? value : Number(value ?? 0);
+  const tooltipFormatter = (value: string | number | readonly (string | number)[] | undefined): [string, string] => {
+    const n = typeof value === 'number' ? value : Number(Array.isArray(value) ? value[0] : (value ?? 0));
     const pct = totalSum > 0 ? ((n / totalSum) * 100).toFixed(1) : '0.0';
     return [`${currencyFormatter(n)} (${pct}%)`, 'Total'];
   };
