@@ -31,7 +31,8 @@ import {
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
-import type { Cliente } from '../../types';
+import { usuarioApi } from '../../api/services/usuarioApi';
+import type { Cliente, Usuario } from '../../types';
 import { productApi } from '../../api/services/productApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import {
@@ -48,6 +49,7 @@ import type { Producto, RecetaFabricacionListDTO, ColorEquipo, MedidaEquipo } fr
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
 import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../context/AuthContext';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 export const LeadFormPage = () => {
@@ -55,6 +57,7 @@ export const LeadFormPage = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const { sucursalFiltro, sucursales } = useTenant();
+  const { user } = useAuth();
   const isEditMode = Boolean(id);
   const clienteOrigenIdParam = searchParams.get('clienteId');
   const modoRecompra = searchParams.get('modo') === 'recompra';
@@ -68,6 +71,7 @@ export const LeadFormPage = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
   const [formData, setFormData] = useState<Partial<LeadDTO>>({
     nombre: '',
@@ -78,6 +82,7 @@ export const LeadFormPage = () => {
     estadoLead: EstadoLeadEnum.PRIMER_CONTACTO,
     fechaPrimerContacto: new Date().toISOString().split('T')[0],
     sucursalId: sucursalFiltro ?? undefined,
+    usuarioAsignadoId: user?.id ?? undefined,
     productoInteresId: undefined,
     cantidadProductoInteres: undefined,
     recetaInteresId: undefined,
@@ -135,15 +140,20 @@ export const LeadFormPage = () => {
   const loadCatalogs = async () => {
     try {
       setLoadingCatalogs(true);
-      const [productosResponse, recetasData] = await Promise.all([
+      const [productosResponse, recetasData, usuariosData] = await Promise.all([
         productApi.getAll({ page: 0, size: 1000 }).catch(() => []),
-        recetaFabricacionApi.findAllActive().catch(() => [])
+        recetaFabricacionApi.findAllActive().catch(() => []),
+        // Vendedores primero (visible para todos los roles); fallback a activos.
+        usuarioApi.getVendedores()
+          .then((data) => (data.length > 0 ? data : usuarioApi.getActivos()))
+          .catch(() => usuarioApi.getActivos().catch(() => [])),
       ]);
-      const productosList = Array.isArray(productosResponse) 
-        ? productosResponse 
+      const productosList = Array.isArray(productosResponse)
+        ? productosResponse
         : (productosResponse as any)?.content || [];
       setProductos(productosList);
       setRecetas(recetasData);
+      setUsuarios(usuariosData);
     } catch (err) {
       console.error('Error al cargar catálogos:', err);
     } finally {
@@ -525,6 +535,41 @@ export const LeadFormPage = () => {
                   </FormControl>
                 </Grid>
               )}
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Asesor asignado</InputLabel>
+                  <Select
+                    value={formData.usuarioAsignadoId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({
+                        ...formData,
+                        usuarioAsignadoId: v === '' ? undefined : Number(v),
+                      });
+                    }}
+                    label="Asesor asignado"
+                  >
+                    <MenuItem value=""><em>Sin asignar</em></MenuItem>
+                    {usuarios.map((u) => {
+                      const nombre = u.nombre || (u as any).username || `#${u.id}`;
+                      const apellido = u.apellido || '';
+                      const label = apellido ? `${nombre} ${apellido}` : nombre;
+                      return (
+                        <MenuItem key={u.id} value={u.id}>{label}</MenuItem>
+                      );
+                    })}
+                    {/* Fallback: si el lead está asignado a un user que no está en la lista
+                        (p.ej. admin que no es vendedor), conservar el valor y mostrarlo. */}
+                    {formData.usuarioAsignadoId != null &&
+                     !usuarios.some((u) => u.id === formData.usuarioAsignadoId) && (
+                      <MenuItem value={formData.usuarioAsignadoId}>
+                        Usuario #{formData.usuarioAsignadoId}
+                      </MenuItem>
+                    )}
+                  </Select>
+                </FormControl>
+              </Grid>
 
               {/* Producto de Interés */}
               <Grid item xs={12}>

@@ -17,7 +17,9 @@ import {
   InputAdornment,
   Chip,
   Stack,
-  Button
+  Button,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -56,20 +58,25 @@ export const LeadsTablePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEstados, setSelectedEstados] = useState<EstadoLeadEnum[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadLeadEnum[]>([]);
+  const [soloMisLeads, setSoloMisLeads] = useState(false);
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('dias');
 
-  // Cargar leads al montar el componente y cuando cambia la sucursal
+  // Cargar leads al montar el componente y cuando cambian sucursal o "solo mis leads"
   useEffect(() => {
     loadLeads();
-  }, [sucursalFiltro]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sucursalFiltro, soloMisLeads]);
 
   const loadLeads = async () => {
     try {
       setLoading(true);
       setError(null);
       // First arg is pagination, second is filtering params
-      const response = await leadApi.getAll({}, { sucursalId: sucursalFiltro });
+      const response = await leadApi.getAll(
+        {},
+        { sucursalId: sucursalFiltro, soloMisLeads: soloMisLeads || undefined }
+      );
       const data = response.content;
 
       // Cargar recordatorios para cada lead
@@ -404,6 +411,20 @@ export const LeadsTablePage = () => {
                 />
               ))}
             </Stack>
+          </Box>
+
+          {/* Toggle: solo mis leads (filtro server-side por usuario actual) */}
+          <Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={soloMisLeads}
+                  onChange={(_, checked) => setSoloMisLeads(checked)}
+                  size="small"
+                />
+              }
+              label="Solo mis leads"
+            />
           </Box>
         </Stack>
       </Paper>

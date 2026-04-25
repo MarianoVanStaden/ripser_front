@@ -20,6 +20,8 @@ export interface LeadFilterParams {
   provincias?: string[]; // Assuming simple string or enum
   prioridad?: PrioridadLeadEnum;
   usuarioId?: number;
+  /** Si true, el backend reemplaza usuarioId con el del usuario actual. */
+  soloMisLeads?: boolean;
   busqueda?: string;
   fechaDesde?: string;
   fechaHasta?: string;
