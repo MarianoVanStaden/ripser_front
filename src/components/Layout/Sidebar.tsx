@@ -259,24 +259,60 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
   const { user, esSuperAdmin, logout } = useAuth();
   const { sucursalFiltro, setSucursalFiltro, sucursales, canSelectSucursal, usuarioEmpresa, cambiarSucursal } = useTenant();
   const [openLogoutDialog, setOpenLogoutDialog] = useState(false);
+  const { tieneRol } = usePermisos(); // Extract tieneRol
 
   // Rutas que solo pueden ver los SUPER_ADMIN
   const superAdminOnlyPaths = ['/admin/tenant-selector'];
+  
+  // Rutas denegadas para el rol VENDEDOR
+  const vendedorDeniedPaths = [
+    '/ventas/facturacion',
+    '/ventas/notas-credito',
+    '/ventas/informes',
+    '/ventas/cheques',
+    '/ventas/opciones-financiamiento',
+    '/ventas/configuracion-financiamiento',
+    '/clientes/cuenta-corriente',
+    '/leads/metricas'
+  ];
 
   // Filtrar las secciones según los permisos del usuario
-  const seccionesFiltradas = navigation
+  let seccionesFiltradas = navigation
     .filter((section) => tienePermiso(section.modulo))
     .map((section) => {
+      let filteredItems = section.items;
+
       // Si es la sección de ADMIN, filtrar items según el rol
       if (section.modulo === 'ADMIN' && !esSuperAdmin) {
-        return {
-          ...section,
-          items: section.items.filter(item => !superAdminOnlyPaths.includes(item.path))
-        };
+        filteredItems = filteredItems.filter(item => !superAdminOnlyPaths.includes(item.path));
       }
-      return section;
+
+      // Si el rol es puramente VENDEDOR (y no Admin), ocultar rutas específicas
+      const isVendedor = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('VENDEDOR');
+      if (isVendedor) {
+        filteredItems = filteredItems.filter(item => !vendedorDeniedPaths.includes(item.path));
+      }
+
+      return {
+        ...section,
+        items: filteredItems
+      };
     })
     .filter((section) => section.items.length > 0); // Eliminar secciones sin items
+
+  // Reordenar para que Vendedor vea Clientes primero que Ventas
+  const isVendedorOrder = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('VENDEDOR');
+  if (isVendedorOrder) {
+    const clientesIdx = seccionesFiltradas.findIndex(s => s.modulo === 'CLIENTES');
+    const ventasIdx = seccionesFiltradas.findIndex(s => s.modulo === 'VENTAS');
+    
+    if (clientesIdx !== -1 && ventasIdx !== -1 && clientesIdx > ventasIdx) {
+      // Swapping positions
+      const clientesSection = seccionesFiltradas[clientesIdx];
+      seccionesFiltradas.splice(clientesIdx, 1);
+      seccionesFiltradas.splice(ventasIdx, 0, clientesSection);
+    }
+  }
 
   const handleLogoutClick = () => {
     setOpenLogoutDialog(true);

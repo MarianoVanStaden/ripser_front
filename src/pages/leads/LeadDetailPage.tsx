@@ -484,6 +484,7 @@ export const LeadDetailPage = () => {
           <Box sx={{ mt: 3 }}>
             <InteraccionesTimeline
               leadId={lead.id!}
+              lead={lead}
               interacciones={interacciones}
               onInteraccionesChange={() => {
                 if (id) loadLead(parseInt(id));

@@ -123,11 +123,12 @@ export const TipoInteraccionEnum = {
 export type TipoInteraccionEnum = typeof TipoInteraccionEnum[keyof typeof TipoInteraccionEnum];
 
 export const ResultadoInteraccionEnum = {
-  EXITOSO: 'EXITOSO',
+  EXITOSA: 'EXITOSA',
   SIN_RESPUESTA: 'SIN_RESPUESTA',
   REAGENDAR: 'REAGENDAR',
   NO_INTERESADO: 'NO_INTERESADO',
-  INTERESADO: 'INTERESADO'
+  INTERESADO: 'INTERESADO',
+  CONVERTIDO: 'CONVERTIDO'
 } as const;
 
 export type ResultadoInteraccionEnum = typeof ResultadoInteraccionEnum[keyof typeof ResultadoInteraccionEnum];
@@ -275,17 +276,19 @@ export const TIPO_INTERACCION_ICONS: Record<TipoInteraccionEnum, string> = {
 };
 
 export const RESULTADO_INTERACCION_LABELS: Record<ResultadoInteraccionEnum, string> = {
-  EXITOSO: 'Exitoso',
+  EXITOSA: 'Exitosa',
   SIN_RESPUESTA: 'Sin Respuesta',
   REAGENDAR: 'Reagendar',
   NO_INTERESADO: 'No Interesado',
-  INTERESADO: 'Interesado'
+  INTERESADO: 'Interesado',
+  CONVERTIDO: 'Convertido'
 };
 
 export const RESULTADO_INTERACCION_COLORS: Record<ResultadoInteraccionEnum, string> = {
-  EXITOSO: '#10B981', // Verde
-  SIN_RESPUESTA: '#6B7280', // Gris
-  REAGENDAR: '#F59E0B', // Amarillo
-  NO_INTERESADO: '#EF4444', // Rojo
-  INTERESADO: '#3B82F6' // Azul
+  EXITOSA: '#10B981',
+  SIN_RESPUESTA: '#6B7280',
+  REAGENDAR: '#F59E0B',
+  NO_INTERESADO: '#EF4444',
+  INTERESADO: '#3B82F6',
+  CONVERTIDO: '#8B5CF6'
 };

@@ -39,7 +39,8 @@ import {
 import type {
   InteraccionLeadDTO,
   TipoInteraccionEnum,
-  ResultadoInteraccionEnum
+  ResultadoInteraccionEnum,
+  LeadDTO,
 } from '../../types/lead.types';
 import {
   TIPO_INTERACCION_LABELS,
@@ -49,8 +50,18 @@ import {
 } from '../../types/lead.types';
 import { leadApi } from '../../api/services/leadApi';
 
+const mapLeadPrioridadToRecordatorio = (p?: string) =>
+  p === 'HOT' ? 'ALTA' as const : p === 'WARM' ? 'MEDIA' as const : 'BAJA' as const;
+
+const mapTipoInteraccionToRecordatorio = (tipo: string) =>
+  tipo === 'LLAMADA' ? 'LLAMADA' as const :
+  tipo === 'EMAIL' ? 'EMAIL' as const :
+  tipo === 'WHATSAPP' ? 'WHATSAPP' as const :
+  'TAREA' as const;
+
 interface InteraccionesTimelineProps {
   leadId: number;
+  lead: LeadDTO;
   interacciones: InteraccionLeadDTO[];
   onInteraccionesChange: () => void;
 }
@@ -73,7 +84,7 @@ const TIPO_COLORS: Record<TipoInteraccionEnum, 'primary' | 'secondary' | 'succes
   OTRO: 'info'
 };
 
-export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesChange }: InteraccionesTimelineProps) => {
+export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteraccionesChange }: InteraccionesTimelineProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingInteraccion, setEditingInteraccion] = useState<InteraccionLeadDTO | null>(null);
   const [saving, setSaving] = useState(false);
@@ -124,12 +135,13 @@ export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesCh
     setError(null);
   };
 
+  const proximaAccionRequerida = formData.resultado === 'REAGENDAR';
+
   const handleSubmit = async () => {
     try {
       setSaving(true);
       setError(null);
 
-      // Preparar datos según el backend espera
       const dataToSend: any = {
         tipo: formData.tipo,
         fecha: new Date(formData.fecha!).toISOString(),
@@ -140,12 +152,22 @@ export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesCh
         notasProximaAccion: formData.notasProximaAccion || null
       };
 
-      console.log('📤 Enviando interacción:', dataToSend);
-
       if (editingInteraccion?.id) {
         await leadApi.updateInteraccion(leadId, editingInteraccion.id, dataToSend);
       } else {
         await leadApi.createInteraccion(leadId, dataToSend);
+        if (formData.proximaAccion) {
+          try {
+            await leadApi.createRecordatorio(leadId, {
+              fechaRecordatorio: formData.proximaAccion,
+              tipo: mapTipoInteraccionToRecordatorio(formData.tipo!),
+              mensaje: formData.notasProximaAccion || `Próxima acción: ${formData.tipo}`,
+              prioridad: mapLeadPrioridadToRecordatorio(lead.prioridad),
+            });
+          } catch (recErr) {
+            console.warn('No se pudo crear el recordatorio automático:', recErr);
+          }
+        }
       }
 
       handleCloseDialog();
@@ -169,31 +191,6 @@ export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesCh
     } catch (err: any) {
       console.error('Error al eliminar interacción:', err);
       alert(err.response?.data?.message || 'Error al eliminar la interacción');
-    }
-  };
-
-  const handleGenerarRecordatorio = async (interaccion: InteraccionLeadDTO) => {
-    if (!interaccion.proximaAccion || !interaccion.notasProximaAccion) {
-      alert('Esta interacción no tiene próxima acción definida');
-      return;
-    }
-
-    try {
-      const recordatorioData = {
-        fechaRecordatorio: interaccion.proximaAccion,
-        tipo: interaccion.tipo === 'LLAMADA' ? 'LLAMADA' as const : 
-              interaccion.tipo === 'EMAIL' ? 'EMAIL' as const : 
-              interaccion.tipo === 'WHATSAPP' ? 'WHATSAPP' as const : 'TAREA' as const,
-        mensaje: interaccion.notasProximaAccion,
-        prioridad: 'MEDIA' as const
-      };
-
-      await leadApi.createRecordatorio(leadId, recordatorioData);
-      alert('✅ Recordatorio creado exitosamente');
-      onInteraccionesChange();
-    } catch (err: any) {
-      console.error('Error al crear recordatorio:', err);
-      alert(err.response?.data?.message || 'Error al crear el recordatorio');
     }
   };
 
@@ -309,17 +306,6 @@ export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesCh
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        {interaccion.proximaAccion && interaccion.notasProximaAccion && (
-                          <Tooltip title="Generar Recordatorio">
-                            <IconButton
-                              size="small"
-                              color="warning"
-                              onClick={() => handleGenerarRecordatorio(interaccion)}
-                            >
-                              <AddIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
                         <Tooltip title="Eliminar">
                           <IconButton
                             size="small"
@@ -484,7 +470,11 @@ export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesCh
 
             <Grid item xs={12}>
               <Divider sx={{ my: 1 }}>
-                <Chip label="Próxima Acción" size="small" />
+                <Chip
+                  label={proximaAccionRequerida ? 'Próxima Acción *' : 'Próxima Acción'}
+                  size="small"
+                  color={proximaAccionRequerida ? 'warning' : 'default'}
+                />
               </Divider>
             </Grid>
 
@@ -496,6 +486,9 @@ export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesCh
                 value={formData.proximaAccion || ''}
                 onChange={(e) => setFormData({ ...formData, proximaAccion: e.target.value || undefined })}
                 InputLabelProps={{ shrink: true }}
+                required={proximaAccionRequerida}
+                error={proximaAccionRequerida && !formData.proximaAccion}
+                helperText={proximaAccionRequerida && !formData.proximaAccion ? 'Requerido cuando el resultado es Reagendar' : undefined}
               />
             </Grid>
 
@@ -517,7 +510,7 @@ export const InteraccionesTimeline = ({ leadId, interacciones, onInteraccionesCh
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={saving || !formData.descripcion}
+            disabled={saving || !formData.descripcion || (proximaAccionRequerida && !formData.proximaAccion)}
             startIcon={saving ? <CircularProgress size={16} /> : undefined}
           >
             {saving ? 'Guardando...' : editingInteraccion ? 'Actualizar' : 'Guardar'}

@@ -81,6 +81,15 @@ import type {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+const mapLeadPrioridadToRecordatorio = (p?: string) =>
+  p === 'HOT' ? 'ALTA' as const : p === 'WARM' ? 'MEDIA' as const : 'BAJA' as const;
+
+const mapTipoInteraccionToRecordatorio = (tipo: string) =>
+  tipo === 'LLAMADA' ? 'LLAMADA' as const :
+  tipo === 'EMAIL' ? 'EMAIL' as const :
+  tipo === 'WHATSAPP' ? 'WHATSAPP' as const :
+  'TAREA' as const;
+
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 const getDateStr = (offset: number) => {
@@ -214,14 +223,16 @@ interface InteraccionDialogProps {
   open: boolean;
   leadId: number;
   leadNombre: string;
+  leadPrioridad?: PrioridadType;
   onClose: () => void;
-  onSubmit: (leadId: number, data: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>) => Promise<void>;
+  onSubmit: (leadId: number, data: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>, leadPrioridad?: PrioridadType) => Promise<void>;
 }
 
 const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
   open,
   leadId,
   leadNombre,
+  leadPrioridad,
   onClose,
   onSubmit,
 }) => {
@@ -257,9 +268,15 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
     onClose();
   };
 
+  const proximaAccionRequerida = form.resultado === 'REAGENDAR';
+
   const handleSubmit = async () => {
     if (!form.descripcion.trim()) {
       setFormError('La descripción es requerida.');
+      return;
+    }
+    if (proximaAccionRequerida && !form.proximaAccion) {
+      setFormError('La fecha de próxima acción es requerida cuando el resultado es Reagendar.');
       return;
     }
     setSubmitting(true);
@@ -273,7 +290,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
         duracionMinutos: form.duracionMinutos !== '' ? Number(form.duracionMinutos) : null,
         proximaAccion: form.proximaAccion || null,
         notasProximaAccion: form.notasProximaAccion || null,
-      });
+      }, leadPrioridad);
       handleClose();
     } catch {
       setFormError('Error al registrar la interacción. Intente nuevamente.');
@@ -364,7 +381,11 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
             </Grid>
           </Grid>
 
-          <Divider />
+          <Divider>
+            <Typography variant="caption" color={proximaAccionRequerida ? 'warning.main' : 'text.secondary'}>
+              {proximaAccionRequerida ? 'Próxima Acción *' : 'Próxima Acción'}
+            </Typography>
+          </Divider>
 
           <Grid container spacing={2}>
             <Grid item xs={6}>
@@ -376,6 +397,9 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
                 value={form.proximaAccion}
                 onChange={(e) => setForm((f) => ({ ...f, proximaAccion: e.target.value }))}
                 InputLabelProps={{ shrink: true }}
+                required={proximaAccionRequerida}
+                error={proximaAccionRequerida && !form.proximaAccion}
+                helperText={proximaAccionRequerida && !form.proximaAccion ? 'Requerido cuando resultado es Reagendar' : undefined}
               />
             </Grid>
             <Grid item xs={6}>
@@ -397,7 +421,7 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={submitting}
+          disabled={submitting || (proximaAccionRequerida && !form.proximaAccion)}
           startIcon={submitting ? <CircularProgress size={16} /> : <AddIcon />}
         >
           Registrar
@@ -899,9 +923,34 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
 
   const handleSubmitInteraccion = async (
     leadId: number,
-    data: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>
+    data: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>,
+    leadPrioridad?: PrioridadType
   ) => {
+    const sourceRecordatorioId = selectedForInteraccion?.id;
+
     await crearInteraccion(leadId, data);
+
+    if (data.proximaAccion) {
+      try {
+        await leadApi.createRecordatorio(leadId, {
+          fechaRecordatorio: data.proximaAccion,
+          tipo: mapTipoInteraccionToRecordatorio(data.tipo),
+          mensaje: data.notasProximaAccion || `Próxima acción: ${data.tipo}`,
+          prioridad: mapLeadPrioridadToRecordatorio(leadPrioridad),
+        });
+      } catch (recErr) {
+        console.warn('No se pudo crear el recordatorio automático:', recErr);
+      }
+    }
+
+    if (sourceRecordatorioId) {
+      try {
+        await marcarCompletado(sourceRecordatorioId, leadId);
+      } catch (loopErr) {
+        console.warn('No se pudo cerrar el recordatorio fuente:', loopErr);
+      }
+    }
+
     setActionSuccess('Interacción registrada correctamente.');
     setTimeout(() => setActionSuccess(null), 3000);
   };
@@ -1425,6 +1474,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
           open={interaccionOpen}
           leadId={selectedForInteraccion.leadId}
           leadNombre={getLeadNombre(selectedForInteraccion)}
+          leadPrioridad={selectedForInteraccion.lead?.prioridad}
           onClose={() => {
             setInteraccionOpen(false);
             setSelectedForInteraccion(null);

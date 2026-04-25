@@ -79,7 +79,7 @@ const availableRoles = [
 const systemRoleOptions: { value: TipoRol; label: string; description: string; color: string }[] = [
   { value: 'ADMIN', label: 'Administrador', description: 'Acceso completo a todos los módulos', color: '#c62828' },
   { value: 'GERENTE_SUCURSAL', label: 'Gerente de Sucursal', description: 'Gestión completa de una sucursal', color: '#1976d2' },
-  { value: 'VENDEDOR', label: 'Vendedor', description: 'Acceso a ventas, clientes y garantías', color: '#1565c0' },
+  { value: 'VENDEDOR', label: 'Vendedor', description: 'Acceso a ventas y clientes', color: '#1565c0' },
   { value: 'TALLER', label: 'Técnico de Taller', description: 'Acceso a taller, garantías y logística', color: '#5d4037' },
   { value: 'OFICINA', label: 'Personal de Oficina', description: 'Acceso a ventas, clientes, proveedores y logística', color: '#0288d1' },
   { value: 'USUARIO', label: 'Usuario', description: 'Solo acceso al dashboard', color: '#7b1fa2' },
