@@ -18,13 +18,13 @@ export type CanalEnum = typeof CanalEnum[keyof typeof CanalEnum];
 
 export const EstadoLeadEnum = {
   PRIMER_CONTACTO: 'PRIMER_CONTACTO',
-  CONVERTIDO: 'CONVERTIDO',
-  PERDIDO: 'PERDIDO',
-  DESCARTADO: 'DESCARTADO',
   MOSTRO_INTERES: 'MOSTRO_INTERES',
   CLIENTE_POTENCIAL: 'CLIENTE_POTENCIAL',
   CLIENTE_POTENCIAL_CALIFICADO: 'CLIENTE_POTENCIAL_CALIFICADO',
-  VENTA: 'VENTA'
+  VENTA: 'VENTA',
+  CONVERTIDO: 'CONVERTIDO',
+  DESCARTADO: 'DESCARTADO',
+  PERDIDO: 'PERDIDO'
 } as const;
 
 export type EstadoLeadEnum = typeof EstadoLeadEnum[keyof typeof EstadoLeadEnum];
@@ -203,24 +203,24 @@ export interface ValidationErrors {
 // Constantes
 export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: '#3B82F6', // Azul
-  CONVERTIDO: '#059669', // Verde oscuro
-  PERDIDO: '#EF4444', // Rojo
-  DESCARTADO: '#6B7280', // Gris
   MOSTRO_INTERES: '#8B5CF6', // Púrpura
   CLIENTE_POTENCIAL: '#F59E0B', // Amarillo
   CLIENTE_POTENCIAL_CALIFICADO: '#10B981', // Verde
-  VENTA: '#059669' // Verde oscuro
+  VENTA: '#059669', // Verde oscuro
+  CONVERTIDO: '#059669', // Verde oscuro
+  DESCARTADO: '#6B7280', // Gris
+  PERDIDO: '#EF4444', // Rojo
 };
 
 export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: 'Primer Contacto',
-  CONVERTIDO: 'Convertido',
-  PERDIDO: 'Perdido',
-  DESCARTADO: 'Descartado',
   MOSTRO_INTERES: 'Mostró Interés',
   CLIENTE_POTENCIAL: 'Cliente Potencial',
   CLIENTE_POTENCIAL_CALIFICADO: 'Cliente Potencial Calificado',
-  VENTA: 'Venta'
+  VENTA: 'Venta',
+  CONVERTIDO: 'Convertido',
+  DESCARTADO: 'Descartado',
+  PERDIDO: 'Perdido'
 };
 
 export const PRIORIDAD_COLORS: Record<PrioridadLeadEnum, string> = {
