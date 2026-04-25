@@ -32,6 +32,7 @@ import {
   Divider,
   Link,
   Autocomplete,
+  createFilterOptions,
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
@@ -72,7 +73,8 @@ import type {
 } from '../../types/lead.types';
 import { leadApi } from '../../api/services/leadApi';
 import { usuarioApi } from '../../api/services/usuarioApi';
-import type { Usuario } from '../../types';
+import { sucursalService } from '../../services/sucursalService';
+import type { Sucursal, Usuario } from '../../types';
 import type {
   RecordatorioConLeadDTO,
   RecordatorioGlobalFilterParams,
@@ -549,7 +551,9 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { empresaId } = useTenant();
   const [leads, setLeads] = useState<LeadDTO[]>([]);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadDTO | null>(null);
   const [form, setForm] = useState({
@@ -562,15 +566,58 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Load leads when dialog opens
+  // Load leads + sucursales when dialog opens (en paralelo)
   useEffect(() => {
     if (!open) return;
     setLoadingLeads(true);
-    leadApi.getAll({ page: 0, size: 300 })
+
+    const leadsPromise = leadApi.getAll({ page: 0, size: 300 })
       .then((res) => setLeads(res.content))
-      .catch(() => setLeads([]))
-      .finally(() => setLoadingLeads(false));
-  }, [open]);
+      .catch(() => setLeads([]));
+
+    const sucursalesPromise = empresaId
+      ? sucursalService.getByEmpresa(empresaId)
+          .then((data) => setSucursales(data))
+          .catch(() => setSucursales([]))
+      : Promise.resolve();
+
+    Promise.all([leadsPromise, sucursalesPromise]).finally(() => setLoadingLeads(false));
+  }, [open, empresaId]);
+
+  // Map sucursalId → nombre, para el render y el sort.
+  const sucursalNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    sucursales.forEach((s) => {
+      if (s.id != null) map.set(s.id, s.nombre);
+    });
+    return map;
+  }, [sucursales]);
+
+  const SIN_SUCURSAL_LABEL = 'Sin sucursal';
+
+  const getSucursalLabel = (lead: LeadDTO) => {
+    if (lead.sucursalId == null) return SIN_SUCURSAL_LABEL;
+    return sucursalNameById.get(lead.sucursalId) ?? `Sucursal #${lead.sucursalId}`;
+  };
+
+  // Orden: por sucursal alfabética (Sin sucursal al final), luego por nombre del lead.
+  const sortedLeads = useMemo(() => {
+    const collator = new Intl.Collator('es', { sensitivity: 'base' });
+    return [...leads].sort((a, b) => {
+      const sa = getSucursalLabel(a);
+      const sb = getSucursalLabel(b);
+      // "Sin sucursal" al final
+      if (sa !== sb) {
+        if (sa === SIN_SUCURSAL_LABEL) return 1;
+        if (sb === SIN_SUCURSAL_LABEL) return -1;
+        return collator.compare(sa, sb);
+      }
+      const na = `${a.nombre ?? ''} ${a.apellido ?? ''}`.trim();
+      const nb = `${b.nombre ?? ''} ${b.apellido ?? ''}`.trim();
+      return collator.compare(na, nb);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, sucursalNameById]);
 
   const handleClose = () => {
     setSelectedLead(null);
@@ -629,17 +676,65 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
         <Stack spacing={2} mt={0.5}>
           {formError && <Alert severity="error">{formError}</Alert>}
 
-          {/* Lead selector */}
+          {/* Lead selector — agrupado y ordenado por sucursal */}
           <Autocomplete
-            options={leads}
+            options={sortedLeads}
             loading={loadingLeads}
             value={selectedLead}
             onChange={(_, value) => setSelectedLead(value)}
             getOptionLabel={getLeadLabel}
             isOptionEqualToValue={(a, b) => a.id === b.id}
-            renderOption={(props, option) => (
-              <li {...props} key={option.id}>
-                {getLeadLabel(option)}
+            groupBy={(option) => getSucursalLabel(option)}
+            filterOptions={createFilterOptions<LeadDTO>({
+              stringify: (lead) =>
+                [
+                  lead.nombre,
+                  lead.apellido,
+                  lead.telefono,
+                  lead.email,
+                  getSucursalLabel(lead),
+                ]
+                  .filter(Boolean)
+                  .join(' '),
+            })}
+            renderOption={(props, option) => {
+              const sucursalLabel = getSucursalLabel(option);
+              return (
+                <li {...props} key={option.id}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 1 }}>
+                    <Typography variant="body2" component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {getLeadLabel(option)}
+                    </Typography>
+                    <Chip
+                      label={sucursalLabel}
+                      size="small"
+                      variant="outlined"
+                      sx={{ flexShrink: 0, height: 20, fontSize: '0.7rem' }}
+                    />
+                  </Box>
+                </li>
+              );
+            }}
+            renderGroup={(params) => (
+              <li key={params.key}>
+                <Box
+                  sx={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1,
+                    bgcolor: 'grey.100',
+                    px: 2,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: 'text.secondary',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {params.group}
+                </Box>
+                <ul style={{ padding: 0, margin: 0 }}>{params.children}</ul>
               </li>
             )}
             renderInput={(params) => (
@@ -647,7 +742,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
                 {...params}
                 label="Lead *"
                 size="small"
-                placeholder="Buscar por nombre o teléfono..."
+                placeholder="Buscar por nombre, teléfono o sucursal..."
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (

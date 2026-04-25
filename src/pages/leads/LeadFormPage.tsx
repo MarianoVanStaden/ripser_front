@@ -72,6 +72,7 @@ export const LeadFormPage = () => {
   const [formData, setFormData] = useState<Partial<LeadDTO>>({
     nombre: '',
     telefono: '',
+    email: '',
     provincia: undefined,
     canal: CanalEnum.WHATSAPP,
     estadoLead: EstadoLeadEnum.PRIMER_CONTACTO,
@@ -195,6 +196,14 @@ export const LeadFormPage = () => {
 
     if (!formData.telefono || formData.telefono.trim() === '') {
       newErrors.telefono = 'El teléfono es obligatorio';
+    }
+
+    // Email es opcional, pero si se carga debe tener formato válido.
+    if (formData.email && formData.email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = 'Formato de email inválido';
+      }
     }
 
     if (!formData.canal) {
@@ -411,6 +420,20 @@ export const LeadFormPage = () => {
                   onChange={handleChange('telefono')}
                   error={Boolean(errors.telefono)}
                   helperText={errors.telefono}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="email"
+                  label="Email"
+                  placeholder="opcional"
+                  value={formData.email ?? ''}
+                  onChange={handleChange('email')}
+                  error={Boolean(errors.email)}
+                  helperText={errors.email}
+                  inputProps={{ inputMode: 'email', autoComplete: 'email' }}
                 />
               </Grid>
 
