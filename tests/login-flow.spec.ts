@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { FAKE_JWT, loginAs, FAKE_USER } from './helpers/auth';
+import { FAKE_JWT, FAKE_USER } from './helpers/auth';
 
 // Playwright route priority: LAST registered = HIGHEST priority (checked first).
 // Always register the catch-all FIRST, specific mocks LAST.
@@ -20,6 +20,7 @@ const MOCK_LOGIN_RESPONSE = {
  * Registers a catch-all that returns empty paginated data (and aborts SSE),
  * then registers specific endpoint overrides at higher priority.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function mockApis(page: import('@playwright/test').Page, overrides: Record<string, object | number> = {}) {
   // Catch-all first (lowest priority) — skip Vite source files, abort SSE
   await page.route('**/api/**', (route) => {

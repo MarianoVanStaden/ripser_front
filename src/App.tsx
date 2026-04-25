@@ -17,7 +17,9 @@ import { TenantProvider } from './context/TenantContext';
 // are named exports re-exported through barrel files. `lazyNamed` pulls the
 // right export and adapts it to lazy()'s shape without eagerly evaluating the
 // module.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const lazyNamed = <T extends ComponentType<any>>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   loader: () => Promise<Record<string, any>>,
   name: string,
 ) => lazy(async () => {

@@ -658,9 +658,9 @@ const DeliveriesPage2: React.FC = () => {
 
   const getFacturaByDelivery = (delivery: EntregaViaje): DocumentoComercial | undefined => {
     let facturaId: number | undefined;
-    // @ts-ignore
+    // @ts-expect-error -- optional field not in type definition
     if (delivery.documentoComercialId) facturaId = delivery.documentoComercialId;
-    // @ts-ignore
+    // @ts-expect-error -- optional field not in type definition
     else if (delivery.documentoComercial?.id) facturaId = delivery.documentoComercial.id;
     else if (delivery.ventaId) facturaId = delivery.ventaId;
     else if (delivery.venta?.id) facturaId = delivery.venta.id;

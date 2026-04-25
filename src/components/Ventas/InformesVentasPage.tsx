@@ -569,11 +569,12 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
         case 'Estado':
           key = getStatusLabel(sale.estado);
           break;
-        case 'Método de Pago':
+        case 'Método de Pago': {
           const tipoLabel = sale.tipoDocumento === 'NOTA_CREDITO' ? 'NC' : 'FAC';
           const paymentLabel = getPaymentMethodLabel(sale.metodoPago || sale.metodo_pago);
           key = `${paymentLabel} (${tipoLabel})`;
           break;
+        }
         case 'Cliente':
           key = getClientFullName(sale.cliente);
           break;

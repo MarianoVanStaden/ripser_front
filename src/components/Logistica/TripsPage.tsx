@@ -568,9 +568,9 @@ const TripsPage2: React.FC = () => {
 
     const facturaIds = tripDeliveries
       .map(d => {
-        // @ts-ignore
+        // @ts-expect-error -- optional field not in type definition
         if (d.documentoComercialId) return d.documentoComercialId;
-        // @ts-ignore
+        // @ts-expect-error -- optional field not in type definition
         if (d.documentoComercial?.id) return d.documentoComercial.id;
         if (d.ventaId) return d.ventaId;
         if (d.venta?.id) return d.venta.id;
@@ -631,7 +631,7 @@ const TripsPage2: React.FC = () => {
               isOptionEqualToValue={(a, b) => a.id === b.id}
               value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
               onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
-              renderOption={({ key, ...props }, option) => (
+              renderOption={({ key: _key, ...props }, option) => (
                 <li key={option.id} {...props}>
                   {`${option.nombre} ${option.apellido}`}
                 </li>
@@ -1479,7 +1479,7 @@ const TripsPage2: React.FC = () => {
                 isOptionEqualToValue={(a, b) => a.id === b.id}
                 value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
                 onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
-                renderOption={({ key, ...props }, option) => (
+                renderOption={({ key: _key, ...props }, option) => (
                   <li key={option.id} {...props}>
                     {`${option.nombre} ${option.apellido}`}
                   </li>

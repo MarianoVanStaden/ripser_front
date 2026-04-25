@@ -246,7 +246,7 @@ const EmpleadosPage: React.FC = () => {
         }
       }
 
-      const { confirmPassword, ...payload } = formData;
+      const { confirmPassword: _confirmPassword, ...payload } = formData;
       if (!payload.crearUsuario) {
         delete payload.usuarioPassword;
       }

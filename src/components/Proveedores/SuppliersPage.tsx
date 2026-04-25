@@ -134,7 +134,7 @@ const SuppliersPage: React.FC = () => {
     }
 
     // Validar Teléfono (opcional pero si está, debe ser válido)
-    if (formData.telefono && !/^[\d\s\-\+\(\)]{7,20}$/.test(formData.telefono)) {
+    if (formData.telefono && !/^[\d\s\-+()]{7,20}$/.test(formData.telefono)) {
       errors.telefono = 'Formato de teléfono inválido';
     }
 

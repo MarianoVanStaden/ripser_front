@@ -240,15 +240,16 @@ const FlujoCajaPage: React.FC = () => {
       case 'today':
         fechaDesde = today.toISOString().split('T')[0];
         break;
-      case 'week':
+      case 'week': {
         const weekAgo = new Date(today);
         weekAgo.setDate(today.getDate() - 7);
         fechaDesde = weekAgo.toISOString().split('T')[0];
         break;
+      }
       case 'month':
         fechaDesde = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
         break;
-      case 'last_month':
+      case 'last_month': {
         const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
         setFilters({
@@ -257,16 +258,19 @@ const FlujoCajaPage: React.FC = () => {
           fechaHasta: lastMonthEnd.toISOString().split('T')[0],
         });
         return;
-      case '3_months':
+      }
+      case '3_months': {
         const threeMonthsAgo = new Date(today);
         threeMonthsAgo.setMonth(today.getMonth() - 3);
         fechaDesde = threeMonthsAgo.toISOString().split('T')[0];
         break;
-      case '6_months':
+      }
+      case '6_months': {
         const sixMonthsAgo = new Date(today);
         sixMonthsAgo.setMonth(today.getMonth() - 6);
         fechaDesde = sixMonthsAgo.toISOString().split('T')[0];
         break;
+      }
       case 'year':
         fechaDesde = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
         break;

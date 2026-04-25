@@ -32,10 +32,8 @@ import { movimientoStockApi } from '../../api/services';
 import type { MovimientoStock } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 
-interface RecountTask extends MovimientoStock {
-  // All fields from MovimientoStock, particularly:
-  // id, producto, stockAnterior, stockActual (null for pending), concepto
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface RecountTask extends MovimientoStock {}
 
 const RecountTasksPage: React.FC = () => {
   const [tasks, setTasks] = useState<RecountTask[]>([]);

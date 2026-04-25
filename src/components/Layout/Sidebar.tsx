@@ -277,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
   ];
 
   // Filtrar las secciones según los permisos del usuario
-  let seccionesFiltradas = navigation
+  const seccionesFiltradas = navigation
     .filter((section) => tienePermiso(section.modulo))
     .map((section) => {
       let filteredItems = section.items;

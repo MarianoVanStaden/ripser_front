@@ -39,13 +39,13 @@ describe('usePermisos', () => {
       expect(result.current.tienePermiso('PRODUCCION')).toBe(true);
     });
 
-    it('VENDEDOR has access to VENTAS, CLIENTES, GARANTIAS only', () => {
+    it('VENDEDOR has access to VENTAS, CLIENTES only', () => {
       mockAuth(['VENDEDOR']);
       const { result } = renderHook(() => usePermisos(), { wrapper });
 
       expect(result.current.tienePermiso('VENTAS')).toBe(true);
       expect(result.current.tienePermiso('CLIENTES')).toBe(true);
-      expect(result.current.tienePermiso('GARANTIAS')).toBe(true);
+      expect(result.current.tienePermiso('GARANTIAS')).toBe(false);
       expect(result.current.tienePermiso('DASHBOARD')).toBe(false);
       expect(result.current.tienePermiso('RRHH')).toBe(false);
       expect(result.current.tienePermiso('TALLER')).toBe(false);

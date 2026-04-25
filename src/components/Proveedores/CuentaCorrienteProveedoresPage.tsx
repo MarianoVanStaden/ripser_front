@@ -383,7 +383,7 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
               sx={{ minWidth: { xs: '100%', sm: 220 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               size={isMobile ? 'small' : 'medium'}
               renderOption={(props, option) => {
-                const { key, ...otherProps } = props;
+                const { key: _key, ...otherProps } = props;
                 return (
                   <li key={option.id} {...otherProps}>
                     {option.razonSocial || option.nombre}

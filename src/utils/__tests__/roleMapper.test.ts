@@ -8,8 +8,8 @@ import {
 
 describe('roleMapper', () => {
   describe('ROLES_EMPRESA_OPTIONS', () => {
-    it('has 5 role options', () => {
-      expect(ROLES_EMPRESA_OPTIONS).toHaveLength(5);
+    it('has 7 role options', () => {
+      expect(ROLES_EMPRESA_OPTIONS).toHaveLength(7);
     });
 
     it('includes all expected roles', () => {
@@ -18,6 +18,8 @@ describe('roleMapper', () => {
       expect(values).toContain('ADMIN_EMPRESA');
       expect(values).toContain('GERENTE_SUCURSAL');
       expect(values).toContain('SUPERVISOR');
+      expect(values).toContain('TALLER');
+      expect(values).toContain('OFICINA');
       expect(values).toContain('USUARIO_SUCURSAL');
     });
 
@@ -26,6 +28,8 @@ describe('roleMapper', () => {
       const values = sucursalRoles.map(r => r.value);
       expect(values).toContain('GERENTE_SUCURSAL');
       expect(values).toContain('SUPERVISOR');
+      expect(values).toContain('TALLER');
+      expect(values).toContain('OFICINA');
       expect(values).toContain('USUARIO_SUCURSAL');
       expect(values).not.toContain('SUPER_ADMIN');
       expect(values).not.toContain('ADMIN_EMPRESA');
@@ -84,13 +88,13 @@ describe('roleMapper', () => {
   describe('getAvailableRolesForUser', () => {
     it('super admin gets all roles', () => {
       const roles = getAvailableRolesForUser(true);
-      expect(roles).toHaveLength(5);
+      expect(roles).toHaveLength(7);
       expect(roles.map(r => r.value)).toContain('SUPER_ADMIN');
     });
 
     it('non-super admin cannot create SUPER_ADMIN', () => {
       const roles = getAvailableRolesForUser(false);
-      expect(roles).toHaveLength(4);
+      expect(roles).toHaveLength(6);
       expect(roles.map(r => r.value)).not.toContain('SUPER_ADMIN');
     });
   });

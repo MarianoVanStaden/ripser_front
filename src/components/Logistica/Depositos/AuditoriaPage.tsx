@@ -219,24 +219,27 @@ const AuditoriaPage: React.FC = () => {
         setFechaInicio(today);
         setFechaFin(now);
         break;
-      case 'week':
+      case 'week': {
         const weekStart = new Date(today);
         weekStart.setDate(today.getDate() - 7);
         setFechaInicio(weekStart);
         setFechaFin(now);
         break;
-      case 'month':
+      }
+      case 'month': {
         const monthStart = new Date(today);
         monthStart.setDate(today.getDate() - 30);
         setFechaInicio(monthStart);
         setFechaFin(now);
         break;
-      case 'quarter':
+      }
+      case 'quarter': {
         const quarterStart = new Date(today);
         quarterStart.setDate(today.getDate() - 90);
         setFechaInicio(quarterStart);
         setFechaFin(now);
         break;
+      }
     }
   };
 

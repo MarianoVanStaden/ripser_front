@@ -185,7 +185,7 @@ export const LeadsTablePage = () => {
 
   // Filtrar y ordenar leads
   const processedLeads = useMemo(() => {
-    let filtered = leads.filter((lead) => {
+    const filtered = leads.filter((lead) => {
       // Filtro por búsqueda
       if (searchTerm.trim() !== '') {
         const busqueda = searchTerm.toLowerCase();
@@ -233,12 +233,12 @@ export const LeadsTablePage = () => {
           aValue = a.estadoLead;
           bValue = b.estadoLead;
           break;
-        case 'prioridad':
-          // Ordenar por prioridad: HOT > WARM > COLD
+        case 'prioridad': {
           const prioridadOrder = { HOT: 1, WARM: 2, COLD: 3 };
           aValue = a.prioridad ? prioridadOrder[a.prioridad] : 999;
           bValue = b.prioridad ? prioridadOrder[b.prioridad] : 999;
           break;
+        }
         case 'dias':
           aValue = calcularDias(a.fechaPrimerContacto);
           bValue = calcularDias(b.fechaPrimerContacto);

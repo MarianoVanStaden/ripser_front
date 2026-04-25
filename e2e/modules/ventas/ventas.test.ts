@@ -24,7 +24,6 @@ test.describe('Ventas — Documentos Comerciales', () => {
   // ── 4.1: Full flow: Presupuesto → Nota de Pedido → Factura ────────────────
 
   test('4.1 should complete full sales flow: presupuesto → nota pedido → factura', async ({
-    page,
     ventasPage,
     api,
   }) => {
@@ -368,7 +367,6 @@ test.describe('Ventas — Documentos Comerciales', () => {
 
   test('4.7 should list all documents linked to a specific client via API', async ({
     ventasPage,
-    page,
     api,
   }) => {
     const clienteData = DataFactory.cliente();
