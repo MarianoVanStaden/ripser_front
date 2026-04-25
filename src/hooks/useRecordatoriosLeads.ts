@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { recordatorioLeadApi } from '../api/services/recordatorioLeadApi';
 import { leadApi } from '../api/services/leadApi';
 import type {
@@ -7,6 +8,11 @@ import type {
   ConteosRecordatoriosDTO,
 } from '../api/services/recordatorioLeadApi';
 import type { InteraccionLeadDTO } from '../types/lead.types';
+import { QUERY_KEYS } from '../utils/queryKeys';
+
+// ---------------------------------------------------------------------------
+// Helpers puros
+// ---------------------------------------------------------------------------
 
 const PRIORIDAD_ORDER: Record<string, number> = { HOT: 0, WARM: 1, COLD: 2 };
 
@@ -37,9 +43,15 @@ const computeConteos = (list: RecordatorioConLeadDTO[]): ConteosRecordatoriosDTO
   };
 };
 
+interface RecordatoriosResult {
+  content: RecordatorioConLeadDTO[];
+  totalElements: number;
+  usingFallback: boolean;
+}
+
 /**
  * Fallback: carga todos los leads y aplana sus recordatorios pendientes.
- * Usado cuando el endpoint global /api/recordatorios no está disponible.
+ * Usado cuando el endpoint global /api/recordatorios responde 403/404.
  */
 const loadViaLeads = async (
   filters: RecordatorioGlobalFilterParams
@@ -93,179 +105,213 @@ const INITIAL_CONTEOS: ConteosRecordatoriosDTO = {
   hoy: 0,
 };
 
-export const useRecordatoriosLeads = () => {
-  const [recordatorios, setRecordatorios] = useState<RecordatorioConLeadDTO[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
-  const [conteos, setConteos] = useState<ConteosRecordatoriosDTO>(INITIAL_CONTEOS);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [usingFallback, setUsingFallback] = useState(false);
+// ---------------------------------------------------------------------------
+// Hook — React Query + invalidación SSE-driven
+//
+// Acepta los filtros como argumento; la queryKey reacciona automáticamente
+// cuando cambian. Las mutaciones invalidan localmente; los eventos SSE
+// (crm.recordatorio.actualizado) los invalida también vía EVENT_QUERY_MAP.
+// ---------------------------------------------------------------------------
+export const useRecordatoriosLeads = (
+  filters: RecordatorioGlobalFilterParams = {}
+) => {
+  const queryClient = useQueryClient();
 
-  /**
-   * Carga los conteos globales (totalPendientes, vencidos, hoy).
-   * No depende del filtro de fecha activo — siempre muestra el total real.
-   */
-  const loadConteos = useCallback(
-    async (params?: { usuarioId?: number; sucursalId?: number }) => {
+  // -------------------------------------------------------------------------
+  // Query principal: lista de recordatorios filtrada
+  // -------------------------------------------------------------------------
+  const recordatoriosQuery = useQuery<RecordatoriosResult, Error>({
+    queryKey: QUERY_KEYS.RECORDATORIOS(filters),
+    queryFn: async () => {
       try {
-        const data = await recordatorioLeadApi.getConteos(params);
-        setConteos(data);
-      } catch {
-        // El endpoint de conteos es opcional — si falla, se calculan desde los datos cargados
-      }
-    },
-    []
-  );
-
-  const loadRecordatorios = useCallback(
-    async (filters: RecordatorioGlobalFilterParams = {}) => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Cargar conteos globales en paralelo (sin filtro de fecha)
-        loadConteos({
-          usuarioId: filters.usuarioId,
-          sucursalId: filters.sucursalId,
-        });
-
-        // Intentar endpoint global primero
-        try {
-          const response = await recordatorioLeadApi.getAll(
-            { page: 0, size: 500 },
-            { enviado: false, ...filters }
-          );
-          const sorted = sortRecordatorios(response.content);
-          setRecordatorios(sorted);
-          setTotalElements(response.totalElements);
-          setUsingFallback(false);
-          // Si conteos no cargó (aún), calcular desde el dataset completo sin filtro de fecha
-          // El loadConteos async ya se encargó de eso
-          return;
-        } catch (err: any) {
-          const status = err?.response?.status;
-          if (status !== 403 && status !== 404) throw err;
-          console.warn(
-            `[Recordatorios] Endpoint global respondió ${status}. Usando fallback via /api/leads.`
-          );
-          setUsingFallback(true);
-        }
-
-        // Fallback: cargar via leads individuales
+        const response = await recordatorioLeadApi.getAll(
+          { page: 0, size: 500 },
+          { enviado: false, ...filters }
+        );
+        return {
+          content: sortRecordatorios(response.content),
+          totalElements: response.totalElements,
+          usingFallback: false,
+        };
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status !== 403 && status !== 404) throw err;
+        console.warn(
+          `[Recordatorios] Endpoint global respondió ${status}. Usando fallback via /api/leads.`
+        );
         const data = await loadViaLeads(filters);
-        setRecordatorios(data);
-        setTotalElements(data.length);
-        // Calcular conteos client-side desde todos los leads (sin filtro de fecha)
-        // Para el fallback usamos los datos ya cargados como aproximación
-        const dataTodos = await loadViaLeads({ sucursalId: filters.sucursalId, usuarioId: filters.usuarioId });
-        setConteos(computeConteos(dataTodos));
-      } catch (err) {
-        console.error('Error loading recordatorios:', err);
-        setError('Error al cargar los recordatorios. Verifique la conexión con el servidor.');
-      } finally {
-        setLoading(false);
+        return {
+          content: data,
+          totalElements: data.length,
+          usingFallback: true,
+        };
       }
     },
-    [loadConteos]
-  );
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+  });
 
-  /**
-   * Marca como completado usando el endpoint per-lead (funcional).
-   * También intenta el endpoint global si está disponible.
-   */
-  const marcarCompletado = useCallback(async (recordatorioId: number, leadId: number) => {
-    if (!usingFallback) {
+  // -------------------------------------------------------------------------
+  // Query de conteos globales (sin filtro de fecha — refleja totales reales)
+  // -------------------------------------------------------------------------
+  const conteosQuery = useQuery<ConteosRecordatoriosDTO, Error>({
+    queryKey: QUERY_KEYS.RECORDATORIOS_CONTEOS(filters.sucursalId, filters.usuarioId),
+    queryFn: async () => {
       try {
-        await recordatorioLeadApi.marcarEnviado(recordatorioId);
+        return await recordatorioLeadApi.getConteos({
+          sucursalId: filters.sucursalId,
+          usuarioId: filters.usuarioId,
+        });
       } catch {
-        // Fallback a per-lead
-        await leadApi.marcarRecordatorioEnviado(leadId, recordatorioId);
+        // Fallback: derivar conteos del dataset cargado vía leads.
+        const data = await loadViaLeads({
+          sucursalId: filters.sucursalId,
+          usuarioId: filters.usuarioId,
+        });
+        return computeConteos(data);
       }
-    } else {
-      await leadApi.marcarRecordatorioEnviado(leadId, recordatorioId);
-    }
+    },
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+  });
 
-    setRecordatorios((prev) => prev.filter((r) => r.id !== recordatorioId));
-    setTotalElements((prev) => Math.max(0, prev - 1));
-    setConteos((prev) => ({
-      ...prev,
-      totalPendientes: Math.max(0, prev.totalPendientes - 1),
-    }));
-  }, [usingFallback]);
+  // -------------------------------------------------------------------------
+  // Mutations
+  //
+  // Invalidan proactivamente (mejor UX que esperar al evento SSE de retorno,
+  // sobre todo si la conexión está degradada). El evento SSE actúa como
+  // confirmación / sincronización para otras pestañas y otros usuarios.
+  // -------------------------------------------------------------------------
+  const usingFallback = recordatoriosQuery.data?.usingFallback ?? false;
 
-  /**
-   * Reprograma la fecha usando el endpoint per-lead (funcional).
-   */
-  const reprogramar = useCallback(
-    async (recordatorioId: number, leadId: number, nuevaFecha: string) => {
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['recordatorios'] });
+    queryClient.invalidateQueries({ queryKey: ['recordatoriosConteos'] });
+  };
+
+  const marcarCompletadoMutation = useMutation({
+    mutationFn: async ({
+      recordatorioId,
+      leadId,
+    }: {
+      recordatorioId: number;
+      leadId: number;
+    }) => {
       if (!usingFallback) {
         try {
-          const updated = await recordatorioLeadApi.update(recordatorioId, {
-            fechaRecordatorio: nuevaFecha,
-          });
-          setRecordatorios((prev) =>
-            prev.map((r) =>
-              r.id === recordatorioId
-                ? { ...r, fechaRecordatorio: updated.fechaRecordatorio, hora: updated.hora }
-                : r
-            )
-          );
+          await recordatorioLeadApi.marcarEnviado(recordatorioId);
           return;
         } catch {
-          // Fallback a per-lead
+          await leadApi.marcarRecordatorioEnviado(leadId, recordatorioId);
+          return;
         }
       }
-      const updated = await leadApi.updateRecordatorio(leadId, recordatorioId, {
+      await leadApi.marcarRecordatorioEnviado(leadId, recordatorioId);
+    },
+    onSuccess: invalidateAll,
+  });
+
+  const reprogramarMutation = useMutation({
+    mutationFn: async ({
+      recordatorioId,
+      leadId,
+      nuevaFecha,
+    }: {
+      recordatorioId: number;
+      leadId: number;
+      nuevaFecha: string;
+    }) => {
+      if (!usingFallback) {
+        try {
+          await recordatorioLeadApi.update(recordatorioId, {
+            fechaRecordatorio: nuevaFecha,
+          });
+          return;
+        } catch {
+          // fallthrough al per-lead
+        }
+      }
+      await leadApi.updateRecordatorio(leadId, recordatorioId, {
         fechaRecordatorio: nuevaFecha,
       });
-      setRecordatorios((prev) =>
-        prev.map((r) =>
-          r.id === recordatorioId
-            ? { ...r, fechaRecordatorio: updated.fechaRecordatorio }
-            : r
-        )
-      );
     },
-    [usingFallback]
-  );
+    onSuccess: invalidateAll,
+  });
 
-  /**
-   * Registra una interacción en un lead.
-   */
-  const crearInteraccion = useCallback(
-    async (
-      leadId: number,
-      interaccion: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>
-    ) => {
+  const crearInteraccionMutation = useMutation({
+    mutationFn: async ({
+      leadId,
+      interaccion,
+    }: {
+      leadId: number;
+      interaccion: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>;
+    }) => {
       return await leadApi.createInteraccion(leadId, interaccion);
     },
-    []
-  );
+    // No invalida recordatorios: la interacción es una entidad separada.
+  });
 
-  /**
-   * Crea un nuevo recordatorio para un lead.
-   */
-  const crearRecordatorio = useCallback(
-    async (
-      leadId: number,
-      data: Parameters<typeof leadApi.createRecordatorio>[1]
-    ) => {
+  const crearRecordatorioMutation = useMutation({
+    mutationFn: async ({
+      leadId,
+      data,
+    }: {
+      leadId: number;
+      data: Parameters<typeof leadApi.createRecordatorio>[1];
+    }) => {
       return await leadApi.createRecordatorio(leadId, data);
     },
-    []
-  );
+    onSuccess: invalidateAll,
+  });
 
-  return {
-    recordatorios,
-    totalElements,
-    conteos,
-    loading,
-    error,
-    usingFallback,
-    loadRecordatorios,
-    loadConteos,
-    marcarCompletado,
-    reprogramar,
-    crearInteraccion,
-    crearRecordatorio,
-  };
+  // -------------------------------------------------------------------------
+  // API estable hacia la página (compat con el hook anterior + refetch)
+  // -------------------------------------------------------------------------
+  const recordatorios = recordatoriosQuery.data?.content ?? [];
+  const totalElements = recordatoriosQuery.data?.totalElements ?? 0;
+  const conteos = conteosQuery.data ?? INITIAL_CONTEOS;
+  const error = recordatoriosQuery.error
+    ? 'Error al cargar los recordatorios. Verifique la conexión con el servidor.'
+    : null;
+
+  return useMemo(
+    () => ({
+      recordatorios,
+      totalElements,
+      conteos,
+      loading: recordatoriosQuery.isLoading,
+      isFetching: recordatoriosQuery.isFetching,
+      error,
+      usingFallback,
+      /** Force-resync manual (botón de refresh). La lista se actualiza sola vía SSE. */
+      refetch: () => {
+        recordatoriosQuery.refetch();
+        conteosQuery.refetch();
+      },
+      marcarCompletado: (recordatorioId: number, leadId: number) =>
+        marcarCompletadoMutation.mutateAsync({ recordatorioId, leadId }),
+      reprogramar: (recordatorioId: number, leadId: number, nuevaFecha: string) =>
+        reprogramarMutation.mutateAsync({ recordatorioId, leadId, nuevaFecha }),
+      crearInteraccion: (
+        leadId: number,
+        interaccion: Omit<InteraccionLeadDTO, 'id' | 'leadId' | 'fechaCreacion'>
+      ) => crearInteraccionMutation.mutateAsync({ leadId, interaccion }),
+      crearRecordatorio: (
+        leadId: number,
+        data: Parameters<typeof leadApi.createRecordatorio>[1]
+      ) => crearRecordatorioMutation.mutateAsync({ leadId, data }),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      recordatorios,
+      totalElements,
+      conteos,
+      recordatoriosQuery.isLoading,
+      recordatoriosQuery.isFetching,
+      error,
+      usingFallback,
+    ]
+  );
 };

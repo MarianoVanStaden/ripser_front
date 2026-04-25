@@ -1,5 +1,7 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useRecordatoriosLeads } from '../useRecordatoriosLeads';
 
 vi.mock('../../api/services/recordatorioLeadApi', () => ({
@@ -44,7 +46,18 @@ const makeRecordatorio = (id: number, fecha: string) => ({
   },
 });
 
-describe('useRecordatoriosLeads', () => {
+const buildWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0, staleTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: queryClient }, children);
+};
+
+describe('useRecordatoriosLeads (React Query)', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
@@ -57,17 +70,6 @@ describe('useRecordatoriosLeads', () => {
   afterEach(() => {
     consoleErrorSpy.mockRestore();
     consoleWarnSpy.mockRestore();
-  });
-
-  it('starts with initial state', () => {
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    expect(result.current.recordatorios).toEqual([]);
-    expect(result.current.totalElements).toBe(0);
-    expect(result.current.conteos).toEqual({ totalPendientes: 0, vencidos: 0, hoy: 0 });
-    expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBeNull();
-    expect(result.current.usingFallback).toBe(false);
   });
 
   it('loads recordatorios from global endpoint', async () => {
@@ -85,26 +87,23 @@ describe('useRecordatoriosLeads', () => {
     } as any);
     mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 5, vencidos: 2, hoy: 1 });
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    await act(async () => {
-      await result.current.loadRecordatorios();
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
     });
 
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
     expect(result.current.recordatorios).toHaveLength(2);
-    // Sorted by date ascending
+    // Ordenado ascendente por fecha
     expect(result.current.recordatorios[0].fechaRecordatorio).toBe('2024-01-10');
     expect(result.current.totalElements).toBe(2);
     expect(result.current.usingFallback).toBe(false);
-    expect(result.current.loading).toBe(false);
   });
 
   it('falls back to lead-based loading on 403', async () => {
-    // Global endpoint returns 403
     mockedRecApi.getAll.mockRejectedValue({ response: { status: 403 } });
     mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 0, vencidos: 0, hoy: 0 });
 
-    // Fallback: loadViaLeads
     mockedLeadApi.getAll.mockResolvedValue({
       content: [{ id: 1, nombre: 'Lead 1', prioridad: 'HOT' }],
       totalElements: 1,
@@ -117,26 +116,20 @@ describe('useRecordatoriosLeads', () => {
       empty: false,
     } as any);
     mockedLeadApi.getRecordatorios.mockResolvedValue([
-      {
-        id: 10,
-        fechaRecordatorio: '2024-01-20',
-        tipo: 'EMAIL',
-        mensaje: 'test',
-        enviado: false,
-      },
+      { id: 10, fechaRecordatorio: '2024-01-20', tipo: 'EMAIL', mensaje: 'test', enviado: false },
     ] as any);
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    await act(async () => {
-      await result.current.loadRecordatorios();
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
     });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.usingFallback).toBe(true);
     expect(result.current.recordatorios).toHaveLength(1);
   });
 
-  it('falls back on 404 as well', async () => {
+  it('falls back on 404 too', async () => {
     mockedRecApi.getAll.mockRejectedValue({ response: { status: 404 } });
     mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 0, vencidos: 0, hoy: 0 });
     mockedLeadApi.getAll.mockResolvedValue({
@@ -151,31 +144,30 @@ describe('useRecordatoriosLeads', () => {
       empty: true,
     } as any);
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    await act(async () => {
-      await result.current.loadRecordatorios();
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
     });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.usingFallback).toBe(true);
   });
 
-  it('does NOT fallback on 500 - sets error instead', async () => {
+  it('does NOT fallback on 500 — sets error', async () => {
     mockedRecApi.getAll.mockRejectedValue({ response: { status: 500 } });
     mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 0, vencidos: 0, hoy: 0 });
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    await act(async () => {
-      await result.current.loadRecordatorios();
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
     });
+    await waitFor(() => expect(result.current.error).not.toBeNull());
 
-    expect(result.current.error).toBe('Error al cargar los recordatorios. Verifique la conexión con el servidor.');
+    expect(result.current.error).toBe(
+      'Error al cargar los recordatorios. Verifique la conexión con el servidor.'
+    );
     expect(result.current.usingFallback).toBe(false);
   });
 
-  it('marcarCompletado removes recordatorio via global endpoint', async () => {
-    // Setup loaded state via global endpoint
+  it('marcarCompletado triggers list invalidation via global endpoint', async () => {
     const recs = [makeRecordatorio(1, '2024-01-15'), makeRecordatorio(2, '2024-01-10')];
     mockedRecApi.getAll.mockResolvedValue({
       content: recs,
@@ -191,23 +183,21 @@ describe('useRecordatoriosLeads', () => {
     mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 5, vencidos: 0, hoy: 0 });
     mockedRecApi.marcarEnviado.mockResolvedValue({} as any);
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    await act(async () => {
-      await result.current.loadRecordatorios();
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
     });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
       await result.current.marcarCompletado(1, 100);
     });
 
     expect(mockedRecApi.marcarEnviado).toHaveBeenCalledWith(1);
-    expect(result.current.recordatorios).toHaveLength(1);
-    expect(result.current.totalElements).toBe(1);
+    // Initial fetch + invalidation refetch
+    await waitFor(() => expect(mockedRecApi.getAll).toHaveBeenCalledTimes(2));
   });
 
-  it('marcarCompletado falls back to per-lead endpoint on error', async () => {
-    // Setup loaded state via global
+  it('marcarCompletado falls back to per-lead on global error', async () => {
     const recs = [makeRecordatorio(1, '2024-01-15')];
     mockedRecApi.getAll.mockResolvedValue({
       content: recs,
@@ -221,55 +211,85 @@ describe('useRecordatoriosLeads', () => {
       empty: false,
     } as any);
     mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 1, vencidos: 0, hoy: 0 });
-
-    // Global marcarEnviado fails
     mockedRecApi.marcarEnviado.mockRejectedValue(new Error('fail'));
     mockedLeadApi.marcarRecordatorioEnviado.mockResolvedValue({} as any);
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    await act(async () => {
-      await result.current.loadRecordatorios();
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
     });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
       await result.current.marcarCompletado(1, 100);
     });
 
     expect(mockedLeadApi.marcarRecordatorioEnviado).toHaveBeenCalledWith(100, 1);
-    expect(result.current.recordatorios).toHaveLength(0);
   });
 
-  it('crearInteraccion delegates to leadApi', async () => {
+  it('crearInteraccion delegates to leadApi without invalidating list', async () => {
+    mockedRecApi.getAll.mockResolvedValue({
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      size: 500,
+      number: 0,
+      first: true,
+      last: true,
+      numberOfElements: 0,
+      empty: true,
+    } as any);
+    mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 0, vencidos: 0, hoy: 0 });
+
     const interaccion = { tipo: 'LLAMADA', descripcion: 'Test call' };
     mockedLeadApi.createInteraccion.mockResolvedValue({ id: 1, ...interaccion } as any);
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
       await result.current.crearInteraccion(5, interaccion as any);
     });
 
     expect(mockedLeadApi.createInteraccion).toHaveBeenCalledWith(5, interaccion);
+    // crearInteraccion no invalida la lista de recordatorios
+    expect(mockedRecApi.getAll).toHaveBeenCalledTimes(1);
   });
 
-  it('crearRecordatorio delegates to leadApi', async () => {
+  it('crearRecordatorio delegates to leadApi and invalidates the list', async () => {
+    mockedRecApi.getAll.mockResolvedValue({
+      content: [],
+      totalElements: 0,
+      totalPages: 0,
+      size: 500,
+      number: 0,
+      first: true,
+      last: true,
+      numberOfElements: 0,
+      empty: true,
+    } as any);
+    mockedRecApi.getConteos.mockResolvedValue({ totalPendientes: 0, vencidos: 0, hoy: 0 });
+
     const data = { fechaRecordatorio: '2024-03-01', tipo: 'TAREA', mensaje: 'Test' };
     mockedLeadApi.createRecordatorio.mockResolvedValue({ id: 1, ...data } as any);
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
       await result.current.crearRecordatorio(5, data as any);
     });
 
     expect(mockedLeadApi.createRecordatorio).toHaveBeenCalledWith(5, data);
+    await waitFor(() => expect(mockedRecApi.getAll).toHaveBeenCalledTimes(2));
   });
 
-  it('reprogramar updates recordatorio date via global endpoint', async () => {
-    const recs = [makeRecordatorio(1, '2024-01-15')];
+  it('reprogramar updates date via global endpoint', async () => {
     mockedRecApi.getAll.mockResolvedValue({
-      content: recs,
+      content: [makeRecordatorio(1, '2024-01-15')],
       totalElements: 1,
       totalPages: 1,
       size: 500,
@@ -286,17 +306,15 @@ describe('useRecordatoriosLeads', () => {
       hora: '10:00',
     } as any);
 
-    const { result } = renderHook(() => useRecordatoriosLeads());
-
-    await act(async () => {
-      await result.current.loadRecordatorios();
+    const { result } = renderHook(() => useRecordatoriosLeads(), {
+      wrapper: buildWrapper(),
     });
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
       await result.current.reprogramar(1, 100, '2024-02-01');
     });
 
     expect(mockedRecApi.update).toHaveBeenCalledWith(1, { fechaRecordatorio: '2024-02-01' });
-    expect(result.current.recordatorios[0].fechaRecordatorio).toBe('2024-02-01');
   });
 });

@@ -27,6 +27,8 @@ export const SSE_EVENTS = {
   CUENTA_CORRIENTE_ACTUALIZADO: 'financial.cuentaCorriente.actualizado',
   /** A loan installment was updated. */
   CUOTA_ACTUALIZADA: 'loan.cuota.actualizada',
+  /** A lead recordatorio was created/updated/deleted/sent. */
+  RECORDATORIO_ACTUALIZADO: 'crm.recordatorio.actualizado',
 } as const;
 
 export type SseEventName = (typeof SSE_EVENTS)[keyof typeof SSE_EVENTS];
@@ -63,6 +65,11 @@ export interface CuentaCorrientePayload {
   clienteId: number;
 }
 
+export interface RecordatorioPayload {
+  recordatorioId: number;
+  leadId: number | null;
+}
+
 // Flujo caja and cuota events carry no payload beyond the base envelope.
 
 // ---------------------------------------------------------------------------
@@ -76,6 +83,7 @@ export type SsePayloadMap = {
   [SSE_EVENTS.FLUJO_CAJA_ACTUALIZADO]:   BaseEvent;
   [SSE_EVENTS.CUENTA_CORRIENTE_ACTUALIZADO]: BaseEvent<CuentaCorrientePayload>;
   [SSE_EVENTS.CUOTA_ACTUALIZADA]:        BaseEvent;
+  [SSE_EVENTS.RECORDATORIO_ACTUALIZADO]: BaseEvent<RecordatorioPayload>;
 };
 
 // ---------------------------------------------------------------------------
@@ -92,6 +100,7 @@ export const EVENT_QUERY_MAP: Partial<Record<SseEventName, readonly string[]>> =
   [SSE_EVENTS.FLUJO_CAJA_ACTUALIZADO]:       ['flujoCaja'],
   [SSE_EVENTS.CUENTA_CORRIENTE_ACTUALIZADO]: ['cuentaCorrienteCliente'],
   [SSE_EVENTS.CUOTA_ACTUALIZADA]:            ['prestamos'],
+  [SSE_EVENTS.RECORDATORIO_ACTUALIZADO]:     ['recordatorios', 'recordatoriosConteos'],
 };
 
 // Flat list of every unique query key touched by SSE — used for bulk

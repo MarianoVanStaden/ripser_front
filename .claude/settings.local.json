@@ -97,7 +97,8 @@
       "Bash(mv C:/Users/santi/Documents/GitHub/ripser_front/src/components/Common/CajaSelector.tsx C:/Users/santi/Documents/GitHub/ripser_front/src/components/common/CajaSelector.tsx)",
       "Bash(rmdir C:/Users/santi/Documents/GitHub/ripser_front/src/components/Common)",
       "Bash(powershell.exe *)",
-      "Bash(docker version *)"
+      "Bash(docker version *)",
+      "Bash(npm test *)"
     ],
     "deny": [],
     "ask": [],

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -51,7 +51,6 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useNavigate } from 'react-router-dom';
 import { useRecordatoriosLeads } from '../../hooks/useRecordatoriosLeads';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
-import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import {
   TipoRecordatorioEnum,
@@ -758,20 +757,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
 
 export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { sucursalFiltro } = useTenant();
-  const {
-    recordatorios,
-    conteos,
-    loading,
-    error,
-    usingFallback,
-    loadRecordatorios,
-    marcarCompletado,
-    reprogramar,
-    crearInteraccion,
-    crearRecordatorio,
-  } = useRecordatoriosLeads();
 
   // ── UI state ──
   const [page, setPage] = useState(0);
@@ -820,81 +806,76 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
-  // ── Auto-refresh ──
-  const [autoRefreshCountdown, setAutoRefreshCountdown] = useState(60);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ── Filtros memoizados ──
+  // Input estable para la queryKey de useRecordatoriosLeads. Cuando los filtros
+  // cambian, React Query refetchea automáticamente. La actualización en tiempo
+  // real ante cambios de datos llega vía SSE (crm.recordatorio.actualizado).
+  const filters = useMemo<RecordatorioGlobalFilterParams>(() => {
+    const f: RecordatorioGlobalFilterParams = { enviado: false };
 
-  // ── Load data ──
-  const buildFilters = useCallback((): RecordatorioGlobalFilterParams => {
-    const filters: RecordatorioGlobalFilterParams = { enviado: false };
-
-    if (filterPrioridad) filters.prioridad = filterPrioridad;
-    if (filterTipo) filters.tipo = filterTipo;
-    if (soloMios) filters.soloMisRecordatorios = true;
-    else if (filterUsuarioId) filters.usuarioId = filterUsuarioId;
-    if (sucursalFiltro) filters.sucursalId = sucursalFiltro;
+    if (filterPrioridad) f.prioridad = filterPrioridad;
+    if (filterTipo) f.tipo = filterTipo;
+    if (soloMios) f.soloMisRecordatorios = true;
+    else if (filterUsuarioId) f.usuarioId = filterUsuarioId;
+    if (sucursalFiltro) f.sucursalId = sucursalFiltro;
 
     const today = getTodayStr();
     switch (datePreset) {
       case 'hoy':
-        filters.fechaDesde = today;
-        filters.fechaHasta = today;
+        f.fechaDesde = today;
+        f.fechaHasta = today;
         break;
       case 'mañana':
-        filters.fechaDesde = getDateStr(1);
-        filters.fechaHasta = getDateStr(1);
+        f.fechaDesde = getDateStr(1);
+        f.fechaHasta = getDateStr(1);
         break;
       case 'semana':
-        filters.fechaDesde = today;
-        filters.fechaHasta = getWeekEndStr();
+        f.fechaDesde = today;
+        f.fechaHasta = getWeekEndStr();
         break;
       case 'vencidos':
-        filters.fechaHasta = getDateStr(-1);
+        f.fechaHasta = getDateStr(-1);
         break;
       case 'personalizado':
-        if (customFechaDesde) filters.fechaDesde = customFechaDesde;
-        if (customFechaHasta) filters.fechaHasta = customFechaHasta;
+        if (customFechaDesde) f.fechaDesde = customFechaDesde;
+        if (customFechaHasta) f.fechaHasta = customFechaHasta;
         break;
       default:
         break;
     }
-    return filters;
-  }, [datePreset, customFechaDesde, customFechaHasta, filterPrioridad, filterTipo, filterUsuarioId, soloMios, user, sucursalFiltro]);
+    return f;
+  }, [
+    datePreset,
+    customFechaDesde,
+    customFechaHasta,
+    filterPrioridad,
+    filterTipo,
+    filterUsuarioId,
+    soloMios,
+    sucursalFiltro,
+  ]);
+
+  const {
+    recordatorios,
+    conteos,
+    loading,
+    error,
+    usingFallback,
+    refetch,
+    marcarCompletado,
+    reprogramar,
+    crearInteraccion,
+    crearRecordatorio,
+  } = useRecordatoriosLeads(filters);
+
+  // Reset paginación cuando cambian los filtros (la lista cambia de tamaño).
+  useEffect(() => {
+    setPage(0);
+  }, [filters]);
 
   const refresh = useCallback(() => {
-    setAutoRefreshCountdown(60);
-    loadRecordatorios(buildFilters());
-  }, [loadRecordatorios, buildFilters]);
-
-  useEffect(() => {
-    loadRecordatorios(buildFilters());
-    setPage(0);
-  }, [datePreset, filterPrioridad, filterTipo, filterUsuarioId, soloMios, sucursalFiltro]);
-
-  useEffect(() => {
-    if (datePreset === 'personalizado' && (customFechaDesde || customFechaHasta)) {
-      loadRecordatorios(buildFilters());
-      setPage(0);
-    }
-  }, [customFechaDesde, customFechaHasta]);
-
-  // Auto-refresh every 60 seconds
-  useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      loadRecordatorios(buildFilters());
-      setAutoRefreshCountdown(60);
-    }, 60000);
-
-    countdownRef.current = setInterval(() => {
-      setAutoRefreshCountdown((c) => (c > 0 ? c - 1 : 60));
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, [buildFilters]);
+    refetch();
+  }, [refetch]);
 
   // ── Stable today string for row coloring ──
   const today = getTodayStr();
@@ -1012,10 +993,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
           >
             Nuevo Recordatorio
           </Button>
-          <Typography variant="caption" color="text.secondary">
-            Actualiza en {autoRefreshCountdown}s
-          </Typography>
-          <Tooltip title="Actualizar ahora">
+          <Tooltip title="Forzar resincronización (la lista se actualiza automáticamente)">
             <span>
               <IconButton onClick={refresh} color="primary" disabled={loading}>
                 <RefreshIcon />
