@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks, @typescript-eslint/no-explicit-any, no-empty-pattern */
 import { test as base, expect, Page } from '@playwright/test';
 import { AuthPage } from '../modules/auth/auth.page';
 import { ApiHelpers } from '../utils/api-helpers';
