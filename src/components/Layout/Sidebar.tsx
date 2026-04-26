@@ -273,7 +273,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/ventas/opciones-financiamiento',
     '/ventas/configuracion-financiamiento',
     '/clientes/cuenta-corriente',
-    '/leads/metricas'
+    '/leads/metricas',
+    '/ventas/registro'
   ];
 
   // Filtrar las secciones según los permisos del usuario
