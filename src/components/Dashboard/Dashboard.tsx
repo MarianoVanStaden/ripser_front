@@ -494,18 +494,12 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Check if user has a specific dashboard
-  const specificDashboard = loading ? null : renderDashboard();
-  if (specificDashboard) {
+  // Check if user has a specific dashboard — do NOT gate on loading,
+  // role is known immediately from auth context (no data fetch needed)
+  const specificDashboard = renderDashboard();
+  if (specificDashboard !== null) {
     return (
-      <Box
-        sx={{
-          width: '100%',
-          maxWidth: 1600,
-          mx: 'auto',
-        }}
-      >
-        <LoadingOverlay open={loading} message="Cargando dashboard..." />
+      <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto' }}>
         {specificDashboard}
       </Box>
     );

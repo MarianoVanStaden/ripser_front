@@ -135,11 +135,15 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Determinar si el usuario puede seleccionar diferentes sucursales
   const canSelectSucursal = useMemo(() => {
     if (esSuperAdmin) return true;
-    if (!rolActual) return false;
 
-    // ADMIN_EMPRESA, GERENTE_SUCURSAL y SUPERVISOR (Vendedores) pueden cambiar
+    // Todos los usuarios con rol de sistema VENDEDOR pueden cambiar de sucursal
+    // independientemente del rolActual en la empresa (que puede ser SUPERVISOR o USUARIO_SUCURSAL)
+    const systemRole = (user?.rol || user?.roles?.[0])?.toString().trim().toUpperCase();
+    if (systemRole === 'VENDEDOR') return true;
+
+    if (!rolActual) return false;
     return rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR';
-  }, [esSuperAdmin, rolActual]);
+  }, [esSuperAdmin, rolActual, user]);
 
   // Cargar UsuarioEmpresa al iniciar (para obtener rol y sucursal defecto)
   useEffect(() => {

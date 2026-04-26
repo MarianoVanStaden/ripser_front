@@ -300,20 +300,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     })
     .filter((section) => section.items.length > 0); // Eliminar secciones sin items
 
-  // Reordenar para que Vendedor vea Clientes primero que Ventas
-  const isVendedorOrder = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('VENDEDOR');
-  if (isVendedorOrder) {
-    const clientesIdx = seccionesFiltradas.findIndex(s => s.modulo === 'CLIENTES');
-    const ventasIdx = seccionesFiltradas.findIndex(s => s.modulo === 'VENTAS');
-    
-    if (clientesIdx !== -1 && ventasIdx !== -1 && clientesIdx > ventasIdx) {
-      // Swapping positions
-      const clientesSection = seccionesFiltradas[clientesIdx];
-      seccionesFiltradas.splice(clientesIdx, 1);
-      seccionesFiltradas.splice(ventasIdx, 0, clientesSection);
-    }
-  }
-
   const handleLogoutClick = () => {
     setOpenLogoutDialog(true);
   };
