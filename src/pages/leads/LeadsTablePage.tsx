@@ -117,7 +117,8 @@ export const LeadsTablePage = () => {
 
   const canConvert = (lead: LeadDTO): boolean => {
     return lead.estadoLead !== EstadoLeadEnum.CONVERTIDO &&
-           lead.estadoLead !== EstadoLeadEnum.DESCARTADO;
+           lead.estadoLead !== EstadoLeadEnum.DESCARTADO &&
+           !lead.clienteOrigenId;
   };
 
   const handleUpdatePriority = async (leadId: number, newPriority: any) => {

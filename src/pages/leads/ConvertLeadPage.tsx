@@ -73,6 +73,16 @@ export const ConvertLeadPage = () => {
         recetaFabricacionApi.findAllActive().catch(() => [])
       ]);
       
+      if (leadData.estadoLead === 'CONVERTIDO' || leadData.clienteOrigenId) {
+        setError(
+          leadData.clienteOrigenId
+            ? 'Este lead es de recompra: el cliente ya existe en el sistema y no puede ser convertido nuevamente.'
+            : 'Este lead ya fue convertido a cliente.'
+        );
+        setLoading(false);
+        return;
+      }
+
       setLead(leadData);
       setProductos(productosData);
       setRecetas(recetasData);

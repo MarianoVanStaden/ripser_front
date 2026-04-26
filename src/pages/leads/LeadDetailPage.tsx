@@ -92,7 +92,8 @@ export const LeadDetailPage = () => {
 
   const canConvert = (leadData: LeadDTO): boolean => {
     return leadData.estadoLead !== EstadoLeadEnum.CONVERTIDO &&
-           leadData.estadoLead !== EstadoLeadEnum.DESCARTADO;
+           leadData.estadoLead !== EstadoLeadEnum.DESCARTADO &&
+           !leadData.clienteOrigenId;
   };
 
   const canEdit = (leadData: LeadDTO): boolean => {
