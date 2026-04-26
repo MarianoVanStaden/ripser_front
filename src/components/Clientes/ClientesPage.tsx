@@ -33,7 +33,6 @@ import {
   Business as BusinessIcon,
   Person as PersonIcon,
   Clear as ClearIcon,
-  AccountBalanceWallet as AccountBalanceWalletIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { Cliente, TipoCliente, EstadoCliente } from '../../types';
@@ -352,16 +351,7 @@ const ClientesPage: React.FC = () => {
                       <EditIcon />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Cuenta Corriente">
-                    <IconButton
-                      size="small"
-                      onClick={() =>
-                        navigate('/clientes/cuenta-corriente', { state: { clienteId: cliente.id } })
-                      }
-                    >
-                      <AccountBalanceWalletIcon />
-                    </IconButton>
-                  </Tooltip>
+
                 </Box>
               </CardContent>
             </Card>
