@@ -43,10 +43,13 @@ import 'dayjs/locale/es';
 
 import { leadApi } from '../../api/services/leadApi';
 import { leadMetricasApi } from '../../api/services/leadMetricasApi';
+import { recordatorioLeadApi } from '../../api/services/recordatorioLeadApi';
 import type { LeadDTO, RecordatorioLeadDTO } from '../../types/lead.types';
 import type { LeadMetricasResponseDTO } from '../../api/services/leadMetricasApi';
+import type { RecordatorioConLeadDTO } from '../../api/services/recordatorioLeadApi';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
+import { getFirstName } from '../../utils/userDisplay';
 import { usePermisos } from '../../hooks/usePermisos';
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
@@ -224,7 +227,25 @@ export const VentasDashboard = () => {
         sucursalId: sucursalFiltro !== null ? sucursalFiltro : undefined,
       };
 
-      const [allLeadsResponse, metricasData] = await Promise.all([
+      // Recordatorios: una sola request al endpoint global. Misma fuente de
+      // verdad que GestionGlobalRecordatoriosPage. Si el backend no soporta
+      // el endpoint (403/404), degradamos a lista vacía sin romper el dashboard.
+      const recordatoriosPromise = recordatorioLeadApi
+        .getAll(
+          { page: 0, size: 500 },
+          {
+            enviado: false,
+            sucursalId: sucursalFiltro !== null ? sucursalFiltro : undefined,
+            usuarioId: isVendedor ? user?.id : undefined,
+          }
+        )
+        .then((res) => res.content)
+        .catch((err) => {
+          console.warn('No se pudieron cargar recordatorios globales:', err);
+          return [] as RecordatorioConLeadDTO[];
+        });
+
+      const [allLeadsResponse, metricasData, recordatoriosData] = await Promise.all([
         leadApi.getAll({}, params),
         leadMetricasApi.obtenerMetricasCompletas({
           fechaInicio,
@@ -232,6 +253,7 @@ export const VentasDashboard = () => {
           sucursalId: sucursalFiltro !== null ? sucursalFiltro : undefined,
           usuarioAsignadoId: user?.id,
         }),
+        recordatoriosPromise,
       ]);
 
       const allLeads = allLeadsResponse.content;
@@ -254,39 +276,34 @@ export const VentasDashboard = () => {
         ).length,
       };
 
-      const activeLeads = allLeads.filter(l =>
-        !['CONVERTIDO', 'PERDIDO', 'DESCARTADO'].includes(l.estadoLead)
-      );
+      const reminders: ReminderItem[] = recordatoriosData.map((r) => {
+        const leadNombre = r.lead
+          ? r.lead.apellido
+            ? `${r.lead.nombre} ${r.lead.apellido}`
+            : r.lead.nombre
+          : `Lead #${r.leadId}`;
+        return {
+          ...r,
+          leadNombre,
+          leadId: r.leadId,
+        };
+      });
 
-      const reminders: ReminderItem[] = [];
-
-      for (const lead of activeLeads.slice(0, 20)) {
-        try {
-          const leadReminders = await leadApi.getRecordatorios(lead.id!);
-          const pending = leadReminders.filter(r => !r.enviado);
-          pending.forEach(reminder => {
-            reminders.push({
-              ...reminder,
-              leadNombre: lead.apellido ? `${lead.nombre} ${lead.apellido}` : lead.nombre,
-              leadId: lead.id!,
-            });
-            const d = dayjs(`${reminder.fechaRecordatorio} ${reminder.hora || '00:00'}`);
-            const now = dayjs();
-            const weekFromNow = dayjs().add(7, 'days').endOf('day');
-            if (d.isBefore(now)) {
-              stats.recordatoriosVencidos++;
-            } else if (d.isSame(dayjs(), 'day')) {
-              stats.recordatoriosHoy++;
-            } else if (d.isBefore(weekFromNow)) {
-              stats.recordatoriosEstaSemana++;
-            } else {
-              stats.recordatoriosProximos++;
-            }
-          });
-        } catch (err) {
-          console.error(`Error loading reminders for lead ${lead.id}:`, err);
+      const now = dayjs();
+      const today = dayjs();
+      const weekFromNow = dayjs().add(7, 'days').endOf('day');
+      reminders.forEach((reminder) => {
+        const d = dayjs(`${reminder.fechaRecordatorio} ${reminder.hora || '00:00'}`);
+        if (d.isBefore(now)) {
+          stats.recordatoriosVencidos++;
+        } else if (d.isSame(today, 'day')) {
+          stats.recordatoriosHoy++;
+        } else if (d.isBefore(weekFromNow)) {
+          stats.recordatoriosEstaSemana++;
+        } else {
+          stats.recordatoriosProximos++;
         }
-      }
+      });
 
       reminders.sort((a, b) => {
         const dA = dayjs(`${a.fechaRecordatorio} ${a.hora || '00:00'}`);
@@ -336,7 +353,7 @@ export const VentasDashboard = () => {
               fontSize: { xs: '1.3rem', sm: '1.6rem' },
               lineHeight: 1.2,
             }}>
-              {getGreeting()}, {user?.nombre || user?.username}! 👋
+              {getGreeting()}, {getFirstName(user)}! 👋
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', textTransform: 'capitalize', mb: 1.5 }}>
               {dayjs().format('dddd, D [de] MMMM [de] YYYY')}

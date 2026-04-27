@@ -46,6 +46,7 @@ import QuickActions from './QuickActions';
 import { testConnection } from '../../api/testConnection';
 import BackendSetupDialog from '../BackendSetupDialog/BackendSetupDialog';
 import { useAuth } from "../../context/AuthContext";
+import { getFirstName } from "../../utils/userDisplay";
 import { useTenant } from "../../context/TenantContext";
 import AdminDashboard from './AdminDashboard';
 import VendedorDashboard from './VendedorDashboard';
@@ -543,7 +544,7 @@ const Dashboard: React.FC = () => {
                   mb: 0.5,
                 }}
               >
-                ¡Hola, {user.username}! 👋
+                ¡Hola, {getFirstName(user)}! 👋
               </Typography>
               <Box
                 component="div"

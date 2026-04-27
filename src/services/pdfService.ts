@@ -929,7 +929,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
               {
                 content: 'Entrega inicial estimada (40%):',
                 styles: {
-                  halign: 'left',
+                  halign: 'left' as const,
                   fontStyle: 'bold' as const,
                   fontSize: 8,
                   fillColor: COLORS.lightBlue,
@@ -938,7 +938,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
               },
               {
                 content: formatCurrency(entregaEstimada),
-                styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+                styles: { halign: 'right' as const, fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
               },
             ]]
           : []),
