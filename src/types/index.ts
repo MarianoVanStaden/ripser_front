@@ -2325,10 +2325,23 @@ export const EstadoDocumento = {
 } as const;
 export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocumento];
 
+export type TipoDocumento = 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA' | 'NOTA_CREDITO';
+
+export interface KPIsClienteDTO {
+  totalFacturado: number;
+  cantidadPresupuestos: number;
+  cantidadNotasPedido: number;
+  cantidadFacturas: number;
+  cantidadNotasCredito: number;
+  ticketPromedioFacturas: number;
+  /** Tasa 0..1: presupuestos del cliente que terminaron en factura. */
+  tasaConversionPresupuestoFactura: number;
+}
+
 export interface DocumentoComercial {
   id: number;
   numeroDocumento: string;
-  tipoDocumento: 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA' | 'NOTA_CREDITO';
+  tipoDocumento: TipoDocumento;
   clienteId?: number;
   clienteNombre?: string;
   leadId?: number;
@@ -2350,7 +2363,10 @@ export interface DocumentoComercial {
   opcionFinanciamientoSeleccionadaId?: number;
   documentoOrigenId?: number;
   documentoOrigenNumero?: string;
-  documentoOrigenTipo?: string;
+  documentoOrigenTipo?: TipoDocumento;
+  documentoSiguienteId?: number;
+  documentoSiguienteNumero?: string;
+  documentoSiguienteTipo?: TipoDocumento;
   numeroReferencia?: string;
   usuarioCreadorPresupuestoId:        number | null;
   usuarioCreadorPresupuestoNombre:    string | null;

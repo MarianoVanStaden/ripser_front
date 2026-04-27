@@ -98,7 +98,16 @@
       "Bash(rmdir C:/Users/santi/Documents/GitHub/ripser_front/src/components/Common)",
       "Bash(powershell.exe *)",
       "Bash(docker version *)",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(mvn -DskipTests compile -q)",
+      "Bash(./mvnw -DskipTests compile -q)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/santi/**)",
+      "Bash(cd C:/Users/santi/Documents/GitHub/ripser_back)",
+      "Bash(export JAVA_HOME=\"C:/Users/santi/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(java -version)",
+      "Bash(JAVA_HOME='C:\\\\Users\\\\santi\\\\.gradle\\\\jdks\\\\eclipse_adoptium-21-amd64-windows.2' ./mvnw.cmd -DskipTests compile -q)"
     ],
     "deny": [],
     "ask": [],

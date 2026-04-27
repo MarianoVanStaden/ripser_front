@@ -2,7 +2,8 @@ import axios from "axios";
 import type {
   DocumentoComercial,
   EstadoDocumento,
-  DetalleDocumentoDTO
+  DetalleDocumentoDTO,
+  KPIsClienteDTO,
 } from "../types";
 
 type DocumentoPresupuestoPayload = {
@@ -103,6 +104,33 @@ export const documentoApi = {
       return res.data;
     } catch (error) {
       console.error("Error converting to factura:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get the full chain of related documents (Presupuesto -> Nota Pedido -> Factura)
+   * starting from any document in the chain.
+   */
+  getCadena: async (id: number): Promise<DocumentoComercial[]> => {
+    try {
+      const res = await axios.get(`${API_URL}/${id}/cadena`);
+      return res.data;
+    } catch (error) {
+      console.error("Error fetching cadena de documentos:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * KPIs comerciales agregados de un cliente (computados server-side).
+   */
+  getKPIsCliente: async (clienteId: number): Promise<KPIsClienteDTO> => {
+    try {
+      const res = await axios.get(`${API_URL}/cliente/${clienteId}/kpis-comerciales`);
+      return res.data;
+    } catch (error) {
+      console.error("Error fetching KPIs comerciales del cliente:", error);
       throw error;
     }
   },

@@ -50,6 +50,7 @@ import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWith
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import LoadingOverlay from '../common/LoadingOverlay';
 import type { Cliente, DocumentoCliente } from '../../types';
+import { HistoricoComercialTab } from './HistoricoComercial';
 
 // Categorías de documentos para clientes
 const CATEGORIAS_CLIENTE = [
@@ -409,6 +410,7 @@ const CarpetaClientePage: React.FC = () => {
           <Tab label="Información General" />
           <Tab label="Documentos" />
           <Tab label="Notas y Observaciones" />
+          <Tab label="Histórico Comercial" />
         </Tabs>
 
         {/* Tab 1: General Information */}
@@ -671,6 +673,11 @@ const CarpetaClientePage: React.FC = () => {
               `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
             }
           />
+        </TabPanel>
+
+        {/* Tab 4: Histórico Comercial */}
+        <TabPanel value={tabValue} index={3}>
+          {tabValue === 3 && <HistoricoComercialTab clienteId={cliente.id} />}
         </TabPanel>
       </Paper>
 
