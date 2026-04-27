@@ -47,6 +47,7 @@ import type { LeadDTO, RecordatorioLeadDTO } from '../../types/lead.types';
 import type { LeadMetricasResponseDTO } from '../../api/services/leadMetricasApi';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
+import { usePermisos } from '../../hooks/usePermisos';
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
 import { MetricasPrioridadChart } from '../../components/metricas/MetricasPrioridadChart';
@@ -170,8 +171,10 @@ const KpiCard: React.FC<{
 
 export const VentasDashboard = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, esSuperAdmin } = useAuth();
   const { empresaId, sucursalFiltro, sucursales } = useTenant();
+  const { tieneRol } = usePermisos();
+  const isVendedor = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('VENDEDOR');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -933,15 +936,17 @@ export const VentasDashboard = () => {
             >
               Presupuestos
             </Button>
-            <Button
-              variant="outlined"
-              startIcon={<AssessmentIcon />}
-              onClick={() => navigate('/leads/metricas')}
-              sx={{ py: 1.5, textTransform: 'none' }}
-              fullWidth
-            >
-              Métricas
-            </Button>
+            {!isVendedor && (
+              <Button
+                variant="outlined"
+                startIcon={<AssessmentIcon />}
+                onClick={() => navigate('/leads/metricas')}
+                sx={{ py: 1.5, textTransform: 'none' }}
+                fullWidth
+              >
+                Métricas
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<CalendarIcon />}
@@ -954,7 +959,7 @@ export const VentasDashboard = () => {
             <Button
               variant="outlined"
               startIcon={<PhoneIcon />}
-              onClick={() => navigate('/agenda-visitas')}
+              onClick={() => navigate('/clientes/agenda')}
               sx={{ py: 1.5, textTransform: 'none' }}
               fullWidth
             >
