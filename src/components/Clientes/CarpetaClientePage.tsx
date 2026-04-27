@@ -719,17 +719,19 @@ const CarpetaClientePage: React.FC = () => {
               rows={3}
             />
             <Box
-              border="2px dashed"
-              borderColor={selectedFile ? 'primary.main' : 'grey.300'}
-              borderRadius={1}
-              p={3}
-              textAlign="center"
-              mt={2}
+              component="label"
               sx={{
+                display: 'block',
+                borderWidth: '2px',
+                borderStyle: 'dashed',
+                borderColor: selectedFile ? 'primary.main' : 'grey.300',
+                borderRadius: 1,
+                p: 3,
+                textAlign: 'center',
+                mt: 2,
                 cursor: 'pointer',
                 '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
               }}
-              component="label"
             >
               <input
                 type="file"
