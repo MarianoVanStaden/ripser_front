@@ -43,8 +43,6 @@ import {
   Send as SendIcon,
   Delete as DeleteIcon,
   AttachMoney as MoneyIcon,
-  CreditCard as CreditCardIcon,
-  AccountBalance as BankIcon,
   Search as SearchIcon,
 } from "@mui/icons-material";
 import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services";
@@ -60,6 +58,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useTenant } from "../../context/TenantContext";
 import SuccessDialog from "../common/SuccessDialog";
 import { generarPresupuestoPDF } from "../../services/pdfService";
+import OpcionFinanciamientoLabel from "./OpcionFinanciamientoLabel";
+import { getMetodoPagoLabel as getMetodoPagoLabelShared } from "../../utils/financiamiento";
 import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import UsuarioBadge from "../common/UsuarioBadge";
 import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
@@ -457,38 +457,8 @@ const PresupuestosPage: React.FC = () => {
   const ivaAmount = useMemo(() => subtotal * getIvaPercentage(formData.tipoIva), [subtotal, formData.tipoIva, getIvaPercentage]);
   const total = useMemo(() => subtotal + ivaAmount, [subtotal, ivaAmount]);
 
-  const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
-    switch (metodoPago) {
-      case 'EFECTIVO':
-        return <MoneyIcon fontSize="small" />;
-      case 'TARJETA_CREDITO':
-        return <CreditCardIcon fontSize="small" />;
-      case 'TRANSFERENCIA_BANCARIA':
-      case 'FINANCIACION_PROPIA':
-        return <BankIcon fontSize="small" />;
-      default:
-        return <MoneyIcon fontSize="small" />;
-    }
-  };
-
-  const getMetodoPagoLabel = (metodoPago: MetodoPago | string) => {
-    switch (metodoPago) {
-      case 'EFECTIVO':
-        return 'Efectivo';
-      case 'TARJETA_CREDITO':
-        return 'Tarjeta de Crédito';
-      case 'TARJETA_DEBITO':
-        return 'Tarjeta de Débito';
-      case 'TRANSFERENCIA_BANCARIA':
-        return 'Transferencia bancaria';
-      case 'FINANCIACION_PROPIA':
-        return 'Financiación propia';
-      case 'CHEQUE':
-        return 'Cheque';
-      default:
-        return String(metodoPago);
-    }
-  };
+  // Re-export desde utils compartido para consumidores que solo necesitan el label
+  const getMetodoPagoLabel = getMetodoPagoLabelShared;
 
   const addDetalle = useCallback(() => {
     if (readOnly) return;
@@ -1028,15 +998,15 @@ const PresupuestosPage: React.FC = () => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 100 }}>Número</TableCell>
-                  <TableCell sx={{ minWidth: 180 }}>Cliente / Lead</TableCell>
-                  <TableCell sx={{ minWidth: 120 }}>Fecha</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Cliente / Lead</TableCell>
+                  <TableCell sx={{ minWidth: 110 }}>Fecha</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
-                  <TableCell sx={{ minWidth: 120 }} align="right">Subtotal</TableCell>
-                  <TableCell sx={{ minWidth: 120 }} align="right">IVA</TableCell>
-                  <TableCell sx={{ minWidth: 120 }} align="right">Total</TableCell>
-                  <TableCell sx={{ minWidth: 160 }}>Financiamiento</TableCell>
-                  <TableCell sx={{ minWidth: 130 }}>Creado por</TableCell>
-                  <TableCell sx={{ minWidth: 220, whiteSpace: 'nowrap' }}>Acciones</TableCell>
+                  <TableCell sx={{ minWidth: 110 }} align="right">Subtotal</TableCell>
+                  <TableCell sx={{ minWidth: 100 }} align="right">IVA</TableCell>
+                  <TableCell sx={{ minWidth: 110 }} align="right">Total</TableCell>
+                  <TableCell sx={{ minWidth: 140 }}>Financiamiento</TableCell>
+                  <TableCell sx={{ minWidth: 110 }}>Creado por</TableCell>
+                  <TableCell sx={{ minWidth: 200, whiteSpace: 'nowrap' }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1806,28 +1776,38 @@ const PresupuestosPage: React.FC = () => {
           )}
           <Divider sx={{ mb: 2 }} />
           <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
-            {opcionesFinanciamiento.map((opcion) => (
-              <Box key={opcion.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
-                <FormControlLabel value={opcion.id} control={<Radio />} label={
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      {getMetodoPagoIcon(opcion.metodoPago)}
-                      <Typography variant="subtitle1">{opcion.nombre}</Typography>
-                      {opcion.tasaInteres < 0 && (
-                        <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
-                      )}
-                    </Box>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
-                      <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
-                      <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
-                      <Typography variant="body2">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                      <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                    </Box>
-                    {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
-                  </Box>
-                } />
-              </Box>
-            ))}
+            {opcionesFinanciamiento.map((opcion) => {
+              const isSelected = selectedOpcionId === opcion.id;
+              return (
+                <Box
+                  key={opcion.id}
+                  onClick={() => opcion.id != null && setSelectedOpcionId(opcion.id)}
+                  sx={{
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: isSelected ? 'primary.main' : 'divider',
+                    borderRadius: 1,
+                    mb: 1.5,
+                    cursor: 'pointer',
+                    transition: 'border-color 120ms, background-color 120ms',
+                    bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                    '&:hover': { borderColor: 'primary.light' },
+                  }}
+                >
+                  <FormControlLabel
+                    value={opcion.id}
+                    control={<Radio />}
+                    sx={{ width: '100%', alignItems: 'flex-start', m: 0, '& .MuiFormControlLabel-label': { width: '100%' } }}
+                    label={
+                      <OpcionFinanciamientoLabel
+                        opcion={opcion}
+                        baseImporte={selectedPresupuesto?.subtotal ?? 0}
+                      />
+                    }
+                  />
+                </Box>
+              );
+            })}
           </RadioGroup>
         </DialogContent>
         <DialogActions>

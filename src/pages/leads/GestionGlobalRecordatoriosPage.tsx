@@ -1460,7 +1460,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                       <PrioridadBadge prioridad={rec.lead?.prioridad} />
                     </TableCell>
 
-                    {/* Score */}
+                    {/* Score 
                     <TableCell align="center">
                       <Typography
                         variant="body2"
@@ -1475,7 +1475,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                       >
                         {rec.lead?.score ?? '-'}
                       </Typography>
-                    </TableCell>
+                    </TableCell>*/}
 
                     {/* Acciones */}
                     <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>

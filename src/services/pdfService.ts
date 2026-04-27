@@ -1,6 +1,12 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { DocumentoComercial, OpcionFinanciamientoDTO, Cliente } from '../types';
+import {
+  PORCENTAJE_ENTREGA_PROPIO,
+  calcularFinanciamientoPropio,
+  getMetodoPagoLabel,
+  isFinanciamientoPropio,
+} from '../utils/financiamiento';
 
 /**
  * Servicio para generar PDFs de documentos comerciales
@@ -64,11 +70,185 @@ const getCurrentMonthYear = (): string => {
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 };
 
-/**
- * Calcula la entrega inicial (40% del total)
- */
 const calcularEntregaInicial = (total: number): number => {
-  return Math.round(total * 0.4);
+  return Math.round(total * PORCENTAJE_ENTREGA_PROPIO);
+};
+
+const PAGE_MARGIN_BOTTOM = 25;
+
+const ensureSpace = (doc: jsPDF, yPosition: number, neededHeight: number, margin: number): number => {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (yPosition + neededHeight > pageHeight - PAGE_MARGIN_BOTTOM) {
+    doc.addPage();
+    return margin;
+  }
+  return yPosition;
+};
+
+interface RenderOpcionParams {
+  doc: jsPDF;
+  opcion: OpcionFinanciamientoDTO;
+  yPosition: number;
+  margin: number;
+  baseImporte: number;
+  showOpcionTag?: string;
+}
+
+/**
+ * Pinta una "tarjeta" con la información de una opción de financiamiento.
+ * Si la opción es financiamiento propio con > 1 cuota, muestra entrega 40% +
+ * cuota estimada calculada sobre el saldo (no sobre el total).
+ */
+const renderOpcionFinanciamiento = ({
+  doc,
+  opcion,
+  yPosition,
+  margin,
+  baseImporte,
+  showOpcionTag,
+}: RenderOpcionParams): number => {
+  const propio = isFinanciamientoPropio(opcion.metodoPago) && opcion.cantidadCuotas > 1;
+  const calc = propio
+    ? calcularFinanciamientoPropio(baseImporte, opcion.tasaInteres, opcion.cantidadCuotas)
+    : null;
+
+  const tableWidth = doc.internal.pageSize.getWidth() - (margin + 1) * 2;
+
+  // Encabezado de la opción
+  yPosition = ensureSpace(doc, yPosition, 30, margin);
+  autoTable(doc, {
+    startY: yPosition,
+    body: [[
+      {
+        content: showOpcionTag ? `${showOpcionTag} ${opcion.nombre}` : opcion.nombre,
+        styles: {
+          halign: 'left',
+          fontStyle: 'bold' as const,
+          fontSize: 9,
+          fillColor: COLORS.lightBlue,
+          textColor: COLORS.darkBlue,
+          cellPadding: 2,
+        },
+      },
+      {
+        content: propio ? `Total estimado: ${formatCurrency(calc!.totalEstimado)}` : `Total: ${formatCurrency(opcion.montoTotal)}`,
+        styles: {
+          halign: 'right',
+          fontStyle: 'bold' as const,
+          fontSize: 9,
+          fillColor: COLORS.lightBlue,
+          textColor: COLORS.darkBlue,
+          cellPadding: 2,
+        },
+      },
+    ]],
+    theme: 'grid',
+    styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+    columnStyles: { 0: { cellWidth: tableWidth - 50 }, 1: { cellWidth: 50 } },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+  yPosition = (doc as any).lastAutoTable.finalY;
+
+  // Línea con método y cuotas
+  const tipoCuotaText = (() => {
+    if (opcion.cantidadCuotas <= 1) return 'Pago único';
+    const nombreLower = (opcion.nombre || '').toLowerCase();
+    if (nombreLower.indexOf('cheque') !== -1) return `${opcion.cantidadCuotas} cheques`;
+    if (nombreLower.indexOf('semanal') !== -1) return `${opcion.cantidadCuotas} cuotas semanales`;
+    return `${opcion.cantidadCuotas} cuotas`;
+  })();
+
+  autoTable(doc, {
+    startY: yPosition,
+    body: [[
+      {
+        content: `Método: ${getMetodoPagoLabel(opcion.metodoPago)}`,
+        styles: { halign: 'left', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+      },
+      {
+        content: tipoCuotaText,
+        styles: { halign: 'center', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+      },
+      {
+        content: propio
+          ? `Cuota estimada: ${formatCurrency(calc!.cuotaEstimada)}`
+          : (opcion.cantidadCuotas > 1 ? `Cuota: ${formatCurrency(opcion.montoCuota)}` : `Importe: ${formatCurrency(opcion.montoTotal)}`),
+        styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+      },
+    ]],
+    theme: 'grid',
+    styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+    columnStyles: {
+      0: { cellWidth: (tableWidth - 50) * 0.5 },
+      1: { cellWidth: (tableWidth - 50) * 0.5 },
+      2: { cellWidth: 50 },
+    },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+  yPosition = (doc as any).lastAutoTable.finalY;
+
+  // Bloque de financiamiento propio: entrega + saldo
+  if (propio && calc) {
+    autoTable(doc, {
+      startY: yPosition,
+      body: [
+        [
+          {
+            content: `Entrega inicial estimada (40%): ${formatCurrency(calc.entrega)}`,
+            styles: { halign: 'left', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+          },
+          {
+            content: `Saldo a financiar: ${formatCurrency(calc.saldo)}`,
+            styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+          },
+        ],
+        [
+          {
+            content: `Interés ${opcion.tasaInteres}% sobre saldo → ${formatCurrency(calc.saldoConInteres)}`,
+            styles: {
+              halign: 'left',
+              fontSize: 8,
+              fontStyle: 'italic' as const,
+              fillColor: COLORS.white,
+              cellPadding: 2,
+            },
+            colSpan: 2,
+          },
+        ],
+      ],
+      theme: 'grid',
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+      columnStyles: { 0: { cellWidth: tableWidth / 2 }, 1: { cellWidth: tableWidth / 2 } },
+      margin: { left: margin + 1, right: margin + 1 },
+    });
+    yPosition = (doc as any).lastAutoTable.finalY;
+  }
+
+  // Descripción
+  if (opcion.descripcion && opcion.descripcion.trim().length > 0) {
+    autoTable(doc, {
+      startY: yPosition,
+      body: [[
+        {
+          content: opcion.descripcion,
+          styles: {
+            halign: 'left',
+            fontSize: 7,
+            fontStyle: 'italic' as const,
+            fillColor: COLORS.white,
+            textColor: COLORS.darkGray,
+            cellPadding: 2,
+          },
+        },
+      ]],
+      theme: 'grid',
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+      margin: { left: margin + 1, right: margin + 1 },
+    });
+    yPosition = (doc as any).lastAutoTable.finalY;
+  }
+
+  return yPosition + 1;
 };
 
 /**
@@ -304,234 +484,70 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
 
   yPosition = (doc as any).lastAutoTable.finalY + 2;
 
-  // ===== FORMAS DE FINANCIACIÓN =====
+  // ===== OPCIONES DE FINANCIACIÓN =====
   if (opcionesFinanciamiento && opcionesFinanciamiento.length > 0) {
-    // Título de la sección
     autoTable(doc, {
       startY: yPosition,
       body: [[
         {
-          content: 'FORMAS DE FINANCIACION',
+          content: 'OPCIONES DE FINANCIACION',
           styles: {
             halign: 'center',
             fontStyle: 'bold' as const,
             fontSize: 10,
             fillColor: COLORS.darkBlue,
-            textColor: COLORS.white
-          }
-        }
+            textColor: COLORS.white,
+          },
+        },
       ]],
       theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
       margin: { left: margin + 1, right: margin + 1 },
     });
 
     yPosition = (doc as any).lastAutoTable.finalY + 1;
 
-    // Calcular entrega inicial (40%)
-    const entregaInicial = calcularEntregaInicial(presupuesto.subtotal);
-
-    // Texto de entrega inicial
-    autoTable(doc, {
-      startY: yPosition,
-      body: [[
-        {
-          content: 'Se realiza una entrega en efectivo cuando se recibe el producto de:',
-          styles: {
-            halign: 'left',
-            fontSize: 8,
-            fillColor: COLORS.white,
-            cellPadding: 2
-          }
-        },
-        {
-          content: formatCurrency(entregaInicial),
-          styles: {
-            halign: 'right',
-            fontStyle: 'bold' as const,
-            fontSize: 8,
-            fillColor: COLORS.white,
-            cellPadding: 2
-          }
-        }
-      ]],
-      theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
-      columnStyles: {
-        0: { cellWidth: 156 },
-        1: { cellWidth: 28 }
-      },
-      margin: { left: margin + 1, right: margin + 1 },
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 1;
-
-    // Encabezado de opciones
-    autoTable(doc, {
-      startY: yPosition,
-      body: [[
-        {
-          content: 'OPCION',
-          styles: {
-            halign: 'center',
-            fontStyle: 'bold' as const,
-            fontSize: 8,
-            fillColor: COLORS.lightBlue
-          }
-        },
-        {
-          content: 'El saldo restante puede financiarlo con:',
-          styles: {
-            halign: 'center',
-            fontStyle: 'bold' as const,
-            fontSize: 8,
-            fillColor: COLORS.lightBlue
-          }
-        },
-        {
-          content: 'Total:',
-          styles: {
-            halign: 'center',
-            fontStyle: 'bold' as const,
-            fontSize: 8,
-            fillColor: COLORS.lightBlue
-          }
-        }
-      ]],
-      theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
-      columnStyles: {
-        0: { cellWidth: 15 },
-        1: { cellWidth: 141 },
-        2: { cellWidth: 28 }
-      },
-      margin: { left: margin + 1, right: margin + 1 },
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY;
-
-    // Ordenar opciones por ordenPresentacion
-    const opcionesOrdenadas = [...opcionesFinanciamiento].sort((a, b) =>
-      (a.ordenPresentacion || 999) - (b.ordenPresentacion || 999)
+    const opcionesOrdenadas = [...opcionesFinanciamiento].sort(
+      (a, b) => (a.ordenPresentacion || 999) - (b.ordenPresentacion || 999)
     );
 
-    // Agrupar por tipo: primero cheques, luego créditos personales
-    const opcionesCheques: any[] = [];
-    const opcionesCreditos: any[] = [];
-
     opcionesOrdenadas.forEach((opcion, index) => {
-      const nombreLower = opcion.nombre.toLowerCase();
-      let descripcionOpcion = '';
-
-      if (nombreLower.indexOf('cheque') !== -1) {
-        descripcionOpcion = `${opcion.cantidadCuotas} Cheques a 30/60/90 dias`;
-        opcionesCheques.push([
-          { content: (index + 1).toString(), styles: { halign: 'center', fontSize: 8 } },
-          { content: descripcionOpcion, styles: { halign: 'left', fontSize: 8 } },
-          { content: formatCurrency(opcion.montoCuota), styles: { halign: 'right', fontSize: 8 } }
-        ]);
-      } else if (opcion.cantidadCuotas > 0) {
-        const tipoCuota = nombreLower.indexOf('semanal') !== -1 ? 'cuotas semanales' :
-                         nombreLower.indexOf('mensual') !== -1 ? 'cuotas mensual' : 'cuotas';
-        descripcionOpcion = `${opcion.cantidadCuotas} ${tipoCuota} de`;
-        opcionesCreditos.push([
-          { content: (index + 1).toString(), styles: { halign: 'center', fontSize: 8 } },
-          { content: descripcionOpcion, styles: { halign: 'left', fontSize: 8 } },
-          { content: formatCurrency(opcion.montoCuota), styles: { halign: 'right', fontSize: 8 } }
-        ]);
-      }
+      yPosition = renderOpcionFinanciamiento({
+        doc,
+        opcion,
+        yPosition,
+        margin,
+        baseImporte: presupuesto.subtotal,
+        showOpcionTag: `Opción ${index + 1}:`,
+      });
     });
 
-    // Agregar opciones de cheques
-    if (opcionesCheques.length > 0) {
-      autoTable(doc, {
-        startY: yPosition,
-        body: opcionesCheques,
-        theme: 'grid',
-        styles: {
-          lineColor: COLORS.mediumGray,
-          lineWidth: 0.1,
-          fillColor: COLORS.white,
-          cellPadding: 2
-        },
-        columnStyles: {
-          0: { cellWidth: 15 },
-          1: { cellWidth: 141 },
-          2: { cellWidth: 28 }
-        },
-        margin: { left: margin + 1, right: margin + 1 },
-      });
-
-      yPosition = (doc as any).lastAutoTable.finalY;
-    }
-
-    // Separador "B - Creditos Personales"
-    if (opcionesCreditos.length > 0) {
+    // Nota legal sobre estimativos para financiamiento propio
+    const tieneFinanciamientoPropio = opcionesOrdenadas.some(
+      (o) => isFinanciamientoPropio(o.metodoPago) && o.cantidadCuotas > 1
+    );
+    if (tieneFinanciamientoPropio) {
+      yPosition = ensureSpace(doc, yPosition, 10, margin);
       autoTable(doc, {
         startY: yPosition,
         body: [[
           {
-            content: '',
-            styles: { fillColor: COLORS.white, cellPadding: 1 }
-          },
-          {
-            content: 'B - Creditos Personales',
+            content:
+              `* Para financiamiento propio se requiere una entrega inicial del 40% al recibir el producto. La cuota estimada se calcula sobre el saldo restante (60%) más el interés indicado. Importes sujetos a confirmación.`,
             styles: {
-              halign: 'center',
-              fontStyle: 'bold' as const,
-              fontSize: 8,
+              halign: 'left',
+              fontSize: 7,
+              fontStyle: 'italic' as const,
               fillColor: COLORS.white,
-              cellPadding: 1
-            }
+              textColor: COLORS.darkGray,
+              cellPadding: 2,
+            },
           },
-          {
-            content: '',
-            styles: { fillColor: COLORS.white, cellPadding: 1 }
-          }
         ]],
         theme: 'grid',
-        styles: {
-          lineColor: COLORS.mediumGray,
-          lineWidth: 0.1,
-        },
-        columnStyles: {
-          0: { cellWidth: 15 },
-          1: { cellWidth: 141 },
-          2: { cellWidth: 28 }
-        },
+        styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
         margin: { left: margin + 1, right: margin + 1 },
       });
-
-      yPosition = (doc as any).lastAutoTable.finalY;
-
-      // Agregar opciones de créditos
-      autoTable(doc, {
-        startY: yPosition,
-        body: opcionesCreditos,
-        theme: 'grid',
-        styles: {
-          lineColor: COLORS.mediumGray,
-          lineWidth: 0.1,
-          fillColor: COLORS.white,
-          cellPadding: 2
-        },
-        columnStyles: {
-          0: { cellWidth: 15 },
-          1: { cellWidth: 141 },
-          2: { cellWidth: 28 }
-        },
-        margin: { left: margin + 1, right: margin + 1 },
-      });
-
       yPosition = (doc as any).lastAutoTable.finalY;
     }
   }
@@ -809,9 +825,8 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
   yPosition = (doc as any).lastAutoTable.finalY + 2;
 
-  // ===== OPCIÓN DE FINANCIAMIENTO SELECCIONADA =====
+  // ===== FORMA DE PAGO / OPCIÓN DE FINANCIAMIENTO SELECCIONADA =====
   if (opcionSeleccionada) {
-    // Título de la sección
     autoTable(doc, {
       startY: yPosition,
       body: [[
@@ -822,183 +837,142 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
             fontStyle: 'bold' as const,
             fontSize: 10,
             fillColor: COLORS.darkBlue,
-            textColor: COLORS.white
-          }
-        }
-      ]],
-      theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
-      margin: { left: margin + 1, right: margin + 1 },
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 1;
-
-    // Calcular entrega inicial (40%)
-    const entregaInicial = calcularEntregaInicial(documento.subtotal);
-
-    // Texto de entrega inicial
-    autoTable(doc, {
-      startY: yPosition,
-      body: [[
-        {
-          content: 'Se realiza una entrega en efectivo cuando se recibe el producto de:',
-          styles: {
-            halign: 'left',
-            fontSize: 8,
-            fillColor: COLORS.white,
-            cellPadding: 2
-          }
+            textColor: COLORS.white,
+          },
         },
-        {
-          content: formatCurrency(entregaInicial),
-          styles: {
-            halign: 'right',
-            fontStyle: 'bold' as const,
-            fontSize: 8,
-            fillColor: COLORS.white,
-            cellPadding: 2
-          }
-        }
       ]],
       theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
-      columnStyles: {
-        0: { cellWidth: 156 },
-        1: { cellWidth: 28 }
-      },
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
       margin: { left: margin + 1, right: margin + 1 },
     });
 
     yPosition = (doc as any).lastAutoTable.finalY + 1;
 
-    // Detalle de la opción seleccionada
-    const nombreLower = opcionSeleccionada.nombre.toLowerCase();
-    let descripcionOpcion = '';
+    yPosition = renderOpcionFinanciamiento({
+      doc,
+      opcion: opcionSeleccionada,
+      yPosition,
+      margin,
+      baseImporte: documento.subtotal,
+    });
 
-    if (nombreLower.indexOf('cheque') !== -1) {
-      descripcionOpcion = `${opcionSeleccionada.cantidadCuotas} Cheques a 30/60/90 dias`;
-    } else if (opcionSeleccionada.cantidadCuotas > 0) {
-      const tipoCuota = nombreLower.indexOf('semanal') !== -1 ? 'cuotas semanales' :
-                       nombreLower.indexOf('mensual') !== -1 ? 'cuotas mensuales' : 'cuotas';
-      descripcionOpcion = `${opcionSeleccionada.cantidadCuotas} ${tipoCuota} de`;
-    } else {
-      descripcionOpcion = opcionSeleccionada.nombre;
+    if (isFinanciamientoPropio(opcionSeleccionada.metodoPago) && opcionSeleccionada.cantidadCuotas > 1) {
+      yPosition = ensureSpace(doc, yPosition, 10, margin);
+      autoTable(doc, {
+        startY: yPosition,
+        body: [[
+          {
+            content:
+              `* Entrega inicial del 40% al recibir el producto. La cuota estimada se calcula sobre el saldo (60%) más el interés indicado. Importes estimativos sujetos a confirmación.`,
+            styles: {
+              halign: 'left',
+              fontSize: 7,
+              fontStyle: 'italic' as const,
+              fillColor: COLORS.white,
+              textColor: COLORS.darkGray,
+              cellPadding: 2,
+            },
+          },
+        ]],
+        theme: 'grid',
+        styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+        margin: { left: margin + 1, right: margin + 1 },
+      });
     }
-
+  } else if (documento.metodoPago) {
+    // Fallback: el documento tiene método de pago seteado pero no se pudo cargar
+    // la opción puntual (caso típico cuando se eligió "Financiamiento" sin opción específica).
     autoTable(doc, {
       startY: yPosition,
       body: [[
         {
-          content: 'El saldo restante se financiará con:',
-          styles: {
-            halign: 'left',
-            fontStyle: 'bold' as const,
-            fontSize: 8,
-            fillColor: COLORS.lightBlue,
-            cellPadding: 2
-          }
-        },
-        {
-          content: '',
-          styles: {
-            fillColor: COLORS.lightBlue,
-            cellPadding: 2
-          }
-        }
-      ]],
-      theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
-      columnStyles: {
-        0: { cellWidth: 156 },
-        1: { cellWidth: 28 }
-      },
-      margin: { left: margin + 1, right: margin + 1 },
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY;
-
-    autoTable(doc, {
-      startY: yPosition,
-      body: [[
-        {
-          content: descripcionOpcion,
-          styles: {
-            halign: 'left',
-            fontSize: 8,
-            fillColor: COLORS.white,
-            cellPadding: 2
-          }
-        },
-        {
-          content: formatCurrency(opcionSeleccionada.montoCuota),
-          styles: {
-            halign: 'right',
-            fontStyle: 'bold' as const,
-            fontSize: 8,
-            fillColor: COLORS.white,
-            cellPadding: 2
-          }
-        }
-      ]],
-      theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
-      columnStyles: {
-        0: { cellWidth: 156 },
-        1: { cellWidth: 28 }
-      },
-      margin: { left: margin + 1, right: margin + 1 },
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 1;
-
-    // Total con financiamiento
-    autoTable(doc, {
-      startY: yPosition,
-      body: [[
-        {
-          content: 'TOTAL CON FINANCIAMIENTO:',
+          content: 'FORMA DE PAGO',
           styles: {
             halign: 'center',
             fontStyle: 'bold' as const,
-            fontSize: 9,
-            fillColor: COLORS.white,
-            textColor: COLORS.black
-          }
+            fontSize: 10,
+            fillColor: COLORS.darkBlue,
+            textColor: COLORS.white,
+          },
         },
-        {
-          content: formatCurrency(opcionSeleccionada.montoTotal),
-          styles: {
-            halign: 'right',
-            fontStyle: 'bold' as const,
-            fontSize: 9,
-            fillColor: COLORS.white,
-            textColor: COLORS.black
-          }
-        }
       ]],
       theme: 'grid',
-      styles: {
-        lineColor: COLORS.mediumGray,
-        lineWidth: 0.1,
-      },
-      columnStyles: {
-        0: { cellWidth: 156 },
-        1: { cellWidth: 28 }
-      },
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
       margin: { left: margin + 1, right: margin + 1 },
     });
+    yPosition = (doc as any).lastAutoTable.finalY + 1;
+
+    const propio = isFinanciamientoPropio(documento.metodoPago);
+    const entregaEstimada = propio ? calcularEntregaInicial(documento.subtotal) : null;
+
+    autoTable(doc, {
+      startY: yPosition,
+      body: [
+        [
+          {
+            content: 'Método:',
+            styles: {
+              halign: 'left',
+              fontStyle: 'bold' as const,
+              fontSize: 9,
+              fillColor: COLORS.lightBlue,
+              cellPadding: 2,
+            },
+          },
+          {
+            content: getMetodoPagoLabel(documento.metodoPago),
+            styles: { halign: 'left', fontSize: 9, fillColor: COLORS.white, cellPadding: 2 },
+          },
+        ],
+        ...(propio && entregaEstimada !== null
+          ? [[
+              {
+                content: 'Entrega inicial estimada (40%):',
+                styles: {
+                  halign: 'left',
+                  fontStyle: 'bold' as const,
+                  fontSize: 8,
+                  fillColor: COLORS.lightBlue,
+                  cellPadding: 2,
+                },
+              },
+              {
+                content: formatCurrency(entregaEstimada),
+                styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+              },
+            ]]
+          : []),
+      ],
+      theme: 'grid',
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+      columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 124 } },
+      margin: { left: margin + 1, right: margin + 1 },
+    });
+    yPosition = (doc as any).lastAutoTable.finalY;
+
+    if (propio) {
+      yPosition = ensureSpace(doc, yPosition, 10, margin);
+      autoTable(doc, {
+        startY: yPosition,
+        body: [[
+          {
+            content:
+              `* Plan de cuotas a definir con el cliente. La entrega inicial es estimativa (40% del total) y el saldo se financia con el interés acordado sobre el saldo restante.`,
+            styles: {
+              halign: 'left',
+              fontSize: 7,
+              fontStyle: 'italic' as const,
+              fillColor: COLORS.white,
+              textColor: COLORS.darkGray,
+              cellPadding: 2,
+            },
+          },
+        ]],
+        theme: 'grid',
+        styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+        margin: { left: margin + 1, right: margin + 1 },
+      });
+    }
   }
 
   // ===== PIE DE PÁGINA AZUL CON NOTA =====

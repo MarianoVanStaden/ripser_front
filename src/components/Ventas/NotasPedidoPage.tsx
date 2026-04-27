@@ -73,6 +73,7 @@ import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import UsuarioBadge from "../common/UsuarioBadge";
 import LoadingOverlay from "../common/LoadingOverlay";
 import { generarNotaPedidoPDF } from "../../services/pdfService";
+import OpcionFinanciamientoLabel from "./OpcionFinanciamientoLabel";
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
@@ -141,7 +142,7 @@ const NotasPedidoPage: React.FC = () => {
   const [opcionesFinanciamiento, setOpcionesFinanciamiento] = useState<OpcionFinanciamientoDTO[]>([]);
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
   const [notasFinanciamiento, setNotasFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
-  const [opcionesSonFallback, setOpcionesSonFallback] = useState(false);
+  const [loadingOpciones, setLoadingOpciones] = useState(false);
 
   const [leadConversionDialogOpen, setLeadConversionDialogOpen] = useState(false);
   const [leadToConvert, setLeadToConvert] = useState<DocumentoComercial | null>(null);
@@ -215,65 +216,84 @@ const NotasPedidoPage: React.FC = () => {
     }
   };
 
+  /**
+   * Asegura que la nota tenga su propio set de opciones de financiamiento.
+   * El backend, al convertir presupuesto → nota, suele copiar 0 ó 1 opción.
+   * Si detectamos que faltan, las materializamos clonando las del presupuesto origen
+   * con IDs propios de la nota. Operación idempotente: solo se ejecuta cuando la nota
+   * tiene menos opciones que su origen.
+   */
+  const ensureOpcionesNotaPedido = useCallback(
+    async (nota: DocumentoComercial): Promise<OpcionFinanciamientoDTO[]> => {
+      const propias = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
+
+      if (!nota.documentoOrigenId) {
+        return propias;
+      }
+
+      const origen = await opcionFinanciamientoApi
+        .obtenerOpcionesPorDocumento(nota.documentoOrigenId)
+        .catch(() => [] as OpcionFinanciamientoDTO[]);
+
+      if (origen.length <= propias.length) {
+        return propias;
+      }
+
+      // Materializar las opciones faltantes en la nota (sin id, para que el backend asigne uno).
+      const clones: OpcionFinanciamientoDTO[] = origen.map(({ id: _ignored, esSeleccionada: _sel, ...rest }) => ({
+        ...rest,
+        esSeleccionada: false,
+      }));
+      const creadas = await opcionFinanciamientoApi.crearMultiples(nota.id, clones);
+      return creadas;
+    },
+    []
+  );
+
   const handleOpenFinanciamiento = useCallback(async (nota: DocumentoComercial) => {
     setNotaParaFinanciamiento(nota);
     setFinanciamientoDialogOpen(true);
-    setOpcionesSonFallback(false);
 
-    let opciones = notasFinanciamiento[nota.id] ?? [];
-    if (opciones.length === 0) {
-      try {
-        opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
-        // Fallback: si la nota tiene 0 o solo 1 opción (el backend solo copió la seleccionada),
-        // cargar el set completo del presupuesto de origen (esos IDs NO pertenecen a la nota)
-        if (opciones.length <= 1 && nota.documentoOrigenId) {
-          const opcionesOrigen = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.documentoOrigenId);
-          if (opcionesOrigen.length > opciones.length) {
-            opciones = opcionesOrigen;
-          }
-        }
-        if (opciones.length > 0) {
-          setNotasFinanciamiento(prev => ({ ...prev, [nota.id]: opciones }));
-        }
-      } catch (error) {
-        console.error('Error fetching financing options:', error);
+    const cached = notasFinanciamiento[nota.id] ?? [];
+    if (cached.length > 0) {
+      setOpcionesFinanciamiento(cached);
+      const preSelected = cached.find(o => o.id === nota.opcionFinanciamientoSeleccionadaId)
+        ?? cached.find(o => o.esSeleccionada);
+      setSelectedOpcionId(preSelected?.id ?? null);
+      return;
+    }
+
+    setLoadingOpciones(true);
+    try {
+      const opciones = await ensureOpcionesNotaPedido(nota);
+      setOpcionesFinanciamiento(opciones);
+      if (opciones.length > 0) {
+        setNotasFinanciamiento(prev => ({ ...prev, [nota.id]: opciones }));
       }
+      const preSelected = opciones.find(o => o.id === nota.opcionFinanciamientoSeleccionadaId)
+        ?? opciones.find(o => o.esSeleccionada)
+        ?? opciones.find(o => o.metodoPago === nota.metodoPago);
+      setSelectedOpcionId(preSelected?.id ?? null);
+    } catch (error) {
+      console.error('Error fetching financing options:', error);
+      setOpcionesFinanciamiento([]);
+      setSelectedOpcionId(null);
+      setSnackbar({ open: true, message: 'No se pudieron cargar las opciones de financiamiento', severity: 'error' });
+    } finally {
+      setLoadingOpciones(false);
     }
-
-    setOpcionesFinanciamiento(opciones);
-    // Detect fallback every time: if none of the cached option IDs matches the nota's selected ID,
-    // the options came from the presupuesto de origen (IDs are foreign to the nota)
-    const isFallback = opciones.length > 0 && nota.documentoOrigenId != null
-      && !opciones.some(o => o.id === nota.opcionFinanciamientoSeleccionadaId);
-    setOpcionesSonFallback(isFallback);
-    let preSelected: OpcionFinanciamientoDTO | undefined;
-    if (isFallback) {
-      // Prioritize esSeleccionada (set in cache after last confirm) over metodoPago match,
-      // since multiple options can share the same metodoPago (e.g. 12 and 18 cuotas both FINANCIAMIENTO)
-      preSelected = opciones.find(o => o.esSeleccionada)
-        ?? opciones.find(o => o.metodoPago === nota.metodoPago || (o.metodoPago as string) === nota.metodoPago);
-    } else {
-      preSelected = opciones.find(o => o.id === nota.opcionFinanciamientoSeleccionadaId)
-        ?? opciones.find(o => o.esSeleccionada);
-    }
-    setSelectedOpcionId(preSelected?.id ?? null);
-  }, [notasFinanciamiento]);
+  }, [notasFinanciamiento, ensureOpcionesNotaPedido]);
 
   const handleSelectOpcion = useCallback(async () => {
     if (!notaParaFinanciamiento || !selectedOpcionId) return;
     const opcionSeleccionada = opcionesFinanciamiento.find(o => o.id === selectedOpcionId);
     if (!opcionSeleccionada) return;
     try {
-      let updated: DocumentoComercial;
-      if (opcionesSonFallback) {
-        // Las opciones son del presupuesto de origen — sus IDs no pertenecen a la nota.
-        // Solo actualizamos el metodoPago.
-        updated = await documentoApi.changeMetodoPago(notaParaFinanciamiento.id, opcionSeleccionada.metodoPago);
-      } else {
-        updated = await documentoApi.selectFinanciamientoNotaPedido(notaParaFinanciamiento.id, selectedOpcionId);
-      }
+      const updated = await documentoApi.selectFinanciamientoNotaPedido(
+        notaParaFinanciamiento.id,
+        selectedOpcionId
+      );
       setNotasPedido(prev => prev.map(n => n.id === notaParaFinanciamiento.id ? updated : n));
-      // Update cache: mark the selected option so it pre-selects correctly on reopen
       const opcionesActualizadas = opcionesFinanciamiento.map(o => ({
         ...o,
         esSeleccionada: o.id === selectedOpcionId,
@@ -284,7 +304,7 @@ const NotasPedidoPage: React.FC = () => {
     } catch {
       setSnackbar({ open: true, message: 'No se pudo seleccionar el financiamiento', severity: 'error' });
     }
-  }, [notaParaFinanciamiento, selectedOpcionId, opcionesFinanciamiento, opcionesSonFallback]);
+  }, [notaParaFinanciamiento, selectedOpcionId, opcionesFinanciamiento]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -2108,39 +2128,49 @@ const NotasPedidoPage: React.FC = () => {
             </Box>
           )}
           <Divider sx={{ mb: 2 }} />
-          {opcionesFinanciamiento.length === 0 ? (
+          {loadingOpciones ? (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <CircularProgress size={28} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Cargando opciones de financiamiento…
+              </Typography>
+            </Box>
+          ) : opcionesFinanciamiento.length === 0 ? (
             <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>No hay opciones de financiamiento disponibles para este documento.</Typography>
           ) : (
             <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
-              {opcionesFinanciamiento.map((opcion) => (
-                <Box key={opcion.id} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 1 }}>
-                  <FormControlLabel value={opcion.id} control={<Radio />} label={
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        {getMetodoPagoIcon(opcion.metodoPago)}
-                        <Typography variant="subtitle1">{opcion.nombre}</Typography>
-                        {opcion.tasaInteres < 0 && (
-                          <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
-                        )}
-                      </Box>
-                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1 }}>
-                        <Typography variant="body2">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
-                        <Typography variant="body2">Cuotas: {opcion.cantidadCuotas}</Typography>
-                        <Typography variant="body2">Cuota*: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                        <Typography variant="body2">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                      </Box>
-                      {opcion.metodoPago === 'FINANCIAMIENTO' && (
-                        <Alert severity="warning" sx={{ mt: 1, py: 0, '& .MuiAlert-message': { py: 0.5 } }}>
-                          <Typography variant="caption">
-                            * El valor de la cuota es estimado. Cálculos definitivos y la configuración de entrega inicial se definen al facturar.
-                          </Typography>
-                        </Alert>
-                      )}
-                      {opcion.descripcion && <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>}
-                    </Box>
-                  } />
-                </Box>
-              ))}
+              {opcionesFinanciamiento.map((opcion) => {
+                const isSelected = selectedOpcionId === opcion.id;
+                return (
+                  <Box
+                    key={opcion.id}
+                    onClick={() => opcion.id != null && setSelectedOpcionId(opcion.id)}
+                    sx={{
+                      p: 2,
+                      border: '1px solid',
+                      borderColor: isSelected ? 'primary.main' : 'divider',
+                      borderRadius: 1,
+                      mb: 1.5,
+                      cursor: 'pointer',
+                      transition: 'border-color 120ms, background-color 120ms',
+                      bgcolor: isSelected ? 'action.selected' : 'background.paper',
+                      '&:hover': { borderColor: 'primary.light' },
+                    }}
+                  >
+                    <FormControlLabel
+                      value={opcion.id}
+                      control={<Radio />}
+                      sx={{ width: '100%', alignItems: 'flex-start', m: 0, '& .MuiFormControlLabel-label': { width: '100%' } }}
+                      label={
+                        <OpcionFinanciamientoLabel
+                          opcion={opcion}
+                          baseImporte={notaParaFinanciamiento?.subtotal ?? 0}
+                        />
+                      }
+                    />
+                  </Box>
+                );
+              })}
             </RadioGroup>
           )}
         </DialogContent>

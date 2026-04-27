@@ -112,7 +112,7 @@ const navigation: NavigationSection[] = [
     modulo: 'CLIENTES',
     items: [
       { text: 'Gestión Leads', icon: <PeopleIcon />, path: '/leads/table' },
-      { text: 'Recordatorios', icon: <AssignmentIcon />, path: '/leads/recordatorios' },
+      { text: 'Recordatorios', icon: <PeopleIcon />, path: '/leads/recordatorios' },
       { text: 'Gestión Clientes', icon: <PeopleIcon />, path: '/clientes/gestion' },
       { text: 'Carpeta Cliente', icon: <PeopleIcon />, path: '/clientes/carpeta' },
       { text: 'Agenda Visitas', icon: <PeopleIcon />, path: '/clientes/agenda' },
@@ -327,7 +327,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     <>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography variant="h6" noWrap component="div" sx={{ color: '#fff' }}>
-          Ripser
+          Ripser App
         </Typography>
         <IconButton
           onClick={onToggle}
