@@ -214,7 +214,58 @@ const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, 
   editable?: boolean;
   products: Producto[];
   recetas: RecetaFabricacionDTO[];
-}) => (
+}) => {
+  const [tipoEquipoFiltro, setTipoEquipoFiltro] = React.useState<'' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO'>('');
+
+  const recetasCountPorTipo = React.useMemo(() => {
+    const counts: Record<'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO', number> = {
+      HELADERA: 0, COOLBOX: 0, EXHIBIDOR: 0, OTRO: 0,
+    };
+    recetas.forEach((r) => {
+      const t = r.tipoEquipo as 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO' | undefined;
+      if (t && t in counts) counts[t]++;
+    });
+    return counts;
+  }, [recetas]);
+
+  const recetasFiltradas = React.useMemo(
+    () => (tipoEquipoFiltro ? recetas.filter((r) => r.tipoEquipo === tipoEquipoFiltro) : recetas),
+    [recetas, tipoEquipoFiltro]
+  );
+
+  return (
+  <Box>
+    {editable && recetas.length > 0 && (
+      <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <TextField
+          select
+          size="small"
+          label="Filtrar equipos por tipo"
+          value={tipoEquipoFiltro}
+          onChange={(e) => setTipoEquipoFiltro(e.target.value as typeof tipoEquipoFiltro)}
+          sx={{ minWidth: 260 }}
+        >
+          <MenuItem value="">Todos ({recetas.length})</MenuItem>
+          <MenuItem value="HELADERA" disabled={recetasCountPorTipo.HELADERA === 0}>
+            Heladera ({recetasCountPorTipo.HELADERA})
+          </MenuItem>
+          <MenuItem value="COOLBOX" disabled={recetasCountPorTipo.COOLBOX === 0}>
+            Coolbox ({recetasCountPorTipo.COOLBOX})
+          </MenuItem>
+          <MenuItem value="EXHIBIDOR" disabled={recetasCountPorTipo.EXHIBIDOR === 0}>
+            Exhibidor ({recetasCountPorTipo.EXHIBIDOR})
+          </MenuItem>
+          <MenuItem value="OTRO" disabled={recetasCountPorTipo.OTRO === 0}>
+            Otro ({recetasCountPorTipo.OTRO})
+          </MenuItem>
+        </TextField>
+        {tipoEquipoFiltro && (
+          <Button size="small" variant="text" onClick={() => setTipoEquipoFiltro('')}>
+            Limpiar filtro
+          </Button>
+        )}
+      </Box>
+    )}
   <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto', width: '100%', maxWidth: '100%' }}>
     <Table stickyHeader size="small" sx={{ minWidth: { xs: 700, md: 900 }, width: '100%' }}>
       <TableHead>
@@ -258,11 +309,19 @@ const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, 
                       value={itemAny.recetaId || ''}
                       onChange={(e) => onUpdate(index, 'recetaId', e.target.value)}
                     >
-                      {recetas.map((r) => (
-                        <MenuItem key={r.id} value={r.id}>
-                          {r.nombre} - {r.modelo} ({r.tipoEquipo})
+                      {recetasFiltradas.length === 0 ? (
+                        <MenuItem disabled>
+                          {recetas.length === 0
+                            ? 'No hay equipos disponibles'
+                            : `No hay equipos del tipo ${tipoEquipoFiltro}`}
                         </MenuItem>
-                      ))}
+                      ) : (
+                        recetasFiltradas.map((r) => (
+                          <MenuItem key={r.id} value={r.id}>
+                            {r.nombre} - {r.modelo} ({r.tipoEquipo})
+                          </MenuItem>
+                        ))
+                      )}
                     </Select>
                   ) : (
                     <Select
@@ -399,7 +458,9 @@ const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, 
       </TableBody>
     </Table>
   </TableContainer>
-));
+  </Box>
+  );
+});
 
 const FacturacionPage = () => {
   const navigate = useNavigate();

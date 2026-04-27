@@ -44,7 +44,9 @@ const RecetasList: React.FC = () => {
   const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [page] = useState(0);
-  const [pageSize] = useState(10);
+  // Large pageSize: la lista se filtra/agrupa client-side, el endpoint pagina
+  // y con size=10 silencia recetas extras cuando el catálogo crece.
+  const [pageSize] = useState(1000);
 
   // Filtros
   const [searchText, setSearchText] = useState('');
@@ -90,26 +92,34 @@ const RecetasList: React.FC = () => {
     loadRecetas();
   }, [page, pageSize]);
 
-  const loadRecetas = async () => {
+  const loadRecetas = async (overrides?: {
+    searchText?: string;
+    tipoEquipoFilter?: TipoEquipo | '';
+    soloActivas?: boolean;
+  }) => {
     try {
       setLoading(true);
       const response = await recetaFabricacionApi.findAll({ page, size: pageSize });
 
+      const search = overrides?.searchText ?? searchText;
+      const tipo = overrides?.tipoEquipoFilter ?? tipoEquipoFilter;
+      const activas = overrides?.soloActivas ?? soloActivas;
+
       // Filtrar localmente según los criterios
       let filtered = response.content || [];
 
-      if (searchText) {
+      if (search) {
         filtered = filtered.filter((r: RecetaFabricacionListDTO) =>
-          r.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
-          r.codigo.toLowerCase().includes(searchText.toLowerCase())
+          r.nombre.toLowerCase().includes(search.toLowerCase()) ||
+          r.codigo.toLowerCase().includes(search.toLowerCase())
         );
       }
 
-      if (tipoEquipoFilter) {
-        filtered = filtered.filter((r: RecetaFabricacionListDTO) => r.tipoEquipo === tipoEquipoFilter);
+      if (tipo) {
+        filtered = filtered.filter((r: RecetaFabricacionListDTO) => r.tipoEquipo === tipo);
       }
 
-      if (soloActivas) {
+      if (activas) {
         filtered = filtered.filter((r: RecetaFabricacionListDTO) => r.activo);
       }
 
@@ -330,8 +340,21 @@ const RecetasList: React.FC = () => {
             }
             label="Solo activas"
           />
-          <Button variant="outlined" onClick={loadRecetas}>
+          <Button variant="outlined" onClick={() => loadRecetas()}>
             Aplicar Filtros
+          </Button>
+          <Button
+            variant="text"
+            color="inherit"
+            onClick={() => {
+              setSearchText('');
+              setTipoEquipoFilter('');
+              setSoloActivas(false);
+              loadRecetas({ searchText: '', tipoEquipoFilter: '', soloActivas: false });
+            }}
+            disabled={!searchText && !tipoEquipoFilter && !soloActivas}
+          >
+            Limpiar Filtros
           </Button>
         </Stack>
 

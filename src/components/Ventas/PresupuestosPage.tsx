@@ -165,6 +165,7 @@ const PresupuestosPage: React.FC = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
+  const [tipoEquipoFiltro, setTipoEquipoFiltro] = useState<'' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO'>('');
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -897,6 +898,22 @@ const PresupuestosPage: React.FC = () => {
   };
   void _loadPresupuestos;
 
+  const recetasCountPorTipo = useMemo(() => {
+    const counts: Record<'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO', number> = {
+      HELADERA: 0, COOLBOX: 0, EXHIBIDOR: 0, OTRO: 0,
+    };
+    recetas.forEach((r) => {
+      const t = r.tipoEquipo as 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO' | undefined;
+      if (t && t in counts) counts[t]++;
+    });
+    return counts;
+  }, [recetas]);
+
+  const recetasFiltradasPorTipo = useMemo(
+    () => (tipoEquipoFiltro ? recetas.filter((r) => r.tipoEquipo === tipoEquipoFiltro) : recetas),
+    [recetas, tipoEquipoFiltro]
+  );
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <LoadingOverlay
@@ -1376,6 +1393,40 @@ const PresupuestosPage: React.FC = () => {
               </Alert>
             )}
 
+            {!readOnly && !editingPresupuesto && recetas.length > 0 && (
+              <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <TextField
+                  select
+                  size="small"
+                  label="Filtrar equipos por tipo"
+                  value={tipoEquipoFiltro}
+                  onChange={(e) => setTipoEquipoFiltro(e.target.value as typeof tipoEquipoFiltro)}
+                  sx={{ minWidth: 260 }}
+                >
+                  <MenuItem value="">
+                    Todos ({recetas.length})
+                  </MenuItem>
+                  <MenuItem value="HELADERA" disabled={recetasCountPorTipo.HELADERA === 0}>
+                    Heladera ({recetasCountPorTipo.HELADERA})
+                  </MenuItem>
+                  <MenuItem value="COOLBOX" disabled={recetasCountPorTipo.COOLBOX === 0}>
+                    Coolbox ({recetasCountPorTipo.COOLBOX})
+                  </MenuItem>
+                  <MenuItem value="EXHIBIDOR" disabled={recetasCountPorTipo.EXHIBIDOR === 0}>
+                    Exhibidor ({recetasCountPorTipo.EXHIBIDOR})
+                  </MenuItem>
+                  <MenuItem value="OTRO" disabled={recetasCountPorTipo.OTRO === 0}>
+                    Otro ({recetasCountPorTipo.OTRO})
+                  </MenuItem>
+                </TextField>
+                {tipoEquipoFiltro && (
+                  <Button size="small" variant="text" onClick={() => setTipoEquipoFiltro('')}>
+                    Limpiar filtro
+                  </Button>
+                )}
+              </Box>
+            )}
+
             <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto' }}>
               <Table size="small" aria-label="Tabla de detalles del presupuesto" sx={{ minWidth: { xs: 700, sm: 'auto' } }}>
                 <TableHead>
@@ -1442,12 +1493,16 @@ const PresupuestosPage: React.FC = () => {
                               error={!detalle.recetaId && hasUnsavedChanges}
                             >
                               <MenuItem value="">Seleccionar equipo</MenuItem>
-                              {recetas.length === 0 ? (
-                                <MenuItem disabled>No hay equipos disponibles</MenuItem>
+                              {recetasFiltradasPorTipo.length === 0 ? (
+                                <MenuItem disabled>
+                                  {recetas.length === 0
+                                    ? 'No hay equipos disponibles'
+                                    : `No hay equipos del tipo ${tipoEquipoFiltro}`}
+                                </MenuItem>
                               ) : (
-                                recetas.map((receta) => (
+                                recetasFiltradasPorTipo.map((receta) => (
                                   <MenuItem key={receta.id} value={receta.id.toString()}>
-                                    {receta.modelo}
+                                    {receta.modelo} ({receta.tipoEquipo})
                                   </MenuItem>
                                 ))
                               )}
