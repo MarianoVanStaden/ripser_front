@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   Paper,
@@ -9,7 +9,6 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
-  TablePagination,
   IconButton,
   Typography,
   Tooltip,
@@ -33,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { leadApi, type LeadFilterParams } from '../../api/services/leadApi';
+import { recordatorioLeadApi } from '../../api/services/recordatorioLeadApi';
 import {
   EstadoLeadEnum,
   PrioridadLeadEnum,
@@ -47,9 +47,11 @@ import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStat
 import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
 import { useTenant } from '../../context/TenantContext';
 import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
-import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
+
+const LEADS_FETCH_PAGE_SIZE = 2000;
+const RECORDATORIOS_FETCH_PAGE_SIZE = 5000;
 
 type Order = 'asc' | 'desc';
 type OrderBy =
@@ -110,91 +112,88 @@ export const LeadsTablePage = () => {
   const [soloMisLeads, setSoloMisLeads] = useState(false);
   const [recordatoriosByLeadId, setRecordatoriosByLeadId] = useState<Record<number, RecordatorioLeadDTO[]>>({});
 
+  const [leads, setLeads] = useState<LeadDTO[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const fetchLeads = useCallback(
-    (page: number, size: number, sort: string, filters: LeadFilterParams) => {
-      return leadApi.getAll({ page, size, sort }, filters);
-    },
-    []
-  );
+  const filters: LeadFilterParams = {
+    ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
+    ...(selectedEstados.length > 0 ? { estados: selectedEstados } : {}),
+    ...(selectedPrioridades.length === 1 ? { prioridad: selectedPrioridades[0] } : {}),
+    ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
+    ...(soloMisLeads ? { soloMisLeads: true } : {})
+  };
+  const sort = buildSort(orderBy, order);
 
-  const {
-    data: leads,
-    totalElements,
-    loading,
-    error,
-    page,
-    size,
-    handleChangePage,
-    handleChangeRowsPerPage,
-    setSort,
-    setFilters,
-    refresh
-  } = usePagination<LeadDTO, LeadFilterParams>({
-    fetchFn: fetchLeads,
-    initialSize: 50,
-    defaultSort: buildSort('dias', 'desc'),
-    initialFilters: {
-      ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {})
-    }
-  });
+  // Serializo filtros+sort para usarlos como dep estable de useEffect sin dispararlo por cada render.
+  const filtersKey = JSON.stringify({ filters, sort });
+  const fetchSeqRef = useRef(0);
 
-  useEffect(() => {
-    setFilters({
-      ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
-      ...(selectedEstados.length > 0 ? { estados: selectedEstados } : {}),
-      ...(selectedPrioridades.length === 1 ? { prioridad: selectedPrioridades[0] } : {}),
-      ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
-      ...(soloMisLeads ? { soloMisLeads: true } : {})
-    });
-  }, [
-    sucursalFiltro,
-    selectedEstados,
-    selectedPrioridades,
-    debouncedSearch,
-    soloMisLeads,
-    setFilters
-  ]);
-
-  useEffect(() => {
-    setSort(buildSort(orderBy, order));
-  }, [orderBy, order, setSort]);
-
-  // Recordatorios: sólo para los leads visibles en la página actual.
-  // El endpoint global (RecordatorioLeadController) sería más eficiente, pero
-  // ese flujo está acoplado al módulo de gestión global y no expone "por lead".
-  // Con page size ≤ 200 los N requests paralelos son aceptables; si se vuelve
-  // un problema, el back debería embeber recordatorios pendientes en LeadDTO.
-  useEffect(() => {
-    let cancelled = false;
-    if (leads.length === 0) {
-      setRecordatoriosByLeadId({});
-      return;
-    }
-    (async () => {
-      const entries = await Promise.all(
-        leads.map(async (lead) => {
-          if (!lead.id) return [0, [] as RecordatorioLeadDTO[]] as const;
-          try {
-            const recs = await leadApi.getRecordatorios(lead.id);
-            return [lead.id, recs] as const;
-          } catch {
-            return [lead.id, [] as RecordatorioLeadDTO[]] as const;
-          }
-        })
+  const fetchAll = useCallback(async () => {
+    const seq = ++fetchSeqRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const first = await leadApi.getAll(
+        { page: 0, size: LEADS_FETCH_PAGE_SIZE, sort },
+        filters
       );
-      if (cancelled) return;
-      const map: Record<number, RecordatorioLeadDTO[]> = {};
-      for (const [id, recs] of entries) {
-        if (id) map[id] = recs;
+      let all = first.content;
+      if (first.totalPages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: first.totalPages - 1 }, (_, i) =>
+            leadApi.getAll(
+              { page: i + 1, size: LEADS_FETCH_PAGE_SIZE, sort },
+              filters
+            )
+          )
+        );
+        for (const r of rest) all = all.concat(r.content);
       }
-      setRecordatoriosByLeadId(map);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [leads]);
+
+      // Una sola llamada al endpoint global de recordatorios pendientes (evita N+1).
+      const recPage = await recordatorioLeadApi.getAll(
+        { page: 0, size: RECORDATORIOS_FETCH_PAGE_SIZE },
+        {
+          enviado: false,
+          ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
+          ...(soloMisLeads ? { soloMisRecordatorios: true } : {})
+        }
+      );
+      const recMap: Record<number, RecordatorioLeadDTO[]> = {};
+      for (const r of recPage.content) {
+        if (r.leadId) (recMap[r.leadId] ||= []).push(r);
+      }
+
+      if (seq !== fetchSeqRef.current) return; // un fetch posterior ya está en curso
+      setLeads(all);
+      setTotalElements(first.totalElements);
+      setRecordatoriosByLeadId(recMap);
+    } catch (err: unknown) {
+      if (seq !== fetchSeqRef.current) return;
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (err as Error)?.message ||
+        'Error al cargar leads';
+      console.error('LeadsTablePage fetch error:', err);
+      setError(message);
+      setLeads([]);
+      setTotalElements(0);
+      setRecordatoriosByLeadId({});
+    } finally {
+      if (seq === fetchSeqRef.current) setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const refresh = fetchAll;
 
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -370,7 +369,7 @@ export const LeadsTablePage = () => {
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 360px)' }}>
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 280px)' }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
@@ -591,17 +590,11 @@ export const LeadsTablePage = () => {
         </Table>
       </TableContainer>
 
-      <TablePagination
-        component="div"
-        count={totalElements}
-        page={page}
-        onPageChange={handleChangePage}
-        rowsPerPage={size}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        rowsPerPageOptions={[25, 50, 100, 200]}
-        labelRowsPerPage="Leads por página:"
-        labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-      />
+      {leads.length > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Mostrando {leads.length} de {totalElements} leads
+        </Typography>
+      )}
 
       <SuperAdminContextModal
         autoOpen={showModal}

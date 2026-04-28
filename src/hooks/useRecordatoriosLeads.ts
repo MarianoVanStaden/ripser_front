@@ -124,13 +124,26 @@ export const useRecordatoriosLeads = (
     queryKey: QUERY_KEYS.RECORDATORIOS(filters),
     queryFn: async () => {
       try {
-        const response = await recordatorioLeadApi.getAll(
-          { page: 0, size: 500 },
+        const PAGE_SIZE = 2000;
+        const first = await recordatorioLeadApi.getAll(
+          { page: 0, size: PAGE_SIZE },
           { enviado: false, ...filters }
         );
+        let all = first.content;
+        if (first.totalPages > 1) {
+          const rest = await Promise.all(
+            Array.from({ length: first.totalPages - 1 }, (_, i) =>
+              recordatorioLeadApi.getAll(
+                { page: i + 1, size: PAGE_SIZE },
+                { enviado: false, ...filters }
+              )
+            )
+          );
+          for (const r of rest) all = all.concat(r.content);
+        }
         return {
-          content: sortRecordatorios(response.content),
-          totalElements: response.totalElements,
+          content: sortRecordatorios(all),
+          totalElements: first.totalElements,
           usingFallback: false,
         };
       } catch (err: unknown) {

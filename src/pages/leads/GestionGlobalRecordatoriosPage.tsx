@@ -25,7 +25,6 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  TablePagination,
   Stack,
   FormControlLabel,
   Switch,
@@ -854,10 +853,6 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const navigate = useNavigate();
   const { sucursalFiltro } = useTenant();
 
-  // ── UI state ──
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-
   // ── Filter state ──
   const [datePreset, setDatePreset] = useState<DatePreset>('todos');
   const [customFechaDesde, setCustomFechaDesde] = useState('');
@@ -963,22 +958,12 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     crearRecordatorio,
   } = useRecordatoriosLeads(filters);
 
-  // Reset paginación cuando cambian los filtros (la lista cambia de tamaño).
-  useEffect(() => {
-    setPage(0);
-  }, [filters]);
-
   const refresh = useCallback(() => {
     refetch();
   }, [refetch]);
 
   // ── Stable today string for row coloring ──
   const today = getTodayStr();
-
-  // ── Client-side pagination ──
-  const paginatedRows = useMemo(() => {
-    return recordatorios.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
-  }, [recordatorios, page, rowsPerPage]);
 
   // ── Handlers ──
   const handleMarcarCompletado = async (rec: RecordatorioConLeadDTO) => {
@@ -1295,8 +1280,8 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
           </Typography>
         </Paper>
       ) : (
-        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-          <Table size="small" sx={{ minWidth: 1000 }}>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto', maxHeight: 'calc(100vh - 380px)' }}>
+          <Table size="small" stickyHeader sx={{ minWidth: 1000 }}>
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.100' }}>
                 <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Fecha</TableCell>
@@ -1311,7 +1296,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedRows.map((rec) => {
+              {recordatorios.map((rec) => {
                 const bgColor = getRowBgColor(rec.fechaRecordatorio);
                 const esVencido = rec.fechaRecordatorio < today;
                 const esHoy = rec.fechaRecordatorio === today;
@@ -1522,22 +1507,12 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
               })}
             </TableBody>
           </Table>
-
-          <TablePagination
-            component="div"
-            count={recordatorios.length}
-            page={page}
-            onPageChange={(_, newPage) => setPage(newPage)}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value, 10));
-              setPage(0);
-            }}
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-          />
         </TableContainer>
+      )}
+      {recordatorios.length > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Mostrando {recordatorios.length} recordatorios
+        </Typography>
       )}
 
       {/* ── Dialogs ── */}
