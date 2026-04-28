@@ -1,4 +1,4 @@
-import type { TipoEquipo, MedidaEquipo } from './index';
+import type { TipoEquipo, MedidaEquipo, ColorEquipo } from './index';
 
 export type AccionSugerida = 'FABRICAR' | 'TERMINAR_BASE' | 'OK';
 
@@ -15,7 +15,7 @@ export interface StockObjetivoResponseDTO {
   tipo: TipoEquipo;
   modelo: string;
   medida: MedidaEquipo;
-  color?: string | null;
+  color?: ColorEquipo | null;
   cantidadObjetivo: number;
   activo: boolean;
   createdAt: string;
@@ -30,7 +30,7 @@ export interface EvaluacionStockDTO {
   modelo: string;
   medida: MedidaEquipo;
   /** null = equipo base (sin color). Mostrar como "Sin color / Base" en la UI */
-  color?: string | null;
+  color?: ColorEquipo | null;
   cantidadObjetivo: number;
   /** Terminadas listas para usar (o bases si el objetivo es sin color) */
   stockDisponible: number;
@@ -52,7 +52,7 @@ export interface CreateStockObjetivoDTO {
   modelo: string;
   medida: MedidaEquipo;
   /** null = objetivo de equipo BASE (sin color/terminación) */
-  color?: string | null;
+  colorId?: number | null;
   cantidadObjetivo: number;
   activo: boolean;
 }

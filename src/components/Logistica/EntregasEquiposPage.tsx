@@ -516,7 +516,7 @@ const EntregasEquiposPage2: React.FC = () => {
                       </Box>
                       <Box component="td" sx={{ p: 1 }}>{equipo.tipo}</Box>
                       <Box component="td" sx={{ p: 1 }}>{equipo.modelo}</Box>
-                      {!isTablet && <Box component="td" sx={{ p: 1 }}>{equipo.color || '-'}</Box>}
+                      {!isTablet && <Box component="td" sx={{ p: 1 }}>{equipo.color?.nombre || '-'}</Box>}
                       {!isTablet && <Box component="td" sx={{ p: 1 }}>{equipo.medida || '-'}</Box>}
                       <Box component="td" sx={{ p: 1 }}>
                         <Chip

@@ -82,13 +82,12 @@ import type {
   OpcionFinanciamientoDTO,
   RecetaFabricacionDTO,
   TipoItemDocumento,
-  ColorEquipo,
   MedidaEquipo,
   DeudaClienteError,
 } from '../../types';
 import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
 import ClienteAutocomplete from '../common/ClienteAutocomplete';
-import { COLORES_EQUIPO } from '../../types';
+import ColorPicker from '../common/ColorPicker';
 
 // Aligned with backend enum com.ripser_back.enums.MetodoPago. The order here is the one
 // shown in the Select; keep it consistent with other pages that expose the same options.
@@ -162,7 +161,8 @@ type CartItem = {
   recetaNombre?: string;
   recetaModelo?: string;
   recetaTipo?: string;
-  color?: ColorEquipo;
+  colorId?: number;
+  colorNombre?: string;
   medida?: MedidaEquipo;
   // Stock validation fields
   stockDisponible?: number;
@@ -184,7 +184,8 @@ type NotaCartItem = {
   recetaModelo?: string;
   recetaTipo?: string;
   descripcionEquipo?: string;
-  color?: ColorEquipo;
+  colorId?: number;
+  colorNombre?: string;
   medida?: MedidaEquipo;
   // Stock validation fields
   stockDisponible?: number;
@@ -346,22 +347,13 @@ const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, 
               </TableCell>
               <TableCell>
                 {editable && itemAny.tipoItem === 'EQUIPO' ? (
-                  <Select
-                    fullWidth
-                    size="small"
-                    value={itemAny.color || ''}
-                    onChange={(e) => onUpdate(index, 'color', e.target.value)}
-                    displayEmpty
-                  >
-                    <MenuItem value="">Sin especificar</MenuItem>
-                    {COLORES_EQUIPO.map((color) => (
-                      <MenuItem key={color} value={color}>
-                        {color.replace(/_/g, ' ')}
-                      </MenuItem>
-                    ))}
-                  </Select>
+                  <ColorPicker
+                    value={itemAny.colorId ?? undefined}
+                    onChange={(id) => onUpdate(index, 'colorId', id ?? '')}
+                    label=""
+                  />
                 ) : (
-                  <Typography>{itemAny.color ? itemAny.color.replace(/_/g, ' ') : '-'}</Typography>
+                  <Typography>{itemAny.colorNombre || '-'}</Typography>
                 )}
               </TableCell>
               <TableCell>
@@ -545,7 +537,7 @@ const FacturacionPage = () => {
     recetaId: number;
     recetaNombre: string;
     cantidad: number;
-    color?: ColorEquipo;
+    colorId?: number;
     medida?: MedidaEquipo;
     stockDisponible: number;
   } | null>(null);
@@ -925,13 +917,13 @@ const FacturacionPage = () => {
   };
 
   // Función para verificar stock disponible de un equipo
-  const verificarStockEquipo = useCallback(async (recetaId: number, color?: ColorEquipo, medida?: MedidaEquipo): Promise<number> => {
+  const verificarStockEquipo = useCallback(async (recetaId: number, colorId?: number, medida?: MedidaEquipo): Promise<number> => {
     try {
       const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(recetaId);
-      
-      // Filtrar por color y medida si están especificados
+
+      // Filtrar por color (id) y medida si están especificados
       const equiposFiltrados = equiposDisponibles.filter(equipo => {
-        const matchColor = !color || equipo.color === color;
+        const matchColor = !colorId || equipo.color?.id === colorId;
         const matchMedida = !medida || equipo.medida === medida;
         return matchColor && matchMedida;
       });
@@ -943,7 +935,7 @@ const FacturacionPage = () => {
     }
   }, []);
 
-  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'color', value: any) => {
+  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'colorId', value: any) => {
     const newCart = [...cart];
     const item = { ...newCart[index] };
 
@@ -963,7 +955,8 @@ const FacturacionPage = () => {
         delete item.recetaNombre;
         delete item.recetaModelo;
         delete item.recetaTipo;
-        delete item.color;
+        delete item.colorId;
+        delete item.colorNombre;
         delete item.medida;
         delete item.stockDisponible;
         delete item.stockVerificado;
@@ -976,7 +969,8 @@ const FacturacionPage = () => {
         item.recetaTipo = defaultReceta.tipoEquipo;
         item.precioUnitario = defaultReceta.precioVenta || 0;
         // Set default color and medida from receta
-        item.color = defaultReceta.color as ColorEquipo;
+        item.colorId = defaultReceta.color?.id;
+        item.colorNombre = defaultReceta.color?.nombre;
         item.medida = defaultReceta.medida as MedidaEquipo;
         // Clear producto fields
         delete item.productoId;
@@ -1004,7 +998,8 @@ const FacturacionPage = () => {
         item.recetaModelo = receta.modelo;
         item.recetaTipo = receta.tipoEquipo;
         // Set default color and medida from receta
-        item.color = receta.color as ColorEquipo;
+        item.colorId = receta.color?.id;
+        item.colorNombre = receta.color?.nombre;
         item.medida = receta.medida as MedidaEquipo;
         if (!item.precioManualmenteModificado) {
           item.precioUnitario = receta.precioVenta || 0;
@@ -1014,9 +1009,11 @@ const FacturacionPage = () => {
         delete item.stockDisponible;
         delete item.requiereFabricacion;
       }
-    } else if (field === 'color') {
+    } else if (field === 'colorId') {
       // Update color (medida is no longer user-editable; it comes from the recipe)
-      item.color = value || undefined;
+      const nextId = value === '' || value == null ? undefined : Number(value);
+      item.colorId = nextId;
+      item.colorNombre = undefined; // re-derived on next render via colores cache
       // Reset stock verification when color changes
       item.stockVerificado = false;
       delete item.stockDisponible;
@@ -1039,8 +1036,8 @@ const FacturacionPage = () => {
     setCart(newCart);
 
     // Solo verificar stock de forma silenciosa (sin abrir dialog), para mostrar indicadores
-    if (item.tipoItem === 'EQUIPO' && item.recetaId && (field === 'recetaId' || field === 'color' || field === 'cantidad')) {
-      const stockDisponible = await verificarStockEquipo(item.recetaId, item.color, item.medida);
+    if (item.tipoItem === 'EQUIPO' && item.recetaId && (field === 'recetaId' || field === 'colorId' || field === 'cantidad')) {
+      const stockDisponible = await verificarStockEquipo(item.recetaId, item.colorId, item.medida);
       newCart[index].stockDisponible = stockDisponible;
       newCart[index].stockVerificado = true;
       newCart[index].requiereFabricacion = stockDisponible < item.cantidad;
@@ -1067,7 +1064,7 @@ const FacturacionPage = () => {
       const equipoData: any = {
         recetaId: itemPendienteFabricacion.recetaId,
         cantidad: itemPendienteFabricacion.cantidad,
-        color: itemPendienteFabricacion.color,
+        colorId: itemPendienteFabricacion.colorId ?? null,
         medida: itemPendienteFabricacion.medida,
         estado: 'EN_PROCESO',
       };
@@ -1084,7 +1081,7 @@ const FacturacionPage = () => {
       const updatedCart = [...cart];
       const itemIndex = updatedCart.findIndex(
         item => item.recetaId === itemPendienteFabricacion.recetaId &&
-                item.color === itemPendienteFabricacion.color &&
+                item.colorId === itemPendienteFabricacion.colorId &&
                 item.medida === itemPendienteFabricacion.medida
       );
       
@@ -1194,15 +1191,15 @@ const FacturacionPage = () => {
     const equiposEnCarrito = cart.filter(item => item.tipoItem === 'EQUIPO' && item.recetaId);
     
     for (const item of equiposEnCarrito) {
-      const stockDisponible = await verificarStockEquipo(item.recetaId!, item.color, item.medida);
-      
+      const stockDisponible = await verificarStockEquipo(item.recetaId!, item.colorId, item.medida);
+
       if (stockDisponible < item.cantidad) {
         // Mostrar dialog de confirmación
         setItemPendienteFabricacion({
           recetaId: item.recetaId!,
           recetaNombre: item.recetaNombre || 'Equipo',
           cantidad: item.cantidad - stockDisponible,
-          color: item.color,
+          colorId: item.colorId,
           medida: item.medida,
           stockDisponible,
         });
@@ -1261,10 +1258,10 @@ const FacturacionPage = () => {
               : undefined;
             detalle.descripcionEquipo = equipoDesc;
             detalle.descripcion = equipoDesc; // Also set general descripcion for reports
-            // Color goes through; medida is intentionally omitted: the backend
+            // colorId goes through; medida is intentionally omitted: the backend
             // derives it from the recipe so the request stays consistent.
-            if (item.color) {
-              detalle.color = item.color;
+            if (item.colorId != null) {
+              detalle.colorId = item.colorId;
             }
           } else {
             detalle.productoId = Number(item.productoId);
@@ -1728,7 +1725,8 @@ const FacturacionPage = () => {
             recetaModelo: d.recetaModelo,
             recetaTipo: d.recetaTipo,
             descripcionEquipo: d.descripcionEquipo,
-            color: d.color as ColorEquipo,
+            colorId: d.color?.id,
+            colorNombre: d.color?.nombre,
             medida: d.medida as MedidaEquipo,
           }))
         : []
@@ -2938,11 +2936,11 @@ const FacturacionPage = () => {
                       {itemPendienteFabricacion.recetaNombre}
                     </Typography>
                   </Box>
-                  {itemPendienteFabricacion.color && (
+                  {itemPendienteFabricacion.colorId != null && (
                     <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">Color:</Typography>
+                      <Typography variant="body2" color="text.secondary">Color id:</Typography>
                       <Typography variant="body2" fontWeight="bold">
-                        {itemPendienteFabricacion.color.replace(/_/g, ' ')}
+                        {itemPendienteFabricacion.colorId}
                       </Typography>
                     </Box>
                   )}

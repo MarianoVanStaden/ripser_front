@@ -115,7 +115,7 @@ export const StockObjetivoTable: React.FC<StockObjetivoTableProps> = ({
                     color={row.color ? 'text.primary' : 'text.disabled'}
                     fontStyle={row.color ? 'normal' : 'italic'}
                   >
-                    {getColorLabel(row.color)}
+                    {getColorLabel(row.color?.nombre ?? null)}
                   </Typography>
                 </TableCell>
                 <TableCell align="right">{row.cantidadObjetivo}</TableCell>

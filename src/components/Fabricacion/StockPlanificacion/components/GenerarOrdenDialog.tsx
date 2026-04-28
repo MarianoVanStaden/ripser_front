@@ -140,7 +140,7 @@ export const GenerarOrdenDialog: React.FC<GenerarOrdenDialogProps> = ({
             Objetivo:{' '}
             <strong>
               {target.tipo} · {target.modelo} · {target.medida}
-              {target.color ? ` · ${target.color.replace(/_/g, ' ')}` : ''}
+              {target.color ? ` · ${target.color.nombre}` : ''}
             </strong>
           </Typography>
           <Typography variant="body2" color="error.main" fontWeight={500}>

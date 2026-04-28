@@ -424,11 +424,11 @@ export const ConvertLeadPage = () => {
                           Cantidad: {lead.cantidadRecetaInteres || lead.cantidadEquipoInteres}
                         </Typography>
                       )}
-                      {((lead.modeloRecetaInteres || lead.modeloEquipoInteres) || (lead.colorRecetaInteres || lead.colorEquipoInteres) || (lead.medidaRecetaInteres || lead.medidaEquipoInteres)) && (
+                      {((lead.modeloRecetaInteres || lead.modeloEquipoInteres) || lead.colorEquipoInteres || (lead.medidaRecetaInteres || lead.medidaEquipoInteres)) && (
                         <Typography variant="body2" color="text.secondary">
                           Personalizado: {[
                             (lead.modeloRecetaInteres || lead.modeloEquipoInteres) && `Modelo: ${lead.modeloRecetaInteres || lead.modeloEquipoInteres}`,
-                            (lead.colorRecetaInteres || lead.colorEquipoInteres) && `Color: ${lead.colorRecetaInteres || lead.colorEquipoInteres}`,
+                            lead.colorEquipoInteres && `Color: ${lead.colorEquipoInteres.nombre}`,
                             (lead.medidaRecetaInteres || lead.medidaEquipoInteres) && `Medida: ${lead.medidaRecetaInteres || lead.medidaEquipoInteres}`
                           ].filter(Boolean).join(' • ')}
                         </Typography>

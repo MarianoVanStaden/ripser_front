@@ -45,8 +45,9 @@ import {
   PROVINCIA_LABELS
 } from '../../types/lead.types';
 import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO } from '../../types/lead.types';
-import type { Producto, RecetaFabricacionListDTO, ColorEquipo, MedidaEquipo } from '../../types';
-import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
+import type { Producto, RecetaFabricacionListDTO, MedidaEquipo } from '../../types';
+import { MEDIDAS_EQUIPO } from '../../types';
+import ColorPicker from '../../components/common/ColorPicker';
 import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
@@ -88,13 +89,13 @@ export const LeadFormPage = () => {
     recetaInteresId: undefined,
     cantidadRecetaInteres: undefined,
     modeloRecetaInteres: '',
-    colorRecetaInteres: '',
+    colorRecetaInteresId: undefined,
     medidaRecetaInteres: '',
     // Legacy fields
     equipoFabricadoInteresId: undefined,
     cantidadEquipoInteres: undefined,
     modeloEquipoInteres: '',
-    colorEquipoInteres: '',
+    colorEquipoInteresId: undefined,
     medidaEquipoInteres: '',
     equipoInteresadoId: undefined,
     recordatorios: []
@@ -184,7 +185,7 @@ export const LeadFormPage = () => {
         data.recetaInteresNombre = data.equipoFabricadoInteresNombre;
         data.cantidadRecetaInteres = data.cantidadEquipoInteres;
         data.modeloRecetaInteres = data.modeloEquipoInteres;
-        data.colorRecetaInteres = data.colorEquipoInteres;
+        data.colorRecetaInteresId = data.colorEquipoInteresId;
         data.medidaRecetaInteres = data.medidaEquipoInteres;
       }
       
@@ -629,24 +630,24 @@ export const LeadFormPage = () => {
                     const parts = [option.nombre, option.tipoEquipo];
                     if (option.modelo) parts.push(`Modelo: ${option.modelo}`);
                     if (option.medida) parts.push(option.medida);
-                    if (option.color) parts.push(option.color);
+                    if (option.color) parts.push(option.color.nombre);
                     return parts.join(' - ');
                   }}
                   value={recetas.find(r => r.id === formData.recetaInteresId) || null}
                   onChange={(_, newValue) => {
-                    setFormData({ 
-                      ...formData, 
+                    setFormData({
+                      ...formData,
                       recetaInteresId: newValue?.id,
                       recetaInteresNombre: newValue?.nombre,
                       // Pre-cargar valores de la receta, pero permitir edición
                       modeloRecetaInteres: newValue?.modelo || '',
-                      colorRecetaInteres: newValue?.color || '',
+                      colorRecetaInteresId: newValue?.color?.id,
                       medidaRecetaInteres: newValue?.medida || '',
                       // Mapear a campos del backend
                       equipoFabricadoInteresId: newValue?.id,
                       equipoFabricadoInteresNombre: newValue?.nombre,
                       modeloEquipoInteres: newValue?.modelo || '',
-                      colorEquipoInteres: newValue?.color || '',
+                      colorEquipoInteresId: newValue?.color?.id,
                       medidaEquipoInteres: newValue?.medida || ''
                     });
                   }}
@@ -703,27 +704,19 @@ export const LeadFormPage = () => {
               </Grid>
 
               <Grid item xs={12} md={3}>
-                <FormControl fullWidth disabled={!formData.recetaInteresId}>
-                  <InputLabel>Color</InputLabel>
-                  <Select
-                    value={formData.colorRecetaInteres || ''}
-                    label="Color"
-                    onChange={(e) => {
-                      setFormData({ 
-                        ...formData, 
-                        colorRecetaInteres: e.target.value as ColorEquipo,
-                        colorEquipoInteres: e.target.value // Mapear al backend
-                      });
-                    }}
-                  >
-                    <MenuItem value="">Ninguno</MenuItem>
-                    {COLORES_EQUIPO.map((color) => (
-                      <MenuItem key={color} value={color}>
-                        {color.replace(/_/g, ' ')}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <ColorPicker
+                  label="Color"
+                  value={formData.colorRecetaInteresId}
+                  onChange={(id) => {
+                    setFormData({
+                      ...formData,
+                      colorRecetaInteresId: id,
+                      colorEquipoInteresId: id, // Mapear al backend
+                    });
+                  }}
+                  disabled={!formData.recetaInteresId}
+                  size="medium"
+                />
               </Grid>
 
               <Grid item xs={12} md={3}>

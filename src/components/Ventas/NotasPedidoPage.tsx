@@ -796,7 +796,7 @@ const NotasPedidoPage: React.FC = () => {
               tipo: (receta?.tipoEquipo as any) || 'HELADERA',
               modelo: detalle.recetaModelo || receta?.modelo || '',
               medida: detalle.medida,
-              color: detalle.color,
+              colorId: detalle.color?.id,
               detalleNotaPedidoId: detalle.id!,
             });
 
@@ -1772,7 +1772,7 @@ const NotasPedidoPage: React.FC = () => {
                             ? `${detalle.recetaNombre || ''} ${detalle.recetaModelo ? `- ${detalle.recetaModelo}` : ''}`
                             : detalle.productoNombre || "-"}
                         </TableCell>
-                        <TableCell>{detalle.color || '-'}</TableCell>
+                        <TableCell>{detalle.color?.nombre || '-'}</TableCell>
                         <TableCell>{detalle.medida || '-'}</TableCell>
                         <TableCell>{detalle.descripcion}</TableCell>
                         <TableCell align="center">{detalle.cantidad}</TableCell>

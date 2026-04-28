@@ -546,7 +546,7 @@ const ReportesEstadosPage: React.FC = () => {
                       <TableCell>{equipo.numeroHeladera}</TableCell>
                       <TableCell>{equipo.tipo}</TableCell>
                       <TableCell>{equipo.modelo}</TableCell>
-                      <TableCell>{equipo.color || '-'}</TableCell>
+                      <TableCell>{equipo.color?.nombre || '-'}</TableCell>
                       <TableCell>
                         {equipo.estadoAsignacion ? (
                           <Chip

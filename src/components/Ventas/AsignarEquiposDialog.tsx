@@ -67,7 +67,9 @@ interface DetalleAsignacion {
   recetaNombre: string;
   recetaModelo?: string;
   recetaTipo?: string;
-  color?: string;
+  /** Cached color id and display name (the line item carries the FK only). */
+  colorId?: number;
+  colorNombre?: string;
   medida?: string;
   cantidadRequerida: number;
   equiposSeleccionados: number[];
@@ -107,7 +109,8 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           recetaNombre: detalle.recetaNombre || '',
           recetaModelo: detalle.recetaModelo,
           recetaTipo: detalle.recetaTipo,
-          color: detalle.color,
+          colorId: detalle.color?.id,
+          colorNombre: detalle.color?.nombre,
           medida: detalle.medida,
           cantidadRequerida: detalle.cantidad,
           equiposSeleccionados: [],
@@ -206,7 +209,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
 
         // Filter by color, medida, and estadoAsignacion
         const equiposFiltrados = combinados.filter((equipo) => {
-          const matchColor = !asignacion.color || equipo.color === asignacion.color;
+          const matchColor = !asignacion.colorId || equipo.color?.id === asignacion.colorId;
           const matchMedida = !asignacion.medida || equipo.medida === asignacion.medida;
 
           // Infer estadoAsignacion if not provided
@@ -237,7 +240,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
         console.log(`🔍 Filtrado de equipos para ${asignacion.recetaNombre}:`);
         console.log(`  - Completados+disponibles: ${equiposCompletos.length}`);
         console.log(`  - Sin terminación: ${equiposSinTerminacion.length}`);
-        console.log(`  - Color requerido: "${asignacion.color || 'Sin especificar'}"`);
+        console.log(`  - Color requerido: "${asignacion.colorNombre || 'Sin especificar'}"`);
         console.log(`  - Medida requerida: "${asignacion.medida || 'Sin especificar'}"`);
         console.log(`  - Equipos seleccionables: ${equiposFiltrados.length}`);
 
@@ -380,11 +383,11 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                       <Typography variant="body2" color="text.secondary">
                         Tipo: {asignacion.recetaTipo} | Cantidad requerida: {asignacion.cantidadRequerida}
                       </Typography>
-                      {(asignacion.color || asignacion.medida) && (
+                      {(asignacion.colorNombre || asignacion.medida) && (
                         <Box display="flex" gap={1} mt={0.5}>
-                          {asignacion.color && (
+                          {asignacion.colorNombre && (
                             <Chip
-                              label={`Color: ${asignacion.color.replace(/_/g, ' ')}`}
+                              label={`Color: ${asignacion.colorNombre}`}
                               size="small"
                               variant="outlined"
                               color="primary"
@@ -466,7 +469,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                                   </Typography>
                                   {(equipo.color || equipo.medida) && (
                                     <Typography variant="caption" color="text.secondary">
-                                      {equipo.color && equipo.color.replace(/_/g, ' ')}
+                                      {equipo.color && equipo.color.nombre}
                                       {equipo.color && equipo.medida && ' - '}
                                       {equipo.medida}
                                     </Typography>

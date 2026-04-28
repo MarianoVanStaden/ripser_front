@@ -11,7 +11,7 @@ import type {
   EquipoFabricadoDTO,
   TipoTerminacion,
 } from '../../types';
-import { COLORES_EQUIPO } from '../../types';
+import { useColores } from '../../context/ColoresContext';
 
 interface AplicarTerminacionDialogProps {
   open: boolean;
@@ -50,6 +50,7 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
   // Full equipo DTO fetched from detail endpoint (list DTO may omit observaciones / clienteId)
   const [fullEquipo, setFullEquipo] = useState<EquipoFabricadoDTO | null>(null);
   const autoFilledRef = useRef(false);
+  const { colores } = useColores();
 
   // When dialog opens, fetch the full equipo to ensure observaciones and clienteId are available
   useEffect(() => {
@@ -68,12 +69,14 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
 
   // Pre-fill color when dialog opens if there's an expected color in observaciones
   useEffect(() => {
-    if (open && colorPrevisto && COLORES_EQUIPO.includes(colorPrevisto as any) && !autoFilledRef.current) {
+    if (open && colorPrevisto && colores.some((c) => c.nombre.toUpperCase() === colorPrevisto.toUpperCase()) && !autoFilledRef.current) {
       autoFilledRef.current = true;
       setTipoTerminacion('COLOR_PINTURA');
-      setValor(colorPrevisto);
+      // Match a known color by case-insensitive name and store its canonical name.
+      const matched = colores.find((c) => c.nombre.toUpperCase() === colorPrevisto.toUpperCase());
+      setValor(matched?.nombre ?? colorPrevisto);
     }
-  }, [open, colorPrevisto]);
+  }, [open, colorPrevisto, colores]);
 
   const handleClose = () => {
     setTipoTerminacion('COLOR_PINTURA');
@@ -164,7 +167,7 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
               {equipo.color && (
                 <Box>
                   <Typography variant="caption" color="text.secondary">Color actual</Typography>
-                  <Typography variant="body2" fontWeight="600">{equipo.color}</Typography>
+                  <Typography variant="body2" fontWeight="600">{equipo.color.nombre}</Typography>
                 </Box>
               )}
             </Stack>
@@ -212,9 +215,9 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
               onChange={(e) => setValor(e.target.value)}
               fullWidth
             >
-              {COLORES_EQUIPO.map((c) => (
-                <MenuItem key={c} value={c}>
-                  {c.replace(/_/g, ' ')}
+              {colores.map((c) => (
+                <MenuItem key={c.id} value={c.nombre}>
+                  {c.nombre}
                 </MenuItem>
               ))}
             </TextField>

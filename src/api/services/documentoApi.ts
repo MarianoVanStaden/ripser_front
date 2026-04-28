@@ -16,8 +16,9 @@ import type {
 // Request-only line item for presupuesto creation. Mirrors
 // `DetalleDocumentoCreateDTO` on the backend: `medida` is intentionally
 // absent — for EQUIPO items the measure is derived from the recipe at the
-// service layer, so the client must not provide it.
-export type DetalleDocumentoCreateDTO = Omit<DetalleDocumentoDTO, 'medida'>;
+// service layer. `color` is sent as a foreign-key id (`colorId`).
+export type DetalleDocumentoCreateDTO =
+  Omit<DetalleDocumentoDTO, 'medida' | 'color'> & { colorId?: number | null };
 
 // Narrow DTO for creating presupuesto in current backend
 export type CreatePresupuestoPayload = {

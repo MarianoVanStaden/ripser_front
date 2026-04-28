@@ -239,6 +239,7 @@ const navigation: NavigationSection[] = [
       { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
+      { text: 'Colores', icon: <SettingsIcon />, path: '/admin/colores' },
       { text: 'Gestión Depósitos', icon: <SettingsIcon />, path: '/logistica/configuracion/depositos' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
     ],

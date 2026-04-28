@@ -19,7 +19,8 @@ import type {
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
 } from '../../types';
-import { MEDIDAS_EQUIPO, COLORES_EQUIPO } from '../../types';
+import { MEDIDAS_EQUIPO } from '../../types';
+import ColorPicker from '../common/ColorPicker';
 import { employeeApi } from '../../api/services/employeeApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import StockErrorDialog, { type ProductoInsuficiente } from '../common/StockErrorDialog';
@@ -38,7 +39,7 @@ const schema = yup.object().shape({
   cantidad: yup.number().min(1, 'La cantidad debe ser al menos 1').required('La cantidad es obligatoria'),
   equipo: yup.string(),
   medida: yup.string(),
-  color: yup.string(),
+  colorId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   observaciones: yup.string(),
 });
 
@@ -84,7 +85,7 @@ const EquipoForm: React.FC = () => {
       modelo: '',
       equipo: '',
       medida: '',
-      color: '',
+      colorId: null as number | null,
       numeroHeladera: '',
       cantidad: 1,
       observaciones: '',
@@ -170,7 +171,7 @@ const EquipoForm: React.FC = () => {
         modelo: data.modelo,
         equipo: data.equipo || '',
         medida: data.medida || '',
-        color: data.color || '',
+        colorId: data.color?.id ?? null,
         numeroHeladera: data.numeroHeladera,
         cantidad: data.cantidad,
         observaciones: data.observaciones || '',
@@ -213,7 +214,7 @@ const EquipoForm: React.FC = () => {
           modelo: data.modelo,
           equipo: data.equipo,
           medida: data.medida,
-          color: data.color,
+          colorId: data.colorId ?? null,
           cantidad: data.cantidad,
           observaciones: data.observaciones,
           estado,
@@ -241,7 +242,7 @@ const EquipoForm: React.FC = () => {
           modelo: data.modelo,
           equipo: data.equipo,
           medida: data.medida,
-          color: undefined, // Sin color — el backend lo completa a FABRICADO_SIN_TERMINACION
+          colorId: null, // Sin color — el backend lo completa a FABRICADO_SIN_TERMINACION
           cantidad: data.cantidad,
           observaciones: data.observaciones,
           numeroHeladera: 'AUTO',
@@ -268,7 +269,7 @@ const EquipoForm: React.FC = () => {
           modelo: data.modelo,
           equipo: data.equipo,
           medida: data.medida,
-          color: data.color,
+          colorId: data.colorId ?? null,
           cantidad: data.cantidad,
           observaciones: data.observaciones,
           estado: 'PENDIENTE', // Always start in PENDIENTE for new equipos
@@ -512,25 +513,14 @@ const EquipoForm: React.FC = () => {
               />
               {(isEdit || modoFabricacion === 'COMPLETO') && (
                 <Controller
-                  name="color"
+                  name="colorId"
                   control={control}
                   render={({ field }) => (
-                    <TextField
-                      {...field}
-                      select
+                    <ColorPicker
+                      value={field.value ?? undefined}
+                      onChange={(id) => field.onChange(id ?? null)}
                       label="Color"
-                      fullWidth
-                      value={field.value || ''}
-                    >
-                      <MenuItem value="">
-                        <em>Sin especificar</em>
-                      </MenuItem>
-                      {COLORES_EQUIPO.map((color) => (
-                        <MenuItem key={color} value={color}>
-                          {color.replace(/_/g, ' ')}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    />
                   )}
                 />
               )}

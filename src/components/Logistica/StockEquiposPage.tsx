@@ -56,6 +56,7 @@ import type {
 } from '../../types';
 import { generateEquiposInventoryPDF } from '../../utils/pdfExportUtils';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ColorPicker from '../common/ColorPicker';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -103,7 +104,7 @@ const StockEquiposPage: React.FC = () => {
   const [selectedEquipo, setSelectedEquipo] = useState<EquipoFabricadoDTO | null>(null);
   const [editForm, setEditForm] = useState({
     modelo: '',
-    color: '',
+    colorId: null as number | null,
     observaciones: '',
     estado: 'EN_PROCESO' as EstadoFabricacion,
   });
@@ -172,7 +173,7 @@ const StockEquiposPage: React.FC = () => {
     setSelectedEquipo(equipo);
     setEditForm({
       modelo: equipo.modelo,
-      color: equipo.color || '',
+      colorId: equipo.color?.id ?? null,
       observaciones: equipo.observaciones || '',
       estado: equipo.estado,
     });
@@ -186,7 +187,7 @@ const StockEquiposPage: React.FC = () => {
       setLoading(true);
       await equipoFabricadoApi.update(selectedEquipo.id, {
         modelo: editForm.modelo,
-        color: editForm.color,
+        colorId: editForm.colorId,
         observaciones: editForm.observaciones,
         estado: editForm.estado,
       });
@@ -692,7 +693,7 @@ const StockEquiposPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{getTipoChip(equipo.tipo)}</TableCell>
                       <TableCell>{equipo.modelo}</TableCell>
-                      <TableCell>{equipo.color || '-'}</TableCell>
+                      <TableCell>{equipo.color?.nombre || '-'}</TableCell>
                       <TableCell>{getEstadoChip(equipo.estado)}</TableCell>
                       <TableCell align="center">
                         {equipo.asignado ? (
@@ -1148,11 +1149,11 @@ const StockEquiposPage: React.FC = () => {
               required
             />
 
-            <TextField
+            <ColorPicker
               label="Color"
-              value={editForm.color}
-              onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
-              fullWidth
+              value={editForm.colorId ?? undefined}
+              onChange={(id) => setEditForm({ ...editForm, colorId: id ?? null })}
+              size="medium"
             />
 
             <TextField

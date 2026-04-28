@@ -435,7 +435,7 @@ const loadClientes = async () => {
                     <Typography variant="caption" color="textSecondary">
                       Color
                     </Typography>
-                    <Typography variant="body1">{equipo.color}</Typography>
+                    <Typography variant="body1">{equipo.color?.nombre}</Typography>
                   </Box>
                 )}
                 <Box>

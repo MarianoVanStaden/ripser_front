@@ -54,7 +54,8 @@ import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi"
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead, DeudaClienteError } from "../../types";
-import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO } from "../../types";
+import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
+import ColorPicker from "../common/ColorPicker";
 import LoadingOverlay from "../common/LoadingOverlay";
 import { useAuth } from "../../context/AuthContext";
 import { useTenant } from "../../context/TenantContext";
@@ -92,7 +93,11 @@ interface DetalleForm {
   productoId?: string;
   // For EQUIPO type
   recetaId?: string;
-  color?: string;
+  /** FK to the colores catalog (see ColoresContext). */
+  colorId?: number;
+  /** Cached display name of the color, populated from the response or
+   *  the cached catalog. The backend is the source of truth via colorId. */
+  colorNombre?: string;
   medida?: MedidaEquipo;
   descripcion: string;
   cantidad: number;
@@ -124,7 +129,8 @@ const initialDetalle: DetalleForm = {
   tipoItem: 'EQUIPO',
   productoId: "",
   recetaId: "",
-  color: "",
+  colorId: undefined,
+  colorNombre: undefined,
   medida: undefined,
   descripcion: "",
   cantidad: 1,
@@ -476,7 +482,8 @@ const PresupuestosPage: React.FC = () => {
         // Reset item-specific fields when switching type
         detalle.productoId = "";
         detalle.recetaId = "";
-        detalle.color = "";
+        detalle.colorId = undefined;
+        detalle.colorNombre = undefined;
         detalle.medida = undefined;
         detalle.descripcion = "";
         detalle.precioUnitario = 0;
@@ -485,8 +492,10 @@ const PresupuestosPage: React.FC = () => {
         detalle.productoId = value as string;
       } else if (field === "recetaId") {
         detalle.recetaId = value as string;
-      } else if (field === "color") {
-        detalle.color = value as string;
+      } else if (field === "colorId") {
+        const next = value === "" || value == null ? undefined : Number(value);
+        detalle.colorId = next;
+        detalle.colorNombre = undefined; // re-derived below from cache when needed
       } else if (field === "descripcion") {
         detalle.descripcion = value as string;
       } else if (field === "cantidad") {
@@ -561,7 +570,8 @@ const PresupuestosPage: React.FC = () => {
               tipoItem: detalle.tipoItem,
               productoId: detalle.productoId?.toString() || "",
               recetaId: detalle.recetaId?.toString() || "",
-              color: detalle.color || "",
+              colorId: detalle.color?.id,
+              colorNombre: detalle.color?.nombre,
               medida: detalle.medida || undefined,
               descripcion: detalle.descripcion || "",
               cantidad: detalle.cantidad,
@@ -642,7 +652,7 @@ const PresupuestosPage: React.FC = () => {
           baseDetalle.productoId = Number(d.productoId);
         } else if (d.tipoItem === 'EQUIPO') {
           baseDetalle.recetaId = Number(d.recetaId);
-          baseDetalle.color = d.color || undefined;
+          baseDetalle.colorId = d.colorId ?? undefined;
           // medida no se envía: el backend la deriva de la receta.
         }
 
@@ -1498,27 +1508,15 @@ const PresupuestosPage: React.FC = () => {
                         <TableCell>
                           {readOnly || editingPresupuesto ? (
                             <Typography variant="body2">
-                              {detalle.color || '-'}
+                              {detalle.colorNombre || '-'}
                             </Typography>
                           ) : (
-                            <TextField
-                              select
-                              size="small"
-                              fullWidth
-                              value={detalle.color || ""}
-                              onChange={(e) => updateDetalle(index, "color", e.target.value)}
+                            <ColorPicker
+                              value={detalle.colorId}
+                              onChange={(colorId) => updateDetalle(index, "colorId", colorId ?? "")}
                               disabled={detalle.tipoItem !== 'EQUIPO'}
-                              placeholder={detalle.tipoItem === 'EQUIPO' ? "Color" : ""}
-                            >
-                              <MenuItem value="">
-                                <em>Sin especificar</em>
-                              </MenuItem>
-                              {COLORES_EQUIPO.map((color) => (
-                                <MenuItem key={color} value={color}>
-                                  {color}
-                                </MenuItem>
-                              ))}
-                            </TextField>
+                              label=""
+                            />
                           )}
                         </TableCell>
                         <TableCell>

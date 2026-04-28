@@ -1583,37 +1583,14 @@ export type MetodoPago =
   | 'FINANCIACION_PROPIA'
   | 'CUENTA_CORRIENTE';
 
-// Enums para equipos fabricados
-export type ColorEquipo =
-  | 'BLANCO_LISO'
-  | 'PLATA'
-  | 'MARRON'
-  | 'BEIGE'
-  | 'DORADO'
-  | 'PLATEADO'
-  | 'BRONCE'
-  | 'COBRE'
-  | 'INOXIDABLE'
-  | 'MADERA'
-  | 'ACERO'
-  | 'ATAKAMA'
-  | 'FAPLAC_NORDICO'
-  | 'GRIS_GRAFITO'
-  | 'DAKAR'
-  | 'HELSINKI'
-  | 'LINO_TIERRA'
-  | 'MADERA_CEREJEIRA'
-  | 'ROBLE_KENDAL_ENCERADO'
-  | 'NEGRO_LISO'
-  | 'NEGRO_VETA'
-  | 'NOGAL_LINCOLN'
-  | 'PREMIUM'
-  | 'ROBLE_DAKAR'
-  | 'ROBLE_KAISEBERG'
-  | 'TEKA_ARTICO'
-  | 'TEKA_OSLO'
-  | 'FAPLAC_TRIBAL'
-  | 'FAPLAC_NORDICO_FINLANDES';
+// Color del equipo: ahora es una entidad parametrizable, no un enum.
+// Mirror del DTO del backend (ver entities/Color.java + dto/color/ColorDTO.java).
+// El catálogo se administra vía /api/colores.
+export interface ColorEquipo {
+  id: number;
+  nombre: string;
+  activo: boolean;
+}
 
 export type MedidaEquipo =
   | '0.5m'
@@ -1640,38 +1617,8 @@ export type MedidaEquipo =
   | '60x40cm'
   | '70x45cm';
 
-// Constantes para los selectores
-export const COLORES_EQUIPO: readonly ColorEquipo[] = [
-  'BLANCO_LISO',
-  'PLATA',
-  'MARRON',
-  'BEIGE',
-  'DORADO',
-  'PLATEADO',
-  'BRONCE',
-  'COBRE',
-  'INOXIDABLE',
-  'MADERA',
-  'ACERO',
-  'ATAKAMA',
-  'FAPLAC_NORDICO',
-  'GRIS_GRAFITO',
-  'DAKAR',
-  'HELSINKI',
-  'LINO_TIERRA',
-  'MADERA_CEREJEIRA',
-  'ROBLE_KENDAL_ENCERADO',
-  'NEGRO_LISO',
-  'NEGRO_VETA',
-  'NOGAL_LINCOLN',
-  'PREMIUM',
-  'ROBLE_DAKAR',
-  'ROBLE_KAISEBERG',
-  'TEKA_ARTICO',
-  'TEKA_OSLO',
-  'FAPLAC_TRIBAL',
-  'FAPLAC_NORDICO_FINLANDES'
-] as const;
+// El listado de colores ya no vive en código: se carga vía colorApi y se
+// expone en ColoresContext. Importá `useColores()` para consumirlo.
 
 export const MEDIDAS_EQUIPO: readonly MedidaEquipo[] = [
   '0.8m',
@@ -2435,7 +2382,7 @@ export interface DetalleDocumento {
   recetaModelo?: string;
   recetaTipo?: string;
   descripcionEquipo?: string;
-  color?: string;
+  color?: ColorEquipo;
   medida?: MedidaEquipo;
 
   cantidad: number;
@@ -2462,7 +2409,7 @@ export interface DetalleDocumentoDTO {
   recetaModelo?: string;
   recetaTipo?: string;
   descripcionEquipo?: string;
-  color?: string;
+  color?: ColorEquipo;
   medida?: MedidaEquipo;
 
   cantidad: number;
@@ -2547,7 +2494,7 @@ export interface RecetaFabricacionDTO {
   tipoEquipo: TipoEquipo;
   modelo?: string;
   medida?: string;
-  color?: string;
+  color?: ColorEquipo;
   observaciones?: string;
   precioVenta?: number;
   costoFabricacion: number;
@@ -2564,7 +2511,7 @@ export type RecetaFabricacionListDTO = {
   tipoEquipo: TipoEquipo;
   modelo?: string;
   medida?: string;
-  color?: string;
+  color?: ColorEquipo;
   costoFabricacion: number;
   activo: boolean;
   fechaCreacion: string;
@@ -2578,7 +2525,7 @@ export interface RecetaFabricacionCreateDTO {
   tipoEquipo: TipoEquipo;
   modelo?: string;
   medida?: string;
-  color?: string;
+  colorId?: number | null;
   observaciones?: string;
   precioVenta?: number;
   disponibleParaVenta?: boolean;
@@ -2591,7 +2538,7 @@ export interface RecetaFabricacionUpdateDTO {
   tipoEquipo?: TipoEquipo;
   modelo?: string;
   medida?: string;
-  color?: string;
+  colorId?: number | null;
   observaciones?: string;
   precioVenta?: number;
   disponibleParaVenta?: boolean;
@@ -2624,7 +2571,7 @@ export interface EquipoFabricadoDTO {
   modelo: string;
   equipo?: string;
   medida?: MedidaEquipo;
-  color?: string;
+  color?: ColorEquipo;
   observaciones?: string;
   fechaCreacion: string;
   numeroHeladera: string;
@@ -2653,7 +2600,7 @@ export interface EquipoFabricadoListDTO {
   modelo: string;
   medida?: MedidaEquipo;
   numeroHeladera: string;
-  color?: string;
+  color?: ColorEquipo;
   observaciones?: string;    // e.g. "Color previsto: PLATA (detalle #354)" for PENDIENTE_TERMINACION bases
   cantidad: number;
   asignado: boolean;
@@ -2674,7 +2621,7 @@ export interface EquipoFabricadoCreateDTO {
   modelo: string;
   equipo?: string;
   medida?: MedidaEquipo;
-  color?: string;
+  colorId?: number | null;
   observaciones?: string;
   numeroHeladera: string; // Required - use 'AUTO' for auto-generation
   cantidad: number;
@@ -2689,7 +2636,7 @@ export interface EquipoFabricadoUpdateDTO {
   modelo?: string;
   equipo?: string;
   medida?: MedidaEquipo;
-  color?: string;
+  colorId?: number | null;
   observaciones?: string;
   cantidad?: number;
   asignado?: boolean;

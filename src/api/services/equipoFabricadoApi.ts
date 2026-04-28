@@ -343,7 +343,7 @@ export const equipoFabricadoApi = {
     tipo: TipoEquipo;
     modelo: string;
     medida?: string;
-    color?: string;
+    colorId?: number;
     detalleNotaPedidoId: number;
   }): Promise<EquipoFabricadoDTO> => {
     const response = await api.post<EquipoFabricadoDTO>(
