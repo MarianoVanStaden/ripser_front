@@ -118,13 +118,13 @@ describe('clienteApi', () => {
   });
 
   describe('search', () => {
-    it('calls getAll with term filter', async () => {
+    it('hits /api/clientes/search with q and merges pagination + extra filters', async () => {
       mockedApi.get.mockResolvedValue({ data: mockPageResponse });
 
-      await clienteApi.search('test', { page: 0 });
+      await clienteApi.search('test', { page: 0 }, { sucursalId: 7 });
 
-      expect(mockedApi.get).toHaveBeenCalledWith('/api/clientes', {
-        params: { term: 'test', page: 0 },
+      expect(mockedApi.get).toHaveBeenCalledWith('/api/clientes/search', {
+        params: { q: 'test', sucursalId: 7, page: 0 },
       });
     });
   });
