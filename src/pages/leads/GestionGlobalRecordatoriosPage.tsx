@@ -1307,7 +1307,6 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Teléfono</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Prioridad</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="center">Score</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>

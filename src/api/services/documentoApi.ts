@@ -8,6 +8,7 @@ import type {
   OpcionFinanciamiento,
   CreateOpcionFinanciamientoDTO,
   ConvertToFacturaDTO,
+  ConvertToNotaPedidoResult,
   CreateNotaCreditoDTO,
   PageResponse,
   PaginationParams,
@@ -128,7 +129,10 @@ export const documentoApi = {
     });
     return response.data;
   },
-  // Convert presupuesto to nota de pedido
+  // Convert presupuesto to nota de pedido.
+  // Backend returns ConvertToNotaPedidoResult { documento, resolucionesEquipo }:
+  // stock resolution (P1 → P2 → P3) now happens server-side inside the same
+  // @Transactional, so callers no longer need to call resolverParaPedido themselves.
   convertToNotaPedido: async (dto: {
     presupuestoId: number;
     metodoPago: MetodoPago;
@@ -136,8 +140,8 @@ export const documentoApi = {
     confirmarConDeudaPendiente?: boolean;
     cajaPesosId?: number | null;
     cajaAhorroId?: number | null;
-  }): Promise<DocumentoComercial> => {
-    const response = await api.post<DocumentoComercial>('/api/documentos/nota-pedido', dto);
+  }): Promise<ConvertToNotaPedidoResult> => {
+    const response = await api.post<ConvertToNotaPedidoResult>('/api/documentos/nota-pedido', dto);
     return response.data;
   },
   // Convert nota de pedido to factura

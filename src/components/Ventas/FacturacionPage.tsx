@@ -1299,13 +1299,17 @@ const FacturacionPage = () => {
 
       let nota: DocumentoComercial;
       try {
-        nota = await documentoApi.convertToNotaPedido({
+        // Backend returns { documento, resolucionesEquipo }; unwrap documento.
+        // resolucionesEquipo is intentionally ignored here — this flow defers to
+        // AsignarEquiposDialog (manual assignment) when EQUIPO detalles exist.
+        const result = await documentoApi.convertToNotaPedido({
           presupuestoId: presupuesto.id,
           metodoPago: paymentMethod,
           tipoIva: selectedIva,
           ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
           ...buildCajaPayload(paymentMethod, cajaContadoRef),
         });
+        nota = result.documento;
       } catch (notaErr: any) {
         const deudaNotaData = parseDeudaError(notaErr);
         if (deudaNotaData) {
@@ -1326,7 +1330,7 @@ const FacturacionPage = () => {
           pendingDeudaRef.current = async () => {
             setLoading(true);
             try {
-              const retryNota = await documentoApi.convertToNotaPedido({
+              const { documento: retryNota } = await documentoApi.convertToNotaPedido({
                 presupuestoId,
                 metodoPago: capturedPayment,
                 tipoIva: capturedIva,

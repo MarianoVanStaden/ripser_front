@@ -51,7 +51,6 @@ import {
   AccountBalance as BankIcon,
 } from "@mui/icons-material";
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
-import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
@@ -62,7 +61,6 @@ import type {
   MetodoPago,
   DetalleDocumento,
   OpcionFinanciamientoDTO,
-  RecetaFabricacionDTO,
   DeudaClienteError,
 } from "../../types";
 import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
@@ -124,7 +122,6 @@ const NotasPedidoPage: React.FC = () => {
   const [facturaSuccessDialogOpen, setFacturaSuccessDialogOpen] = useState(false);
   const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
   const [facturaTotalConFinanciamiento, setFacturaTotalConFinanciamiento] = useState<number | null>(null);
-  const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -311,7 +308,7 @@ const NotasPedidoPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [notasData, presupuestosData, recetasData] = await Promise.all([
+      const [notasData, presupuestosData] = await Promise.all([
         documentoApi.getByTipo("NOTA_PEDIDO").catch((err) => {
           console.error("Error fetching notas de pedido:", err);
           return [];
@@ -320,13 +317,7 @@ const NotasPedidoPage: React.FC = () => {
           console.error("Error fetching presupuestos:", err);
           return [];
         }),
-        recetaFabricacionApi.findAllActive().catch((err) => {
-          console.error("Error fetching recetas:", err);
-          return [];
-        }),
       ]);
-
-      setRecetas((Array.isArray(recetasData) ? (recetasData as unknown) : []) as RecetaFabricacionDTO[]);
 
       const notasArray = Array.isArray(notasData) ? notasData : [];
       
@@ -694,7 +685,10 @@ const NotasPedidoPage: React.FC = () => {
         ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
       };
 
-      const nuevaNota = await documentoApi.convertToNotaPedido(payload);
+      // Backend now returns { documento, resolucionesEquipo } and resolves stock
+      // (P1 → P2 → P3) server-side inside the same @Transactional. The frontend
+      // just unwraps the documento and surfaces the resolution messages.
+      const { documento: nuevaNota, resolucionesEquipo } = await documentoApi.convertToNotaPedido(payload);
       setNotasPedido(prev => [nuevaNota, ...prev]);
 
       // Fetch full nota to ensure detalles have their IDs (required for reservarParaNota).
@@ -773,56 +767,32 @@ const NotasPedidoPage: React.FC = () => {
         }
       }
 
-      // Resolve stock for each EQUIPO detalle using the unified backend endpoint.
-      // Backend applies P1 → P2 → P3 automatically and creates the DetalleEquipoAsignacion link.
-      const detallesEquipo = enrichedDetalles.filter(d => d.tipoItem === 'EQUIPO');
+      // Stock resolution already happened server-side. We just (a) link the cliente
+      // on each reserved equipo (the backend doesn't set clienteId on EquipoFabricado)
+      // and (b) build snackbar messages from the resoluciones returned by the backend.
+      const clienteIdParaVincular = notaConDetalles.clienteId;
       const resoluciones: string[] = [];
       const advertenciasResolucion: string[] = [];
 
-      for (const detalle of detallesEquipo) {
-        if (!detalle.id) {
-          advertenciasResolucion.push(
-            `${detalle.recetaNombre || 'Ítem'}: ID de detalle no disponible — asignación pendiente`
-          );
+      for (const r of resolucionesEquipo) {
+        if (!r.exito || r.modo === 'ERROR') {
+          advertenciasResolucion.push(`${r.detalleNombre}: ${r.mensaje}`);
           continue;
         }
 
-        const receta = recetas.find(r => r.id === Number(detalle.recetaId));
-        const cantidad = detalle.cantidad || 1;
-
-        for (let i = 0; i < cantidad; i++) {
+        if (r.equipoId && clienteIdParaVincular) {
           try {
-            const equipo = await equipoFabricadoApi.resolverParaPedido({
-              tipo: (receta?.tipoEquipo as any) || 'HELADERA',
-              modelo: detalle.recetaModelo || receta?.modelo || '',
-              medidaId: detalle.medida?.id,
-              colorId: detalle.color?.id,
-              detalleNotaPedidoId: detalle.id!,
-            });
-
-            // Link the equipo to the client if not already set by the backend.
-            // Use update({ clienteId }) for all states — asignarEquipo fails on already-reserved equipos.
-            const clienteId = notaConDetalles.clienteId;
-            if (equipo.id && clienteId && !equipo.clienteId) {
-              try {
-                await equipoFabricadoApi.update(equipo.id, { clienteId });
-              } catch {
-                // Non-fatal: client linking failed, but reservation is still valid
-              }
-            }
-
-            if (equipo.estado === 'COMPLETADO') {
-              resoluciones.push(`✅ Stock reservado: ${equipo.numeroHeladera} (${equipo.color || 'sin color'})`);
-            } else if (equipo.estado === 'FABRICADO_SIN_TERMINACION') {
-              resoluciones.push(`🎨 Base reservada: ${equipo.numeroHeladera}${detalle.color ? ` → terminación ${detalle.color}` : ''}`);
-            } else {
-              resoluciones.push(`🏭 En cola de fabricación: ${equipo.numeroHeladera} (${detalle.color || 'sin color'})`);
-            }
-          } catch (err: any) {
-            const msg = err?.response?.data?.message || err?.message || 'Error desconocido';
-            advertenciasResolucion.push(`${detalle.recetaNombre || 'Ítem'}: ${msg}`);
+            await equipoFabricadoApi.update(r.equipoId, { clienteId: clienteIdParaVincular });
+          } catch {
+            // Non-fatal: client linking failed, but reservation is still valid
           }
         }
+
+        const icon =
+          r.modo === 'STOCK_TERMINADO' ? '✅' :
+          r.modo === 'BASE_RESERVADA' ? '🎨' :
+          '🏭';
+        resoluciones.push(`${icon} ${r.mensaje}`);
       }
 
       if (resoluciones.length > 0 || advertenciasResolucion.length > 0) {
@@ -879,7 +849,7 @@ const NotasPedidoPage: React.FC = () => {
     } finally {
       setFormLoading(false);
     }
-  }, [convertForm, handleCloseConvertDialog, recetas, opcionesConvertDialog, selectedOpcionConvertId]);
+  }, [convertForm, handleCloseConvertDialog, opcionesConvertDialog, selectedOpcionConvertId]);
 
   const handleViewNota = useCallback((nota: DocumentoComercial) => {
     setSelectedNota(nota);

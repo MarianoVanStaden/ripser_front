@@ -2405,6 +2405,29 @@ export interface ConvertToFacturaDTO {
   cajaAhorroId?: number | null;
 }
 
+export type ResolucionEquipoModo =
+  | 'STOCK_TERMINADO'
+  | 'BASE_RESERVADA'
+  | 'NUEVA_FABRICACION'
+  | 'ERROR';
+
+export interface ResolucionEquipo {
+  detalleId: number;
+  detalleNombre: string;
+  colorSolicitado: string | null;
+  equipoId: number | null;
+  numeroHeladera: string | null;
+  estadoEquipo: EstadoFabricacion;
+  modo: ResolucionEquipoModo;
+  exito: boolean;
+  mensaje: string;
+}
+
+export interface ConvertToNotaPedidoResult {
+  documento: DocumentoComercial;
+  resolucionesEquipo: ResolucionEquipo[];
+}
+
 export interface DeudaClienteError {
   error: string;
   message: string;
