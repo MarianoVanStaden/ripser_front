@@ -46,10 +46,18 @@ export const clienteApi = {
     await api.delete(`${BASE_PATH}/${id}`);
   },
 
-  // Search clients (paginated)
-  search: async (term: string, pagination: PaginationParams = {}): Promise<PageResponse<Cliente>> => {
-    // Use getAll with term filter
-    return clienteApi.getAll(pagination, { term });
+  // Búsqueda paginada por término. Usa el endpoint /search del backend
+  // (que sí indexa nombre/apellido/email/etc.) en lugar de /api/clientes
+  // con `term`, que el backend ignora silenciosamente.
+  search: async (
+    term: string,
+    pagination: PaginationParams = {},
+    extra?: Omit<ClienteFilterParams, 'term'>
+  ): Promise<PageResponse<Cliente>> => {
+    const response = await api.get<PageResponse<Cliente>>(`${BASE_PATH}/search`, {
+      params: { q: term, ...extra, ...pagination },
+    });
+    return response.data;
   },
 
   // Typeahead search — hits GET /api/clientes/search?q=...&page=0&size=10

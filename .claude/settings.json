@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(./mvnw -q compile -DskipTests)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\dto\\documentoComercial"
     ]
   }
 }

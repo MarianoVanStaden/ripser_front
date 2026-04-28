@@ -791,7 +791,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     startY: yPosition,
     body: [[
       {
-        content: 'TOTAL CONTADO EFECTIVO',
+        content: 'PRECIO DE LISTA',
         styles: {
           halign: 'center',
           fontStyle: 'bold' as const,

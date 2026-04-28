@@ -56,8 +56,16 @@ const ClientesPage: React.FC = () => {
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   const fetchClientes = useCallback(
-    (page: number, size: number, sort: string, filters: ClienteFilterParams) =>
-      clienteApi.getAll({ page, size, sort }, filters),
+    (page: number, size: number, sort: string, filters: ClienteFilterParams) => {
+      const { term, ...rest } = filters;
+      // El backend ignora `term` en GET /api/clientes; cuando hay búsqueda
+      // ramificamos al endpoint dedicado /api/clientes/search (que también
+      // soporta paginación y los filtros de tipo/estado/sucursal).
+      if (term && term.trim().length > 0) {
+        return clienteApi.search(term.trim(), { page, size, sort }, rest);
+      }
+      return clienteApi.getAll({ page, size, sort }, rest);
+    },
     []
   );
 

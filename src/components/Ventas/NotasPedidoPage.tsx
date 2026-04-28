@@ -359,10 +359,12 @@ const NotasPedidoPage: React.FC = () => {
       });
       setNotasFinanciamiento(embeddedMap);
 
-      // Backend requires PRESUPUESTO in PENDIENTE state for conversion
+      // Backend requires PRESUPUESTO in PENDIENTE state for conversion.
+      // Notas de Pedido sólo se emiten a clientes — presupuestos de leads
+      // deben pasar primero por la conversión Lead → Cliente.
       const pendientes = Array.isArray(presupuestosData)
         ? presupuestosData
-            .filter(p => p.estado === EstadoDocumentoEnum.PENDIENTE)
+            .filter(p => p.estado === EstadoDocumentoEnum.PENDIENTE && p.clienteId != null)
             .sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime())
         : [];
       setPresupuestos(pendientes);
