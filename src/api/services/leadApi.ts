@@ -7,7 +7,8 @@ import type {
   CanalEnum,
   InteraccionLeadDTO,
   RecordatorioLeadDTO,
-  PrioridadLeadEnum
+  PrioridadLeadEnum,
+  ProvinciaEnum
 } from '../../types/lead.types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
@@ -15,34 +16,49 @@ const BASE_PATH = '/api/leads';
 
 export interface LeadFilterParams {
   sucursalId?: number | null;
+  /** Filtro multi-valor — el backend hace `IN (:estados)`. */
   estados?: EstadoLeadEnum[];
+  /** Filtro multi-valor — el backend hace `IN (:canales)`. */
   canales?: CanalEnum[];
-  provincias?: string[]; // Assuming simple string or enum
+  /** Filtro multi-valor — el backend hace `IN (:provincias)`. */
+  provincias?: ProvinciaEnum[];
+  /** Búsqueda case-insensitive sobre nombre y teléfono (LIKE %x%). */
+  busqueda?: string;
   prioridad?: PrioridadLeadEnum;
   usuarioId?: number;
+  empresaId?: number;
   /** Si true, el backend reemplaza usuarioId con el del usuario actual. */
   soloMisLeads?: boolean;
-  busqueda?: string;
   fechaDesde?: string;
   fechaHasta?: string;
   clienteOrigenId?: number;
 }
 
+// Spring bindea `?estados=A,B` directamente a List<EstadoLeadEnum>. Joineamos
+// explícitamente porque la serialización por defecto de axios v1 emite
+// `?estados[]=A&estados[]=B` (con brackets), que Spring no parsea como esperamos.
+const ARRAY_KEYS = ['estados', 'canales', 'provincias'] as const;
+
+const buildParams = (
+  pagination: PaginationParams,
+  filters: LeadFilterParams | undefined
+): Record<string, unknown> => {
+  const merged: Record<string, unknown> = { ...filters, ...pagination };
+  for (const k of ARRAY_KEYS) {
+    const v = merged[k];
+    if (Array.isArray(v)) {
+      if (v.length === 0) delete merged[k];
+      else merged[k] = v.join(',');
+    }
+  }
+  return merged;
+};
+
 export const leadApi = {
   // Listar todos los leads con filtros opcionales (paginated)
   getAll: async (pagination: PaginationParams = {}, params?: LeadFilterParams): Promise<PageResponse<LeadDTO>> => {
-    // Convert array params to comma-separated strings if backend expects 'A,B'
-    // Or let axios handle it if backend expects repeated params.
-    // Assuming backend standard:
-    const paramsToSend = { ...params, ...pagination };
-    
-    // Check if we need to transform arrays
-    if (params?.estados) {
-      // Just passing it through, axios default is usually array format
-    }
-    
     const response = await api.get<PageResponse<LeadDTO>>(BASE_PATH, {
-      params: paramsToSend, 
+      params: buildParams(pagination, params),
     });
     return response.data;
   },

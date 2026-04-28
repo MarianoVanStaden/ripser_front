@@ -75,7 +75,6 @@ const CarpetaClienteSelector = lazy(() => import('./components/Clientes/CarpetaC
 const CuentaCorrientePage = lazy(() => import('./components/Clientes/CuentaCorrientePage'));
 
 // Leads
-const LeadsPage = lazyNamed(() => import('./pages/leads/LeadsPage'), 'LeadsPage');
 const LeadsTablePage = lazyNamed(() => import('./pages/leads/LeadsTablePage'), 'LeadsTablePage');
 const LeadFormPage = lazyNamed(() => import('./pages/leads/LeadFormPage'), 'LeadFormPage');
 const LeadDetailPage = lazyNamed(() => import('./pages/leads/LeadDetailPage'), 'LeadDetailPage');
@@ -269,8 +268,7 @@ function App() {
                   <Route path="cobranzas/:id" element={priv(<GestionCobranzaDetailPage />)} />
 
                   {/* LEADS */}
-                  <Route path="leads" element={priv(<LeadsPage />)} />
-                  <Route path="leads/table" element={priv(<LeadsTablePage />)} />
+                  <Route path="leads" element={priv(<LeadsTablePage />)} />
                   <Route path="leads/metricas" element={priv(<LeadMetricasPage />)} />
                   <Route path="leads/recordatorios" element={priv(<GestionGlobalRecordatoriosPage />)} />
                   <Route path="leads/nuevo" element={priv(<LeadFormPage />)} />
