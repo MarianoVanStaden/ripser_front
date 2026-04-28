@@ -34,6 +34,8 @@ import {
   TablePagination,
   Autocomplete,
   InputAdornment,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -63,6 +65,7 @@ import { getMetodoPagoLabel as getMetodoPagoLabelShared } from "../../utils/fina
 import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import UsuarioBadge from "../common/UsuarioBadge";
 import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
+import ClienteAutocomplete from "../common/ClienteAutocomplete";
 
 const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string }>): OpcionFinanciamientoDTO[] => {
   if (!Array.isArray(opciones)) return [];
@@ -150,7 +153,7 @@ const PresupuestosPage: React.FC = () => {
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.PENDIENTE);
-  const [clientFilter, setClientFilter] = useState<string>('all');
+  const [clientFilter, setClientFilter] = useState<Cliente | null>(null);
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
   
@@ -160,8 +163,10 @@ const PresupuestosPage: React.FC = () => {
   
   // Main data states
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  // Cliente seleccionado en el formulario (typeahead). Se carga on-demand.
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [destinatarioMode, setDestinatarioMode] = useState<'CLIENTE' | 'LEAD'>('CLIENTE');
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
@@ -279,12 +284,7 @@ const PresupuestosPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [clientesData, leadsData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
-        clienteApi.getAll().then(res => res.content).catch((err) => {
-          console.error("Error fetching clientes:", err);
-          setError("Error al cargar clientes: " + (err.response?.data?.message || err.message));
-          return [];
-        }),
+      const [leadsData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
         leadApi.getAll().then(res => res.content).catch((err) => {
           console.error("Error fetching leads:", err);
           setError("Error al cargar leads: " + (err.response?.data?.message || err.message));
@@ -312,9 +312,8 @@ const PresupuestosPage: React.FC = () => {
         }),
       ]);
 
-      console.log("Fetched data:", { clientesData, leadsData, usuariosData, presupuestosData, productosData, recetasData });
+      console.log("Fetched data:", { leadsData, usuariosData, presupuestosData, productosData, recetasData });
       console.log("Recetas disponibles para venta:", recetasData); // Debug: Check loaded recetas
-      setClientes(Array.isArray(clientesData) ? clientesData : []);
       setLeads(Array.isArray(leadsData) ? leadsData : []);
       setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
       setRecetas(Array.isArray(recetasData) ? recetasData : []);
@@ -365,8 +364,8 @@ const PresupuestosPage: React.FC = () => {
   // Filter presupuestos
   const filteredPresupuestos = useMemo(() => {
     return presupuestos.filter((presupuesto) => {
-      const clientName = clientes.find(c => c.id === presupuesto.clienteId)?.razonSocial || clientes.find(c => c.id === presupuesto.clienteId)?.nombre || '';
-      const leadName = leads.find(l => l.id === presupuesto.leadId)?.nombre || '';
+      const clientName = presupuesto.clienteNombre || '';
+      const leadName = presupuesto.leadNombre || leads.find(l => l.id === presupuesto.leadId)?.nombre || '';
       const searchLower = searchTerm.toLowerCase().trim();
 
       const matchesSearch = searchTerm === '' ||
@@ -376,13 +375,13 @@ const PresupuestosPage: React.FC = () => {
         (presupuesto.total?.toString() || '').includes(searchLower);
 
       const matchesStatus = !statusFilter || presupuesto.estado === statusFilter;
-      const matchesClient = clientFilter === 'all' || presupuesto.clienteId?.toString() === clientFilter;
+      const matchesClient = !clientFilter || presupuesto.clienteId === clientFilter.id;
       const fecha = presupuesto.fechaEmision ? new Date(presupuesto.fechaEmision) : null;
       const matchesDateFrom = !dateFromFilter || (fecha && fecha >= new Date(dateFromFilter));
       const matchesDateTo = !dateToFilter || (fecha && fecha <= new Date(dateToFilter));
       return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
     });
-  }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, clientes, leads]);
+  }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, leads]);
 
   // Paginate filtered presupuestos
   const paginatedPresupuestos = useMemo(() => {
@@ -547,6 +546,14 @@ const PresupuestosPage: React.FC = () => {
         estado: presupuesto.estado,
         tipoIva: (presupuesto as any).tipoIva || 'IVA_21',
       });
+      setDestinatarioMode(presupuesto.clienteId ? 'CLIENTE' : 'LEAD');
+      setSelectedCliente(null);
+      if (presupuesto.clienteId) {
+        // Resolver el cliente del backend para mostrar el nombre/razón social aunque no esté en cache local.
+        clienteApi.getById(presupuesto.clienteId)
+          .then(setSelectedCliente)
+          .catch(() => setSelectedCliente(null));
+      }
       setDetalles(
         Array.isArray(presupuesto.detalles)
           ? presupuesto.detalles.map((detalle: DetalleDocumento) => ({
@@ -566,6 +573,8 @@ const PresupuestosPage: React.FC = () => {
     } else {
       setEditingPresupuesto(null);
       setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+      setDestinatarioMode('CLIENTE');
+      setSelectedCliente(null);
       setDetalles([]);
     }
     setDialogOpen(true);
@@ -579,6 +588,8 @@ const PresupuestosPage: React.FC = () => {
       setDialogOpen(false);
       setEditingPresupuesto(null);
       setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+      setSelectedCliente(null);
+      setDestinatarioMode('CLIENTE');
       setDetalles([]);
       setError(null);
       setHasUnsavedChanges(false);
@@ -591,6 +602,8 @@ const PresupuestosPage: React.FC = () => {
     setDialogOpen(false);
     setEditingPresupuesto(null);
     setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
+    setSelectedCliente(null);
+    setDestinatarioMode('CLIENTE');
     setDetalles([]);
     setError(null);
     setHasUnsavedChanges(false);
@@ -805,16 +818,16 @@ const PresupuestosPage: React.FC = () => {
   // Handler para exportar presupuesto a PDF
   const handleExportarPDF = useCallback(async (presupuesto: DocumentoComercial) => {
     try {
-      // Obtener el cliente completo
-      const cliente = clientes.find(c => c.id === presupuesto.clienteId);
-      if (!cliente) {
+      if (!presupuesto.clienteId) {
         setSnackbar({
           open: true,
-          message: 'No se pudo encontrar la información del cliente',
+          message: 'Este presupuesto no tiene cliente asociado',
           severity: 'error'
         });
         return;
       }
+      // Traer el cliente completo del backend (no se cachea localmente para soportar +700 clientes)
+      const cliente = await clienteApi.getById(presupuesto.clienteId);
 
       // Obtener las opciones de financiamiento del presupuesto (ya embebidas en la respuesta del backend)
       const opciones: OpcionFinanciamientoDTO[] = presupuestosFinanciamiento[presupuesto.id] ?? [];
@@ -839,7 +852,7 @@ const PresupuestosPage: React.FC = () => {
         severity: 'error'
       });
     }
-  }, [clientes, presupuestosFinanciamiento]);
+  }, [presupuestosFinanciamiento]);
 
   // Reload function for manual refresh if needed
   const _loadPresupuestos = async () => {
@@ -954,21 +967,13 @@ const PresupuestosPage: React.FC = () => {
                 <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>
               </Select>
             </FormControl>
-            <FormControl fullWidth size="small">
-              <InputLabel>Cliente</InputLabel>
-              <Select
-                value={clientFilter}
-                label="Cliente"
-                onChange={(e) => setClientFilter(e.target.value)}
-              >
-                <MenuItem value="all">Todos</MenuItem>
-                {clientes.map((client: Cliente) => (
-                  <MenuItem key={client.id} value={client.id.toString()}>
-                    {client.razonSocial || client.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <ClienteAutocomplete
+              value={clientFilter}
+              onChange={setClientFilter}
+              size="small"
+              label="Cliente"
+              placeholder="Filtrar por cliente…"
+            />
             <TextField
               fullWidth
               label="Desde"
@@ -1160,100 +1165,111 @@ const PresupuestosPage: React.FC = () => {
         <DialogContent sx={{ minHeight: { xs: "auto", sm: "500px" } }}>
           <Box sx={{ pt: 2 }}>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(auto-fit, minmax(280px, 1fr))" }, gap: 2 }}>
-              <Autocomplete
-                fullWidth
-                options={[
-                  ...clientes.map(c => ({ type: 'cliente' as const, id: c.id, nombre: c.nombre, apellido: c.apellido || '' })),
-                  // Filtrar leads que ya fueron convertidos a cliente (deben usar sus datos de cliente)
-                  ...leads
-                    .filter(l => l.estadoLead !== 'CONVERTIDO')
-                    .map(l => ({ type: 'lead' as const, id: l.id, nombre: l.nombre, apellido: l.apellido || '' }))
-                ]}
-                getOptionKey={(option) => `${option.type}-${option.id}`}
-                getOptionLabel={(option) => {
-                  const label = option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre;
-                  return label;
-                }}
-                filterOptions={(options, { inputValue }) => {
-                  const searchTerm = inputValue.toLowerCase().trim();
-                  if (!searchTerm) return options;
-                  return options.filter(option => {
-                    const nombre = (option.nombre || '').toLowerCase();
-                    const apellido = (option.apellido || '').toLowerCase();
-                    return nombre.includes(searchTerm) || apellido.includes(searchTerm);
-                  });
-                }}
-                value={
-                  formData.clienteId
-                    ? clientes.find(c => c.id.toString() === formData.clienteId)
-                      ? { type: 'cliente' as const, id: Number(formData.clienteId), nombre: clientes.find(c => c.id.toString() === formData.clienteId)!.nombre, apellido: clientes.find(c => c.id.toString() === formData.clienteId)!.apellido || '' }
-                      : null
-                    : formData.leadId
-                      ? leads.find(l => l.id && l.id.toString() === formData.leadId)
-                        ? { type: 'lead' as const, id: Number(formData.leadId), nombre: leads.find(l => l.id && l.id.toString() === formData.leadId)!.nombre, apellido: leads.find(l => l.id && l.id.toString() === formData.leadId)!.apellido || '' }
-                        : null
-                      : null
-                }
-                onChange={async (_, newValue) => {
-                  if (newValue) {
-                    if (newValue.type === 'cliente') {
-                      setFormData({ ...formData, clienteId: newValue.id.toString(), leadId: '' });
-                      deudaYaConfirmadaRef.current = false;
-                      const deudaData = await checkClienteDeuda(newValue.id);
-                      if (deudaData) {
-                        setDeudaError(deudaData);
-                        pendingDeudaRef.current = () => {
-                          deudaYaConfirmadaRef.current = true;
-                        };
-                      }
+              <Box sx={{ gridColumn: { xs: 'auto', md: '1 / -1' } }}>
+                <ToggleButtonGroup
+                  value={destinatarioMode}
+                  exclusive
+                  size="small"
+                  onChange={(_, newMode: 'CLIENTE' | 'LEAD' | null) => {
+                    if (!newMode || readOnly || !!editingPresupuesto) return;
+                    setDestinatarioMode(newMode);
+                    if (newMode === 'CLIENTE') {
+                      setFormData({ ...formData, leadId: '' });
                     } else {
-                      setFormData({ ...formData, leadId: newValue.id?.toString() || '', clienteId: '' });
-                      deudaYaConfirmadaRef.current = false;
+                      setFormData({ ...formData, clienteId: '' });
+                      setSelectedCliente(null);
                     }
-                  } else {
-                    setFormData({ ...formData, clienteId: '', leadId: '' });
                     deudaYaConfirmadaRef.current = false;
-                  }
-                  setHasUnsavedChanges(true);
-                }}
-                disabled={readOnly || !!editingPresupuesto}
-                renderOption={({ key, ...props }, option) => (
-                  <Box component="li" key={key} {...props}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                      <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                        {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
-                      </Typography>
-                      {option.type === 'cliente' && (
-                        <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />
-                      )}
-                      {option.type === 'lead' && (
-                        <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
-                      )}
-                    </Box>
-                  </Box>
-                )}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Buscar Cliente / Lead"
-                    placeholder="Escriba nombre o apellido..."
-                    margin="normal"
-                    required
-                    error={!formData.clienteId && !formData.leadId && hasUnsavedChanges}
-                    helperText={!formData.clienteId && !formData.leadId && hasUnsavedChanges ? "Seleccione un cliente o lead" : "Busque por nombre o apellido"}
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon color="action" />
-                        </InputAdornment>
-                      ),
+                    setHasUnsavedChanges(true);
+                  }}
+                  disabled={readOnly || !!editingPresupuesto}
+                  sx={{ mb: 1 }}
+                  aria-label="Tipo de destinatario"
+                >
+                  <ToggleButton value="CLIENTE" aria-label="Cliente">Cliente</ToggleButton>
+                  <ToggleButton value="LEAD" aria-label="Lead">Lead</ToggleButton>
+                </ToggleButtonGroup>
+
+                {destinatarioMode === 'CLIENTE' ? (
+                  <ClienteAutocomplete
+                    value={selectedCliente}
+                    onChange={async (cliente) => {
+                      setSelectedCliente(cliente);
+                      setFormData({
+                        ...formData,
+                        clienteId: cliente ? cliente.id.toString() : '',
+                        leadId: '',
+                      });
+                      deudaYaConfirmadaRef.current = false;
+                      if (cliente) {
+                        const deudaData = await checkClienteDeuda(cliente.id);
+                        if (deudaData) {
+                          setDeudaError(deudaData);
+                          pendingDeudaRef.current = () => {
+                            deudaYaConfirmadaRef.current = true;
+                          };
+                        }
+                      }
+                      setHasUnsavedChanges(true);
                     }}
+                    disabled={readOnly || !!editingPresupuesto}
+                    label="Cliente"
+                    placeholder="Escribí nombre, razón social o CUIT…"
+                    required
+                    error={!formData.clienteId && hasUnsavedChanges}
+                    helperText={!formData.clienteId && hasUnsavedChanges ? 'Seleccioná un cliente' : ' '}
+                    size="medium"
+                  />
+                ) : (
+                  <Autocomplete
+                    fullWidth
+                    options={leads.filter(l => l.estadoLead !== 'CONVERTIDO')}
+                    getOptionLabel={(l) => (l.apellido ? `${l.nombre} ${l.apellido}` : l.nombre || '')}
+                    isOptionEqualToValue={(option, val) => option.id === val.id}
+                    value={leads.find(l => l.id != null && l.id.toString() === formData.leadId) || null}
+                    onChange={(_, newValue) => {
+                      setFormData({
+                        ...formData,
+                        leadId: newValue?.id ? newValue.id.toString() : '',
+                        clienteId: '',
+                      });
+                      setSelectedCliente(null);
+                      deudaYaConfirmadaRef.current = false;
+                      setHasUnsavedChanges(true);
+                    }}
+                    disabled={readOnly || !!editingPresupuesto}
+                    renderOption={({ key, ...props }, option) => (
+                      <Box component="li" key={key as React.Key} {...props}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                          <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                            {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
+                          </Typography>
+                          <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
+                        </Box>
+                      </Box>
+                    )}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Lead"
+                        placeholder="Escribí nombre o apellido…"
+                        required
+                        error={!formData.leadId && hasUnsavedChanges}
+                        helperText={!formData.leadId && hasUnsavedChanges ? 'Seleccioná un lead' : ' '}
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon color="action" fontSize="small" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    )}
+                    noOptionsText="No se encontraron leads"
                   />
                 )}
-                noOptionsText="No se encontraron clientes o leads"
-                isOptionEqualToValue={(option, value) => option.type === value.type && option.id === value.id}
-              />
+              </Box>
 
               {editingPresupuesto && usuarios.length > 0 && (
                 <TextField
@@ -1707,7 +1723,9 @@ const PresupuestosPage: React.FC = () => {
           {confirmDialogAction === 'create' && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Cliente: {clientes.find(c => c.id.toString() === formData.clienteId)?.nombre}
+                Cliente: {selectedCliente
+                  ? (selectedCliente.razonSocial || `${selectedCliente.nombre} ${selectedCliente.apellido || ''}`.trim())
+                  : (leads.find(l => l.id != null && l.id.toString() === formData.leadId)?.nombre || '—')}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Cantidad de items: {detalles.length}

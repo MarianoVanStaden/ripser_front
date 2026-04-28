@@ -56,7 +56,7 @@ import {
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 // Real API services
-import { clienteApi, productApi, usuarioApi } from '../../api/services';
+import { productApi, usuarioApi } from '../../api/services';
 import { documentoApi } from '../../api/services/documentoApi';
 import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
@@ -87,6 +87,7 @@ import type {
   DeudaClienteError,
 } from '../../types';
 import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
 
 // Aligned with backend enum com.ripser_back.enums.MetodoPago. The order here is the one
@@ -472,14 +473,14 @@ const FacturacionPage = () => {
   const [success, setSuccess] = useState<string | null>(null);
   
   // Data
-  const [clients, setClients] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [products, setProducts] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [notasPedido, setNotasPedido] = useState<DocumentoComercial[]>([]);
-  
+
   // Manual invoice form
-  const [selectedClientId, setSelectedClientId] = useState<number | ''>('');
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const selectedClientId: number | '' = selectedCliente?.id ?? '';
   const [selectedUsuarioId, setSelectedUsuarioId] = useState<number | ''>(user?.id ?? '');
   const [paymentMethod, setPaymentMethod] = useState<MetodoPago>('EFECTIVO');
   const [cajaContadoRef, setCajaContadoRef] = useState<CajaRef | null>(null);
@@ -676,8 +677,7 @@ const FacturacionPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [clientsData, usuariosResponse, productsData, recetasData, notasData, plantillasData] = await Promise.all([
-        clienteApi.getAll({ page: 0, size: 500 }).then(res => res.content).catch(() => []),
+      const [usuariosResponse, productsData, recetasData, notasData, plantillasData] = await Promise.all([
         usuarioApi.getAll().catch((err: any) => {
           if (err?.response?.status === 403) return { content: [] };
           return { content: [] };
@@ -688,7 +688,6 @@ const FacturacionPage = () => {
         opcionFinanciamientoTemplateApi.obtenerActivas().catch(() => []),
       ]);
 
-      setClients(Array.isArray(clientsData) ? clientsData : []);
       // Handle paginated response from usuarioApi
       const usuariosArray = Array.isArray(usuariosResponse)
         ? usuariosResponse
@@ -881,7 +880,7 @@ const FacturacionPage = () => {
   };
 
   const clearForm = () => {
-    setSelectedClientId('');
+    setSelectedCliente(null);
     setSelectedUsuarioId('');
     setPaymentMethod('EFECTIVO');
     setCantidadCuotas(null);
@@ -2159,34 +2158,26 @@ const FacturacionPage = () => {
 
               <Grid container spacing={3} sx={{ width: '100%' }}>
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Cliente</InputLabel>
-                    <Select
-                      value={selectedClientId}
-                      onChange={async (e) => {
-                        const newId = e.target.value as number;
-                        setSelectedClientId(newId);
-                        deudaYaConfirmadaRef.current = false;
-                        if (newId) {
-                          const deudaData = await checkClienteDeuda(Number(newId));
-                          if (deudaData) {
-                            setDeudaError(deudaData);
-                            pendingDeudaRef.current = () => {
-                              deudaYaConfirmadaRef.current = true;
-                            };
-                          }
+                  <ClienteAutocomplete
+                    value={selectedCliente}
+                    onChange={async (cliente) => {
+                      setSelectedCliente(cliente);
+                      deudaYaConfirmadaRef.current = false;
+                      if (cliente) {
+                        const deudaData = await checkClienteDeuda(cliente.id);
+                        if (deudaData) {
+                          setDeudaError(deudaData);
+                          pendingDeudaRef.current = () => {
+                            deudaYaConfirmadaRef.current = true;
+                          };
                         }
-                      }}
-                      label="Cliente"
-                    >
-                      <MenuItem value="">Seleccionar Cliente</MenuItem>
-                      {clients.map((client) => (
-                        <MenuItem key={client.id} value={client.id}>
-                          {client.nombre} - {client.cuit}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                      }
+                    }}
+                    label="Cliente"
+                    placeholder="Escribí nombre, razón social o CUIT…"
+                    required
+                    size="medium"
+                  />
                 </Grid>
 
                 <Grid item xs={12} md={6}>
