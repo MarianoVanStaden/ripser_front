@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { colorApi, type Color } from '../api/services/colorApi';
+import { useAuth } from './AuthContext';
 
 /**
  * Context that holds the cached list of colors (the parameterizable
@@ -25,8 +26,9 @@ interface ColoresProviderProps {
 }
 
 export function ColoresProvider({ children, onlyActive = false }: ColoresProviderProps) {
+  const { token } = useAuth();
   const [colores, setColores] = useState<Color[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // We need stable filter semantics across renders so the loader doesn't
@@ -56,8 +58,12 @@ export function ColoresProvider({ children, onlyActive = false }: ColoresProvide
   }, [refresh]);
 
   useEffect(() => {
+    if (!token) {
+      setColores([]);
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [token, refresh]);
 
   const value = useMemo<ColoresContextValue>(() => ({
     colores,

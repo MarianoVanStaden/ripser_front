@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { medidaApi, type Medida } from '../api/services/medidaApi';
+import { useAuth } from './AuthContext';
 
 interface MedidasContextValue {
   medidas: Medida[];
@@ -17,8 +18,9 @@ interface MedidasProviderProps {
 }
 
 export function MedidasProvider({ children, onlyActive = false }: MedidasProviderProps) {
+  const { token } = useAuth();
   const [medidas, setMedidas] = useState<Medida[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const onlyActiveRef = useRef(onlyActive);
@@ -46,8 +48,12 @@ export function MedidasProvider({ children, onlyActive = false }: MedidasProvide
   }, [refresh]);
 
   useEffect(() => {
+    if (!token) {
+      setMedidas([]);
+      return;
+    }
     void refresh();
-  }, [refresh]);
+  }, [token, refresh]);
 
   const value = useMemo<MedidasContextValue>(() => ({
     medidas,
