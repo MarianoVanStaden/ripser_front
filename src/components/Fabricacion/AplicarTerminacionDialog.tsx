@@ -11,7 +11,7 @@ import type {
   EquipoFabricadoDTO,
   TipoTerminacion,
 } from '../../types';
-import { useColores } from '../../context/ColoresContext';
+import { useColores } from '../../context/useColores';
 
 interface AplicarTerminacionDialogProps {
   open: boolean;

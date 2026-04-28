@@ -1281,12 +1281,11 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
         </Paper>
       ) : (
         <TableContainer component={Paper} sx={{ overflowX: 'auto', maxHeight: 'calc(100vh - 380px)' }}>
-          <Table size="small" stickyHeader sx={{ minWidth: 1000 }}>
+          <Table size="small" stickyHeader sx={{ minWidth: 880 }}>
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.100' }}>
                 <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Fecha</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Mensaje</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Tipo / Mensaje</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Lead</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Asesor</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Teléfono</TableCell>
@@ -1344,43 +1343,41 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                       </Box>
                     </TableCell>
 
-                    {/* Tipo + prioridad del recordatorio */}
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {/* Tipo + prioridad + mensaje */}
+                    <TableCell sx={{ maxWidth: 260 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
                         {TIPO_RECORDATORIO_ICONS[rec.tipo]}
-                        <Typography variant="body2">
+                        <Typography variant="body2" fontWeight={600}>
                           {TIPO_RECORDATORIO_LABELS[rec.tipo] ?? rec.tipo}
                         </Typography>
+                        {rec.prioridad && (
+                          <Chip
+                            label={PRIORIDAD_RECORDATORIO_LABELS[rec.prioridad] ?? rec.prioridad}
+                            size="small"
+                            sx={{
+                              height: 16,
+                              fontSize: '0.62rem',
+                              bgcolor: PRIORIDAD_RECORDATORIO_COLORS[rec.prioridad] ?? '#9CA3AF',
+                              color: 'white',
+                              fontWeight: 600,
+                            }}
+                          />
+                        )}
                       </Box>
-                      {rec.prioridad && (
-                        <Chip
-                          label={PRIORIDAD_RECORDATORIO_LABELS[rec.prioridad] ?? rec.prioridad}
-                          size="small"
-                          sx={{
-                            mt: 0.25,
-                            height: 16,
-                            fontSize: '0.62rem',
-                            bgcolor: PRIORIDAD_RECORDATORIO_COLORS[rec.prioridad] ?? '#9CA3AF',
-                            color: 'white',
-                            fontWeight: 600,
-                          }}
-                        />
-                      )}
-                    </TableCell>
-
-                    {/* Mensaje */}
-                    <TableCell sx={{ maxWidth: 220 }}>
                       <Tooltip title={rec.mensaje ?? ''} placement="top">
                         <Typography
-                          variant="body2"
+                          variant="caption"
+                          color="text.secondary"
                           sx={{
+                            display: 'block',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: 200,
+                            maxWidth: 240,
+                            mt: 0.25,
                           }}
                         >
-                          {rec.mensaje || <span style={{ color: '#aaa' }}>Sin mensaje</span>}
+                          {rec.mensaje || <span style={{ color: '#bbb' }}>Sin mensaje</span>}
                         </Typography>
                       </Tooltip>
                     </TableCell>

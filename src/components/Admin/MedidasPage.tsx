@@ -26,7 +26,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import { medidaApi, type Medida } from '../../api/services/medidaApi';
-import { useMedidas } from '../../context/MedidasContext';
+import { useMedidas } from '../../context/useMedidas';
 
 /**
  * Catálogo parametrizable de medidas (`/api/medidas`).

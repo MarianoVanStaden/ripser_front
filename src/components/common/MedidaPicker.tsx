@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { medidaApi, type Medida } from '../../api/services/medidaApi';
-import { useMedidas } from '../../context/MedidasContext';
+import { useMedidas } from '../../context/useMedidas';
 
 interface MedidaPickerProps {
   value?: number;

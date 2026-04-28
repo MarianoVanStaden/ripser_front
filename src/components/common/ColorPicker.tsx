@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { colorApi, type Color } from '../../api/services/colorApi';
-import { useColores } from '../../context/ColoresContext';
+import { useColores } from '../../context/useColores';
 
 interface ColorPickerProps {
   /** Selected color id, or undefined when none. */

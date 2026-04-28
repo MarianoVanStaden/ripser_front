@@ -26,7 +26,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import { colorApi, type Color } from '../../api/services/colorApi';
-import { useColores } from '../../context/ColoresContext';
+import { useColores } from '../../context/useColores';
 
 /**
  * Catálogo de colores parametrizables (`/api/colores`).

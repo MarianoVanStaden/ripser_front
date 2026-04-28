@@ -1,16 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { medidaApi, type Medida } from '../api/services/medidaApi';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { medidaApi } from '../api/services/medidaApi';
+import type { Medida } from '../api/services/medidaApi';
 import { useAuth } from './AuthContext';
-
-interface MedidasContextValue {
-  medidas: Medida[];
-  loading: boolean;
-  error: string | null;
-  refresh: () => Promise<Medida[]>;
-  refreshAndFind: (id: number) => Promise<Medida | undefined>;
-}
-
-const MedidasContext = createContext<MedidasContextValue | null>(null);
+import { MedidasContext, type MedidasContextValue } from './useMedidas';
 
 interface MedidasProviderProps {
   children: ReactNode;
@@ -64,12 +56,4 @@ export function MedidasProvider({ children, onlyActive = false }: MedidasProvide
   }), [medidas, loading, error, refresh, refreshAndFind]);
 
   return <MedidasContext.Provider value={value}>{children}</MedidasContext.Provider>;
-}
-
-export function useMedidas(): MedidasContextValue {
-  const ctx = useContext(MedidasContext);
-  if (!ctx) {
-    throw new Error('useMedidas must be used inside a <MedidasProvider>');
-  }
-  return ctx;
 }
