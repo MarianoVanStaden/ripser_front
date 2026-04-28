@@ -308,7 +308,7 @@ const RecetaDetail: React.FC = () => {
                   <Typography variant="caption" color="textSecondary">
                     Medida
                   </Typography>
-                  <Typography variant="body1">{receta.medida || 'N/A'}</Typography>
+                  <Typography variant="body1">{receta.medida?.nombre || 'N/A'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="textSecondary">

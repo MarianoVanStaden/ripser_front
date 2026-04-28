@@ -14,7 +14,7 @@ export interface StockObjetivoResponseDTO {
   id: number;
   tipo: TipoEquipo;
   modelo: string;
-  medida: MedidaEquipo;
+  medida: MedidaEquipo;  // entity, not string
   color?: ColorEquipo | null;
   cantidadObjetivo: number;
   activo: boolean;
@@ -50,7 +50,7 @@ export interface EvaluacionStockDTO {
 export interface CreateStockObjetivoDTO {
   tipo: TipoEquipo;
   modelo: string;
-  medida: MedidaEquipo;
+  medidaId: number;
   /** null = objetivo de equipo BASE (sin color/terminación) */
   colorId?: number | null;
   cantidadObjetivo: number;

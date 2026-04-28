@@ -342,7 +342,7 @@ export const equipoFabricadoApi = {
   resolverParaPedido: async (data: {
     tipo: TipoEquipo;
     modelo: string;
-    medida?: string;
+    medidaId?: number;
     colorId?: number;
     detalleNotaPedidoId: number;
   }): Promise<EquipoFabricadoDTO> => {

@@ -623,7 +623,7 @@ const NotasCreditoPage: React.FC = () => {
                                 <TableCell>{equipo.tipo}</TableCell>
                                 <TableCell>{equipo.modelo}</TableCell>
                                 <TableCell>{equipo.color?.nombre || '-'}</TableCell>
-                                <TableCell>{equipo.medida || '-'}</TableCell>
+                                <TableCell>{equipo.medida?.nombre || '-'}</TableCell>
                                 <TableCell>
                                   <Chip
                                     label={equipo.estadoAsignacion}

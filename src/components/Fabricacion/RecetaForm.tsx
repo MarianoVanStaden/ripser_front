@@ -19,8 +19,8 @@ import type {
   TipoEquipo,
   RecetaFabricacionDTO,
 } from '../../types';
-import { MEDIDAS_EQUIPO } from '../../types';
 import ColorPicker from '../common/ColorPicker';
+import MedidaPicker from '../common/MedidaPicker';
 import api from '../../api/config';
 import SuccessDialog from '../common/SuccessDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -30,7 +30,7 @@ const schema = yup.object().shape({
   tipoEquipo: yup.string().required('El tipo de equipo es obligatorio'),
   descripcion: yup.string(),
   modelo: yup.string(),
-  medida: yup.string(),
+  medidaId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   colorId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   observaciones: yup.string(),
   precioVenta: yup.number().nullable().min(0, 'El precio debe ser mayor o igual a 0'),
@@ -72,7 +72,7 @@ const RecetaForm: React.FC = () => {
       descripcion: '',
       tipoEquipo: '' as TipoEquipo,
       modelo: '',
-      medida: '',
+      medidaId: null as number | null,
       colorId: null as number | null,
       observaciones: '',
       precioVenta: undefined as number | undefined,
@@ -105,7 +105,7 @@ const RecetaForm: React.FC = () => {
         descripcion: data.descripcion || '',
         tipoEquipo: data.tipoEquipo,
         modelo: data.modelo || '',
-        medida: data.medida || '',
+        medidaId: data.medida?.id ?? null,
         colorId: data.color?.id ?? null,
         observaciones: data.observaciones || '',
         precioVenta: data.precioVenta,
@@ -140,7 +140,7 @@ const RecetaForm: React.FC = () => {
           descripcion: data.descripcion,
           tipoEquipo: data.tipoEquipo,
           modelo: data.modelo,
-          medida: data.medida,
+          medidaId: data.medidaId ?? null,
           colorId: data.colorId ?? null,
           observaciones: data.observaciones,
           precioVenta: data.precioVenta,
@@ -178,7 +178,7 @@ const RecetaForm: React.FC = () => {
           descripcion: data.descripcion,
           tipoEquipo: data.tipoEquipo,
           modelo: data.modelo,
-          medida: data.medida,
+          medidaId: data.medidaId ?? null,
           colorId: data.colorId ?? null,
           observaciones: data.observaciones,
           precioVenta: data.precioVenta,
@@ -298,22 +298,14 @@ const RecetaForm: React.FC = () => {
               )}
             />
             <Controller
-              name="medida"
+              name="medidaId"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  select
+                <MedidaPicker
+                  value={field.value ?? undefined}
+                  onChange={(id) => field.onChange(id ?? null)}
                   label="Medida"
-                  fullWidth
-                >
-                  <MenuItem value="">Ninguna</MenuItem>
-                  {MEDIDAS_EQUIPO.map((medida) => (
-                    <MenuItem key={medida} value={medida}>
-                      {medida}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                />
               )}
             />
             <Controller
@@ -475,7 +467,7 @@ const RecetaForm: React.FC = () => {
           { label: 'Tipo de Equipo', value: createdReceta.tipoEquipo },
           { label: 'Modelo', value: createdReceta.modelo || '-' },
           { label: 'Color', value: createdReceta.color?.nombre || '-' },
-          { label: 'Medida', value: createdReceta.medida || '-' },
+          { label: 'Medida', value: createdReceta.medida?.nombre || '-' },
           { label: 'Precio de Venta', value: createdReceta.precioVenta ? `$${createdReceta.precioVenta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '-' },
         ] : []}
         actions={[
@@ -489,7 +481,7 @@ const RecetaForm: React.FC = () => {
                 descripcion: '',
                 tipoEquipo: '' as TipoEquipo,
                 modelo: '',
-                medida: '',
+                medidaId: null,
                 colorId: null,
                 observaciones: '',
                 precioVenta: undefined,
@@ -518,7 +510,7 @@ const RecetaForm: React.FC = () => {
           { label: 'Tipo de Equipo', value: updatedReceta.tipoEquipo },
           { label: 'Modelo', value: updatedReceta.modelo || '-' },
           { label: 'Color', value: updatedReceta.color?.nombre || '-' },
-          { label: 'Medida', value: updatedReceta.medida || '-' },
+          { label: 'Medida', value: updatedReceta.medida?.nombre || '-' },
           { label: 'Precio de Venta', value: updatedReceta.precioVenta ? `$${updatedReceta.precioVenta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : '-' },
         ] : []}
         actions={[]}

@@ -19,8 +19,8 @@ import type {
   EquipoFabricadoUpdateDTO,
   EstadoFabricacion,
 } from '../../types';
-import { MEDIDAS_EQUIPO } from '../../types';
 import ColorPicker from '../common/ColorPicker';
+import MedidaPicker from '../common/MedidaPicker';
 import { employeeApi } from '../../api/services/employeeApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import StockErrorDialog, { type ProductoInsuficiente } from '../common/StockErrorDialog';
@@ -38,7 +38,7 @@ const schema = yup.object().shape({
   }),
   cantidad: yup.number().min(1, 'La cantidad debe ser al menos 1').required('La cantidad es obligatoria'),
   equipo: yup.string(),
-  medida: yup.string(),
+  medidaId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   colorId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   observaciones: yup.string(),
 });
@@ -84,7 +84,7 @@ const EquipoForm: React.FC = () => {
       tipo: '' as TipoEquipo,
       modelo: '',
       equipo: '',
-      medida: '',
+      medidaId: null as number | null,
       colorId: null as number | null,
       numeroHeladera: '',
       cantidad: 1,
@@ -113,7 +113,7 @@ const EquipoForm: React.FC = () => {
       setValue('tipo', selectedReceta.tipoEquipo);
       setValue('equipo', selectedReceta.nombre || '');
       setValue('modelo', selectedReceta.modelo || '');
-      setValue('medida', selectedReceta.medida || '');
+      setValue('medidaId', selectedReceta.medida?.id ?? null);
     }
   }, [selectedReceta, isEdit, setValue]);
 
@@ -170,7 +170,7 @@ const EquipoForm: React.FC = () => {
         tipo: data.tipo,
         modelo: data.modelo,
         equipo: data.equipo || '',
-        medida: data.medida || '',
+        medidaId: data.medida?.id ?? null,
         colorId: data.color?.id ?? null,
         numeroHeladera: data.numeroHeladera,
         cantidad: data.cantidad,
@@ -213,7 +213,7 @@ const EquipoForm: React.FC = () => {
           tipo: data.tipo,
           modelo: data.modelo,
           equipo: data.equipo,
-          medida: data.medida,
+          medidaId: data.medidaId ?? null,
           colorId: data.colorId ?? null,
           cantidad: data.cantidad,
           observaciones: data.observaciones,
@@ -241,7 +241,7 @@ const EquipoForm: React.FC = () => {
           tipo: data.tipo,
           modelo: data.modelo,
           equipo: data.equipo,
-          medida: data.medida,
+          medidaId: data.medidaId ?? null,
           colorId: null, // Sin color — el backend lo completa a FABRICADO_SIN_TERMINACION
           cantidad: data.cantidad,
           observaciones: data.observaciones,
@@ -268,7 +268,7 @@ const EquipoForm: React.FC = () => {
           tipo: data.tipo,
           modelo: data.modelo,
           equipo: data.equipo,
-          medida: data.medida,
+          medidaId: data.medidaId ?? null,
           colorId: data.colorId ?? null,
           cantidad: data.cantidad,
           observaciones: data.observaciones,
@@ -490,25 +490,14 @@ const EquipoForm: React.FC = () => {
 
             <Stack direction="row" spacing={2}>
               <Controller
-                name="medida"
+                name="medidaId"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    select
+                  <MedidaPicker
+                    value={field.value ?? undefined}
+                    onChange={(id) => field.onChange(id ?? null)}
                     label="Medida"
-                    fullWidth
-                    value={field.value || ''}
-                  >
-                    <MenuItem value="">
-                      <em>Sin especificar</em>
-                    </MenuItem>
-                    {MEDIDAS_EQUIPO.map((medida) => (
-                      <MenuItem key={medida} value={medida}>
-                        {medida}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  />
                 )}
               />
               {(isEdit || modoFabricacion === 'COMPLETO') && (

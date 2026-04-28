@@ -343,7 +343,7 @@ export const LeadDetailPage = () => {
                         </Typography>
                       )}
                     </Box>
-                    {((lead.modeloRecetaInteres || lead.modeloEquipoInteres) || lead.colorEquipoInteres || (lead.medidaRecetaInteres || lead.medidaEquipoInteres)) && (
+                    {((lead.modeloRecetaInteres || lead.modeloEquipoInteres) || lead.colorEquipoInteres || lead.medidaEquipoInteres) && (
                       <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'background.paper', borderRadius: 1, border: 1, borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary" gutterBottom display="block">
                           ⚙️ Personalización:
@@ -359,9 +359,9 @@ export const LeadDetailPage = () => {
                               Color: <strong>{lead.colorEquipoInteres.nombre}</strong>
                             </Typography>
                           )}
-                          {(lead.medidaRecetaInteres || lead.medidaEquipoInteres) && (
+                          {lead.medidaEquipoInteres && (
                             <Typography variant="body2">
-                              Medida: <strong>{lead.medidaRecetaInteres || lead.medidaEquipoInteres}</strong>
+                              Medida: <strong>{lead.medidaEquipoInteres.nombre}</strong>
                             </Typography>
                           )}
                         </Box>

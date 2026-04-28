@@ -45,9 +45,9 @@ import {
   PROVINCIA_LABELS
 } from '../../types/lead.types';
 import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO } from '../../types/lead.types';
-import type { Producto, RecetaFabricacionListDTO, MedidaEquipo } from '../../types';
-import { MEDIDAS_EQUIPO } from '../../types';
+import type { Producto, RecetaFabricacionListDTO } from '../../types';
 import ColorPicker from '../../components/common/ColorPicker';
+import MedidaPicker from '../../components/common/MedidaPicker';
 import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
@@ -90,13 +90,13 @@ export const LeadFormPage = () => {
     cantidadRecetaInteres: undefined,
     modeloRecetaInteres: '',
     colorRecetaInteresId: undefined,
-    medidaRecetaInteres: '',
+    medidaRecetaInteresId: undefined,
     // Legacy fields
     equipoFabricadoInteresId: undefined,
     cantidadEquipoInteres: undefined,
     modeloEquipoInteres: '',
     colorEquipoInteresId: undefined,
-    medidaEquipoInteres: '',
+    medidaEquipoInteresId: undefined,
     equipoInteresadoId: undefined,
     recordatorios: []
   });
@@ -186,7 +186,7 @@ export const LeadFormPage = () => {
         data.cantidadRecetaInteres = data.cantidadEquipoInteres;
         data.modeloRecetaInteres = data.modeloEquipoInteres;
         data.colorRecetaInteresId = data.colorEquipoInteresId;
-        data.medidaRecetaInteres = data.medidaEquipoInteres;
+        data.medidaRecetaInteresId = data.medidaEquipoInteresId;
       }
       
       setFormData(data);
@@ -629,7 +629,7 @@ export const LeadFormPage = () => {
                   getOptionLabel={(option) => {
                     const parts = [option.nombre, option.tipoEquipo];
                     if (option.modelo) parts.push(`Modelo: ${option.modelo}`);
-                    if (option.medida) parts.push(option.medida);
+                    if (option.medida) parts.push(option.medida.nombre);
                     if (option.color) parts.push(option.color.nombre);
                     return parts.join(' - ');
                   }}
@@ -642,13 +642,13 @@ export const LeadFormPage = () => {
                       // Pre-cargar valores de la receta, pero permitir edición
                       modeloRecetaInteres: newValue?.modelo || '',
                       colorRecetaInteresId: newValue?.color?.id,
-                      medidaRecetaInteres: newValue?.medida || '',
+                      medidaRecetaInteresId: newValue?.medida?.id,
                       // Mapear a campos del backend
                       equipoFabricadoInteresId: newValue?.id,
                       equipoFabricadoInteresNombre: newValue?.nombre,
                       modeloEquipoInteres: newValue?.modelo || '',
                       colorEquipoInteresId: newValue?.color?.id,
-                      medidaEquipoInteres: newValue?.medida || ''
+                      medidaEquipoInteresId: newValue?.medida?.id
                     });
                   }}
                   disabled={loadingCatalogs}
@@ -720,27 +720,19 @@ export const LeadFormPage = () => {
               </Grid>
 
               <Grid item xs={12} md={3}>
-                <FormControl fullWidth disabled={!formData.recetaInteresId}>
-                  <InputLabel>Medida</InputLabel>
-                  <Select
-                    value={formData.medidaRecetaInteres || ''}
-                    label="Medida"
-                    onChange={(e) => {
-                      setFormData({ 
-                        ...formData, 
-                        medidaRecetaInteres: e.target.value as MedidaEquipo,
-                        medidaEquipoInteres: e.target.value // Mapear al backend
-                      });
-                    }}
-                  >
-                    <MenuItem value="">Ninguna</MenuItem>
-                    {MEDIDAS_EQUIPO.map((medida) => (
-                      <MenuItem key={medida} value={medida}>
-                        {medida}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <MedidaPicker
+                  label="Medida"
+                  value={formData.medidaRecetaInteresId}
+                  onChange={(id) => {
+                    setFormData({
+                      ...formData,
+                      medidaRecetaInteresId: id,
+                      medidaEquipoInteresId: id, // Mapear al backend
+                    });
+                  }}
+                  disabled={!formData.recetaInteresId}
+                  size="medium"
+                />
               </Grid>
 
               {/* Recordatorios */}

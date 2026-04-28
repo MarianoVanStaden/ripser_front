@@ -66,7 +66,7 @@ export interface LeadDTO {
   cantidadRecetaInteres?: number;
   modeloRecetaInteres?: string;
   colorRecetaInteresId?: number;
-  medidaRecetaInteres?: string;
+  medidaRecetaInteresId?: number;
   // Legacy fields (mantener por compatibilidad con backend)
   equipoFabricadoInteresId?: number;
   equipoFabricadoInteresNombre?: string;
@@ -76,7 +76,10 @@ export interface LeadDTO {
   colorEquipoInteresId?: number;
   /** Response side: full color metadata loaded by the backend. */
   colorEquipoInteres?: import('./index').ColorEquipo;
-  medidaEquipoInteres?: string;
+  /** Request side: foreign-key id to the medidas catalog. */
+  medidaEquipoInteresId?: number;
+  /** Response side: full measure metadata loaded by the backend. */
+  medidaEquipoInteres?: import('./index').MedidaEquipo;
   equipoInteresadoId?: number;
   equipoInteresadoNombre?: string;
   presupuestoEstimado?: number;

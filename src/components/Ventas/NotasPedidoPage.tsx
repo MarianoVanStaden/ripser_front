@@ -795,7 +795,7 @@ const NotasPedidoPage: React.FC = () => {
             const equipo = await equipoFabricadoApi.resolverParaPedido({
               tipo: (receta?.tipoEquipo as any) || 'HELADERA',
               modelo: detalle.recetaModelo || receta?.modelo || '',
-              medida: detalle.medida,
+              medidaId: detalle.medida?.id,
               colorId: detalle.color?.id,
               detalleNotaPedidoId: detalle.id!,
             });
@@ -843,7 +843,7 @@ const NotasPedidoPage: React.FC = () => {
       setPresupuestos(prev => prev.filter(p => p.id !== Number(convertForm.presupuestoId)));
 
       handleCloseConvertDialog();
-      setCreatedNota(nuevaNota);
+      setCreatedNota(notaEnriquecida);
       setSuccessDialogOpen(true);
     } catch (err: any) {
       console.error("Error converting to nota de pedido:", err);
@@ -1773,7 +1773,7 @@ const NotasPedidoPage: React.FC = () => {
                             : detalle.productoNombre || "-"}
                         </TableCell>
                         <TableCell>{detalle.color?.nombre || '-'}</TableCell>
-                        <TableCell>{detalle.medida || '-'}</TableCell>
+                        <TableCell>{detalle.medida?.nombre || '-'}</TableCell>
                         <TableCell>{detalle.descripcion}</TableCell>
                         <TableCell align="center">{detalle.cantidad}</TableCell>
                         <TableCell align="right">

@@ -240,6 +240,7 @@ const navigation: NavigationSection[] = [
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
       { text: 'Colores', icon: <SettingsIcon />, path: '/admin/colores' },
+      { text: 'Medidas', icon: <SettingsIcon />, path: '/admin/medidas' },
       { text: 'Gestión Depósitos', icon: <SettingsIcon />, path: '/logistica/configuracion/depositos' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
     ],

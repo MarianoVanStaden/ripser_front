@@ -10,6 +10,7 @@ import LoginPage from './components/Auth/LoginPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { ColoresProvider } from './context/ColoresContext';
+import { MedidasProvider } from './context/MedidasContext';
 
 // ---------------------------------------------------------------------------
 // Lazy route helpers
@@ -38,6 +39,7 @@ const DevKPIs = lazy(() => import('./components/Dashboard/DevKPIs'));
 const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
 const RolesPage = lazy(() => import('./components/Admin/RolesPage'));
 const ColoresPage = lazy(() => import('./components/Admin/ColoresPage'));
+const MedidasPage = lazy(() => import('./components/Admin/MedidasPage'));
 const SettingsPage = lazy(() => import('./components/Admin/SettingsPage'));
 const FlujoCajaPage = lazy(() => import('./components/Admin/FlujoCaja/FlujoCajaPage'));
 const EmpresasPage = lazyNamed(() => import('./components/Admin/EmpresasPage'), 'EmpresasPage');
@@ -195,6 +197,7 @@ function App() {
     <AuthProvider>
       <TenantProvider>
         <ColoresProvider onlyActive>
+        <MedidasProvider onlyActive>
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <Router>
@@ -210,6 +213,7 @@ function App() {
                   <Route path="admin/users" element={priv(<UsersPage />)} />
                   <Route path="admin/roles" element={priv(<RolesPage />)} />
                   <Route path="admin/colores" element={priv(<ColoresPage />)} />
+                  <Route path="admin/medidas" element={priv(<MedidasPage />)} />
                   <Route path="admin/settings" element={priv(<SettingsPage />)} />
                   <Route path="admin/flujo-caja" element={priv(<FlujoCajaPage />)} />
                   <Route path="admin/bancos" element={priv(<BancosPage />)} />
@@ -352,6 +356,7 @@ function App() {
             </Suspense>
           </Router>
         </ThemeProvider>
+        </MedidasProvider>
         </ColoresProvider>
       </TenantProvider>
     </AuthProvider>

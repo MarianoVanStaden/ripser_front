@@ -53,7 +53,7 @@ import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead, DeudaClienteError } from "../../types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, Lead, DeudaClienteError } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import ColorPicker from "../common/ColorPicker";
 import LoadingOverlay from "../common/LoadingOverlay";
@@ -98,7 +98,9 @@ interface DetalleForm {
   /** Cached display name of the color, populated from the response or
    *  the cached catalog. The backend is the source of truth via colorId. */
   colorNombre?: string;
-  medida?: MedidaEquipo;
+  /** Cached medida id and display name. Derived from the recipe; never user-editable. */
+  medidaId?: number;
+  medidaNombre?: string;
   descripcion: string;
   cantidad: number;
   precioUnitario: number;
@@ -131,7 +133,8 @@ const initialDetalle: DetalleForm = {
   recetaId: "",
   colorId: undefined,
   colorNombre: undefined,
-  medida: undefined,
+  medidaId: undefined,
+  medidaNombre: undefined,
   descripcion: "",
   cantidad: 1,
   precioUnitario: 0,
@@ -484,7 +487,8 @@ const PresupuestosPage: React.FC = () => {
         detalle.recetaId = "";
         detalle.colorId = undefined;
         detalle.colorNombre = undefined;
-        detalle.medida = undefined;
+        detalle.medidaId = undefined;
+        detalle.medidaNombre = undefined;
         detalle.descripcion = "";
         detalle.precioUnitario = 0;
         detalle.subtotal = 0;
@@ -524,10 +528,12 @@ const PresupuestosPage: React.FC = () => {
           detalle.precioUnitario = receta.precioVenta || 0;
           detalle.subtotal = detalle.cantidad * (receta.precioVenta || 0);
           // La medida proviene siempre de la receta (no es editable por el usuario).
-          detalle.medida = (receta.medida as MedidaEquipo | undefined) ?? undefined;
+          detalle.medidaId = receta.medida?.id;
+          detalle.medidaNombre = receta.medida?.nombre;
         }
       } else if (field === "recetaId" && !value) {
-        detalle.medida = undefined;
+        detalle.medidaId = undefined;
+        detalle.medidaNombre = undefined;
       }
 
       return newDetalles;
@@ -572,7 +578,8 @@ const PresupuestosPage: React.FC = () => {
               recetaId: detalle.recetaId?.toString() || "",
               colorId: detalle.color?.id,
               colorNombre: detalle.color?.nombre,
-              medida: detalle.medida || undefined,
+              medidaId: detalle.medida?.id,
+              medidaNombre: detalle.medida?.nombre,
               descripcion: detalle.descripcion || "",
               cantidad: detalle.cantidad,
               precioUnitario: detalle.precioUnitario,
@@ -1521,7 +1528,7 @@ const PresupuestosPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {detalle.medida || '-'}
+                            {detalle.medidaNombre || '-'}
                           </Typography>
                         </TableCell>
                         <TableCell>

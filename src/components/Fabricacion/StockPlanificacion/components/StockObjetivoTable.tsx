@@ -108,7 +108,7 @@ export const StockObjetivoTable: React.FC<StockObjetivoTableProps> = ({
                     {row.modelo}
                   </Typography>
                 </TableCell>
-                <TableCell>{row.medida}</TableCell>
+                <TableCell>{row.medida.nombre}</TableCell>
                 <TableCell>
                   <Typography
                     variant="body2"

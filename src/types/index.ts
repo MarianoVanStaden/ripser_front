@@ -1592,58 +1592,17 @@ export interface ColorEquipo {
   activo: boolean;
 }
 
-export type MedidaEquipo =
-  | '0.5m'
-  | '0.8m'
-  | '0.9m'
-  | '1.0m'
-  | '1.1m'
-  | '1.2m'
-  | '1.3m'
-  | '1.4m'
-  | '1.5m'
-  | '1.6m'
-  | '1.7m'
-  | '1.8m'
-  | '1.9m'
-  | '2.0m'
-  | '2.2m'
-  | '2.4m'
-  | '2.5m'
-  | '2.8m'
-  | '3.0m'
-  | '30x40x50m'
-  | '25x32x6cm'
-  | '60x40cm'
-  | '70x45cm';
+// Medida del equipo: ahora es una entidad parametrizable, no un union de strings.
+// Mirror del DTO del backend (entities/Medida.java + dto/medida/MedidaDTO.java).
+// El catálogo se administra vía /api/medidas.
+export interface MedidaEquipo {
+  id: number;
+  nombre: string;
+  activo: boolean;
+}
 
-// El listado de colores ya no vive en código: se carga vía colorApi y se
-// expone en ColoresContext. Importá `useColores()` para consumirlo.
-
-export const MEDIDAS_EQUIPO: readonly MedidaEquipo[] = [
-  '0.8m',
-  '0.9m',
-  '1.0m',
-  '1.1m',
-  '1.2m',
-  '1.3m',
-  '1.4m',
-  '1.5m',
-  '1.6m',
-  '1.7m',
-  '1.8m',
-  '1.9m',
-  '2.0m',
-  '2.2m',
-  '2.4m',
-  '2.5m',
-  '2.8m',
-  '3.0m',
-  '30x40x50m',
-  '25x32x6cm',
-  '60x40cm',
-  '70x45cm'
-] as const;
+// El listado de colores y medidas ya no vive en código: se cargan vía
+// colorApi/medidaApi y se exponen vía ColoresContext / MedidasContext.
 
 // DTO para crear una Venta desde el frontend
 export interface CreateVentaDTO {
@@ -2493,7 +2452,7 @@ export interface RecetaFabricacionDTO {
   descripcion?: string;
   tipoEquipo: TipoEquipo;
   modelo?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
   color?: ColorEquipo;
   observaciones?: string;
   precioVenta?: number;
@@ -2510,7 +2469,7 @@ export type RecetaFabricacionListDTO = {
   nombre: string;
   tipoEquipo: TipoEquipo;
   modelo?: string;
-  medida?: string;
+  medida?: MedidaEquipo;
   color?: ColorEquipo;
   costoFabricacion: number;
   activo: boolean;
@@ -2524,7 +2483,7 @@ export interface RecetaFabricacionCreateDTO {
   descripcion?: string;
   tipoEquipo: TipoEquipo;
   modelo?: string;
-  medida?: string;
+  medidaId?: number | null;
   colorId?: number | null;
   observaciones?: string;
   precioVenta?: number;
@@ -2537,7 +2496,7 @@ export interface RecetaFabricacionUpdateDTO {
   descripcion?: string;
   tipoEquipo?: TipoEquipo;
   modelo?: string;
-  medida?: string;
+  medidaId?: number | null;
   colorId?: number | null;
   observaciones?: string;
   precioVenta?: number;
@@ -2620,7 +2579,7 @@ export interface EquipoFabricadoCreateDTO {
   tipo: TipoEquipo;
   modelo: string;
   equipo?: string;
-  medida?: MedidaEquipo;
+  medidaId?: number | null;
   colorId?: number | null;
   observaciones?: string;
   numeroHeladera: string; // Required - use 'AUTO' for auto-generation
@@ -2635,7 +2594,7 @@ export interface EquipoFabricadoUpdateDTO {
   tipo?: TipoEquipo;
   modelo?: string;
   equipo?: string;
-  medida?: MedidaEquipo;
+  medidaId?: number | null;
   colorId?: number | null;
   observaciones?: string;
   cantidad?: number;
@@ -2661,7 +2620,7 @@ export interface FabricacionBaseRequestDTO {
   tipo: TipoEquipo;
   modelo: string;
   equipo?: string;
-  medida?: MedidaEquipo;
+  medidaId?: number | null;
   cantidad: number;
   responsableId?: number;
   observaciones?: string;

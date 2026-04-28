@@ -82,7 +82,6 @@ import type {
   OpcionFinanciamientoDTO,
   RecetaFabricacionDTO,
   TipoItemDocumento,
-  MedidaEquipo,
   DeudaClienteError,
 } from '../../types';
 import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
@@ -163,7 +162,8 @@ type CartItem = {
   recetaTipo?: string;
   colorId?: number;
   colorNombre?: string;
-  medida?: MedidaEquipo;
+  medidaId?: number;
+  medidaNombre?: string;
   // Stock validation fields
   stockDisponible?: number;
   stockVerificado?: boolean;
@@ -186,7 +186,8 @@ type NotaCartItem = {
   descripcionEquipo?: string;
   colorId?: number;
   colorNombre?: string;
-  medida?: MedidaEquipo;
+  medidaId?: number;
+  medidaNombre?: string;
   // Stock validation fields
   stockDisponible?: number;
   stockVerificado?: boolean;
@@ -357,7 +358,7 @@ const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, 
                 )}
               </TableCell>
               <TableCell>
-                <Typography>{itemAny.medida || '-'}</Typography>
+                <Typography>{itemAny.medidaNombre || '-'}</Typography>
               </TableCell>
               <TableCell align="center">
                 <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
@@ -538,7 +539,8 @@ const FacturacionPage = () => {
     recetaNombre: string;
     cantidad: number;
     colorId?: number;
-    medida?: MedidaEquipo;
+    medidaId?: number;
+    medidaNombre?: string;
     stockDisponible: number;
   } | null>(null);
 
@@ -917,14 +919,14 @@ const FacturacionPage = () => {
   };
 
   // Función para verificar stock disponible de un equipo
-  const verificarStockEquipo = useCallback(async (recetaId: number, colorId?: number, medida?: MedidaEquipo): Promise<number> => {
+  const verificarStockEquipo = useCallback(async (recetaId: number, colorId?: number, medidaId?: number): Promise<number> => {
     try {
       const equiposDisponibles = await equipoFabricadoApi.findDisponiblesParaVentaByReceta(recetaId);
 
-      // Filtrar por color (id) y medida si están especificados
+      // Filtrar por color (id) y medida (id) si están especificados
       const equiposFiltrados = equiposDisponibles.filter(equipo => {
         const matchColor = !colorId || equipo.color?.id === colorId;
-        const matchMedida = !medida || equipo.medida === medida;
+        const matchMedida = !medidaId || equipo.medida?.id === medidaId;
         return matchColor && matchMedida;
       });
 
@@ -957,7 +959,8 @@ const FacturacionPage = () => {
         delete item.recetaTipo;
         delete item.colorId;
         delete item.colorNombre;
-        delete item.medida;
+        delete item.medidaId;
+        delete item.medidaNombre;
         delete item.stockDisponible;
         delete item.stockVerificado;
         delete item.requiereFabricacion;
@@ -971,7 +974,8 @@ const FacturacionPage = () => {
         // Set default color and medida from receta
         item.colorId = defaultReceta.color?.id;
         item.colorNombre = defaultReceta.color?.nombre;
-        item.medida = defaultReceta.medida as MedidaEquipo;
+        item.medidaId = defaultReceta.medida?.id;
+        item.medidaNombre = defaultReceta.medida?.nombre;
         // Clear producto fields
         delete item.productoId;
         delete item.productoNombre;
@@ -1000,7 +1004,8 @@ const FacturacionPage = () => {
         // Set default color and medida from receta
         item.colorId = receta.color?.id;
         item.colorNombre = receta.color?.nombre;
-        item.medida = receta.medida as MedidaEquipo;
+        item.medidaId = receta.medida?.id;
+        item.medidaNombre = receta.medida?.nombre;
         if (!item.precioManualmenteModificado) {
           item.precioUnitario = receta.precioVenta || 0;
         }
@@ -1037,7 +1042,7 @@ const FacturacionPage = () => {
 
     // Solo verificar stock de forma silenciosa (sin abrir dialog), para mostrar indicadores
     if (item.tipoItem === 'EQUIPO' && item.recetaId && (field === 'recetaId' || field === 'colorId' || field === 'cantidad')) {
-      const stockDisponible = await verificarStockEquipo(item.recetaId, item.colorId, item.medida);
+      const stockDisponible = await verificarStockEquipo(item.recetaId, item.colorId, item.medidaId);
       newCart[index].stockDisponible = stockDisponible;
       newCart[index].stockVerificado = true;
       newCart[index].requiereFabricacion = stockDisponible < item.cantidad;
@@ -1065,7 +1070,7 @@ const FacturacionPage = () => {
         recetaId: itemPendienteFabricacion.recetaId,
         cantidad: itemPendienteFabricacion.cantidad,
         colorId: itemPendienteFabricacion.colorId ?? null,
-        medida: itemPendienteFabricacion.medida,
+        medidaId: itemPendienteFabricacion.medidaId ?? null,
         estado: 'EN_PROCESO',
       };
 
@@ -1082,7 +1087,7 @@ const FacturacionPage = () => {
       const itemIndex = updatedCart.findIndex(
         item => item.recetaId === itemPendienteFabricacion.recetaId &&
                 item.colorId === itemPendienteFabricacion.colorId &&
-                item.medida === itemPendienteFabricacion.medida
+                item.medidaId === itemPendienteFabricacion.medidaId
       );
       
       if (itemIndex >= 0) {
@@ -1191,7 +1196,7 @@ const FacturacionPage = () => {
     const equiposEnCarrito = cart.filter(item => item.tipoItem === 'EQUIPO' && item.recetaId);
     
     for (const item of equiposEnCarrito) {
-      const stockDisponible = await verificarStockEquipo(item.recetaId!, item.colorId, item.medida);
+      const stockDisponible = await verificarStockEquipo(item.recetaId!, item.colorId, item.medidaId);
 
       if (stockDisponible < item.cantidad) {
         // Mostrar dialog de confirmación
@@ -1200,7 +1205,8 @@ const FacturacionPage = () => {
           recetaNombre: item.recetaNombre || 'Equipo',
           cantidad: item.cantidad - stockDisponible,
           colorId: item.colorId,
-          medida: item.medida,
+          medidaId: item.medidaId,
+          medidaNombre: item.medidaNombre,
           stockDisponible,
         });
         setFabricacionDialogOpen(true);
@@ -1727,7 +1733,8 @@ const FacturacionPage = () => {
             descripcionEquipo: d.descripcionEquipo,
             colorId: d.color?.id,
             colorNombre: d.color?.nombre,
-            medida: d.medida as MedidaEquipo,
+            medidaId: d.medida?.id,
+            medidaNombre: d.medida?.nombre,
           }))
         : []
     );
@@ -2944,11 +2951,11 @@ const FacturacionPage = () => {
                       </Typography>
                     </Box>
                   )}
-                  {itemPendienteFabricacion.medida && (
+                  {itemPendienteFabricacion.medidaNombre && (
                     <Box display="flex" justifyContent="space-between">
                       <Typography variant="body2" color="text.secondary">Medida:</Typography>
                       <Typography variant="body2" fontWeight="bold">
-                        {itemPendienteFabricacion.medida}
+                        {itemPendienteFabricacion.medidaNombre}
                       </Typography>
                     </Box>
                   )}

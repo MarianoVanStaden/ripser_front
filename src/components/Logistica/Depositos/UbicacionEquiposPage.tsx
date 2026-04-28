@@ -1263,7 +1263,7 @@ const UbicacionEquiposPage: React.FC = () => {
                             <TableCell>{equipo.numeroHeladera}</TableCell>
                             <TableCell>{equipo.modelo}</TableCell>
                             <TableCell>{equipo.color?.nombre || '-'}</TableCell>
-                            <TableCell>{equipo.medida || '-'}</TableCell>
+                            <TableCell>{equipo.medida?.nombre || '-'}</TableCell>
                           </TableRow>
                         );
                       })}

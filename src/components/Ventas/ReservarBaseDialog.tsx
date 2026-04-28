@@ -198,7 +198,7 @@ const ReservarBaseDialog: React.FC<ReservarBaseDialogProps> = ({
                     size="small"
                   />
                   {detalle.medida && (
-                    <Chip label={detalle.medida} variant="outlined" size="small" />
+                    <Chip label={detalle.medida.nombre} variant="outlined" size="small" />
                   )}
                   <Chip
                     label={`Cant: ${cantUnidades}`}
@@ -259,7 +259,7 @@ const ReservarBaseDialog: React.FC<ReservarBaseDialogProps> = ({
                                       {b.numeroHeladera}
                                     </Typography>
                                     {b.medida && (
-                                      <Chip label={b.medida} size="small" variant="outlined" />
+                                      <Chip label={b.medida.nombre} size="small" variant="outlined" />
                                     )}
                                     <Typography variant="caption" color="text.secondary">
                                       {b.modelo}

@@ -19,15 +19,18 @@ import type {
   StockObjetivoResponseDTO,
   CreateStockObjetivoDTO,
 } from '../../../../types';
-import { MEDIDAS_EQUIPO } from '../../../../types';
 import ColorPicker from '../../../common/ColorPicker';
+import MedidaPicker from '../../../common/MedidaPicker';
 
 const TIPOS_EQUIPO = ['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'] as const;
 
 const schema = yup.object({
   tipo: yup.string().required('El tipo es obligatorio'),
   modelo: yup.string().trim().required('El modelo es obligatorio'),
-  medida: yup.string().required('La medida es obligatoria'),
+  medidaId: yup
+    .number()
+    .typeError('La medida es obligatoria')
+    .required('La medida es obligatoria'),
   colorId: yup.number().nullable().transform((v) => (v === '' || v == null ? null : v)),
   cantidadObjetivo: yup
     .number()
@@ -40,7 +43,7 @@ const schema = yup.object({
 type FormData = {
   tipo: string;
   modelo: string;
-  medida: string;
+  medidaId: number;
   colorId?: number | null;
   cantidadObjetivo: number;
   activo: boolean;
@@ -73,7 +76,7 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
     defaultValues: {
       tipo: '',
       modelo: '',
-      medida: '',
+      medidaId: undefined as unknown as number,
       colorId: null,
       cantidadObjetivo: 1,
       activo: true,
@@ -86,7 +89,7 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
         reset({
           tipo: editing.tipo,
           modelo: editing.modelo,
-          medida: editing.medida,
+          medidaId: editing.medida.id,
           colorId: editing.color?.id ?? null,
           cantidadObjetivo: editing.cantidadObjetivo,
           activo: editing.activo,
@@ -95,7 +98,7 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
         reset({
           tipo: '',
           modelo: '',
-          medida: '',
+          medidaId: undefined as unknown as number,
           colorId: null,
           cantidadObjetivo: 1,
           activo: true,
@@ -108,7 +111,7 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
     await onSave({
       tipo: data.tipo as CreateStockObjetivoDTO['tipo'],
       modelo: data.modelo.trim(),
-      medida: data.medida as CreateStockObjetivoDTO['medida'],
+      medidaId: data.medidaId,
       colorId: data.colorId ?? null,
       cantidadObjetivo: data.cantidadObjetivo,
       activo: data.activo,
@@ -165,23 +168,14 @@ export const StockObjetivoForm: React.FC<StockObjetivoFormProps> = ({
 
             <Grid item xs={12} sm={6}>
               <Controller
-                name="medida"
+                name="medidaId"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    select
+                  <MedidaPicker
+                    value={field.value ?? undefined}
+                    onChange={(id) => field.onChange(id ?? undefined)}
                     label="Medida *"
-                    fullWidth
-                    error={!!errors.medida}
-                    helperText={errors.medida?.message}
-                  >
-                    {MEDIDAS_EQUIPO.map((m) => (
-                      <MenuItem key={m} value={m}>
-                        {m}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  />
                 )}
               />
             </Grid>

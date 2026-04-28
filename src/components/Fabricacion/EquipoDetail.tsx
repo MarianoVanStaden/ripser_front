@@ -428,7 +428,7 @@ const loadClientes = async () => {
                   <Typography variant="caption" color="textSecondary">
                     Medida
                   </Typography>
-                  <Typography variant="body1">{equipo.medida || '-'}</Typography>
+                  <Typography variant="body1">{equipo.medida?.nombre || '-'}</Typography>
                 </Box>
                 {equipo.color && (
                   <Box>

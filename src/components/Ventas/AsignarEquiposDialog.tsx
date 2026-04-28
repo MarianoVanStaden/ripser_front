@@ -70,7 +70,9 @@ interface DetalleAsignacion {
   /** Cached color id and display name (the line item carries the FK only). */
   colorId?: number;
   colorNombre?: string;
-  medida?: string;
+  /** Cached medida id and display name. */
+  medidaId?: number;
+  medidaNombre?: string;
   cantidadRequerida: number;
   equiposSeleccionados: number[];
   equiposDisponibles: EquipoFabricadoDTO[];
@@ -111,7 +113,8 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           recetaTipo: detalle.recetaTipo,
           colorId: detalle.color?.id,
           colorNombre: detalle.color?.nombre,
-          medida: detalle.medida,
+          medidaId: detalle.medida?.id,
+          medidaNombre: detalle.medida?.nombre,
           cantidadRequerida: detalle.cantidad,
           equiposSeleccionados: [],
           equiposDisponibles: [],
@@ -189,7 +192,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
         const reservadosParaReceta = clienteReservados.filter(
           (e) =>
             e.modelo === asignacion.recetaModelo &&
-            (!asignacion.medida || e.medida === asignacion.medida)
+            (!asignacion.medidaId || e.medida?.id === asignacion.medidaId)
         );
 
         // Combine lists deduplicating by ID
@@ -210,7 +213,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
         // Filter by color, medida, and estadoAsignacion
         const equiposFiltrados = combinados.filter((equipo) => {
           const matchColor = !asignacion.colorId || equipo.color?.id === asignacion.colorId;
-          const matchMedida = !asignacion.medida || equipo.medida === asignacion.medida;
+          const matchMedida = !asignacion.medidaId || equipo.medida?.id === asignacion.medidaId;
 
           // Infer estadoAsignacion if not provided
           let estadoAsignacion = equipo.estadoAsignacion;
@@ -241,7 +244,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
         console.log(`  - Completados+disponibles: ${equiposCompletos.length}`);
         console.log(`  - Sin terminación: ${equiposSinTerminacion.length}`);
         console.log(`  - Color requerido: "${asignacion.colorNombre || 'Sin especificar'}"`);
-        console.log(`  - Medida requerida: "${asignacion.medida || 'Sin especificar'}"`);
+        console.log(`  - Medida requerida: "${asignacion.medidaNombre || 'Sin especificar'}"`);
         console.log(`  - Equipos seleccionables: ${equiposFiltrados.length}`);
 
         setAsignaciones((prev) =>
@@ -383,7 +386,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                       <Typography variant="body2" color="text.secondary">
                         Tipo: {asignacion.recetaTipo} | Cantidad requerida: {asignacion.cantidadRequerida}
                       </Typography>
-                      {(asignacion.colorNombre || asignacion.medida) && (
+                      {(asignacion.colorNombre || asignacion.medidaNombre) && (
                         <Box display="flex" gap={1} mt={0.5}>
                           {asignacion.colorNombre && (
                             <Chip
@@ -393,9 +396,9 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                               color="primary"
                             />
                           )}
-                          {asignacion.medida && (
+                          {asignacion.medidaNombre && (
                             <Chip
-                              label={`Medida: ${asignacion.medida}`}
+                              label={`Medida: ${asignacion.medidaNombre}`}
                               size="small"
                               variant="outlined"
                               color="primary"
@@ -471,7 +474,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                                     <Typography variant="caption" color="text.secondary">
                                       {equipo.color && equipo.color.nombre}
                                       {equipo.color && equipo.medida && ' - '}
-                                      {equipo.medida}
+                                      {equipo.medida?.nombre}
                                     </Typography>
                                   )}
                                 </Box>
