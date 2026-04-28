@@ -293,8 +293,23 @@ const PresupuestosPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      const fetchAllLeads = async () => {
+        const PAGE_SIZE = 2000;
+        const first = await leadApi.getAll({ page: 0, size: PAGE_SIZE });
+        let all = first.content;
+        if (first.totalPages > 1) {
+          const rest = await Promise.all(
+            Array.from({ length: first.totalPages - 1 }, (_, i) =>
+              leadApi.getAll({ page: i + 1, size: PAGE_SIZE })
+            )
+          );
+          for (const r of rest) all = all.concat(r.content);
+        }
+        return all;
+      };
+
       const [leadsData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
-        leadApi.getAll().then(res => res.content).catch((err) => {
+        fetchAllLeads().catch((err) => {
           console.error("Error fetching leads:", err);
           setError("Error al cargar leads: " + (err.response?.data?.message || err.message));
           return [];
@@ -990,6 +1005,7 @@ const PresupuestosPage: React.FC = () => {
               size="small"
               label="Cliente"
               placeholder="Filtrar por cliente…"
+              pageSize={50}
             />
             <TextField
               fullWidth
@@ -1236,6 +1252,7 @@ const PresupuestosPage: React.FC = () => {
                     error={!formData.clienteId && hasUnsavedChanges}
                     helperText={!formData.clienteId && hasUnsavedChanges ? 'Seleccioná un cliente' : ' '}
                     size="medium"
+                    pageSize={50}
                   />
                 ) : (
                   <Autocomplete
