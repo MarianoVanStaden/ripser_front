@@ -56,8 +56,14 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
       const data = await contactoClienteApi.getByClienteId(clienteId);
       const items = data.content ?? [];
       setContactos(items);
-    } catch (err) {
-      setError('Error al cargar los contactos');
+      setError(null);
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setError('No tenés permisos para ver el historial de contactos de este cliente.');
+      } else {
+        setError('Error al cargar los contactos');
+      }
+      setContactos([]);
       console.error(err);
     } finally {
       setLoading(false);

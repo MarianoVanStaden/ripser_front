@@ -77,8 +77,8 @@ export const clienteApiWithFallback = {
 export const contactoClienteApiWithFallback = {
   getByClienteId: async (clienteId: number, pagination: PaginationParams = {}) => {
     const isBackendAvailable = await testBackendConnection();
-    return isBackendAvailable 
-      ? realContactoClienteApi.contactoClienteApi.getByClienteId(clienteId, pagination) 
+    return isBackendAvailable
+      ? realContactoClienteApi.contactoClienteApi.getByClienteId(clienteId, pagination)
       : mockContactoClienteApi.getByClienteId(clienteId, pagination);
   },
 

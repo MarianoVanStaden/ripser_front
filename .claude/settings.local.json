@@ -108,7 +108,15 @@
       "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
       "Bash(java -version)",
       "Bash(JAVA_HOME='C:\\\\Users\\\\santi\\\\.gradle\\\\jdks\\\\eclipse_adoptium-21-amd64-windows.2' ./mvnw.cmd -DskipTests compile -q)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(\"/c/Users/santi/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2/bin/javac.exe\" --version)",
+      "Bash(export JAVA_HOME=\"/c/Users/santi/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2\")",
+      "Bash(./mvnw -q -DskipTests -DskipUnitTests=true compile)",
+      "Bash(./mvnw -DskipTests -DskipUnitTests=true compile)",
+      "Bash(./mvnw test *)",
+      "Bash(git *)",
+      "Bash(./mvnw -q -pl . compile)",
+      "Bash(./mvnw -DskipTests compile)"
     ],
     "deny": [],
     "ask": [],
