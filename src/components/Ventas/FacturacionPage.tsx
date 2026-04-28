@@ -88,7 +88,7 @@ import type {
 } from '../../types';
 import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
 import ClienteAutocomplete from '../common/ClienteAutocomplete';
-import { COLORES_EQUIPO, MEDIDAS_EQUIPO } from '../../types';
+import { COLORES_EQUIPO } from '../../types';
 
 // Aligned with backend enum com.ripser_back.enums.MetodoPago. The order here is the one
 // shown in the Select; keep it consistent with other pages that expose the same options.
@@ -365,24 +365,7 @@ const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, 
                 )}
               </TableCell>
               <TableCell>
-                {editable && itemAny.tipoItem === 'EQUIPO' ? (
-                  <Select
-                    fullWidth
-                    size="small"
-                    value={itemAny.medida || ''}
-                    onChange={(e) => onUpdate(index, 'medida', e.target.value)}
-                    displayEmpty
-                  >
-                    <MenuItem value="">Sin especificar</MenuItem>
-                    {MEDIDAS_EQUIPO.map((medida) => (
-                      <MenuItem key={medida} value={medida}>
-                        {medida}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                ) : (
-                  <Typography>{itemAny.medida || '-'}</Typography>
-                )}
+                <Typography>{itemAny.medida || '-'}</Typography>
               </TableCell>
               <TableCell align="center">
                 <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
@@ -960,7 +943,7 @@ const FacturacionPage = () => {
     }
   }, []);
 
-  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'color'|'medida', value: any) => {
+  const updateCartItem = async (index: number, field: 'tipoItem'|'productoId'|'recetaId'|'cantidad'|'precioUnitario'|'descuento'|'color', value: any) => {
     const newCart = [...cart];
     const item = { ...newCart[index] };
 
@@ -1031,10 +1014,10 @@ const FacturacionPage = () => {
         delete item.stockDisponible;
         delete item.requiereFabricacion;
       }
-    } else if (field === 'color' || field === 'medida') {
-      // Update color or medida
-      item[field] = value || undefined;
-      // Reset stock verification when color/medida changes
+    } else if (field === 'color') {
+      // Update color (medida is no longer user-editable; it comes from the recipe)
+      item.color = value || undefined;
+      // Reset stock verification when color changes
       item.stockVerificado = false;
       delete item.stockDisponible;
       delete item.requiereFabricacion;
@@ -1056,7 +1039,7 @@ const FacturacionPage = () => {
     setCart(newCart);
 
     // Solo verificar stock de forma silenciosa (sin abrir dialog), para mostrar indicadores
-    if (item.tipoItem === 'EQUIPO' && item.recetaId && (field === 'recetaId' || field === 'color' || field === 'medida' || field === 'cantidad')) {
+    if (item.tipoItem === 'EQUIPO' && item.recetaId && (field === 'recetaId' || field === 'color' || field === 'cantidad')) {
       const stockDisponible = await verificarStockEquipo(item.recetaId, item.color, item.medida);
       newCart[index].stockDisponible = stockDisponible;
       newCart[index].stockVerificado = true;
@@ -1278,12 +1261,10 @@ const FacturacionPage = () => {
               : undefined;
             detalle.descripcionEquipo = equipoDesc;
             detalle.descripcion = equipoDesc; // Also set general descripcion for reports
-            // Include color and medida for filtering in AsignarEquiposDialog
+            // Color goes through; medida is intentionally omitted: the backend
+            // derives it from the recipe so the request stays consistent.
             if (item.color) {
               detalle.color = item.color;
-            }
-            if (item.medida) {
-              detalle.medida = item.medida;
             }
           } else {
             detalle.productoId = Number(item.productoId);

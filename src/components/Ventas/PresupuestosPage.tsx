@@ -54,7 +54,7 @@ import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi"
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, MedidaEquipo, Lead, DeudaClienteError } from "../../types";
-import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO, MEDIDAS_EQUIPO } from "../../types";
+import { EstadoDocumento as EstadoDocumentoEnum, COLORES_EQUIPO } from "../../types";
 import LoadingOverlay from "../common/LoadingOverlay";
 import { useAuth } from "../../context/AuthContext";
 import { useTenant } from "../../context/TenantContext";
@@ -487,8 +487,6 @@ const PresupuestosPage: React.FC = () => {
         detalle.recetaId = value as string;
       } else if (field === "color") {
         detalle.color = value as string;
-      } else if (field === "medida") {
-        detalle.medida = value ? (value as MedidaEquipo) : undefined;
       } else if (field === "descripcion") {
         detalle.descripcion = value as string;
       } else if (field === "cantidad") {
@@ -512,13 +510,15 @@ const PresupuestosPage: React.FC = () => {
 
       if (field === "recetaId" && value) {
         const receta = recetas.find((r) => r.id === Number(value));
-        console.log('Selected receta:', receta); // Debug: Check receta data
         if (receta) {
           detalle.descripcion = `${receta.nombre} - ${receta.modelo || ''} (${receta.tipoEquipo})`;
           detalle.precioUnitario = receta.precioVenta || 0;
           detalle.subtotal = detalle.cantidad * (receta.precioVenta || 0);
-          console.log('Set precioUnitario to:', detalle.precioUnitario); // Debug: Check price
+          // La medida proviene siempre de la receta (no es editable por el usuario).
+          detalle.medida = (receta.medida as MedidaEquipo | undefined) ?? undefined;
         }
+      } else if (field === "recetaId" && !value) {
+        detalle.medida = undefined;
       }
 
       return newDetalles;
@@ -643,7 +643,7 @@ const PresupuestosPage: React.FC = () => {
         } else if (d.tipoItem === 'EQUIPO') {
           baseDetalle.recetaId = Number(d.recetaId);
           baseDetalle.color = d.color || undefined;
-          baseDetalle.medida = d.medida || undefined;
+          // medida no se envía: el backend la deriva de la receta.
         }
 
         return baseDetalle;
@@ -1522,30 +1522,9 @@ const PresupuestosPage: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {readOnly || editingPresupuesto ? (
-                            <Typography variant="body2">
-                              {detalle.medida || '-'}
-                            </Typography>
-                          ) : (
-                            <TextField
-                              select
-                              size="small"
-                              fullWidth
-                              value={detalle.medida || ""}
-                              onChange={(e) => updateDetalle(index, "medida", e.target.value as MedidaEquipo)}
-                              disabled={detalle.tipoItem !== 'EQUIPO'}
-                              placeholder={detalle.tipoItem === 'EQUIPO' ? "Medida" : ""}
-                            >
-                              <MenuItem value="">
-                                <em>Sin especificar</em>
-                              </MenuItem>
-                              {MEDIDAS_EQUIPO.map((medida) => (
-                                <MenuItem key={medida} value={medida}>
-                                  {medida}
-                                </MenuItem>
-                              ))}
-                            </TextField>
-                          )}
+                          <Typography variant="body2">
+                            {detalle.medida || '-'}
+                          </Typography>
                         </TableCell>
                         <TableCell>
                           <TextField

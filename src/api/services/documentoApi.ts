@@ -13,6 +13,12 @@ import type {
   PaginationParams,
 } from '../../types';
 
+// Request-only line item for presupuesto creation. Mirrors
+// `DetalleDocumentoCreateDTO` on the backend: `medida` is intentionally
+// absent — for EQUIPO items the measure is derived from the recipe at the
+// service layer, so the client must not provide it.
+export type DetalleDocumentoCreateDTO = Omit<DetalleDocumentoDTO, 'medida'>;
+
 // Narrow DTO for creating presupuesto in current backend
 export type CreatePresupuestoPayload = {
   clienteId?: number;
@@ -20,7 +26,7 @@ export type CreatePresupuestoPayload = {
   usuarioId: number;
   tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
   observaciones?: string;
-  detalles: DetalleDocumentoDTO[];
+  detalles: DetalleDocumentoCreateDTO[];
 };
 
 export const documentoApi = {
