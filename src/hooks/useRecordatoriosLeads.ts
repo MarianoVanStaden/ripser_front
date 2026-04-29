@@ -82,10 +82,11 @@ const loadViaLeads = async (
               nombre: lead.nombre,
               apellido: lead.apellido,
               telefono: lead.telefono,
-              email: lead.email,
+              // email y score no vienen en LeadListItemDTO (proyección reducida).
+              // El fallback solo aporta los campos disponibles; los consumidores
+              // los tratan como opcionales.
               estadoLead: lead.estadoLead,
               prioridad: lead.prioridad,
-              score: lead.score,
               usuarioAsignadoId: lead.usuarioAsignadoId,
             },
           });

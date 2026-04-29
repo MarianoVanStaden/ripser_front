@@ -1,6 +1,7 @@
 import api from '../config';
 import type {
   LeadDTO,
+  LeadListItemDTO,
   ConversionLeadRequest,
   ConversionLeadResponse,
   EstadoLeadEnum,
@@ -55,10 +56,22 @@ const buildParams = (
 };
 
 export const leadApi = {
-  // Listar todos los leads con filtros opcionales (paginated)
-  getAll: async (pagination: PaginationParams = {}, params?: LeadFilterParams): Promise<PageResponse<LeadDTO>> => {
-    const response = await api.get<PageResponse<LeadDTO>>(BASE_PATH, {
+  // Listar leads con filtros opcionales (paginated). El backend devuelve
+  // LeadListItemDTO (proyección reducida con próximo recordatorio embebido).
+  // Para el detalle completo, usar getById.
+  getAll: async (pagination: PaginationParams = {}, params?: LeadFilterParams): Promise<PageResponse<LeadListItemDTO>> => {
+    const response = await api.get<PageResponse<LeadListItemDTO>>(BASE_PATH, {
       params: buildParams(pagination, params),
+    });
+    return response.data;
+  },
+
+  // Actualización rápida de prioridad (PATCH). Antes había que mandar el LeadDTO
+  // completo via PUT; ahora la lista solo recibe el DTO chico, así que este
+  // endpoint permite cambiar prioridad sin cargar el lead completo.
+  updatePrioridad: async (id: number, prioridad: PrioridadLeadEnum): Promise<LeadDTO> => {
+    const response = await api.patch<LeadDTO>(`${BASE_PATH}/${id}/prioridad`, null, {
+      params: { prioridad },
     });
     return response.data;
   },

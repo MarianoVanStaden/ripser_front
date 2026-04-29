@@ -37,6 +37,40 @@ export const PrioridadLeadEnum = {
 
 export type PrioridadLeadEnum = typeof PrioridadLeadEnum[keyof typeof PrioridadLeadEnum];
 
+// Próximo recordatorio embebido en LeadListItem (proyección reducida del listado).
+export interface ProximoRecordatorioDTO {
+  id: number;
+  fechaRecordatorio: string; // ISO yyyy-mm-dd
+  tipo?: string;
+  prioridad?: string;
+}
+
+// Proyección reducida usada por GET /api/leads. Para detalle (form, edición)
+// se sigue usando LeadDTO completo via GET /api/leads/{id}.
+export interface LeadListItemDTO {
+  id: number;
+  sucursalId?: number;
+  nombre: string;
+  apellido?: string;
+  telefono: string;
+  provincia?: ProvinciaEnum;
+  canal: CanalEnum;
+  estadoLead: EstadoLeadEnum;
+  prioridad?: PrioridadLeadEnum;
+  fechaPrimerContacto?: string;
+  fechaUltimoContacto?: string;
+  usuarioAsignadoId?: number;
+  productoInteresNombre?: string;
+  equipoFabricadoInteresNombre?: string;
+  modeloEquipoInteres?: string;
+  // Campos opcionales legacy que algunos backends devuelven; el JSX los chequea
+  // con fallbacks. Si no vienen, el render cae al siguiente campo disponible.
+  modeloRecetaInteres?: string;
+  equipoInteresadoNombre?: string;
+  clienteOrigenId?: number;
+  proximoRecordatorio?: ProximoRecordatorioDTO | null;
+}
+
 // DTOs
 export interface LeadDTO {
   id?: number;

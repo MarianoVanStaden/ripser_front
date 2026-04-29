@@ -21,6 +21,44 @@ import type {
 export type DetalleDocumentoCreateDTO =
   Omit<DetalleDocumentoDTO, 'medida' | 'color'> & { colorId?: number | null };
 
+// Filtros server-side aceptados por GET /api/documentos y /api/documentos/tipo/{tipo}.
+// Se mantiene una sola fuente de verdad para que las páginas consumidoras y el
+// endpoint de totales reciban exactamente la misma forma.
+export interface DocumentoFilterParams {
+  tipos?: string[];
+  sucursalId?: number | null;
+  estado?: string;
+  estados?: string[];
+  metodoPago?: string;
+  clienteId?: number;
+  fechaDesde?: string; // ISO yyyy-mm-dd
+  fechaHasta?: string;
+  busqueda?: string;
+}
+
+export interface DocumentoTotalesDTO {
+  count: number;
+  totalRevenue: number;
+  averageOrderValue: number;
+}
+
+const ARRAY_KEYS = ['tipos', 'estados'] as const;
+
+function serializeDocumentoFilters(
+  pagination: PaginationParams,
+  filters?: DocumentoFilterParams
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...filters, ...pagination };
+  for (const key of ARRAY_KEYS) {
+    const v = merged[key];
+    if (Array.isArray(v)) {
+      if (v.length === 0) delete merged[key];
+      else merged[key] = v.join(',');
+    }
+  }
+  return merged;
+}
+
 // Narrow DTO for creating presupuesto in current backend
 export type CreatePresupuestoPayload = {
   clienteId?: number;
@@ -47,28 +85,30 @@ export const documentoApi = {
   // via `estados`. busqueda hace LIKE sobre numeroDocumento y nombre del cliente.
   getAllPaginated: async (
     pagination: PaginationParams = {},
-    filters?: {
-      tipos?: string[];
-      sucursalId?: number | null;
-      estado?: string;
-      estados?: string[];
-      clienteId?: number;
-      fechaDesde?: string;
-      fechaHasta?: string;
-      busqueda?: string;
-    }
+    filters?: DocumentoFilterParams
   ): Promise<PageResponse<DocumentoComercial>> => {
-    const params: Record<string, unknown> = { ...filters, ...pagination };
-    for (const key of ['tipos', 'estados'] as const) {
-      const v = params[key];
-      if (Array.isArray(v)) {
-        if (v.length === 0) delete params[key];
-        else params[key] = v.join(',');
-      }
-    }
     const response = await api.get<PageResponse<DocumentoComercial>>('/api/documentos', {
-      params,
+      params: serializeDocumentoFilters(pagination, filters),
     });
+    return response.data;
+  },
+
+  // Agregaciones sobre los mismos filtros que getAllPaginated.
+  getTotales: async (filters?: DocumentoFilterParams): Promise<DocumentoTotalesDTO> => {
+    const response = await api.get<DocumentoTotalesDTO>('/api/documentos/totales', {
+      params: serializeDocumentoFilters({}, filters),
+    });
+    return response.data;
+  },
+
+  // Lista única de clientes con al menos un documento del tipo dado.
+  getClientesConDocumentos: async (
+    tipo: string
+  ): Promise<{ id: number; nombre: string }[]> => {
+    const response = await api.get<{ id: number; nombre: string }[]>(
+      '/api/documentos/clientes-con-documentos',
+      { params: { tipo } }
+    );
     return response.data;
   },
   // Get documento by ID
@@ -153,29 +193,16 @@ export const documentoApi = {
 
   // Get documentos by tipo (paginated, with server-side filters).
   // busqueda hace LIKE sobre numeroDocumento y nombre del cliente.
+  // Por tipo concreto. Acepta los mismos filtros que getAllPaginated salvo `tipos`
+  // (el path ya fija el tipo).
   getByTipoPaginated: async (
     tipo: string,
     pagination: PaginationParams = {},
-    filters?: {
-      sucursalId?: number | null;
-      estado?: string;
-      // Lista de estados para filtrar con OR. El backend hace `IN (:estados)`.
-      // Joineamos con coma para que Spring lo bindee a List<EstadoDocumento>.
-      estados?: string[];
-      clienteId?: number;
-      fechaDesde?: string; // ISO yyyy-mm-dd
-      fechaHasta?: string;
-      busqueda?: string;
-    }
+    filters?: Omit<DocumentoFilterParams, 'tipos'>
   ): Promise<PageResponse<DocumentoComercial>> => {
-    const params: Record<string, unknown> = { ...filters, ...pagination };
-    if (Array.isArray(filters?.estados)) {
-      if (filters.estados.length === 0) delete params.estados;
-      else params.estados = filters.estados.join(',');
-    }
     const response = await api.get<PageResponse<DocumentoComercial>>(
       `/api/documentos/tipo/${encodeURIComponent(tipo)}`,
-      { params }
+      { params: serializeDocumentoFilters(pagination, filters) }
     );
     return response.data;
   },

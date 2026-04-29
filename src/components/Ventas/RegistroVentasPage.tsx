@@ -128,33 +128,37 @@ const RegistroVentasPage: React.FC = () => {
     [usuarios]
   );
 
-  // Server-side fetch de FACTURAs + NOTA_CREDITOs combinados en una sola página.
-  const tiposPorFiltro: string[] = tipoDocumentoFilter === 'all'
-    ? ['FACTURA', 'NOTA_CREDITO']
-    : [tipoDocumentoFilter];
+  // Reset page=0 también cuando cambia paymentMethodFilter (ahora server-side).
+  useEffect(() => {
+    setPage(0);
+  }, [paymentMethodFilter]);
+
+  // Filtros server-side. Una sola fuente de verdad para listado + totales.
+  const serverFilters = useMemo(() => ({
+    tipos: tipoDocumentoFilter === 'all' ? ['FACTURA', 'NOTA_CREDITO'] : [tipoDocumentoFilter],
+    ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
+    ...(statusFilter !== 'all' ? { estado: statusFilter } : {}),
+    ...(paymentMethodFilter !== 'all' ? { metodoPago: paymentMethodFilter } : {}),
+    ...(clientFilter !== 'all' ? { clienteId: Number(clientFilter) } : {}),
+    ...(dateFromFilter ? { fechaDesde: dateFromFilter } : {}),
+    ...(dateToFilter ? { fechaHasta: dateToFilter } : {}),
+  }), [tipoDocumentoFilter, debouncedSearch, statusFilter, paymentMethodFilter, clientFilter, dateFromFilter, dateToFilter]);
 
   const salesQuery = useQuery({
-    queryKey: ['ventas', {
-      page, size: rowsPerPage,
-      tipos: tiposPorFiltro,
-      busqueda: debouncedSearch.trim() || undefined,
-      estado: statusFilter !== 'all' ? statusFilter : undefined,
-      clienteId: clientFilter !== 'all' ? Number(clientFilter) : undefined,
-      fechaDesde: dateFromFilter || undefined,
-      fechaHasta: dateToFilter || undefined,
-      empresaId,
-    }] as const,
+    queryKey: ['ventas', { page, size: rowsPerPage, empresaId, ...serverFilters }] as const,
     queryFn: () => documentoApi.getAllPaginated(
       { page, size: rowsPerPage, sort: 'fechaEmision,desc' },
-      {
-        tipos: tiposPorFiltro,
-        ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
-        ...(statusFilter !== 'all' ? { estado: statusFilter } : {}),
-        ...(clientFilter !== 'all' ? { clienteId: Number(clientFilter) } : {}),
-        ...(dateFromFilter ? { fechaDesde: dateFromFilter } : {}),
-        ...(dateToFilter ? { fechaHasta: dateToFilter } : {}),
-      }
+      serverFilters
     ),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+
+  // Totales agregados server-side sobre los mismos filtros (excepto paginación).
+  // Antes los totales se calculaban sobre la página visible — ahora son exactos.
+  const totalesQuery = useQuery({
+    queryKey: ['ventas-totales', { empresaId, ...serverFilters }] as const,
+    queryFn: () => documentoApi.getTotales(serverFilters),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
@@ -370,15 +374,9 @@ const RegistroVentasPage: React.FC = () => {
     return 'Vendedor no disponible';
   };
 
-  // Búsqueda (numero/cliente), estado, cliente, tipo documento, rango de fechas:
-  // todos server-side. paymentMethodFilter sigue client-side (no soportado por
-  // el backend) y solo afecta la página visible; documentado en TECHNICAL_DEBT.md.
-  const filteredSales = useMemo(
-    () => sales.filter((sale: Venta) =>
-      paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter
-    ),
-    [sales, paymentMethodFilter]
-  );
+  // Todos los filtros (incluido metodoPago) ahora se aplican server-side.
+  // filteredSales queda como alias de la página actual para no tocar el JSX.
+  const filteredSales = sales;
 
   const clearFilters = (): void => {
     setSearchTerm('');
@@ -392,16 +390,11 @@ const RegistroVentasPage: React.FC = () => {
     setTipoDocumentoFilter('all');
   };
 
-  const calculateTotals = () => {
-    const totalRevenue = filteredSales.reduce((sum: number, sale: Venta) => 
-      sum + (sale.total || 0), 0);
-    const totalTransactions = filteredSales.length;
-    const averageOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
-
-    return { totalRevenue, totalTransactions, averageOrderValue };
-  };
-
-  const { totalRevenue, totalTransactions, averageOrderValue } = calculateTotals();
+  // Totales exactos sobre el dataset filtrado completo (no sobre la página
+  // visible). Vienen del endpoint /api/documentos/totales.
+  const totalRevenue = totalesQuery.data?.totalRevenue ?? 0;
+  const totalTransactions = totalesQuery.data?.count ?? 0;
+  const averageOrderValue = totalesQuery.data?.averageOrderValue ?? 0;
 
   // La paginación es server-side; "paginatedSales" es la página actual.
   const paginatedSales = filteredSales;

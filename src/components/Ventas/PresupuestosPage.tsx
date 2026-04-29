@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useLeadSearch } from "../../hooks/useLeadSearch";
 import {
   Box,
   Button,
@@ -49,7 +50,7 @@ import {
   AttachMoney as MoneyIcon,
   Search as SearchIcon,
 } from "@mui/icons-material";
-import { clienteApi, usuarioApi, productApi, leadApi } from "../../api/services";
+import { clienteApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
@@ -391,21 +392,21 @@ const PresupuestosPage: React.FC = () => {
     });
   }, [presupuestos]);
 
-  // Carga lazy de leads: solo cuando se abre el dialog del form.
-  const leadsQuery = useQuery({
-    queryKey: ['leadsForPresupuesto', empresaId],
-    queryFn: async () => {
-      // Trae solo los leads no convertidos en una sola página de 500.
-      // Si hay más, se documenta como deuda (typeahead server-side en el form).
-      const res = await leadApi.getAll({ page: 0, size: 500 });
-      return res.content;
-    },
-    enabled: dialogOpen,
-    staleTime: 5 * 60 * 1000,
-  });
+  // Typeahead server-side de leads para el Autocomplete del form.
+  // Antes esto cargaba 500 leads no convertidos al abrir el dialog (limitación
+  // documentada en TECHNICAL_DEBT.md). Ahora busca en el server con debounce.
+  const leadSearch = useLeadSearch({ excludeEstados: ['CONVERTIDO'], size: 20 });
+  // Mantenemos el state `leads` como union de:
+  //   - opciones del typeahead (lo que el usuario está buscando ahora)
+  //   - el lead seleccionado actualmente (para que value={...} no sea null si
+  //     viene de un presupuesto en edición que no figura en la búsqueda actual)
   useEffect(() => {
-    if (leadsQuery.data) setLeads(leadsQuery.data);
-  }, [leadsQuery.data]);
+    setLeads((prev) => {
+      const map = new Map(prev.map((l) => [l.id, l]));
+      for (const l of leadSearch.options) if (l.id != null) map.set(l.id, l);
+      return Array.from(map.values());
+    });
+  }, [leadSearch.options]);
 
   useEffect(() => {
     fetchData();
@@ -1231,6 +1232,11 @@ const PresupuestosPage: React.FC = () => {
                     getOptionLabel={(l) => (l.apellido ? `${l.nombre} ${l.apellido}` : l.nombre || '')}
                     isOptionEqualToValue={(option, val) => option.id === val.id}
                     value={leads.find(l => l.id != null && l.id.toString() === formData.leadId) || null}
+                    inputValue={leadSearch.inputValue}
+                    onInputChange={(_, value) => leadSearch.setInputValue(value)}
+                    // Backend ya filtra por busqueda; deshabilitamos filtrado client-side de MUI.
+                    filterOptions={(opts) => opts}
+                    loading={leadSearch.loading}
                     onChange={(_, newValue) => {
                       setFormData({
                         ...formData,

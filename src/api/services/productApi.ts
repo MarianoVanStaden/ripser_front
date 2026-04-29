@@ -1,12 +1,22 @@
 import api from '../config';
 import type { Producto, ProductoCreateDTO, ProductoUpdateDTO, PageResponse, PaginationParams } from '../../types';
 
+export interface ProductoFilterParams {
+  categoriaId?: number | null;
+  activo?: boolean;
+  busqueda?: string;
+}
+
 export const productApi = {
-  // Get all products (paginated)
-  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Producto>> => {
-    const response = await api.get<PageResponse<Producto>>('/api/productos', {
-      params: { ...pagination },
-    });
+  // Get products (paginated, optional server-side filters).
+  getAll: async (
+    pagination: PaginationParams = {},
+    filters?: ProductoFilterParams
+  ): Promise<PageResponse<Producto>> => {
+    const params: Record<string, unknown> = { ...filters, ...pagination };
+    // El backend trata `categoriaId === null` como sin filtro; lo eliminamos.
+    if (params.categoriaId == null) delete params.categoriaId;
+    const response = await api.get<PageResponse<Producto>>('/api/productos', { params });
     return response.data;
   },
   getLowStock: async (): Promise<Producto[]> => {

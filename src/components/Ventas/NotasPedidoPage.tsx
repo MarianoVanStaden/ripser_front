@@ -152,25 +152,19 @@ const NotasPedidoPage: React.FC = () => {
   // gateamos por convertDialogOpen (definido más abajo). Mientras, mantenemos
   // un useState como cache local para no romper consumers que lo leen.
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
-  const [clientes, setClientes] = useState<{ id: number; nombre: string }[]>([]);
 
-  // Lista de clientes del filtro: derivada de la página visible de notas.
-  // Limitación conocida: si un cliente no aparece en la página actual, no
-  // figura en el dropdown. Aceptable mientras no haya un endpoint dedicado
-  // /api/clientes-con-documentos. Documentado en TECHNICAL_DEBT.md.
+  // Dropdown de clientes con notas de pedido — viene del endpoint dedicado,
+  // no se deriva de la página visible. Antes se reconstruía a partir de
+  // notasPedido lo que dejaba clientes fuera cuando estaban en otra página.
+  const clientesQuery = useQuery({
+    queryKey: ['clientesConDocumentos', 'NOTA_PEDIDO', empresaId] as const,
+    queryFn: () => documentoApi.getClientesConDocumentos('NOTA_PEDIDO'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const clientes = clientesQuery.data ?? [];
+
   useEffect(() => {
     if (!notasPedido.length) return;
-    setClientes((prev) => {
-      const map = new Map<number, { id: number; nombre: string }>(prev.map((c) => [c.id, c]));
-      let mutated = false;
-      for (const nota of notasPedido) {
-        if (nota.clienteId && nota.clienteNombre && !map.has(nota.clienteId)) {
-          map.set(nota.clienteId, { id: nota.clienteId, nombre: nota.clienteNombre });
-          mutated = true;
-        }
-      }
-      return mutated ? Array.from(map.values()) : prev;
-    });
     setNotasFinanciamiento((prev) => {
       const next = { ...prev };
       let mutated = false;

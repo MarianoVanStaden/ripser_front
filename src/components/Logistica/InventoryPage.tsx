@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -38,11 +39,13 @@ import { productApi, movimientoStockApi, categoriaProductoApi } from '../../api/
 import LoadingOverlay from '../common/LoadingOverlay';
 
 const InventoryPage: React.FC = () => {
-  const [products, setProducts] = useState<Producto[]>([]);
-  const [adjustments, setAdjustments] = useState<InventoryAdjustment[]>([]);
+  // products y adjustments vienen de useQuery server-side.
+  const queryClient = useQueryClient();
   const [categories, setCategories] = useState<CategoriaProducto[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Pagination for products (server-side).
+  const [productPage, setProductPage] = useState(0);
+  const [productRowsPerPage, setProductRowsPerPage] = useState(50);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [recountDialogOpen, setRecountDialogOpen] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
@@ -74,84 +77,99 @@ const InventoryPage: React.FC = () => {
     notes: '',
   });
 
+  // Categorías: cargadas una vez (catálogo chico).
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    categoriaProductoApi.getAll()
+      .then((c) => { if (!cancelled) setCategories(c); })
+      .catch((err) => console.error('Error cargando categorias:', err));
+    return () => { cancelled = true; };
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Load data from backend APIs
-      const [productsData, categoriesData, movimientosData] = await Promise.all([
-        productApi.getAll({ page: 0, size: 10000 }),
-        categoriaProductoApi.getAll(),
-        movimientoStockApi.getAll()
-      ]);
+  // Reset page=0 cuando cambian filtros server-side.
+  useEffect(() => { setProductPage(0); }, [selectedCategory]);
 
-      const productsList = productsData.content ?? [];
-      const movimientosList = movimientosData.content ?? [];
-
-      setProducts(productsList);
-      setCategories(categoriesData);
-
-      // Filter movements to get only adjustments (AJUSTE type)
-      const inventoryAdjustments: InventoryAdjustment[] = movimientosList
-        .filter((movement: MovimientoStock) => movement.tipo === 'AJUSTE')
-        .map((movement: MovimientoStock) => {
-          // Backend returns producto as an object, extract the ID
-          const productId = typeof movement.producto === 'object' 
-            ? movement.producto.id 
-            : movement.productoId || 0;
-          
-          return {
-            id: movement.id || 0,
-            productId: productId,
-            type: 'ADJUSTMENT' as const,
-            expectedQuantity: movement.stockAnterior || 0,
-            actualQuantity: movement.stockActual || 0,
-            difference: movement.cantidad,
-            reason: movement.concepto || 'Ajuste de inventario',
-            employeeId: movement.usuarioId || 1,
-            date: movement.fecha,
-            notes: movement.numeroComprobante || '',
-            status: 'APPROVED' as const, // Historical movements are approved
-          };
-        });
-      
-      setAdjustments(inventoryAdjustments);
-      
-    } catch (err) {
-      setError('Error al cargar los datos de inventario');
-      console.error('Error loading inventory data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredProducts = products.filter(product => {
-    return !selectedCategory || product.categoriaProductoId === selectedCategory;
+  // Productos: paginado server-side con filtro de categoría opcional.
+  // Antes: productApi.getAll({size: 10000}) cargaba TODO el catálogo al mount.
+  const productsQuery = useQuery({
+    queryKey: ['inventory-products', { page: productPage, size: productRowsPerPage, categoriaId: selectedCategory }] as const,
+    queryFn: () => productApi.getAll(
+      { page: productPage, size: productRowsPerPage, sort: 'nombre,asc' },
+      selectedCategory != null ? { categoriaId: selectedCategory } : {}
+    ),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
   });
+  const products: Producto[] = productsQuery.data?.content ?? [];
+  const totalProducts = productsQuery.data?.totalElements ?? 0;
+  const invalidateProducts = useCallback(
+    () => { queryClient.invalidateQueries({ queryKey: ['inventory-products'] }); },
+    [queryClient]
+  );
 
-  // Filter and sort adjustments by date descending (newest first)
-  const filteredAdjustments = useMemo(() => {
-    const filtered = adjustments.filter(adjustment => {
-      return adjustmentFilter === 'all' || adjustment.status.toLowerCase() === adjustmentFilter;
-    });
+  // Movimientos de tipo AJUSTE: paginados server-side por movimientoStockApi.
+  // Antes: getAll() sin paginar → toda la historia al mount.
+  const movimientosQuery = useQuery({
+    queryKey: ['inventory-adjustments', { page: adjustmentPage, size: adjustmentRowsPerPage, filter: adjustmentFilter }] as const,
+    queryFn: async () => {
+      const res = await movimientoStockApi.getAll({
+        page: adjustmentPage,
+        size: adjustmentRowsPerPage,
+        sort: 'fecha,desc',
+      });
+      return res;
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  });
+  const totalAdjustments = movimientosQuery.data?.totalElements ?? 0;
+  const adjustments: InventoryAdjustment[] = useMemo(() => {
+    const list = movimientosQuery.data?.content ?? [];
+    return list
+      .filter((m: MovimientoStock) => m.tipo === 'AJUSTE')
+      .map((movement: MovimientoStock) => {
+        const productId = typeof movement.producto === 'object'
+          ? movement.producto.id
+          : movement.productoId || 0;
+        return {
+          id: movement.id || 0,
+          productId,
+          type: 'ADJUSTMENT' as const,
+          expectedQuantity: movement.stockAnterior || 0,
+          actualQuantity: movement.stockActual || 0,
+          difference: movement.cantidad,
+          reason: movement.concepto || 'Ajuste de inventario',
+          employeeId: movement.usuarioId || 1,
+          date: movement.fecha,
+          notes: movement.numeroComprobante || '',
+          status: 'APPROVED' as const,
+        };
+      });
+  }, [movimientosQuery.data]);
+  const invalidateAdjustments = useCallback(
+    () => { queryClient.invalidateQueries({ queryKey: ['inventory-adjustments'] }); },
+    [queryClient]
+  );
 
-    // Sort by date descending (newest first)
-    return filtered.sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [adjustments, adjustmentFilter]);
+  const loading = productsQuery.isLoading || movimientosQuery.isLoading;
+  useEffect(() => {
+    if (productsQuery.error || movimientosQuery.error) {
+      setError('Error al cargar los datos de inventario');
+    } else {
+      setError(null);
+    }
+  }, [productsQuery.error, movimientosQuery.error]);
 
-  // Paginate adjustments
-  const paginatedAdjustments = useMemo(() => {
-    const startIndex = adjustmentPage * adjustmentRowsPerPage;
-    const endIndex = startIndex + adjustmentRowsPerPage;
-    return filteredAdjustments.slice(startIndex, endIndex);
-  }, [filteredAdjustments, adjustmentPage, adjustmentRowsPerPage]);
+  const loadData = useCallback(() => {
+    invalidateProducts();
+    invalidateAdjustments();
+  }, [invalidateProducts, invalidateAdjustments]);
+
+  // Filtros server-side: products ya viene filtrado por categoría.
+  // adjustments es la página actual de movimientos AJUSTE.
+  const filteredProducts = products;
+  // filteredAdjustments era client-side; ahora adjustments ya es la página actual.
+  const paginatedAdjustments = adjustments;
 
   const handleAddAdjustment = () => {
     setAdjustmentFormData({
@@ -167,14 +185,14 @@ const InventoryPage: React.FC = () => {
 
   const handleSaveAdjustment = async () => {
     try {
-      setLoading(true);
+      // loading es derivado de los queries (productsQuery/movimientosQuery).
       const difference = adjustmentFormData.actualQuantity - adjustmentFormData.expectedQuantity;
       
       // Get current product stock
       const product = products.find(p => p.id === parseInt(adjustmentFormData.productId));
       if (!product) {
         setError('Producto no encontrado');
-        setLoading(false);
+        // loading es derivado de los queries (productsQuery/movimientosQuery).
         return;
       }
 
@@ -219,23 +237,17 @@ const InventoryPage: React.FC = () => {
         status: 'APPROVED' as const,
       };
       
-      setAdjustments([newAdjustment, ...adjustments]);
-      
-      // Update product stock locally
-      const updatedProducts = products.map(p => 
-        p.id === parseInt(adjustmentFormData.productId)
-          ? { ...p, stockActual: newStockActual }
-          : p
-      );
-      setProducts(updatedProducts);
-      
+      // Refresca listados desde el server.
+      void newAdjustment; void newStockActual;
+      invalidateProducts();
+      invalidateAdjustments();
       setAdjustmentDialogOpen(false);
       
     } catch (err) {
       setError('Error al guardar el ajuste de inventario');
       console.error('Error saving adjustment:', err);
     } finally {
-      setLoading(false);
+      // loading es derivado de los queries (productsQuery/movimientosQuery).
     }
   };
 
@@ -249,7 +261,7 @@ const InventoryPage: React.FC = () => {
 
   const handleSaveRecount = async () => {
     try {
-      setLoading(true);
+      // loading es derivado de los queries (productsQuery/movimientosQuery).
       setError(null);
       
       const request = {
@@ -282,7 +294,7 @@ const InventoryPage: React.FC = () => {
       setError('Error al iniciar el recuento. Verifica que el backend esté activo.');
       console.error('Error starting recount:', err);
     } finally {
-      setLoading(false);
+      // loading es derivado de los queries (productsQuery/movimientosQuery).
     }
   };
 
@@ -292,23 +304,11 @@ const InventoryPage: React.FC = () => {
       if (!adjustment) return;
       
       console.log('Approving adjustment:', id);
-      
-      // In a real backend, this would likely be handled by updating the stock movement status
-      // For now, we'll just update the local state since the movement was already created
-      
-      // Update product stock locally
-      setProducts(products.map(product => 
-        product.id === adjustment.productId
-          ? { ...product, stockActual: product.stockActual + adjustment.difference }
-          : product
-      ));
-      
-      // Update adjustment status
-      setAdjustments(adjustments.map(adj => 
-        adj.id === id 
-          ? { ...adj, status: 'APPROVED' as const, updatedAt: new Date().toISOString() }
-          : adj
-      ));
+      void adjustment;
+      // Refresca desde el server: el backend actualiza stock en la creación del
+      // movimiento; acá invalidamos para reflejar el estado fresco.
+      invalidateProducts();
+      invalidateAdjustments();
       
     } catch (err) {
       setError('Error al aprobar el ajuste');
@@ -486,6 +486,19 @@ const InventoryPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            component="div"
+            count={totalProducts}
+            page={productPage}
+            onPageChange={(_e, newPage) => setProductPage(newPage)}
+            rowsPerPage={productRowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setProductRowsPerPage(parseInt(e.target.value, 10));
+              setProductPage(0);
+            }}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            labelRowsPerPage="Productos por página:"
+          />
         </CardContent>
       </Card>
 
@@ -565,7 +578,7 @@ const InventoryPage: React.FC = () => {
           </TableContainer>
           <TablePagination
             component="div"
-            count={filteredAdjustments.length}
+            count={totalAdjustments}
             page={adjustmentPage}
             onPageChange={(_, newPage) => setAdjustmentPage(newPage)}
             rowsPerPage={adjustmentRowsPerPage}

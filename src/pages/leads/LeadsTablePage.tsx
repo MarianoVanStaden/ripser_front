@@ -33,10 +33,9 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { leadApi, type LeadFilterParams } from '../../api/services/leadApi';
-import { recordatorioLeadApi } from '../../api/services/recordatorioLeadApi';
 import {
   EstadoLeadEnum,
   PrioridadLeadEnum,
@@ -44,7 +43,7 @@ import {
   ESTADO_LABELS,
   PRIORIDAD_LABELS
 } from '../../types/lead.types';
-import type { LeadDTO, RecordatorioLeadDTO } from '../../types/lead.types';
+import type { LeadListItemDTO, RecordatorioLeadDTO } from '../../types/lead.types';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
@@ -55,11 +54,6 @@ import { useDebounce } from '../../hooks/useDebounce';
 
 const PAGE_SIZE = 100;
 const ROW_HEIGHT = 44;
-// Cota para el badge de recordatorios pendientes: trae los más próximos
-// y los matchea contra los leads visibles. Aceptable porque la mayoría
-// de los leads no tienen recordatorios pendientes; el resto cae a "—".
-// Solución de fondo (LeadDTO.tieneRecordatoriosPendientes) está en TECHNICAL_DEBT.md.
-const RECORDATORIOS_PENDIENTES_PEEK = 500;
 
 type Order = 'asc' | 'desc';
 type OrderBy =
@@ -148,33 +142,14 @@ export const LeadsTablePage = () => {
     getNextPageParam: (last) => (last.last ? undefined : last.number + 1)
   });
 
-  const leads: LeadDTO[] = useMemo(
+  const leads: LeadListItemDTO[] = useMemo(
     () => data?.pages.flatMap((p) => p.content) ?? [],
     [data]
   );
   const totalElements = data?.pages[0]?.totalElements ?? 0;
 
-  // Recordatorios pendientes — trae los más próximos en una sola página.
-  // Limitado intencionalmente; ver constante RECORDATORIOS_PENDIENTES_PEEK.
-  const { data: recordatoriosByLeadId = {} } = useQuery({
-    queryKey: ['leads', 'recordatoriosPeek', { sucursalFiltro, soloMisLeads }],
-    queryFn: async () => {
-      const page = await recordatorioLeadApi.getAll(
-        { page: 0, size: RECORDATORIOS_PENDIENTES_PEEK },
-        {
-          enviado: false,
-          ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
-          ...(soloMisLeads ? { soloMisRecordatorios: true } : {})
-        }
-      );
-      const map: Record<number, RecordatorioLeadDTO[]> = {};
-      for (const r of page.content) {
-        if (r.leadId) (map[r.leadId] ||= []).push(r);
-      }
-      return map;
-    },
-    staleTime: 60_000
-  });
+  // El próximo recordatorio pendiente viene embebido en cada LeadListItemDTO
+  // (campo `proximoRecordatorio`). Ya no necesitamos una query secundaria.
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const rowVirtualizer = useVirtualizer({
@@ -239,9 +214,8 @@ export const LeadsTablePage = () => {
 
   const handleUpdatePriority = async (leadId: number, newPriority: PrioridadLeadEnum) => {
     try {
-      const leadActual = leads.find((l) => l.id === leadId);
-      if (!leadActual) throw new Error('Lead no encontrado');
-      await leadApi.update(leadId, { ...leadActual, prioridad: newPriority });
+      // PATCH dedicado — no necesita el LeadDTO completo (que ya no viene en la lista).
+      await leadApi.updatePrioridad(leadId, newPriority);
       invalidateLeads();
     } catch (err) {
       console.error('Error al actualizar prioridad:', err);
@@ -249,7 +223,7 @@ export const LeadsTablePage = () => {
     }
   };
 
-  const canConvert = (lead: LeadDTO): boolean =>
+  const canConvert = (lead: LeadListItemDTO): boolean =>
     lead.estadoLead !== EstadoLeadEnum.CONVERTIDO &&
     lead.estadoLead !== EstadoLeadEnum.DESCARTADO &&
     !lead.clienteOrigenId;
@@ -270,7 +244,7 @@ export const LeadsTablePage = () => {
     return `${dia}/${mes}/${anio}`;
   };
 
-  const getRowColor = (lead: LeadDTO): string => {
+  const getRowColor = (lead: LeadListItemDTO): string => {
     const dias = calcularDias(lead.fechaPrimerContacto);
     if (lead.estadoLead === EstadoLeadEnum.CONVERTIDO) return 'rgba(5, 150, 105, 0.08)';
     if (lead.estadoLead === EstadoLeadEnum.DESCARTADO || lead.estadoLead === EstadoLeadEnum.PERDIDO) {
@@ -509,7 +483,18 @@ export const LeadsTablePage = () => {
                 {virtualItems.map((vi) => {
                   const lead = leads[vi.index];
                   if (!lead) return null;
-                  const recordatorios = lead.id ? recordatoriosByLeadId[lead.id] ?? [] : [];
+                  // El próximo recordatorio viene embebido. Lo envolvemos como
+                  // array de un elemento para que RecordatorioStatusBadge no cambie.
+                  const recordatorios: RecordatorioLeadDTO[] = lead.proximoRecordatorio
+                    ? [{
+                        id: lead.proximoRecordatorio.id,
+                        leadId: lead.id,
+                        fechaRecordatorio: lead.proximoRecordatorio.fechaRecordatorio,
+                        tipo: lead.proximoRecordatorio.tipo as RecordatorioLeadDTO['tipo'],
+                        prioridad: lead.proximoRecordatorio.prioridad as RecordatorioLeadDTO['prioridad'],
+                        enviado: false,
+                      } as RecordatorioLeadDTO]
+                    : [];
                   return (
                     <TableRow
                       key={lead.id}
