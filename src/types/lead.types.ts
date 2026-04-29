@@ -160,7 +160,9 @@ export const TipoInteraccionEnum = {
   WHATSAPP: 'WHATSAPP',
   REUNION: 'REUNION',
   VISITA: 'VISITA',
-  OTRO: 'OTRO'
+  OTRO: 'OTRO',
+  NOTA: 'NOTA',
+  CAMBIO_ESTADO: 'CAMBIO_ESTADO'
 } as const;
 
 export type TipoInteraccionEnum = typeof TipoInteraccionEnum[keyof typeof TipoInteraccionEnum];
@@ -189,6 +191,8 @@ export interface InteraccionLeadDTO {
   notasProximaAccion?: string | null;
   realizadoPorId?: number | null;
   fechaCreacion?: string; // LocalDateTime ISO format
+  estadoAnterior?: EstadoLeadEnum | null;
+  estadoNuevo?: EstadoLeadEnum | null;
 }
 
 // Recordatorios del Lead
@@ -268,7 +272,7 @@ export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
   DESCARTADO: 'Descartado',
   PERDIDO: 'Perdido',
   LEAD_DUPLICADO: 'Lead Duplicado',
-  PRECIO_ELEVADO: 'Precio Elevado',
+  PRECIO_ELEVADO: 'Rechazó por Precio Elevado',
   COMPRA_ANULADA: 'Compra Anulada',
 };
 
@@ -312,7 +316,9 @@ export const TIPO_INTERACCION_LABELS: Record<TipoInteraccionEnum, string> = {
   WHATSAPP: 'WhatsApp',
   REUNION: 'Reunión',
   VISITA: 'Visita',
-  OTRO: 'Otro'
+  OTRO: 'Otro',
+  NOTA: 'Nota',
+  CAMBIO_ESTADO: 'Cambio de estado'
 };
 
 export const TIPO_INTERACCION_ICONS: Record<TipoInteraccionEnum, string> = {
@@ -321,8 +327,19 @@ export const TIPO_INTERACCION_ICONS: Record<TipoInteraccionEnum, string> = {
   WHATSAPP: '💬',
   REUNION: '🤝',
   VISITA: '🚗',
-  OTRO: '📋'
+  OTRO: '📋',
+  NOTA: '📝',
+  CAMBIO_ESTADO: '🔄'
 };
+
+// Error estructurado que devuelve el backend cuando se detecta teléfono duplicado (HTTP 409).
+export interface DuplicatePhoneError {
+  tipo: 'TELEFONO_DUPLICADO';
+  existingId: number;
+  existingType: 'LEAD' | 'CLIENTE';
+  existingNombre: string;
+  telefono: string;
+}
 
 export const RESULTADO_INTERACCION_LABELS: Record<ResultadoInteraccionEnum, string> = {
   EXITOSA: 'Exitosa',

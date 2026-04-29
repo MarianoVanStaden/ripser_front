@@ -34,7 +34,9 @@ import {
   Group as ReunionIcon,
   DirectionsCar as VisitaIcon,
   Notes as OtroIcon,
-  AccessTime as AccessTimeIcon
+  AccessTime as AccessTimeIcon,
+  StickyNote2 as NotaIcon,
+  SwapHoriz as CambioEstadoIcon
 } from '@mui/icons-material';
 import type {
   InteraccionLeadDTO,
@@ -72,7 +74,9 @@ const TIPO_ICONS: Record<TipoInteraccionEnum, React.ReactElement> = {
   WHATSAPP: <WhatsAppIcon />,
   REUNION: <ReunionIcon />,
   VISITA: <VisitaIcon />,
-  OTRO: <OtroIcon />
+  OTRO: <OtroIcon />,
+  NOTA: <NotaIcon />,
+  CAMBIO_ESTADO: <CambioEstadoIcon />
 };
 
 const TIPO_COLORS: Record<TipoInteraccionEnum, 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning'> = {
@@ -81,7 +85,9 @@ const TIPO_COLORS: Record<TipoInteraccionEnum, 'primary' | 'secondary' | 'succes
   WHATSAPP: 'success',
   REUNION: 'secondary',
   VISITA: 'warning',
-  OTRO: 'info'
+  OTRO: 'info',
+  NOTA: 'secondary',
+  CAMBIO_ESTADO: 'warning'
 };
 
 export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteraccionesChange }: InteraccionesTimelineProps) => {
@@ -297,25 +303,27 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
                           />
                         )}
                       </Box>
-                      <Box>
-                        <Tooltip title="Editar">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenDialog(interaccion)}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Eliminar">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDelete(interaccion.id!)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
+                      {interaccion.tipo !== 'CAMBIO_ESTADO' && (
+                        <Box>
+                          <Tooltip title="Editar">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleOpenDialog(interaccion)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Eliminar">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDelete(interaccion.id!)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      )}
                     </Box>
 
                     {/* Chips de tipo y resultado */}
@@ -398,11 +406,13 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
                   onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoInteraccionEnum })}
                   label="Tipo de Interacción"
                 >
-                  {Object.entries(TIPO_INTERACCION_LABELS).map(([key, label]) => (
-                    <MenuItem key={key} value={key}>
-                      {TIPO_ICONS[key as TipoInteraccionEnum]} {label}
-                    </MenuItem>
-                  ))}
+                  {Object.entries(TIPO_INTERACCION_LABELS)
+                    .filter(([key]) => key !== 'CAMBIO_ESTADO')
+                    .map(([key, label]) => (
+                      <MenuItem key={key} value={key}>
+                        {TIPO_ICONS[key as TipoInteraccionEnum]} {label}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             </Grid>

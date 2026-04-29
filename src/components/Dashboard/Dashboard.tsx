@@ -195,11 +195,17 @@ const Dashboard: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [metaVentasMensuales, setMetaVentasMensuales] = useState<number>(50); // Default 50
 
+  const userRole = (() => {
+    const r = user?.rol ?? user?.roles?.[0];
+    return r?.toString().trim().toUpperCase();
+  })();
+  const isAdminRole = userRole === 'ADMIN' || userRole === 'GERENTE' || user?.esSuperAdmin;
+
   useEffect(() => {
     checkConnection();
     fetchDashboardData();
-    loadMetaVentas();
-  }, [empresaId]); // Re-fetch when tenant changes
+    if (isAdminRole) loadMetaVentas();
+  }, [empresaId, isAdminRole]); // Re-fetch when tenant changes
 
   const loadMetaVentas = async () => {
     try {
@@ -207,7 +213,6 @@ const Dashboard: React.FC = () => {
       setMetaVentasMensuales(parseInt(parametro.valor));
     } catch (error) {
       console.warn('No se pudo cargar META_VENTAS_MENSUALES, usando valor por defecto (50)');
-      // Mantener el valor por defecto de 50 si hay error
     }
   };
 

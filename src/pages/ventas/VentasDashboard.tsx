@@ -446,7 +446,7 @@ export const VentasDashboard = () => {
               color="#d32f2f"
               subtitle="Alta prioridad"
               urgent={(quickStats?.hotLeads ?? 0) > 0}
-              onClick={() => navigate('/leads/table')}
+              onClick={() => navigate('/leads')}
             />
             <KpiCard
               title="Pendientes Hoy"
@@ -679,7 +679,7 @@ export const VentasDashboard = () => {
               <Button
                 size="small"
                 endIcon={<NavigateNextIcon />}
-                onClick={() => navigate('/leads/table')}
+                onClick={() => navigate('/leads')}
                 sx={{ textTransform: 'none' }}
               >
                 Ver todos
@@ -938,7 +938,7 @@ export const VentasDashboard = () => {
             <Button
               variant="outlined"
               startIcon={<PeopleIcon />}
-              onClick={() => navigate('/leads/table')}
+              onClick={() => navigate('/leads')}
               sx={{ py: 1.5, textTransform: 'none' }}
               fullWidth
             >
@@ -967,7 +967,7 @@ export const VentasDashboard = () => {
             <Button
               variant="outlined"
               startIcon={<CalendarIcon />}
-              onClick={() => navigate('/leads/table')}
+              onClick={() => navigate('/leads')}
               sx={{ py: 1.5, textTransform: 'none' }}
               fullWidth
             >

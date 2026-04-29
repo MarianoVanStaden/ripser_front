@@ -44,7 +44,8 @@ import {
   CANAL_LABELS,
   PROVINCIA_LABELS
 } from '../../types/lead.types';
-import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO } from '../../types/lead.types';
+import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO, DuplicatePhoneError } from '../../types/lead.types';
+import { DuplicatePhoneDialog } from '../../components/leads/DuplicatePhoneDialog';
 import type { Producto, RecetaFabricacionListDTO } from '../../types';
 import ColorPicker from '../../components/common/ColorPicker';
 import MedidaPicker from '../../components/common/MedidaPicker';
@@ -69,6 +70,7 @@ export const LeadFormPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [duplicateError, setDuplicateError] = useState<DuplicatePhoneError | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
@@ -306,10 +308,15 @@ export const LeadFormPage = () => {
         }
       }
 
-      navigate('/leads/table');
-    } catch (err) {
+      navigate('/leads');
+    } catch (err: unknown) {
       console.error('Error al guardar lead:', err);
-      const msg = (err as any)?.response?.data?.message || (err as any)?.response?.data;
+      const data = (err as any)?.response?.data;
+      if (data?.tipo === 'TELEFONO_DUPLICADO') {
+        setDuplicateError(data as DuplicatePhoneError);
+        return;
+      }
+      const msg = data?.message || data;
       if (typeof msg === 'string' && msg.includes('sucursal')) {
         setError(msg);
       } else {
@@ -374,10 +381,15 @@ export const LeadFormPage = () => {
   return (
     <Box sx={{ p: 3 }}>
       <LoadingOverlay open={loading} message="Cargando lead..." />
+      <DuplicatePhoneDialog
+        open={duplicateError !== null}
+        error={duplicateError}
+        onClose={() => setDuplicateError(null)}
+      />
       <Box sx={{ mb: 3 }}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/leads/table')}
+          onClick={() => navigate('/leads')}
           sx={{ mb: 2 }}
         >
           Volver
@@ -878,7 +890,7 @@ export const LeadFormPage = () => {
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
                   <Button
                     variant="outlined"
-                    onClick={() => navigate('/leads/table')}
+                    onClick={() => navigate('/leads')}
                     disabled={saving}
                   >
                     Cancelar
