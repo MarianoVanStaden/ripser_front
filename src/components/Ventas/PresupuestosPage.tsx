@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   Box,
   Button,
@@ -170,8 +172,57 @@ const PresupuestosPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
-  // Main data states
-  const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
+  // Main data states. `presupuestos` ahora viene de useQuery (paginado server-side).
+  // `leads` se carga lazy con useQuery cuando se abre el dialog del form.
+  const queryClient = useQueryClient();
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Reset page=0 cuando cambian filtros (evita pedir página vacía).
+  useEffect(() => {
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, clientFilter?.id, dateFromFilter, dateToFilter]);
+
+  const presupuestosQueryKey = useMemo(() => ([
+    'presupuestos',
+    {
+      page,
+      size: rowsPerPage,
+      busqueda: debouncedSearch.trim() || undefined,
+      estado: statusFilter || undefined,
+      clienteId: clientFilter?.id,
+      fechaDesde: dateFromFilter || undefined,
+      fechaHasta: dateToFilter || undefined,
+      empresaId,
+    }
+  ] as const), [page, rowsPerPage, debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter, empresaId]);
+
+  const presupuestosQuery = useQuery({
+    queryKey: presupuestosQueryKey,
+    queryFn: () => documentoApi.getByTipoPaginated('PRESUPUESTO',
+      { page, size: rowsPerPage, sort: 'fechaEmision,desc' },
+      {
+        ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
+        ...(statusFilter ? { estado: statusFilter } : {}),
+        ...(clientFilter?.id ? { clienteId: clientFilter.id } : {}),
+        ...(dateFromFilter ? { fechaDesde: dateFromFilter } : {}),
+        ...(dateToFilter ? { fechaHasta: dateToFilter } : {}),
+      }
+    ),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+
+  const presupuestos: DocumentoComercial[] = useMemo(
+    () => presupuestosQuery.data?.content ?? [],
+    [presupuestosQuery.data]
+  );
+  const totalPresupuestos = presupuestosQuery.data?.totalElements ?? 0;
+  const invalidatePresupuestos = useCallback(
+    () => { queryClient.invalidateQueries({ queryKey: ['presupuestos'] }); },
+    [queryClient]
+  );
+
   const [leads, setLeads] = useState<Lead[]>([]);
   // Cliente seleccionado en el formulario (typeahead). Se carga on-demand.
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -287,43 +338,17 @@ const PresupuestosPage: React.FC = () => {
     }
   }, []);
 
-  // Main fetch data function
+  // Main fetch data function — solo carga datos accesorios para el form
+  // (usuarios, productos, recetas). Presupuestos se manejan con useQuery
+  // server-side (ver presupuestosQuery arriba). Leads se cargan lazy al abrir
+  // el dialog (ver leadsQuery más abajo) en lugar de traerlos todos al mount.
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const fetchAllLeads = async () => {
-        const PAGE_SIZE = 2000;
-        const first = await leadApi.getAll({ page: 0, size: PAGE_SIZE });
-        let all = first.content;
-        if (first.totalPages > 1) {
-          const rest = await Promise.all(
-            Array.from({ length: first.totalPages - 1 }, (_, i) =>
-              leadApi.getAll({ page: i + 1, size: PAGE_SIZE })
-            )
-          );
-          for (const r of rest) all = all.concat(r.content);
-        }
-        return all;
-      };
-
-      const [leadsData, usuariosData, presupuestosData, productosData, recetasData] = await Promise.all([
-        fetchAllLeads().catch((err) => {
-          console.error("Error fetching leads:", err);
-          setError("Error al cargar leads: " + (err.response?.data?.message || err.message));
-          return [];
-        }),
+      const [usuariosData, productosData, recetasData] = await Promise.all([
         usuarioApi.getVendedores().catch(() => []),
-        documentoApi.getByTipo("PRESUPUESTO").then(res => res).catch((err) => {
-          console.error("Error fetching presupuestos:", err);
-          console.log("Presupuestos response:", err.response?.data, err.response?.status);
-          const errorMessage = err.response?.status === 403
-            ? "No tiene permisos para ver los presupuestos. Contacte al administrador."
-            : "Error al cargar presupuestos: " + (err.response?.data?.message || err.message);
-          setError(errorMessage);
-          return [];
-        }),
         productApi.getAll({ page: 0, size: 10000 }).then(res => res.content).catch((err) => {
           console.error("Error fetching productos:", err);
           setError("Error al cargar productos: " + (err.response?.data?.message || err.message));
@@ -336,84 +361,59 @@ const PresupuestosPage: React.FC = () => {
         }),
       ]);
 
-      console.log("Fetched data:", { leadsData, usuariosData, presupuestosData, productosData, recetasData });
-      console.log("Recetas disponibles para venta:", recetasData); // Debug: Check loaded recetas
-      setLeads(Array.isArray(leadsData) ? leadsData : []);
       setUsuarios(Array.isArray(usuariosData) ? usuariosData : []);
       setRecetas(Array.isArray(recetasData) ? recetasData : []);
-
-      const presupuestosArray = Array.isArray(presupuestosData)
-        ? presupuestosData.map((presupuesto) => {
-            const embeddedSelected = Array.isArray((presupuesto as any).opcionesFinanciamiento)
-              ? (presupuesto as any).opcionesFinanciamiento.find((opcion: any) => opcion?.esSeleccionada)?.id
-              : undefined;
-            if (!presupuesto.opcionFinanciamientoSeleccionadaId && embeddedSelected) {
-              return { ...presupuesto, opcionFinanciamientoSeleccionadaId: embeddedSelected };
-            }
-            return presupuesto;
-          })
-        : [];
-
-      // Sort presupuestos in reverse order (most recent first)
-      const sortedPresupuestos = presupuestosArray.sort((a, b) => {
-        const dateA = new Date(a.fechaEmision || 0).getTime();
-        const dateB = new Date(b.fechaEmision || 0).getTime();
-        return dateB - dateA; // Descending order
-      });
-
-      setPresupuestos(sortedPresupuestos);
       setProductos(Array.isArray(productosData) ? productosData : []);
-
-      const embeddedFinanciamientoMap: Record<number, OpcionFinanciamientoDTO[]> = {};
-      presupuestosArray.forEach((presupuesto) => {
-        const normalizadas = normalizeOpcionesFinanciamiento((presupuesto as any).opcionesFinanciamiento);
-        if (normalizadas.length > 0) {
-          embeddedFinanciamientoMap[presupuesto.id] = normalizadas;
-        }
-      });
-      setPresupuestosFinanciamiento(embeddedFinanciamientoMap);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Error al cargar los datos: " + (err instanceof Error ? err.message : "Error desconocido"));
     } finally {
       setLoading(false);
-      console.log("Loading complete, loading:", false);
     }
   }, [empresaId]); // Re-fetch when tenant changes
+
+  // Map de opciones de financiamiento embebidas: lo derivamos de la página
+  // visible cada vez que llega data nueva. Antes vivía en un useState que se
+  // poblaba en el fetch global; ahora el server pagina y queda en sync solo.
+  useEffect(() => {
+    if (!presupuestos.length) return;
+    setPresupuestosFinanciamiento((prev) => {
+      const next = { ...prev };
+      let mutated = false;
+      for (const presupuesto of presupuestos) {
+        const normalizadas = normalizeOpcionesFinanciamiento((presupuesto as any).opcionesFinanciamiento);
+        if (normalizadas.length > 0 && !next[presupuesto.id]) {
+          next[presupuesto.id] = normalizadas;
+          mutated = true;
+        }
+      }
+      return mutated ? next : prev;
+    });
+  }, [presupuestos]);
+
+  // Carga lazy de leads: solo cuando se abre el dialog del form.
+  const leadsQuery = useQuery({
+    queryKey: ['leadsForPresupuesto', empresaId],
+    queryFn: async () => {
+      // Trae solo los leads no convertidos en una sola página de 500.
+      // Si hay más, se documenta como deuda (typeahead server-side en el form).
+      const res = await leadApi.getAll({ page: 0, size: 500 });
+      return res.content;
+    },
+    enabled: dialogOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+  useEffect(() => {
+    if (leadsQuery.data) setLeads(leadsQuery.data);
+  }, [leadsQuery.data]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Filter presupuestos
-  const filteredPresupuestos = useMemo(() => {
-    return presupuestos.filter((presupuesto) => {
-      const clientName = presupuesto.clienteNombre || '';
-      const leadName = presupuesto.leadNombre || leads.find(l => l.id === presupuesto.leadId)?.nombre || '';
-      const searchLower = searchTerm.toLowerCase().trim();
-
-      const matchesSearch = searchTerm === '' ||
-        presupuesto.numeroDocumento?.toString().toLowerCase().includes(searchLower) ||
-        clientName.toLowerCase().includes(searchLower) ||
-        leadName.toLowerCase().includes(searchLower) ||
-        (presupuesto.total?.toString() || '').includes(searchLower);
-
-      const matchesStatus = !statusFilter || presupuesto.estado === statusFilter;
-      const matchesClient = !clientFilter || presupuesto.clienteId === clientFilter.id;
-      const fecha = presupuesto.fechaEmision ? new Date(presupuesto.fechaEmision) : null;
-      const matchesDateFrom = !dateFromFilter || (fecha && fecha >= new Date(dateFromFilter));
-      const matchesDateTo = !dateToFilter || (fecha && fecha <= new Date(dateToFilter));
-      return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
-    });
-  }, [presupuestos, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter, leads]);
-
-  // Paginate filtered presupuestos
-  const paginatedPresupuestos = useMemo(() => {
-    return filteredPresupuestos.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    );
-  }, [filteredPresupuestos, page, rowsPerPage]);
+  // Filtros y paginación se ejecutan ahora en el server (presupuestosQuery).
+  // `presupuestos` ya viene como la página actual. Mantenemos los nombres de
+  // variables que el JSX usa abajo para no tocar la UI.
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -737,9 +737,7 @@ const PresupuestosPage: React.FC = () => {
       if (editingPresupuesto) {
         // Use changeEstado instead of updateEstado - send just the enum string value
         savedPresupuesto = await documentoApi.changeEstado(editingPresupuesto.id, formData.estado);
-        setPresupuestos((prev) => prev.map((p) => (p.id === editingPresupuesto.id ? savedPresupuesto : p)));
       } else {
-        console.log("Enviando datos:", JSON.stringify(payload));
         try {
           savedPresupuesto = await documentoApi.createPresupuesto(payload);
         } catch (createErr: any) {
@@ -754,8 +752,8 @@ const PresupuestosPage: React.FC = () => {
           }
           throw createErr;
         }
-        setPresupuestos((prev) => [savedPresupuesto, ...prev]);
       }
+      invalidatePresupuestos();
 
       deudaYaConfirmadaRef.current = false;
 
@@ -825,20 +823,17 @@ const PresupuestosPage: React.FC = () => {
     if (!selectedPresupuesto || !selectedOpcionId) return;
     try {
       await documentoApi.selectFinanciamiento(selectedPresupuesto.id, selectedOpcionId);
-      
-      // Update presupuestos state
-      setPresupuestos(prev => prev.map(p => 
-        p.id === selectedPresupuesto.id 
-          ? { ...p, opcionFinanciamientoSeleccionadaId: selectedOpcionId } 
-          : p
-      ));
-      
-      // Update financing options in local state
+
+      // Refresca el listado server-side.
+      invalidatePresupuestos();
+
+      // Mantiene el cache local de financiamiento por presupuesto (evita re-fetch
+      // del subsidiario al reabrir el dialog).
       setPresupuestosFinanciamiento(prev => ({
         ...prev,
         [selectedPresupuesto.id]: opcionesFinanciamiento
       }));
-      
+
       setSnackbar({ open: true, message: 'Financiamiento seleccionado', severity: 'success' });
       setFinanciamientoDialogOpen(false);
     } catch (e) {
@@ -886,32 +881,7 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [presupuestosFinanciamiento]);
 
-  // Reload function for manual refresh if needed
-  const _loadPresupuestos = async () => {
-    try {
-      setLoading(true);
-      const data = await documentoApi.getByTipo("PRESUPUESTO");
-      setPresupuestos(data);
-    } catch (error: any) {
-      console.error('Error al cargar presupuestos:', error);
-
-      // Show user-friendly error message
-      let errorMessage = 'Error al cargar los presupuestos';
-
-      if (error.response?.status === 500 &&
-          error.response?.data?.message?.includes('More than one row with the given identifier')) {
-        errorMessage = 'Error de integridad de datos en la base de datos. Por favor, contacta al administrador del sistema.';
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
-      // You can use a toast/snackbar here to show the error
-      alert(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-  void _loadPresupuestos;
+  // El reload manual ahora es: invalidatePresupuestos() (ver useQuery arriba).
 
   const recetasCountPorTipo = useMemo(() => {
     const counts: Record<'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO', number> = {
@@ -984,7 +954,7 @@ const PresupuestosPage: React.FC = () => {
                   </InputAdornment>
                 ),
               }}
-              helperText={searchTerm ? `Mostrando ${filteredPresupuestos.length} de ${presupuestos.length} presupuestos` : `Total: ${presupuestos.length} presupuestos`}
+              helperText={`Mostrando ${presupuestos.length} de ${totalPresupuestos} presupuestos`}
             />
             <FormControl fullWidth size="small">
               <InputLabel>Estado</InputLabel>
@@ -1048,7 +1018,7 @@ const PresupuestosPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedPresupuestos.map((presupuesto) => {
+                {presupuestos.map((presupuesto) => {
                   const selectedOption = getSelectedFinancingOption(presupuesto);
                   const totalConFinanciamiento = selectedOption ? selectedOption.montoTotal : presupuesto.total;
 
@@ -1143,19 +1113,19 @@ const PresupuestosPage: React.FC = () => {
 
           <TablePagination
             component="div"
-            count={filteredPresupuestos.length}
+            count={totalPresupuestos}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={handleChangeRowsPerPage}
             rowsPerPageOptions={[5, 10, 25, 50, 100]}
             labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) => 
+            labelDisplayedRows={({ from, to, count }) =>
               `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
             }
           />
 
-          {filteredPresupuestos.length === 0 && (
+          {presupuestos.length === 0 && !presupuestosQuery.isLoading && (
             <Box sx={{ textAlign: "center", py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No hay presupuestos registrados

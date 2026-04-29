@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useDebounce } from "../../hooks/useDebounce";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -102,10 +104,92 @@ const NotasPedidoPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Main data states
-  const [notasPedido, setNotasPedido] = useState<DocumentoComercial[]>([]);
+  // Main data states. notasPedido viene de useQuery server-side.
+  const queryClient = useQueryClient();
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Reset page=0 cuando cambian filtros (evita pedir página vacía).
+  useEffect(() => {
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter]);
+
+  const notasQuery = useQuery({
+    queryKey: ['notasPedido', {
+      page, size: rowsPerPage,
+      busqueda: debouncedSearch.trim() || undefined,
+      estado: statusFilter || undefined,
+      clienteId: clientFilter !== 'all' ? Number(clientFilter) : undefined,
+      fechaDesde: dateFromFilter || undefined,
+      fechaHasta: dateToFilter || undefined,
+      empresaId,
+    }] as const,
+    queryFn: () => documentoApi.getByTipoPaginated('NOTA_PEDIDO',
+      { page, size: rowsPerPage, sort: 'fechaEmision,desc' },
+      {
+        ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
+        ...(statusFilter ? { estado: statusFilter } : {}),
+        ...(clientFilter !== 'all' ? { clienteId: Number(clientFilter) } : {}),
+        ...(dateFromFilter ? { fechaDesde: dateFromFilter } : {}),
+        ...(dateToFilter ? { fechaHasta: dateToFilter } : {}),
+      }
+    ),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const notasPedido: DocumentoComercial[] = useMemo(
+    () => notasQuery.data?.content ?? [],
+    [notasQuery.data]
+  );
+  const totalNotasPedido = notasQuery.data?.totalElements ?? 0;
+  const invalidateNotas = useCallback(
+    () => { queryClient.invalidateQueries({ queryKey: ['notasPedido'] }); },
+    [queryClient]
+  );
+
+  // Presupuestos PENDIENTES para conversión: query separada con cache largo.
+  // Solo se usa cuando se abre el dialog de conversión, así que `enabled` lo
+  // gateamos por convertDialogOpen (definido más abajo). Mientras, mantenemos
+  // un useState como cache local para no romper consumers que lo leen.
   const [presupuestos, setPresupuestos] = useState<DocumentoComercial[]>([]);
   const [clientes, setClientes] = useState<{ id: number; nombre: string }[]>([]);
+
+  // Lista de clientes del filtro: derivada de la página visible de notas.
+  // Limitación conocida: si un cliente no aparece en la página actual, no
+  // figura en el dropdown. Aceptable mientras no haya un endpoint dedicado
+  // /api/clientes-con-documentos. Documentado en TECHNICAL_DEBT.md.
+  useEffect(() => {
+    if (!notasPedido.length) return;
+    setClientes((prev) => {
+      const map = new Map<number, { id: number; nombre: string }>(prev.map((c) => [c.id, c]));
+      let mutated = false;
+      for (const nota of notasPedido) {
+        if (nota.clienteId && nota.clienteNombre && !map.has(nota.clienteId)) {
+          map.set(nota.clienteId, { id: nota.clienteId, nombre: nota.clienteNombre });
+          mutated = true;
+        }
+      }
+      return mutated ? Array.from(map.values()) : prev;
+    });
+    setNotasFinanciamiento((prev) => {
+      const next = { ...prev };
+      let mutated = false;
+      for (const nota of notasPedido as any[]) {
+        if (Array.isArray(nota.opcionesFinanciamiento) && nota.opcionesFinanciamiento.length > 0 && !next[nota.id]) {
+          next[nota.id] = nota.opcionesFinanciamiento.map((o: any) => ({
+            id: o.id, nombre: o.nombre ?? '', metodoPago: o.metodoPago ?? 'EFECTIVO',
+            cantidadCuotas: o.cantidadCuotas ?? 0, tasaInteres: o.tasaInteres ?? 0,
+            montoTotal: o.montoTotal ?? 0, montoCuota: o.montoCuota ?? 0,
+            descripcion: o.descripcion, ordenPresentacion: o.ordenPresentacion,
+            esSeleccionada: o.esSeleccionada,
+          }));
+          mutated = true;
+        }
+      }
+      return mutated ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notasPedido]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -286,11 +370,11 @@ const NotasPedidoPage: React.FC = () => {
     const opcionSeleccionada = opcionesFinanciamiento.find(o => o.id === selectedOpcionId);
     if (!opcionSeleccionada) return;
     try {
-      const updated = await documentoApi.selectFinanciamientoNotaPedido(
+      await documentoApi.selectFinanciamientoNotaPedido(
         notaParaFinanciamiento.id,
         selectedOpcionId
       );
-      setNotasPedido(prev => prev.map(n => n.id === notaParaFinanciamiento.id ? updated : n));
+      invalidateNotas();
       const opcionesActualizadas = opcionesFinanciamiento.map(o => ({
         ...o,
         esSeleccionada: o.id === selectedOpcionId,
@@ -303,111 +387,36 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, [notaParaFinanciamiento, selectedOpcionId, opcionesFinanciamiento]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [notasData, presupuestosData] = await Promise.all([
-        documentoApi.getByTipo("NOTA_PEDIDO").catch((err) => {
-          console.error("Error fetching notas de pedido:", err);
-          return [];
-        }),
-        documentoApi.getByTipo("PRESUPUESTO").catch((err) => {
-          console.error("Error fetching presupuestos:", err);
-          return [];
-        }),
-      ]);
-
-      const notasArray = Array.isArray(notasData) ? notasData : [];
-      
-      // Sort notas in reverse order (most recent first)
-      const sortedNotas = notasArray.sort((a, b) => {
-        const dateA = new Date(a.fechaEmision || 0).getTime();
-        const dateB = new Date(b.fechaEmision || 0).getTime();
-        return dateB - dateA; // Descending order
-      });
-      
-      setNotasPedido(sortedNotas);
-
-      // Extract embedded opcionesFinanciamiento from each nota (same as PresupuestosPage)
-      const embeddedMap: Record<number, OpcionFinanciamientoDTO[]> = {};
-      notasArray.forEach((nota: any) => {
-        if (Array.isArray(nota.opcionesFinanciamiento) && nota.opcionesFinanciamiento.length > 0) {
-          embeddedMap[nota.id] = nota.opcionesFinanciamiento.map((o: any) => ({
-            id: o.id,
-            nombre: o.nombre ?? '',
-            metodoPago: o.metodoPago ?? 'EFECTIVO',
-            cantidadCuotas: o.cantidadCuotas ?? 0,
-            tasaInteres: o.tasaInteres ?? 0,
-            montoTotal: o.montoTotal ?? 0,
-            montoCuota: o.montoCuota ?? 0,
-            descripcion: o.descripcion,
-            ordenPresentacion: o.ordenPresentacion,
-            esSeleccionada: o.esSeleccionada,
-          }));
-        }
-      });
-      setNotasFinanciamiento(embeddedMap);
-
-      // Backend requires PRESUPUESTO in PENDIENTE state for conversion.
-      // Notas de Pedido sólo se emiten a clientes — presupuestos de leads
-      // deben pasar primero por la conversión Lead → Cliente.
-      const pendientes = Array.isArray(presupuestosData)
-        ? presupuestosData
-            .filter(p => p.estado === EstadoDocumentoEnum.PENDIENTE && p.clienteId != null)
-            .sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime())
-        : [];
-      setPresupuestos(pendientes);
-
-      // Extract unique clients from notas de pedido
-      const uniqueClients = new Map<number, { id: number; nombre: string }>();
-      notasArray.forEach((nota: DocumentoComercial) => {
-        if (nota.clienteId && nota.clienteNombre) {
-          uniqueClients.set(nota.clienteId, {
-            id: nota.clienteId,
-            nombre: nota.clienteNombre,
-          });
-        }
-      });
-      setClientes(Array.from(uniqueClients.values()));
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError("Error al cargar los datos");
-    } finally {
-      setLoading(false);
-    }
-  }, [empresaId]); // Re-fetch when tenant changes
-
+  // Presupuestos PENDIENTES candidatos a conversión.
+  // Backend filtra por estado=PENDIENTE; a clienteId != null se chequea client-side.
+  // Limitamos a 200 (los más recientes) — si hay más, se documenta como deuda.
+  const presupuestosPendientesQuery = useQuery({
+    queryKey: ['presupuestosPendientesParaNotaPedido', empresaId],
+    queryFn: () => documentoApi.getByTipoPaginated('PRESUPUESTO',
+      { page: 0, size: 200, sort: 'fechaEmision,desc' },
+      { estado: 'PENDIENTE' }
+    ),
+    staleTime: 60_000,
+  });
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const data = presupuestosPendientesQuery.data?.content ?? [];
+    setPresupuestos(data.filter((p) => p.clienteId != null));
+  }, [presupuestosPendientesQuery.data]);
 
-  // Filter notas de pedido
-  const filteredNotasPedido = useMemo(() => {
-    return notasPedido.filter((nota) => {
-      const matchesSearch = searchTerm === '' ||
-        nota.numeroDocumento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        nota.clienteNombre?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = !statusFilter || nota.estado === statusFilter;
-      const matchesClient = clientFilter === 'all' || nota.clienteId?.toString() === clientFilter;
-      
-      const fecha = nota.fechaEmision ? new Date(nota.fechaEmision) : null;
-      const matchesDateFrom = !dateFromFilter || (fecha && fecha >= new Date(dateFromFilter));
-      const matchesDateTo = !dateToFilter || (fecha && fecha <= new Date(dateToFilter));
-      
-      return matchesSearch && matchesStatus && matchesClient && matchesDateFrom && matchesDateTo;
-    });
-  }, [notasPedido, searchTerm, statusFilter, clientFilter, dateFromFilter, dateToFilter]);
+  // El loading global ahora lo dicta solo el query de notas (es lo que se ve).
+  useEffect(() => {
+    setLoading(notasQuery.isLoading);
+  }, [notasQuery.isLoading]);
+  useEffect(() => {
+    if (notasQuery.error) {
+      const err = notasQuery.error as { response?: { data?: { message?: string } }; message?: string };
+      setError(err?.response?.data?.message || err?.message || 'Error al cargar las notas de pedido');
+    } else {
+      setError(null);
+    }
+  }, [notasQuery.error]);
 
-  // Paginate filtered notas
-  const paginatedNotasPedido = useMemo(() => {
-    return filteredNotasPedido.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    );
-  }, [filteredNotasPedido, page, rowsPerPage]);
+  // Filtros y paginación se ejecutan en el server (notasQuery).
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -689,7 +698,7 @@ const NotasPedidoPage: React.FC = () => {
       // (P1 → P2 → P3) server-side inside the same @Transactional. The frontend
       // just unwraps the documento and surfaces the resolution messages.
       const { documento: nuevaNota, resolucionesEquipo } = await documentoApi.convertToNotaPedido(payload);
-      setNotasPedido(prev => [nuevaNota, ...prev]);
+      invalidateNotas();
 
       // Fetch full nota to ensure detalles have their IDs (required for reservarParaNota).
       // convertToNotaPedido may return the document without nested detalle IDs.
@@ -734,7 +743,7 @@ const NotasPedidoPage: React.FC = () => {
       // The DB may not persist colors (backend bug in convertToNotaPedido), but we can at least
       // show the correct colors for the current session.
       const notaEnriquecida = { ...notaConDetalles, detalles: enrichedDetalles };
-      setNotasPedido(prev => prev.map(n => n.id === notaEnriquecida.id ? notaEnriquecida : n));
+      invalidateNotas();
 
       // Populate financing options cache for the new nota so the table shows the selected
       // option name (e.g. "18 cuotas - 45% interés") instead of the generic metodoPago label.
@@ -759,8 +768,8 @@ const NotasPedidoPage: React.FC = () => {
             : null;
           const idToSelect = matchedNotaOp?.id ?? (notaOpciones.length === 0 ? selectedOpcionConvertId : null);
           if (idToSelect) {
-            const updatedNota = await documentoApi.selectFinanciamientoNotaPedido(nuevaNota.id, idToSelect);
-            setNotasPedido(prev => prev.map(n => n.id === updatedNota.id ? { ...n, opcionFinanciamientoSeleccionadaId: updatedNota.opcionFinanciamientoSeleccionadaId } : n));
+            await documentoApi.selectFinanciamientoNotaPedido(nuevaNota.id, idToSelect);
+            invalidateNotas();
           }
         } catch {
           // Non-fatal: billing will still work but without financing cost increment.
@@ -1007,7 +1016,7 @@ const NotasPedidoPage: React.FC = () => {
       try {
         const probeResult = await documentoApi.convertToFactura(baseFacturaPayload);
         // Unexpected success (nota converted without equipos): accept and show success dialog.
-        setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+        invalidateNotas();
         setCreatedFactura(probeResult);
         setFacturaSuccessDialogOpen(true);
       } catch (probeErr: any) {
@@ -1038,7 +1047,7 @@ const NotasPedidoPage: React.FC = () => {
           ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
         });
         // Remove nota from local state
-        setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+        invalidateNotas();
         // Show success dialog
         setCreatedFactura(factura);
         setFacturaSuccessDialogOpen(true);
@@ -1051,7 +1060,7 @@ const NotasPedidoPage: React.FC = () => {
             try {
               setError(null);
               const facturaRetry = await documentoApi.convertToFactura({ ...baseFacturaPayload, confirmarConDeudaPendiente: true });
-              setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+              invalidateNotas();
               setCreatedFactura(facturaRetry);
               setFacturaSuccessDialogOpen(true);
             } catch (retryErr: any) {
@@ -1064,7 +1073,7 @@ const NotasPedidoPage: React.FC = () => {
         setError(errorMessage);
       }
     }
-  }, [notasPedido, fetchData]);
+  }, [notasPedido, invalidateNotas]);
 
   // Handler para exportar nota de pedido a PDF
   const handleExportarPDF = useCallback(async (nota: DocumentoComercial) => {
@@ -1139,7 +1148,7 @@ const NotasPedidoPage: React.FC = () => {
       });
 
       // Remove nota from local state
-      setNotasPedido((prev) => prev.filter((n) => n.id !== notaForAsignacion.id));
+      invalidateNotas();
       setNotaForAsignacion(null);
       // Show success dialog
       setCreatedFactura(factura);
@@ -1161,7 +1170,7 @@ const NotasPedidoPage: React.FC = () => {
               ...retryBillingData,
               confirmarConDeudaPendiente: true,
             });
-            setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+            invalidateNotas();
             setNotaForAsignacion(null);
             setCreatedFactura(facturaRetry);
             setFacturaSuccessDialogOpen(true);
@@ -1174,7 +1183,7 @@ const NotasPedidoPage: React.FC = () => {
       const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
       setError(errorMessage);
     }
-  }, [notaForAsignacion, fetchData]);
+  }, [notaForAsignacion, invalidateNotas]);
 
   const handleCloseAsignarEquiposDialog = useCallback(() => {
     setAsignarEquiposDialogOpen(false);
@@ -1298,7 +1307,7 @@ const NotasPedidoPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedNotasPedido.map((nota) => {
+                {notasPedido.map((nota) => {
                   const selectedFinancing = getSelectedFinancingOption(nota);
                   return (
                   <TableRow key={nota.id}>
@@ -1392,7 +1401,7 @@ const NotasPedidoPage: React.FC = () => {
 
           <TablePagination
             component="div"
-            count={filteredNotasPedido.length}
+            count={totalNotasPedido}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
@@ -1404,7 +1413,7 @@ const NotasPedidoPage: React.FC = () => {
             }
           />
 
-          {filteredNotasPedido.length === 0 && (
+          {notasPedido.length === 0 && !notasQuery.isLoading && (
             <Box sx={{ textAlign: "center", py: 8 }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No hay notas de pedido registradas

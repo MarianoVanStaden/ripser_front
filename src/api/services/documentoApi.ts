@@ -34,10 +34,40 @@ export type CreatePresupuestoPayload = {
 export const documentoApi = {
 
 
-  // Get all documentos (paginated)
+  // Get all documentos (paginated, sin filtros).
   getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<DocumentoComercial>> => {
     const response = await api.get<PageResponse<DocumentoComercial>>('/api/documentos', {
       params: { ...pagination },
+    });
+    return response.data;
+  },
+
+  // Get all documentos paginated with server-side filters.
+  // Soporta multi-tipo via `tipos` (ej: ['FACTURA','NOTA_CREDITO']) y multi-estado
+  // via `estados`. busqueda hace LIKE sobre numeroDocumento y nombre del cliente.
+  getAllPaginated: async (
+    pagination: PaginationParams = {},
+    filters?: {
+      tipos?: string[];
+      sucursalId?: number | null;
+      estado?: string;
+      estados?: string[];
+      clienteId?: number;
+      fechaDesde?: string;
+      fechaHasta?: string;
+      busqueda?: string;
+    }
+  ): Promise<PageResponse<DocumentoComercial>> => {
+    const params: Record<string, unknown> = { ...filters, ...pagination };
+    for (const key of ['tipos', 'estados'] as const) {
+      const v = params[key];
+      if (Array.isArray(v)) {
+        if (v.length === 0) delete params[key];
+        else params[key] = v.join(',');
+      }
+    }
+    const response = await api.get<PageResponse<DocumentoComercial>>('/api/documentos', {
+      params,
     });
     return response.data;
   },
@@ -98,6 +128,10 @@ export const documentoApi = {
   throw new Error('Get by fecha endpoint not implemented in backend');
   },
   // Get documentos by tipo (paginated endpoint, returns flat array for backward-compat)
+  // DEPRECATED: prefer getByTipoPaginated for new code — devuelve Page<T>
+  // y soporta filtros server-side. Esta versión carga `size` (default 500)
+  // documentos en una sola request, lo que está documentado como deuda en
+  // TECHNICAL_DEBT.md ("Refactor de páginas de Documentos Comerciales").
   getByTipo: async (tipo: string, size = 500): Promise<DocumentoComercial[]> => {
     try {
       const response = await api.get<PageResponse<DocumentoComercial>>(
@@ -115,6 +149,35 @@ export const documentoApi = {
       }
       throw err;
     }
+  },
+
+  // Get documentos by tipo (paginated, with server-side filters).
+  // busqueda hace LIKE sobre numeroDocumento y nombre del cliente.
+  getByTipoPaginated: async (
+    tipo: string,
+    pagination: PaginationParams = {},
+    filters?: {
+      sucursalId?: number | null;
+      estado?: string;
+      // Lista de estados para filtrar con OR. El backend hace `IN (:estados)`.
+      // Joineamos con coma para que Spring lo bindee a List<EstadoDocumento>.
+      estados?: string[];
+      clienteId?: number;
+      fechaDesde?: string; // ISO yyyy-mm-dd
+      fechaHasta?: string;
+      busqueda?: string;
+    }
+  ): Promise<PageResponse<DocumentoComercial>> => {
+    const params: Record<string, unknown> = { ...filters, ...pagination };
+    if (Array.isArray(filters?.estados)) {
+      if (filters.estados.length === 0) delete params.estados;
+      else params.estados = filters.estados.join(',');
+    }
+    const response = await api.get<PageResponse<DocumentoComercial>>(
+      `/api/documentos/tipo/${encodeURIComponent(tipo)}`,
+      { params }
+    );
+    return response.data;
   },
   // Get documentos by cliente
   getByCliente: async (clienteId: number): Promise<DocumentoComercial[]> => {

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box,
   Button,
@@ -449,10 +451,12 @@ const FacturacionPage = () => {
   const [success, setSuccess] = useState<string | null>(null);
   
   // Data
+  const queryClient = useQueryClient();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [products, setProducts] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
-  const [notasPedido, setNotasPedido] = useState<DocumentoComercial[]>([]);
+  // notasPedido viene de useQuery server-side; mantenemos la variable con
+  // el mismo nombre para no romper el resto de la página.
 
   // Manual invoice form
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -525,12 +529,42 @@ const FacturacionPage = () => {
   const [isManualInvoice, setIsManualInvoice] = useState(false);
   const [notaOpcionesFinanciamiento, setNotaOpcionesFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
 
-  // Pagination for Notas de Pedido
+  // Pagination for Notas de Pedido (server-side ahora).
   const [pageNotas, setPageNotas] = useState(0);
   const [rowsPerPageNotas, setRowsPerPageNotas] = useState(12);
 
-  // Search filter for Notas de Pedido
+  // Search filter for Notas de Pedido (debounced + enviado al server).
   const [notasSearchTerm, setNotasSearchTerm] = useState('');
+  const debouncedNotasSearch = useDebounce(notasSearchTerm, 300);
+
+  useEffect(() => { setPageNotas(0); }, [debouncedNotasSearch]);
+
+  const notasQuery = useQuery({
+    queryKey: ['facturacion-notasPedido', {
+      page: pageNotas, size: rowsPerPageNotas,
+      busqueda: debouncedNotasSearch.trim() || undefined,
+      empresaId,
+    }] as const,
+    queryFn: () => documentoApi.getByTipoPaginated('NOTA_PEDIDO',
+      { page: pageNotas, size: rowsPerPageNotas, sort: 'fechaEmision,desc' },
+      {
+        // Solo notas facturables — APROBADO o PENDIENTE.
+        estados: ['APROBADO', 'PENDIENTE'],
+        ...(debouncedNotasSearch.trim() ? { busqueda: debouncedNotasSearch.trim() } : {}),
+      }
+    ),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const notasPedido: DocumentoComercial[] = useMemo(
+    () => notasQuery.data?.content ?? [],
+    [notasQuery.data]
+  );
+  const totalNotasPedido = notasQuery.data?.totalElements ?? 0;
+  const invalidateNotas = useCallback(
+    () => { queryClient.invalidateQueries({ queryKey: ['facturacion-notasPedido'] }); },
+    [queryClient]
+  );
 
   // Fabrication confirmation dialog
   const [fabricacionDialogOpen, setFabricacionDialogOpen] = useState(false);
@@ -654,14 +688,13 @@ const FacturacionPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [usuariosResponse, productsData, recetasData, notasData, plantillasData] = await Promise.all([
+      const [usuariosResponse, productsData, recetasData, plantillasData] = await Promise.all([
         usuarioApi.getAll().catch((err: any) => {
           if (err?.response?.status === 403) return { content: [] };
           return { content: [] };
         }),
         productApi.getAll({ page: 0, size: 10000 }).catch(() => []),
         recetaFabricacionApi.findDisponiblesParaVenta().catch(() => []),
-        documentoApi.getByTipo('NOTA_PEDIDO').catch(() => []),
         opcionFinanciamientoTemplateApi.obtenerActivas().catch(() => []),
       ]);
 
@@ -670,34 +703,18 @@ const FacturacionPage = () => {
         ? usuariosResponse
         : (usuariosResponse?.content || []);
       setUsuarios(usuariosArray);
-      
+
       const productsList = Array.isArray(productsData) ? productsData : (productsData as any)?.content || [];
       setProducts((productsList as Producto[]).filter(p => p && p.id));
-      
+
       setRecetas(Array.isArray(recetasData) ? recetasData : []);
       setPlantillasFinanciamiento(Array.isArray(plantillasData) ? plantillasData : []);
-      
-      const invoiceableNotas = Array.isArray(notasData) 
-        ? notasData.filter(n => n.estado === 'APROBADO' || n.estado === 'PENDIENTE')
-        : [];
-      setNotasPedido(invoiceableNotas);
 
-      // Load financing options for each nota
-      const opcionesMap: Record<number, OpcionFinanciamientoDTO[]> = {};
-      await Promise.all(
-        invoiceableNotas.map(async (nota) => {
-          try {
-            const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
-            if (opciones && opciones.length > 0) {
-              opcionesMap[nota.id] = opciones;
-            }
-          } catch (err) {
-            console.error(`Error loading financing options for nota ${nota.id}:`, err);
-          }
-        })
-      );
-      setNotaOpcionesFinanciamiento(opcionesMap);
-      
+      // Las notas de pedido (y sus opciones de financiamiento) se cargan en
+      // notasQuery + el effect de abajo. Antes acá había un N+1 por nota
+      // (un fetch de opciones por cada nota); ahora solo se cargan las opciones
+      // de las notas visibles en la página actual.
+
     } catch (err: any) {
       console.error('Error loading initial data:', err);
       setError('No se pudieron cargar los datos necesarios.');
@@ -709,6 +726,43 @@ const FacturacionPage = () => {
   useEffect(() => {
     loadData();
   }, [empresaId]); // Re-fetch when tenant changes
+
+  // Carga opciones de financiamiento solo para las notas visibles. El backend
+  // hace una request por nota (N+1) pero N = page size = 12, no el total.
+  useEffect(() => {
+    if (!notasPedido.length) return;
+    const missingIds = notasPedido
+      .filter((n) => !notaOpcionesFinanciamiento[n.id])
+      .map((n) => n.id);
+    if (missingIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        missingIds.map(async (id) => {
+          try {
+            const opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(id);
+            return [id, opciones?.length ? opciones : null] as const;
+          } catch {
+            return [id, null] as const;
+          }
+        })
+      );
+      if (cancelled) return;
+      setNotaOpcionesFinanciamiento((prev) => {
+        const next = { ...prev };
+        let mutated = false;
+        for (const [id, opciones] of entries) {
+          if (opciones && !next[id]) {
+            next[id] = opciones;
+            mutated = true;
+          }
+        }
+        return mutated ? next : prev;
+      });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notasPedido]);
 
   useEffect(() => {
     if (user?.id && !selectedUsuarioId) {
@@ -783,40 +837,11 @@ const FacturacionPage = () => {
 
   const notaMontoFinanciado = useMemo(() => notaTotalVenta - notaMontoEntregaCalculado, [notaTotalVenta, notaMontoEntregaCalculado]);
 
-  // Sort and filter Notas de Pedido
-  const sortedNotasPedido = useMemo(() => {
-    let filtered = [...notasPedido];
-
-    // Apply search filter
-    if (notasSearchTerm.trim()) {
-      const searchTerm = notasSearchTerm.toLowerCase().trim();
-      filtered = filtered.filter(nota => {
-        const numero = (nota.numeroDocumento || '').toString().toLowerCase();
-        const cliente = (nota.clienteNombre || '').toLowerCase();
-        const lead = (nota.leadNombre || '').toLowerCase();
-        const total = nota.total?.toString() || '';
-
-        return numero.includes(searchTerm) ||
-               cliente.includes(searchTerm) ||
-               lead.includes(searchTerm) ||
-               total.includes(searchTerm);
-      });
-    }
-
-    // Sort by date (newest first)
-    return filtered.sort((a, b) => {
-      const dateA = new Date(a.fecha || a.fechaEmision || 0).getTime();
-      const dateB = new Date(b.fecha || b.fechaEmision || 0).getTime();
-      return dateB - dateA;
-    });
-  }, [notasPedido, notasSearchTerm]);
-
-  const paginatedNotasPedido = useMemo(() => {
-    return sortedNotasPedido.slice(
-      pageNotas * rowsPerPageNotas,
-      pageNotas * rowsPerPageNotas + rowsPerPageNotas
-    );
-  }, [sortedNotasPedido, pageNotas, rowsPerPageNotas]);
+  // El filtrado, búsqueda y orden ya los aplica notasQuery server-side.
+  // Mantenemos los nombres `sortedNotasPedido`/`paginatedNotasPedido` apuntando
+  // a la página actual para no tocar el JSX.
+  const sortedNotasPedido = notasPedido;
+  const paginatedNotasPedido = notasPedido;
 
   const handleChangePageNotas = (_event: unknown, newPage: number) => {
     setPageNotas(newPage);
@@ -1572,7 +1597,7 @@ const FacturacionPage = () => {
         setIsManualInvoice(false);
         await loadData();
       } else {
-        setNotasPedido((prev) => prev.filter((n) => n.id !== notaParaAsignacion.id));
+        invalidateNotas();
         handleCloseConvertDialog();
       }
     } catch (err: any) {
@@ -1625,7 +1650,7 @@ const FacturacionPage = () => {
               setIsManualInvoice(false);
               await loadData();
             } else {
-              setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+              invalidateNotas();
               handleCloseConvertDialog();
             }
           } catch (retryErr: any) {
@@ -1885,7 +1910,7 @@ const FacturacionPage = () => {
         } else {
           setFacturaEntregaInfo(null);
         }
-        setNotasPedido((prev) => prev.filter((n) => n.id !== notaId));
+        invalidateNotas();
         handleCloseConvertDialog();
         setCreatedFactura(factura);
         setSuccessDialogOpen(true);
@@ -1919,11 +1944,7 @@ const FacturacionPage = () => {
       await documentoApi.changeEstado(selectedDocumento.id, newEstado);
       setSuccess(`Estado actualizado exitosamente.`);
       setEstadoDialogOpen(false);
-      setNotasPedido((prev) => {
-        const isInvoiceable = newEstado === 'APROBADO' || newEstado === 'PENDIENTE';
-        if (!isInvoiceable) return prev.filter((n) => n.id !== selectedDocumento.id);
-        return prev.map((n) => (n.id === selectedDocumento.id ? { ...n, estado: newEstado } : n));
-      });
+      invalidateNotas();
       loadData();
     } catch (err: any) {
       console.error('Error updating estado:', err);
@@ -2373,11 +2394,11 @@ const FacturacionPage = () => {
                   </InputAdornment>
                 ),
               }}
-              helperText={notasSearchTerm ? `Mostrando ${sortedNotasPedido.length} resultado(s) de ${notasPedido.length} notas` : `Total: ${notasPedido.length} notas de pedido`}
+              helperText={`Mostrando ${notasPedido.length} de ${totalNotasPedido} notas de pedido`}
             />
           </Box>
 
-          {sortedNotasPedido.length === 0 ? (
+          {sortedNotasPedido.length === 0 && !notasQuery.isLoading ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No hay Notas de Pedido disponibles
@@ -2465,7 +2486,7 @@ const FacturacionPage = () => {
                 <Paper>
                   <TablePagination
                     component="div"
-                    count={sortedNotasPedido.length}
+                    count={totalNotasPedido}
                     page={pageNotas}
                     onPageChange={handleChangePageNotas}
                     rowsPerPage={rowsPerPageNotas}

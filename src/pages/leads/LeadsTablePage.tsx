@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Paper,
@@ -19,7 +19,9 @@ import {
   FormControlLabel,
   Switch,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Skeleton,
+  CircularProgress
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -31,6 +33,8 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { leadApi, type LeadFilterParams } from '../../api/services/leadApi';
 import { recordatorioLeadApi } from '../../api/services/recordatorioLeadApi';
 import {
@@ -48,10 +52,14 @@ import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
 import { useTenant } from '../../context/TenantContext';
 import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
 import { useDebounce } from '../../hooks/useDebounce';
-import LoadingOverlay from '../../components/common/LoadingOverlay';
 
-const LEADS_FETCH_PAGE_SIZE = 2000;
-const RECORDATORIOS_FETCH_PAGE_SIZE = 5000;
+const PAGE_SIZE = 100;
+const ROW_HEIGHT = 44;
+// Cota para el badge de recordatorios pendientes: trae los más próximos
+// y los matchea contra los leads visibles. Aceptable porque la mayoría
+// de los leads no tienen recordatorios pendientes; el resto cae a "—".
+// Solución de fondo (LeadDTO.tieneRecordatoriosPendientes) está en TECHNICAL_DEBT.md.
+const RECORDATORIOS_PENDIENTES_PEEK = 500;
 
 type Order = 'asc' | 'desc';
 type OrderBy =
@@ -103,6 +111,7 @@ export const LeadsTablePage = () => {
   const navigate = useNavigate();
   const { sucursalFiltro } = useTenant();
   const { showModal, closeModal } = useSuperAdminContextCheck();
+  const queryClient = useQueryClient();
 
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('dias');
@@ -110,90 +119,90 @@ export const LeadsTablePage = () => {
   const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadLeadEnum[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [soloMisLeads, setSoloMisLeads] = useState(false);
-  const [recordatoriosByLeadId, setRecordatoriosByLeadId] = useState<Record<number, RecordatorioLeadDTO[]>>({});
-
-  const [leads, setLeads] = useState<LeadDTO[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const filters: LeadFilterParams = {
+  const filters: LeadFilterParams = useMemo(() => ({
     ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
     ...(selectedEstados.length > 0 ? { estados: selectedEstados } : {}),
     ...(selectedPrioridades.length === 1 ? { prioridad: selectedPrioridades[0] } : {}),
     ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
     ...(soloMisLeads ? { soloMisLeads: true } : {})
-  };
+  }), [sucursalFiltro, selectedEstados, selectedPrioridades, debouncedSearch, soloMisLeads]);
+
   const sort = buildSort(orderBy, order);
+  const queryKey = ['leads', { filters, sort }] as const;
 
-  // Serializo filtros+sort para usarlos como dep estable de useEffect sin dispararlo por cada render.
-  const filtersKey = JSON.stringify({ filters, sort });
-  const fetchSeqRef = useRef(0);
+  const {
+    data,
+    error,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    refetch
+  } = useInfiniteQuery({
+    queryKey,
+    initialPageParam: 0,
+    queryFn: ({ pageParam = 0 }) =>
+      leadApi.getAll({ page: pageParam, size: PAGE_SIZE, sort }, filters),
+    getNextPageParam: (last) => (last.last ? undefined : last.number + 1)
+  });
 
-  const fetchAll = useCallback(async () => {
-    const seq = ++fetchSeqRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const first = await leadApi.getAll(
-        { page: 0, size: LEADS_FETCH_PAGE_SIZE, sort },
-        filters
-      );
-      let all = first.content;
-      if (first.totalPages > 1) {
-        const rest = await Promise.all(
-          Array.from({ length: first.totalPages - 1 }, (_, i) =>
-            leadApi.getAll(
-              { page: i + 1, size: LEADS_FETCH_PAGE_SIZE, sort },
-              filters
-            )
-          )
-        );
-        for (const r of rest) all = all.concat(r.content);
-      }
+  const leads: LeadDTO[] = useMemo(
+    () => data?.pages.flatMap((p) => p.content) ?? [],
+    [data]
+  );
+  const totalElements = data?.pages[0]?.totalElements ?? 0;
 
-      // Una sola llamada al endpoint global de recordatorios pendientes (evita N+1).
-      const recPage = await recordatorioLeadApi.getAll(
-        { page: 0, size: RECORDATORIOS_FETCH_PAGE_SIZE },
+  // Recordatorios pendientes — trae los más próximos en una sola página.
+  // Limitado intencionalmente; ver constante RECORDATORIOS_PENDIENTES_PEEK.
+  const { data: recordatoriosByLeadId = {} } = useQuery({
+    queryKey: ['leads', 'recordatoriosPeek', { sucursalFiltro, soloMisLeads }],
+    queryFn: async () => {
+      const page = await recordatorioLeadApi.getAll(
+        { page: 0, size: RECORDATORIOS_PENDIENTES_PEEK },
         {
           enviado: false,
           ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
           ...(soloMisLeads ? { soloMisRecordatorios: true } : {})
         }
       );
-      const recMap: Record<number, RecordatorioLeadDTO[]> = {};
-      for (const r of recPage.content) {
-        if (r.leadId) (recMap[r.leadId] ||= []).push(r);
+      const map: Record<number, RecordatorioLeadDTO[]> = {};
+      for (const r of page.content) {
+        if (r.leadId) (map[r.leadId] ||= []).push(r);
       }
+      return map;
+    },
+    staleTime: 60_000
+  });
 
-      if (seq !== fetchSeqRef.current) return; // un fetch posterior ya está en curso
-      setLeads(all);
-      setTotalElements(first.totalElements);
-      setRecordatoriosByLeadId(recMap);
-    } catch (err: unknown) {
-      if (seq !== fetchSeqRef.current) return;
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        (err as Error)?.message ||
-        'Error al cargar leads';
-      console.error('LeadsTablePage fetch error:', err);
-      setError(message);
-      setLeads([]);
-      setTotalElements(0);
-      setRecordatoriosByLeadId({});
-    } finally {
-      if (seq === fetchSeqRef.current) setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtersKey]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: leads.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 8
+  });
 
+  // Dispara fetchNextPage cuando el usuario está cerca del final del scroll virtual.
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  const refresh = fetchAll;
+    const items = rowVirtualizer.getVirtualItems();
+    if (items.length === 0) return;
+    const lastVisible = items[items.length - 1];
+    if (
+      hasNextPage &&
+      !isFetchingNextPage &&
+      lastVisible.index >= leads.length - 20
+    ) {
+      fetchNextPage();
+    }
+  }, [
+    rowVirtualizer.getVirtualItems(),
+    hasNextPage,
+    isFetchingNextPage,
+    leads.length,
+    fetchNextPage
+  ]);
 
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -213,11 +222,15 @@ export const LeadsTablePage = () => {
     );
   };
 
+  const invalidateLeads = () => {
+    queryClient.invalidateQueries({ queryKey: ['leads'] });
+  };
+
   const handleDelete = async (id: number) => {
     if (!window.confirm('¿Está seguro de eliminar este lead?')) return;
     try {
       await leadApi.delete(id);
-      refresh();
+      invalidateLeads();
     } catch (err) {
       console.error('Error al eliminar lead:', err);
       alert('Error al eliminar el lead');
@@ -229,20 +242,17 @@ export const LeadsTablePage = () => {
       const leadActual = leads.find((l) => l.id === leadId);
       if (!leadActual) throw new Error('Lead no encontrado');
       await leadApi.update(leadId, { ...leadActual, prioridad: newPriority });
-      refresh();
+      invalidateLeads();
     } catch (err) {
       console.error('Error al actualizar prioridad:', err);
       alert('Error al actualizar la prioridad del lead');
     }
   };
 
-  const canConvert = (lead: LeadDTO): boolean => {
-    return (
-      lead.estadoLead !== EstadoLeadEnum.CONVERTIDO &&
-      lead.estadoLead !== EstadoLeadEnum.DESCARTADO &&
-      !lead.clienteOrigenId
-    );
-  };
+  const canConvert = (lead: LeadDTO): boolean =>
+    lead.estadoLead !== EstadoLeadEnum.CONVERTIDO &&
+    lead.estadoLead !== EstadoLeadEnum.DESCARTADO &&
+    !lead.clienteOrigenId;
 
   const calcularDias = (fechaPrimerContacto?: string): number => {
     if (!fechaPrimerContacto) return 0;
@@ -272,10 +282,20 @@ export const LeadsTablePage = () => {
     return '';
   };
 
+  const errorMessage = (() => {
+    if (!error) return null;
+    const e = error as { response?: { data?: { message?: string } }; message?: string };
+    return e?.response?.data?.message || e?.message || 'Error al cargar leads';
+  })();
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom =
+    virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0;
+
   return (
     <Box sx={{ p: 2 }}>
-      <LoadingOverlay open={loading} message="Cargando leads..." />
-
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" component="h1">
           📊 Gestión de Leads
@@ -290,9 +310,11 @@ export const LeadsTablePage = () => {
         </Box>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+      {errorMessage && (
+        <Alert severity="error" sx={{ mb: 2 }} action={
+          <Button size="small" onClick={() => refetch()}>Reintentar</Button>
+        }>
+          {errorMessage}
         </Alert>
       )}
 
@@ -369,7 +391,11 @@ export const LeadsTablePage = () => {
         </Stack>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 280px)' }}>
+      <TableContainer
+        component={Paper}
+        ref={scrollRef}
+        sx={{ maxHeight: 'calc(100vh - 280px)', overflow: 'auto' }}
+      >
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
@@ -457,144 +483,178 @@ export const LeadsTablePage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {leads.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`}>
+                  <TableCell colSpan={11} sx={{ py: 0.75 }}>
+                    <Skeleton variant="rectangular" height={28} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : leads.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={11} align="center" sx={{ py: 3 }}>
                   <Typography variant="body2" color="text.secondary">
-                    {loading ? 'Cargando…' : 'No se encontraron leads con los filtros seleccionados'}
+                    No se encontraron leads con los filtros seleccionados
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              leads.map((lead) => {
-                const recordatorios = lead.id ? recordatoriosByLeadId[lead.id] ?? [] : [];
-                return (
-                  <TableRow
-                    key={lead.id}
-                    hover
-                    sx={{
-                      bgcolor: getRowColor(lead),
-                      '&:hover': { bgcolor: 'action.hover' }
-                    }}
-                  >
-                    <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>{lead.nombre}</TableCell>
-                    <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>{lead.telefono}</TableCell>
-                    <TableCell sx={{ py: 0.75, fontSize: '0.875rem', display: { xs: 'none', lg: 'table-cell' } }}>
-                      {lead.provincia ? PROVINCIA_LABELS[lead.provincia] : '-'}
-                    </TableCell>
-                    <TableCell sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
-                      <CanalBadge canal={lead.canal} />
-                    </TableCell>
-                    <TableCell sx={{ py: 0.75 }}>
-                      <LeadStatusBadge status={lead.estadoLead} />
-                    </TableCell>
-                    <TableCell align="center" sx={{ py: 0.75 }}>
-                      <PriorityQuickEdit
-                        leadId={lead.id!}
-                        currentPriority={lead.prioridad}
-                        onUpdate={handleUpdatePriority}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 150, display: { xs: 'none', lg: 'table-cell' } }}>
-                      {lead.productoInteresNombre ? (
-                        <Typography variant="caption" display="block" noWrap title={lead.productoInteresNombre}>
-                          {lead.productoInteresNombre}
-                        </Typography>
-                      ) : lead.modeloRecetaInteres || lead.modeloEquipoInteres ? (
-                        <Typography
-                          variant="caption"
-                          display="block"
-                          noWrap
-                          title={lead.modeloRecetaInteres || lead.modeloEquipoInteres}
-                        >
-                          {lead.modeloRecetaInteres || lead.modeloEquipoInteres}
-                        </Typography>
-                      ) : lead.equipoInteresadoNombre ? (
-                        <Typography variant="caption" display="block" noWrap title={lead.equipoInteresadoNombre}>
-                          {lead.equipoInteresadoNombre}
-                        </Typography>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell align="center" sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
-                      <RecordatorioStatusBadge recordatorios={recordatorios} />
-                    </TableCell>
-                    <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem', display: { xs: 'none', lg: 'table-cell' } }}>
-                      {formatearFecha(lead.fechaPrimerContacto)}
-                    </TableCell>
-                    <TableCell align="center" sx={{ py: 0.75, fontSize: '0.875rem' }}>
-                      {calcularDias(lead.fechaPrimerContacto) || '-'}
-                    </TableCell>
-                    <TableCell align="center" sx={{ py: 0.5 }}>
-                      <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'center' }}>
-                        <Tooltip title="Ver detalle">
-                          <IconButton size="small" sx={{ p: 0.5 }} onClick={() => navigate(`/leads/${lead.id}`)}>
-                            <VisibilityIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-
-                        {lead.telefono && (
-                          <Tooltip title="WhatsApp">
-                            <IconButton
-                              size="small"
-                              sx={{ p: 0.5, color: '#25D366' }}
-                              onClick={() => {
-                                const phone = lead.telefono.replace(/\D/g, '');
-                                window.open(`https://wa.me/${phone}`, '_blank');
-                              }}
-                            >
-                              <WhatsAppIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-
-                        {lead.estadoLead !== EstadoLeadEnum.CONVERTIDO && (
-                          <Tooltip title="Editar">
-                            <IconButton size="small" sx={{ p: 0.5 }} onClick={() => navigate(`/leads/${lead.id}/editar`)}>
-                              <EditIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-
-                        {canConvert(lead) && (
-                          <Tooltip title="Convertir">
-                            <IconButton
-                              size="small"
-                              sx={{ p: 0.5, color: 'success.main' }}
-                              onClick={() => navigate(`/leads/${lead.id}/convertir`)}
-                            >
-                              <ConvertIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-
-                        {lead.estadoLead !== EstadoLeadEnum.CONVERTIDO && (
-                          <Tooltip title="Eliminar">
-                            <IconButton
-                              size="small"
-                              sx={{ p: 0.5, color: 'error.main' }}
-                              onClick={() => handleDelete(lead.id!)}
-                            >
-                              <DeleteIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
+              <>
+                {paddingTop > 0 && (
+                  <TableRow style={{ height: paddingTop }}>
+                    <TableCell colSpan={11} sx={{ p: 0, border: 0 }} />
                   </TableRow>
-                );
-              })
+                )}
+                {virtualItems.map((vi) => {
+                  const lead = leads[vi.index];
+                  if (!lead) return null;
+                  const recordatorios = lead.id ? recordatoriosByLeadId[lead.id] ?? [] : [];
+                  return (
+                    <TableRow
+                      key={lead.id}
+                      data-index={vi.index}
+                      hover
+                      sx={{
+                        height: ROW_HEIGHT,
+                        bgcolor: getRowColor(lead),
+                        '&:hover': { bgcolor: 'action.hover' }
+                      }}
+                    >
+                      <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>{lead.nombre}</TableCell>
+                      <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>{lead.telefono}</TableCell>
+                      <TableCell sx={{ py: 0.75, fontSize: '0.875rem', display: { xs: 'none', lg: 'table-cell' } }}>
+                        {lead.provincia ? PROVINCIA_LABELS[lead.provincia] : '-'}
+                      </TableCell>
+                      <TableCell sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
+                        <CanalBadge canal={lead.canal} />
+                      </TableCell>
+                      <TableCell sx={{ py: 0.75 }}>
+                        <LeadStatusBadge status={lead.estadoLead} />
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 0.75 }}>
+                        <PriorityQuickEdit
+                          leadId={lead.id!}
+                          currentPriority={lead.prioridad}
+                          onUpdate={handleUpdatePriority}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 150, display: { xs: 'none', lg: 'table-cell' } }}>
+                        {lead.productoInteresNombre ? (
+                          <Typography variant="caption" display="block" noWrap title={lead.productoInteresNombre}>
+                            {lead.productoInteresNombre}
+                          </Typography>
+                        ) : lead.modeloRecetaInteres || lead.modeloEquipoInteres ? (
+                          <Typography
+                            variant="caption"
+                            display="block"
+                            noWrap
+                            title={lead.modeloRecetaInteres || lead.modeloEquipoInteres}
+                          >
+                            {lead.modeloRecetaInteres || lead.modeloEquipoInteres}
+                          </Typography>
+                        ) : lead.equipoInteresadoNombre ? (
+                          <Typography variant="caption" display="block" noWrap title={lead.equipoInteresadoNombre}>
+                            {lead.equipoInteresadoNombre}
+                          </Typography>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
+                        <RecordatorioStatusBadge recordatorios={recordatorios} />
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 0.75, fontSize: '0.75rem', display: { xs: 'none', lg: 'table-cell' } }}>
+                        {formatearFecha(lead.fechaPrimerContacto)}
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 0.75, fontSize: '0.875rem' }}>
+                        {calcularDias(lead.fechaPrimerContacto) || '-'}
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 0.5 }}>
+                        <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'center' }}>
+                          <Tooltip title="Ver detalle">
+                            <IconButton size="small" sx={{ p: 0.5 }} onClick={() => navigate(`/leads/${lead.id}`)}>
+                              <VisibilityIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+
+                          {lead.telefono && (
+                            <Tooltip title="WhatsApp">
+                              <IconButton
+                                size="small"
+                                sx={{ p: 0.5, color: '#25D366' }}
+                                onClick={() => {
+                                  const phone = lead.telefono.replace(/\D/g, '');
+                                  window.open(`https://wa.me/${phone}`, '_blank');
+                                }}
+                              >
+                                <WhatsAppIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+
+                          {lead.estadoLead !== EstadoLeadEnum.CONVERTIDO && (
+                            <Tooltip title="Editar">
+                              <IconButton size="small" sx={{ p: 0.5 }} onClick={() => navigate(`/leads/${lead.id}/editar`)}>
+                                <EditIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+
+                          {canConvert(lead) && (
+                            <Tooltip title="Convertir">
+                              <IconButton
+                                size="small"
+                                sx={{ p: 0.5, color: 'success.main' }}
+                                onClick={() => navigate(`/leads/${lead.id}/convertir`)}
+                              >
+                                <ConvertIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+
+                          {lead.estadoLead !== EstadoLeadEnum.CONVERTIDO && (
+                            <Tooltip title="Eliminar">
+                              <IconButton
+                                size="small"
+                                sx={{ p: 0.5, color: 'error.main' }}
+                                onClick={() => handleDelete(lead.id!)}
+                              >
+                                <DeleteIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {paddingBottom > 0 && (
+                  <TableRow style={{ height: paddingBottom }}>
+                    <TableCell colSpan={11} sx={{ p: 0, border: 0 }} />
+                  </TableRow>
+                )}
+              </>
             )}
           </TableBody>
         </Table>
       </TableContainer>
 
-      {leads.length > 0 && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Mostrando {leads.length} de {totalElements} leads
-        </Typography>
-      )}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+        {leads.length > 0 && (
+          <Typography variant="caption" color="text.secondary">
+            Mostrando {leads.length} de {totalElements} leads
+          </Typography>
+        )}
+        {isFetchingNextPage && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CircularProgress size={14} />
+            <Typography variant="caption" color="text.secondary">
+              Cargando más…
+            </Typography>
+          </Box>
+        )}
+      </Box>
 
       <SuperAdminContextModal
         autoOpen={showModal}

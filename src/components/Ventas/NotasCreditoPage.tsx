@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box, Typography, Button, TextField, Grid, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -85,45 +86,51 @@ const NotasCreditoPage: React.FC = () => {
     return (totalFactura / totalEquipos) * equiposSeleccionados;
   }, [facturaSeleccionada, equiposFactura.length, form.equiposSeleccionados.length]);
 
+  // Typeahead server-side: trae las primeras 20 facturas matching el input.
+  // Antes esta página cargaba TODAS las facturas al mount (`getByTipo('FACTURA')`)
+  // y filtraba client-side — inviable cuando hay miles de facturas.
+  const [facturaInput, setFacturaInput] = useState('');
+  const debouncedFacturaInput = useDebounce(facturaInput, 300);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Carga inicial: trae las 20 facturas más recientes para que el dropdown
+  // tenga contenido aunque el usuario no haya tipeado todavía.
   useEffect(() => {
-    loadFacturas();
-  }, [empresaId]); // Re-fetch when tenant changes
+    let cancelled = false;
+    setLoadingFacturas(true);
+    documentoApi.getByTipoPaginated('FACTURA',
+      { page: 0, size: 20, sort: 'fechaEmision,desc' },
+      {}
+    )
+      .then((res) => { if (!cancelled) setFacturas(res.content); })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Error loading facturas:', err);
+        setAlert({ open: true, message: 'Error al cargar las facturas. Verifique sus permisos.', severity: 'error' });
+      })
+      .finally(() => { if (!cancelled) setLoadingFacturas(false); });
+    return () => { cancelled = true; };
+  }, [empresaId]);
 
-  const loadFacturas = async () => {
-    try {
-      setLoadingFacturas(true);
-      const allFacturas = await documentoApi.getByTipo('FACTURA');
-
-      // Ordenar en orden inverso (más recientes primero)
-      const sortedFacturas = allFacturas.sort((a, b) => {
-        // Primero por fecha de emisión
-        const dateA = new Date(a.fechaEmision).getTime();
-        const dateB = new Date(b.fechaEmision).getTime();
-        if (dateB !== dateA) return dateB - dateA;
-        // Si misma fecha, por ID descendente
-        return (b.id || 0) - (a.id || 0);
-      });
-
-      setFacturas(sortedFacturas);
-
-      if (sortedFacturas.length === 0) {
-        setAlert({
-          open: true,
-          message: 'No se encontraron facturas disponibles',
-          severity: 'info',
-        });
-      }
-    } catch (error) {
-      console.error('Error loading facturas:', error);
-      setAlert({
-        open: true,
-        message: 'Error al cargar las facturas. Verifique sus permisos.',
-        severity: 'error',
-      });
-    } finally {
-      setLoadingFacturas(false);
-    }
-  };
+  // Refetch cuando el usuario tipea (búsqueda server-side por numeroDocumento o
+  // nombre del cliente).
+  useEffect(() => {
+    if (debouncedFacturaInput.trim().length === 0) return; // mantenemos el initial top 20
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    setLoadingFacturas(true);
+    documentoApi.getByTipoPaginated('FACTURA',
+      { page: 0, size: 20, sort: 'fechaEmision,desc' },
+      { busqueda: debouncedFacturaInput.trim() }
+    )
+      .then((res) => setFacturas(res.content))
+      .catch((err) => {
+        const code = (err as any)?.code;
+        if (code === 'ERR_CANCELED') return;
+        console.error('Error searching facturas:', err);
+      })
+      .finally(() => setLoadingFacturas(false));
+  }, [debouncedFacturaInput]);
 
   const handleFacturaChange = async (factura: DocumentoComercial | null) => {
     if (!factura) {
@@ -333,7 +340,8 @@ const NotasCreditoPage: React.FC = () => {
 
   const handleSuccessClose = () => {
     setSuccessDialog({ open: false, data: null });
-    loadFacturas();
+    // Refresca el dropdown de facturas (re-dispara el typeahead).
+    setFacturaInput((v) => v);
   };
 
   const formatCurrency = (value: number) => {
@@ -441,6 +449,10 @@ const NotasCreditoPage: React.FC = () => {
                 loading={loadingFacturas}
                 onChange={(_, value) => handleFacturaChange(value)}
                 value={facturaSeleccionada}
+                inputValue={facturaInput}
+                onInputChange={(_, value) => setFacturaInput(value)}
+                // Backend ya filtra; evitamos el filtrado client-side de MUI.
+                filterOptions={(opts) => opts}
                 renderOption={({ key, ...props }, option) => (
                   <li key={key} {...props}>
                     <Box sx={{ py: 0.5 }}>

@@ -46,9 +46,9 @@ export const clienteApi = {
     await api.delete(`${BASE_PATH}/${id}`);
   },
 
-  // Búsqueda paginada por término. Usa el endpoint /search del backend
-  // (que sí indexa nombre/apellido/email/etc.) en lugar de /api/clientes
-  // con `term`, que el backend ignora silenciosamente.
+  // Búsqueda paginada por término.
+  // Hoy `getAll` ya soporta el filtro `term`, así que prefiéranlo en código nuevo.
+  // Mantenemos `search` para clientes externos (typeahead, integraciones).
   search: async (
     term: string,
     pagination: PaginationParams = {},

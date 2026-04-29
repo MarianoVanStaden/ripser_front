@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box,
   Button,
@@ -56,9 +58,9 @@ import LoadingOverlay from '../common/LoadingOverlay';
 const RegistroVentasPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaId } = useTenant();
-  const [sales, setSales] = useState<Venta[]>([]);
+  // sales viene de useQuery server-side. Mantenemos el nombre para no tocar el JSX.
+  const queryClient = useQueryClient();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
@@ -95,134 +97,135 @@ const RegistroVentasPage: React.FC = () => {
   const [dateToFilter, setDateToFilter] = useState<string>('');
   const [tipoDocumentoFilter, setTipoDocumentoFilter] = useState<string>('all');
 
+  // Carga inicial de usuarios (lookup map para enriquecer ventas).
   useEffect(() => {
-    loadData();
-  }, [empresaId]); // Re-fetch when tenant changes
+    let cancelled = false;
+    (async () => {
+      try {
+        const usuariosData = await usuarioApi.getAll().catch(() => []);
+        if (cancelled) return;
+        const usuariosArray = Array.isArray(usuariosData)
+          ? usuariosData
+          : (usuariosData as any).content || [];
+        setUsuarios(usuariosArray);
+      } catch (err) {
+        console.error('Error loading usuarios:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [empresaId]);
 
-  const loadData = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Load all data in parallel — usuarios is non-critical, never blocks the page
-      const [facturasData, notasCreditoData, usuariosData] = await Promise.all([
-        documentoApi.getByTipo('FACTURA'),
-        documentoApi.getByTipo('NOTA_CREDITO'),
-        usuarioApi.getAll().catch(() => []),
-      ]);
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
-      // Combine both document types
-      const salesData = [...(facturasData as any), ...(notasCreditoData as any)];
+  // Reset page=0 cuando cambian filtros server-side.
+  useEffect(() => {
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter, tipoDocumentoFilter]);
 
-      console.log('Sales data:', salesData);
-      console.log('Usuarios data:', usuariosData);
+  const usuariosMap = useMemo(
+    () => new Map(usuarios.map((u) => [u.id, u])),
+    [usuarios]
+  );
 
-      // Create maps for quick lookups
-      // Handle usuarios response - it might be paginated or direct array
-      const usuariosArray = Array.isArray(usuariosData) ? usuariosData : (usuariosData as any).content || [];
-      const usuariosMap = new Map(usuariosArray.map((usuario: Usuario) => [usuario.id, usuario]));
-      
-      // Keep all loaded documents (FACTURA and NOTA_CREDITO)
-      const facturas = salesData;
+  // Server-side fetch de FACTURAs + NOTA_CREDITOs combinados en una sola página.
+  const tiposPorFiltro: string[] = tipoDocumentoFilter === 'all'
+    ? ['FACTURA', 'NOTA_CREDITO']
+    : [tipoDocumentoFilter];
 
-      // Enrich sales data with client and usuario information
-      const enrichedSales = facturas.map((sale: any) => {
-        // Map cliente - DocumentoComercial has clienteId and clienteNombre
-        let cliente = null;
-        if (sale.cliente) {
-          cliente = sale.cliente;
-        } else if (sale.clienteId && sale.clienteNombre) {
-          // Build a minimal cliente object from the document's denormalized fields
-          const nameParts = sale.clienteNombre.split(' ');
-          cliente = {
-            id: sale.clienteId,
-            nombre: nameParts[0] || sale.clienteNombre,
-            apellido: nameParts.slice(1).join(' ') || '',
-          } as Cliente;
-        }
+  const salesQuery = useQuery({
+    queryKey: ['ventas', {
+      page, size: rowsPerPage,
+      tipos: tiposPorFiltro,
+      busqueda: debouncedSearch.trim() || undefined,
+      estado: statusFilter !== 'all' ? statusFilter : undefined,
+      clienteId: clientFilter !== 'all' ? Number(clientFilter) : undefined,
+      fechaDesde: dateFromFilter || undefined,
+      fechaHasta: dateToFilter || undefined,
+      empresaId,
+    }] as const,
+    queryFn: () => documentoApi.getAllPaginated(
+      { page, size: rowsPerPage, sort: 'fechaEmision,desc' },
+      {
+        tipos: tiposPorFiltro,
+        ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
+        ...(statusFilter !== 'all' ? { estado: statusFilter } : {}),
+        ...(clientFilter !== 'all' ? { clienteId: Number(clientFilter) } : {}),
+        ...(dateFromFilter ? { fechaDesde: dateFromFilter } : {}),
+        ...(dateToFilter ? { fechaHasta: dateToFilter } : {}),
+      }
+    ),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+  const loading = salesQuery.isLoading;
+  const invalidateSales = useCallback(
+    () => { queryClient.invalidateQueries({ queryKey: ['ventas'] }); },
+    [queryClient]
+  );
 
-        // Map usuario - DocumentoComercial has usuarioId and usuarioNombre
-        // Since backend Usuario doesn't have nombre/apellido, we use usuarioNombre directly
-        let usuario = null;
-        if (sale.usuario) {
-          usuario = sale.usuario;
-        } else if (sale.usuarioId && sale.usuarioNombre) {
-          // Create a usuario object from usuarioNombre
-          const nameParts = sale.usuarioNombre.trim().split(/\s+/);
-          usuario = {
-            id: sale.usuarioId,
-            nombre: nameParts[0] || '',
-            apellido: nameParts.slice(1).join(' ') || '',
-            username: sale.usuarioNombre,
-            email: '',
-          } as Usuario;
-        } else if (sale.usuarioId) {
-          // Try to get from map (but backend usuarios only have username/email)
-          const usuarioFromMap = usuariosMap.get(sale.usuarioId);
-          if (usuarioFromMap) {
-            usuario = usuarioFromMap;
-          }
-        }
+  // Enriquecimiento del DocumentoComercial recibido para que sea Venta-compatible
+  // (mismo contrato del JSX existente). Antes se hacía dentro del loadData.
+  const sales: Venta[] = useMemo(() => {
+    const docs = (salesQuery.data?.content ?? []) as any[];
+    return docs.map((sale: any) => {
+      let cliente = null as Cliente | null;
+      if (sale.cliente) cliente = sale.cliente;
+      else if (sale.clienteId && sale.clienteNombre) {
+        const nameParts = sale.clienteNombre.split(' ');
+        cliente = {
+          id: sale.clienteId,
+          nombre: nameParts[0] || sale.clienteNombre,
+          apellido: nameParts.slice(1).join(' ') || '',
+        } as Cliente;
+      }
+      let usuario = null as Usuario | null;
+      if (sale.usuario) usuario = sale.usuario;
+      else if (sale.usuarioId && sale.usuarioNombre) {
+        const nameParts = sale.usuarioNombre.trim().split(/\s+/);
+        usuario = {
+          id: sale.usuarioId,
+          nombre: nameParts[0] || '',
+          apellido: nameParts.slice(1).join(' ') || '',
+          username: sale.usuarioNombre,
+          email: '',
+        } as Usuario;
+      } else if (sale.usuarioId) {
+        const usuarioFromMap = usuariosMap.get(sale.usuarioId);
+        if (usuarioFromMap) usuario = usuarioFromMap;
+      }
+      const detalleVentas = (sale.detalles || []).map((detalle: any) => ({
+        ...detalle,
+        producto: {
+          id: detalle.productoId,
+          nombre: detalle.productoNombre || detalle.descripcion || 'Producto desconocido',
+          descripcion: detalle.descripcion || '',
+        },
+      }));
+      return {
+        ...sale,
+        cliente,
+        usuario,
+        empleado: usuario,
+        detalleVentas,
+        fechaVenta: sale.fechaEmision || sale.fechaVenta,
+        ventaNumero: sale.numeroDocumento || sale.ventaNumero,
+        estado: sale.estado || 'CONFIRMADA',
+        notas: sale.observaciones || sale.notas,
+        metodoPago: sale.metodoPago,
+      } as Venta;
+    });
+  }, [salesQuery.data, usuariosMap]);
 
-        // Map detalles to detalleVentas for compatibility
-        // DetalleDocumento has productoNombre field
-        const detalleVentas = (sale.detalles || []).map((detalle: any) => ({
-          ...detalle,
-          producto: {
-            id: detalle.productoId,
-            nombre: detalle.productoNombre || detalle.descripcion || 'Producto desconocido',
-            descripcion: detalle.descripcion || '',
-          },
-        }));
+  const totalSales = salesQuery.data?.totalElements ?? 0;
 
-        // Map fechaEmision to fechaVenta for compatibility
-        const fechaVenta = sale.fechaEmision || sale.fechaVenta;
-
-        // Map numeroDocumento to ventaNumero for compatibility
-        const ventaNumero = sale.numeroDocumento || sale.ventaNumero;
-
-        // Map estado
-        const estado = sale.estado || 'CONFIRMADA';
-
-        // Map observaciones to notas for compatibility
-        const notas = sale.observaciones || sale.notas;
-
-        // Preserve metodoPago from the backend
-        const metodoPago = sale.metodoPago;
-
-        console.log(`Sale ${sale.id}: usuarioNombre=`, sale.usuarioNombre, 'usuario=', usuario, 'detalles=', detalleVentas.length);
-
-        return {
-          ...sale,
-          cliente,
-          usuario,
-          empleado: usuario, // Keep empleado field as well for compatibility
-          detalleVentas,
-          fechaVenta,
-          ventaNumero,
-          estado,
-          notas,
-          metodoPago,
-        };
-      });
-      
-      // Sort sales in reverse order (most recent first)
-      const sortedSales = enrichedSales.sort((a, b) => {
-        const dateA = new Date(a.fechaVenta || a.fechaEmision || 0).getTime();
-        const dateB = new Date(b.fechaVenta || b.fechaEmision || 0).getTime();
-        return dateB - dateA; // Descending order
-      });
-      
-      setSales(sortedSales);
-      setUsuarios(usuariosArray);
-      
-    } catch (err) {
-      console.error('Error loading data:', err);
+  useEffect(() => {
+    if (salesQuery.error) {
       setError('Error al cargar los datos. Verifique la conexión con el servidor.');
-    } finally {
-      setLoading(false);
+    } else {
+      setError(null);
     }
-  };
+  }, [salesQuery.error]);
 
   const handleViewSale = async (sale: Venta): Promise<void> => {
     setViewingSale(sale);
@@ -280,25 +283,12 @@ const RegistroVentasPage: React.FC = () => {
       setError(null);
 
       // Only update estado using the dedicated endpoint
-      const updatedSale = await documentoApi.updateEstado(
+      await documentoApi.updateEstado(
         editingSale.id,
         editForm.estado as any
       );
-
-      // Update the local state — only estado changed, preserve existing enriched fields
-      const usuariosMap = new Map(usuarios.map((usuario: Usuario) => [usuario.id, usuario]));
-
-      const enrichedUpdatedSale = {
-        ...updatedSale,
-        cliente: editingSale.cliente ?? null,
-        usuario: usuariosMap.get(parseInt(editForm.usuarioId)) || editingSale.usuario || null,
-      } as unknown as Venta;
-
-      setSales(prevSales =>
-        prevSales.map(sale =>
-          sale.id === editingSale.id ? enrichedUpdatedSale : sale
-        )
-      );
+      // Refresca el listado server-side; el query reenriquece el item actualizado.
+      invalidateSales();
 
       setConfirmStateChangeDialogOpen(false);
       setEditDialogOpen(false);
@@ -380,28 +370,15 @@ const RegistroVentasPage: React.FC = () => {
     return 'Vendedor no disponible';
   };
 
-  const filteredSales = sales.filter((sale: Venta) => {
-    const clientName = getClientFullName(sale.cliente || null);
-    const usuarioName = getUsuarioFullName((sale.usuario || sale.empleado) as Usuario || null);
-    
-    const matchesSearch = searchTerm === '' || 
-      sale.ventaNumero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      usuarioName.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
-    const matchesPaymentMethod = paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter;
-    const matchesClient = clientFilter === 'all' || sale.cliente?.id?.toString() === clientFilter;
-    
-    const matchesTipoDocumento = tipoDocumentoFilter === 'all' || sale.tipoDocumento === tipoDocumentoFilter;
-
-    const saleDate = new Date(sale.fechaVenta);
-    const matchesDateFrom = !dateFromFilter || saleDate >= new Date(dateFromFilter);
-    const matchesDateTo = !dateToFilter || saleDate <= new Date(dateToFilter);
-
-    return matchesSearch && matchesStatus && matchesPaymentMethod && 
-           matchesClient && matchesTipoDocumento && matchesDateFrom && matchesDateTo;
-  });
+  // Búsqueda (numero/cliente), estado, cliente, tipo documento, rango de fechas:
+  // todos server-side. paymentMethodFilter sigue client-side (no soportado por
+  // el backend) y solo afecta la página visible; documentado en TECHNICAL_DEBT.md.
+  const filteredSales = useMemo(
+    () => sales.filter((sale: Venta) =>
+      paymentMethodFilter === 'all' || sale.metodoPago === paymentMethodFilter
+    ),
+    [sales, paymentMethodFilter]
+  );
 
   const clearFilters = (): void => {
     setSearchTerm('');
@@ -426,11 +403,8 @@ const RegistroVentasPage: React.FC = () => {
 
   const { totalRevenue, totalTransactions, averageOrderValue } = calculateTotals();
 
-  // Paginate filtered sales
-  const paginatedSales = filteredSales.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  // La paginación es server-side; "paginatedSales" es la página actual.
+  const paginatedSales = filteredSales;
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -917,7 +891,7 @@ const RegistroVentasPage: React.FC = () => {
           
           <TablePagination
             component="div"
-            count={filteredSales.length}
+            count={totalSales}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
@@ -1271,7 +1245,7 @@ const RegistroVentasPage: React.FC = () => {
               if (ventaToDelete) {
                 try {
                   await documentoApi.delete(ventaToDelete.id);
-                  setSales(sales.filter(sale => sale.id !== ventaToDelete.id));
+                  invalidateSales();
                   setDeleteDialogOpen(false);
                   setError(null);
                 } catch (err) {
