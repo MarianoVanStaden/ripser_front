@@ -24,7 +24,10 @@ export const EstadoLeadEnum = {
   VENTA: 'VENTA',
   CONVERTIDO: 'CONVERTIDO',
   DESCARTADO: 'DESCARTADO',
-  PERDIDO: 'PERDIDO'
+  PERDIDO: 'PERDIDO',
+  LEAD_DUPLICADO: 'LEAD_DUPLICADO',
+  PRECIO_ELEVADO: 'PRECIO_ELEVADO',
+  COMPRA_ANULADA: 'COMPRA_ANULADA'
 } as const;
 
 export type EstadoLeadEnum = typeof EstadoLeadEnum[keyof typeof EstadoLeadEnum];
@@ -242,14 +245,17 @@ export interface ValidationErrors {
 
 // Constantes
 export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
-  PRIMER_CONTACTO: '#3B82F6', // Azul
-  MOSTRO_INTERES: '#8B5CF6', // Púrpura
-  CLIENTE_POTENCIAL: '#F59E0B', // Amarillo
-  CLIENTE_POTENCIAL_CALIFICADO: '#10B981', // Verde
-  VENTA: '#059669', // Verde oscuro
-  CONVERTIDO: '#059669', // Verde oscuro
-  DESCARTADO: '#6B7280', // Gris
-  PERDIDO: '#EF4444', // Rojo
+  PRIMER_CONTACTO: '#3B82F6',
+  MOSTRO_INTERES: '#8B5CF6',
+  CLIENTE_POTENCIAL: '#F59E0B',
+  CLIENTE_POTENCIAL_CALIFICADO: '#10B981',
+  VENTA: '#059669',
+  CONVERTIDO: '#059669',
+  DESCARTADO: '#6B7280',
+  PERDIDO: '#EF4444',
+  LEAD_DUPLICADO: '#94A3B8',  // Gris azulado — descartado sin impacto en KPIs
+  PRECIO_ELEVADO: '#F97316',  // Naranja — objeción de precio
+  COMPRA_ANULADA: '#DC2626',  // Rojo intenso — caída de última instancia
 };
 
 export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
@@ -260,7 +266,10 @@ export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
   VENTA: 'Venta',
   CONVERTIDO: 'Convertido',
   DESCARTADO: 'Descartado',
-  PERDIDO: 'Perdido'
+  PERDIDO: 'Perdido',
+  LEAD_DUPLICADO: 'Lead Duplicado',
+  PRECIO_ELEVADO: 'Precio Elevado',
+  COMPRA_ANULADA: 'Compra Anulada',
 };
 
 export const PRIORIDAD_COLORS: Record<PrioridadLeadEnum, string> = {

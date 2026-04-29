@@ -736,8 +736,14 @@ const PresupuestosPage: React.FC = () => {
 
       let savedPresupuesto: DocumentoComercial;
       if (editingPresupuesto) {
-        // Use changeEstado instead of updateEstado - send just the enum string value
         savedPresupuesto = await documentoApi.changeEstado(editingPresupuesto.id, formData.estado);
+        const observacionesOriginales = editingPresupuesto.observaciones ?? '';
+        if (formData.observaciones !== observacionesOriginales) {
+          savedPresupuesto = await documentoApi.updateObservaciones(
+            editingPresupuesto.id,
+            formData.observaciones || null
+          );
+        }
       } else {
         try {
           savedPresupuesto = await documentoApi.createPresupuesto(payload);
@@ -1366,7 +1372,7 @@ const PresupuestosPage: React.FC = () => {
               margin="normal"
               multiline
               rows={3}
-              disabled={readOnly || !!editingPresupuesto}
+              disabled={readOnly}
             />
 
             <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>

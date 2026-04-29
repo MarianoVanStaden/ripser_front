@@ -51,6 +51,7 @@ import {
   AttachMoney as MoneyIcon,
   CreditCard as CreditCardIcon,
   AccountBalance as BankIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
@@ -191,6 +192,8 @@ const NotasPedidoPage: React.FC = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedNota, setSelectedNota] = useState<DocumentoComercial | null>(null);
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<DocumentoComercial | null>(null);
+  const [editingObsNota, setEditingObsNota] = useState(false);
+  const [obsNotaValue, setObsNotaValue] = useState('');
   const [convertForm, setConvertForm] = useState<ConvertFormData>(initialConvertForm);
   const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
   const [notaForAsignacion, setNotaForAsignacion] = useState<DocumentoComercial | null>(null);
@@ -862,7 +865,21 @@ const NotasPedidoPage: React.FC = () => {
   const handleCloseViewDialog = useCallback(() => {
     setViewDialogOpen(false);
     setSelectedNota(null);
+    setEditingObsNota(false);
   }, []);
+
+  const handleSaveObsNota = useCallback(async () => {
+    if (!selectedNota) return;
+    try {
+      const updated = await documentoApi.updateObservaciones(selectedNota.id, obsNotaValue || null);
+      setSelectedNota(updated);
+      setEditingObsNota(false);
+      queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
+      setSnackbar({ open: true, message: 'Observaciones actualizadas', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: 'Error al guardar observaciones', severity: 'error' });
+    }
+  }, [selectedNota, obsNotaValue, queryClient]);
 
   // Billing Dialog state (para Financiación Propia)
   const [billingDialogOpen, setBillingDialogOpen] = useState(false);
@@ -1710,14 +1727,48 @@ const NotasPedidoPage: React.FC = () => {
                 </Box>
               </Box>
 
-              {selectedNota.observaciones && (
-                <Box sx={{ mb: 3 }}>
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <Typography variant="subtitle2" color="text.secondary">
                     Observaciones
                   </Typography>
-                  <Typography>{selectedNota.observaciones}</Typography>
+                  {!editingObsNota && (
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setObsNotaValue(selectedNota.observaciones ?? '');
+                        setEditingObsNota(true);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
                 </Box>
-              )}
+                {editingObsNota ? (
+                  <Box>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={obsNotaValue}
+                      onChange={(e) => setObsNotaValue(e.target.value)}
+                      size="small"
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Button size="small" variant="contained" onClick={handleSaveObsNota}>
+                        Guardar
+                      </Button>
+                      <Button size="small" onClick={() => setEditingObsNota(false)}>
+                        Cancelar
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Typography color={selectedNota.observaciones ? 'text.primary' : 'text.secondary'}>
+                    {selectedNota.observaciones || 'Sin observaciones'}
+                  </Typography>
+                )}
+              </Box>
 
               <Divider sx={{ my: 2 }} />
 

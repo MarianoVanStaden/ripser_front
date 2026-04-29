@@ -136,6 +136,13 @@ export const documentoApi = {
     const response = await api.put(`/api/documentos/${id}/estado`, nuevoEstado);
     return response.data;
   },
+  updateObservaciones: async (id: number, observaciones: string | null): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/observaciones`,
+      { observaciones }
+    );
+    return response.data;
+  },
   // Change metodoPago of documento
   changeMetodoPago: async (id: number, metodoPago: MetodoPago): Promise<DocumentoComercial> => {
     const response = await api.put<DocumentoComercial>(
