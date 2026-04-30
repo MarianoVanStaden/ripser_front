@@ -76,6 +76,7 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
           <TableHead>
             <TableRow sx={{ bgcolor: 'grey.100' }}>
               <TableCell sx={{ fontWeight: 700 }}>Mes</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Dólar</TableCell>
               {colHeader('Cobrado')}
               {colHeader('Gastos')}
               {colHeader('Amortizado')}
@@ -102,6 +103,7 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
                   onClick={() => navigate(`/admin/balance/${anio}/${mesNum}`)}
                 >
                   <TableCell sx={{ fontWeight: 500 }}>{nombre}</TableCell>
+                  {cell(m?.valorDolar)}
                   {cell(m ? (m as any)[`totalCobrado${suffix}`] : null)}
                   {cell(m ? (m as any)[`totalGastos${suffix}`] : null)}
                   {cell(m ? (m as any)[`totalAmortizado${suffix}`] : null)}
@@ -139,6 +141,7 @@ export default function TablaBalanceAnual({ data, anio, moneda, onMonedaChange, 
             {/* Totales row */}
             <TableRow sx={{ bgcolor: 'primary.50', fontWeight: 700 }}>
               <TableCell sx={{ fontWeight: 700 }}>TOTAL ANUAL</TableCell>
+              <TableCell align="right">—</TableCell>
               {cell((totales as any)[`totalCobrado${suffix}`])}
               {cell((totales as any)[`totalGastos${suffix}`])}
               {cell((totales as any)[`totalAmortizado${suffix}`])}
