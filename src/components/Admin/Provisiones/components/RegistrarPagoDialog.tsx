@@ -14,21 +14,13 @@ import {
   Select,
   Typography,
 } from '@mui/material';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { provisionApi } from '../../../../api/services/provisionApi';
-import type { TipoProvision } from '../../../../types';
 import { MetodoPago, METODO_PAGO_LABELS, type MetodoPago as MetodoPagoType } from '../../../../types/prestamo.types';
 import { metodoPagoRequiereCaja, type CajaRef } from '../../../../types/caja.types';
 import { CajaSelector } from '../../../common/CajaSelector';
-
-const TIPO_LABELS: Record<TipoProvision, string> = {
-  AGUINALDO: 'Aguinaldo',
-  VACACIONES: 'Vacaciones',
-  SAC: 'SAC',
-  OTRO: 'Otro',
-};
 
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -47,14 +39,15 @@ type FormData = { montoPagado: number };
 
 interface Props {
   open: boolean;
-  tipo: TipoProvision;
+  tipoId: number;
+  tipoNombre: string;
   anio: number;
   mes: number;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, onSaved }: Props) {
+export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, mes, onClose, onSaved }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [metodoPago, setMetodoPago] = useState<MetodoPagoType>('EFECTIVO');
@@ -66,7 +59,7 @@ export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, on
     reset,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: yupResolver(schema) as any,
+    resolver: yupResolver(schema) as unknown as Resolver<FormData>,
     defaultValues: { montoPagado: 0 },
   });
 
@@ -89,18 +82,20 @@ export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, on
     setSaving(true);
     setApiError(null);
     try {
-      await provisionApi.registrarPago(tipo, anio, mes, {
+      await provisionApi.registrarPago(tipoId, anio, mes, {
         montoPagado: data.montoPagado,
         metodoPago,
         cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
         cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
       });
       onSaved();
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 404) {
         setApiError('Primero registre la provisión del mes antes de registrar un pago.');
       } else {
-        setApiError(err?.response?.data?.message ?? 'Error al registrar el pago');
+        setApiError(msg ?? 'Error al registrar el pago');
       }
     } finally {
       setSaving(false);
@@ -110,14 +105,14 @@ export default function RegistrarPagoDialog({ open, tipo, anio, mes, onClose, on
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} maxWidth="xs" fullWidth>
       <DialogTitle>
-        Registrar pago — {TIPO_LABELS[tipo]} {MONTH_NAMES[mes]} {anio}
+        Registrar pago — {tipoNombre} {MONTH_NAMES[mes]} {anio}
       </DialogTitle>
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           <Grid container spacing={2}>
             <Grid size={12}>
               <Typography variant="caption" color="text.secondary">
-                Tipo: <strong>{TIPO_LABELS[tipo]}</strong> · Período: <strong>{MONTH_NAMES[mes]} {anio}</strong>
+                Tipo: <strong>{tipoNombre}</strong> · Período: <strong>{MONTH_NAMES[mes]} {anio}</strong>
               </Typography>
             </Grid>
 

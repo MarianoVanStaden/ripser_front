@@ -34,6 +34,7 @@ export interface PosicionPatrimonialDTO {
   patrimonioFijoPesos: number;
   totalActivosPesos: number;
   cuentasXPagarPesos: number;
+  provisionesRRHHPesos: number;
   totalPasivosPesos: number;
   patrimonioNetoPesos: number;
   desgloseFijo: DesgloseFijoDTO;

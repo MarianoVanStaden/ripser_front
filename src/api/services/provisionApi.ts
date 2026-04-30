@@ -4,7 +4,6 @@ import type {
   ResumenProvisionAnualDTO,
   GuardarProvisionDTO,
   RegistrarPagoProvisionDTO,
-  TipoProvision,
 } from '../../types';
 
 const BASE = '/api/provisiones';
@@ -16,27 +15,35 @@ export const provisionApi = {
   },
 
   guardar: async (
-    tipo: TipoProvision,
+    tipoId: number,
     anio: number,
     mes: number,
     dto: GuardarProvisionDTO
   ): Promise<ProvisionMensualDTO> => {
-    const res = await api.post<ProvisionMensualDTO>(`${BASE}/${tipo}/${anio}/mes/${mes}`, dto);
+    const res = await api.post<ProvisionMensualDTO>(
+      `${BASE}/tipo/${tipoId}/${anio}/mes/${mes}`,
+      dto
+    );
     return res.data;
   },
 
   registrarPago: async (
-    tipo: TipoProvision,
+    tipoId: number,
     anio: number,
     mes: number,
     dto: RegistrarPagoProvisionDTO
   ): Promise<ProvisionMensualDTO> => {
-    const res = await api.put<ProvisionMensualDTO>(`${BASE}/${tipo}/${anio}/mes/${mes}/pago`, dto);
+    const res = await api.put<ProvisionMensualDTO>(
+      `${BASE}/tipo/${tipoId}/${anio}/mes/${mes}/pago`,
+      dto
+    );
     return res.data;
   },
 
-  getResumenAnual: async (tipo: TipoProvision, anio: number): Promise<ResumenProvisionAnualDTO> => {
-    const res = await api.get<ResumenProvisionAnualDTO>(`${BASE}/${tipo}/${anio}/resumen`);
+  getResumenAnual: async (tipoId: number, anio: number): Promise<ResumenProvisionAnualDTO> => {
+    const res = await api.get<ResumenProvisionAnualDTO>(
+      `${BASE}/tipo/${tipoId}/${anio}/resumen`
+    );
     return res.data;
   },
 };

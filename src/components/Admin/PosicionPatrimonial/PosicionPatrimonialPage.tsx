@@ -38,8 +38,9 @@ export default function PosicionPatrimonialPage() {
     try {
       const result = await posicionPatrimonialApi.getPosicion();
       setData(result);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al cargar la posición patrimonial');
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? 'Error al cargar la posición patrimonial');
     } finally {
       setLoading(false);
     }

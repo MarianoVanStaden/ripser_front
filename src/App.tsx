@@ -50,6 +50,7 @@ const AmortizacionesPage = lazy(() => import('./components/Admin/Amortizaciones/
 const AmortizacionMesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionMesPage'));
 const ProvisionesPage = lazy(() => import('./components/Admin/Provisiones/ProvisionesPage'));
 const ProvisionResumenAnualPage = lazy(() => import('./components/Admin/Provisiones/ProvisionResumenAnualPage'));
+const TiposProvisionPage = lazy(() => import('./components/Admin/TiposProvision/TiposProvisionPage'));
 const PosicionPatrimonialPage = lazy(() => import('./components/Admin/PosicionPatrimonial/PosicionPatrimonialPage'));
 const CajasAhorroListPage = lazy(() => import('./components/Admin/CajasAhorro/CajasAhorroListPage'));
 const CajaMovimientosPage = lazy(() => import('./components/Admin/CajasAhorro/CajaMovimientosPage'));
@@ -226,7 +227,8 @@ function App() {
                   <Route path="admin/amortizaciones/:anio/:mes" element={priv(<AmortizacionMesPage />)} />
                   <Route path="admin/provisiones" element={priv(<ProvisionesPage />)} />
                   <Route path="admin/provisiones/:anio/:mes" element={priv(<ProvisionesPage />)} />
-                  <Route path="admin/provisiones/resumen/:tipo/:anio" element={priv(<ProvisionResumenAnualPage />)} />
+                  <Route path="admin/provisiones/resumen/:tipoId/:anio" element={priv(<ProvisionResumenAnualPage />)} />
+                  <Route path="admin/tipos-provision" element={priv(<TiposProvisionPage />)} />
                   <Route path="admin/patrimonio" element={priv(<PosicionPatrimonialPage />)} />
                   <Route path="admin/cajas-ahorro" element={priv(<CajasAhorroListPage />)} />
                   <Route path="admin/cajas-ahorro/:id" element={priv(<CajaMovimientosPage />)} />

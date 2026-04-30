@@ -124,7 +124,9 @@
       "Bash(./mvnw -q -Dtest='PhoneNormalizerTest' test)",
       "Bash(npx tsc *)",
       "Read(//tmp/**)",
-      "Bash(javac -version)"
+      "Bash(javac -version)",
+      "Bash(echo \"TSC=$?\")",
+      "Bash(echo \"ESLINT=$?\")"
     ],
     "deny": [],
     "ask": [],

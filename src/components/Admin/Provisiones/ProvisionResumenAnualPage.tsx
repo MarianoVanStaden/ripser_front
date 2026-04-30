@@ -35,16 +35,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { provisionApi } from '../../../api/services/provisionApi';
-import type { ResumenProvisionAnualDTO, TipoProvision, ProvisionMensualDTO } from '../../../types';
-
-const TIPOS: TipoProvision[] = ['AGUINALDO', 'VACACIONES', 'SAC', 'OTRO'];
-
-const TIPO_LABELS: Record<TipoProvision, string> = {
-  AGUINALDO: 'Aguinaldo',
-  VACACIONES: 'Vacaciones',
-  SAC: 'SAC',
-  OTRO: 'Otro',
-};
+import { tipoProvisionApi } from '../../../api/services/tipoProvisionApi';
+import type { ResumenProvisionAnualDTO, ProvisionMensualDTO, TipoProvisionDTO } from '../../../types';
 
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -63,7 +55,6 @@ function SaldoChip({ value }: { value: number }) {
   return <Chip label={`$${fmt(value)}`} color={color} size="small" sx={{ fontWeight: 600 }} />;
 }
 
-/** Fill in all 12 months client-side; months without backend data appear as zeroes */
 function buildChartData(detalle: ProvisionMensualDTO[]) {
   const byMes = new Map<number, ProvisionMensualDTO>();
   detalle.forEach((d) => byMes.set(d.mes, d));
@@ -82,39 +73,59 @@ function buildChartData(detalle: ProvisionMensualDTO[]) {
 }
 
 export default function ProvisionResumenAnualPage() {
-  const { tipo: tipoParam, anio: anioParam } = useParams<{ tipo: string; anio: string }>();
+  const { tipoId: tipoIdParam, anio: anioParam } = useParams<{ tipoId: string; anio: string }>();
   const navigate = useNavigate();
 
-  const [tipo, setTipo] = useState<TipoProvision>((tipoParam as TipoProvision) ?? 'AGUINALDO');
+  const [tipos, setTipos] = useState<TipoProvisionDTO[]>([]);
+  const [tipoId, setTipoId] = useState<number | null>(tipoIdParam ? Number(tipoIdParam) : null);
   const [anio, setAnio] = useState(anioParam ? Number(anioParam) : CURRENT_YEAR);
 
   const [resumen, setResumen] = useState<ResumenProvisionAnualDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    tipoProvisionApi.list().then((data) => {
+      if (cancelled) return;
+      setTipos(data);
+      if (tipoId == null && data.length > 0) {
+        setTipoId(data[0].id);
+      }
+    }).catch((err) => {
+      console.error('Error loading tipos:', err);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const load = useCallback(async () => {
+    if (tipoId == null) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await provisionApi.getResumenAnual(tipo, anio);
+      const data = await provisionApi.getResumenAnual(tipoId, anio);
       setResumen(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al cargar el resumen anual');
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? 'Error al cargar el resumen anual');
     } finally {
       setLoading(false);
     }
-  }, [tipo, anio]);
+  }, [tipoId, anio]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Keep URL in sync
   useEffect(() => {
-    navigate(`/admin/provisiones/resumen/${tipo}/${anio}`, { replace: true });
-  }, [tipo, anio, navigate]);
+    if (tipoId != null) {
+      navigate(`/admin/provisiones/resumen/${tipoId}/${anio}`, { replace: true });
+    }
+  }, [tipoId, anio, navigate]);
 
   const chartData = resumen ? buildChartData(resumen.detalle) : [];
+  const tipoActual = tipos.find((t) => t.id === tipoId) ?? null;
 
   return (
     <Box p={3}>
@@ -133,14 +144,30 @@ export default function ProvisionResumenAnualPage() {
         <Typography variant="h5" fontWeight={700}>
           Resumen Anual — Provisiones
         </Typography>
+        {tipoActual && (
+          <Chip
+            label={tipoActual.cuentaEnPatrimonio ? 'Cuenta en patrimonio' : 'No cuenta en patrimonio'}
+            size="small"
+            color={tipoActual.cuentaEnPatrimonio ? 'primary' : 'default'}
+            variant={tipoActual.cuentaEnPatrimonio ? 'filled' : 'outlined'}
+            sx={{ ml: 1 }}
+          />
+        )}
       </Box>
 
-      {/* Controls */}
       <Box display="flex" gap={2} mb={3} flexWrap="wrap" alignItems="center">
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel>Tipo</InputLabel>
-          <Select label="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoProvision)}>
-            {TIPOS.map((t) => <MenuItem key={t} value={t}>{TIPO_LABELS[t]}</MenuItem>)}
+          <Select
+            label="Tipo"
+            value={tipoId ?? ''}
+            onChange={(e) => setTipoId(Number(e.target.value))}
+          >
+            {tipos.map((t) => (
+              <MenuItem key={t.id} value={t.id}>
+                {t.nombre}{!t.activo ? ' (inactivo)' : ''}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
 
@@ -160,7 +187,6 @@ export default function ProvisionResumenAnualPage() {
         <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
       ) : resumen ? (
         <>
-          {/* Summary cards */}
           <Grid container spacing={2} mb={3}>
             <Grid size={{ xs: 12, sm: 4 }}>
               <Card variant="outlined">
@@ -192,10 +218,9 @@ export default function ProvisionResumenAnualPage() {
             </Grid>
           </Grid>
 
-          {/* Bar chart */}
           <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
             <Typography variant="subtitle1" fontWeight={600} mb={2}>
-              {TIPO_LABELS[tipo]} {anio} — Provisionado vs. Pagado
+              {resumen.tipoNombre} {anio} — Provisionado vs. Pagado
             </Typography>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} margin={{ top: 4, right: 16, left: 16, bottom: 4 }}>
@@ -203,11 +228,10 @@ export default function ProvisionResumenAnualPage() {
                 <XAxis dataKey="mes" />
                 <YAxis tickFormatter={(v) => `$${new Intl.NumberFormat('es-AR', { notation: 'compact' }).format(v)}`} />
                 <RechartsTooltip
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={((value: any, name: any) => [
-                    `$${fmt(value ?? 0)}`,
+                  formatter={(value, name) => [
+                    `$${fmt(typeof value === 'number' ? value : Number(value) || 0)}`,
                     name === 'provisionado' ? 'Provisionado' : 'Pagado',
-                  ]) as any}
+                  ]}
                 />
                 <Legend formatter={(value) => value === 'provisionado' ? 'Provisionado' : 'Pagado'} />
                 <Bar dataKey="provisionado" fill="#1976d2" name="provisionado" />
@@ -216,7 +240,6 @@ export default function ProvisionResumenAnualPage() {
             </ResponsiveContainer>
           </Paper>
 
-          {/* Monthly detail table */}
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">
               <TableHead>

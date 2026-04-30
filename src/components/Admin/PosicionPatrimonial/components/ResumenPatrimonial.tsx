@@ -70,6 +70,7 @@ export default function ResumenPatrimonial({ data, formatPesos }: Props) {
             Pasivos
           </Typography>
           <FilaActivo label="Cuentas x pagar" valor={data.cuentasXPagarPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
+          <FilaActivo label="Provisiones RRHH" valor={data.provisionesRRHHPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <Divider sx={{ my: 1 }} />
           <FilaActivo label="TOTAL PASIVOS" valor={data.totalPasivosPesos} total={data.totalActivosPesos} formatPesos={formatPesos} bold />
 

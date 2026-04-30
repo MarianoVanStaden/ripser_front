@@ -10,18 +10,11 @@ import {
   Alert,
   Typography,
 } from '@mui/material';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { provisionApi } from '../../../../api/services/provisionApi';
-import type { TipoProvision, ProvisionMensualDTO } from '../../../../types';
-
-const TIPO_LABELS: Record<TipoProvision, string> = {
-  AGUINALDO: 'Aguinaldo',
-  VACACIONES: 'Vacaciones',
-  SAC: 'SAC',
-  OTRO: 'Otro',
-};
+import type { ProvisionMensualDTO } from '../../../../types';
 
 const schema = yup.object({
   montoProvisionado: yup
@@ -39,7 +32,8 @@ type FormData = {
 
 interface Props {
   open: boolean;
-  tipo: TipoProvision;
+  tipoId: number;
+  tipoNombre: string;
   anio: number;
   mes: number;
   existing: ProvisionMensualDTO | null;
@@ -52,7 +46,7 @@ const MONTH_NAMES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
-export default function GuardarProvisionDialog({ open, tipo, anio, mes, existing, onClose, onSaved }: Props) {
+export default function GuardarProvisionDialog({ open, tipoId, tipoNombre, anio, mes, existing, onClose, onSaved }: Props) {
   const [apiError, setApiError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -62,7 +56,7 @@ export default function GuardarProvisionDialog({ open, tipo, anio, mes, existing
     reset,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: yupResolver(schema) as any,
+    resolver: yupResolver(schema) as unknown as Resolver<FormData>,
     defaultValues: {
       montoProvisionado: 0,
       observaciones: '',
@@ -82,13 +76,14 @@ export default function GuardarProvisionDialog({ open, tipo, anio, mes, existing
     setSaving(true);
     setApiError(null);
     try {
-      await provisionApi.guardar(tipo, anio, mes, {
+      await provisionApi.guardar(tipoId, anio, mes, {
         montoProvisionado: data.montoProvisionado,
         observaciones: data.observaciones || null,
       });
       onSaved();
-    } catch (err: any) {
-      setApiError(err?.response?.data?.message ?? 'Error al guardar la provisión');
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setApiError(msg ?? 'Error al guardar la provisión');
     } finally {
       setSaving(false);
     }
@@ -99,14 +94,14 @@ export default function GuardarProvisionDialog({ open, tipo, anio, mes, existing
   return (
     <Dialog open={open} onClose={() => !saving && onClose()} maxWidth="sm" fullWidth>
       <DialogTitle>
-        {isEdit ? 'Editar' : 'Registrar'} provisión — {TIPO_LABELS[tipo]} {MONTH_NAMES[mes]} {anio}
+        {isEdit ? 'Editar' : 'Registrar'} provisión — {tipoNombre} {MONTH_NAMES[mes]} {anio}
       </DialogTitle>
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           <Grid container spacing={2}>
             <Grid size={12}>
               <Typography variant="caption" color="text.secondary">
-                Tipo: <strong>{TIPO_LABELS[tipo]}</strong> · Período: <strong>{MONTH_NAMES[mes]} {anio}</strong>
+                Tipo: <strong>{tipoNombre}</strong> · Período: <strong>{MONTH_NAMES[mes]} {anio}</strong>
               </Typography>
             </Grid>
 

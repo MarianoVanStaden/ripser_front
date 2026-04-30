@@ -29,19 +29,12 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import AddIcon from '@mui/icons-material/Add';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import SavingsIcon from '@mui/icons-material/Savings';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { provisionApi } from '../../../api/services/provisionApi';
-import type { ProvisionMensualDTO, TipoProvision } from '../../../types';
+import { tipoProvisionApi } from '../../../api/services/tipoProvisionApi';
+import type { ProvisionMensualDTO, TipoProvisionDTO } from '../../../types';
 import GuardarProvisionDialog from './components/GuardarProvisionDialog';
 import RegistrarPagoDialog from './components/RegistrarPagoDialog';
-
-const TIPOS: TipoProvision[] = ['AGUINALDO', 'VACACIONES', 'SAC', 'OTRO'];
-
-const TIPO_LABELS: Record<TipoProvision, string> = {
-  AGUINALDO: 'Aguinaldo',
-  VACACIONES: 'Vacaciones',
-  SAC: 'SAC',
-  OTRO: 'Otro',
-};
 
 const MONTH_NAMES = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -76,31 +69,35 @@ export default function ProvisionesPage() {
   const [anio, setAnio] = useState(anioParam ? Number(anioParam) : CURRENT_YEAR);
   const [mes, setMes] = useState(mesParam ? Number(mesParam) : CURRENT_MONTH);
 
+  const [tipos, setTipos] = useState<TipoProvisionDTO[]>([]);
   const [provisiones, setProvisiones] = useState<ProvisionMensualDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Guardar dialog
   const [guardarDialog, setGuardarDialog] = useState<{
     open: boolean;
-    tipo: TipoProvision;
+    tipo: TipoProvisionDTO | null;
     existing: ProvisionMensualDTO | null;
-  }>({ open: false, tipo: 'AGUINALDO', existing: null });
+  }>({ open: false, tipo: null, existing: null });
 
-  // Pago dialog
   const [pagoDialog, setPagoDialog] = useState<{
     open: boolean;
-    tipo: TipoProvision;
-  }>({ open: false, tipo: 'AGUINALDO' });
+    tipo: TipoProvisionDTO | null;
+  }>({ open: false, tipo: null });
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await provisionApi.getByMes(anio, mes);
-      setProvisiones(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al cargar las provisiones');
+      const [tiposData, provisionesData] = await Promise.all([
+        tipoProvisionApi.list(),
+        provisionApi.getByMes(anio, mes),
+      ]);
+      setTipos(tiposData);
+      setProvisiones(provisionesData);
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? 'Error al cargar las provisiones');
     } finally {
       setLoading(false);
     }
@@ -110,13 +107,16 @@ export default function ProvisionesPage() {
     load();
   }, [load]);
 
-  // Keep URL in sync
   useEffect(() => {
     navigate(`/admin/provisiones/${anio}/${mes}`, { replace: true });
   }, [anio, mes, navigate]);
 
-  const provisionMap = new Map<TipoProvision, ProvisionMensualDTO>();
-  provisiones.forEach((p) => provisionMap.set(p.tipo, p));
+  const provisionByTipoId = new Map<number, ProvisionMensualDTO>();
+  provisiones.forEach((p) => provisionByTipoId.set(p.tipoId, p));
+
+  // Show all active tipos + any inactive tipo that still has provisiones in this month
+  // (admin may have deactivated mid-period — orphan data must remain auditable).
+  const tiposVisibles = tipos.filter((t) => t.activo || provisionByTipoId.has(t.id));
 
   const handlePrev = () => {
     if (mes === 1) { setAnio((y) => y - 1); setMes(12); }
@@ -128,22 +128,31 @@ export default function ProvisionesPage() {
     else setMes((m) => m + 1);
   };
 
-  const openGuardar = (tipo: TipoProvision) => {
-    setGuardarDialog({ open: true, tipo, existing: provisionMap.get(tipo) ?? null });
+  const openGuardar = (tipo: TipoProvisionDTO) => {
+    setGuardarDialog({ open: true, tipo, existing: provisionByTipoId.get(tipo.id) ?? null });
   };
 
-  const openPago = (tipo: TipoProvision) => {
+  const openPago = (tipo: TipoProvisionDTO) => {
     setPagoDialog({ open: true, tipo });
   };
 
   return (
     <Box p={3}>
-      <Box display="flex" alignItems="center" gap={1} mb={3}>
-        <SavingsIcon color="primary" />
-        <Typography variant="h5" fontWeight={700}>Provisiones de RRHH</Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <SavingsIcon color="primary" />
+          <Typography variant="h5" fontWeight={700}>Provisiones de RRHH</Typography>
+        </Box>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<SettingsIcon />}
+          onClick={() => navigate('/admin/tipos-provision')}
+        >
+          Gestionar tipos
+        </Button>
       </Box>
 
-      {/* Month navigator */}
       <Stack direction="row" spacing={1} alignItems="center" mb={3} flexWrap="wrap">
         <IconButton onClick={handlePrev} size="small">
           <ArrowBackIosNewIcon fontSize="small" />
@@ -180,12 +189,21 @@ export default function ProvisionesPage() {
 
       {loading ? (
         <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
+      ) : tiposVisibles.length === 0 ? (
+        <Alert severity="info" action={
+          <Button size="small" onClick={() => navigate('/admin/tipos-provision')}>
+            Crear tipos
+          </Button>
+        }>
+          No hay tipos de provisión activos. Configurá al menos uno para empezar.
+        </Alert>
       ) : (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.100' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Patrimonio</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Provisionado ($)</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Acumulado período ($)</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Pagado ($)</TableCell>
@@ -195,20 +213,31 @@ export default function ProvisionesPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {TIPOS.map((tipo) => {
-                const p = provisionMap.get(tipo);
+              {tiposVisibles.map((tipo) => {
+                const p = provisionByTipoId.get(tipo.id);
                 return (
-                  <TableRow key={tipo} hover>
+                  <TableRow key={tipo.id} hover sx={{ opacity: tipo.activo ? 1 : 0.7 }}>
                     <TableCell>
                       <Button
                         size="small"
                         variant="text"
                         startIcon={<BarChartIcon fontSize="small" />}
-                        onClick={() => navigate(`/admin/provisiones/resumen/${tipo}/${anio}`)}
+                        onClick={() => navigate(`/admin/provisiones/resumen/${tipo.id}/${anio}`)}
                         sx={{ textTransform: 'none', fontWeight: 600 }}
                       >
-                        {TIPO_LABELS[tipo]}
+                        {tipo.nombre}
                       </Button>
+                      {!tipo.activo && (
+                        <Chip label="Inactivo" size="small" variant="outlined" sx={{ ml: 1 }} />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={tipo.cuentaEnPatrimonio ? 'Sí' : 'No'}
+                        size="small"
+                        color={tipo.cuentaEnPatrimonio ? 'primary' : 'default'}
+                        variant={tipo.cuentaEnPatrimonio ? 'filled' : 'outlined'}
+                      />
                     </TableCell>
                     <TableCell align="right">
                       {p ? `$${fmt(p.montoProvisionado)}` : <Typography color="text.disabled" variant="body2">—</Typography>}
@@ -228,15 +257,19 @@ export default function ProvisionesPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Tooltip title={p ? 'Editar provisión' : 'Registrar provisión'}>
-                        <IconButton size="small" onClick={() => openGuardar(tipo)}>
-                          {p ? <EditIcon fontSize="small" /> : <AddIcon fontSize="small" />}
-                        </IconButton>
+                      <Tooltip title={!tipo.activo ? 'Tipo inactivo' : p ? 'Editar provisión' : 'Registrar provisión'}>
+                        <span>
+                          <IconButton size="small" onClick={() => openGuardar(tipo)} disabled={!tipo.activo && !p}>
+                            {p ? <EditIcon fontSize="small" /> : <AddIcon fontSize="small" />}
+                          </IconButton>
+                        </span>
                       </Tooltip>
                       <Tooltip title="Registrar pago">
-                        <IconButton size="small" color="success" onClick={() => openPago(tipo)}>
-                          <PaymentsIcon fontSize="small" />
-                        </IconButton>
+                        <span>
+                          <IconButton size="small" color="success" onClick={() => openPago(tipo)} disabled={!tipo.activo && !p}>
+                            <PaymentsIcon fontSize="small" />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                     </TableCell>
                   </TableRow>
@@ -247,24 +280,30 @@ export default function ProvisionesPage() {
         </TableContainer>
       )}
 
-      <GuardarProvisionDialog
-        open={guardarDialog.open}
-        tipo={guardarDialog.tipo}
-        anio={anio}
-        mes={mes}
-        existing={guardarDialog.existing}
-        onClose={() => setGuardarDialog((s) => ({ ...s, open: false }))}
-        onSaved={() => { setGuardarDialog((s) => ({ ...s, open: false })); load(); }}
-      />
+      {guardarDialog.tipo && (
+        <GuardarProvisionDialog
+          open={guardarDialog.open}
+          tipoId={guardarDialog.tipo.id}
+          tipoNombre={guardarDialog.tipo.nombre}
+          anio={anio}
+          mes={mes}
+          existing={guardarDialog.existing}
+          onClose={() => setGuardarDialog((s) => ({ ...s, open: false }))}
+          onSaved={() => { setGuardarDialog((s) => ({ ...s, open: false })); load(); }}
+        />
+      )}
 
-      <RegistrarPagoDialog
-        open={pagoDialog.open}
-        tipo={pagoDialog.tipo}
-        anio={anio}
-        mes={mes}
-        onClose={() => setPagoDialog((s) => ({ ...s, open: false }))}
-        onSaved={() => { setPagoDialog((s) => ({ ...s, open: false })); load(); }}
-      />
+      {pagoDialog.tipo && (
+        <RegistrarPagoDialog
+          open={pagoDialog.open}
+          tipoId={pagoDialog.tipo.id}
+          tipoNombre={pagoDialog.tipo.nombre}
+          anio={anio}
+          mes={mes}
+          onClose={() => setPagoDialog((s) => ({ ...s, open: false }))}
+          onSaved={() => { setPagoDialog((s) => ({ ...s, open: false })); load(); }}
+        />
+      )}
     </Box>
   );
 }

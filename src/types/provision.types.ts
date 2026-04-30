@@ -1,10 +1,11 @@
-export type TipoProvision = 'AGUINALDO' | 'VACACIONES' | 'SAC' | 'OTRO';
-
 export interface ProvisionMensualDTO {
   id: number;
   empresaId: number;
   sucursalId: number | null;
-  tipo: TipoProvision;
+  tipoId: number;
+  tipoCodigo: string;
+  tipoNombre: string;
+  cuentaEnPatrimonio: boolean;
   anio: number;
   mes: number;
   montoProvisionado: number;
@@ -16,7 +17,10 @@ export interface ProvisionMensualDTO {
 }
 
 export interface ResumenProvisionAnualDTO {
-  tipo: TipoProvision;
+  tipoId: number;
+  tipoCodigo: string;
+  tipoNombre: string;
+  cuentaEnPatrimonio: boolean;
   anio: number;
   empresaId: number;
   totalProvisionado: number;
