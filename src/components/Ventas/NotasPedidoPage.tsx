@@ -519,8 +519,8 @@ const NotasPedidoPage: React.FC = () => {
 
     // If presupuesto has tipoIva/descuento defined, inherit them in the form.
     // The user can still override before converting.
-    const inheritedDescuentoTipo = ((presupuesto as any)?.descuentoTipo as TipoDescuento) || 'NONE';
-    const inheritedDescuentoValor = Number((presupuesto as any)?.descuentoValor) || 0;
+    const inheritedDescuentoTipo = (presupuesto?.descuentoTipo as TipoDescuento) || 'NONE';
+    const inheritedDescuentoValor = Number(presupuesto?.descuentoValor) || 0;
     if (presupuesto && presupuesto.tipoIva) {
       setConvertForm(prev => ({
         ...prev,

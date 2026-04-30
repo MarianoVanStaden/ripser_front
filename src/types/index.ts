@@ -2261,6 +2261,12 @@ export interface DocumentoComercial {
   iva: number;
   total: number;
   tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  /** Modalidad del descuento a nivel documento. */
+  descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+  /** Valor crudo del descuento (porcentaje 0..100 o monto fijo según `descuentoTipo`). */
+  descuentoValor?: number;
+  /** Monto de descuento ya calculado (total = subtotal - descuentoMonto + iva). */
+  descuentoMonto?: number;
   estado: EstadoDocumento;
   metodoPago: MetodoPago;
   observaciones?: string;

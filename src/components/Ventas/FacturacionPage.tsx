@@ -1813,8 +1813,8 @@ const FacturacionPage = () => {
         : []
     );
     setEditingNotaItems(false);
-    setNotaDescuentoTipo(((nota as any).descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE');
-    setNotaDescuentoValor(Number((nota as any).descuentoValor) || 0);
+    setNotaDescuentoTipo((nota.descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE');
+    setNotaDescuentoValor(Number(nota.descuentoValor) || 0);
     setConvertDialogOpen(true);
     deudaYaConfirmadaRef.current = false;
 

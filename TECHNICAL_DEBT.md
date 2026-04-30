@@ -136,20 +136,6 @@ Todos declarados en `@Table(indexes={...})` para que Hibernate los aplique en el
 
 ---
 
-## Pendientes de backend
-
-### Persistencia de descuento a nivel documento
-
-- **Qué es:** el frontend (`PresupuestosPage`, `NotasPedidoPage`, `FacturacionPage`) ahora envía `descuentoTipo: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'` y `descuentoValor: number` en los payloads `createPresupuesto`, `convertToNotaPedido` y `convertToFactura`. El backend hoy no los persiste ni los usa para recalcular `subtotal/iva/total`.
-- **Por qué es deuda:** los totales que ve el usuario en el form no coinciden con los que persiste el backend. Recargar el documento muestra los totales sin descuento aplicado.
-- **Qué hacer:**
-  1. Agregar columnas `descuento_tipo` (enum) y `descuento_valor` en `documentos_comerciales`.
-  2. Aceptar `descuentoTipo`/`descuentoValor` en los DTOs de creación y conversión.
-  3. Recalcular `subtotal_neto = subtotal - descuentoAmount`, `iva = subtotalNeto * %iva`, `total = subtotalNeto + iva` en el servicio que arma el documento.
-  4. Devolverlos en la respuesta para que `handleOpenDialog` los hidrate al editar (ya lo intenta vía `as any`).
-- **Trigger:** primera vez que un usuario edite un presupuesto con descuento y note que se perdió.
-- **Esfuerzo:** ~1 día.
-
 ## Cómo agregar un ítem nuevo
 
 Mantener este formato para que sea evaluable contra criterios objetivos:

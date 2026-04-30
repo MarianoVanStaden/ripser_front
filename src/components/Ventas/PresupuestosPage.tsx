@@ -593,8 +593,8 @@ const PresupuestosPage: React.FC = () => {
         observaciones: presupuesto.observaciones || "",
         estado: presupuesto.estado,
         tipoIva: (presupuesto as any).tipoIva || 'IVA_21',
-        descuentoTipo: ((presupuesto as any).descuentoTipo as TipoDescuento) || 'NONE',
-        descuentoValor: Number((presupuesto as any).descuentoValor) || 0,
+        descuentoTipo: (presupuesto.descuentoTipo as TipoDescuento) || 'NONE',
+        descuentoValor: Number(presupuesto.descuentoValor) || 0,
       });
       setDestinatarioMode(presupuesto.clienteId ? 'CLIENTE' : 'LEAD');
       setSelectedCliente(null);
