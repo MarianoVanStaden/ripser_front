@@ -1072,7 +1072,7 @@ const PresupuestosPage: React.FC = () => {
       <Card>
         <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
           <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table aria-label="Tabla de presupuestos" sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+            <Table aria-label="Tabla de presupuestos" sx={{ minWidth: 1280 }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 100 }}>Número</TableCell>
@@ -1084,7 +1084,19 @@ const PresupuestosPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 110 }} align="right">Total</TableCell>
                   <TableCell sx={{ minWidth: 140 }}>Financiamiento</TableCell>
                   <TableCell sx={{ minWidth: 110 }}>Creado por</TableCell>
-                  <TableCell sx={{ minWidth: 200, whiteSpace: 'nowrap' }}>Acciones</TableCell>
+                  <TableCell
+                    sx={{
+                      minWidth: 220,
+                      whiteSpace: 'nowrap',
+                      position: 'sticky',
+                      right: 0,
+                      backgroundColor: 'background.paper',
+                      zIndex: 2,
+                      boxShadow: '-4px 0 6px -2px rgba(0,0,0,0.08)',
+                    }}
+                  >
+                    Acciones
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1142,7 +1154,16 @@ const PresupuestosPage: React.FC = () => {
                       <TableCell>
                         <UsuarioBadge nombre={presupuesto.usuarioCreadorPresupuestoNombre ?? null} />
                       </TableCell>
-                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <TableCell
+                        sx={{
+                          whiteSpace: 'nowrap',
+                          position: 'sticky',
+                          right: 0,
+                          backgroundColor: 'background.paper',
+                          zIndex: 1,
+                          boxShadow: '-4px 0 6px -2px rgba(0,0,0,0.08)',
+                        }}
+                      >
                         <Tooltip title="Ver">
                           <IconButton size="small" color="primary" onClick={() => handleOpenViewDialog(presupuesto)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
                             <VisibilityIcon />

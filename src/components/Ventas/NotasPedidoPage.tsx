@@ -58,6 +58,7 @@ import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
 import { useTenant } from "../../context/TenantContext";
+import { useAuth } from "../../context/AuthContext";
 import type {
   DocumentoComercial,
   EstadoDocumento,
@@ -104,6 +105,11 @@ const IVA_RATES: Record<TipoIva, number> = {
 const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaId } = useTenant();
+  const { user } = useAuth();
+  // Solo vendedor: el rol VENDEDOR puede crear notas pero no facturarlas.
+  const esSoloVendedor = !!user?.roles
+    && user.roles.includes('VENDEDOR')
+    && !user.roles.some((r) => r === 'ADMIN' || r === 'ADMIN_EMPRESA' || r === 'GERENTE_SUCURSAL' || r === 'OFICINA');
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -1462,13 +1468,21 @@ const NotasPedidoPage: React.FC = () => {
                           </IconButton>
                         </span>
                       </Tooltip>
-                      <Tooltip title={nota.estado === EstadoDocumentoEnum.APROBADO ? 'Convertir a Factura' : 'Solo se puede facturar una nota APROBADA'}>
+                      <Tooltip
+                        title={
+                          esSoloVendedor
+                            ? 'Solo administración puede facturar'
+                            : nota.estado === EstadoDocumentoEnum.APROBADO
+                              ? 'Convertir a Factura'
+                              : 'Solo se puede facturar una nota APROBADA'
+                        }
+                      >
                         <span>
                           <IconButton
                             size="small"
                             color="success"
                             onClick={() => handleOpenBillingDialog(nota)}
-                            disabled={nota.estado !== EstadoDocumentoEnum.APROBADO}
+                            disabled={esSoloVendedor || nota.estado !== EstadoDocumentoEnum.APROBADO}
                           >
                             <ReceiptIcon />
                           </IconButton>
