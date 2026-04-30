@@ -2502,7 +2502,7 @@ const FacturacionPage = () => {
                 No hay Notas de Pedido disponibles
               </Typography>
               <Typography color="text.secondary">
-                Las notas de pedido deben estar en estado APROBADO o PENDIENTE para poder facturarse.
+                Las notas de pedido deben estar en estado APROBADO para poder facturarse. Las notas en PENDIENTE pueden aprobarse desde esta misma pantalla.
               </Typography>
             </Paper>
           ) : (
@@ -2556,15 +2556,20 @@ const FacturacionPage = () => {
                         )}
 
                         <Box mt={2} display="flex" gap={1}>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            fullWidth
-                            startIcon={<CheckCircleIcon />}
-                            onClick={() => handleOpenConvertDialog(nota)}
-                          >
-                            Facturar
-                          </Button>
+                          <Tooltip title={nota.estado === 'APROBADO' ? '' : 'La nota debe estar APROBADA para facturarse'}>
+                            <span style={{ flex: 1 }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                fullWidth
+                                startIcon={<CheckCircleIcon />}
+                                onClick={() => handleOpenConvertDialog(nota)}
+                                disabled={nota.estado !== 'APROBADO'}
+                              >
+                                Facturar
+                              </Button>
+                            </span>
+                          </Tooltip>
                           <IconButton
                             size="small"
                             color="primary"

@@ -76,6 +76,57 @@ const calcularEntregaInicial = (total: number): number => {
 
 const PAGE_MARGIN_BOTTOM = 25;
 
+const TOTAL_ROW_STYLE = {
+  halign: 'right' as const,
+  fontStyle: 'bold' as const,
+  fontSize: 10,
+  fillColor: COLORS.white,
+  textColor: COLORS.black,
+};
+
+const TOTAL_LABEL_STYLE = {
+  ...TOTAL_ROW_STYLE,
+  halign: 'center' as const,
+};
+
+// Devuelve las filas a insertar en el bloque de totales del PDF.
+// Si el documento tiene un descuento aplicado, se agregan filas Subtotal y
+// Descuento antes del total final; si no, se conserva una sola fila como antes.
+const buildTotalsRows = (documento: DocumentoComercial, totalLabel: string): any[][] => {
+  const subtotalBruto = Number(documento.subtotal ?? 0);
+  const descuentoTipo = documento.descuentoTipo ?? 'NONE';
+  const descuentoMonto = Number(documento.descuentoMonto ?? 0);
+  const descuentoValor = Number(documento.descuentoValor ?? 0);
+  const tieneDescuento = descuentoTipo !== 'NONE' && descuentoMonto > 0;
+
+  if (!tieneDescuento) {
+    return [[
+      { content: totalLabel, styles: TOTAL_LABEL_STYLE },
+      { content: formatCurrency(subtotalBruto), styles: TOTAL_ROW_STYLE },
+    ]];
+  }
+
+  const totalNeto = Math.max(0, subtotalBruto - descuentoMonto);
+  const descuentoLabel = descuentoTipo === 'PORCENTAJE'
+    ? `Descuento (${descuentoValor}%)`
+    : 'Descuento';
+
+  return [
+    [
+      { content: 'Subtotal', styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
+      { content: formatCurrency(subtotalBruto), styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+    ],
+    [
+      { content: descuentoLabel, styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
+      { content: `- ${formatCurrency(descuentoMonto)}`, styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+    ],
+    [
+      { content: totalLabel, styles: TOTAL_LABEL_STYLE },
+      { content: formatCurrency(totalNeto), styles: TOTAL_ROW_STYLE },
+    ],
+  ];
+};
+
 const ensureSpace = (doc: jsPDF, yPosition: number, neededHeight: number, margin: number): number => {
   const pageHeight = doc.internal.pageSize.getHeight();
   if (yPosition + neededHeight > pageHeight - PAGE_MARGIN_BOTTOM) {
@@ -445,31 +496,10 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
 
   yPosition = (doc as any).lastAutoTable.finalY + 2;
 
-  // ===== TOTAL CONTADO EFECTIVO =====
+  // ===== TOTAL CONTADO EFECTIVO (con desglose de descuento si aplica) =====
   autoTable(doc, {
     startY: yPosition,
-    body: [[
-      {
-        content: 'TOTAL CONTADO EFECTIVO',
-        styles: {
-          halign: 'center',
-          fontStyle: 'bold' as const,
-          fontSize: 10,
-          fillColor: COLORS.white,
-          textColor: COLORS.black
-        }
-      },
-      {
-        content: formatCurrency(presupuesto.subtotal),
-        styles: {
-          halign: 'right',
-          fontStyle: 'bold' as const,
-          fontSize: 10,
-          fillColor: COLORS.white,
-          textColor: COLORS.black
-        }
-      }
-    ]],
+    body: buildTotalsRows(presupuesto, 'TOTAL CONTADO EFECTIVO'),
     theme: 'grid',
     styles: {
       lineColor: COLORS.mediumGray,
@@ -517,7 +547,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
         opcion,
         yPosition,
         margin,
-        baseImporte: presupuesto.subtotal,
+        baseImporte: Math.max(0, Number(presupuesto.subtotal ?? 0) - Number(presupuesto.descuentoMonto ?? 0)),
         showOpcionTag: `Opción ${index + 1}:`,
       });
     });
@@ -786,31 +816,10 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
   yPosition = (doc as any).lastAutoTable.finalY + 2;
 
-  // ===== TOTAL =====
+  // ===== TOTAL (con desglose de descuento si aplica) =====
   autoTable(doc, {
     startY: yPosition,
-    body: [[
-      {
-        content: 'PRECIO DE LISTA',
-        styles: {
-          halign: 'center',
-          fontStyle: 'bold' as const,
-          fontSize: 10,
-          fillColor: COLORS.white,
-          textColor: COLORS.black
-        }
-      },
-      {
-        content: formatCurrency(documento.subtotal),
-        styles: {
-          halign: 'right',
-          fontStyle: 'bold' as const,
-          fontSize: 10,
-          fillColor: COLORS.white,
-          textColor: COLORS.black
-        }
-      }
-    ]],
+    body: buildTotalsRows(documento, 'PRECIO DE LISTA'),
     theme: 'grid',
     styles: {
       lineColor: COLORS.mediumGray,
@@ -853,7 +862,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
       opcion: opcionSeleccionada,
       yPosition,
       margin,
-      baseImporte: documento.subtotal,
+      baseImporte: Math.max(0, Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0)),
     });
 
     if (isFinanciamientoPropio(opcionSeleccionada.metodoPago) && opcionSeleccionada.cantidadCuotas > 1) {
@@ -903,7 +912,8 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     yPosition = (doc as any).lastAutoTable.finalY + 1;
 
     const propio = isFinanciamientoPropio(documento.metodoPago);
-    const entregaEstimada = propio ? calcularEntregaInicial(documento.subtotal) : null;
+    const baseFinanciamiento = Math.max(0, Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0));
+    const entregaEstimada = propio ? calcularEntregaInicial(baseFinanciamiento) : null;
 
     autoTable(doc, {
       startY: yPosition,

@@ -1462,15 +1462,17 @@ const NotasPedidoPage: React.FC = () => {
                           </IconButton>
                         </span>
                       </Tooltip>
-                      <Tooltip title="Convertir a Factura">
-                        <IconButton 
-                          size="small" 
-                          color="success"
-                          onClick={() => handleOpenBillingDialog(nota)}
-                          disabled={nota.estado !== EstadoDocumentoEnum.APROBADO && nota.estado !== EstadoDocumentoEnum.PENDIENTE}
-                        >
-                          <ReceiptIcon />
-                        </IconButton>
+                      <Tooltip title={nota.estado === EstadoDocumentoEnum.APROBADO ? 'Convertir a Factura' : 'Solo se puede facturar una nota APROBADA'}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => handleOpenBillingDialog(nota)}
+                            disabled={nota.estado !== EstadoDocumentoEnum.APROBADO}
+                          >
+                            <ReceiptIcon />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                       <Tooltip title="Exportar PDF">
                         <IconButton
