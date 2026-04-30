@@ -65,6 +65,8 @@ export type CreatePresupuestoPayload = {
   leadId?: number;
   usuarioId: number;
   tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+  descuentoValor?: number;
   observaciones?: string;
   detalles: DetalleDocumentoCreateDTO[];
 };
@@ -234,6 +236,8 @@ export const documentoApi = {
     presupuestoId: number;
     metodoPago: MetodoPago;
     tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+    descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+    descuentoValor?: number;
     confirmarConDeudaPendiente?: boolean;
     cajaPesosId?: number | null;
     cajaAhorroId?: number | null;

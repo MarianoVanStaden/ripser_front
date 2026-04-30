@@ -2400,6 +2400,8 @@ export interface CreatePresupuestoRequest {
 export interface ConvertToFacturaDTO {
   notaPedidoId: number;
   descuento?: number;
+  descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+  descuentoValor?: number;
   equiposAsignaciones?: { [detalleId: number]: number[] }; // Map of DetalleDocumento ID to List of EquipoFabricado IDs
   cantidadCuotas?: number;
   tipoFinanciacion?: string;

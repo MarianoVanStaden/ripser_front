@@ -8,7 +8,8 @@
       "Read(//c/Users/maria/.jdks//**)",
       "Read(//c/Users/maria/scoop/**)",
       "Bash(JAVA_HOME=\"C:/Users/maria/.jdks/temurin-21.0.10\" ./mvnw -q compile -DskipTests)",
-      "Bash(JAVA_HOME=\"C:/Users/maria/.jdks/temurin-21.0.10\" ./mvnw -q test -Dtest='LeadServiceImplTest')"
+      "Bash(JAVA_HOME=\"C:/Users/maria/.jdks/temurin-21.0.10\" ./mvnw -q test -Dtest='LeadServiceImplTest')",
+      "Bash(mvn -q test -Dtest=PatrimonioServiceImplTest)"
     ],
     "additionalDirectories": [
       "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\dto\\documentoComercial"

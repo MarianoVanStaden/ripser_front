@@ -60,14 +60,14 @@ describe('DuplicatePhoneDialog', () => {
   it('muestra "lead" cuando existingType es LEAD', () => {
     renderDialog({ error: makeLead({ existingType: 'LEAD' }) });
 
-    expect(screen.getByText(/lead/i)).toBeInTheDocument();
+    expect(screen.getByText('lead')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ir al lead existente/i })).toBeInTheDocument();
   });
 
   it('muestra "cliente" cuando existingType es CLIENTE', () => {
     renderDialog({ error: makeLead({ existingType: 'CLIENTE', existingId: 99 }) });
 
-    expect(screen.getByText(/cliente/i)).toBeInTheDocument();
+    expect(screen.getByText('cliente')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ir al cliente existente/i })).toBeInTheDocument();
   });
 
