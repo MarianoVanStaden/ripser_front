@@ -126,7 +126,9 @@
       "Read(//tmp/**)",
       "Bash(javac -version)",
       "Bash(echo \"TSC=$?\")",
-      "Bash(echo \"ESLINT=$?\")"
+      "Bash(echo \"ESLINT=$?\")",
+      "Bash(cd c:/Users/santi/Documents/GitHub/ripser_back)",
+      "Bash(/c/Users/santi/Documents/GitHub/ripser_back/mvnw.cmd compile *)"
     ],
     "deny": [],
     "ask": [],
