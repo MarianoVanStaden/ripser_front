@@ -471,6 +471,10 @@ const FacturacionPage = () => {
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('EXENTO');
+  const [descuentoTipo, setDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
+  const [descuentoValor, setDescuentoValor] = useState<number>(0);
+  const [notaDescuentoTipo, setNotaDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
+  const [notaDescuentoValor, setNotaDescuentoValor] = useState<number>(0);
   
   // From Nota de Pedido
   const [selectedNotaPedido, setSelectedNotaPedido] = useState<DocumentoComercial | null>(null);
@@ -778,12 +782,24 @@ const FacturacionPage = () => {
     }, 0);
   }, [cart]);
 
+  const descuentoAmount = useMemo(() => {
+    if (descuentoTipo === 'PORCENTAJE') {
+      return subtotalVenta * (Math.min(100, Math.max(0, descuentoValor || 0)) / 100);
+    }
+    if (descuentoTipo === 'MONTO_FIJO') {
+      return Math.min(subtotalVenta, Math.max(0, descuentoValor || 0));
+    }
+    return 0;
+  }, [subtotalVenta, descuentoTipo, descuentoValor]);
+
+  const subtotalVentaNeto = useMemo(() => Math.max(0, subtotalVenta - descuentoAmount), [subtotalVenta, descuentoAmount]);
+
   const ivaAmount = useMemo(() => {
     const ivaRate = IVA_OPTIONS.find((option) => option.value === selectedIva)?.rate || 0;
-    return subtotalVenta * ivaRate;
-  }, [subtotalVenta, selectedIva]);
+    return subtotalVentaNeto * ivaRate;
+  }, [subtotalVentaNeto, selectedIva]);
 
-  const totalVenta = useMemo(() => subtotalVenta + ivaAmount, [subtotalVenta, ivaAmount]);
+  const totalVenta = useMemo(() => subtotalVentaNeto + ivaAmount, [subtotalVentaNeto, ivaAmount]);
 
   const notaSubtotal = useMemo(() => {
     return notaCart.reduce((sum, item) => {
@@ -793,6 +809,18 @@ const FacturacionPage = () => {
     }, 0);
   }, [notaCart]);
 
+  const notaDescuentoAmount = useMemo(() => {
+    if (notaDescuentoTipo === 'PORCENTAJE') {
+      return notaSubtotal * (Math.min(100, Math.max(0, notaDescuentoValor || 0)) / 100);
+    }
+    if (notaDescuentoTipo === 'MONTO_FIJO') {
+      return Math.min(notaSubtotal, Math.max(0, notaDescuentoValor || 0));
+    }
+    return 0;
+  }, [notaSubtotal, notaDescuentoTipo, notaDescuentoValor]);
+
+  const notaSubtotalNeto = useMemo(() => Math.max(0, notaSubtotal - notaDescuentoAmount), [notaSubtotal, notaDescuentoAmount]);
+
   const notaFinancingAdjustment = useMemo(() => {
     if (!selectedOpcionId) return 0;
     const selectedOpcion = opcionesFinanciamiento[selectedOpcionId];
@@ -801,22 +829,22 @@ const FacturacionPage = () => {
     let entregaInicial = 0;
     if (notaEntregaInicial) {
       if (notaUsePorcentaje && notaPorcentajeEntrega != null) {
-        entregaInicial = notaSubtotal * notaPorcentajeEntrega / 100;
+        entregaInicial = notaSubtotalNeto * notaPorcentajeEntrega / 100;
       } else if (!notaUsePorcentaje && notaMontoFijoEntrega != null) {
         entregaInicial = notaMontoFijoEntrega;
       }
     }
-    const financiado = notaSubtotal - entregaInicial;
+    const financiado = notaSubtotalNeto - entregaInicial;
     return financiado > 0 ? financiado * (selectedOpcion.tasaInteres / 100) : 0;
-  }, [notaSubtotal, selectedOpcionId, opcionesFinanciamiento, notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega]);
+  }, [notaSubtotalNeto, selectedOpcionId, opcionesFinanciamiento, notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega]);
 
   const notaIvaAmount = useMemo(() => {
     const ivaRate = IVA_OPTIONS.find((option) => option.value === (selectedNotaPedido as any)?.tipoIva)?.rate || 0.21;
-    const subtotalConFinanciamiento = notaSubtotal + notaFinancingAdjustment;
+    const subtotalConFinanciamiento = notaSubtotalNeto + notaFinancingAdjustment;
     return subtotalConFinanciamiento * ivaRate;
-  }, [notaSubtotal, notaFinancingAdjustment, selectedNotaPedido]);
+  }, [notaSubtotalNeto, notaFinancingAdjustment, selectedNotaPedido]);
 
-  const notaTotalVenta = useMemo(() => notaSubtotal + notaFinancingAdjustment + notaIvaAmount, [notaSubtotal, notaFinancingAdjustment, notaIvaAmount]);
+  const notaTotalVenta = useMemo(() => notaSubtotalNeto + notaFinancingAdjustment + notaIvaAmount, [notaSubtotalNeto, notaFinancingAdjustment, notaIvaAmount]);
 
   // Entrega inicial computed (manual)
   const montoEntregaCalculado = useMemo(() => {
@@ -831,9 +859,9 @@ const FacturacionPage = () => {
   // so the down payment percentage applies to the product price (matching backend behaviour).
   const notaMontoEntregaCalculado = useMemo(() => {
     if (!notaEntregaInicial) return 0;
-    if (notaUsePorcentaje) return notaSubtotal * (notaPorcentajeEntrega || 0) / 100;
+    if (notaUsePorcentaje) return notaSubtotalNeto * (notaPorcentajeEntrega || 0) / 100;
     return notaMontoFijoEntrega || 0;
-  }, [notaEntregaInicial, notaUsePorcentaje, notaSubtotal, notaPorcentajeEntrega, notaMontoFijoEntrega]);
+  }, [notaEntregaInicial, notaUsePorcentaje, notaSubtotalNeto, notaPorcentajeEntrega, notaMontoFijoEntrega]);
 
   const notaMontoFinanciado = useMemo(() => notaTotalVenta - notaMontoEntregaCalculado, [notaTotalVenta, notaMontoEntregaCalculado]);
 
@@ -897,6 +925,8 @@ const FacturacionPage = () => {
     setNotes('');
     setCart([]);
     setSelectedIva('EXENTO');
+    setDescuentoTipo('NONE');
+    setDescuentoValor(0);
     setError(null);
     setSuccess(null);
     billingConfirmedRef.current = false;
@@ -1268,6 +1298,8 @@ const FacturacionPage = () => {
         clienteId: Number(selectedClientId),
         usuarioId: Number(selectedUsuarioId),
         tipoIva: selectedIva,
+        descuentoTipo,
+        descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
         observaciones: notes || undefined,
         detalles: cart.map((item) => {
           const subtotal = Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100));
@@ -1331,6 +1363,8 @@ const FacturacionPage = () => {
           presupuestoId: presupuesto.id,
           metodoPago: paymentMethod,
           tipoIva: selectedIva,
+          descuentoTipo,
+          descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
           ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
           ...buildCajaPayload(paymentMethod, cajaContadoRef),
         });
@@ -1359,6 +1393,8 @@ const FacturacionPage = () => {
                 presupuestoId,
                 metodoPago: capturedPayment,
                 tipoIva: capturedIva,
+                descuentoTipo,
+                descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
                 confirmarConDeudaPendiente: true,
               });
               const detallesEquipoRetry = retryNota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
@@ -1561,6 +1597,15 @@ const FacturacionPage = () => {
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: notaParaAsignacion.id,
         equiposAsignaciones: asignaciones,
+        ...(isManualInvoice
+          ? {
+              descuentoTipo,
+              descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
+            }
+          : {
+              descuentoTipo: notaDescuentoTipo,
+              descuentoValor: notaDescuentoTipo === 'NONE' ? 0 : notaDescuentoValor,
+            }),
         ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
         ...(cuotasParaEnviar != null && { cantidadCuotas: cuotasParaEnviar }),
         tipoFinanciacion: isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion,
@@ -1768,6 +1813,8 @@ const FacturacionPage = () => {
         : []
     );
     setEditingNotaItems(false);
+    setNotaDescuentoTipo(((nota as any).descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE');
+    setNotaDescuentoValor(Number((nota as any).descuentoValor) || 0);
     setConvertDialogOpen(true);
     deudaYaConfirmadaRef.current = false;
 
@@ -1812,6 +1859,8 @@ const FacturacionPage = () => {
     setNotaUsePorcentaje(true);
     setNotaPorcentajeEntrega(null);
     setNotaMontoFijoEntrega(null);
+    setNotaDescuentoTipo('NONE');
+    setNotaDescuentoValor(0);
     billingConfirmedRef.current = false;
     deudaYaConfirmadaRef.current = false;
   };
@@ -1897,6 +1946,8 @@ const FacturacionPage = () => {
           : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0);
         const factura = await documentoApi.convertToFactura({
           notaPedidoId: notaId,
+          descuentoTipo: notaDescuentoTipo,
+          descuentoValor: notaDescuentoTipo === 'NONE' ? 0 : notaDescuentoValor,
           ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
           ...(notaCantidadCuotas != null && { cantidadCuotas: notaCantidadCuotas }),
           tipoFinanciacion: notaTipoFinanciacion,
@@ -2254,6 +2305,45 @@ const FacturacionPage = () => {
                   />
                 </Grid>
 
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Tipo de descuento</InputLabel>
+                    <Select
+                      value={descuentoTipo}
+                      onChange={(e) => {
+                        const next = e.target.value as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+                        setDescuentoTipo(next);
+                        if (next === 'NONE') setDescuentoValor(0);
+                      }}
+                      label="Tipo de descuento"
+                    >
+                      <MenuItem value="NONE">Sin descuento</MenuItem>
+                      <MenuItem value="PORCENTAJE">Porcentaje (%)</MenuItem>
+                      <MenuItem value="MONTO_FIJO">Monto fijo ($)</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label={descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
+                    value={descuentoTipo === 'NONE' ? '' : descuentoValor}
+                    onChange={(e) => {
+                      const raw = parseFloat(e.target.value);
+                      const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                      setDescuentoValor(descuentoTipo === 'PORCENTAJE' ? Math.min(100, valor) : valor);
+                    }}
+                    inputProps={{
+                      min: 0,
+                      max: descuentoTipo === 'PORCENTAJE' ? 100 : undefined,
+                      step: descuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
+                    }}
+                    disabled={descuentoTipo === 'NONE'}
+                  />
+                </Grid>
+
                 {isFinanciamiento(paymentMethod) && (
                   <Grid item xs={12}>
                     <Alert severity="info">
@@ -2320,13 +2410,21 @@ const FacturacionPage = () => {
                 <Box mt={3} sx={{ width: '100%' }}>
                   <Paper sx={{ p: 2, bgcolor: 'grey.50', width: '100%' }}>
                     <Grid container spacing={2} sx={{ width: '100%' }}>
-                      <Grid item xs={12} sm={6}>
+                      <Grid item xs={12} sm={descuentoTipo !== 'NONE' && descuentoAmount > 0 ? 4 : 6}>
                         <Typography variant="subtitle2" color="text.secondary">
                           Subtotal:
                         </Typography>
                         <Typography variant="h6">${subtotalVenta.toFixed(2)}</Typography>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      {descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
+                        <Grid item xs={12} sm={4}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Descuento {descuentoTipo === 'PORCENTAJE' ? `(${descuentoValor}%)` : '(monto fijo)'}:
+                          </Typography>
+                          <Typography variant="h6" color="error.main">-${descuentoAmount.toFixed(2)}</Typography>
+                        </Grid>
+                      )}
+                      <Grid item xs={12} sm={descuentoTipo !== 'NONE' && descuentoAmount > 0 ? 4 : 6}>
                         <Typography variant="subtitle2" color="text.secondary">
                           IVA ({IVA_OPTIONS.find(o => o.value === selectedIva)?.label}):
                         </Typography>
@@ -2653,22 +2751,67 @@ const FacturacionPage = () => {
                 recetas={recetas}
               />
 
+              <Box mt={2}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Tipo de descuento</InputLabel>
+                      <Select
+                        value={notaDescuentoTipo}
+                        onChange={(e) => {
+                          const next = e.target.value as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+                          setNotaDescuentoTipo(next);
+                          if (next === 'NONE') setNotaDescuentoValor(0);
+                        }}
+                        label="Tipo de descuento"
+                      >
+                        <MenuItem value="NONE">Sin descuento</MenuItem>
+                        <MenuItem value="PORCENTAJE">Porcentaje (%)</MenuItem>
+                        <MenuItem value="MONTO_FIJO">Monto fijo ($)</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      label={notaDescuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
+                      value={notaDescuentoTipo === 'NONE' ? '' : notaDescuentoValor}
+                      onChange={(e) => {
+                        const raw = parseFloat(e.target.value);
+                        const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                        setNotaDescuentoValor(notaDescuentoTipo === 'PORCENTAJE' ? Math.min(100, valor) : valor);
+                      }}
+                      inputProps={{
+                        min: 0,
+                        max: notaDescuentoTipo === 'PORCENTAJE' ? 100 : undefined,
+                        step: notaDescuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
+                      }}
+                      disabled={notaDescuentoTipo === 'NONE'}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+
               <Box mt={3}>
                 <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                   <Box display="flex" flexDirection="column" gap={2}>
                     <Box display="flex" justifyContent="space-between">
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Subtotal:
+                      <Typography variant="subtitle2" color="text.secondary">Subtotal:</Typography>
+                      <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
+                    </Box>
+                    {notaDescuentoAmount > 0 && (
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle2" color="error.main">
+                          Descuento {notaDescuentoTipo === 'PORCENTAJE' ? `(${notaDescuentoValor}%)` : '(monto fijo)'}:
                         </Typography>
-                        <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
+                        <Typography variant="h6" color="error.main">-${notaDescuentoAmount.toFixed(2)}</Typography>
                       </Box>
-                      <Box textAlign="right">
-                        <Typography variant="subtitle2" color="text.secondary">
-                          IVA:
-                        </Typography>
-                        <Typography variant="h6">${notaIvaAmount.toFixed(2)}</Typography>
-                      </Box>
+                    )}
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="subtitle2" color="text.secondary">IVA:</Typography>
+                      <Typography variant="h6">${notaIvaAmount.toFixed(2)}</Typography>
                     </Box>
                     {notaFinancingAdjustment !== 0 && (
                       <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -2682,9 +2825,7 @@ const FacturacionPage = () => {
                     )}
                     <Divider />
                     <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Total:
-                      </Typography>
+                      <Typography variant="subtitle2" color="text.secondary">Total:</Typography>
                       <Typography variant="h5" color="primary">
                         ${notaTotalVenta.toFixed(2)}
                       </Typography>

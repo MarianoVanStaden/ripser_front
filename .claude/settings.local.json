@@ -120,7 +120,11 @@
       "Bash(python -c ' *)",
       "Bash(cat \"C:\\\\\\\\Users\\\\\\\\santi\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users-santi-Documents-GitHub-ripser-front\\\\\\\\20968096-eb17-4509-a802-253838094e9e\\\\\\\\tasks\\\\\\\\bhiysz0mr.output\")",
       "Bash(mvn -B test -Dtest=ClienteServiceImplTest)",
-      "Bash(./mvnw -B test -Dtest=ClienteServiceImplTest)"
+      "Bash(./mvnw -B test -Dtest=ClienteServiceImplTest)",
+      "Bash(./mvnw -q -Dtest='PhoneNormalizerTest' test)",
+      "Bash(npx tsc *)",
+      "Read(//tmp/**)",
+      "Bash(javac -version)"
     ],
     "deny": [],
     "ask": [],

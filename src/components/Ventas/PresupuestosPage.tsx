@@ -110,6 +110,8 @@ interface DetalleForm {
   subtotal: number;
 }
 
+type TipoDescuento = 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+
 interface FormData {
   clienteId: string;
   leadId: string;
@@ -118,6 +120,8 @@ interface FormData {
   observaciones: string;
   estado: EstadoDocumento;
   tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  descuentoTipo: TipoDescuento;
+  descuentoValor: number;
 }
 
 const initialFormData: FormData = {
@@ -128,6 +132,8 @@ const initialFormData: FormData = {
   observaciones: "",
   estado: EstadoDocumentoEnum.PENDIENTE,
   tipoIva: 'EXENTO',
+  descuentoTipo: 'NONE',
+  descuentoValor: 0,
 };
 
 const initialDetalle: DetalleForm = {
@@ -478,8 +484,19 @@ const PresupuestosPage: React.FC = () => {
   }, [presupuestosFinanciamiento]);
 
   const subtotal = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
-  const ivaAmount = useMemo(() => subtotal * getIvaPercentage(formData.tipoIva), [subtotal, formData.tipoIva, getIvaPercentage]);
-  const total = useMemo(() => subtotal + ivaAmount, [subtotal, ivaAmount]);
+  const descuentoAmount = useMemo(() => {
+    if (formData.descuentoTipo === 'PORCENTAJE') {
+      const pct = Math.min(100, Math.max(0, formData.descuentoValor || 0));
+      return subtotal * (pct / 100);
+    }
+    if (formData.descuentoTipo === 'MONTO_FIJO') {
+      return Math.min(subtotal, Math.max(0, formData.descuentoValor || 0));
+    }
+    return 0;
+  }, [subtotal, formData.descuentoTipo, formData.descuentoValor]);
+  const subtotalNeto = useMemo(() => Math.max(0, subtotal - descuentoAmount), [subtotal, descuentoAmount]);
+  const ivaAmount = useMemo(() => subtotalNeto * getIvaPercentage(formData.tipoIva), [subtotalNeto, formData.tipoIva, getIvaPercentage]);
+  const total = useMemo(() => subtotalNeto + ivaAmount, [subtotalNeto, ivaAmount]);
 
   // Re-export desde utils compartido para consumidores que solo necesitan el label
   const getMetodoPagoLabel = getMetodoPagoLabelShared;
@@ -576,6 +593,8 @@ const PresupuestosPage: React.FC = () => {
         observaciones: presupuesto.observaciones || "",
         estado: presupuesto.estado,
         tipoIva: (presupuesto as any).tipoIva || 'IVA_21',
+        descuentoTipo: ((presupuesto as any).descuentoTipo as TipoDescuento) || 'NONE',
+        descuentoValor: Number((presupuesto as any).descuentoValor) || 0,
       });
       setDestinatarioMode(presupuesto.clienteId ? 'CLIENTE' : 'LEAD');
       setSelectedCliente(null);
@@ -663,6 +682,8 @@ const PresupuestosPage: React.FC = () => {
       usuarioId: Number(formData.usuarioId) || (user?.id ?? 0),
       observaciones: formData.observaciones,
       tipoIva: formData.tipoIva,
+      descuentoTipo: formData.descuentoTipo,
+      descuentoValor: formData.descuentoTipo === 'NONE' ? 0 : formData.descuentoValor,
       detalles: detalles.map((d) => {
         const baseDetalle: any = {
           tipoItem: d.tipoItem,
@@ -1319,13 +1340,65 @@ const PresupuestosPage: React.FC = () => {
                     setHasUnsavedChanges(true);
                   }}
                   label="Tipo de IVA"
-                  disabled={readOnly || !!editingPresupuesto}
+                  disabled={readOnly}
                 >
                   <MenuItem value="IVA_21">IVA 21%</MenuItem>
                   <MenuItem value="IVA_10_5">IVA 10.5%</MenuItem>
                   <MenuItem value="EXENTO">Exento</MenuItem>
                 </Select>
               </FormControl>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mt: 1 }}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Tipo de descuento</InputLabel>
+                  <Select
+                    value={formData.descuentoTipo}
+                    onChange={(e) => {
+                      const next = e.target.value as TipoDescuento;
+                      setFormData({
+                        ...formData,
+                        descuentoTipo: next,
+                        descuentoValor: next === 'NONE' ? 0 : formData.descuentoValor,
+                      });
+                      setHasUnsavedChanges(true);
+                    }}
+                    label="Tipo de descuento"
+                    disabled={readOnly}
+                  >
+                    <MenuItem value="NONE">Sin descuento</MenuItem>
+                    <MenuItem value="PORCENTAJE">Porcentaje (%)</MenuItem>
+                    <MenuItem value="MONTO_FIJO">Monto fijo ($)</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label={formData.descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
+                  value={formData.descuentoTipo === 'NONE' ? '' : formData.descuentoValor}
+                  onChange={(e) => {
+                    const raw = parseFloat(e.target.value);
+                    const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                    setFormData({
+                      ...formData,
+                      descuentoValor: formData.descuentoTipo === 'PORCENTAJE' ? Math.min(100, valor) : valor,
+                    });
+                    setHasUnsavedChanges(true);
+                  }}
+                  inputProps={{
+                    min: 0,
+                    max: formData.descuentoTipo === 'PORCENTAJE' ? 100 : undefined,
+                    step: formData.descuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
+                  }}
+                  margin="normal"
+                  disabled={readOnly || formData.descuentoTipo === 'NONE'}
+                  helperText={
+                    formData.descuentoTipo === 'MONTO_FIJO' && formData.descuentoValor > subtotal
+                      ? 'El descuento no puede superar el subtotal'
+                      : undefined
+                  }
+                  error={formData.descuentoTipo === 'MONTO_FIJO' && formData.descuentoValor > subtotal}
+                />
+              </Box>
 
               <TextField
                 fullWidth
@@ -1395,7 +1468,7 @@ const PresupuestosPage: React.FC = () => {
               </Alert>
             )}
 
-            {!readOnly && !editingPresupuesto && recetas.length > 0 && (
+            {!readOnly && !editingPresupuesto && recetas.length > 0 && detalles.some((d) => d.tipoItem === 'EQUIPO') && (
               <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <TextField
                   select
@@ -1603,8 +1676,14 @@ const PresupuestosPage: React.FC = () => {
                 <Typography variant="body1">
                   Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
+                {formData.descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
+                  <Typography variant="body1" color="error.main">
+                    Descuento {formData.descuentoTipo === 'PORCENTAJE' ? `(${formData.descuentoValor}%)` : '(monto fijo)'}:
+                    -${descuentoAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  </Typography>
+                )}
                 <Typography variant="body1">
-                  IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}): 
+                  IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}):
                   ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
                 <Divider sx={{ width: '200px', my: 1 }} />
@@ -1716,8 +1795,14 @@ const PresupuestosPage: React.FC = () => {
               <Typography variant="body2" color="text.secondary">
                 Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
               </Typography>
+              {formData.descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
+                <Typography variant="body2" color="error.main">
+                  Descuento {formData.descuentoTipo === 'PORCENTAJE' ? `(${formData.descuentoValor}%)` : '(monto fijo)'}:
+                  -${descuentoAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
+              )}
               <Typography variant="body2" color="text.secondary">
-                IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}): 
+                IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}):
                 ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
               </Typography>
             </Box>

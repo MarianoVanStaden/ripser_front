@@ -77,17 +77,28 @@ import { generarNotaPedidoPDF } from "../../services/pdfService";
 import OpcionFinanciamientoLabel from "./OpcionFinanciamientoLabel";
 
 type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+type TipoDescuento = 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
 
 interface ConvertFormData {
   presupuestoId: string;
   metodoPago: MetodoPago;
   tipoIva: TipoIva;
+  descuentoTipo: TipoDescuento;
+  descuentoValor: number;
 }
 
 const initialConvertForm: ConvertFormData = {
   presupuestoId: "",
   metodoPago: "EFECTIVO" as MetodoPago,
   tipoIva: "EXENTO",
+  descuentoTipo: "NONE",
+  descuentoValor: 0,
+};
+
+const IVA_RATES: Record<TipoIva, number> = {
+  IVA_21: 0.21,
+  IVA_10_5: 0.105,
+  EXENTO: 0,
 };
 
 const NotasPedidoPage: React.FC = () => {
@@ -506,15 +517,25 @@ const NotasPedidoPage: React.FC = () => {
     setOpcionesConvertDialog([]);
     setSelectedOpcionConvertId(null);
 
-    // If presupuesto has tipoIva defined, set it in the form
+    // If presupuesto has tipoIva/descuento defined, inherit them in the form.
+    // The user can still override before converting.
+    const inheritedDescuentoTipo = ((presupuesto as any)?.descuentoTipo as TipoDescuento) || 'NONE';
+    const inheritedDescuentoValor = Number((presupuesto as any)?.descuentoValor) || 0;
     if (presupuesto && presupuesto.tipoIva) {
       setConvertForm(prev => ({
         ...prev,
         presupuestoId,
-        tipoIva: presupuesto.tipoIva as TipoIva
+        tipoIva: presupuesto.tipoIva as TipoIva,
+        descuentoTipo: inheritedDescuentoTipo,
+        descuentoValor: inheritedDescuentoValor,
       }));
     } else {
-      setConvertForm(prev => ({ ...prev, presupuestoId }));
+      setConvertForm(prev => ({
+        ...prev,
+        presupuestoId,
+        descuentoTipo: inheritedDescuentoTipo,
+        descuentoValor: inheritedDescuentoValor,
+      }));
     }
 
     // Fetch financing options for this presupuesto and pre-select the active one
@@ -688,6 +709,8 @@ const NotasPedidoPage: React.FC = () => {
         presupuestoId: Number(convertForm.presupuestoId),
         metodoPago: convertForm.metodoPago,
         tipoIva: convertForm.tipoIva,
+        descuentoTipo: convertForm.descuentoTipo,
+        descuentoValor: convertForm.descuentoTipo === 'NONE' ? 0 : convertForm.descuentoValor,
         ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
       };
 
@@ -1619,19 +1642,106 @@ const NotasPedidoPage: React.FC = () => {
               select
               label="Tipo de IVA"
               value={convertForm.tipoIva}
-              onChange={(e) => setConvertForm(prev => ({ 
-                ...prev, 
-                tipoIva: e.target.value as TipoIva 
+              onChange={(e) => setConvertForm(prev => ({
+                ...prev,
+                tipoIva: e.target.value as TipoIva
               }))}
               margin="normal"
               required
-              disabled={selectedPresupuesto?.tipoIva != null}
-              helperText={selectedPresupuesto?.tipoIva ? "Tipo de IVA definido en el presupuesto" : "Seleccione el tipo de IVA"}
+              helperText={
+                selectedPresupuesto?.tipoIva
+                  ? `Heredado del presupuesto (${getTipoIvaLabel(selectedPresupuesto.tipoIva as TipoIva)}). Puede modificarse.`
+                  : "Seleccione el tipo de IVA"
+              }
             >
               <MenuItem value="IVA_21">IVA 21%</MenuItem>
               <MenuItem value="IVA_10_5">IVA 10.5%</MenuItem>
               <MenuItem value="EXENTO">Exento</MenuItem>
             </TextField>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mt: 1 }}>
+              <TextField
+                fullWidth
+                select
+                label="Tipo de descuento"
+                value={convertForm.descuentoTipo}
+                onChange={(e) => {
+                  const next = e.target.value as TipoDescuento;
+                  setConvertForm(prev => ({
+                    ...prev,
+                    descuentoTipo: next,
+                    descuentoValor: next === 'NONE' ? 0 : prev.descuentoValor,
+                  }));
+                }}
+                margin="normal"
+              >
+                <MenuItem value="NONE">Sin descuento</MenuItem>
+                <MenuItem value="PORCENTAJE">Porcentaje (%)</MenuItem>
+                <MenuItem value="MONTO_FIJO">Monto fijo ($)</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth
+                type="number"
+                label={convertForm.descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
+                value={convertForm.descuentoTipo === 'NONE' ? '' : convertForm.descuentoValor}
+                onChange={(e) => {
+                  const raw = parseFloat(e.target.value);
+                  const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                  setConvertForm(prev => ({
+                    ...prev,
+                    descuentoValor: prev.descuentoTipo === 'PORCENTAJE' ? Math.min(100, valor) : valor,
+                  }));
+                }}
+                inputProps={{
+                  min: 0,
+                  max: convertForm.descuentoTipo === 'PORCENTAJE' ? 100 : undefined,
+                  step: convertForm.descuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
+                }}
+                margin="normal"
+                disabled={convertForm.descuentoTipo === 'NONE'}
+              />
+            </Box>
+
+            {selectedPresupuesto && (() => {
+              const baseSubtotal = selectedPresupuesto.subtotal ?? 0;
+              const descAmt = convertForm.descuentoTipo === 'PORCENTAJE'
+                ? baseSubtotal * (Math.min(100, Math.max(0, convertForm.descuentoValor || 0)) / 100)
+                : convertForm.descuentoTipo === 'MONTO_FIJO'
+                  ? Math.min(baseSubtotal, Math.max(0, convertForm.descuentoValor || 0))
+                  : 0;
+              const subNeto = Math.max(0, baseSubtotal - descAmt);
+              const ivaRate = IVA_RATES[convertForm.tipoIva];
+              const ivaAmt = subNeto * ivaRate;
+              const totalPreview = subNeto + ivaAmt;
+              return (
+                <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
+                  <Typography variant="subtitle2" gutterBottom>Resumen de totales</Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">Subtotal:</Typography>
+                    <Typography variant="body2">${baseSubtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                  </Box>
+                  {descAmt > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="error.main">
+                        Descuento {convertForm.descuentoTipo === 'PORCENTAJE' ? `(${convertForm.descuentoValor}%)` : '(monto fijo)'}:
+                      </Typography>
+                      <Typography variant="body2" color="error.main">-${descAmt.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                    </Box>
+                  )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">IVA ({(ivaRate * 100).toFixed(ivaRate === 0.105 ? 1 : 0)}%):</Typography>
+                    <Typography variant="body2">${ivaAmt.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="subtitle1" fontWeight="bold">Total:</Typography>
+                    <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                      ${totalPreview.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                </Paper>
+              );
+            })()}
           </Box>
         </DialogContent>
         <DialogActions>
