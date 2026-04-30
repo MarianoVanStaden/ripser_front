@@ -145,6 +145,17 @@ export const documentoApi = {
     );
     return response.data;
   },
+  updateDescuento: async (
+    id: number,
+    descuentoTipo: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO',
+    descuentoValor: number,
+  ): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/descuento`,
+      { descuentoTipo, descuentoValor },
+    );
+    return response.data;
+  },
   // Change metodoPago of documento
   changeMetodoPago: async (id: number, metodoPago: MetodoPago): Promise<DocumentoComercial> => {
     const response = await api.put<DocumentoComercial>(

@@ -238,6 +238,16 @@ const NotasPedidoPage: React.FC = () => {
   void setLeadConversionDialogOpen; // Used in future implementation
   void leadToConvert; // Used in future implementation
 
+  // Edit dialog (descuento + observaciones — solo PENDIENTE).
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [notaToEdit, setNotaToEdit] = useState<DocumentoComercial | null>(null);
+  const [editForm, setEditForm] = useState<{
+    descuentoTipo: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+    descuentoValor: number;
+    observaciones: string;
+  }>({ descuentoTipo: 'NONE', descuentoValor: 0, observaciones: '' });
+  const [editLoading, setEditLoading] = useState(false);
+
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
   const pendingDeudaRef = useRef<(() => void) | null>(null);
@@ -904,6 +914,49 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, [selectedNota, obsNotaValue, queryClient]);
 
+  const handleOpenEditDialog = useCallback((nota: DocumentoComercial) => {
+    setNotaToEdit(nota);
+    setEditForm({
+      descuentoTipo: (nota.descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE',
+      descuentoValor: Number(nota.descuentoValor) || 0,
+      observaciones: nota.observaciones || '',
+    });
+    setEditDialogOpen(true);
+  }, []);
+
+  const handleCloseEditDialog = useCallback(() => {
+    setEditDialogOpen(false);
+    setNotaToEdit(null);
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!notaToEdit) return;
+    setEditLoading(true);
+    try {
+      const tipoOriginal = (notaToEdit.descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE';
+      const valorOriginal = Number(notaToEdit.descuentoValor) || 0;
+      const obsOriginal = notaToEdit.observaciones || '';
+      const nuevoTipo = editForm.descuentoTipo;
+      const nuevoValor = nuevoTipo === 'NONE' ? 0 : editForm.descuentoValor;
+
+      if (nuevoTipo !== tipoOriginal || nuevoValor !== valorOriginal) {
+        await documentoApi.updateDescuento(notaToEdit.id, nuevoTipo, nuevoValor);
+      }
+      if (editForm.observaciones !== obsOriginal) {
+        await documentoApi.updateObservaciones(notaToEdit.id, editForm.observaciones || null);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
+      setSnackbar({ open: true, message: 'Nota de pedido actualizada', severity: 'success' });
+      handleCloseEditDialog();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Error al guardar';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setEditLoading(false);
+    }
+  }, [notaToEdit, editForm, queryClient, handleCloseEditDialog]);
+
   // Billing Dialog state (para Financiación Propia)
   const [billingDialogOpen, setBillingDialogOpen] = useState(false);
   const [notaToBill, setNotaToBill] = useState<DocumentoComercial | null>(null);
@@ -1395,6 +1448,19 @@ const NotasPedidoPage: React.FC = () => {
                         >
                           <VisibilityIcon />
                         </IconButton>
+                      </Tooltip>
+                      <Tooltip title={nota.estado === EstadoDocumentoEnum.PENDIENTE ? 'Editar descuento y observaciones' : 'Solo se puede editar en estado PENDIENTE'}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleOpenEditDialog(nota)}
+                            disabled={nota.estado !== EstadoDocumentoEnum.PENDIENTE}
+                            aria-label={`Editar nota de pedido ${nota.numeroDocumento}`}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                       <Tooltip title="Convertir a Factura">
                         <IconButton 
@@ -1955,6 +2021,152 @@ const NotasPedidoPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseViewDialog}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Dialog: descuento + observaciones (solo PENDIENTE) */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={editLoading ? undefined : handleCloseEditDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Editar Nota de Pedido {notaToEdit?.numeroDocumento}
+        </DialogTitle>
+        <DialogContent>
+          {notaToEdit && (() => {
+            const subtotal = Number(notaToEdit.subtotal) || 0;
+            const tipo = editForm.descuentoTipo;
+            const valor = editForm.descuentoValor;
+            let descuentoMonto = 0;
+            if (tipo === 'PORCENTAJE') {
+              const pct = Math.min(100, Math.max(0, valor || 0));
+              descuentoMonto = subtotal * (pct / 100);
+            } else if (tipo === 'MONTO_FIJO') {
+              descuentoMonto = Math.min(subtotal, Math.max(0, valor || 0));
+            }
+            const subtotalNeto = Math.max(0, subtotal - descuentoMonto);
+            const tipoIvaActual = (notaToEdit as any).tipoIva || 'IVA_21';
+            const ivaPct = tipoIvaActual === 'IVA_21' ? 0.21 : tipoIvaActual === 'IVA_10_5' ? 0.105 : 0;
+            const ivaPreview = subtotalNeto * ivaPct;
+            const totalPreview = subtotalNeto + ivaPreview;
+            return (
+              <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Alert severity="info">
+                  Solo podés editar descuento y observaciones cuando la nota está en PENDIENTE.
+                  Cambiar el descuento regenera las opciones de financiamiento.
+                </Alert>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>Tipo de descuento</InputLabel>
+                  <Select
+                    label="Tipo de descuento"
+                    value={editForm.descuentoTipo}
+                    onChange={(e) => {
+                      const next = e.target.value as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+                      setEditForm((prev) => ({
+                        ...prev,
+                        descuentoTipo: next,
+                        descuentoValor: next === 'NONE' ? 0 : prev.descuentoValor,
+                      }));
+                    }}
+                  >
+                    <MenuItem value="NONE">Sin descuento</MenuItem>
+                    <MenuItem value="PORCENTAJE">Porcentaje</MenuItem>
+                    <MenuItem value="MONTO_FIJO">Monto fijo</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  size="small"
+                  type="number"
+                  label={editForm.descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
+                  value={editForm.descuentoTipo === 'NONE' ? '' : editForm.descuentoValor}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value) || 0;
+                    setEditForm((prev) => ({
+                      ...prev,
+                      descuentoValor: prev.descuentoTipo === 'PORCENTAJE' ? Math.min(100, v) : v,
+                    }));
+                  }}
+                  disabled={editForm.descuentoTipo === 'NONE'}
+                  inputProps={{
+                    min: 0,
+                    max: editForm.descuentoTipo === 'PORCENTAJE' ? 100 : undefined,
+                    step: editForm.descuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
+                  }}
+                  error={editForm.descuentoTipo === 'MONTO_FIJO' && editForm.descuentoValor > subtotal}
+                  helperText={
+                    editForm.descuentoTipo === 'MONTO_FIJO' && editForm.descuentoValor > subtotal
+                      ? `El descuento no puede superar el subtotal (${subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })})`
+                      : ' '
+                  }
+                  fullWidth
+                />
+                <TextField
+                  size="small"
+                  label="Observaciones"
+                  value={editForm.observaciones}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, observaciones: e.target.value }))}
+                  multiline
+                  rows={3}
+                  fullWidth
+                />
+                <Divider />
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2">Subtotal:</Typography>
+                    <Typography variant="body2">
+                      ${subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  {tipo !== 'NONE' && descuentoMonto > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="body2">
+                        Descuento {tipo === 'PORCENTAJE' ? `(${valor}%)` : '(monto fijo)'}:
+                      </Typography>
+                      <Typography variant="body2" color="error.main">
+                        -${descuentoMonto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </Typography>
+                    </Box>
+                  )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2">
+                      IVA ({tipoIvaActual === 'IVA_21' ? '21%' : tipoIvaActual === 'IVA_10_5' ? '10.5%' : '0%'}):
+                    </Typography>
+                    <Typography variant="body2">
+                      ${ivaPreview.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="subtitle1" fontWeight={600}>Total estimado:</Typography>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      ${totalPreview.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                    El backend recalcula el total exacto al guardar.
+                  </Typography>
+                </Box>
+              </Box>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog} disabled={editLoading}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveEdit}
+            variant="contained"
+            disabled={
+              editLoading ||
+              (editForm.descuentoTipo === 'MONTO_FIJO' &&
+                editForm.descuentoValor > (Number(notaToEdit?.subtotal) || 0))
+            }
+          >
+            {editLoading ? 'Guardando…' : 'Guardar'}
+          </Button>
         </DialogActions>
       </Dialog>
 

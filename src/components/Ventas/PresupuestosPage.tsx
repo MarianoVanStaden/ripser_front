@@ -262,6 +262,12 @@ const PresupuestosPage: React.FC = () => {
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdPresupuesto, setCreatedPresupuesto] = useState<DocumentoComercial | null>(null);
 
+  // View dialog (read-only) state — espejo del de NotasPedidoPage.
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingPresupuesto, setViewingPresupuesto] = useState<DocumentoComercial | null>(null);
+  const [editingObsView, setEditingObsView] = useState(false);
+  const [obsViewValue, setObsViewValue] = useState('');
+
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
   const pendingDeudaRef = useRef<(() => void) | null>(null);
@@ -649,6 +655,32 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [hasUnsavedChanges, user, readOnly]);
 
+  const handleOpenViewDialog = useCallback((presupuesto: DocumentoComercial) => {
+    setViewingPresupuesto(presupuesto);
+    setEditingObsView(false);
+    setObsViewValue('');
+    setViewDialogOpen(true);
+  }, []);
+
+  const handleCloseViewDialog = useCallback(() => {
+    setViewDialogOpen(false);
+    setViewingPresupuesto(null);
+    setEditingObsView(false);
+  }, []);
+
+  const handleSaveObsView = useCallback(async () => {
+    if (!viewingPresupuesto) return;
+    try {
+      const updated = await documentoApi.updateObservaciones(viewingPresupuesto.id, obsViewValue || null);
+      setViewingPresupuesto(updated);
+      setEditingObsView(false);
+      invalidatePresupuestos();
+      setSnackbar({ open: true, message: 'Observaciones actualizadas', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: 'Error al guardar observaciones', severity: 'error' });
+    }
+  }, [viewingPresupuesto, obsViewValue, invalidatePresupuestos]);
+
   const handleConfirmClose = useCallback(() => {
     setConfirmDialogOpen(false);
     setDialogOpen(false);
@@ -757,6 +789,16 @@ const PresupuestosPage: React.FC = () => {
 
       let savedPresupuesto: DocumentoComercial;
       if (editingPresupuesto) {
+        // El descuento solo puede editarse en PENDIENTE — aplicarlo primero,
+        // antes de un eventual cambio de estado a APROBADO/RECHAZADO.
+        const tipoOriginal = (editingPresupuesto.descuentoTipo as TipoDescuento) || 'NONE';
+        const valorOriginal = Number(editingPresupuesto.descuentoValor) || 0;
+        const nuevoTipo = formData.descuentoTipo;
+        const nuevoValor = nuevoTipo === 'NONE' ? 0 : formData.descuentoValor;
+        const descuentoCambio = nuevoTipo !== tipoOriginal || nuevoValor !== valorOriginal;
+        if (descuentoCambio) {
+          await documentoApi.updateDescuento(editingPresupuesto.id, nuevoTipo, nuevoValor);
+        }
         savedPresupuesto = await documentoApi.changeEstado(editingPresupuesto.id, formData.estado);
         const observacionesOriginales = editingPresupuesto.observaciones ?? '';
         if (formData.observaciones !== observacionesOriginales) {
@@ -1102,7 +1144,7 @@ const PresupuestosPage: React.FC = () => {
                       </TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>
                         <Tooltip title="Ver">
-                          <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, true)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
+                          <IconButton size="small" color="primary" onClick={() => handleOpenViewDialog(presupuesto)} aria-label={`Ver presupuesto ${presupuesto.numeroDocumento}`}>
                             <VisibilityIcon />
                           </IconButton>
                         </Tooltip>
@@ -1901,6 +1943,217 @@ const PresupuestosPage: React.FC = () => {
           <Button onClick={handleSelectOpcion} variant="contained" disabled={!selectedOpcionId}>
             Confirmar selección
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View Dialog (read-only, espejo del de NotasPedidoPage) */}
+      <Dialog
+        open={viewDialogOpen}
+        onClose={handleCloseViewDialog}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            maxHeight: { xs: '100%', sm: '90vh' },
+            m: { xs: 0, sm: 2 },
+          },
+        }}
+      >
+        <DialogTitle>
+          Presupuesto {viewingPresupuesto?.numeroDocumento}
+        </DialogTitle>
+        <DialogContent>
+          {viewingPresupuesto && (
+            <Box sx={{ pt: 2 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {viewingPresupuesto.clienteNombre ? 'Cliente' : 'Lead'}
+                  </Typography>
+                  <Typography>
+                    {viewingPresupuesto.clienteNombre || viewingPresupuesto.leadNombre || '-'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Usuario
+                  </Typography>
+                  <Typography>{viewingPresupuesto.usuarioNombre || '-'}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Fecha de Emisión
+                  </Typography>
+                  <Typography>
+                    {viewingPresupuesto.fechaEmision
+                      ? new Date(viewingPresupuesto.fechaEmision).toLocaleDateString('es-AR')
+                      : '-'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Fecha de Vencimiento
+                  </Typography>
+                  <Typography>
+                    {viewingPresupuesto.fechaVencimiento
+                      ? new Date(viewingPresupuesto.fechaVencimiento).toLocaleDateString('es-AR')
+                      : '-'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Tipo de IVA
+                  </Typography>
+                  <Typography>
+                    {(() => {
+                      const tipoIva = (viewingPresupuesto as any).tipoIva;
+                      if (tipoIva === 'IVA_21') return 'IVA 21%';
+                      if (tipoIva === 'IVA_10_5') return 'IVA 10.5%';
+                      if (tipoIva === 'EXENTO') return 'Exento';
+                      return '-';
+                    })()}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Estado
+                  </Typography>
+                  <Chip
+                    label={getStatusLabel(viewingPresupuesto.estado)}
+                    color={getStatusColor(viewingPresupuesto.estado)}
+                    size="small"
+                  />
+                </Box>
+              </Box>
+
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Observaciones
+                  </Typography>
+                  {!editingObsView && (
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setObsViewValue(viewingPresupuesto.observaciones ?? '');
+                        setEditingObsView(true);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+                {editingObsView ? (
+                  <Box>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={obsViewValue}
+                      onChange={(e) => setObsViewValue(e.target.value)}
+                      size="small"
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Button size="small" variant="contained" onClick={handleSaveObsView}>
+                        Guardar
+                      </Button>
+                      <Button size="small" onClick={() => setEditingObsView(false)}>
+                        Cancelar
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Typography color={viewingPresupuesto.observaciones ? 'text.primary' : 'text.secondary'}>
+                    {viewingPresupuesto.observaciones || 'Sin observaciones'}
+                  </Typography>
+                )}
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" gutterBottom>
+                Detalles
+              </Typography>
+              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ minWidth: 120 }}>Producto/Equipo</TableCell>
+                      <TableCell sx={{ minWidth: 100 }}>Color</TableCell>
+                      <TableCell sx={{ minWidth: 100 }}>Medida</TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 80 }}>Cantidad</TableCell>
+                      <TableCell align="right" sx={{ minWidth: 100 }}>Precio Unit.</TableCell>
+                      <TableCell align="right" sx={{ minWidth: 100 }}>Subtotal</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {viewingPresupuesto.detalles?.map((detalle: DetalleDocumento, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          {detalle.tipoItem === 'EQUIPO'
+                            ? `${detalle.recetaNombre || ''} ${detalle.recetaModelo ? `- ${detalle.recetaModelo}` : ''}`
+                            : detalle.productoNombre || '-'}
+                        </TableCell>
+                        <TableCell>{detalle.color?.nombre || '-'}</TableCell>
+                        <TableCell>{detalle.medida?.nombre || '-'}</TableCell>
+                        <TableCell>{detalle.descripcion}</TableCell>
+                        <TableCell align="center">{detalle.cantidad}</TableCell>
+                        <TableCell align="right">
+                          ${detalle.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell align="right">
+                          ${detalle.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                    <Typography>
+                      ${viewingPresupuesto.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  {viewingPresupuesto.descuentoTipo && viewingPresupuesto.descuentoTipo !== 'NONE' && Number(viewingPresupuesto.descuentoValor) > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography sx={{ mr: 4 }}>
+                        Descuento {viewingPresupuesto.descuentoTipo === 'PORCENTAJE' ? `(${viewingPresupuesto.descuentoValor}%)` : '(monto fijo)'}:
+                      </Typography>
+                      <Typography color="error.main">
+                        -${Number(viewingPresupuesto.descuentoMonto ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </Typography>
+                    </Box>
+                  )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography sx={{ mr: 4 }}>IVA:</Typography>
+                    <Typography>
+                      ${viewingPresupuesto.iva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
+                    <Typography variant="h6">
+                      ${viewingPresupuesto.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" gutterBottom>
+                Trazabilidad del flujo
+              </Typography>
+              <AuditoriaFlujo documento={viewingPresupuesto} />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseViewDialog}>Cerrar</Button>
         </DialogActions>
       </Dialog>
 
