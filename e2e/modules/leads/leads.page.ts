@@ -12,7 +12,7 @@ import { BasePage } from '../../pages/base.page';
  *   - Prioridad chips: HOT, WARM, COLD
  */
 export class LeadsPage extends BasePage {
-  readonly path = '/leads/table';
+  readonly path = '/leads';
 
   readonly heading: Locator;
   readonly nuevoLeadButton: Locator;
@@ -71,6 +71,10 @@ export class LeadFormPage extends BasePage {
   readonly nombreInput: Locator;
   readonly telefonoInput: Locator;
   readonly submitButton: Locator;
+  /** Dialog que aparece cuando el teléfono ya está registrado (HTTP 409). */
+  readonly duplicateDialog: Locator;
+  readonly duplicateGoToButton: Locator;
+  readonly duplicateCancelButton: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -78,9 +82,24 @@ export class LeadFormPage extends BasePage {
     this.nombreInput   = page.getByLabel(/nombre/i).first();
     this.telefonoInput = page.getByLabel(/teléfono/i).first();
     this.submitButton  = page.getByRole('button', { name: /guardar|crear lead/i });
+
+    this.duplicateDialog        = page.getByRole('dialog');
+    this.duplicateGoToButton    = page.getByRole('button', { name: /ir al lead existente|ir al cliente existente/i });
+    this.duplicateCancelButton  = page.getByRole('button', { name: /cancelar/i });
   }
 
   async assertOnPage(): Promise<void> {
     await expect(this.page).toHaveURL(/\/leads\/nuevo/, { timeout: 10_000 });
+  }
+
+  async fillMinimo(nombre: string, telefono: string): Promise<void> {
+    await this.fillField(this.nombreInput, nombre);
+    await this.fillField(this.telefonoInput, telefono);
+    // Canal y estado tienen defaults — no se necesitan para el test de duplicado
+  }
+
+  async assertDuplicateDialogVisible(telefono: string): Promise<void> {
+    await expect(this.duplicateDialog).toBeVisible({ timeout: 8_000 });
+    await expect(this.page.getByText(telefono)).toBeVisible();
   }
 }

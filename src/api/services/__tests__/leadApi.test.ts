@@ -114,6 +114,31 @@ describe('leadApi', () => {
       expect(mockedApi.post).toHaveBeenCalledWith('/api/leads', newLead);
       expect(result.id).toBe(5);
     });
+
+    it('rechaza con el body 409 cuando el teléfono ya existe (TELEFONO_DUPLICADO)', async () => {
+      const conflictError = {
+        response: {
+          status: 409,
+          data: {
+            tipo: 'TELEFONO_DUPLICADO',
+            existingId: 42,
+            existingType: 'LEAD',
+            existingNombre: 'Juan Pérez',
+            telefono: '1112345678',
+          },
+        },
+      };
+      mockedApi.post.mockRejectedValue(conflictError);
+
+      await expect(
+        leadApi.create({ nombre: 'Test', telefono: '1112345678' } as any)
+      ).rejects.toMatchObject({
+        response: {
+          status: 409,
+          data: { tipo: 'TELEFONO_DUPLICADO', existingId: 42 },
+        },
+      });
+    });
   });
 
   describe('update', () => {

@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { DataFactory } from '../../utils/data-factory';
+import { LeadFormPage } from './leads.page';
 
 /**
  * Leads module — E2E tests.
@@ -77,7 +78,80 @@ test.describe('Leads', () => {
     await expect(page).toHaveURL(/\/leads\/nuevo/, { timeout: 10_000 });
   });
 
-  // ── 5. Lead lifecycle via API (skipped without credentials) ───────────────
+  // ── 5. Detección de teléfono duplicado ───────────────────────────────────
+
+  test('should show DuplicatePhoneDialog and navigate to existing lead on 409', async ({
+    page,
+  }) => {
+    const TELEFONO = '1112345678';
+    const EXISTING_ID = 42;
+
+    // Mock POST /api/leads → 409 TELEFONO_DUPLICADO
+    await page.route('**/api/leads', async (route) => {
+      if (route.request().method() !== 'POST') { await route.fallback(); return; }
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tipo: 'TELEFONO_DUPLICADO',
+          existingId: EXISTING_ID,
+          existingType: 'LEAD',
+          existingNombre: 'Juan Pérez',
+          telefono: TELEFONO,
+        }),
+      });
+    });
+
+    const formPage = new LeadFormPage(page);
+    await page.goto('/leads/nuevo');
+    await formPage.assertOnPage();
+
+    await formPage.fillMinimo('Test Duplicate', TELEFONO);
+    await formPage.submitButton.click();
+
+    // Dialog debe aparecer con el teléfono
+    await formPage.assertDuplicateDialogVisible(TELEFONO);
+
+    // Texto "Juan Pérez" debe estar visible
+    await expect(page.getByText('Juan Pérez')).toBeVisible();
+
+    // Click en "Ir al lead existente" → navega a /leads/42
+    await formPage.duplicateGoToButton.click();
+    await expect(page).toHaveURL(new RegExp(`/leads/${EXISTING_ID}`), { timeout: 10_000 });
+  });
+
+  test('should close DuplicatePhoneDialog and stay on form when Cancel clicked', async ({
+    page,
+  }) => {
+    await page.route('**/api/leads', async (route) => {
+      if (route.request().method() !== 'POST') { await route.fallback(); return; }
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tipo: 'TELEFONO_DUPLICADO',
+          existingId: 7,
+          existingType: 'CLIENTE',
+          existingNombre: 'Empresa ABC',
+          telefono: '9998887777',
+        }),
+      });
+    });
+
+    const formPage = new LeadFormPage(page);
+    await page.goto('/leads/nuevo');
+    await formPage.fillMinimo('Test Cancel', '9998887777');
+    await formPage.submitButton.click();
+
+    await expect(formPage.duplicateDialog).toBeVisible({ timeout: 8_000 });
+    await formPage.duplicateCancelButton.click();
+
+    // Dialog se cierra, sigue en /leads/nuevo
+    await expect(formPage.duplicateDialog).not.toBeVisible();
+    await expect(page).toHaveURL(/\/leads\/nuevo/);
+  });
+
+  // ── 6. Lead lifecycle via API (skipped without credentials) ───────────────
 
   test('should create a lead via API and find it in the list', async ({
     leadsPage,
