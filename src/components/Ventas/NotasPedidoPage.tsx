@@ -202,6 +202,43 @@ const NotasPedidoPage: React.FC = () => {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notasPedido]);
+
+  // Batch-load opciones for notas that have a selected financing option but no cached opciones.
+  // Without this, the table shows a generic black "Financiamiento" chip instead of the blue
+  // chip with the actual plan name (e.g. "12 cuotas con interés 35%"), which is the same
+  // behavior used in PresupuestosPage and after selecting via the Opciones dialog.
+  useEffect(() => {
+    if (!notasPedido.length) return;
+    const idsToFetch = notasPedido
+      .filter((n) => n.opcionFinanciamientoSeleccionadaId && !notasFinanciamiento[n.id])
+      .map((n) => n.id);
+    if (idsToFetch.length === 0) return;
+    let cancelled = false;
+    opcionFinanciamientoApi
+      .obtenerOpcionesPorDocumentosBatch(idsToFetch)
+      .then((batch) => {
+        if (cancelled) return;
+        setNotasFinanciamiento((prev) => {
+          const next = { ...prev };
+          let mutated = false;
+          for (const [id, opciones] of Object.entries(batch)) {
+            const numId = Number(id);
+            if (Array.isArray(opciones) && opciones.length > 0 && !next[numId]) {
+              next[numId] = opciones;
+              mutated = true;
+            }
+          }
+          return mutated ? next : prev;
+        });
+      })
+      .catch(() => {
+        // Non-fatal: the chip will fall back to the metodoPago label.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notasPedido]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
