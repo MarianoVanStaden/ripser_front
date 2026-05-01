@@ -633,7 +633,7 @@ const PresupuestosPage: React.FC = () => {
       setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
       setDestinatarioMode('CLIENTE');
       setSelectedCliente(null);
-      setDetalles([]);
+      setDetalles([{ ...initialDetalle }]);
     }
     setDialogOpen(true);
   }, [user]);
