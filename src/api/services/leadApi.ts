@@ -9,7 +9,8 @@ import type {
   InteraccionLeadDTO,
   RecordatorioLeadDTO,
   PrioridadLeadEnum,
-  ProvinciaEnum
+  ProvinciaEnum,
+  TelefonoCheckResponse
 } from '../../types/lead.types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
@@ -115,6 +116,20 @@ export const leadApi = {
   // Crear nuevo lead
   create: async (leadData: Omit<LeadDTO, 'id' | 'dias' | 'fechaConversion'>): Promise<LeadDTO> => {
     const response = await api.post<LeadDTO>(BASE_PATH, leadData);
+    return response.data;
+  },
+
+  // Chequeo en vivo de duplicados de teléfono. Soporta AbortSignal para cancelar
+  // requests stale cuando el usuario tabbing rápido entre campos.
+  checkTelefono: async (
+    telefono: string,
+    excludeId?: number,
+    signal?: AbortSignal,
+  ): Promise<TelefonoCheckResponse> => {
+    const response = await api.get<TelefonoCheckResponse>(`${BASE_PATH}/check-telefono`, {
+      params: { telefono, excludeId },
+      signal,
+    });
     return response.data;
   },
 

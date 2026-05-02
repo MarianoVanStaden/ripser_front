@@ -341,6 +341,17 @@ export interface DuplicatePhoneError {
   telefono: string;
 }
 
+// Respuesta de GET /api/leads/check-telefono — chequeo no destructivo en vivo
+// (lo dispara el front en blur del campo). Mismos campos que DuplicatePhoneError
+// más el flag `exists`; cuando es false, el resto viene en null.
+export interface TelefonoCheckResponse {
+  exists: boolean;
+  existingId: number | null;
+  existingType: 'LEAD' | 'CLIENTE' | null;
+  existingNombre: string | null;
+  telefono: string | null;
+}
+
 export const RESULTADO_INTERACCION_LABELS: Record<ResultadoInteraccionEnum, string> = {
   EXITOSA: 'Exitosa',
   SIN_RESPUESTA: 'Sin Respuesta',

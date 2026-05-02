@@ -16,9 +16,12 @@ interface Props {
   open: boolean;
   error: DuplicatePhoneError | null;
   onClose: () => void;
+  // En modo edición ofrecer "Ir al lead existente" rompería el flujo del usuario
+  // (perdería los cambios sin guardar), así que mostramos solo el aviso.
+  warnOnly?: boolean;
 }
 
-export const DuplicatePhoneDialog: React.FC<Props> = ({ open, error, onClose }) => {
+export const DuplicatePhoneDialog: React.FC<Props> = ({ open, error, onClose, warnOnly = false }) => {
   const navigate = useNavigate();
 
   if (!error) return null;
@@ -44,15 +47,18 @@ export const DuplicatePhoneDialog: React.FC<Props> = ({ open, error, onClose }) 
           <strong>{error.existingNombre}</strong>.
         </Alert>
         <Typography variant="body2" color="text.secondary">
-          En lugar de duplicar el registro, podés agregar una nueva interacción
-          directamente en el {isLead ? 'lead' : 'cliente'} existente.
+          {warnOnly
+            ? `Otro ${isLead ? 'lead' : 'cliente'} ya tiene este número cargado. Revisá si es un duplicado antes de guardar.`
+            : `En lugar de duplicar el registro, podés agregar una nueva interacción directamente en el ${isLead ? 'lead' : 'cliente'} existente.`}
         </Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="contained" color="warning" onClick={handleNavigate}>
-          Ir al {isLead ? 'lead' : 'cliente'} existente
-        </Button>
+        <Button onClick={onClose}>{warnOnly ? 'Entendido' : 'Cancelar'}</Button>
+        {!warnOnly && (
+          <Button variant="contained" color="warning" onClick={handleNavigate}>
+            Ir al {isLead ? 'lead' : 'cliente'} existente
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

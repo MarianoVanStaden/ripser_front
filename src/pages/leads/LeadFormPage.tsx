@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -71,6 +71,9 @@ export const LeadFormPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [duplicateError, setDuplicateError] = useState<DuplicatePhoneError | null>(null);
+  // Cancela el chequeo en vuelo cuando el usuario sigue editando: si tabbing
+  // entre campos, sólo nos importa la respuesta del último blur.
+  const checkTelefonoAbortRef = useRef<AbortController | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
@@ -343,6 +346,46 @@ export const LeadFormPage = () => {
     }
   };
 
+  // Chequeo en vivo de duplicados al perder foco del campo teléfono. El backend
+  // devuelve 200 con `exists` (no 409), así que el modal aparece sin tener que
+  // esperar al submit. En edición se excluye el lead actual y se pasa warnOnly
+  // para suprimir el botón "Ir al lead existente" — el usuario perdería los
+  // cambios sin guardar.
+  const handleTelefonoBlur = async () => {
+    const telefono = (formData.telefono || '').trim();
+    // Sólo dígitos para decidir si vale la pena consultar; la normalización
+    // real la hace el backend (PhoneNormalizer = últimos 10 dígitos = número
+    // significativo nacional argentino, código de área + abonado). Con menos
+    // de 10 el backend no trunca y el chequeo no es comparable contra los
+    // teléfonos almacenados en formato canónico, así que ni siquiera
+    // disparamos el request.
+    const digitos = telefono.replace(/\D/g, '');
+    if (digitos.length < 10) return;
+
+    checkTelefonoAbortRef.current?.abort();
+    const controller = new AbortController();
+    checkTelefonoAbortRef.current = controller;
+
+    try {
+      const excludeId = isEditMode && id ? parseInt(id) : undefined;
+      const result = await leadApi.checkTelefono(telefono, excludeId, controller.signal);
+      if (controller.signal.aborted) return;
+      if (result.exists && result.existingId && result.existingType && result.existingNombre) {
+        setDuplicateError({
+          tipo: 'TELEFONO_DUPLICADO',
+          existingId: result.existingId,
+          existingType: result.existingType,
+          existingNombre: result.existingNombre,
+          telefono: result.telefono ?? telefono,
+        });
+      }
+    } catch (err) {
+      // Cancelaciones son esperables al tabbing rápido — no son errores reales.
+      if ((err as any)?.name === 'CanceledError' || (err as any)?.code === 'ERR_CANCELED') return;
+      console.error('Error chequeando duplicados de teléfono:', err);
+    }
+  };
+
   const handleAgregarRecordatorio = () => {
     if (!nuevoRecordatorio.fechaRecordatorio) {
       return;
@@ -385,6 +428,7 @@ export const LeadFormPage = () => {
         open={duplicateError !== null}
         error={duplicateError}
         onClose={() => setDuplicateError(null)}
+        warnOnly={isEditMode}
       />
       <Box sx={{ mb: 3 }}>
         <Button
@@ -441,6 +485,7 @@ export const LeadFormPage = () => {
                   label="Teléfono"
                   value={formData.telefono}
                   onChange={handleChange('telefono')}
+                  onBlur={handleTelefonoBlur}
                   error={Boolean(errors.telefono)}
                   helperText={errors.telefono}
                 />
