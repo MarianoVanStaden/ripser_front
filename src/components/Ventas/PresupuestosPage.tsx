@@ -1411,7 +1411,7 @@ const PresupuestosPage: React.FC = () => {
                 </Select>
               </FormControl>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mt: 1 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
                 <FormControl fullWidth margin="normal">
                   <InputLabel>Tipo de descuento</InputLabel>
                   <Select
@@ -1569,10 +1569,10 @@ const PresupuestosPage: React.FC = () => {
               <Table size="small" aria-label="Tabla de detalles del presupuesto" sx={{ minWidth: { xs: 700, sm: 'auto' } }}>
                 <TableHead>
                   <TableRow>
-                    {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 120 }}>Tipo</TableCell>}
+                    {!readOnly && !editingPresupuesto && <TableCell sx={{ minWidth: 80 }}>Tipo</TableCell>}
                     <TableCell sx={{ minWidth: 220 }}>Producto/Equipo</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Color</TableCell>
-                    <TableCell sx={{ minWidth: 120 }}>Medida</TableCell>
+                    <TableCell sx={{ minWidth: 60 }}>Medida</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Cantidad</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Precio Unit.</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Subtotal</TableCell>
@@ -1640,7 +1640,7 @@ const PresupuestosPage: React.FC = () => {
                               ) : (
                                 recetasFiltradasPorTipo.map((receta) => (
                                   <MenuItem key={receta.id} value={receta.id.toString()}>
-                                    {receta.modelo} ({receta.tipoEquipo})
+                                    {receta.modelo}
                                   </MenuItem>
                                 ))
                               )}
