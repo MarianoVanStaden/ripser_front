@@ -63,7 +63,7 @@ export const PrestamosListPage: React.FC = () => {
       const response = await prestamoPersonalApi.getAll({ page: 0, size: 9999, sort: 'diasVencido,desc' });
       setAllPrestamos(response.content);
     } catch (err) {
-      setError('Error al cargar préstamos');
+      setError('Error al cargar créditos personales');
       console.error('Error loading prestamos:', err);
     } finally {
       setLoading(false);
@@ -156,15 +156,15 @@ export const PrestamosListPage: React.FC = () => {
 
   return (
     <Box>
-      <LoadingOverlay open={loading} message="Cargando préstamos..." />
+      <LoadingOverlay open={loading} message="Cargando créditos personales..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Gestión de Préstamos</Typography>
+        <Typography variant="h4">Gestión de Créditos Personales</Typography>
         <Button
           variant="contained"
           startIcon={<Add />}
           onClick={() => { setEditingPrestamo(null); setFormOpen(true); }}
         >
-          Nuevo Préstamo
+          Nuevo Crédito Personal
         </Button>
       </Box>
 
@@ -267,7 +267,7 @@ export const PrestamosListPage: React.FC = () => {
                 <TableRow>
                   <TableCell colSpan={9} align="center">
                     <Box py={4}>
-                      <Typography color="text.secondary">No hay préstamos que mostrar</Typography>
+                      <Typography color="text.secondary">No hay créditos personales que mostrar</Typography>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -401,10 +401,10 @@ export const PrestamosListPage: React.FC = () => {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Eliminar Préstamo</DialogTitle>
+        <DialogTitle>Eliminar Crédito Personal</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            ¿Está seguro que desea eliminar el préstamo de <strong>{prestamoToDelete?.clienteNombre}</strong>?
+            ¿Está seguro que desea eliminar el crédito personal de <strong>{prestamoToDelete?.clienteNombre}</strong>?
             Esta acción no se puede deshacer.
           </DialogContentText>
         </DialogContent>

@@ -3204,7 +3204,7 @@ const FacturacionPage = () => {
                 ...(facturaEntregaInfo.cantidadCuotas ? [{ label: 'Cuotas', value: `${facturaEntregaInfo.cantidadCuotas} × $${(facturaEntregaInfo.montoFinanciado / facturaEntregaInfo.cantidadCuotas).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }] : []),
               ]
             : [{ label: 'Total', value: `$${createdFactura.total?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` }]),
-          ...(createdFactura.prestamoId ? [{ label: 'Préstamo generado', value: `#${createdFactura.prestamoId}` }] : []),
+          ...(createdFactura.prestamoId ? [{ label: 'Crédito Personal generado', value: `#${createdFactura.prestamoId}` }] : []),
         ] : []}
         actions={[
           {
@@ -3217,7 +3217,7 @@ const FacturacionPage = () => {
             variant: 'outlined',
           },
           ...(createdFactura?.prestamoId ? [{
-            label: 'Ver Préstamo',
+            label: 'Ver Crédito Personal',
             onClick: () => navigate(`/prestamos/${createdFactura.prestamoId}`),
             icon: <MoneyIcon />,
             variant: 'contained' as const,

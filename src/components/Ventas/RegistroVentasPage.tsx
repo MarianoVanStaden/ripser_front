@@ -1058,7 +1058,7 @@ const RegistroVentasPage: React.FC = () => {
               color="secondary"
               onClick={() => { setViewDialogOpen(false); navigate(`/prestamos/${viewingSale.prestamoId}`); }}
             >
-              Ver Préstamo
+              Ver Crédito Personal
             </Button>
           )}
           <Button

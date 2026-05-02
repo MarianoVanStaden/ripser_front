@@ -54,7 +54,7 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
         );
         setMonto(totalSaldo.toFixed(2));
       })
-      .catch(() => setError('Error al cargar cuotas del préstamo'))
+      .catch(() => setError('Error al cargar cuotas del crédito personal'))
       .finally(() => setLoadingCuotas(false));
   }, [open, prestamoId]);
 
@@ -132,7 +132,7 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
         {loadingCuotas ? (
           <CircularProgress size={24} />
         ) : cuotas.length === 0 ? (
-          <Alert severity="info">No hay cuotas en mora para este préstamo.</Alert>
+          <Alert severity="info">No hay cuotas en mora para este crédito personal.</Alert>
         ) : (
           <List dense sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 2 }}>
             {cuotas.map((c) => {

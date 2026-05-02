@@ -80,6 +80,7 @@ interface NavigationSection {
     text: string;
     icon: React.ReactNode;
     path: string;
+    modulo?: Modulo;
   }>;
 }
 
@@ -121,19 +122,13 @@ const navigation: NavigationSection[] = [
     ],
   },
   {
-    title: 'PRESTAMOS',
+    title: 'CRÉDITOS Y COBRANZAS',
     modulo: 'PRESTAMOS',
     items: [
-      { text: 'Resumen', icon: <AccountBalanceIcon />, path: '/prestamos/resumen' },
-      { text: 'Gestión Préstamos', icon: <AssignmentIcon />, path: '/prestamos/lista' },
-    ],
-  },
-  {
-    title: 'COBRANZAS',
-    modulo: 'ADMINISTRACION',
-    items: [
-      { text: 'Resumen', icon: <AssessmentIcon />, path: '/cobranzas/resumen' },
-      { text: 'Gestiones', icon: <PhoneCallbackIcon />, path: '/cobranzas/lista' },
+      { text: 'Resumen Créditos', icon: <AccountBalanceIcon />, path: '/prestamos/resumen' },
+      { text: 'Gestión Créditos Personales', icon: <AssignmentIcon />, path: '/prestamos/lista' },
+      { text: 'Resumen Cobranzas', icon: <AssessmentIcon />, path: '/cobranzas/resumen', modulo: 'ADMINISTRACION' },
+      { text: 'Gestiones Cobranzas', icon: <PhoneCallbackIcon />, path: '/cobranzas/lista', modulo: 'ADMINISTRACION' },
     ],
   },
   {
@@ -280,11 +275,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/ventas/registro'
   ];
 
-  // Filtrar las secciones según los permisos del usuario
+  // Filtrar las secciones según los permisos del usuario.
+  // Un ítem puede declarar su propio `modulo` para sobreescribir el de la sección
+  // (útil cuando una sección agrupa rutas gateadas por permisos distintos).
   const seccionesFiltradas = navigation
-    .filter((section) => tienePermiso(section.modulo))
     .map((section) => {
-      let filteredItems = section.items;
+      let filteredItems = section.items.filter(item =>
+        tienePermiso(item.modulo ?? section.modulo)
+      );
 
       // Si es la sección de ADMIN, filtrar items según el rol
       if (section.modulo === 'ADMIN' && !esSuperAdmin) {

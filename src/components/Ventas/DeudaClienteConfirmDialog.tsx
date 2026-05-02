@@ -35,7 +35,7 @@ const DeudaClienteConfirmDialog: React.FC<Props> = ({ open, error, onConfirm, on
           </Typography>
           {error.cuotasPendientes > 0 && (
             <Alert severity="warning">
-              El cliente tiene <strong>{error.cuotasPendientes} cuota(s)</strong> de préstamo vencida(s) o pendientes
+              El cliente tiene <strong>{error.cuotasPendientes} cuota(s)</strong> de crédito personal vencida(s) o pendientes
               {error.montoCuotasPendientes != null && (
                 <> por un monto total de{' '}
                   <strong>

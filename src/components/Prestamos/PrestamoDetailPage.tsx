@@ -121,7 +121,7 @@ export const PrestamoDetailPage: React.FC = () => {
       setRecordatorios(allRecordatorios);
     } catch (err) {
       console.error('Error loading prestamo:', err);
-      setError('Error al cargar el préstamo.');
+      setError('Error al cargar el crédito personal.');
     } finally {
       setLoading(false);
     }
@@ -224,21 +224,21 @@ export const PrestamoDetailPage: React.FC = () => {
   if (error || !prestamo) {
     return (
       <Box>
-        <LoadingOverlay open={loading} message="Cargando préstamo..." />
+        <LoadingOverlay open={loading} message="Cargando crédito personal..." />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')} sx={{ mb: 2 }}>Volver</Button>
-        <Alert severity="error">{error || 'Préstamo no encontrado'}</Alert>
+        <Alert severity="error">{error || 'Crédito personal no encontrado'}</Alert>
       </Box>
     );
   }
 
   return (
     <Box>
-      <LoadingOverlay open={loading} message="Cargando préstamo..." />
+      <LoadingOverlay open={loading} message="Cargando crédito personal..." />
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')}>Volver</Button>
         <Typography variant="h4" sx={{ flexGrow: 1 }}>
-          Préstamo - {prestamo.clienteNombre}
+          Crédito Personal - {prestamo.clienteNombre}
         </Typography>
         {prestamo.documentoId && (
           <Button variant="outlined" color="secondary" startIcon={<Receipt />} onClick={() => navigate('/ventas/registro')}>

@@ -169,7 +169,7 @@ export const CobranzasResumenPage: React.FC = () => {
                 value={resumen.sinGestionConMora}
                 icon={<Warning sx={{ color: '#FF5722', fontSize: 28 }} />}
                 color="#FF5722"
-                subtitle="Préstamos que necesitan apertura"
+                subtitle="Créditos personales que necesitan apertura"
                 onClick={() => navigate('/cobranzas/lista')}
               />
             </Grid>

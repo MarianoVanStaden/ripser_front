@@ -112,7 +112,7 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar el préstamo');
+      setError(err.response?.data?.message || 'Error al guardar el crédito personal');
     } finally {
       setSaving(false);
     }
@@ -120,7 +120,7 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{isEdit ? 'Editar Préstamo' : 'Nuevo Préstamo'}</DialogTitle>
+      <DialogTitle>{isEdit ? 'Editar Crédito Personal' : 'Nuevo Crédito Personal'}</DialogTitle>
       <DialogContent>
         <Box sx={{ mt: 2 }}>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

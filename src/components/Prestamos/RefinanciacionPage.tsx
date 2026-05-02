@@ -141,7 +141,7 @@ export const RefinanciacionPage: React.FC = () => {
         // Pre-populate tipoFinanciacion from the loan
         setForm(prev => ({ ...prev, tipoFinanciacion: p.tipoFinanciacion ?? '' }));
       })
-      .catch(() => setLoadError('No se pudo cargar el préstamo'))
+      .catch(() => setLoadError('No se pudo cargar el crédito personal'))
       .finally(() => setLoading(false));
   }, [prestamoId]);
 
@@ -179,7 +179,7 @@ export const RefinanciacionPage: React.FC = () => {
     setSubmitting(true);
     try {
       const result = await refinanciacionApi.confirmar(buildRequest(form, prestamo.id));
-      setSnackbar({ open: true, message: 'Préstamo refinanciado exitosamente', severity: 'success' });
+      setSnackbar({ open: true, message: 'Crédito personal refinanciado exitosamente', severity: 'success' });
       setConfirmOpen(false);
       navigate(`/prestamos/${result.nuevoPrestamo.id}`);
     } catch (e) {
@@ -212,11 +212,11 @@ export const RefinanciacionPage: React.FC = () => {
   if (loadError || !prestamo) {
     return (
       <Box>
-        <LoadingOverlay open={loading} message="Cargando préstamo..." />
+        <LoadingOverlay open={loading} message="Cargando crédito personal..." />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')} sx={{ mb: 2 }}>
           Volver
         </Button>
-        <Alert severity="error">{loadError ?? 'Préstamo no encontrado'}</Alert>
+        <Alert severity="error">{loadError ?? 'Crédito personal no encontrado'}</Alert>
       </Box>
     );
   }
@@ -224,7 +224,7 @@ export const RefinanciacionPage: React.FC = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Box sx={{ pb: 8 }}>
-      <LoadingOverlay open={loading} message="Cargando préstamo..." />
+      <LoadingOverlay open={loading} message="Cargando crédito personal..." />
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2, flexWrap: 'wrap' }}>
         <Button startIcon={<ArrowBack />} onClick={() => navigate(`/prestamos/${prestamoId}`)}>
@@ -233,7 +233,7 @@ export const RefinanciacionPage: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
           <Autorenew color="warning" />
           <Typography variant="h5">
-            Refinanciar Préstamo #{prestamoId} — {prestamo.clienteNombre}
+            Refinanciar Crédito Personal #{prestamoId} — {prestamo.clienteNombre}
           </Typography>
         </Box>
       </Box>
@@ -241,15 +241,15 @@ export const RefinanciacionPage: React.FC = () => {
       {/* Banner si el préstamo no es refinanciable */}
       {!estaRefinanciable && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          Este préstamo no puede refinanciarse (estado: {prestamo.estado}). Solo se pueden
-          refinanciar préstamos en estado Activo, En Mora o En Legal.
+          Este crédito personal no puede refinanciarse (estado: {prestamo.estado}). Solo se pueden
+          refinanciar créditos personales en estado Activo, En Mora o En Legal.
         </Alert>
       )}
 
       {/* Banner sin deuda posible */}
       {estaRefinanciable && sinDeuda && (
         <Alert severity="info" sx={{ mb: 3 }}>
-          Este préstamo no tiene deuda pendiente para refinanciar.
+          Este crédito personal no tiene deuda pendiente para refinanciar.
         </Alert>
       )}
 
@@ -456,8 +456,8 @@ export const RefinanciacionPage: React.FC = () => {
           {/* Banner deuda migrada */}
           {preview?.deudaMigrada && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Este préstamo no tiene cuotas registradas. La deuda de <strong>${fmt(preview.deudaTotal)}</strong> fue
-              tomada del saldo pendiente del préstamo. Podés refinanciarla normalmente.
+              Este crédito personal no tiene cuotas registradas. La deuda de <strong>${fmt(preview.deudaTotal)}</strong> fue
+              tomada del saldo pendiente del crédito personal. Podés refinanciarla normalmente.
             </Alert>
           )}
 
@@ -542,7 +542,7 @@ export const RefinanciacionPage: React.FC = () => {
           {preview && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Alert severity="warning" sx={{ mb: 1 }}>
-                Esta acción cerrará las cuotas pendientes del préstamo original y creará un nuevo préstamo.
+                Esta acción cerrará las cuotas pendientes del crédito personal original y creará un nuevo crédito personal.
               </Alert>
               <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover' }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '4px 16px' }}>

@@ -122,9 +122,9 @@ export const PrestamosResumenPage: React.FC = () => {
 
   return (
     <Box>
-      <LoadingOverlay open={loading} message="Cargando préstamos..." />
+      <LoadingOverlay open={loading} message="Cargando créditos personales..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Resumen de Préstamos</Typography>
+        <Typography variant="h4">Resumen de Créditos Personales</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant="outlined"
@@ -151,7 +151,7 @@ export const PrestamosResumenPage: React.FC = () => {
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
-                title="Total Préstamos"
+                title="Total Créditos Personales"
                 value={resumen.totalPrestamos}
                 icon={<AccountBalance sx={{ color: '#1976d2', fontSize: 28 }} />}
                 color="#1976d2"
@@ -319,7 +319,7 @@ export const PrestamosResumenPage: React.FC = () => {
                           }
                         >
                           <ListItemText
-                            primary={`Préstamo #${c.prestamoId} — Cuota N.${c.numeroCuota}`}
+                            primary={`Crédito Personal #${c.prestamoId} — Cuota N.${c.numeroCuota}`}
                             secondary={`Cuota N.${c.numeroCuota} — ${formatPrice(c.montoCuota - c.montoPagado)} — Venc. ${dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}`}
                           />
                           <Chip label="Vencida" size="small" color="error" sx={{ mr: 1 }} />
@@ -364,7 +364,7 @@ export const PrestamosResumenPage: React.FC = () => {
                           }
                         >
                           <ListItemText
-                            primary={`Préstamo #${c.prestamoId} — Cuota N.${c.numeroCuota}`}
+                            primary={`Crédito Personal #${c.prestamoId} — Cuota N.${c.numeroCuota}`}
                             secondary={`Cuota N.${c.numeroCuota} — ${formatPrice(c.montoCuota - c.montoPagado)} — Venc. ${dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}`}
                           />
                           <Chip label="Próxima" size="small" color="warning" sx={{ mr: 1 }} />

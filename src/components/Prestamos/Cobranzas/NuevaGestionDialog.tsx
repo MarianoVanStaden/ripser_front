@@ -66,7 +66,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
 
   const handleSubmit = async () => {
     if (!selectedPrestamo?.id) {
-      setFormError('Seleccione un préstamo.');
+      setFormError('Seleccione un crédito personal.');
       return;
     }
     setSubmitting(true);
@@ -108,7 +108,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Préstamo *"
+                label="Crédito Personal *"
                 size="small"
                 placeholder="Buscar por cliente..."
                 InputProps={{

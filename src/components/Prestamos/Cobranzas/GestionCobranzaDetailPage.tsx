@@ -222,7 +222,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
               {gestion.clienteNombre} {gestion.clienteApellido}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Gestión #{gestion.id} · Préstamo{' '}
+              Gestión #{gestion.id} · Crédito Personal{' '}
               <Typography
                 component="span"
                 variant="body2"

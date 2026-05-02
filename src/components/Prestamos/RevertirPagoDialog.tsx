@@ -54,7 +54,7 @@ export const RevertirPagoDialog: React.FC<RevertirPagoDialogProps> = ({
         <Alert severity="warning" sx={{ mb: 2 }}>
           <Typography variant="body2">
             Esta acción revertirá el pago de la cuota <strong>{cuota.numeroCuota}/{cantidadCuotas}</strong> del
-            Préstamo <strong>#{prestamoId}</strong> y generará un movimiento inverso en la cuenta corriente del
+            Crédito Personal <strong>#{prestamoId}</strong> y generará un movimiento inverso en la cuenta corriente del
             cliente. <strong>No se puede deshacer.</strong>
           </Typography>
         </Alert>
