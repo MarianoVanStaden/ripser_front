@@ -130,7 +130,8 @@
       "Bash(cd c:/Users/santi/Documents/GitHub/ripser_back)",
       "Bash(/c/Users/santi/Documents/GitHub/ripser_back/mvnw.cmd compile *)",
       "Bash(JAVA_HOME=\"C:/Users/santi/.jdks/openjdk-23\" cd C:/Users/santi/Documents/GitHub/ripser_back)",
-      "Bash(JAVA_HOME=\"C:/Users/santi/.jdks/openjdk-23\" \"C:/Users/santi/.jdks/openjdk-23/bin/java\" -version)"
+      "Bash(JAVA_HOME=\"C:/Users/santi/.jdks/openjdk-23\" \"C:/Users/santi/.jdks/openjdk-23/bin/java\" -version)",
+      "Bash(jobs)"
     ],
     "deny": [],
     "ask": [],

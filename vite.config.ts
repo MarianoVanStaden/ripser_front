@@ -41,16 +41,24 @@ export default defineConfig({
     //     downloads, so the raw-byte warning is misleading here.
     chunkSizeWarningLimit: 2000,
     sourcemap: false,
+    // Vite añade `<link rel="modulepreload">` para todos los chunks alcanzables
+    // desde el entry, incluso a través de dynamic imports. Para libs pesadas
+    // que viven detrás de `React.lazy` esto contradice el code-split: el
+    // browser termina descargando jspdf/exceljs/recharts en el primer paint
+    // aunque la ruta actual no los necesite. Este filtro recorta esos
+    // chunks de la HTML; quedan en disco y se piden cuando una ruta los
+    // importa de verdad.
+    modulePreload: {
+      resolveDependencies: (_filename, deps) =>
+        deps.filter(
+          (d) =>
+            !/(?:^|\/)(?:vendor-jspdf|vendor-exceljs|vendor-recharts|vendor-mui-datagrid|vendor-mui-pickers|vendor-mui-icons|vendor-mui-lab|vendor-sentry|vendor-rhf|vendor-yup)-/.test(
+              d,
+            ),
+        ),
+    },
     rollupOptions: {
       output: {
-        // Splitting philosophy:
-        //   - Eager-path, rarely-changing libs (react + mui core) get their
-        //     own stable chunks for long-term HTTP caching across deploys.
-        //   - Heavy, conditionally-used libs stay isolated so routes that
-        //     don't import them don't pay their cost.
-        //   - Everything else (query, forms, dayjs, axios, etc.) lives in
-        //     ONE `vendor` chunk — tiny deps don't deserve separate HTTP
-        //     requests, and consolidating improves gzip ratio + cache hits.
         // Chunking philosophy (after debugging cross-chunk runtime errors):
         //
         // Only split libs that are BOTH heavy AND route-conditional. Do NOT
@@ -72,15 +80,31 @@ export default defineConfig({
           if (id.includes('/@mui/icons-material/')) return 'vendor-mui-icons'
           if (id.includes('/@mui/x-data-grid'))     return 'vendor-mui-datagrid'
           if (id.includes('/@mui/x-date-pickers'))  return 'vendor-mui-pickers'
+          // @mui/lab solo lo usa EquipoDetail.tsx (lazy). Lo sacamos del
+          // vendor eager — la ruta paga el chunk on-demand cuando entra.
+          if (id.includes('/@mui/lab/'))            return 'vendor-mui-lab'
           if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-recharts'
           if (id.includes('/exceljs/')) return 'vendor-exceljs'
           if (id.includes('/jspdf'))    return 'vendor-jspdf'
 
+          // Pure-ESM utility libs sin interop con React — seguros de
+          // splittear. La meta es bajar el tamaño del chunk `vendor` que
+          // se descarga eager en el primer paint.
+          if (id.includes('/@sentry/'))    return 'vendor-sentry'
+          if (
+            id.includes('/yup/') ||
+            id.includes('/property-expr/') ||
+            id.includes('/tiny-case/') ||
+            id.includes('/toposort/')
+          ) return 'vendor-yup'
+          if (id.includes('/@tanstack/'))  return 'vendor-query'
+          if (
+            id.includes('/react-hook-form/') ||
+            id.includes('/@hookform/')
+          ) return 'vendor-rhf'
+
           // Everything else (react, react-dom, react-router, @mui/material
-          // + internals, @emotion, query, forms, dayjs, axios, …) → one
-          // `vendor` chunk. Merging avoids all the cross-chunk interop
-          // footguns and still gives us good caching: this chunk only
-          // changes when we bump a dep.
+          // + internals, @emotion, dayjs, axios, …) → one `vendor` chunk.
           return 'vendor'
         },
       },

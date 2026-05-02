@@ -11,6 +11,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { ColoresProvider } from './context/ColoresContext';
 import { MedidasProvider } from './context/MedidasContext';
+import SentryScope from './components/SentryScope';
+import SentryErrorBoundary from './components/SentryErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // Lazy route helpers
@@ -194,7 +196,9 @@ const priv = (el: React.ReactElement) => <PrivateRoute>{el}</PrivateRoute>;
 
 function App() {
   return (
+    <SentryErrorBoundary>
     <AuthProvider>
+      <SentryScope />
       <TenantProvider>
         <ColoresProvider onlyActive>
         <MedidasProvider onlyActive>
@@ -360,6 +364,7 @@ function App() {
         </ColoresProvider>
       </TenantProvider>
     </AuthProvider>
+    </SentryErrorBoundary>
   );
 }
 
