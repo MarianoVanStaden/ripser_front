@@ -10,24 +10,63 @@ import type {
   CreateRecordatorioCobranzaDTO,
   ResumenCobranzaDTO,
   EstadoGestionCobranza,
+  EstadoPromesaPago,
+  PrioridadCobranza,
   PromesaPagoDTO,
   CreatePromesaPagoDTO,
   EventoCobranzaDTO,
 } from '../../types/cobranza.types';
 
+/**
+ * Server-side filters accepted by the gestiones-cobranza list endpoints.
+ * All fields optional. Matches the backend {@code GestionCobranzaFilter}.
+ */
+export interface GestionCobranzaFilters {
+  term?: string;
+  estados?: EstadoGestionCobranza[];
+  prioridades?: PrioridadCobranza[];
+  fechaDesde?: string; // YYYY-MM-DD
+  fechaHasta?: string; // YYYY-MM-DD
+  fechaFiltro?: string; // VENCIDAS | HOY | MANANA | ESTA_SEMANA | PROXIMOS_7 | ESTE_MES | SIN_FECHA
+  promesaEstado?: EstadoPromesaPago;
+  promesaIncumplida?: boolean;
+  promesaVenceHoy?: boolean;
+  recordatoriosPendientes?: boolean;
+  conMora?: boolean;
+}
+
+export type GestionCobranzaListParams = PaginationParams & GestionCobranzaFilters;
+
+/** Drop empty arrays / empty strings / undefined so they don't appear as `?key=` in the URL. */
+const cleanParams = (params: GestionCobranzaListParams): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null) continue;
+    if (typeof v === 'string' && v === '') continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    out[k] = v;
+  }
+  return out;
+};
+
+export interface BulkOperationResult {
+  success: number[];
+  failures: { id: number; error: string }[];
+}
+
 export const gestionCobranzaApi = {
   // ── Gestiones ──────────────────────────────────────────────────────────────
 
-  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<GestionCobranzaDTO>> => {
+  getAll: async (params: GestionCobranzaListParams = {}): Promise<PageResponse<GestionCobranzaDTO>> => {
     const res = await api.get<PageResponse<GestionCobranzaDTO>>('/api/gestiones-cobranza', {
-      params: { ...pagination },
+      params: cleanParams(params),
     });
     return res.data;
   },
 
-  getHistorial: async (pagination: PaginationParams = {}): Promise<PageResponse<GestionCobranzaDTO>> => {
+  getHistorial: async (params: GestionCobranzaListParams = {}): Promise<PageResponse<GestionCobranzaDTO>> => {
     const res = await api.get<PageResponse<GestionCobranzaDTO>>('/api/gestiones-cobranza/historial', {
-      params: { ...pagination },
+      params: cleanParams(params),
     });
     return res.data;
   },
@@ -67,6 +106,26 @@ export const gestionCobranzaApi = {
   cerrar: async (id: number, estado: EstadoGestionCobranza): Promise<GestionCobranzaDTO> => {
     const res = await api.patch<GestionCobranzaDTO>(`/api/gestiones-cobranza/${id}/cerrar`, null, {
       params: { estado },
+    });
+    return res.data;
+  },
+
+  // ── Bulk ───────────────────────────────────────────────────────────────────
+
+  /** Cambia la prioridad de varias gestiones en una sola request. */
+  bulkPrioridad: async (ids: number[], prioridad: PrioridadCobranza): Promise<BulkOperationResult> => {
+    const res = await api.post<BulkOperationResult>('/api/gestiones-cobranza/bulk/prioridad', {
+      ids,
+      prioridad,
+    });
+    return res.data;
+  },
+
+  /** Cierra varias gestiones con el mismo estado final. */
+  bulkCerrar: async (ids: number[], estado: EstadoGestionCobranza): Promise<BulkOperationResult> => {
+    const res = await api.post<BulkOperationResult>('/api/gestiones-cobranza/bulk/cerrar', {
+      ids,
+      estado,
     });
     return res.data;
   },
