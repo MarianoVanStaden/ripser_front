@@ -339,10 +339,19 @@ const CarpetaClientePage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Mientras se carga, mostrar solo el overlay — antes el Alert parpadeaba
+  // en el primer render (loading=true, cliente=null).
+  if (loading) {
+    return (
+      <Box p={3}>
+        <LoadingOverlay open message="Cargando cliente..." />
+      </Box>
+    );
+  }
+
   if (error || !cliente) {
     return (
       <Box p={3}>
-        <LoadingOverlay open={loading} message="Cargando cliente..." />
         <Alert severity="error">{error || 'Cliente no encontrado'}</Alert>
       </Box>
     );

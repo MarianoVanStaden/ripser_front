@@ -221,10 +221,20 @@ export const PrestamoDetailPage: React.FC = () => {
     }
   };
 
+  // Mientras se carga, mostrar solo el overlay — no el placeholder de error.
+  // Antes esto era `if (error || !prestamo)`, lo que disparaba el Alert de error en el
+  // primer render (estado inicial: loading=true, prestamo=null) y el usuario lo veía parpadear.
+  if (loading) {
+    return (
+      <Box>
+        <LoadingOverlay open message="Cargando crédito personal..." />
+      </Box>
+    );
+  }
+
   if (error || !prestamo) {
     return (
       <Box>
-        <LoadingOverlay open={loading} message="Cargando crédito personal..." />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')} sx={{ mb: 2 }}>Volver</Button>
         <Alert severity="error">{error || 'Crédito personal no encontrado'}</Alert>
       </Box>

@@ -193,10 +193,19 @@ export const GestionCobranzaDetailPage: React.FC = () => {
     }
   };
 
+  // Mientras se carga, mostrar solo el overlay — antes el placeholder de error
+  // parpadeaba en el primer render (loading=true, gestion=null).
+  if (loading) {
+    return (
+      <Box>
+        <LoadingOverlay open message="Cargando gestión..." />
+      </Box>
+    );
+  }
+
   if (error || !gestion) {
     return (
       <Box>
-        <LoadingOverlay open={loading} message="Cargando gestión..." />
         <Button startIcon={<ArrowBack />} onClick={() => navigate('/cobranzas/lista')} sx={{ mb: 2 }}>
           Volver
         </Button>
