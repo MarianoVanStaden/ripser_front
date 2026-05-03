@@ -19,3 +19,14 @@ export interface ConvertFormData {
   descuentoTipo: TipoDescuento;
   descuentoValor: number;
 }
+
+/**
+ * Form state for the "Editar Nota de Pedido" dialog.  Only descuento and
+ * observaciones are editable post-creation, and only while the nota is
+ * still PENDIENTE — the dialog enforces that on the parent side.
+ */
+export interface EditNotaForm {
+  descuentoTipo: TipoDescuento;
+  descuentoValor: number;
+  observaciones: string;
+}

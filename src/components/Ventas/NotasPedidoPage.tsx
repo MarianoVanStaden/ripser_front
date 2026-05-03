@@ -32,7 +32,6 @@ import {
   Select,
   TablePagination,
   Snackbar,
-  Autocomplete,
   InputAdornment,
   FormControlLabel,
   Checkbox,
@@ -45,8 +44,6 @@ import {
   Print as PrintIcon,
   Send as SendIcon,
   Receipt as ReceiptIcon,
-  CheckCircle as CheckCircleIcon,
-  Search as SearchIcon,
   Payment as PaymentIcon,
   Edit as EditIcon,
 } from "@mui/icons-material";
@@ -59,7 +56,6 @@ import { useAuth } from "../../context/AuthContext";
 import type {
   DocumentoComercial,
   EstadoDocumento,
-  MetodoPago,
   DetalleDocumento,
   OpcionFinanciamientoDTO,
   DeudaClienteError,
@@ -68,17 +64,19 @@ import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import SuccessDialog from "../common/SuccessDialog";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
-import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import UsuarioBadge from "../common/UsuarioBadge";
 import LoadingOverlay from "../common/LoadingOverlay";
 import { generarNotaPedidoPDF } from "../../services/pdfService";
 import OpcionFinanciamientoLabel from "./OpcionFinanciamientoLabel";
 // FRONT-003: extracted to keep this file orchestrator-shaped.
-import type { TipoIva, TipoDescuento, ConvertFormData } from './NotasPedido/types';
-import { initialConvertForm, IVA_RATES } from './NotasPedido/constants';
-import { parseDeudaError, getTipoIvaLabel } from './NotasPedido/utils';
-import { getMetodoPagoIcon, getMetodoPagoLabel } from './NotasPedido/paymentMethodIcons';
+import type { TipoIva, TipoDescuento, ConvertFormData, EditNotaForm } from './NotasPedido/types';
+import { initialConvertForm } from './NotasPedido/constants';
+import { parseDeudaError } from './NotasPedido/utils';
+import { getMetodoPagoLabel } from './NotasPedido/paymentMethodIcons';
 import ConvertirPresupuestoDialog from './NotasPedido/dialogs/ConvertirPresupuestoDialog';
+import VerNotaPedidoDialog from './NotasPedido/dialogs/VerNotaPedidoDialog';
+import EditarNotaPedidoDialog from './NotasPedido/dialogs/EditarNotaPedidoDialog';
+import ConvertirLeadDialog from './NotasPedido/dialogs/ConvertirLeadDialog';
 
 const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
@@ -256,17 +254,15 @@ const NotasPedidoPage: React.FC = () => {
 
   const [leadConversionDialogOpen, setLeadConversionDialogOpen] = useState(false);
   const [leadToConvert, setLeadToConvert] = useState<DocumentoComercial | null>(null);
-  void setLeadConversionDialogOpen; // Used in future implementation
-  void leadToConvert; // Used in future implementation
 
   // Edit dialog (descuento + observaciones — solo PENDIENTE).
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [notaToEdit, setNotaToEdit] = useState<DocumentoComercial | null>(null);
-  const [editForm, setEditForm] = useState<{
-    descuentoTipo: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
-    descuentoValor: number;
-    observaciones: string;
-  }>({ descuentoTipo: 'NONE', descuentoValor: 0, observaciones: '' });
+  const [editForm, setEditForm] = useState<EditNotaForm>({
+    descuentoTipo: 'NONE',
+    descuentoValor: 0,
+    observaciones: '',
+  });
   const [editLoading, setEditLoading] = useState(false);
 
   // Deuda cliente confirmation
@@ -1515,351 +1511,29 @@ const NotasPedidoPage: React.FC = () => {
         onSelectOpcion={setSelectedOpcionConvertId}
       />
 
-
-      {/* View Dialog */}
-      <Dialog
+      <VerNotaPedidoDialog
         open={viewDialogOpen}
         onClose={handleCloseViewDialog}
-        maxWidth="md"
-        fullWidth
-        sx={{
-          '& .MuiDialog-paper': {
-            maxHeight: { xs: '100%', sm: '90vh' },
-            m: { xs: 0, sm: 2 }
-          }
-        }}
-      >
-        <DialogTitle>
-          Nota de Pedido {selectedNota?.numeroDocumento}
-        </DialogTitle>
-        <DialogContent>
-          {selectedNota && (
-            <Box sx={{ pt: 2 }}>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, mb: 3 }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Cliente
-                  </Typography>
-                  <Typography>{selectedNota.clienteNombre}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Usuario
-                  </Typography>
-                  <Typography>{selectedNota.usuarioNombre}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fecha de Emisión
-                  </Typography>
-                  <Typography>
-                    {new Date(selectedNota.fechaEmision).toLocaleDateString("es-AR")}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fecha de Vencimiento
-                  </Typography>
-                  <Typography>
-                    {selectedNota.fechaVencimiento 
-                      ? new Date(selectedNota.fechaVencimiento).toLocaleDateString("es-AR")
-                      : "-"}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Método de Pago
-                  </Typography>
-                  <Typography>
-                    {selectedNota.metodoPago ? getMetodoPagoLabel(selectedNota.metodoPago) : "-"}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Tipo de IVA
-                  </Typography>
-                  <Typography>
-                    {selectedNota.tipoIva ? getTipoIvaLabel(selectedNota.tipoIva as TipoIva) : "-"}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Estado
-                  </Typography>
-                  <Chip
-                    label={getStatusLabel(selectedNota.estado)}
-                    color={getStatusColor(selectedNota.estado)}
-                    size="small"
-                  />
-                </Box>
-              </Box>
+        nota={selectedNota}
+        getStatusColor={getStatusColor}
+        getStatusLabel={getStatusLabel}
+        editingObservaciones={editingObsNota}
+        observacionesValue={obsNotaValue}
+        onStartEditObservaciones={(initial) => { setObsNotaValue(initial); setEditingObsNota(true); }}
+        onChangeObservacionesValue={setObsNotaValue}
+        onSaveObservaciones={handleSaveObsNota}
+        onCancelEditObservaciones={() => setEditingObsNota(false)}
+      />
 
-              <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Observaciones
-                  </Typography>
-                  {!editingObsNota && (
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        setObsNotaValue(selectedNota.observaciones ?? '');
-                        setEditingObsNota(true);
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </Box>
-                {editingObsNota ? (
-                  <Box>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={3}
-                      value={obsNotaValue}
-                      onChange={(e) => setObsNotaValue(e.target.value)}
-                      size="small"
-                    />
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                      <Button size="small" variant="contained" onClick={handleSaveObsNota}>
-                        Guardar
-                      </Button>
-                      <Button size="small" onClick={() => setEditingObsNota(false)}>
-                        Cancelar
-                      </Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Typography color={selectedNota.observaciones ? 'text.primary' : 'text.secondary'}>
-                    {selectedNota.observaciones || 'Sin observaciones'}
-                  </Typography>
-                )}
-              </Box>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="h6" gutterBottom>
-                Detalles
-              </Typography>
-              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                <Table size="small" sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ minWidth: 120 }}>Producto/Equipo</TableCell>
-                      <TableCell sx={{ minWidth: 100 }}>Color</TableCell>
-                      <TableCell sx={{ minWidth: 100 }}>Medida</TableCell>
-                      <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 80 }}>Cantidad</TableCell>
-                      <TableCell align="right" sx={{ minWidth: 100 }}>Precio Unit.</TableCell>
-                      <TableCell align="right" sx={{ minWidth: 100 }}>Subtotal</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {selectedNota.detalles?.map((detalle: DetalleDocumento, index: number) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          {detalle.tipoItem === 'EQUIPO'
-                            ? `${detalle.recetaNombre || ''} ${detalle.recetaModelo ? `- ${detalle.recetaModelo}` : ''}`
-                            : detalle.productoNombre || "-"}
-                        </TableCell>
-                        <TableCell>{detalle.color?.nombre || '-'}</TableCell>
-                        <TableCell>{detalle.medida?.nombre || '-'}</TableCell>
-                        <TableCell>{detalle.descripcion}</TableCell>
-                        <TableCell align="center">{detalle.cantidad}</TableCell>
-                        <TableCell align="right">
-                          ${detalle.precioUnitario.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell align="right">
-                          ${detalle.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
-                <Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
-                    <Typography>
-                      ${selectedNota.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography sx={{ mr: 4 }}>IVA:</Typography>
-                    <Typography>
-                      ${selectedNota.iva.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  <Divider sx={{ my: 1 }} />
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
-                    <Typography variant="h6">
-                      ${selectedNota.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle2" gutterBottom>
-                Trazabilidad del flujo
-              </Typography>
-              <AuditoriaFlujo documento={selectedNota} />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseViewDialog}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Dialog: descuento + observaciones (solo PENDIENTE) */}
-      <Dialog
+      <EditarNotaPedidoDialog
         open={editDialogOpen}
-        onClose={editLoading ? undefined : handleCloseEditDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          Editar Nota de Pedido {notaToEdit?.numeroDocumento}
-        </DialogTitle>
-        <DialogContent>
-          {notaToEdit && (() => {
-            const subtotal = Number(notaToEdit.subtotal) || 0;
-            const tipo = editForm.descuentoTipo;
-            const valor = editForm.descuentoValor;
-            let descuentoMonto = 0;
-            if (tipo === 'PORCENTAJE') {
-              const pct = Math.min(100, Math.max(0, valor || 0));
-              descuentoMonto = subtotal * (pct / 100);
-            } else if (tipo === 'MONTO_FIJO') {
-              descuentoMonto = Math.min(subtotal, Math.max(0, valor || 0));
-            }
-            const subtotalNeto = Math.max(0, subtotal - descuentoMonto);
-            const tipoIvaActual = (notaToEdit as any).tipoIva || 'IVA_21';
-            const ivaPct = tipoIvaActual === 'IVA_21' ? 0.21 : tipoIvaActual === 'IVA_10_5' ? 0.105 : 0;
-            const ivaPreview = subtotalNeto * ivaPct;
-            const totalPreview = subtotalNeto + ivaPreview;
-            return (
-              <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Alert severity="info">
-                  Solo podés editar descuento y observaciones cuando la nota está en PENDIENTE.
-                  Cambiar el descuento regenera las opciones de financiamiento.
-                </Alert>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>Tipo de descuento</InputLabel>
-                  <Select
-                    label="Tipo de descuento"
-                    value={editForm.descuentoTipo}
-                    onChange={(e) => {
-                      const next = e.target.value as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
-                      setEditForm((prev) => ({
-                        ...prev,
-                        descuentoTipo: next,
-                        descuentoValor: next === 'NONE' ? 0 : prev.descuentoValor,
-                      }));
-                    }}
-                  >
-                    <MenuItem value="NONE">Sin descuento</MenuItem>
-                    <MenuItem value="PORCENTAJE">Porcentaje</MenuItem>
-                    <MenuItem value="MONTO_FIJO">Monto fijo</MenuItem>
-                  </Select>
-                </FormControl>
-                <TextField
-                  size="small"
-                  type="number"
-                  label={editForm.descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
-                  value={editForm.descuentoTipo === 'NONE' ? '' : editForm.descuentoValor}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value) || 0;
-                    setEditForm((prev) => ({
-                      ...prev,
-                      descuentoValor: prev.descuentoTipo === 'PORCENTAJE' ? Math.min(100, v) : v,
-                    }));
-                  }}
-                  disabled={editForm.descuentoTipo === 'NONE'}
-                  inputProps={{
-                    min: 0,
-                    max: editForm.descuentoTipo === 'PORCENTAJE' ? 100 : undefined,
-                    step: editForm.descuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
-                  }}
-                  error={editForm.descuentoTipo === 'MONTO_FIJO' && editForm.descuentoValor > subtotal}
-                  helperText={
-                    editForm.descuentoTipo === 'MONTO_FIJO' && editForm.descuentoValor > subtotal
-                      ? `El descuento no puede superar el subtotal (${subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })})`
-                      : ' '
-                  }
-                  fullWidth
-                />
-                <TextField
-                  size="small"
-                  label="Observaciones"
-                  value={editForm.observaciones}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, observaciones: e.target.value }))}
-                  multiline
-                  rows={3}
-                  fullWidth
-                />
-                <Divider />
-                <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="body2">Subtotal:</Typography>
-                    <Typography variant="body2">
-                      ${subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  {tipo !== 'NONE' && descuentoMonto > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="body2">
-                        Descuento {tipo === 'PORCENTAJE' ? `(${valor}%)` : '(monto fijo)'}:
-                      </Typography>
-                      <Typography variant="body2" color="error.main">
-                        -${descuentoMonto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                      </Typography>
-                    </Box>
-                  )}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="body2">
-                      IVA ({tipoIvaActual === 'IVA_21' ? '21%' : tipoIvaActual === 'IVA_10_5' ? '10.5%' : '0%'}):
-                    </Typography>
-                    <Typography variant="body2">
-                      ${ivaPreview.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  <Divider sx={{ my: 1 }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="subtitle1" fontWeight={600}>Total estimado:</Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      ${totalPreview.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                    El backend recalcula el total exacto al guardar.
-                  </Typography>
-                </Box>
-              </Box>
-            );
-          })()}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEditDialog} disabled={editLoading}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSaveEdit}
-            variant="contained"
-            disabled={
-              editLoading ||
-              (editForm.descuentoTipo === 'MONTO_FIJO' &&
-                editForm.descuentoValor > (Number(notaToEdit?.subtotal) || 0))
-            }
-          >
-            {editLoading ? 'Guardando…' : 'Guardar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onClose={handleCloseEditDialog}
+        onSave={handleSaveEdit}
+        loading={editLoading}
+        nota={notaToEdit}
+        form={editForm}
+        setForm={setEditForm}
+      />
 
       {/* AsignarEquiposDialog for Factura conversion */}
       {notaForAsignacion && (
@@ -1915,91 +1589,16 @@ const NotasPedidoPage: React.FC = () => {
         ] : []}
       />
 
-      {/* Lead Conversion Dialog */}
-      <Dialog
+      <ConvertirLeadDialog
         open={leadConversionDialogOpen}
-        onClose={() => setLeadConversionDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          ⚠️ Conversión de Lead a Cliente Requerida
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Este presupuesto está asociado a un <strong>Lead</strong> y no puede convertirse a Nota de Pedido directamente.
-            </Alert>
-            
-            <Box sx={{ my: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-              <Typography variant="subtitle2" color="primary" gutterBottom>
-                Lead a convertir:
-              </Typography>
-              <Typography variant="body1">
-                <strong>{leadToConvert?.leadNombre}</strong>
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                ID: {leadToConvert?.leadId}
-              </Typography>
-            </Box>
-            
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Para continuar con la creación de la Nota de Pedido, primero debe convertir este lead a cliente 
-              completando toda su información (datos fiscales, dirección, etc.).
-            </Typography>
-
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="body2" gutterBottom>
-                <strong>📋 Pasos a seguir:</strong>
-              </Typography>
-              <Typography variant="body2" component="div">
-                <ol style={{ marginTop: 4, marginBottom: 0, paddingLeft: 20 }}>
-                  <li>Haga clic en "Ir a Leads" para abrir la página de gestión de leads</li>
-                  <li>Complete todos los datos del cliente (CUIT, dirección, condición fiscal, etc.)</li>
-                  <li>Confirme la conversión del lead a cliente</li>
-                  <li>Regrese a esta página y los presupuestos se actualizarán automáticamente</li>
-                </ol>
-              </Typography>
-            </Alert>
-
-            <Alert severity="success" sx={{ mt: 2 }}>
-              <Typography variant="body2">
-                <strong>✅ Después de la conversión:</strong>
-              </Typography>
-              <Typography variant="body2" component="div">
-                <ul style={{ marginTop: 4, marginBottom: 0 }}>
-                  <li>El lead se convertirá en un cliente completo</li>
-                  <li>Todos los presupuestos asociados al lead se vincularán automáticamente al nuevo cliente</li>
-                  <li>Podrá crear notas de pedido y facturas normalmente</li>
-                </ul>
-              </Typography>
-            </Alert>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => {
-              setLeadConversionDialogOpen(false);
-              setLeadToConvert(null);
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => {
-              // Navigate directly to lead conversion page
-              navigate(`/leads/${leadToConvert?.leadId}/convertir`);
-              // Close dialog
-              setLeadConversionDialogOpen(false);
-              setLeadToConvert(null);
-            }}
-          >
-            Convertir Lead a Cliente
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onClose={() => { setLeadConversionDialogOpen(false); setLeadToConvert(null); }}
+        onConvertir={() => {
+          if (leadToConvert?.leadId) navigate(`/leads/${leadToConvert.leadId}/convertir`);
+          setLeadConversionDialogOpen(false);
+          setLeadToConvert(null);
+        }}
+        lead={leadToConvert}
+      />
 
       {/* Snackbar for equipment creation messages */}
       <Snackbar
