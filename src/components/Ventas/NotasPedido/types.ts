@@ -30,3 +30,20 @@ export interface EditNotaForm {
   descuentoValor: number;
   observaciones: string;
 }
+
+/**
+ * Form state for the "Datos de Financiación Propia" dialog (BillingDialog),
+ * shown before facturar when the nota's metodoPago is FINANCIAMIENTO o
+ * FINANCIACION_PROPIA.  These values shape the cuotas + entrega inicial
+ * payload that the backend uses to materializar la factura.
+ */
+export interface BillingForm {
+  cantidadCuotas: number;
+  tipoFinanciacion: string;
+  primerVencimiento: string;
+  entregarInicial: boolean;
+  usePorcentaje: boolean;
+  porcentajeEntregaInicial: number;
+  montoEntregaInicial: number;
+  tasaInteres: number;
+}

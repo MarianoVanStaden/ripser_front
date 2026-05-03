@@ -8,13 +8,8 @@ import {
   Card,
   CardContent,
   Typography,
-  CircularProgress,
   Alert,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   MenuItem,
   Chip,
@@ -26,17 +21,11 @@ import {
   TableHead,
   TableRow,
   Tooltip,
-  Divider,
   FormControl,
   InputLabel,
   Select,
   TablePagination,
   Snackbar,
-  InputAdornment,
-  FormControlLabel,
-  Checkbox,
-  RadioGroup,
-  Radio,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -67,9 +56,8 @@ import AsignarEquiposDialog from "./AsignarEquiposDialog";
 import UsuarioBadge from "../common/UsuarioBadge";
 import LoadingOverlay from "../common/LoadingOverlay";
 import { generarNotaPedidoPDF } from "../../services/pdfService";
-import OpcionFinanciamientoLabel from "./OpcionFinanciamientoLabel";
 // FRONT-003: extracted to keep this file orchestrator-shaped.
-import type { TipoIva, TipoDescuento, ConvertFormData, EditNotaForm } from './NotasPedido/types';
+import type { TipoIva, TipoDescuento, ConvertFormData, EditNotaForm, BillingForm } from './NotasPedido/types';
 import { initialConvertForm } from './NotasPedido/constants';
 import { parseDeudaError } from './NotasPedido/utils';
 import { getMetodoPagoLabel } from './NotasPedido/paymentMethodIcons';
@@ -77,6 +65,8 @@ import ConvertirPresupuestoDialog from './NotasPedido/dialogs/ConvertirPresupues
 import VerNotaPedidoDialog from './NotasPedido/dialogs/VerNotaPedidoDialog';
 import EditarNotaPedidoDialog from './NotasPedido/dialogs/EditarNotaPedidoDialog';
 import ConvertirLeadDialog from './NotasPedido/dialogs/ConvertirLeadDialog';
+import BillingDialog from './NotasPedido/dialogs/BillingDialog';
+import OpcionesFinanciamientoDialog from './NotasPedido/dialogs/OpcionesFinanciamientoDialog';
 
 const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
@@ -912,7 +902,7 @@ const NotasPedidoPage: React.FC = () => {
   // Billing Dialog state (para Financiación Propia)
   const [billingDialogOpen, setBillingDialogOpen] = useState(false);
   const [notaToBill, setNotaToBill] = useState<DocumentoComercial | null>(null);
-  const [billingForm, setBillingForm] = useState({
+  const [billingForm, setBillingForm] = useState<BillingForm>({
     cantidadCuotas: 1,
     tipoFinanciacion: 'MENSUAL',
     primerVencimiento: '',
@@ -1623,202 +1613,24 @@ const NotasPedidoPage: React.FC = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
-      {/* Billing Dialog for FINANCIAMIENTO */}
-      <Dialog open={billingDialogOpen} onClose={handleCloseBillingDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Datos de Financiación Propia</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Cantidad de Cuotas"
-              type="number"
-              fullWidth
-              value={billingForm.cantidadCuotas}
-              onChange={(e) => setBillingForm(prev => ({ ...prev, cantidadCuotas: parseInt(e.target.value) || 1 }))}
-              inputProps={{ min: 1 }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Tipo de Financiación</InputLabel>
-              <Select
-                value={billingForm.tipoFinanciacion}
-                onChange={(e) => setBillingForm(prev => ({ ...prev, tipoFinanciacion: e.target.value }))}
-                label="Tipo de Financiación"
-              >
-                {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
-                  <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              label="Primer Vencimiento"
-              type="date"
-              fullWidth
-              value={billingForm.primerVencimiento}
-              onChange={(e) => setBillingForm(prev => ({ ...prev, primerVencimiento: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-            />
-            <FormControlLabel
-              control={<Checkbox checked={billingForm.entregarInicial} onChange={(e) => setBillingForm(prev => ({ ...prev, entregarInicial: e.target.checked }))} />}
-              label="Entrega inicial"
-            />
-            {billingForm.entregarInicial && (
-              <Box sx={{ pl: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                 <RadioGroup
-                    row
-                    value={billingForm.usePorcentaje ? 'porcentaje' : 'monto'}
-                    onChange={(e) => setBillingForm(prev => ({ ...prev, usePorcentaje: e.target.value === 'porcentaje' }))}
-                 >
-                    <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
-                    <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
-                 </RadioGroup>
-                 {billingForm.usePorcentaje ? (
-                     <TextField
-                        label="Porcentaje de entrega"
-                        type="number"
-                        value={billingForm.porcentajeEntregaInicial}
-                        onChange={(e) => setBillingForm(prev => ({ ...prev, porcentajeEntregaInicial: parseFloat(e.target.value) || 0 }))}
-                        InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                     />
-                 ) : (
-                     <TextField
-                        label="Monto de entrega"
-                        type="number"
-                        value={billingForm.montoEntregaInicial}
-                        onChange={(e) => setBillingForm(prev => ({ ...prev, montoEntregaInicial: parseFloat(e.target.value) || 0 }))}
-                        InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-                     />
-                 )}
-              </Box>
-            )}
-            <TextField
-              label="Tasa de interés"
-              type="number"
-              fullWidth
-              value={billingForm.tasaInteres}
-              onChange={(e) => setBillingForm(prev => ({ ...prev, tasaInteres: parseFloat(e.target.value) || 0 }))}
-              inputProps={{ min: 0, max: 999, step: 0.5 }}
-              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-              helperText="Interés simple sobre el saldo financiado. 0% = sin interés."
-            />
-            {(() => {
-              const montoTotal = notaToBill?.subtotal ?? 0;
-              const entregaInicial = billingForm.entregarInicial
-                ? (billingForm.usePorcentaje
-                    ? montoTotal * (billingForm.porcentajeEntregaInicial / 100)
-                    : billingForm.montoEntregaInicial)
-                : 0;
-              const saldoFinanciado = montoTotal - entregaInicial;
-              const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
-              const montoConInteres = saldoFinanciado + interesTotal;
-              const valorCuota = billingForm.cantidadCuotas > 0 ? montoConInteres / billingForm.cantidadCuotas : 0;
-              const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-              return (
-                <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>Resumen del financiamiento</Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
-                    <Typography variant="body2">Total documento:</Typography>
-                    <Typography variant="body2" fontWeight={600}>${fmt(montoTotal)}</Typography>
-                    <Typography variant="body2">Entrega inicial:</Typography>
-                    <Typography variant="body2">${fmt(entregaInicial)}</Typography>
-                    <Typography variant="body2">Saldo financiado:</Typography>
-                    <Typography variant="body2">${fmt(saldoFinanciado)}</Typography>
-                    {billingForm.tasaInteres > 0 && <>
-                      <Typography variant="body2">Interés ({billingForm.tasaInteres}%):</Typography>
-                      <Typography variant="body2" color="warning.main">${fmt(interesTotal)}</Typography>
-                      <Typography variant="body2">Total a financiar:</Typography>
-                      <Typography variant="body2" fontWeight={600}>${fmt(montoConInteres)}</Typography>
-                    </>}
-                    <Typography variant="body2">Valor cuota ({billingForm.cantidadCuotas}x):</Typography>
-                    <Typography variant="body2" fontWeight={600} color="primary.main">${fmt(valorCuota)}</Typography>
-                  </Box>
-                </Box>
-              );
-            })()}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseBillingDialog}>Cancelar</Button>
-          <Button variant="contained" onClick={submitBillingDialog}>Confirmar Facturación</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog: Opciones de Financiamiento */}
-      <Dialog
+      <BillingDialog
+        open={billingDialogOpen}
+        onClose={handleCloseBillingDialog}
+        onSubmit={submitBillingDialog}
+        nota={notaToBill}
+        form={billingForm}
+        setForm={setBillingForm}
+      />
+      <OpcionesFinanciamientoDialog
         open={financiamientoDialogOpen}
         onClose={() => setFinanciamientoDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        sx={{ '& .MuiDialog-paper': { maxHeight: { xs: '100%', sm: '90vh' }, m: { xs: 0, sm: 2 } } }}
-      >
-        <DialogTitle>
-          Opciones de Financiamiento
-          <Typography variant="body2" color="text.secondary">Seleccione la opción de pago preferida</Typography>
-        </DialogTitle>
-        <DialogContent>
-          {notaParaFinanciamiento && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">Nota de Pedido: {notaParaFinanciamiento.numeroDocumento}</Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {notaParaFinanciamiento.clienteNombre ? 'Cliente:' : 'Lead:'} {notaParaFinanciamiento.clienteNombre || notaParaFinanciamiento.leadNombre}
-                </Typography>
-              </Box>
-              <Typography variant="subtitle1" sx={{ mt: 1 }}>Subtotal: ${notaParaFinanciamiento.subtotal?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-            </Box>
-          )}
-          <Divider sx={{ mb: 2 }} />
-          {loadingOpciones ? (
-            <Box sx={{ py: 4, textAlign: 'center' }}>
-              <CircularProgress size={28} />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Cargando opciones de financiamiento…
-              </Typography>
-            </Box>
-          ) : opcionesFinanciamiento.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>No hay opciones de financiamiento disponibles para este documento.</Typography>
-          ) : (
-            <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
-              {opcionesFinanciamiento.map((opcion) => {
-                const isSelected = selectedOpcionId === opcion.id;
-                return (
-                  <Box
-                    key={opcion.id}
-                    onClick={() => opcion.id != null && setSelectedOpcionId(opcion.id)}
-                    sx={{
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: isSelected ? 'primary.main' : 'divider',
-                      borderRadius: 1,
-                      mb: 1.5,
-                      cursor: 'pointer',
-                      transition: 'border-color 120ms, background-color 120ms',
-                      bgcolor: isSelected ? 'action.selected' : 'background.paper',
-                      '&:hover': { borderColor: 'primary.light' },
-                    }}
-                  >
-                    <FormControlLabel
-                      value={opcion.id}
-                      control={<Radio />}
-                      sx={{ width: '100%', alignItems: 'flex-start', m: 0, '& .MuiFormControlLabel-label': { width: '100%' } }}
-                      label={
-                        <OpcionFinanciamientoLabel
-                          opcion={opcion}
-                          baseImporte={notaParaFinanciamiento?.subtotal ?? 0}
-                        />
-                      }
-                    />
-                  </Box>
-                );
-              })}
-            </RadioGroup>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFinanciamientoDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSelectOpcion} variant="contained" disabled={!selectedOpcionId}>
-            Confirmar selección
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleSelectOpcion}
+        loading={loadingOpciones}
+        nota={notaParaFinanciamiento}
+        opciones={opcionesFinanciamiento}
+        selectedOpcionId={selectedOpcionId}
+        onSelectOpcion={setSelectedOpcionId}
+      />
     </Box>
   );
 };
