@@ -61,30 +61,63 @@ async function assertNoErrorBoundary(page: Page, pageName: string): Promise<void
 
 test.describe('FRONT-003 smoke — Ventas pages render & primary CTAs wired', () => {
   /**
-   * Override the global catch-all mock for endpoints that return a *flat array*
-   * (not a paginated `{content:[]}` response).  The fixture's catch-all returns
-   * paginated empty for everything, which crashes consumers that call
-   * `array.find(...)` on the response — observed in TenantContext:158
-   * (`relaciones.find(...)` on the result of `usuarioEmpresaService.getByUsuario`).
+   * Override the fixture's catch-all (which returns `{content:[]}` for every
+   * endpoint) for endpoints that actually return a *flat array*.  Crashes
+   * surface when consumers call `array.find(...)` on a paginated response
+   * — see TenantContext:158 (`relaciones.find(...)`).
    *
-   * Registered later than the catch-all → LIFO priority → wins.
+   * Approach: keep the fixture's paginated default for unspecified endpoints
+   * (matches existing test contracts), and route the known flat-array URLs
+   * to `[]`.  The list grew empirically — any endpoint that triggers a
+   * "X.find is not a function" or "X.map is not a function" crash on these
+   * pages should be added.
+   *
+   * Registered later than the fixture's catch-all → LIFO priority → wins.
    */
   test.beforeEach(async ({ page }) => {
-    const flatArrayEndpoints = [
-      '**/api/usuario-empresa/usuario/**',
-      '**/api/usuario-empresa/empresa/**',
-      '**/api/sucursales/**',
-      '**/api/empresas/**',
+    // Use regex to match URLs WITH query strings — globs like
+    // `**/api/colores` don't match `/api/colores?activo=true`.
+    const flatArrayPatterns: RegExp[] = [
+      // Tenant context / org plumbing — hit on every authenticated page
+      /\/api\/usuario-empresa\/usuario\//,
+      /\/api\/usuario-empresa\/empresa\//,
+      /\/api\/sucursales(\?|\/|$)/,
+      /\/api\/empresas(\?|\/|$)/,
+      // Catalogs
+      /\/api\/productos(\?|\/|$)/,
+      /\/api\/categorias-productos(\?|\/|$)/,
+      /\/api\/categorias(\?|\/|$)/,
+      /\/api\/recetas-fabricacion(\?|\/|$)/,
+      /\/api\/equipos-fabricados(\?|\/|$)/,
+      /\/api\/colores(\?|\/|$)/,
+      /\/api\/medidas(\?|\/|$)/,
+      /\/api\/parametros(\?|\/|$)/,
+      // Financiamiento templates and options
+      /\/api\/opciones-financiamiento(\?|\/|$)/,
+      /\/api\/opciones-financiamiento-templates(\?|\/|$)/,
+      // Active sub-listings (return arrays even where parent is paginated)
+      /\/api\/bancos\/activos/,
+      /\/api\/cuentas-bancarias(\?|\/|$)/,
+      /\/api\/usuarios(\?|\/|$)/,
+      /\/api\/empleados\/activos/,
+      // Cliente/Lead helpers used by the autocomplete in the dialog
+      /\/api\/clientes\/(search|buscar)/,
+      /\/api\/leads\/(search|buscar)/,
     ];
-    for (const pattern of flatArrayEndpoints) {
-      await page.route(pattern, (route) =>
-        route.fulfill({
+
+    await page.route(/\/api\//, (route) => {
+      const url = route.request().url();
+      // Only intercept if any flat-array pattern matches; otherwise fall
+      // through to the fixture's catch-all (paginated empty response).
+      if (flatArrayPatterns.some((re) => re.test(url))) {
+        return route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: '[]',
-        }),
-      );
-    }
+        });
+      }
+      return route.fallback();
+    });
   });
 
   // ── Presupuestos: heading, "Nuevo Presupuesto" CTA, dialog opens with form ──
@@ -92,14 +125,16 @@ test.describe('FRONT-003 smoke — Ventas pages render & primary CTAs wired', ()
     ventasPage,
     page,
   }) => {
-    // KNOWN: este test falla porque clicking "Nuevo Presupuesto" dispara
-    // endpoints (productos, clientes, opciones-financiamiento, …) que el
-    // catch-all del fixture devuelve como `{content:[]}` y el código
-    // espera array plano.  Marcado `test.fail()` para que la suite cierre
-    // verde; cuando se completen los overrides para esos endpoints en el
-    // beforeEach (o en `e2e/fixtures/index.ts` para todos los tests),
-    // el test fallará al pasar — señal de que hay que sacar el `.fail()`.
+    // KNOWN: el dialog "Nuevo Presupuesto" abre y luego algo dentro del
+    // árbol de componentes crashea (Sentry ErrorBoundary lo captura sin
+    // emitir console.error). El mock infrastructure ya cubrió `colores`,
+    // `usuario-empresa`, `sucursales`, `productos`, `recetas`, `medidas`,
+    // `opciones-financiamiento` y demás catalogos. La causa restante
+    // requiere debug runtime (probablemente una integración con dayjs,
+    // ColorPicker, ClienteAutocomplete o algún useMemo no defensivo
+    // contra estado vacío). Marcado test.fail() — al resolver, sacar.
     test.fail();
+
     await ventasPage.gotoPresupuestos();
     await assertNoErrorBoundary(page, '/ventas/presupuestos');
 
@@ -129,13 +164,13 @@ test.describe('FRONT-003 smoke — Ventas pages render & primary CTAs wired', ()
     ventasPage,
     page,
   }) => {
-    // KNOWN: el header `Notas de Pedido` aparece pero el botón "Convertir
-    // Presupuesto" termina detrás del fallback del ErrorBoundary cuando
-    // otra parte del page tree crashea (mismo perfil que Presupuestos —
-    // endpoints que devuelven `{content:[]}` cuando el código espera array).
-    // Plan: completar overrides en `beforeEach` o en el fixture global,
-    // luego sacar el `test.fail()`.
+    // KNOWN: con los mocks actuales el page tree termina en el ErrorBoundary
+    // antes de que el botón "Convertir Presupuesto" se renderice. La hipótesis
+    // es la misma que en el test anterior: algún componente dentro de la lista
+    // de notas asume datos que el mock no provee. Ver el TODO del test
+    // anterior. Marcado test.fail() — al resolver, sacar.
     test.fail();
+
     await ventasPage.gotoNotasPedido();
     await assertNoErrorBoundary(page, '/ventas/notas-pedido');
 

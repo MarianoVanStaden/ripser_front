@@ -155,7 +155,12 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           console.log('🔍 Cargando UsuarioEmpresa para user:', user.id, 'empresa:', empresaId);
           const relaciones = await usuarioEmpresaService.getByUsuario(user.id);
           console.log('📋 Relaciones encontradas:', relaciones);
-          const relacionActual = relaciones.find(r => r.empresaId === empresaId);
+          // Defensive: backend contract says `UsuarioEmpresa[]`, but if a
+          // proxy/mock/error path returns a wrapped response (e.g., paginated
+          // {content:[]}) calling `.find` crashes the whole context and
+          // mounts the Sentry ErrorBoundary on every page that uses tenant.
+          const relacionesArr = Array.isArray(relaciones) ? relaciones : [];
+          const relacionActual = relacionesArr.find(r => r.empresaId === empresaId);
 
           if (relacionActual) {
             console.log('✅ Relación actual encontrada:', relacionActual);
