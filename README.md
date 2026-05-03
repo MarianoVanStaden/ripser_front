@@ -40,3 +40,17 @@ Ver [docs/ci.md](docs/ci.md) para la descripción completa del pipeline.
 | `typecheck` | Verificación de tipos TypeScript |
 | `test` | Vitest con coverage |
 | `build` | Build de producción + artifact en GitHub Actions |
+
+## Documentación
+
+- [docs/](docs/README.md) — índice general de documentación viva.
+- [docs/contextos/](docs/contextos/) — un archivo por módulo: rutas, API, contexts, types.
+- [docs/instructivos/](docs/instructivos/) — guías de uso para usuarios finales.
+- [AUDITORIA_TECNICA.md](AUDITORIA_TECNICA.md) — auditoría back+front + backlog de refactor (P0/P1/P2/P3).
+- [TECHNICAL_DEBT.md](TECHNICAL_DEBT.md) — deuda técnica de performance en listados.
+- [DEPLOY_VPS.md](DEPLOY_VPS.md) — procedimiento de despliegue.
+
+> Política: no se agregan archivos `.md` nuevos en la raíz. Las notas de
+> implementación, fixes y debug viven en commits + PR descriptions, no en
+> archivos sueltos. Documentación por módulo va a `docs/contextos/` o
+> `docs/instructivos/`.

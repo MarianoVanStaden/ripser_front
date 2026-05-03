@@ -191,28 +191,13 @@ export interface CuotaPrestamoDTO {
   diasMora?: number;
 }
 
-export const MetodoPago = {
-  EFECTIVO: 'EFECTIVO',
-  TRANSFERENCIA_BANCARIA: 'TRANSFERENCIA_BANCARIA',
-  CHEQUE: 'CHEQUE',
-  TARJETA_CREDITO: 'TARJETA_CREDITO',
-  TARJETA_DEBITO: 'TARJETA_DEBITO',
-  MERCADO_PAGO: 'MERCADO_PAGO',
-  CUENTA_CORRIENTE: 'CUENTA_CORRIENTE',
-  FINANCIACION_PROPIA: 'FINANCIACION_PROPIA',
-} as const;
-export type MetodoPago = typeof MetodoPago[keyof typeof MetodoPago];
-
-export const METODO_PAGO_LABELS: Record<MetodoPago, string> = {
-  EFECTIVO: 'Efectivo',
-  TRANSFERENCIA_BANCARIA: 'Transferencia Bancaria',
-  CHEQUE: 'Cheque',
-  TARJETA_CREDITO: 'Tarjeta de Crédito',
-  TARJETA_DEBITO: 'Tarjeta de Débito',
-  MERCADO_PAGO: 'Mercado Pago',
-  CUENTA_CORRIENTE: 'Cuenta Corriente',
-  FINANCIACION_PROPIA: 'Financiación Propia',
-};
+// Préstamo's local MetodoPago is a *narrower* set than the global one in
+// venta.types (which includes legacy aliases TRANSFERENCIA, FINANCIAMIENTO).
+// To avoid a barrel-export conflict we re-export venta's wide versions —
+// existing consumers that import from `./prestamo.types` directly keep
+// working without changes, but they get the wider types now.
+export { MetodoPago, METODO_PAGO_LABELS } from './venta.types';
+import type { MetodoPago } from './venta.types';
 
 export interface ChequeCobroData {
   numeroCheque: string;

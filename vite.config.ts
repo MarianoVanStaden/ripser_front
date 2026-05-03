@@ -20,6 +20,13 @@ const analyzePlugin = analyze
 export default defineConfig({
   plugins: [react(), analyzePlugin].filter(Boolean),
 
+  // FRONT-005: marcamos los console.log/info/debug como pure para que el
+  // minifier los elimine del bundle de producción. console.warn/error se
+  // preservan (Sentry los captura, son la "señal" útil en prod).
+  esbuild: {
+    pure: ['console.log', 'console.info', 'console.debug'],
+  },
+
   server: {
     port: 5173,
     proxy: {

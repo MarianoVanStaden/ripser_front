@@ -4,56 +4,18 @@ import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Typography,
-  CircularProgress,
   Alert,
-  TextField,
-  MenuItem,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  Divider,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Chip,
   Tab,
   Tabs,
-  Tooltip,
-  FormControlLabel,
-  RadioGroup,
-  Radio,
-  InputAdornment,
-  Checkbox,
 } from '@mui/material';
 import {
   Receipt as ReceiptIcon,
-  Save as SaveIcon,
-  Clear as ClearIcon,
   Add as AddIcon,
-  Delete as DeleteIcon,
   ShoppingCart as ShoppingCartIcon,
   Refresh as RefreshIcon,
   Description as DescriptionIcon,
-  CheckCircle as CheckCircleIcon,
-  Edit as EditIcon,
   AttachMoney as MoneyIcon,
-  CreditCard as CreditCardIcon,
-  AccountBalance as BankIcon,
-  Search as SearchIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -69,8 +31,6 @@ import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
 import SuccessDialog from "../common/SuccessDialog";
 import LoadingOverlay from "../common/LoadingOverlay";
 import AsignarEquiposDialog from "./AsignarEquiposDialog";
-import AuditoriaFlujo from "../common/AuditoriaFlujo";
-import { CajaSelector } from "../common/CajaSelector";
 import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
@@ -87,359 +47,22 @@ import type {
   DeudaClienteError,
 } from '../../types';
 import DeudaClienteConfirmDialog from './DeudaClienteConfirmDialog';
-import ClienteAutocomplete from '../common/ClienteAutocomplete';
-import ColorPicker from '../common/ColorPicker';
-
-// Aligned with backend enum com.ripser_back.enums.MetodoPago. The order here is the one
-// shown in the Select; keep it consistent with other pages that expose the same options.
-const PAYMENT_METHODS: { value: MetodoPago; label: string }[] = [
-  { value: 'EFECTIVO', label: 'Efectivo' },
-  { value: 'CHEQUE', label: 'Cheque' },
-  { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
-  { value: 'TARJETA_DEBITO', label: 'Tarjeta de Débito' },
-  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia Bancaria' },
-  { value: 'MERCADO_PAGO', label: 'Mercado Pago' },
-  { value: 'FINANCIACION_PROPIA', label: 'Financiación Propia' },
-];
-
-// FINANCIAMIENTO is kept as a legacy alias here: the backend enum only has
-// FINANCIACION_PROPIA, but older plantillas/opciones may still carry FINANCIAMIENTO.
-const isFinanciamiento = (m: string) => m === 'FINANCIAMIENTO' || m === 'FINANCIACION_PROPIA';
-
-// Resuelve el payload de caja a spreadear en convertToFactura / convertToNotaPedido.
-// Para ventas financiadas no se carga caja (el dinero entra cuota a cuota).
-// Para ventas contado, la plata ingresa en la caja seleccionada por el usuario.
-const buildCajaPayload = (
-  metodoPago: string,
-  cajaRef: CajaRef | null
-): { cajaPesosId?: number | null; cajaAhorroId?: number | null } => {
-  if (isFinanciamiento(metodoPago)) return {};
-  if (!cajaRef) return {};
-  return {
-    cajaPesosId: cajaRef.tipo === 'PESOS' ? cajaRef.id : null,
-    cajaAhorroId: cajaRef.tipo === 'AHORRO' ? cajaRef.id : null,
-  };
-};
-
-// Plantillas/templates come from the prestamo enum (MetodoPago in prestamo.types.ts)
-// which uses TRANSFERENCIA_BANCARIA / MERCADO_PAGO — the same names the backend enum
-// uses. Older places in the UI still emit 'TRANSFERENCIA' for the same concept, so we
-// normalize to the backend value before writing into paymentMethod.
-const normalizeMetodoPagoToBackend = (m: string | undefined | null): MetodoPago | null => {
-  if (!m) return null;
-  if (m === 'TRANSFERENCIA') return 'TRANSFERENCIA_BANCARIA';
-  return m as MetodoPago;
-};
-
-type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
-const IVA_OPTIONS: { value: TipoIva; label: string; rate: number }[] = [
-  { value: 'IVA_21', label: 'IVA 21%', rate: 0.21 },
-  { value: 'IVA_10_5', label: 'IVA 10.5%', rate: 0.105 },
-  { value: 'EXENTO', label: 'Exento 0%', rate: 0 },
-];
-
-const ESTADO_OPTIONS: Record<string, { label: string; color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' }> = {
-  PENDIENTE: { label: 'Pendiente', color: 'warning' },
-  APROBADO: { label: 'Aprobado', color: 'success' },
-  RECHAZADO: { label: 'Rechazado', color: 'secondary' },
-  PAGADA: { label: 'Pagada', color: 'primary' },
-  VENCIDA: { label: 'Vencida', color: 'error' },
-  ANULADA: { label: 'Anulada', color: 'default' },
-  FACTURADA: { label: 'Facturada', color: 'info' },
-};
-
-type CartItem = {
-  cantidad: number;
-  precioUnitario: number;
-  descuento: number;
-  precioManualmenteModificado?: boolean;
-  tipoItem: TipoItemDocumento;
-  // PRODUCTO fields (optional when tipoItem is EQUIPO)
-  productoId?: number;
-  productoNombre?: string;
-  // EQUIPO fields (optional when tipoItem is PRODUCTO)
-  recetaId?: number;
-  recetaNombre?: string;
-  recetaModelo?: string;
-  recetaTipo?: string;
-  colorId?: number;
-  colorNombre?: string;
-  medidaId?: number;
-  medidaNombre?: string;
-  // Stock validation fields
-  stockDisponible?: number;
-  stockVerificado?: boolean;
-  requiereFabricacion?: boolean;
-};
-
-type NotaCartItem = {
-  cantidad: number;
-  precioUnitario: number;
-  descuento: number;
-  tipoItem?: 'PRODUCTO' | 'EQUIPO';
-  // PRODUCTO fields (optional when tipoItem is EQUIPO)
-  productoId?: number;
-  productoNombre?: string;
-  // EQUIPO fields (optional when tipoItem is PRODUCTO)
-  recetaId?: number;
-  recetaNombre?: string;
-  recetaModelo?: string;
-  recetaTipo?: string;
-  descripcionEquipo?: string;
-  colorId?: number;
-  colorNombre?: string;
-  medidaId?: number;
-  medidaNombre?: string;
-  // Stock validation fields
-  stockDisponible?: number;
-  stockVerificado?: boolean;
-};
-
-// When FINANCIAMIENTO and no explicit entrega is configured,
-// default to 40% down payment so the backend always gets the correct split.
-function resolveEntregaFields(
-  metodoPago: string,
-  entregaActiva: boolean,
-  usePorcentaje: boolean,
-  porcentaje: number | null,
-  montoFijo: number | null,
-): { porcentajeEntregaInicial?: number; montoEntregaInicial?: number } {
-  if (entregaActiva && usePorcentaje && porcentaje != null) return { porcentajeEntregaInicial: porcentaje };
-  if (entregaActiva && !usePorcentaje && montoFijo != null) return { montoEntregaInicial: montoFijo };
-  if (isFinanciamiento(metodoPago)) return { porcentajeEntregaInicial: 40 };
-  return {};
-}
-
-// Extracted outside FacturacionPage so React keeps a stable component reference
-// across re-renders, preventing input focus loss when editing cart fields.
-const ProductsTable = React.memo(({ items, onUpdate, onRemove, editable = true, products, recetas }: {
-  items: CartItem[] | NotaCartItem[];
-  onUpdate: (index: number, field: any, value: any) => void;
-  onRemove: (index: number) => void;
-  editable?: boolean;
-  products: Producto[];
-  recetas: RecetaFabricacionDTO[];
-}) => {
-  const [tipoEquipoFiltro, setTipoEquipoFiltro] = React.useState<'' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO'>('');
-
-  const recetasCountPorTipo = React.useMemo(() => {
-    const counts: Record<'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO', number> = {
-      HELADERA: 0, COOLBOX: 0, EXHIBIDOR: 0, OTRO: 0,
-    };
-    recetas.forEach((r) => {
-      const t = r.tipoEquipo as 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO' | undefined;
-      if (t && t in counts) counts[t]++;
-    });
-    return counts;
-  }, [recetas]);
-
-  const recetasFiltradas = React.useMemo(
-    () => (tipoEquipoFiltro ? recetas.filter((r) => r.tipoEquipo === tipoEquipoFiltro) : recetas),
-    [recetas, tipoEquipoFiltro]
-  );
-
-  return (
-  <Box>
-    {editable && recetas.length > 0 && (
-      <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <TextField
-          select
-          size="small"
-          label="Filtrar equipos por tipo"
-          value={tipoEquipoFiltro}
-          onChange={(e) => setTipoEquipoFiltro(e.target.value as typeof tipoEquipoFiltro)}
-          sx={{ minWidth: 260 }}
-        >
-          <MenuItem value="">Todos ({recetas.length})</MenuItem>
-          <MenuItem value="HELADERA" disabled={recetasCountPorTipo.HELADERA === 0}>
-            Heladera ({recetasCountPorTipo.HELADERA})
-          </MenuItem>
-          <MenuItem value="COOLBOX" disabled={recetasCountPorTipo.COOLBOX === 0}>
-            Coolbox ({recetasCountPorTipo.COOLBOX})
-          </MenuItem>
-          <MenuItem value="EXHIBIDOR" disabled={recetasCountPorTipo.EXHIBIDOR === 0}>
-            Exhibidor ({recetasCountPorTipo.EXHIBIDOR})
-          </MenuItem>
-          <MenuItem value="OTRO" disabled={recetasCountPorTipo.OTRO === 0}>
-            Otro ({recetasCountPorTipo.OTRO})
-          </MenuItem>
-        </TextField>
-        {tipoEquipoFiltro && (
-          <Button size="small" variant="text" onClick={() => setTipoEquipoFiltro('')}>
-            Limpiar filtro
-          </Button>
-        )}
-      </Box>
-    )}
-  <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto', width: '100%', maxWidth: '100%' }}>
-    <Table stickyHeader size="small" sx={{ minWidth: { xs: 700, md: 900 }, width: '100%' }}>
-      <TableHead>
-        <TableRow>
-          {editable && <TableCell sx={{ minWidth: { xs: 100, md: 120 } }}>Tipo</TableCell>}
-          <TableCell sx={{ minWidth: { xs: 180, md: 220 } }}>Producto/Equipo</TableCell>
-          <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Color</TableCell>
-          <TableCell sx={{ minWidth: { xs: 90, md: 100 } }}>Medida</TableCell>
-          <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Cantidad</TableCell>
-          <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Precio Unit.</TableCell>
-          <TableCell align="right" sx={{ minWidth: { xs: 90, md: 120 } }}>Desc. %</TableCell>
-          <TableCell align="right" sx={{ minWidth: { xs: 120, md: 160 } }}>Subtotal</TableCell>
-          {editable && <TableCell align="center" sx={{ minWidth: { xs: 90, md: 120 } }}>Acciones</TableCell>}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {items.map((item, index) => {
-          const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
-          const itemAny = item as any;
-          return (
-            <TableRow key={index} hover>
-              {editable && (
-                <TableCell>
-                  <Select
-                    fullWidth
-                    size="small"
-                    value={itemAny.tipoItem || 'PRODUCTO'}
-                    onChange={(e) => onUpdate(index, 'tipoItem', e.target.value)}
-                  >
-                    <MenuItem value="PRODUCTO">Producto</MenuItem>
-                    <MenuItem value="EQUIPO">Equipo</MenuItem>
-                  </Select>
-                </TableCell>
-              )}
-              <TableCell>
-                {editable ? (
-                  itemAny.tipoItem === 'EQUIPO' ? (
-                    <Select
-                      fullWidth
-                      size="small"
-                      value={itemAny.recetaId || ''}
-                      onChange={(e) => onUpdate(index, 'recetaId', e.target.value)}
-                    >
-                      {recetasFiltradas.length === 0 ? (
-                        <MenuItem disabled>
-                          {recetas.length === 0
-                            ? 'No hay equipos disponibles'
-                            : `No hay equipos del tipo ${tipoEquipoFiltro}`}
-                        </MenuItem>
-                      ) : (
-                        recetasFiltradas.map((r) => (
-                          <MenuItem key={r.id} value={r.id}>
-                            {r.nombre} - {r.modelo} ({r.tipoEquipo})
-                          </MenuItem>
-                        ))
-                      )}
-                    </Select>
-                  ) : (
-                    <Select
-                      fullWidth
-                      size="small"
-                      value={itemAny.productoId || ''}
-                      onChange={(e) => onUpdate(index, 'productoId', e.target.value)}
-                    >
-                      {products.filter(p => p && p.id).map((p) => (
-                        <MenuItem key={p.id} value={p.id}>{p.nombre || 'Producto sin nombre'}</MenuItem>
-                      ))}
-                    </Select>
-                  )
-                ) : (
-                  <Typography noWrap maxWidth={360}>
-                    {itemAny.tipoItem === 'EQUIPO'
-                      ? `${itemAny.recetaNombre || ''} ${itemAny.recetaModelo ? `- ${itemAny.recetaModelo}` : ''}`
-                      : item.productoNombre}
-                  </Typography>
-                )}
-              </TableCell>
-              <TableCell>
-                {editable && itemAny.tipoItem === 'EQUIPO' ? (
-                  <ColorPicker
-                    value={itemAny.colorId ?? undefined}
-                    onChange={(id) => onUpdate(index, 'colorId', id ?? '')}
-                    label=""
-                  />
-                ) : (
-                  <Typography>{itemAny.colorNombre || '-'}</Typography>
-                )}
-              </TableCell>
-              <TableCell>
-                <Typography>{itemAny.medidaNombre || '-'}</Typography>
-              </TableCell>
-              <TableCell align="center">
-                <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
-                  {editable ? (
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={item.cantidad}
-                      onChange={(e) => onUpdate(index, 'cantidad', e.target.value)}
-                      inputProps={{ min: 1 }}
-                      sx={{ width: 90 }}
-                    />
-                  ) : (
-                    <Typography align="center">{item.cantidad}</Typography>
-                  )}
-                  {itemAny.tipoItem === 'EQUIPO' && itemAny.stockVerificado && (
-                    <Tooltip
-                      title={`Stock disponible: ${itemAny.stockDisponible || 0} unidades`}
-                      arrow
-                    >
-                      <Chip
-                        size="small"
-                        label={itemAny.requiereFabricacion ? `Stock: ${itemAny.stockDisponible}` : '✓ Stock OK'}
-                        color={itemAny.requiereFabricacion ? 'warning' : 'success'}
-                        sx={{ fontSize: '0.7rem', height: 20 }}
-                      />
-                    </Tooltip>
-                  )}
-                </Box>
-              </TableCell>
-              <TableCell align="right">
-                {editable ? (
-                  <TextField
-                    type="number"
-                    size="small"
-                    value={item.precioUnitario}
-                    onChange={(e) => onUpdate(index, 'precioUnitario', e.target.value)}
-                    inputProps={{ min: 0, step: 0.01 }}
-                    sx={{ width: 140 }}
-                  />
-                ) : (
-                  <Typography align="right">${item.precioUnitario.toFixed(2)}</Typography>
-                )}
-              </TableCell>
-              <TableCell align="right">
-                {editable ? (
-                  <TextField
-                    type="number"
-                    size="small"
-                    value={item.descuento}
-                    onChange={(e) => onUpdate(index, 'descuento', e.target.value)}
-                    inputProps={{ min: 0, max: 100 }}
-                    sx={{ width: 100 }}
-                  />
-                ) : (
-                  <Typography align="right">{item.descuento}%</Typography>
-                )}
-              </TableCell>
-              <TableCell align="right">
-                <Typography variant="body2" fontWeight="bold">
-                  ${subtotal.toFixed(2)}
-                </Typography>
-              </TableCell>
-              {editable && (
-                <TableCell align="center">
-                  <IconButton size="small" onClick={() => onRemove(index)} color="error">
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              )}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </TableContainer>
-  </Box>
-  );
-});
+// FRONT-002: extracted to keep this file orchestrator-shaped.
+import { IVA_OPTIONS, type TipoIva } from './Facturacion/constants';
+import type { CartItem, NotaCartItem } from './Facturacion/types';
+import {
+  isFinanciamiento,
+  buildCajaPayload,
+  normalizeMetodoPagoToBackend,
+  resolveEntregaFields,
+} from './Facturacion/utils';
+import CambiarEstadoDialog from './Facturacion/dialogs/CambiarEstadoDialog';
+import BillingDialog, { type BillingFormValues } from './Facturacion/dialogs/BillingDialog';
+import ConfigFinanciamientoDialog from './Facturacion/dialogs/ConfigFinanciamientoDialog';
+import FabricacionConfirmDialog from './Facturacion/dialogs/FabricacionConfirmDialog';
+import ConvertToFacturaDialog from './Facturacion/dialogs/ConvertToFacturaDialog';
+import DesdeNotaPedidoTab from './Facturacion/tabs/DesdeNotaPedidoTab';
+import FacturarManualTab from './Facturacion/tabs/FacturarManualTab';
 
 const FacturacionPage = () => {
   const navigate = useNavigate();
@@ -507,10 +130,9 @@ const FacturacionPage = () => {
     cantidadCuotas: number | null;
   } | null>(null);
 
-  // Estado management dialog
-  const [estadoDialogOpen, setEstadoDialogOpen] = useState(false);
-  const [selectedDocumento, setSelectedDocumento] = useState<DocumentoComercial | null>(null);
-  const [newEstado, setNewEstado] = useState<DocumentoComercial['estado']>('PENDIENTE');
+  // Estado management dialog: documento != null ⇒ open. Lifecycle is owned
+  // by CambiarEstadoDialog (FRONT-002 extraction).
+  const [estadoDoc, setEstadoDoc] = useState<DocumentoComercial | null>(null);
 
   // Financiamiento states
   const [financiamientoDialogOpen, setFinanciamientoDialogOpen] = useState(false);
@@ -518,14 +140,7 @@ const FacturacionPage = () => {
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
   const [plantillasFinanciamiento, setPlantillasFinanciamiento] = useState<OpcionFinanciamientoTemplateDTO[]>([]);
   const [loadingOpciones, setLoadingOpciones] = useState(false);
-  const [newOpcionForm, setNewOpcionForm] = useState({
-    nombre: '',
-    metodoPago: 'EFECTIVO' as MetodoPago,
-    cantidadCuotas: 1,
-    tasaInteres: 0,
-    descripcion: '',
-  });
-  const [showNewOpcionForm, setShowNewOpcionForm] = useState(false);
+  // newOpcionForm/showNewOpcionForm moved into ConfigFinanciamientoDialog.
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdFactura, setCreatedFactura] = useState<DocumentoComercial | null>(null);
   const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
@@ -881,33 +496,7 @@ const FacturacionPage = () => {
   };
 
   // Helper functions for financing
-  const getMetodoPagoIcon = (metodoPago: MetodoPago | string) => {
-    switch (metodoPago) {
-      case 'EFECTIVO':
-        return <MoneyIcon fontSize="small" />;
-      case 'TARJETA_CREDITO':
-        return <CreditCardIcon fontSize="small" />;
-      case 'TRANSFERENCIA':
-      case 'FINANCIAMIENTO':
-      case 'FINANCIACION_PROPIA':
-        return <BankIcon fontSize="small" />;
-      default:
-        return <MoneyIcon fontSize="small" />;
-    }
-  };
-
-  const getMetodoPagoLabel = (metodoPago: MetodoPago | string) => {
-    switch (metodoPago) {
-      case 'EFECTIVO': return 'Efectivo';
-      case 'TARJETA_CREDITO': return 'Tarjeta de Crédito';
-      case 'TARJETA_DEBITO': return 'Tarjeta de Débito';
-      case 'TRANSFERENCIA': return 'Transferencia bancaria';
-      case 'FINANCIAMIENTO': return 'Financiación propia';
-      case 'FINANCIACION_PROPIA': return 'Financiación Propia';
-      case 'CHEQUE': return 'Cheque';
-      default: return String(metodoPago);
-    }
-  };
+  // getMetodoPagoIcon/getMetodoPagoLabel moved to ./Facturacion/paymentMethodIcons.
 
   const clearForm = () => {
     setSelectedCliente(null);
@@ -1746,33 +1335,34 @@ const FacturacionPage = () => {
     setIsManualInvoice(false);
   };
 
-  const handleCloseBillingDialog = () => {
-    setBillingDialogOpen(false);
-  };
+  const handleCloseBillingDialog = () => setBillingDialogOpen(false);
 
-  // Apply billing form to the relevant state slice (manual vs nota) and re-trigger the submit.
-  // Using setTimeout(0) so the state updates commit before the submit handler reads them.
-  const submitBillingDialog = () => {
+  // Apply billing values to the relevant state slice (manual vs nota) and
+  // re-trigger the submit. setTimeout(0) so state commits before the submit
+  // handler reads the new values. `billingConfirmedRef` short-circuits the
+  // re-entry into the billing dialog when the submit handler runs again.
+  const handleBillingConfirm = (values: BillingFormValues) => {
     billingConfirmedRef.current = true;
+    setBillingForm(values); // keep latest values for any consumer that reads it (interest rate, etc.)
     if (billingMode === 'manual') {
-      setCantidadCuotas(billingForm.cantidadCuotas);
-      setTipoFinanciacion(billingForm.tipoFinanciacion);
-      setPrimerVencimiento(billingForm.primerVencimiento);
-      setEntregarInicial(billingForm.entregarInicial);
-      setUsePorcentaje(billingForm.usePorcentaje);
-      setPorcentajeEntrega(billingForm.usePorcentaje ? billingForm.porcentajeEntregaInicial : null);
-      setMontoFijoEntrega(!billingForm.usePorcentaje ? billingForm.montoEntregaInicial : null);
-      setManualTasaInteres(billingForm.tasaInteres);
+      setCantidadCuotas(values.cantidadCuotas);
+      setTipoFinanciacion(values.tipoFinanciacion);
+      setPrimerVencimiento(values.primerVencimiento);
+      setEntregarInicial(values.entregarInicial);
+      setUsePorcentaje(values.usePorcentaje);
+      setPorcentajeEntrega(values.usePorcentaje ? values.porcentajeEntregaInicial : null);
+      setMontoFijoEntrega(!values.usePorcentaje ? values.montoEntregaInicial : null);
+      setManualTasaInteres(values.tasaInteres);
       setBillingDialogOpen(false);
       setTimeout(() => handleSubmitManualInvoice(), 0);
     } else {
-      setNotaCantidadCuotas(billingForm.cantidadCuotas);
-      setNotaTipoFinanciacion(billingForm.tipoFinanciacion);
-      setNotaPrimerVencimiento(billingForm.primerVencimiento);
-      setNotaEntregaInicial(billingForm.entregarInicial);
-      setNotaUsePorcentaje(billingForm.usePorcentaje);
-      setNotaPorcentajeEntrega(billingForm.usePorcentaje ? billingForm.porcentajeEntregaInicial : null);
-      setNotaMontoFijoEntrega(!billingForm.usePorcentaje ? billingForm.montoEntregaInicial : null);
+      setNotaCantidadCuotas(values.cantidadCuotas);
+      setNotaTipoFinanciacion(values.tipoFinanciacion);
+      setNotaPrimerVencimiento(values.primerVencimiento);
+      setNotaEntregaInicial(values.entregarInicial);
+      setNotaUsePorcentaje(values.usePorcentaje);
+      setNotaPorcentajeEntrega(values.usePorcentaje ? values.porcentajeEntregaInicial : null);
+      setNotaMontoFijoEntrega(!values.usePorcentaje ? values.montoEntregaInicial : null);
       setBillingDialogOpen(false);
       setTimeout(() => handleConvertNotaToFactura(), 0);
     }
@@ -1979,31 +1569,7 @@ const FacturacionPage = () => {
     }
   };
 
-  const handleOpenEstadoDialog = (documento: DocumentoComercial) => {
-    setSelectedDocumento(documento);
-    setNewEstado(documento.estado);
-    setEstadoDialogOpen(true);
-  };
-
-  const handleUpdateEstado = async () => {
-    if (!selectedDocumento || !newEstado) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await documentoApi.changeEstado(selectedDocumento.id, newEstado);
-      setSuccess(`Estado actualizado exitosamente.`);
-      setEstadoDialogOpen(false);
-      invalidateNotas();
-      loadData();
-    } catch (err: any) {
-      console.error('Error updating estado:', err);
-      setError(`Error al actualizar el estado: ${err?.message || 'Error'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // handleOpenEstadoDialog/handleUpdateEstado moved to CambiarEstadoDialog.
 
   const updateNotaCartItem = (index: number, field: 'cantidad'|'precioUnitario'|'descuento', value: any) => {
     const newCart = [...notaCart];
@@ -2074,71 +1640,29 @@ const FacturacionPage = () => {
 
   const handleOpenFinanciamiento = async () => {
     setFinanciamientoDialogOpen(true);
-    setShowNewOpcionForm(false);
-    setNewOpcionForm({
-      nombre: '',
-      metodoPago: 'EFECTIVO',
-      cantidadCuotas: 1,
-      tasaInteres: 0,
-      descripcion: '',
-    });
-
-    // Convert templates to financing options with calculated amounts
+    // Convert templates to financing options with calculated amounts (40/60 split,
+    // template tasaInteres applied to the financed portion).
     const opcionesCalculadas: OpcionFinanciamientoDTO[] = plantillasFinanciamiento.map((template) => {
       const tasaDecimal = template.tasaInteres / 100;
       const pagoAnticipo = totalVenta * 0.4;
       const pagoFinanciado = totalVenta * 0.6 * (1 + tasaDecimal);
-      const montoTotal = pagoAnticipo + pagoFinanciado;
-      const montoCuota = pagoFinanciado / template.cantidadCuotas;
-      
       return {
         nombre: template.nombre,
         metodoPago: template.metodoPago,
         cantidadCuotas: template.cantidadCuotas,
         tasaInteres: template.tasaInteres,
-        montoTotal: montoTotal,
-        montoCuota: montoCuota,
+        montoTotal: pagoAnticipo + pagoFinanciado,
+        montoCuota: pagoFinanciado / template.cantidadCuotas,
         descripcion: template.descripcion,
         ordenPresentacion: template.ordenPresentacion,
       };
     });
-    
     setOpcionesFinanciamiento(opcionesCalculadas);
   };
 
-  const handleAddNewOpcion = () => {
-    const { nombre, metodoPago, cantidadCuotas, tasaInteres, descripcion } = newOpcionForm;
-    
-    if (!nombre.trim()) {
-      setError('Debe ingresar un nombre para la opción');
-      return;
-    }
-
-      const pagoAnticipo = totalVenta * 0.4;
-      const pagoFinanciado = totalVenta * 0.6 * (1 + tasaInteres / 100);
-      const montoConInteres = pagoAnticipo + pagoFinanciado;
-      const montoCuota = pagoFinanciado / cantidadCuotas;
-
-      const newOpcion: OpcionFinanciamientoDTO = {
-        nombre,
-        metodoPago,
-        cantidadCuotas,
-        tasaInteres,
-        montoTotal: montoConInteres,
-        montoCuota: montoCuota,
-        descripcion,
-        ordenPresentacion: opcionesFinanciamiento.length + 1,
-      };
-
-      setOpcionesFinanciamiento([...opcionesFinanciamiento, newOpcion]);
-      setShowNewOpcionForm(false);
-    setNewOpcionForm({
-      nombre: '',
-      metodoPago: 'EFECTIVO',
-      cantidadCuotas: 1,
-      tasaInteres: 0,
-      descripcion: '',
-    });
+  // ConfigFinanciamientoDialog manages its own newOpcionForm/showNewForm state.
+  const handleAddOpcionFromDialog = (opcion: OpcionFinanciamientoDTO) => {
+    setOpcionesFinanciamiento((prev) => [...prev, opcion]);
   };
 
   // ProductsTable is defined outside FacturacionPage (see above)
@@ -2210,978 +1734,133 @@ const FacturacionPage = () => {
 
       {/* Tab 0: Manual Invoice */}
       {activeTab === 0 && (
-        <Box sx={{ width: '100%', maxWidth: '100%' }}>
-          <Card sx={{ width: '100%' }}>
-            <CardContent sx={{ width: '100%', boxSizing: 'border-box' }}>
-              <Typography variant="h6" gutterBottom>
-                Nueva Factura Manual
-              </Typography>
-              <Divider sx={{ mb: 3 }} />
-
-              <Grid container spacing={3} sx={{ width: '100%' }}>
-                <Grid item xs={12} md={6}>
-                  <ClienteAutocomplete
-                    value={selectedCliente}
-                    onChange={async (cliente) => {
-                      setSelectedCliente(cliente);
-                      deudaYaConfirmadaRef.current = false;
-                      if (cliente) {
-                        const deudaData = await checkClienteDeuda(cliente.id);
-                        if (deudaData) {
-                          setDeudaError(deudaData);
-                          pendingDeudaRef.current = () => {
-                            deudaYaConfirmadaRef.current = true;
-                          };
-                        }
-                      }
-                    }}
-                    label="Cliente"
-                    placeholder="Escribí nombre, razón social o CUIT…"
-                    required
-                    size="medium"
-                  />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Vendedor</InputLabel>
-                    <Select
-                      value={selectedUsuarioId}
-                      onChange={(e) => setSelectedUsuarioId(e.target.value as number)}
-                      label="Vendedor"
-                    >
-                      <MenuItem value="">Seleccionar Vendedor</MenuItem>
-                      {usuarios.map((usuario) => (
-                        <MenuItem key={usuario.id} value={usuario.id}>
-                          {usuario.nombre ? `${usuario.nombre} ${usuario.apellido || ''}`.trim() : usuario.username || usuario.email}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Método de Pago</InputLabel>
-                    <Select
-                      value={paymentMethod}
-                      onChange={(e) => handleChangePaymentMethod(e.target.value as MetodoPago)}
-                      label="Método de Pago"
-                    >
-                      {PAYMENT_METHODS.map((method) => (
-                        <MenuItem key={method.value} value={method.value}>
-                          {method.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tipo de IVA</InputLabel>
-                    <Select
-                      value={selectedIva}
-                      onChange={(e) => setSelectedIva(e.target.value as TipoIva)}
-                      label="Tipo de IVA"
-                    >
-                      {IVA_OPTIONS.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Vencimiento"
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tipo de descuento</InputLabel>
-                    <Select
-                      value={descuentoTipo}
-                      onChange={(e) => {
-                        const next = e.target.value as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
-                        setDescuentoTipo(next);
-                        if (next === 'NONE') setDescuentoValor(0);
-                      }}
-                      label="Tipo de descuento"
-                    >
-                      <MenuItem value="NONE">Sin descuento</MenuItem>
-                      <MenuItem value="PORCENTAJE">Porcentaje (%)</MenuItem>
-                      <MenuItem value="MONTO_FIJO">Monto fijo ($)</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label={descuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
-                    value={descuentoTipo === 'NONE' ? '' : descuentoValor}
-                    onChange={(e) => {
-                      const raw = parseFloat(e.target.value);
-                      const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
-                      setDescuentoValor(descuentoTipo === 'PORCENTAJE' ? Math.min(100, valor) : valor);
-                    }}
-                    inputProps={{
-                      min: 0,
-                      max: descuentoTipo === 'PORCENTAJE' ? 100 : undefined,
-                      step: descuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
-                    }}
-                    disabled={descuentoTipo === 'NONE'}
-                  />
-                </Grid>
-
-                {isFinanciamiento(paymentMethod) && (
-                  <Grid item xs={12}>
-                    <Alert severity="info">
-                      Los datos de financiación (cuotas, tasa, entrega inicial) se configuran al confirmar la factura.
-                    </Alert>
-                  </Grid>
-                )}
-
-                {!isFinanciamiento(paymentMethod) && metodoPagoRequiereCaja(paymentMethod) && (
-                  <Grid item xs={12}>
-                    <CajaSelector
-                      metodoPago={paymentMethod}
-                      value={cajaContadoRef}
-                      onChange={setCajaContadoRef}
-                      direccion="ingreso"
-                    />
-                  </Grid>
-                )}
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={2}
-                    label="Observaciones"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Notas adicionales para la factura..."
-                  />
-                </Grid>
-              </Grid>
-
-              <Box mt={3} sx={{ width: '100%' }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">Items</Typography>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={addItemToCart}
-                    disabled={products.length === 0}
-                  >
-                    Agregar Item
-                  </Button>
-                </Box>
-
-                {cart.length > 0 ? (
-                  <ProductsTable
-                    items={cart}
-                    onUpdate={updateCartItem}
-                    onRemove={removeItemFromCart}
-                    products={products}
-                    recetas={recetas}
-                  />
-                ) : (
-                  <Paper sx={{ p: 3, textAlign: 'center', width: '100%' }}>
-                    <Typography color="text.secondary">
-                      No hay productos en el carrito
-                    </Typography>
-                  </Paper>
-                )}
-              </Box>
-
-              {cart.length > 0 && (
-                <Box mt={3} sx={{ width: '100%' }}>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50', width: '100%' }}>
-                    <Grid container spacing={2} sx={{ width: '100%' }}>
-                      <Grid item xs={12} sm={descuentoTipo !== 'NONE' && descuentoAmount > 0 ? 4 : 6}>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Subtotal:
-                        </Typography>
-                        <Typography variant="h6">${subtotalVenta.toFixed(2)}</Typography>
-                      </Grid>
-                      {descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
-                        <Grid item xs={12} sm={4}>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            Descuento {descuentoTipo === 'PORCENTAJE' ? `(${descuentoValor}%)` : '(monto fijo)'}:
-                          </Typography>
-                          <Typography variant="h6" color="error.main">-${descuentoAmount.toFixed(2)}</Typography>
-                        </Grid>
-                      )}
-                      <Grid item xs={12} sm={descuentoTipo !== 'NONE' && descuentoAmount > 0 ? 4 : 6}>
-                        <Typography variant="subtitle2" color="text.secondary">
-                          IVA ({IVA_OPTIONS.find(o => o.value === selectedIva)?.label}):
-                        </Typography>
-                        <Typography variant="h6">${ivaAmount.toFixed(2)}</Typography>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="subtitle2" color="text.secondary">
-                          Total:
-                        </Typography>
-                        <Typography variant="h5" color="primary">
-                          ${totalVenta.toFixed(2)}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  </Paper>
-                </Box>
-              )}
-
-              <Box mt={3} display="flex" justifyContent="flex-end" gap={2} sx={{ width: '100%' }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<ClearIcon />}
-                  onClick={clearForm}
-                >
-                  Limpiar
-                </Button>
-                {cart.length > 0 && (
-                  <Button
-                    variant="outlined"
-                    onClick={handleOpenFinanciamiento}
-                  >
-                    Opciones de Financiamiento
-                  </Button>
-                )}
-                <Button
-                  variant="contained"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSubmitManualInvoice}
-                  disabled={loading || !selectedClientId || !selectedUsuarioId || cart.length === 0}
-                >
-                  Crear Factura
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
+        <FacturarManualTab
+          selectedCliente={selectedCliente}
+          onChangeCliente={async (cliente) => {
+            setSelectedCliente(cliente);
+            deudaYaConfirmadaRef.current = false;
+            if (cliente) {
+              const deudaData = await checkClienteDeuda(cliente.id);
+              if (deudaData) {
+                setDeudaError(deudaData);
+                pendingDeudaRef.current = () => {
+                  deudaYaConfirmadaRef.current = true;
+                };
+              }
+            }
+          }}
+          selectedUsuarioId={selectedUsuarioId}
+          onChangeUsuario={setSelectedUsuarioId}
+          usuarios={usuarios}
+          paymentMethod={paymentMethod}
+          onChangePaymentMethod={handleChangePaymentMethod}
+          cajaContadoRef={cajaContadoRef}
+          onChangeCajaContado={setCajaContadoRef}
+          selectedIva={selectedIva}
+          onChangeIva={setSelectedIva}
+          dueDate={dueDate}
+          onChangeDueDate={setDueDate}
+          descuentoTipo={descuentoTipo}
+          onChangeDescuentoTipo={setDescuentoTipo}
+          descuentoValor={descuentoValor}
+          onChangeDescuentoValor={setDescuentoValor}
+          notes={notes}
+          onChangeNotes={setNotes}
+          cart={cart}
+          onAddItem={addItemToCart}
+          onUpdateCartItem={updateCartItem}
+          onRemoveCartItem={removeItemFromCart}
+          products={products}
+          recetas={recetas}
+          totals={{ subtotal: subtotalVenta, descuento: descuentoAmount, iva: ivaAmount, total: totalVenta }}
+          loading={loading}
+          selectedClientId={selectedClientId}
+          onClear={clearForm}
+          onOpenFinanciamiento={handleOpenFinanciamiento}
+          onSubmit={handleSubmitManualInvoice}
+        />
       )}
 
       {/* Tab 1: From Nota de Pedido */}
       {activeTab === 1 && (
-        <Box sx={{ width: '100%', maxWidth: '100%' }}>
-          {/* Search field for Notas de Pedido */}
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Buscar por número de nota, cliente, lead o total..."
-              value={notasSearchTerm}
-              onChange={(e) => setNotasSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon color="action" />
-                  </InputAdornment>
-                ),
-              }}
-              helperText={`Mostrando ${notasPedido.length} de ${totalNotasPedido} notas de pedido`}
-            />
-          </Box>
-
-          {sortedNotasPedido.length === 0 && !notasQuery.isLoading ? (
-            <Paper sx={{ p: 4, textAlign: 'center' }}>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No hay Notas de Pedido disponibles
-              </Typography>
-              <Typography color="text.secondary">
-                Las notas de pedido deben estar en estado APROBADO para poder facturarse. Las notas en PENDIENTE pueden aprobarse desde esta misma pantalla.
-              </Typography>
-            </Paper>
-          ) : (
-            <>
-              <Grid container spacing={3} sx={{ mb: 2 }}>
-                {paginatedNotasPedido.map((nota) => (
-                  <Grid item xs={12} sm={6} md={6} lg={4} xl={3} key={nota.id}>
-                    <Card>
-                      <CardContent>
-                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
-                          <Typography variant="h6">
-                            Nota #{nota.numeroDocumento}
-                          </Typography>
-                          <Chip
-                            label={ESTADO_OPTIONS[nota.estado]?.label || nota.estado}
-                            color={ESTADO_OPTIONS[nota.estado]?.color || 'default'}
-                            size="small"
-                          />
-                        </Box>
-
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Cliente: {nota.clienteNombre}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Fecha: {dayjs(nota.fecha).format('DD/MM/YYYY')}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Items: {nota.detalles?.length || 0}
-                        </Typography>
-
-                        <Divider sx={{ my: 2 }} />
-
-                        <Typography variant="h6" color="primary">
-                          Total: ${nota.total?.toFixed(2) || '0.00'}
-                        </Typography>
-
-                        <Box mt={1}>
-                          <AuditoriaFlujo documento={nota} />
-                        </Box>
-
-                        {notaOpcionesFinanciamiento[nota.id] && notaOpcionesFinanciamiento[nota.id].length > 0 && (
-                          <Box mt={1}>
-                            <Chip
-                              icon={<CreditCardIcon />}
-                              label={`${notaOpcionesFinanciamiento[nota.id].length} opciones de financiamiento`}
-                              size="small"
-                              color="info"
-                              variant="outlined"
-                            />
-                          </Box>
-                        )}
-
-                        <Box mt={2} display="flex" gap={1}>
-                          <Tooltip title={nota.estado === 'APROBADO' ? '' : 'La nota debe estar APROBADA para facturarse'}>
-                            <span style={{ flex: 1 }}>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                fullWidth
-                                startIcon={<CheckCircleIcon />}
-                                onClick={() => handleOpenConvertDialog(nota)}
-                                disabled={nota.estado !== 'APROBADO'}
-                              >
-                                Facturar
-                              </Button>
-                            </span>
-                          </Tooltip>
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handleOpenEstadoDialog(nota)}
-                            title="Cambiar estado"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-
-              <Box display="flex" justifyContent="center" mt={2}>
-                <Paper>
-                  <TablePagination
-                    component="div"
-                    count={totalNotasPedido}
-                    page={pageNotas}
-                    onPageChange={handleChangePageNotas}
-                    rowsPerPage={rowsPerPageNotas}
-                    onRowsPerPageChange={handleChangeRowsPerPageNotas}
-                    rowsPerPageOptions={[6, 12, 24, 48]}
-                    labelRowsPerPage="Notas por página:"
-                    labelDisplayedRows={({ from, to, count }) =>
-                      `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-                    }
-                  />
-                </Paper>
-              </Box>
-            </>
-          )}
-        </Box>
+        <DesdeNotaPedidoTab
+          searchTerm={notasSearchTerm}
+          onChangeSearchTerm={setNotasSearchTerm}
+          notasShownCount={notasPedido.length}
+          totalNotas={totalNotasPedido}
+          isLoading={notasQuery.isLoading}
+          sortedNotas={sortedNotasPedido}
+          paginatedNotas={paginatedNotasPedido}
+          page={pageNotas}
+          rowsPerPage={rowsPerPageNotas}
+          onChangePage={handleChangePageNotas}
+          onChangeRowsPerPage={handleChangeRowsPerPageNotas}
+          notaOpcionesFinanciamiento={notaOpcionesFinanciamiento}
+          onConvert={handleOpenConvertDialog}
+          onCambiarEstado={setEstadoDoc}
+        />
       )}
 
-      {/* Convert Dialog */}
-      <Dialog
+      <ConvertToFacturaDialog
         open={convertDialogOpen}
         onClose={handleCloseConvertDialog}
-        maxWidth="lg"
-        fullWidth
-        sx={{
-          '& .MuiDialog-paper': {
-            maxHeight: { xs: '100%', sm: '90vh' },
-            m: { xs: 0, sm: 2 }
-          }
+        onConfirm={handleConvertNotaToFactura}
+        loading={loading}
+        selectedNotaPedido={selectedNotaPedido}
+        loadingOpciones={loadingOpciones}
+        opcionesFinanciamiento={opcionesFinanciamiento}
+        selectedOpcionId={selectedOpcionId}
+        onSelectOpcion={setSelectedOpcionId}
+        editingNotaItems={editingNotaItems}
+        onStartEditItems={() => setEditingNotaItems(true)}
+        notaCart={notaCart}
+        onUpdateNotaCartItem={updateNotaCartItem}
+        products={products}
+        recetas={recetas}
+        notaDescuentoTipo={notaDescuentoTipo}
+        onChangeNotaDescuentoTipo={(next) => {
+          setNotaDescuentoTipo(next);
+          if (next === 'NONE') setNotaDescuentoValor(0);
         }}
-      >
-        <DialogTitle>
-          Convertir Nota de Pedido a Factura
-        </DialogTitle>
-        <DialogContent>
-          {selectedNotaPedido && (
-            <>
-              <Box mb={3}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Cliente:
-                    </Typography>
-                    <Typography>{selectedNotaPedido.clienteNombre}</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Número de Documento:
-                    </Typography>
-                    <Typography>#{selectedNotaPedido.numeroDocumento}</Typography>
-                  </Grid>
-                </Grid>
-              </Box>
+        notaDescuentoValor={notaDescuentoValor}
+        onChangeNotaDescuentoValor={setNotaDescuentoValor}
+        notaSubtotal={notaSubtotal}
+        notaDescuentoAmount={notaDescuentoAmount}
+        notaIvaAmount={notaIvaAmount}
+        notaFinancingAdjustment={notaFinancingAdjustment}
+        notaTotalVenta={notaTotalVenta}
+      />
 
-              {/* Financing Options */}
-              {loadingOpciones ? (
-                <Box display="flex" justifyContent="center" p={2}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : opcionesFinanciamiento.length > 0 && (
-                <Box mb={3}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Opciones de Financiamiento
-                  </Typography>
-                  <RadioGroup
-                    value={selectedOpcionId !== null ? String(selectedOpcionId) : ''}
-                    onChange={(e) => setSelectedOpcionId(Number(e.target.value))}
-                  >
-                    <Grid container spacing={2}>
-                      {opcionesFinanciamiento.map((opcion, index) => {
-                        const optionValue = opcion.id !== undefined ? opcion.id : index;
-                        return (
-                          <Grid item xs={12} sm={6} md={4} key={index}>
-                            <Card
-                              variant="outlined"
-                              sx={{
-                                p: 1,
-                                border: selectedOpcionId === optionValue ? '2px solid' : '1px solid',
-                                borderColor: selectedOpcionId === optionValue ? 'primary.main' : 'divider',
-                                cursor: 'pointer'
-                              }}
-                              onClick={() => setSelectedOpcionId(optionValue)}
-                            >
-                              <FormControlLabel
-                                value={optionValue}
-                                control={<Radio />}
-                                label={
-                                  <Box>
-                                    <Box display="flex" alignItems="center" gap={1}>
-                                      {getMetodoPagoIcon(opcion.metodoPago)}
-                                      <Typography variant="body2" fontWeight="bold">
-                                        {opcion.nombre}
-                                      </Typography>
-                                    </Box>
-                                    <Typography variant="caption" display="block" color="text.secondary">
-                                      {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
-                                    </Typography>
-                                    <Typography variant="body2" color="primary">
-                                      Total: ${opcion.montoTotal?.toFixed(2)}
-                                    </Typography>
-                                    {opcion.cantidadCuotas > 1 && (
-                                      <Typography variant="caption" color="text.secondary">
-                                        ${opcion.montoCuota?.toFixed(2)}/cuota
-                                      </Typography>
-                                    )}
-                                  </Box>
-                                }
-                              />
-                            </Card>
-                          </Grid>
-                        );
-                      })}
-                    </Grid>
-                  </RadioGroup>
-                </Box>
-              )}
-
-              {/* Display selected financing option */}
-              {selectedOpcionId !== null && selectedOpcionId !== undefined && opcionesFinanciamiento.length > 0 && (
-                <Box mb={2}>
-                  <Alert severity="info" icon={<CreditCardIcon />}>
-                    <Typography variant="body2">
-                      <strong>Opción de Financiamiento Seleccionada:</strong> {opcionesFinanciamiento.find(o => (o.id !== undefined ? o.id : opcionesFinanciamiento.indexOf(o)) === selectedOpcionId)?.nombre}
-                      {(() => {
-                        const selectedOption = opcionesFinanciamiento.find(o => (o.id !== undefined ? o.id : opcionesFinanciamiento.indexOf(o)) === selectedOpcionId);
-                        return selectedOption && selectedOption.tasaInteres !== 0 && (
-                          <> ({selectedOption.tasaInteres}% {selectedOption.tasaInteres > 0 ? 'recargo' : 'descuento'})</>
-                        );
-                      })()}
-                    </Typography>
-                  </Alert>
-                </Box>
-              )}
-
-              {/* Financing fields configured in modal — same UX as NotasPedidoPage */}
-              {isFinanciamiento(selectedNotaPedido?.metodoPago ?? '') && (
-                <Box mb={3}>
-                  <Alert severity="info">
-                    Los datos de financiación (cuotas, tasa, entrega inicial) se configuran al confirmar la factura.
-                  </Alert>
-                </Box>
-              )}
-
-              <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="subtitle1">
-                  Items de la Nota
-                </Typography>
-                {!editingNotaItems && (
-                  <Button
-                    size="small"
-                    startIcon={<EditIcon />}
-                    onClick={() => setEditingNotaItems(true)}
-                  >
-                    Editar Items
-                  </Button>
-                )}
-              </Box>
-
-              <ProductsTable
-                items={notaCart}
-                onUpdate={updateNotaCartItem}
-                onRemove={() => {}}
-                editable={editingNotaItems}
-                products={products}
-                recetas={recetas}
-              />
-
-              <Box mt={2}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Tipo de descuento</InputLabel>
-                      <Select
-                        value={notaDescuentoTipo}
-                        onChange={(e) => {
-                          const next = e.target.value as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
-                          setNotaDescuentoTipo(next);
-                          if (next === 'NONE') setNotaDescuentoValor(0);
-                        }}
-                        label="Tipo de descuento"
-                      >
-                        <MenuItem value="NONE">Sin descuento</MenuItem>
-                        <MenuItem value="PORCENTAJE">Porcentaje (%)</MenuItem>
-                        <MenuItem value="MONTO_FIJO">Monto fijo ($)</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      type="number"
-                      label={notaDescuentoTipo === 'PORCENTAJE' ? 'Descuento (%)' : 'Descuento ($)'}
-                      value={notaDescuentoTipo === 'NONE' ? '' : notaDescuentoValor}
-                      onChange={(e) => {
-                        const raw = parseFloat(e.target.value);
-                        const valor = Number.isFinite(raw) ? Math.max(0, raw) : 0;
-                        setNotaDescuentoValor(notaDescuentoTipo === 'PORCENTAJE' ? Math.min(100, valor) : valor);
-                      }}
-                      inputProps={{
-                        min: 0,
-                        max: notaDescuentoTipo === 'PORCENTAJE' ? 100 : undefined,
-                        step: notaDescuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
-                      }}
-                      disabled={notaDescuentoTipo === 'NONE'}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-
-              <Box mt={3}>
-                <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                  <Box display="flex" flexDirection="column" gap={2}>
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="subtitle2" color="text.secondary">Subtotal:</Typography>
-                      <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
-                    </Box>
-                    {notaDescuentoAmount > 0 && (
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="subtitle2" color="error.main">
-                          Descuento {notaDescuentoTipo === 'PORCENTAJE' ? `(${notaDescuentoValor}%)` : '(monto fijo)'}:
-                        </Typography>
-                        <Typography variant="h6" color="error.main">-${notaDescuentoAmount.toFixed(2)}</Typography>
-                      </Box>
-                    )}
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="subtitle2" color="text.secondary">IVA:</Typography>
-                      <Typography variant="h6">${notaIvaAmount.toFixed(2)}</Typography>
-                    </Box>
-                    {notaFinancingAdjustment !== 0 && (
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="subtitle2" color="text.secondary">
-                          {notaFinancingAdjustment > 0 ? 'Recargo' : 'Descuento'} Financiamiento:
-                        </Typography>
-                        <Typography variant="h6" color={notaFinancingAdjustment > 0 ? 'error' : 'success'}>
-                          {notaFinancingAdjustment > 0 ? '+' : ''}${notaFinancingAdjustment.toFixed(2)}
-                        </Typography>
-                      </Box>
-                    )}
-                    <Divider />
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="subtitle2" color="text.secondary">Total:</Typography>
-                      <Typography variant="h5" color="primary">
-                        ${notaTotalVenta.toFixed(2)}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Paper>
-              </Box>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseConvertDialog}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleConvertNotaToFactura}
-            disabled={loading}
-            startIcon={<CheckCircleIcon />}
-          >
-            Convertir a Factura
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Estado Dialog */}
-      <Dialog open={estadoDialogOpen} onClose={() => setEstadoDialogOpen(false)}>
-        <DialogTitle>Cambiar Estado del Documento</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>Nuevo Estado</InputLabel>
-            <Select
-              value={newEstado}
-              onChange={(e) => setNewEstado(e.target.value as DocumentoComercial['estado'])}
-              label="Nuevo Estado"
-            >
-              {Object.entries(ESTADO_OPTIONS).map(([value, config]) => (
-                <MenuItem key={value} value={value}>
-                  <Chip
-                    label={config.label}
-                    color={config.color}
-                    size="small"
-                    sx={{ mr: 1 }}
-                  />
-                  {config.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEstadoDialogOpen(false)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpdateEstado}
-            disabled={loading}
-          >
-            Actualizar Estado
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CambiarEstadoDialog
+        documento={estadoDoc}
+        onClose={() => setEstadoDoc(null)}
+        onUpdated={() => {
+          setSuccess('Estado actualizado exitosamente.');
+          invalidateNotas();
+          loadData();
+        }}
+        onError={setError}
+      />
 
       {/* Financiamiento Dialog */}
-      <Dialog open={financiamientoDialogOpen} onClose={() => setFinanciamientoDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Opciones de Financiamiento
-        </DialogTitle>
-        <DialogContent>
-          <Box mb={2}>
-            <Typography variant="body2" color="text.secondary">
-              Total de la venta: <strong>${totalVenta.toFixed(2)}</strong>
-            </Typography>
-          </Box>
+      <ConfigFinanciamientoDialog
+        open={financiamientoDialogOpen}
+        onClose={() => setFinanciamientoDialogOpen(false)}
+        totalVenta={totalVenta}
+        opciones={opcionesFinanciamiento}
+        selectedOpcionId={selectedOpcionId}
+        onSelectOpcion={handleSelectOpcionFinanciamiento}
+        onAddOpcion={handleAddOpcionFromDialog}
+        onError={setError}
+      />
 
-          {!showNewOpcionForm && (
-            <Box mb={2}>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={() => setShowNewOpcionForm(true)}
-                size="small"
-              >
-                Agregar Nueva Opción
-              </Button>
-            </Box>
-          )}
-
-          {showNewOpcionForm && (
-            <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Nueva Opción de Financiamiento
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Nombre"
-                    value={newOpcionForm.nombre}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, nombre: e.target.value })}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Método de Pago</InputLabel>
-                    <Select
-                      value={newOpcionForm.metodoPago}
-                      onChange={(e) => setNewOpcionForm({ ...newOpcionForm, metodoPago: e.target.value as MetodoPago })}
-                      label="Método de Pago"
-                    >
-                      {PAYMENT_METHODS.map((method) => (
-                        <MenuItem key={method.value} value={method.value}>
-                          {method.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    label="Cantidad de Cuotas"
-                    value={newOpcionForm.cantidadCuotas}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, cantidadCuotas: Number(e.target.value) })}
-                    inputProps={{ min: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    label="Tasa de Interés (%)"
-                    value={newOpcionForm.tasaInteres}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, tasaInteres: Number(e.target.value) })}
-                    inputProps={{ min: 0, step: 0.1 }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Typography variant="body2" color="text.secondary">
-                    Total con interés:
-                  </Typography>
-                  <Typography variant="h6">
-                    ${(totalVenta * 0.4 + (totalVenta * 0.6 * (1 + newOpcionForm.tasaInteres / 100))).toFixed(2)}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Descripción"
-                    value={newOpcionForm.descripcion}
-                    onChange={(e) => setNewOpcionForm({ ...newOpcionForm, descripcion: e.target.value })}
-                    multiline
-                    rows={2}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box display="flex" gap={1} justifyContent="flex-end">
-                    <Button
-                      size="small"
-                      onClick={() => setShowNewOpcionForm(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={handleAddNewOpcion}
-                    >
-                      Agregar
-                    </Button>
-                  </Box>
-                </Grid>
-              </Grid>
-            </Paper>
-          )}
-
-          <RadioGroup
-            value={selectedOpcionId !== null ? String(selectedOpcionId) : ''}
-            onChange={(e) => handleSelectOpcionFinanciamiento(Number(e.target.value))}
-          >
-            <Grid container spacing={2}>
-              {opcionesFinanciamiento.map((opcion, index) => {
-                const optionValue = opcion.id !== undefined ? opcion.id : index;
-                return (
-                  <Grid item xs={12} sm={6} key={index}>
-                    <Card
-                      variant="outlined"
-                      sx={{
-                        p: 2,
-                        cursor: 'pointer',
-                        border: selectedOpcionId === optionValue ? '2px solid' : '1px solid',
-                        borderColor: selectedOpcionId === optionValue ? 'primary.main' : 'divider',
-                      }}
-                      onClick={() => handleSelectOpcionFinanciamiento(optionValue)}
-                    >
-                      <FormControlLabel
-                        value={optionValue}
-                        control={<Radio />}
-                        label={
-                          <Box>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              {getMetodoPagoIcon(opcion.metodoPago)}
-                              <Typography variant="subtitle1" fontWeight="bold">
-                                {opcion.nombre}
-                              </Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary">
-                              {getMetodoPagoLabel(opcion.metodoPago)}
-                            </Typography>
-                            <Typography variant="body2">
-                              {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
-                            </Typography>
-                            <Divider sx={{ my: 1 }} />
-                            <Typography variant="h6" color="primary">
-                              Total: ${opcion.montoTotal.toFixed(2)}
-                            </Typography>
-                            {opcion.cantidadCuotas > 1 && (
-                              <Typography variant="body2" color="text.secondary">
-                                ${opcion.montoCuota.toFixed(2)} por cuota
-                              </Typography>
-                            )}
-                            {opcion.descripcion && (
-                              <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                                {opcion.descripcion}
-                              </Typography>
-                            )}
-                          </Box>
-                        }
-                      />
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
-          </RadioGroup>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFinanciamientoDialogOpen(false)} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => setFinanciamientoDialogOpen(false)}
-            variant="contained"
-            disabled={selectedOpcionId === null}
-          >
-            Confirmar Selección
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Fabricacion Confirmation Dialog */}
-      <Dialog
+      <FabricacionConfirmDialog
         open={fabricacionDialogOpen}
-        onClose={handleCancelarFabricacion}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <ShoppingCartIcon color="warning" />
-            <Typography variant="h6">Stock Insuficiente</Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {itemPendienteFabricacion && (
-            <Box>
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                No hay suficiente stock disponible para completar este pedido
-              </Alert>
-              
-              <Paper sx={{ p: 2, bgcolor: 'grey.50', mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom fontWeight="bold">
-                  Detalle del Equipo:
-                </Typography>
-                <Box display="flex" flexDirection="column" gap={1}>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Equipo:</Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      {itemPendienteFabricacion.recetaNombre}
-                    </Typography>
-                  </Box>
-                  {itemPendienteFabricacion.colorId != null && (
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">Color id:</Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {itemPendienteFabricacion.colorId}
-                      </Typography>
-                    </Box>
-                  )}
-                  {itemPendienteFabricacion.medidaNombre && (
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="body2" color="text.secondary">Medida:</Typography>
-                      <Typography variant="body2" fontWeight="bold">
-                        {itemPendienteFabricacion.medidaNombre}
-                      </Typography>
-                    </Box>
-                  )}
-                  <Divider sx={{ my: 1 }} />
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Cantidad solicitada:</Typography>
-                    <Typography variant="body2" fontWeight="bold" color="primary">
-                      {itemPendienteFabricacion.cantidad + itemPendienteFabricacion.stockDisponible}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Stock disponible:</Typography>
-                    <Typography variant="body2" fontWeight="bold" color="success.main">
-                      {itemPendienteFabricacion.stockDisponible}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">Faltante:</Typography>
-                    <Typography variant="body2" fontWeight="bold" color="error.main">
-                      {itemPendienteFabricacion.cantidad}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-
-              <Typography variant="body2" paragraph>
-                ¿Deseas generar un pedido de fabricación para crear los{' '}
-                <strong>{itemPendienteFabricacion.cantidad}</strong> equipos faltantes?
-              </Typography>
-              
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <Typography variant="caption">
-                  💡 Los equipos se crearán en estado <strong>EN_PROCESO</strong> y podrás 
-                  verlos en el módulo <strong>Producción → Equipos Fabricados</strong>.
-                  <br /><br />
-                  Después de crear el pedido, la facturación continuará automáticamente.
-                </Typography>
-              </Alert>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelarFabricacion} color="inherit">
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmarFabricacion}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
-          >
-            Sí, Generar Pedido
-          </Button>
-        </DialogActions>
-      </Dialog>
+        item={itemPendienteFabricacion}
+        loading={loading}
+        onCancel={handleCancelarFabricacion}
+        onConfirm={handleConfirmarFabricacion}
+      />
 
       {/* Success Dialog */}
       <SuccessDialog
@@ -3235,123 +1914,13 @@ const FacturacionPage = () => {
         notaPedidoId={notaParaAsignacion?.id}
       />
 
-      {/* Billing Dialog — Datos de Financiación Propia */}
-      <Dialog open={billingDialogOpen} onClose={handleCloseBillingDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Datos de Financiación Propia</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Cantidad de Cuotas"
-              type="number"
-              fullWidth
-              value={billingForm.cantidadCuotas}
-              onChange={(e) => setBillingForm(prev => ({ ...prev, cantidadCuotas: parseInt(e.target.value) || 1 }))}
-              inputProps={{ min: 1 }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Tipo de Financiación</InputLabel>
-              <Select
-                value={billingForm.tipoFinanciacion}
-                onChange={(e) => setBillingForm(prev => ({ ...prev, tipoFinanciacion: e.target.value }))}
-                label="Tipo de Financiación"
-              >
-                {['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP', 'CONTADO', 'CHEQUES'].map((t) => (
-                  <MenuItem key={t} value={t}>{t.replace('_', ' ')}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              label="Primer Vencimiento"
-              type="date"
-              fullWidth
-              value={billingForm.primerVencimiento}
-              onChange={(e) => setBillingForm(prev => ({ ...prev, primerVencimiento: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-            />
-            <FormControlLabel
-              control={<Checkbox checked={billingForm.entregarInicial} onChange={(e) => setBillingForm(prev => ({ ...prev, entregarInicial: e.target.checked }))} />}
-              label="Entrega inicial"
-            />
-            {billingForm.entregarInicial && (
-              <Box sx={{ pl: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <RadioGroup
-                  row
-                  value={billingForm.usePorcentaje ? 'porcentaje' : 'monto'}
-                  onChange={(e) => setBillingForm(prev => ({ ...prev, usePorcentaje: e.target.value === 'porcentaje' }))}
-                >
-                  <FormControlLabel value="porcentaje" control={<Radio />} label="Por porcentaje" />
-                  <FormControlLabel value="monto" control={<Radio />} label="Monto fijo" />
-                </RadioGroup>
-                {billingForm.usePorcentaje ? (
-                  <TextField
-                    label="Porcentaje de entrega"
-                    type="number"
-                    value={billingForm.porcentajeEntregaInicial}
-                    onChange={(e) => setBillingForm(prev => ({ ...prev, porcentajeEntregaInicial: parseFloat(e.target.value) || 0 }))}
-                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                  />
-                ) : (
-                  <TextField
-                    label="Monto de entrega"
-                    type="number"
-                    value={billingForm.montoEntregaInicial}
-                    onChange={(e) => setBillingForm(prev => ({ ...prev, montoEntregaInicial: parseFloat(e.target.value) || 0 }))}
-                    InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-                  />
-                )}
-              </Box>
-            )}
-            <TextField
-              label="Tasa de interés"
-              type="number"
-              fullWidth
-              value={billingForm.tasaInteres}
-              onChange={(e) => setBillingForm(prev => ({ ...prev, tasaInteres: parseFloat(e.target.value) || 0 }))}
-              inputProps={{ min: 0, max: 999, step: 0.5 }}
-              InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-              helperText="Interés simple sobre el saldo financiado. 0% = sin interés."
-            />
-            {(() => {
-              const montoTotal = billingBaseTotal;
-              const entregaInicial = billingForm.entregarInicial
-                ? (billingForm.usePorcentaje
-                    ? montoTotal * (billingForm.porcentajeEntregaInicial / 100)
-                    : billingForm.montoEntregaInicial)
-                : 0;
-              const saldoFinanciado = montoTotal - entregaInicial;
-              const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
-              const montoConInteres = saldoFinanciado + interesTotal;
-              const valorCuota = billingForm.cantidadCuotas > 0 ? montoConInteres / billingForm.cantidadCuotas : 0;
-              const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-              return (
-                <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>Resumen del financiamiento</Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
-                    <Typography variant="body2">Total documento:</Typography>
-                    <Typography variant="body2" fontWeight={600}>${fmt(montoTotal)}</Typography>
-                    <Typography variant="body2">Entrega inicial:</Typography>
-                    <Typography variant="body2">${fmt(entregaInicial)}</Typography>
-                    <Typography variant="body2">Saldo financiado:</Typography>
-                    <Typography variant="body2">${fmt(saldoFinanciado)}</Typography>
-                    {billingForm.tasaInteres > 0 && <>
-                      <Typography variant="body2">Interés ({billingForm.tasaInteres}%):</Typography>
-                      <Typography variant="body2" color="warning.main">${fmt(interesTotal)}</Typography>
-                      <Typography variant="body2">Total a financiar:</Typography>
-                      <Typography variant="body2" fontWeight={600}>${fmt(montoConInteres)}</Typography>
-                    </>}
-                    <Typography variant="body2">Valor cuota ({billingForm.cantidadCuotas}x):</Typography>
-                    <Typography variant="body2" fontWeight={600} color="primary.main">${fmt(valorCuota)}</Typography>
-                  </Box>
-                </Box>
-              );
-            })()}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseBillingDialog}>Cancelar</Button>
-          <Button variant="contained" onClick={submitBillingDialog}>Confirmar Facturación</Button>
-        </DialogActions>
-      </Dialog>
+      <BillingDialog
+        open={billingDialogOpen}
+        baseTotal={billingBaseTotal}
+        defaultValues={billingForm}
+        onClose={handleCloseBillingDialog}
+        onConfirm={handleBillingConfirm}
+      />
 
       {/* Deuda cliente confirmation dialog */}
       <DeudaClienteConfirmDialog

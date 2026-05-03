@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { authApi } from './authApi';
+import { logger } from '../utils/logger';
 
 // In-memory token reference (faster than hitting localStorage every time)
 let authToken: string | null = null;
@@ -48,12 +49,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
-      console.log('🔑 Attaching token to request:', token.substring(0, 10) + '...', config.url);
+      logger.log('🔑 Attaching token to request:', token.substring(0, 10) + '...', config.url);
       if (!printedJwtInfo) {
         const payload = decodeJwtPayload(token);
         if (payload) {
           const roles = payload.roles || payload.authorities || payload.scope || payload.scopes;
-          console.log('[JWT Payload]', {
+          logger.log('[JWT Payload]', {
             sub: payload.sub || payload.username || payload.user_name,
             roles,
             empresaId: payload.empresaId || payload.empresa_id || 'NOT IN TOKEN',
@@ -64,7 +65,7 @@ api.interceptors.request.use(
         printedJwtInfo = true;
       }
     } else {
-      console.warn('No token available for request:', config.url);
+      logger.warn('No token available for request:', config.url);
     }
 
     // Attach X-Empresa-Id header for multi-tenant support (required after tenant selection)
@@ -83,10 +84,10 @@ api.interceptors.request.use(
     if (empresaId) {
       config.headers = config.headers || {};
       (config.headers as any)['X-Empresa-Id'] = empresaId;
-      console.log('🏢 Attaching X-Empresa-Id:', empresaId, 'to request:', config.url);
+      logger.log('🏢 Attaching X-Empresa-Id:', empresaId, 'to request:', config.url);
     } else if (requiresTenant) {
       // Only warn for endpoints that actually need tenant context
-      console.warn('⚠️ No empresaId in localStorage for request:', config.url);
+      logger.warn('⚠️ No empresaId in localStorage for request:', config.url);
     }
 
     return config;
@@ -111,47 +112,47 @@ api.interceptors.response.use(
       !originalRequest?._retry &&
       !originalRequest?.url?.includes('/auth/refresh')
     ) {
-      console.log('🔄 Access token expired, attempting refresh...');
+      logger.log('🔄 Access token expired, attempting refresh...');
       originalRequest._retry = true;
-      
+
       try {
         const storedRefresh = localStorage.getItem('auth_refresh_token');
         if (!storedRefresh) {
-          console.error('❌ No refresh token available');
+          logger.error('❌ No refresh token available');
           throw new Error('No refresh token');
         }
-        
-        console.log('📡 Calling refresh endpoint...');
+
+        logger.log('📡 Calling refresh endpoint...');
         const refreshRes = await authApi.refresh(storedRefresh);
         const newAccess = refreshRes.accessToken;
-        
+
         if (!newAccess) {
-          console.error('❌ No access token in refresh response');
+          logger.error('❌ No access token in refresh response');
           throw new Error('No access token in refresh response');
         }
-        
-        console.log('✅ Token refreshed successfully');
-        
+
+        logger.log('✅ Token refreshed successfully');
+
         // Persist & set new tokens
         localStorage.setItem('auth_token', newAccess);
         setAuthToken(newAccess);
-        
+
         if (refreshRes.refreshToken) {
           localStorage.setItem('auth_refresh_token', refreshRes.refreshToken);
-          console.log('🔄 Refresh token also updated');
+          logger.log('🔄 Refresh token also updated');
         }
-        
+
         // Reset the printed JWT info flag to log the new token info
         printedJwtInfo = false;
-        
+
         // Update header & retry original request
         originalRequest.headers = originalRequest.headers || {};
         originalRequest.headers.Authorization = `Bearer ${newAccess}`;
-        
-        console.log('🔁 Retrying original request with new token...');
+
+        logger.log('🔁 Retrying original request with new token...');
         return api(originalRequest);
       } catch (refreshErr) {
-        console.error('❌ Token refresh failed:', refreshErr);
+        logger.error('❌ Token refresh failed:', refreshErr);
         
         // Clear tokens & redirect to login page
         localStorage.removeItem('auth_token');
@@ -163,7 +164,7 @@ api.interceptors.response.use(
         // Let the user re-login and preserve their context selection
 
         if (window.location.pathname !== '/login') {
-          console.log('🚪 Redirecting to login page...');
+          logger.log('🚪 Redirecting to login page...');
           window.location.href = '/login';
         }
 
@@ -180,7 +181,7 @@ api.interceptors.response.use(
       !originalRequest?.url?.includes('/auth/refresh') &&
       !originalRequest?.url?.includes('/auth/login')
     ) {
-      console.warn('⚠️ Unauthorized request, clearing session...');
+      logger.warn('⚠️ Unauthorized request, clearing session...');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_refresh_token');
       localStorage.removeItem('auth_user');
@@ -194,7 +195,7 @@ api.interceptors.response.use(
     }
 
     if (status === 500) {
-      console.error('❌ Server error:', error.response?.data);
+      logger.error('❌ Server error:', error.response?.data);
     }
     
     return Promise.reject(error);
