@@ -25,6 +25,7 @@ interface AuthContextType {
   esSuperAdmin: boolean;  // Exposed for easy access
   login: (usernameOrEmail: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshSession: () => Promise<string>;
   loading: boolean;
 }
 
@@ -80,8 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
             return;
           }
-          // 403, network errors, etc. = endpoint issue, not token issue
-          console.warn('⚠️ validate endpoint no disponible (status:', status, '), confiando en validación client-side');
+          // 403 / network / 5xx = backend endpoint missing or transient — fall back to client-side exp check.
+          console.debug('[auth] validate endpoint unavailable (status:', status, '), using client-side JWT exp check');
         }
 
         const userParsed = JSON.parse(u);
@@ -192,6 +193,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Refresh the access token using the stored refresh token, propagate the new
+  // token to React state, axios, and localStorage. Throws if refresh is not
+  // possible (no refresh token, refresh endpoint rejected). Callers that need
+  // to recover from a 401 outside the axios pipeline (SSE, manual flows) should
+  // await this and retry on success.
+  const refreshSession = async (): Promise<string> => {
+    const stored = localStorage.getItem('auth_refresh_token');
+    if (!stored) throw new Error('No refresh token available');
+    const res = await authApi.refresh(stored);
+    const newAccess = res.accessToken;
+    if (!newAccess) throw new Error('No access token in refresh response');
+
+    localStorage.setItem('auth_token', newAccess);
+    if (res.refreshToken) localStorage.setItem('auth_refresh_token', res.refreshToken);
+    setAuthToken(newAccess);
+    axios.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
+    setToken(newAccess);
+    return newAccess;
+  };
+
+  // Stay in sync with refreshes triggered by the axios interceptor (config.ts),
+  // which writes the new token to localStorage but cannot call setToken directly.
+  useEffect(() => {
+    const onRefreshed = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      const next = detail?.token as string | undefined;
+      if (next) setToken(next);
+    };
+    window.addEventListener('auth-token-refreshed', onRefreshed);
+    return () => window.removeEventListener('auth-token-refreshed', onRefreshed);
+  }, []);
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -259,6 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         esSuperAdmin,
         login,
         logout,
+        refreshSession,
         loading,
       }}
     >

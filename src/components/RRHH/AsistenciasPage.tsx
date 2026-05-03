@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -14,29 +12,20 @@ import {
   TableRow,
   Paper,
   Button,
-  Dialog,
   Stack,
   TextField,
   Alert,
   IconButton,
   Tooltip,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  InputAdornment,
   Grid,
   Chip,
   Autocomplete,
-  Divider,
   Tabs,
   Tab,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
-  Checkbox,
-  Badge,
   Menu,
   ListItemIcon,
   ListItemText,
@@ -44,11 +33,7 @@ import {
   useTheme
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Refresh as RefreshIcon,
-  Search as SearchIcon,
   AccessTime as TimeIcon,
   CalendarToday as CalendarIcon,
   Person as PersonIcon,
@@ -61,7 +46,6 @@ import {
   EventBusy as EventBusyIcon,
   AutoAwesome as AutoAwesomeIcon,
   Create as CreateIcon,
-  Settings as SettingsIcon,
   GetApp as GetAppIcon,
   PictureAsPdf as PdfIcon,
   TableChart as ExcelIcon,
@@ -83,9 +67,6 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { registroAsistenciaApi } from '../../api/services/registroAsistenciaApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import { configuracionAsistenciaApi } from '../../api/services/configuracionAsistenciaApi';
@@ -93,7 +74,25 @@ import { excepcionAsistenciaApi } from '../../api/services/excepcionAsistenciaAp
 import { asistenciaAutomaticaApi } from '../../api/services/asistenciaAutomaticaApi';
 import type { RegistroAsistencia, Empleado } from '../../types';
 import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
 import LoadingOverlay from '../common/LoadingOverlay';
+
+dayjs.extend(isBetween);
+// FRONT-003: extracted to keep this file orchestrator-shaped.
+import type { ConfigFormData, ExcepcionFormData } from './Asistencias/types';
+import {
+  DEFAULT_DIA_CONFIG,
+  DIAS_SEMANA,
+  FALLBACK_DIA,
+  createInitialExcepcionForm,
+} from './Asistencias/constants';
+import { getEmpleadoNombre } from './Asistencias/utils';
+import ConfigHorariosDialog from './Asistencias/dialogs/ConfigHorariosDialog';
+import ExcepcionDialog from './Asistencias/dialogs/ExcepcionDialog';
+import ConfigurarHorariosTab from './Asistencias/tabs/ConfigurarHorariosTab';
+import ExcepcionesTab from './Asistencias/tabs/ExcepcionesTab';
+import ResumenDiarioTab from './Asistencias/tabs/ResumenDiarioTab';
+import { exportAsistenciasToExcel, exportAsistenciasToPDF } from './Asistencias/exportService';
 
 const AsistenciasPage: React.FC = () => {
   const theme = useTheme();
@@ -106,44 +105,22 @@ const AsistenciasPage: React.FC = () => {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<RegistroAsistencia | null>(null);
-  const [openDetail, setOpenDetail] = useState(false);
-  const [openForm, setOpenForm] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [editingAsistencia, setEditingAsistencia] = useState<RegistroAsistencia | null>(null);
-  
+
   // Configuraciones y excepciones
   const [configuraciones, setConfiguraciones] = useState<any[]>([]);
   const [excepciones, setExcepciones] = useState<any[]>([]);
   const [openConfigDialog, setOpenConfigDialog] = useState(false);
   const [openExcepcionDialog, setOpenExcepcionDialog] = useState(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
-  const [tipoExcepcion, setTipoExcepcion] = useState('');
-  const [configFormData, setConfigFormData] = useState({
-    lunes: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-    martes: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-    miercoles: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-    jueves: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-    viernes: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-    sabado: { trabaja: false, horaEntrada: '08:00', horaSalida: '12:00' },
-    domingo: { trabaja: false, horaEntrada: '08:00', horaSalida: '12:00' }
-  });
-  const [excepcionFormData, setExcepcionFormData] = useState({
-    empleadoId: '',
-    fecha: dayjs().format('YYYY-MM-DD'),
-    tipo: '',
-    horaEntradaReal: '',
-    horaSalidaReal: '',
-    horasExtras: '',
-    minutosTardanza: '',
-    motivo: '',
-    observaciones: '',
-    justificado: false
-  });
-  
-  // Filtros
-  const [searchTerm, setSearchTerm] = useState('');
-  const [empleadoFilter, setEmpleadoFilter] = useState<Empleado | null>(null);
+  const [configFormData, setConfigFormData] = useState<ConfigFormData>(DEFAULT_DIA_CONFIG);
+  const [excepcionFormData, setExcepcionFormData] = useState<ExcepcionFormData>(
+    createInitialExcepcionForm
+  );
+
+  // Filtros (búsqueda libre y filtro por empleado quedaron como placeholders;
+  // los setters están sin cablear porque la UI nunca se conectó.)
+  const [searchTerm] = useState('');
+  const [empleadoFilter] = useState<Empleado | null>(null);
   const [fechaDesde, setFechaDesde] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
   const [fechaHasta, setFechaHasta] = useState(dayjs().format('YYYY-MM-DD'));
 
@@ -165,17 +142,6 @@ const AsistenciasPage: React.FC = () => {
   const [comparisonFechaHasta, setComparisonFechaHasta] = useState(
     dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')
   );
-
-  // Form state
-  const [formData, setFormData] = useState({
-    empleadoId: '',
-    fecha: dayjs().format('YYYY-MM-DD'),
-    horaEntrada: '09:00',
-    horaSalida: '18:00',
-    horasTrabajadas: '',
-    horasExtras: '0',
-    observaciones: ''
-  });
 
   useEffect(() => {
     loadData();
@@ -268,23 +234,6 @@ const AsistenciasPage: React.FC = () => {
     await loadAsistenciasByPeriodoWithEmpleados(empleados);
   };
 
-  const getEmpleadoNombre = (empleado: Empleado) => {
-    return `${empleado.nombre} ${empleado.apellido}`;
-  };
-
-  const calcularHorasTrabajadas = (entrada: string, salida: string): number => {
-    if (!entrada || !salida) return 0;
-    
-    const [horaEntrada, minEntrada] = entrada.split(':').map(Number);
-    const [horaSalida, minSalida] = salida.split(':').map(Number);
-    
-    const minutosEntrada = horaEntrada * 60 + minEntrada;
-    const minutosSalida = horaSalida * 60 + minSalida;
-    
-    const diferenciaMinutos = minutosSalida - minutosEntrada;
-    return Math.max(0, Math.round((diferenciaMinutos / 60) * 100) / 100);
-  };
-
   const filteredAsistencias = asistencias.filter(a => {
     if (!a.empleado) return false;
     
@@ -297,270 +246,42 @@ const AsistenciasPage: React.FC = () => {
     return matchesEmpleado && matchesSearch;
   });
 
-  const handleOpenForm = (asistencia?: RegistroAsistencia) => {
-    if (asistencia) {
-      setEditingAsistencia(asistencia);
-      setFormData({
-        empleadoId: asistencia.empleado?.id?.toString() || '',
-        fecha: asistencia.fecha,
-        horaEntrada: asistencia.horaEntrada,
-        horaSalida: asistencia.horaSalida,
-        horasTrabajadas: asistencia.horasTrabajadas.toString(),
-        horasExtras: asistencia.horasExtras.toString(),
-        observaciones: asistencia.observaciones || ''
-      });
-    } else {
-      setEditingAsistencia(null);
-      setFormData({
-        empleadoId: '',
-        fecha: dayjs().format('YYYY-MM-DD'),
-        horaEntrada: '09:00',
-        horaSalida: '18:00',
-        horasTrabajadas: '',
-        horasExtras: '0',
-        observaciones: ''
-      });
-    }
-    setOpenForm(true);
-  };
-
-  const handleCloseForm = () => {
-    setOpenForm(false);
-    setEditingAsistencia(null);
-    setFormData({
-      empleadoId: '',
-      fecha: dayjs().format('YYYY-MM-DD'),
-      horaEntrada: '09:00',
-      horaSalida: '18:00',
-      horasTrabajadas: '',
-      horasExtras: '0',
-      observaciones: ''
-    });
-  };
-
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-      const newData = { ...prev, [name]: value };
-      
-      // Auto-calcular horas trabajadas cuando cambian entrada o salida
-      if (name === 'horaEntrada' || name === 'horaSalida') {
-        const entrada = name === 'horaEntrada' ? value : prev.horaEntrada;
-        const salida = name === 'horaSalida' ? value : prev.horaSalida;
-        newData.horasTrabajadas = calcularHorasTrabajadas(entrada, salida).toString();
-      }
-      
-      return newData;
-    });
-  };
-
-  const handleSaveAsistencia = async () => {
-    try {
-      setError(null);
-
-      if (!formData.empleadoId) {
-        setError('Debe seleccionar un empleado');
-        return;
-      }
-
-      const empleadoIdParsed = parseInt(formData.empleadoId);
-      if (isNaN(empleadoIdParsed) || empleadoIdParsed <= 0) {
-        setError('ID de empleado inválido');
-        return;
-      }
-
-      if (!formData.fecha) {
-        setError('La fecha es obligatoria');
-        return;
-      }
-
-      if (!formData.horaEntrada || !formData.horaSalida) {
-        setError('Las horas de entrada y salida son obligatorias');
-        return;
-      }
-
-      const horasTrabajadas = parseFloat(formData.horasTrabajadas) || 0;
-      const horasExtras = parseFloat(formData.horasExtras) || 0;
-
-      if (horasTrabajadas <= 0) {
-        setError('Las horas trabajadas deben ser mayor a 0');
-        return;
-      }
-
-      const asistenciaData: any = {
-        empleadoId: empleadoIdParsed,
-        fecha: formData.fecha,
-        horaEntrada: formData.horaEntrada,
-        horaSalida: formData.horaSalida,
-        horasTrabajadas: horasTrabajadas,
-        horasExtras: horasExtras,
-        observaciones: formData.observaciones.trim() || null
-      };
-
-      if (editingAsistencia) {
-        await registroAsistenciaApi.update(editingAsistencia.id, { ...asistenciaData, id: editingAsistencia.id });
-      } else {
-        await registroAsistenciaApi.create(asistenciaData);
-      }
-
-      await loadAsistenciasByPeriodo();
-      handleCloseForm();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar la asistencia');
-      console.error('Error saving asistencia:', err);
-    }
-  };
-
-  const handleDeleteAsistencia = async () => {
-    if (!selected) return;
-    
-    try {
-      setError(null);
-      await registroAsistenciaApi.delete(selected.id);
-      await loadAsistenciasByPeriodo();
-      setOpenDelete(false);
-      setSelected(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al eliminar la asistencia');
-      console.error('Error deleting asistencia:', err);
-      setOpenDelete(false);
-    }
-  };
-
-  const handleViewDetails = (asistencia: RegistroAsistencia) => {
-    setSelected(asistencia);
-    setOpenDetail(true);
-  };
-
-  const handleOpenDelete = (asistencia: RegistroAsistencia) => {
-    setSelected(asistencia);
-    setOpenDelete(true);
-  };
-
-  // Funciones de exportación
+  // Funciones de exportación — el servicio se encarga del download; la
+  // página solo cierra el menú de exportación al despachar.
   const exportToExcel = async () => {
-    const data = reportFilteredAsistencias.map(asistencia => {
-      const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
-        ex.empleadoId === asistencia.empleadoId && 
-        dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(asistencia.fecha).format('YYYY-MM-DD')
-      ) : null;
-      
-      return {
-        'Fecha': dayjs(asistencia.fecha).format('DD/MM/YYYY'),
-        'Día': dayjs(asistencia.fecha).format('dddd'),
-        'Empleado': asistencia.empleado ? getEmpleadoNombre(asistencia.empleado) : 'N/A',
-        'Estado': excepcion ? excepcion.tipo : 'PRESENTE',
-        'Hora Entrada': asistencia.horaEntrada || '-',
-        'Hora Salida': asistencia.horaSalida || '-',
-        'Horas Trabajadas': asistencia.horasTrabajadas.toFixed(2),
-        'Horas Extras': asistencia.horasExtras.toFixed(2),
-        'Observaciones': excepcion ? (excepcion.observaciones || excepcion.motivo || '-') : (asistencia.observaciones || '-')
-      };
+    await exportAsistenciasToExcel({
+      asistencias: reportFilteredAsistencias,
+      excepciones,
+      reportStats,
+      reportEmpleadoFilter,
+      reportFechaDesde,
+      reportFechaHasta,
+      reportTipoFilter,
     });
-
-    // Agregar resumen al final
-    data.push({});
-    data.push({
-      'Fecha': 'RESUMEN',
-      'Día': '',
-      'Empleado': '',
-      'Estado': '',
-      'Hora Entrada': '',
-      'Hora Salida': '',
-      'Horas Trabajadas': '',
-      'Horas Extras': '',
-      'Observaciones': ''
-    });
-    data.push({
-      'Fecha': 'Total Horas Trabajadas',
-      'Día': reportStats.totalHoras.toFixed(2),
-      'Empleado': 'Total Horas Extras',
-      'Estado': reportStats.totalHorasExtras.toFixed(2),
-      'Hora Entrada': 'Promedio Diario',
-      'Hora Salida': reportStats.promedioHoras.toFixed(2),
-      'Horas Trabajadas': 'Días Trabajados',
-      'Horas Extras': reportFilteredAsistencias.length.toString(),
-      'Observaciones': ''
-    });
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Asistencias');
-    const headers = Object.keys(data[0] || {});
-    worksheet.addRow(headers);
-    data.forEach(row => worksheet.addRow(headers.map(h => (row as any)[h] ?? '')));
-
-    const fileName = `Reporte_Asistencias_${dayjs(reportFechaDesde).format('DDMMYYYY')}_${dayjs(reportFechaHasta).format('DDMMYYYY')}.xlsx`;
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
     setExportMenuAnchor(null);
   };
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    
-    // Título
-    doc.setFontSize(18);
-    doc.text('Reporte de Asistencias', 14, 22);
-    
-    // Información del reporte
-    doc.setFontSize(11);
-    doc.text(`Período: ${dayjs(reportFechaDesde).format('DD/MM/YYYY')} - ${dayjs(reportFechaHasta).format('DD/MM/YYYY')}`, 14, 30);
-    if (reportEmpleadoFilter) {
-      doc.text(`Empleado: ${getEmpleadoNombre(reportEmpleadoFilter)}`, 14, 36);
-    }
-    if (reportTipoFilter !== 'TODOS') {
-      doc.text(`Tipo: ${reportTipoFilter}`, 14, reportEmpleadoFilter ? 42 : 36);
-    }
-    
-    // Tabla de datos
-    const tableData = reportFilteredAsistencias.map(asistencia => {
-      const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
-        ex.empleadoId === asistencia.empleadoId && 
-        dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(asistencia.fecha).format('YYYY-MM-DD')
-      ) : null;
-      
-      return [
-        dayjs(asistencia.fecha).format('DD/MM/YYYY'),
-        asistencia.empleado ? getEmpleadoNombre(asistencia.empleado) : 'N/A',
-        excepcion ? excepcion.tipo : 'PRESENTE',
-        asistencia.horaEntrada || '-',
-        asistencia.horaSalida || '-',
-        asistencia.horasTrabajadas.toFixed(1) + 'h',
-        asistencia.horasExtras > 0 ? '+' + asistencia.horasExtras.toFixed(1) + 'h' : '-'
-      ];
+    exportAsistenciasToPDF({
+      asistencias: reportFilteredAsistencias,
+      excepciones,
+      reportStats,
+      reportEmpleadoFilter,
+      reportFechaDesde,
+      reportFechaHasta,
+      reportTipoFilter,
     });
-
-    autoTable(doc, {
-      head: [['Fecha', 'Empleado', 'Estado', 'Entrada', 'Salida', 'Horas', 'Extras']],
-      body: tableData,
-      startY: reportEmpleadoFilter || reportTipoFilter !== 'TODOS' ? 48 : 38,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [63, 81, 181] }
-    });
-
-    // Resumen
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(12);
-    doc.text('Resumen:', 14, finalY);
-    doc.setFontSize(10);
-    doc.text(`Total Horas Trabajadas: ${reportStats.totalHoras.toFixed(2)} horas`, 14, finalY + 7);
-    doc.text(`Total Horas Extras: ${reportStats.totalHorasExtras.toFixed(2)} horas`, 14, finalY + 14);
-    doc.text(`Promedio Diario: ${reportStats.promedioHoras.toFixed(2)} horas`, 14, finalY + 21);
-    doc.text(`Días Trabajados: ${reportFilteredAsistencias.length}`, 14, finalY + 28);
-    doc.text(`Tardanzas: ${reportStats.tardanzas}`, 100, finalY + 7);
-    doc.text(`Inasistencias: ${reportStats.inasistencias}`, 100, finalY + 14);
-    
-    const fileName = `Reporte_Asistencias_${dayjs(reportFechaDesde).format('DDMMYYYY')}_${dayjs(reportFechaHasta).format('DDMMYYYY')}.pdf`;
-    doc.save(fileName);
     setExportMenuAnchor(null);
+  };
+
+  const handleGenerarAutomaticas = async () => {
+    try {
+      await asistenciaAutomaticaApi.ejecutarGeneracionDiaria();
+      await loadData();
+    } catch (err) {
+      console.error('Error al generar asistencias:', err);
+      setError('Error al generar asistencias automáticas');
+    }
   };
 
   // Handlers para configuración de horarios
@@ -592,15 +313,12 @@ const AsistenciasPage: React.FC = () => {
     if (empleado && Array.isArray(configuraciones)) {
       const config = configuraciones.find(c => c.empleadoId === empleado.id);
       if (config) {
-        setConfigFormData({
-          lunes: config.lunes || { trabaja: false, horaEntrada: '08:00', horaSalida: '17:00' },
-          martes: config.martes || { trabaja: false, horaEntrada: '08:00', horaSalida: '17:00' },
-          miercoles: config.miercoles || { trabaja: false, horaEntrada: '08:00', horaSalida: '17:00' },
-          jueves: config.jueves || { trabaja: false, horaEntrada: '08:00', horaSalida: '17:00' },
-          viernes: config.viernes || { trabaja: false, horaEntrada: '08:00', horaSalida: '17:00' },
-          sabado: config.sabado || { trabaja: false, horaEntrada: '08:00', horaSalida: '12:00' },
-          domingo: config.domingo || { trabaja: false, horaEntrada: '08:00', horaSalida: '12:00' }
-        });
+        setConfigFormData(
+          DIAS_SEMANA.reduce<ConfigFormData>((acc, dia) => {
+            acc[dia] = config[dia] || FALLBACK_DIA;
+            return acc;
+          }, {} as ConfigFormData)
+        );
       }
     }
     setOpenConfigDialog(true);
@@ -609,15 +327,7 @@ const AsistenciasPage: React.FC = () => {
   const handleCloseConfigDialog = () => {
     setOpenConfigDialog(false);
     setSelectedEmpleado(null);
-    setConfigFormData({
-      lunes: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-      martes: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-      miercoles: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-      jueves: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-      viernes: { trabaja: true, horaEntrada: '08:00', horaSalida: '17:00' },
-      sabado: { trabaja: false, horaEntrada: '08:00', horaSalida: '12:00' },
-      domingo: { trabaja: false, horaEntrada: '08:00', horaSalida: '12:00' }
-    });
+    setConfigFormData(DEFAULT_DIA_CONFIG);
   };
 
   const handleSaveConfiguracion = async () => {
@@ -646,35 +356,13 @@ const AsistenciasPage: React.FC = () => {
   };
 
   const handleOpenExcepcionDialog = () => {
-    setExcepcionFormData({
-      empleadoId: '',
-      fecha: dayjs().format('YYYY-MM-DD'),
-      tipo: '',
-      horaEntradaReal: '',
-      horaSalidaReal: '',
-      horasExtras: '',
-      minutosTardanza: '',
-      motivo: '',
-      observaciones: '',
-      justificado: false
-    });
+    setExcepcionFormData(createInitialExcepcionForm());
     setOpenExcepcionDialog(true);
   };
 
   const handleCloseExcepcionDialog = () => {
     setOpenExcepcionDialog(false);
-    setExcepcionFormData({
-      empleadoId: '',
-      fecha: dayjs().format('YYYY-MM-DD'),
-      tipo: '',
-      horaEntradaReal: '',
-      horaSalidaReal: '',
-      horasExtras: '',
-      minutosTardanza: '',
-      motivo: '',
-      observaciones: '',
-      justificado: false
-    });
+    setExcepcionFormData(createInitialExcepcionForm());
   };
 
   const handleSaveExcepcion = async () => {
@@ -705,7 +393,7 @@ const AsistenciasPage: React.FC = () => {
         // Calcular la hora de entrada real sumando los minutos de tardanza
         // Buscar la asistencia del día para obtener la hora de entrada configurada
         const asistenciaDelDia = asistencias.find(a => 
-          a.empleadoId === parseInt(excepcionFormData.empleadoId) && 
+          a.empleado?.id === parseInt(excepcionFormData.empleadoId) &&
           dayjs(a.fecha).format('YYYY-MM-DD') === excepcionFormData.fecha
         );
         
@@ -739,18 +427,6 @@ const AsistenciasPage: React.FC = () => {
     }
   };
 
-  // Estadísticas
-  const totalHorasTrabajadas = filteredAsistencias.reduce((sum, a) => sum + a.horasTrabajadas, 0);
-  const totalHorasExtras = filteredAsistencias.reduce((sum, a) => sum + a.horasExtras, 0);
-  const promedioHorasDiarias = filteredAsistencias.length > 0 
-    ? totalHorasTrabajadas / filteredAsistencias.length 
-    : 0;
-  const empleadosUnicos = new Set(
-    filteredAsistencias
-      .filter(a => a.empleado?.id)
-      .map(a => a.empleado.id)
-  ).size;
-
   // Datos filtrados para reportes
   const reportFilteredAsistencias = asistencias.filter(a => {
     if (!a.empleado) return false;
@@ -771,7 +447,7 @@ const AsistenciasPage: React.FC = () => {
     let matchesTipo = true;
     if (reportTipoFilter !== 'TODOS') {
       const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
-        ex.empleadoId === a.empleadoId && 
+        ex.empleadoId === a.empleado?.id && 
         dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(a.fecha).format('YYYY-MM-DD')
       ) : null;
       
@@ -810,14 +486,11 @@ const AsistenciasPage: React.FC = () => {
     ).size
   };
 
-  // Datos para gráficos
-  const chartColors = ['#4caf50', '#ff9800', '#f44336', '#2196f3', '#9c27b0', '#00bcd4'];
-  
   // Gráfico de distribución de estados
   const estadosDistribucion = [
     { name: 'Presente', value: reportFilteredAsistencias.filter(a => {
       const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
-        ex.empleadoId === a.empleadoId && 
+        ex.empleadoId === a.empleado?.id && 
         dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(a.fecha).format('YYYY-MM-DD')
       ) : null;
       return !excepcion;
@@ -895,7 +568,7 @@ const AsistenciasPage: React.FC = () => {
     acc[nombreDia].horas += asistencia.horasTrabajadas;
     
     const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
-      ex.empleadoId === asistencia.empleadoId && 
+      ex.empleadoId === asistencia.empleado?.id && 
       dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(asistencia.fecha).format('YYYY-MM-DD')
     ) : null;
     
@@ -1003,465 +676,34 @@ const AsistenciasPage: React.FC = () => {
         </Tabs>
       </Box>
 
-      {/* Tab 0: Resumen Diario (Sistema Inteligente) */}
       {tabValue === 0 && (
-        <>
-          {/* KPIs Inteligentes */}
-          <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
-            <Grid item xs={6} sm={6} md={3}>
-              <Card sx={{ bgcolor: 'success.50', borderLeft: '4px solid', borderColor: 'success.main' }}>
-                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                    <CheckCircleIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'success.main' }} />
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                        {filteredAsistencias.filter(a =>
-                          !Array.isArray(excepciones) ? true : !excepciones.find(ex =>
-                            ex.empleadoId === a.empleadoId &&
-                            dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(a.fecha).format('YYYY-MM-DD')
-                          )
-                        ).length}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        Asist. Normales
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={6} sm={6} md={3}>
-              <Card sx={{ bgcolor: 'warning.50', borderLeft: '4px solid', borderColor: 'warning.main' }}>
-                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                    <WarningIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'warning.main' }} />
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" color="warning.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                        {Array.isArray(excepciones) ? excepciones.filter(ex =>
-                          ex.tipo === 'LLEGADA_TARDE' &&
-                          dayjs(ex.fecha).isBetween(dayjs(fechaDesde), dayjs(fechaHasta), null, '[]')
-                        ).length : 0}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        Tardanzas
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={6} sm={6} md={3}>
-              <Card sx={{ bgcolor: 'error.50', borderLeft: '4px solid', borderColor: 'error.main' }}>
-                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                    <CancelIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'error.main' }} />
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" color="error.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                        {Array.isArray(excepciones) ? excepciones.filter(ex =>
-                          ex.tipo === 'INASISTENCIA' &&
-                          dayjs(ex.fecha).isBetween(dayjs(fechaDesde), dayjs(fechaHasta), null, '[]')
-                        ).length : 0}
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        Inasistencias
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={6} sm={6} md={3}>
-              <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
-                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 2 }}>
-                    <TrendingUpIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'info.main' }} />
-                    <Box>
-                      <Typography variant="h4" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                        {Array.isArray(excepciones) ? excepciones
-                          .filter(ex => ex.tipo === 'HORAS_EXTRAS' && dayjs(ex.fecha).isBetween(dayjs(fechaDesde), dayjs(fechaHasta), null, '[]'))
-                          .reduce((sum, ex) => sum + (ex.horasExtras || 0), 0) : 0}h
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        Horas Extras
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          <Card>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" mb={2} flexWrap="wrap" gap={2}>
-                <Typography variant="h6">Vista General de Asistencias</Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                  <TextField
-                    type="date"
-                    label="Desde"
-                    value={fechaDesde}
-                    onChange={(e) => setFechaDesde(e.target.value)}
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    type="date"
-                    label="Hasta"
-                    value={fechaHasta}
-                    onChange={(e) => setFechaHasta(e.target.value)}
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <Button
-                    variant="outlined"
-                    startIcon={<AutoAwesomeIcon />}
-                    onClick={async () => {
-                      try {
-                        await asistenciaAutomaticaApi.ejecutarGeneracionDiaria();
-                        await loadData();
-                      } catch (error) {
-                        console.error('Error al generar asistencias:', error);
-                        setError('Error al generar asistencias automáticas');
-                      }
-                    }}
-                  >
-                    Generar Automáticas
-                  </Button>
-                </Stack>
-              </Stack>
-
-              <Alert severity="info" sx={{ mb: 2 }}>
-                <strong>Sistema Inteligente:</strong> Las asistencias se generan automáticamente según la configuración de horarios. 
-                Solo registre excepciones (tardanzas, inasistencias, etc.) en la pestaña "Excepciones".
-              </Alert>
-
-              <TableContainer sx={{ overflowX: 'auto' }}>
-                <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ minWidth: 150 }}>Empleado</TableCell>
-                      <TableCell sx={{ minWidth: 100 }}>Fecha</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 130 }}>Estado</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 80 }}>Entrada</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 80 }}>Salida</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 70 }}>Horas</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 110 }}>Tipo Registro</TableCell>
-                      <TableCell sx={{ minWidth: 150 }}>Observaciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredAsistencias.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} align="center">
-                          <Typography variant="body2" color="textSecondary" py={3}>
-                            No hay asistencias en el período seleccionado. 
-                            Haga clic en "Generar Automáticas" para crear registros.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredAsistencias.map(asistencia => {
-                        const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
-                          ex.empleadoId === asistencia.empleadoId && 
-                          dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(asistencia.fecha).format('YYYY-MM-DD')
-                        ) : null;
-                        
-                        const esAutomatica = !excepcion;
-                        const estadoFinal = excepcion ? excepcion.tipo : 'PRESENTE';
-                        
-                        return (
-                          <TableRow key={asistencia.id} hover>
-                            <TableCell>
-                              <Typography variant="body2" fontWeight="600">
-                                {asistencia.empleado ? getEmpleadoNombre(asistencia.empleado) : 'N/A'}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              {dayjs(asistencia.fecha).format('DD/MM/YYYY')}
-                            </TableCell>
-                            <TableCell align="center">
-                              {estadoFinal === 'PRESENTE' && (
-                                <Chip label="Presente" color="success" size="small" icon={<CheckCircleIcon />} />
-                              )}
-                              {estadoFinal === 'LLEGADA_TARDE' && excepcion && (
-                                <Chip 
-                                  label={`Tardanza (${excepcion.minutosTardanza || 0} min)`} 
-                                  color="warning" 
-                                  size="small" 
-                                  icon={<WarningIcon />} 
-                                />
-                              )}
-                              {estadoFinal === 'INASISTENCIA' && (
-                                <Chip label="Ausente" color="error" size="small" icon={<CancelIcon />} />
-                              )}
-                              {estadoFinal === 'HORAS_EXTRAS' && excepcion && (
-                                <Chip 
-                                  label={`+ ${excepcion.horasExtras || 0}h extras`} 
-                                  color="info" 
-                                  size="small" 
-                                  icon={<TrendingUpIcon />} 
-                                />
-                              )}
-                              {['SALIDA_ANTICIPADA', 'PERMISO', 'MODIFICACION_HORARIO'].includes(estadoFinal) && (
-                                <Chip label={estadoFinal.replace(/_/g, ' ')} color="default" size="small" />
-                              )}
-                            </TableCell>
-                            <TableCell align="center">
-                              {asistencia.horaEntrada ? (
-                                <Chip
-                                  icon={<TimeIcon />}
-                                  label={asistencia.horaEntrada}
-                                  size="small"
-                                  color={excepcion?.tipo === 'LLEGADA_TARDE' ? 'warning' : 'default'}
-                                  variant="outlined"
-                                />
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell align="center">
-                              {asistencia.horaSalida ? (
-                                <Chip
-                                  icon={<TimerOffIcon />}
-                                  label={asistencia.horaSalida}
-                                  size="small"
-                                  color="default"
-                                  variant="outlined"
-                                />
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2" fontWeight="600" color="success.main">
-                                {asistencia.horasTrabajadas || 0}h
-                                {excepcion && excepcion.horasExtras ? (
-                                  <Typography component="span" color="info.main" ml={1}>
-                                    +{excepcion.horasExtras}h
-                                  </Typography>
-                                ) : null}
-                              </Typography>
-                            </TableCell>
-                            <TableCell align="center">
-                              {esAutomatica ? (
-                                <Tooltip title="Generada automáticamente por el sistema">
-                                  <Chip 
-                                    icon={<AutoAwesomeIcon />} 
-                                    label="Automática" 
-                                    size="small" 
-                                    color="primary" 
-                                    variant="outlined"
-                                  />
-                                </Tooltip>
-                              ) : (
-                                <Tooltip title="Modificada por excepción registrada">
-                                  <Chip 
-                                    icon={<CreateIcon />} 
-                                    label="Con Excepción" 
-                                    size="small" 
-                                    color="secondary" 
-                                    variant="outlined"
-                                  />
-                                </Tooltip>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2" noWrap>
-                                {excepcion ? (excepcion.observaciones || excepcion.motivo || '-') : (asistencia.observaciones || '-')}
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </>
+        <ResumenDiarioTab
+          asistencias={filteredAsistencias}
+          excepciones={excepciones}
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onChangeFechaDesde={setFechaDesde}
+          onChangeFechaHasta={setFechaHasta}
+          onGenerarAutomaticas={handleGenerarAutomaticas}
+        />
       )}
 
-      {/* Tab 1: Configurar Horarios */}
       {tabValue === 1 && (
-        <Card>
-          <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h6">Configuración de Horarios por Empleado</Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenConfigDialog()}
-              >
-                Nuevo Horario
-              </Button>
-            </Box>
-            
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Empleado</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell align="center">Lunes</TableCell>
-                    <TableCell align="center">Martes</TableCell>
-                    <TableCell align="center">Miércoles</TableCell>
-                    <TableCell align="center">Jueves</TableCell>
-                    <TableCell align="center">Viernes</TableCell>
-                    <TableCell align="center">Sábado</TableCell>
-                    <TableCell align="center">Domingo</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {empleados.map((empleado) => {
-                    const config = Array.isArray(configuraciones) ? configuraciones.find(c => c.empleadoId === empleado.id) : null;
-                    return (
-                      <TableRow key={empleado.id}>
-                        <TableCell>{getEmpleadoNombre(empleado)}</TableCell>
-                        <TableCell>
-                          {config ? (
-                            <Chip 
-                              label={config.activo ? 'Activo' : 'Inactivo'} 
-                              color={config.activo ? 'success' : 'default'} 
-                              size="small" 
-                            />
-                          ) : (
-                            <Chip label="Sin configurar" color="warning" size="small" />
-                          )}
-                        </TableCell>
-                        {['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'].map((dia) => (
-                          <TableCell key={dia} align="center">
-                            {config && config[dia] && config[dia].trabaja ? (
-                              <Tooltip title={`${config[dia].horaEntrada} - ${config[dia].horaSalida}`}>
-                                <CheckCircleIcon color="success" fontSize="small" />
-                              </Tooltip>
-                            ) : (
-                              <CancelIcon color="disabled" fontSize="small" />
-                            )}
-                          </TableCell>
-                        ))}
-                        <TableCell align="center">
-                          <Stack direction="row" spacing={1} justifyContent="center">
-                            {config ? (
-                              <Tooltip title="Editar">
-                                <IconButton
-                                  size="small"
-                                  color="primary"
-                                  onClick={() => handleOpenConfigDialog(empleado)}
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                              </Tooltip>
-                            ) : (
-                              <Tooltip title="Crear Horario Estándar (L-V 8:00-17:00)">
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  onClick={() => handleCrearHorarioEstandar(empleado.id)}
-                                >
-                                  <AutoAwesomeIcon />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+        <ConfigurarHorariosTab
+          empleados={empleados}
+          configuraciones={configuraciones}
+          onOpenConfigDialog={handleOpenConfigDialog}
+          onCrearHorarioEstandar={handleCrearHorarioEstandar}
+        />
       )}
 
-      {/* Tab 2: Excepciones */}
       {tabValue === 2 && (
-        <Card>
-          <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h6">Registro de Excepciones</Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleOpenExcepcionDialog}
-              >
-                Nueva Excepción
-              </Button>
-            </Box>
-            
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Empleado</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell>Detalles</TableCell>
-                    <TableCell>Justificado</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {!Array.isArray(excepciones) || excepciones.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Typography variant="body2" color="textSecondary">
-                          No hay excepciones registradas
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    excepciones.map((excepcion: any) => {
-                      const empleado = empleados.find(e => e.id === excepcion.empleadoId);
-                      return (
-                        <TableRow key={excepcion.id}>
-                          <TableCell>{dayjs(excepcion.fecha).format('DD/MM/YYYY')}</TableCell>
-                          <TableCell>{empleado ? getEmpleadoNombre(empleado) : 'N/A'}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={excepcion.tipo} 
-                              size="small"
-                              color={
-                                excepcion.tipo === 'INASISTENCIA' ? 'error' :
-                                excepcion.tipo === 'LLEGADA_TARDE' ? 'warning' :
-                                excepcion.tipo === 'HORAS_EXTRAS' ? 'success' : 'default'
-                              }
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {excepcion.tipo === 'LLEGADA_TARDE' && excepcion.minutosTardanza !== undefined && excepcion.minutosTardanza !== null && `${excepcion.minutosTardanza} minutos`}
-                            {excepcion.tipo === 'HORAS_EXTRAS' && excepcion.horasExtras !== undefined && excepcion.horasExtras !== null && `${excepcion.horasExtras} horas`}
-                            {excepcion.tipo === 'INASISTENCIA' && excepcion.motivo}
-                            {excepcion.observaciones && ` - ${excepcion.observaciones}`}
-                          </TableCell>
-                          <TableCell>
-                            {excepcion.justificado ? (
-                              <CheckCircleIcon color="success" fontSize="small" />
-                            ) : (
-                              <WarningIcon color="warning" fontSize="small" />
-                            )}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Tooltip title="Eliminar">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => handleDeleteExcepcion(excepcion.id)}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+        <ExcepcionesTab
+          empleados={empleados}
+          excepciones={excepciones}
+          onOpenExcepcionDialog={handleOpenExcepcionDialog}
+          onDeleteExcepcion={handleDeleteExcepcion}
+        />
       )}
 
       {/* Tab 3: Reportes */}
@@ -1571,7 +813,7 @@ const AsistenciasPage: React.FC = () => {
           </Card>
 
           {/* Comparación de Períodos */}
-          {showComparison && (
+          {showComparison && comparisonStats && (
             <Card sx={{ mb: 3 }}>
               <CardContent>
                 <Typography variant="h6" mb={2}>Configurar Período de Comparación</Typography>
@@ -1876,7 +1118,7 @@ const AsistenciasPage: React.FC = () => {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
@@ -2076,7 +1318,7 @@ const AsistenciasPage: React.FC = () => {
                     ) : (
                       reportFilteredAsistencias.map(asistencia => {
                         const excepcion = Array.isArray(excepciones) ? excepciones.find(ex => 
-                          ex.empleadoId === asistencia.empleadoId && 
+                          ex.empleadoId === asistencia.empleado?.id && 
                           dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(asistencia.fecha).format('YYYY-MM-DD')
                         ) : null;
                         
@@ -2233,294 +1475,27 @@ const AsistenciasPage: React.FC = () => {
         </MenuItem>
       </Menu>
 
-      {/* Dialog de Configuración de Horarios */}
-      <Dialog open={openConfigDialog} onClose={handleCloseConfigDialog} maxWidth="md" fullWidth fullScreen={isMobile}>
-        <DialogTitle>
-          {selectedEmpleado 
-            ? `Configurar Horario - ${getEmpleadoNombre(selectedEmpleado)}`
-            : 'Seleccionar Empleado'}
-        </DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ mt: 2 }}>
-            {!selectedEmpleado && (
-              <Autocomplete
-                options={empleados}
-                getOptionLabel={(option) => getEmpleadoNombre(option)}
-                value={selectedEmpleado}
-                onChange={(_, newValue) => setSelectedEmpleado(newValue)}
-                renderInput={(params) => (
-                  <TextField {...params} label="Empleado" required />
-                )}
-              />
-            )}
-            
-            {selectedEmpleado && (
-              <>
-                <Alert severity="info">
-                  Configure los días y horarios laborales. Los días sin marcar se considerarán no laborables.
-                </Alert>
-                
-                {['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'].map((dia) => (
-                  <Box key={dia} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
-                    <Grid container spacing={2} alignItems="center">
-                      <Grid item xs={12} sm={3}>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={configFormData[dia as keyof typeof configFormData]?.trabaja || false}
-                              onChange={(e) => {
-                                setConfigFormData(prev => ({
-                                  ...prev,
-                                  [dia]: {
-                                    ...prev[dia as keyof typeof prev],
-                                    trabaja: e.target.checked
-                                  }
-                                }));
-                              }}
-                            />
-                          }
-                          label={dia.charAt(0).toUpperCase() + dia.slice(1)}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Hora Entrada"
-                          type="time"
-                          value={configFormData[dia as keyof typeof configFormData]?.horaEntrada || ''}
-                          onChange={(e) => {
-                            setConfigFormData(prev => ({
-                              ...prev,
-                              [dia]: {
-                                ...prev[dia as keyof typeof prev],
-                                horaEntrada: e.target.value
-                              }
-                            }));
-                          }}
-                          disabled={!configFormData[dia as keyof typeof configFormData]?.trabaja}
-                          fullWidth
-                          size="small"
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Hora Salida"
-                          type="time"
-                          value={configFormData[dia as keyof typeof configFormData]?.horaSalida || ''}
-                          onChange={(e) => {
-                            setConfigFormData(prev => ({
-                              ...prev,
-                              [dia]: {
-                                ...prev[dia as keyof typeof prev],
-                                horaSalida: e.target.value
-                              }
-                            }));
-                          }}
-                          disabled={!configFormData[dia as keyof typeof configFormData]?.trabaja}
-                          fullWidth
-                          size="small"
-                        />
-                      </Grid>
-                    </Grid>
-                  </Box>
-                ))}
-              </>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button variant="outlined" onClick={handleCloseConfigDialog}>
-            Cancelar
-          </Button>
-          <Button 
-            variant="contained" 
-            onClick={handleSaveConfiguracion}
-            disabled={!selectedEmpleado}
-          >
-            Guardar Configuración
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfigHorariosDialog
+        open={openConfigDialog}
+        onClose={handleCloseConfigDialog}
+        onSave={handleSaveConfiguracion}
+        fullScreen={isMobile}
+        empleados={empleados}
+        selectedEmpleado={selectedEmpleado}
+        setSelectedEmpleado={setSelectedEmpleado}
+        form={configFormData}
+        setForm={setConfigFormData}
+      />
 
-      {/* Dialog de Excepciones */}
-      <Dialog open={openExcepcionDialog} onClose={handleCloseExcepcionDialog} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>Registrar Excepción</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 2 }}>
-            <Autocomplete
-              options={empleados}
-              getOptionLabel={(option) => getEmpleadoNombre(option)}
-              value={empleados.find(e => e.id.toString() === excepcionFormData.empleadoId) || null}
-              onChange={(_, newValue) => {
-                setExcepcionFormData(prev => ({
-                  ...prev,
-                  empleadoId: newValue ? newValue.id.toString() : ''
-                }));
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Empleado" required />
-              )}
-            />
-            
-            <TextField
-              label="Fecha"
-              type="date"
-              value={excepcionFormData.fecha}
-              onChange={(e) => {
-                setExcepcionFormData(prev => ({
-                  ...prev,
-                  fecha: e.target.value
-                }));
-              }}
-              fullWidth
-              required
-              InputLabelProps={{ shrink: true }}
-            />
-            
-            <FormControl fullWidth required>
-              <InputLabel>Tipo de Excepción</InputLabel>
-              <Select
-                value={excepcionFormData.tipo}
-                onChange={(e) => {
-                  setExcepcionFormData(prev => ({
-                    ...prev,
-                    tipo: e.target.value
-                  }));
-                }}
-                label="Tipo de Excepción"
-              >
-                <MenuItem value="INASISTENCIA">Inasistencia</MenuItem>
-                <MenuItem value="LLEGADA_TARDE">Llegada Tarde</MenuItem>
-                <MenuItem value="SALIDA_ANTICIPADA">Salida Anticipada</MenuItem>
-                <MenuItem value="HORAS_EXTRAS">Horas Extras</MenuItem>
-                <MenuItem value="PERMISO">Permiso</MenuItem>
-                <MenuItem value="MODIFICACION_HORARIO">Modificación de Horario</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* Campos dinámicos según tipo */}
-            {excepcionFormData.tipo === 'LLEGADA_TARDE' && (
-              <TextField
-                label="Minutos de Tardanza"
-                type="number"
-                value={excepcionFormData.minutosTardanza}
-                onChange={(e) => {
-                  setExcepcionFormData(prev => ({
-                    ...prev,
-                    minutosTardanza: e.target.value
-                  }));
-                }}
-                fullWidth
-                required
-                inputProps={{ min: 1 }}
-              />
-            )}
-
-            {excepcionFormData.tipo === 'HORAS_EXTRAS' && (
-              <TextField
-                label="Horas Extras"
-                type="number"
-                value={excepcionFormData.horasExtras}
-                onChange={(e) => {
-                  setExcepcionFormData(prev => ({
-                    ...prev,
-                    horasExtras: e.target.value
-                  }));
-                }}
-                fullWidth
-                required
-                inputProps={{ step: 0.5, min: 0.5 }}
-              />
-            )}
-
-            {['SALIDA_ANTICIPADA', 'MODIFICACION_HORARIO'].includes(excepcionFormData.tipo) && (
-              <>
-                <TextField
-                  label="Hora Entrada Real"
-                  type="time"
-                  value={excepcionFormData.horaEntradaReal}
-                  onChange={(e) => {
-                    setExcepcionFormData(prev => ({
-                      ...prev,
-                      horaEntradaReal: e.target.value
-                    }));
-                  }}
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="Hora Salida Real"
-                  type="time"
-                  value={excepcionFormData.horaSalidaReal}
-                  onChange={(e) => {
-                    setExcepcionFormData(prev => ({
-                      ...prev,
-                      horaSalidaReal: e.target.value
-                    }));
-                  }}
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-              </>
-            )}
-
-            {excepcionFormData.tipo === 'INASISTENCIA' && (
-              <TextField
-                label="Motivo"
-                value={excepcionFormData.motivo}
-                onChange={(e) => {
-                  setExcepcionFormData(prev => ({
-                    ...prev,
-                    motivo: e.target.value
-                  }));
-                }}
-                fullWidth
-                required
-              />
-            )}
-
-            <TextField
-              label="Observaciones"
-              value={excepcionFormData.observaciones}
-              onChange={(e) => {
-                setExcepcionFormData(prev => ({
-                  ...prev,
-                  observaciones: e.target.value
-                }));
-              }}
-              fullWidth
-              multiline
-              rows={2}
-            />
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={excepcionFormData.justificado}
-                  onChange={(e) => {
-                    setExcepcionFormData(prev => ({
-                      ...prev,
-                      justificado: e.target.checked
-                    }));
-                  }}
-                />
-              }
-              label="Justificado"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button variant="outlined" onClick={handleCloseExcepcionDialog}>
-            Cancelar
-          </Button>
-          <Button 
-            variant="contained" 
-            onClick={handleSaveExcepcion}
-            disabled={!excepcionFormData.empleadoId || !excepcionFormData.tipo}
-          >
-            Registrar Excepción
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ExcepcionDialog
+        open={openExcepcionDialog}
+        onClose={handleCloseExcepcionDialog}
+        onSave={handleSaveExcepcion}
+        fullScreen={isMobile}
+        empleados={empleados}
+        form={excepcionFormData}
+        setForm={setExcepcionFormData}
+      />
     </Box>
   );
 };

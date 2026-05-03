@@ -65,7 +65,12 @@ api.interceptors.request.use(
         printedJwtInfo = true;
       }
     } else {
-      logger.warn('No token available for request:', config.url);
+      // Login/refresh run before there is a token — silence the noise.
+      const url = config.url || '';
+      const isPublicAuth = url.includes('/api/auth/login') || url.includes('/api/auth/refresh');
+      if (!isPublicAuth) {
+        logger.warn('No token available for request:', url);
+      }
     }
 
     // Attach X-Empresa-Id header for multi-tenant support (required after tenant selection)
@@ -141,6 +146,13 @@ api.interceptors.response.use(
           localStorage.setItem('auth_refresh_token', refreshRes.refreshToken);
           logger.log('🔄 Refresh token also updated');
         }
+
+        // Notify AuthContext so React state stays in sync — without this,
+        // hooks reading `token` from useAuth (e.g. SSE) keep using the stale
+        // value until the user reloads.
+        window.dispatchEvent(new CustomEvent('auth-token-refreshed', {
+          detail: { token: newAccess },
+        }));
 
         // Reset the printed JWT info flag to log the new token info
         printedJwtInfo = false;

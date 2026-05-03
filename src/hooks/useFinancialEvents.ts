@@ -35,7 +35,8 @@ const MAX_DEDUP_IDS             = 100;    // rolling window for client-side dedu
 
 // HTTP status codes that should NOT be retried (client errors).
 // 5xx, 429, and network errors are retriable via the library's built-in back-off.
-const NON_RETRIABLE_STATUS = new Set([400, 401, 403, 404, 410, 422]);
+// 401 is handled separately — we attempt a token refresh before giving up.
+const NON_RETRIABLE_STATUS = new Set([400, 403, 404, 410, 422]);
 
 // Exponential back-off for retriable errors (5xx, network failures).
 // Delays: 1s → 2s → 4s → 8s → 16s → 30s → 30s → …
@@ -69,9 +70,9 @@ const SSE_URL = `${BASE_URL}/api/eventos/stream`;
 // Hook — call ONCE in the authenticated layout (Layout.tsx)
 // ---------------------------------------------------------------------------
 export function useFinancialEvents(): void {
-  const { token }     = useAuth();
-  const { empresaId } = useTenant();
-  const queryClient   = useQueryClient();
+  const { token, refreshSession } = useAuth();
+  const { empresaId }             = useTenant();
+  const queryClient               = useQueryClient();
 
   // Incrementing this triggers a clean reconnect from the health check.
   // useState (not a ref) so the useEffect dependency array reacts to it.
@@ -86,6 +87,10 @@ export function useFinancialEvents(): void {
   const healthCheckRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   // Counts consecutive retriable failures — reset to 0 on successful open.
   const retryCountRef    = useRef<number>(0);
+  // refreshSession is recreated on every AuthContext render; keep the latest
+  // in a ref so the SSE effect's dep array doesn't churn.
+  const refreshSessionRef = useRef(refreshSession);
+  refreshSessionRef.current = refreshSession;
 
   // ---------------------------------------------------------------------------
   // Visibility: when the tab regains focus, invalidate all SSE-tracked queries.
@@ -205,6 +210,19 @@ export function useFinancialEvents(): void {
           lastEventTimeRef.current = Date.now();
           console.log('[SSE CONNECTED] empresaId:', empresaId);
           return;
+        }
+        if (response.status === 401) {
+          // Token expired/invalid: try a refresh. On success, setToken in
+          // AuthContext re-fires this effect with the new token (fresh
+          // connection). On failure, the axios pipeline will redirect to
+          // /login on the next API call.
+          try {
+            await refreshSessionRef.current();
+            console.log('[SSE] 401 — token refreshed, reconnecting');
+          } catch (err) {
+            console.warn('[SSE] 401 — refresh failed, giving up', err);
+          }
+          throw new FatalSSEError(401);
         }
         if (NON_RETRIABLE_STATUS.has(response.status)) {
           // FatalSSEError propagates to onerror, which re-throws it.

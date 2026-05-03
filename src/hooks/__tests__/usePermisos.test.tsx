@@ -22,6 +22,7 @@ const mockAuth = (roles: string[]) => {
     esSuperAdmin: false,
     login: vi.fn(),
     logout: vi.fn(),
+    refreshSession: vi.fn().mockResolvedValue('token'),
   });
 };
 
@@ -76,6 +77,7 @@ describe('usePermisos', () => {
         esSuperAdmin: false,
         login: vi.fn(),
         logout: vi.fn(),
+        refreshSession: vi.fn().mockResolvedValue('token'),
       });
       const { result } = renderHook(() => usePermisos(), { wrapper });
       expect(result.current.tienePermiso('DASHBOARD')).toBe(false);
