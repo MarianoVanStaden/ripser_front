@@ -77,6 +77,15 @@ export const leadApi = {
     return response.data;
   },
 
+  // Actualización rápida de estado (PATCH). El back registra automáticamente
+  // la interacción CAMBIO_ESTADO en el historial.
+  updateEstado: async (id: number, estado: EstadoLeadEnum): Promise<LeadDTO> => {
+    const response = await api.patch<LeadDTO>(`${BASE_PATH}/${id}/estado`, null, {
+      params: { estado },
+    });
+    return response.data;
+  },
+
   // Obtener lead por ID
   getById: async (id: number): Promise<LeadDTO> => {
     const response = await api.get<LeadDTO>(`${BASE_PATH}/${id}`);

@@ -44,10 +44,10 @@ import {
   PRIORIDAD_LABELS
 } from '../../types/lead.types';
 import type { LeadListItemDTO, RecordatorioLeadDTO } from '../../types/lead.types';
-import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
 import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
+import { EstadoQuickEdit } from '../../components/leads/EstadoQuickEdit';
 import { useTenant } from '../../context/TenantContext';
 import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -220,6 +220,16 @@ export const LeadsTablePage = () => {
     } catch (err) {
       console.error('Error al actualizar prioridad:', err);
       alert('Error al actualizar la prioridad del lead');
+    }
+  };
+
+  const handleUpdateEstado = async (leadId: number, newEstado: EstadoLeadEnum) => {
+    try {
+      await leadApi.updateEstado(leadId, newEstado);
+      invalidateLeads();
+    } catch (err) {
+      console.error('Error al actualizar estado:', err);
+      alert('Error al actualizar el estado del lead');
     }
   };
 
@@ -515,7 +525,12 @@ export const LeadsTablePage = () => {
                         <CanalBadge canal={lead.canal} />
                       </TableCell>
                       <TableCell sx={{ py: 0.75 }}>
-                        <LeadStatusBadge status={lead.estadoLead} />
+                        <EstadoQuickEdit
+                          leadId={lead.id!}
+                          currentEstado={lead.estadoLead}
+                          options={ESTADOS_DISPONIBLES}
+                          onUpdate={handleUpdateEstado}
+                        />
                       </TableCell>
                       <TableCell align="center" sx={{ py: 0.75 }}>
                         <PriorityQuickEdit
