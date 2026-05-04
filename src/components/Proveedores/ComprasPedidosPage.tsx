@@ -25,8 +25,6 @@ import {
   InputAdornment,
   Avatar,
   TablePagination,
-  Checkbox,
-  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -38,8 +36,6 @@ import {
   LocalShipping as ShippingIcon,
   CheckCircle as CheckIcon,
   Schedule as ScheduleIcon,
-  Cancel as CancelIcon,
-  Receipt as ReceiptIcon,
   Business as BusinessIcon,
   AttachMoney as MoneyIcon,
   Refresh as RefreshIcon,
@@ -62,6 +58,14 @@ import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
 import LoadingOverlay from '../common/LoadingOverlay';
+// FRONT-003: extracted to keep this file orchestrator-shaped.
+import type { NewOrdenForm, PriceChange, RecepcionItem } from './Compras/types';
+import { createInitialNewOrden } from './Compras/constants';
+import { getEstadoColor, getEstadoIcon } from './Compras/utils';
+import DeleteOrdenDialog from './Compras/dialogs/DeleteOrdenDialog';
+import PriceChangeDialog from './Compras/dialogs/PriceChangeDialog';
+import ViewOrdenDialog from './Compras/dialogs/ViewOrdenDialog';
+import RecepcionCompraDialog from './Compras/dialogs/RecepcionCompraDialog';
 interface ErrorBoundaryProps {
   children: React.ReactNode;
 }
@@ -105,13 +109,7 @@ const ComprasPedidosPage: React.FC = () => {
 
   // Price change confirmation dialog
   const [openPriceChangeDialog, setOpenPriceChangeDialog] = useState(false);
-  const [priceChanges, setPriceChanges] = useState<Array<{
-    productoId: number;
-    nombreProducto: string;
-    precioAnterior: number;
-    precioNuevo: number;
-    shouldUpdate: boolean;
-  }>>([]);
+  const [priceChanges, setPriceChanges] = useState<PriceChange[]>([]);
 
   // Pagination states
   const [page, setPage] = useState(0);
@@ -125,36 +123,13 @@ const ComprasPedidosPage: React.FC = () => {
   // Reception dialog states
   const [openRecepcionDialog, setOpenRecepcionDialog] = useState(false);
   const [ordenToReceive, setOrdenToReceive] = useState<OrdenCompra | null>(null);
-  const [recepcionItems, setRecepcionItems] = useState<Array<{
-    detalleCompraId: number;
-    productoId: number;
-    productoNombre: string;
-    cantidadCompra: number;
-    cantidadRecibida: number;
-    observaciones: string;
-  }>>([]);
+  const [recepcionItems, setRecepcionItems] = useState<RecepcionItem[]>([]);
   const [recepcionObservaciones, setRecepcionObservaciones] = useState('');
   const [recepcionLoading, setRecepcionLoading] = useState(false);
   const [recepcionSuccess, setRecepcionSuccess] = useState<string | null>(null);
   const [recepcionError, setRecepcionError] = useState<string | null>(null);
 
-const [newOrden, setNewOrden] = useState({
-  supplierId: '',
-  fechaEntregaEstimada: dayjs().add(15, 'day'),
-  observaciones: '',
-  estado: 'PENDIENTE', // Add estado field
-  metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA',
-  items: [{
-    productoId: '',
-    nombreProductoTemporal: '',
-    descripcionProductoTemporal: '',
-    codigoProductoTemporal: '',
-    categoriaId: '',
-    esProductoNuevo: false,
-    cantidad: 1,
-    precioUnitario: 0,
-  }],
-});
+const [newOrden, setNewOrden] = useState<NewOrdenForm>(createInitialNewOrden);
 
   useEffect(() => {
     loadProveedores();
@@ -813,28 +788,6 @@ const handleItemChange = (index: number, field: string, value: any) => {
   setNewOrden({ ...newOrden, items: updatedItems });
 };
 
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'PENDIENTE': return 'warning';
-      case 'CONFIRMADA': return 'info';
-      case 'EN_TRANSITO': return 'primary';
-      case 'RECIBIDA': return 'success';
-      case 'CANCELADA': return 'error';
-      default: return 'default';
-    }
-  };
-
-  const getEstadoIcon = (estado: string) => {
-    switch (estado) {
-      case 'PENDIENTE': return <ScheduleIcon />;
-      case 'CONFIRMADA': return <CheckIcon />;
-      case 'EN_TRANSITO': return <ShippingIcon />;
-      case 'RECIBIDA': return <CheckIcon />;
-      case 'CANCELADA': return <CancelIcon />;
-      default: return <ReceiptIcon />;
-    }
-  };
-
 const filteredOrdenes = ordenes
   .filter((orden) => {
     const matchesSearch =
@@ -926,20 +879,10 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
     return ordenes.filter(orden => orden.estado === status).length;
   };
 
-const [openDeleteDialog, setOpenDeleteDialog] = useState<number | null>(null);
-
-const handleDeleteCompra = async (id: number) => {
-  try {
-    setLoading(true);
-    await compraApi.delete(id);
-    setCompras(compras.filter(c => c.id !== id));
-    setOpenDeleteDialog(null);
-  } catch (err) {
-    setError('Error al eliminar la compra');
-  } finally {
-    setLoading(false);
-  }
-};
+// FRONT-003: removed dead `openDeleteDialog` state + unreachable Dialog +
+// `handleDeleteCompra` — el setter nunca se llamaba con un valor truthy,
+// la confirmación real de eliminación se maneja por `deleteConfirmOpen`/
+// `handleConfirmDelete` (sobre `OrdenCompra`, no `CompraDTO`).
 
   // Reemplaza el uso de loadData por una función que recargue proveedores y compras:
   const reloadData = async () => {
@@ -1605,507 +1548,52 @@ const handleDeleteCompra = async (id: number) => {
     </Box>
   </DialogActions>
 </Dialog>
-        <Dialog
-  open={openDeleteDialog !== null}
-  onClose={() => setOpenDeleteDialog(null)}
->
-  <DialogTitle>Confirmar Eliminación</DialogTitle>
-  <DialogContent>
-    <Typography>¿Está seguro de que desea eliminar esta compra?</Typography>
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setOpenDeleteDialog(null)}>Cancelar</Button>
-    <Button
-      variant="contained"
-      color="error"
-      onClick={() => handleDeleteCompra(openDeleteDialog!)}
-    >
-      Eliminar
-    </Button>
-  </DialogActions>
-</Dialog>
-
         {/* View Order Dialog */}
-        <Dialog open={openViewDialog} onClose={() => setOpenViewDialog(false)} maxWidth="md" fullWidth>
-          <DialogTitle>
-            Orden de Compra {selectedOrden?.numero}
-          </DialogTitle>
-          <DialogContent>
-            {selectedOrden && (
-              <Box pt={2}>
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Información General
-                  </Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Proveedor</Typography>
-                      <Typography variant="body1">{selectedOrden.proveedor?.razonSocial}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Estado</Typography>
-                      <Chip
-                        icon={getEstadoIcon(selectedOrden.estado)}
-                        label={selectedOrden.estado}
-                        color={getEstadoColor(selectedOrden.estado) as any}
-                        size="small"
-                      />
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Fecha Creación</Typography>
-                      <Typography variant="body1">{new Date(selectedOrden.fechaCreacion).toLocaleDateString()}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Entrega Estimada</Typography>
-                      <Typography variant="body1">{new Date(selectedOrden.fechaEntregaEstimada).toLocaleDateString()}</Typography>
-                    </Box>
-                    {selectedOrden.fechaEntregaReal && (
-                      <>
-                        <Box>
-                          <Typography variant="body2" color="text.secondary">Entrega Real</Typography>
-                          <Typography variant="body1">{new Date(selectedOrden.fechaEntregaReal).toLocaleDateString()}</Typography>
-                        </Box>
-                      </>
-                    )}
-                    {selectedOrden.metodoPago && (
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">Forma de Pago</Typography>
-                        <Typography variant="body1">
-                          {selectedOrden.metodoPago === 'EFECTIVO' && 'Efectivo'}
-                          {selectedOrden.metodoPago === 'TARJETA_CREDITO' && 'Tarjeta de Crédito'}
-                          {selectedOrden.metodoPago === 'TARJETA_DEBITO' && 'Tarjeta de Débito'}
-                          {selectedOrden.metodoPago === 'TRANSFERENCIA' && 'Transferencia Bancaria'}
-                          {selectedOrden.metodoPago === 'CHEQUE' && 'Cheque'}
-                          {selectedOrden.metodoPago === 'FINANCIACION_PROPIA' && 'Financiación Propia'}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-                  {selectedOrden.observaciones && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Observaciones</Typography>
-                      <Typography variant="body1">{selectedOrden.observaciones}</Typography>
-                    </Box>
-                  )}
-                </Box>
-
-                <Typography variant="h6" gutterBottom>
-                  Items de la Orden
-                </Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Descripción</TableCell>
-                        <TableCell align="right">Cantidad</TableCell>
-                        <TableCell align="right">Precio Unit.</TableCell>
-                        <TableCell align="right">Subtotal</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedOrden.items.map((item) => {
-                        // Try to find the product from the productos array if we have a productoId
-                        const producto = item.productoId ? productos.find(p => p.id === Number(item.productoId)) : null;
-                        const productName = item.nombreProductoTemporal || (item as any).nombre || (item as any).productoNombre || producto?.nombre || item.descripcion || 'Producto sin nombre';
-                        const productCode = item.codigoProductoTemporal || (item as any).codigo || producto?.codigo || '';
-                        
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <Typography variant="body2" fontWeight="medium">
-                                {productName}
-                              </Typography>
-                              {productCode && (
-                                <Typography variant="caption" color="text.secondary" display="block">
-                                  Código: {productCode}
-                                </Typography>
-                              )}
-                              {item.descripcionProductoTemporal && item.descripcionProductoTemporal !== productName && (
-                                <Typography variant="caption" color="text.secondary" display="block">
-                                  {item.descripcionProductoTemporal}
-                                </Typography>
-                              )}
-                            </TableCell>
-                            <TableCell align="right">{item.cantidad}</TableCell>
-                            <TableCell align="right">${item.precioUnitario.toLocaleString()}</TableCell>
-                            <TableCell align="right">${item.subtotal.toLocaleString()}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      <TableRow>
-                        <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>Total</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                          ${selectedOrden.total.toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenViewDialog(false)}>
-              Cerrar
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<PrintIcon />}
-              onClick={() => selectedOrden && handleExportarOrdenPDF(selectedOrden)}
-            >
-              Imprimir PDF
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <ViewOrdenDialog
+          open={openViewDialog}
+          onClose={() => setOpenViewDialog(false)}
+          onPrintPdf={() => selectedOrden && handleExportarOrdenPDF(selectedOrden)}
+          orden={selectedOrden}
+          productos={productos}
+        />
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
+        <DeleteOrdenDialog
           open={deleteConfirmOpen}
           onClose={handleCancelDelete}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            <Box display="flex" alignItems="center" gap={1}>
-              <DeleteIcon color={deleteErrorMessage ? 'disabled' : 'error'} />
-              <Typography variant="h6">
-                {ordenToDelete ? 'Confirmar Eliminación' : 'No se puede eliminar'}
-              </Typography>
-            </Box>
-          </DialogTitle>
-          <DialogContent>
-            {deleteErrorMessage ? (
-              <Alert severity="error" sx={{ mt: 1 }}>
-                {deleteErrorMessage}
-              </Alert>
-            ) : ordenToDelete ? (
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="body1" gutterBottom>
-                  ¿Está seguro de que desea eliminar la orden de compra <strong>#{ordenToDelete.numero}</strong>?
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  Esta acción no se puede deshacer.
-                </Typography>
-              </Box>
-            ) : null}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCancelDelete} color="inherit">
-              {deleteErrorMessage ? 'Cerrar' : 'Cancelar'}
-            </Button>
-            {ordenToDelete && !deleteErrorMessage && (
-              <Button
-                onClick={handleConfirmDelete}
-                color="error"
-                variant="contained"
-                disabled={loading}
-                startIcon={loading ? <CircularProgress size={20} /> : <DeleteIcon />}
-              >
-                {loading ? 'Eliminando...' : 'Eliminar'}
-              </Button>
-            )}
-          </DialogActions>
-        </Dialog>
+          onConfirm={handleConfirmDelete}
+          loading={loading}
+          orden={ordenToDelete}
+          errorMessage={deleteErrorMessage}
+        />
 
-        {/* Price Change Confirmation Dialog */}
-        <Dialog
+        <PriceChangeDialog
           open={openPriceChangeDialog}
           onClose={() => {
             setOpenPriceChangeDialog(false);
             setPriceChanges([]);
           }}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            <Box display="flex" alignItems="center" gap={1}>
-              <MoneyIcon color="warning" />
-              <Typography variant="h6">Cambios de Precio Detectados</Typography>
-            </Box>
-          </DialogTitle>
-          <DialogContent>
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Se detectaron cambios en los precios de compra. Seleccione los productos cuyos precios desea actualizar en el sistema.
-            </Alert>
+          onSaveWithoutUpdates={() => saveOrdenWithPriceUpdates([])}
+          onSaveWithUpdates={(updates) => saveOrdenWithPriceUpdates(updates)}
+          priceChanges={priceChanges}
+          setPriceChanges={setPriceChanges}
+        />
 
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Actualizar</TableCell>
-                    <TableCell>Producto</TableCell>
-                    <TableCell align="right">Costo Anterior</TableCell>
-                    <TableCell align="center">→</TableCell>
-                    <TableCell align="right">Costo Nuevo</TableCell>
-                    <TableCell align="right">Variación</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {priceChanges.map((change, index) => {
-                    // Proteger contra división por cero cuando el costo anterior es 0
-                    const variation = change.precioAnterior > 0
-                      ? ((change.precioNuevo - change.precioAnterior) / change.precioAnterior) * 100
-                      : (change.precioNuevo > 0 ? 100 : 0); // Si no había costo anterior, es 100% nuevo
-                    const isIncrease = variation > 0;
-
-                    return (
-                      <TableRow key={change.productoId}>
-                        <TableCell>
-                          <Checkbox
-                            checked={change.shouldUpdate}
-                            onChange={(e) => {
-                              const updated = [...priceChanges];
-                              updated[index].shouldUpdate = e.target.checked;
-                              setPriceChanges(updated);
-                            }}
-                            color="primary"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="medium">
-                            {change.nombreProducto}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" color="text.secondary">
-                            ${change.precioAnterior.toLocaleString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography color={isIncrease ? 'error' : 'success'}>
-                            →
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography
-                            variant="body2"
-                            fontWeight="bold"
-                            color={isIncrease ? 'error.main' : 'success.main'}
-                          >
-                            ${change.precioNuevo.toLocaleString()}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Chip
-                            label={`${isIncrease ? '+' : ''}${variation.toFixed(1)}%`}
-                            color={isIncrease ? 'error' : 'success'}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <Box sx={{ mt: 2 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={priceChanges.every(c => c.shouldUpdate)}
-                    indeterminate={
-                      priceChanges.some(c => c.shouldUpdate) &&
-                      !priceChanges.every(c => c.shouldUpdate)
-                    }
-                    onChange={(e) => {
-                      const allChecked = e.target.checked;
-                      setPriceChanges(priceChanges.map(c => ({ ...c, shouldUpdate: allChecked })));
-                    }}
-                  />
-                }
-                label="Seleccionar todos"
-              />
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => {
-                // Save without updating prices
-                saveOrdenWithPriceUpdates([]);
-              }}
-              color="inherit"
-            >
-              Guardar sin Actualizar Precios
-            </Button>
-            <Button
-              onClick={() => {
-                // Save with selected price updates
-                const updates = priceChanges
-                  .filter(c => c.shouldUpdate)
-                  .map(c => ({
-                    productoId: c.productoId,
-                    precioNuevo: c.precioNuevo,
-                  }));
-                saveOrdenWithPriceUpdates(updates);
-              }}
-              variant="contained"
-              color="primary"
-              disabled={!priceChanges.some(c => c.shouldUpdate)}
-            >
-              Actualizar {priceChanges.filter(c => c.shouldUpdate).length} Precio(s)
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Recepción de Compra Dialog */}
-        <Dialog
+        <RecepcionCompraDialog
           open={openRecepcionDialog}
-          onClose={() => !recepcionLoading && setOpenRecepcionDialog(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <InventoryIcon color="success" />
-              <Typography variant="h6">
-                Recibir Compra {ordenToReceive?.numero}
-              </Typography>
-            </Box>
-          </DialogTitle>
-          <DialogContent>
-            {recepcionError && (
-              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRecepcionError(null)}>
-                {recepcionError}
-              </Alert>
-            )}
-            {recepcionSuccess && (
-              <Alert severity="success" sx={{ mb: 2 }}>
-                {recepcionSuccess}
-              </Alert>
-            )}
-
-            {/* NUEVO: Mensaje informativo sobre asignación automática */}
-            <Alert severity="info" sx={{ mb: 2 }} icon={<InventoryIcon />}>
-              <Typography variant="body2" fontWeight="medium" gutterBottom>
-                Asignación Automática de Stock
-              </Typography>
-              <Typography variant="body2">
-                El stock de esta compra ingresará automáticamente al <strong>depósito principal</strong> de la empresa.
-                Desde allí podrás realizar transferencias a otros depósitos según sea necesario.
-              </Typography>
-            </Alert>
-
-            {ordenToReceive && (
-              <Box sx={{ pt: 1 }}>
-                <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Información de la Compra
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Proveedor</Typography>
-                      <Typography variant="body1" fontWeight="medium">
-                        {ordenToReceive.proveedor?.razonSocial || proveedores.find(p => p.id.toString() === ordenToReceive.supplierId)?.razonSocial || '-'}
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Fecha Compra</Typography>
-                      <Typography variant="body1">
-                        {dayjs(ordenToReceive.fechaCreacion).format('DD/MM/YYYY')}
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Total</Typography>
-                      <Typography variant="body1" fontWeight="medium">
-                        ${ordenToReceive.total?.toLocaleString() || '0'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-
-                <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
-                  Productos a Recibir
-                </Typography>
-
-                <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: 'grey.100' }}>
-                        <TableCell>Producto</TableCell>
-                        <TableCell align="center">Cant. Comprada</TableCell>
-                        <TableCell align="center" sx={{ minWidth: 120 }}>Cant. Recibida *</TableCell>
-                        <TableCell>Observaciones</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {recepcionItems.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="medium">
-                              {item.productoNombre}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip label={item.cantidadCompra} size="small" />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              fullWidth
-                              size="small"
-                              value={item.cantidadRecibida}
-                              onChange={(e) => {
-                                const updated = [...recepcionItems];
-                                updated[index].cantidadRecibida = parseInt(e.target.value) || 0;
-                                setRecepcionItems(updated);
-                              }}
-                              inputProps={{ min: 0, max: item.cantidadCompra }}
-                              error={item.cantidadRecibida <= 0}
-                              disabled={recepcionLoading}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              value={item.observaciones}
-                              onChange={(e) => {
-                                const updated = [...recepcionItems];
-                                updated[index].observaciones = e.target.value;
-                                setRecepcionItems(updated);
-                              }}
-                              placeholder="Opcional"
-                              disabled={recepcionLoading}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={2}
-                  label="Observaciones Generales"
-                  value={recepcionObservaciones}
-                  onChange={(e) => setRecepcionObservaciones(e.target.value)}
-                  disabled={recepcionLoading}
-                  sx={{ mt: 1 }}
-                />
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Button
-              onClick={() => setOpenRecepcionDialog(false)}
-              disabled={recepcionLoading}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleSubmitRecepcion}
-              disabled={recepcionLoading || recepcionItems.some(i => i.cantidadRecibida <= 0)}
-              startIcon={recepcionLoading ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />}
-            >
-              {recepcionLoading ? 'Procesando...' : 'Confirmar Recepción'}
-            </Button>
-          </DialogActions>
-        </Dialog>
+          onClose={() => setOpenRecepcionDialog(false)}
+          onSubmit={handleSubmitRecepcion}
+          loading={recepcionLoading}
+          error={recepcionError}
+          onClearError={() => setRecepcionError(null)}
+          successMessage={recepcionSuccess}
+          orden={ordenToReceive}
+          proveedores={proveedores}
+          items={recepcionItems}
+          setItems={setRecepcionItems}
+          observaciones={recepcionObservaciones}
+          setObservaciones={setRecepcionObservaciones}
+        />
 
       </Box>
     </LocalizationProvider>

@@ -95,9 +95,27 @@ export const test = base.extend<E2EFixtures>({
       });
 
       // 1. Non-auth catch-all (registered first = lower LIFO priority).
-      //    Returns empty paginated responses so the app never receives a 401
+      //    Returns shape-aware empty responses so the app never receives a 401
       //    from the real backend and AuthContext never logs the user out.
       //    Auth endpoints (/api/auth/*) are passed through so login tests work.
+      //
+      //    Shape heuristic (Spring Data JPA convention used by ripser_back):
+      //      - URL has `?page=...` query param → Page<T> (`{content:[],…}`)
+      //      - Otherwise → flat array (`[]`)
+      //
+      //    This matches >95% of the API surface: `getAllPaginated`/`findAll`
+      //    helpers always send `page=` and consume `.content`; helper
+      //    endpoints like `/activos`, `/by-cliente`, `/usuario-empresa/usuario/{id}`
+      //    return `List<T>` and consumers do `.find/.map` on them.  Returning
+      //    `{content:[]}` for the latter used to crash any page that called
+      //    `array.find(...)` at mount; we previously worked around that with
+      //    per-test override lists (FRONT-006, see notas-pedido.smoke).
+      //
+      //    Single-resource endpoints (`/api/foo/{id}`) also return `[]` here.
+      //    That's not technically correct, but our smoke tests don't exercise
+      //    detail pages, and `[]` is at least a valid JSON value the consumer
+      //    can defensively handle.  Tests that DO need a specific single
+      //    resource install their own LIFO-higher route override.
       await page.route('**/api/**', (route) => {
         const url = route.request().url();
         if (url.includes('/api/auth/')) return route.continue();
@@ -110,13 +128,12 @@ export const test = base.extend<E2EFixtures>({
         const accept = route.request().headers()['accept'] ?? '';
         if (accept.includes('text/event-stream')) return route.abort();
 
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            content: [], totalElements: 0, totalPages: 0, number: 0, size: 20,
-          }),
-        });
+        const isPaginated = /[?&]page=\d+/.test(url);
+        const body = isPaginated
+          ? JSON.stringify({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })
+          : '[]';
+
+        return route.fulfill({ status: 200, contentType: 'application/json', body });
       });
 
       // 2. auth/validate mock (registered second = higher LIFO priority).

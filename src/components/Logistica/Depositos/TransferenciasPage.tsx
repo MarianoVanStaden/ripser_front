@@ -25,7 +25,6 @@ import {
   MenuItem,
   Grid,
   Alert,
-  CircularProgress,
   Tooltip,
   TablePagination,
   Switch,
@@ -55,7 +54,7 @@ import {
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import 'dayjs/locale/es';
 import { transferenciaApi, depositoApi, stockDepositoApi } from '../../../api/services';
 import { ubicacionEquipoApi } from '../../../api/services/ubicacionEquipoApi';
@@ -72,6 +71,12 @@ import type {
 import LoadingOverlay from '../../common/LoadingOverlay';
 import { exportToExcel, prepareTableDataForExport } from '../../../utils/exportExcel';
 import { exportToPDF, prepareTableDataForPDF } from '../../../utils/exportPDF';
+// FRONT-003: extracted to keep this file orchestrator-shaped.
+import type { ItemRecepcion, NewTransferenciaForm, RecepcionForm } from './Transferencias/types';
+import { getEstadoChip } from './Transferencias/utils';
+import CancelTransferenciaDialog from './Transferencias/dialogs/CancelTransferenciaDialog';
+import EnvioTransferenciaDialog from './Transferencias/dialogs/EnvioTransferenciaDialog';
+import ViewTransferenciaDialog from './Transferencias/dialogs/ViewTransferenciaDialog';
 import {
   PieChart,
   Pie,
@@ -116,20 +121,7 @@ const TransferenciasPage: React.FC = () => {
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
 
   // Form para crear transferencia
-  const [newTransferencia, setNewTransferencia] = useState<{
-    depositoOrigenId: number | '';
-    depositoDestinoId: number | '';
-    fechaTransferencia: Dayjs;
-    observaciones: string;
-    items: Array<{
-      tipo: 'PRODUCTO' | 'EQUIPO';
-      productoId?: number;
-      equipoFabricadoId?: number;
-      cantidad?: number;
-      productoNombre?: string;
-      equipoNumero?: string;
-    }>;
-  }>({
+  const [newTransferencia, setNewTransferencia] = useState<NewTransferenciaForm>({
     depositoOrigenId: '',
     depositoDestinoId: '',
     fechaTransferencia: dayjs(),
@@ -143,27 +135,7 @@ const TransferenciasPage: React.FC = () => {
   const [equiposDisponibles, setEquiposDisponibles] = useState<EquipoFabricadoDTO[]>([]);
   const [selectedItemType, setSelectedItemType] = useState<'PRODUCTO' | 'EQUIPO'>('PRODUCTO');
 
-  // Estados para recepción mejorada
-  interface ItemRecepcion {
-    detalleId: number;
-    productoId?: number;
-    equipoFabricadoId?: number;
-    nombreItem: string;
-    cantidadSolicitada: number;
-    cantidadRecibida: number;
-    distribuciones: Array<{
-      depositoId: number;
-      depositoNombre: string;
-      cantidad: number;
-    }>;
-    observaciones: string;
-  }
-
-  const [recepcionData, setRecepcionData] = useState<{
-    fechaRecepcion: Dayjs;
-    items: ItemRecepcion[];
-    usarDistribucionMultiple: boolean;
-  }>({
+  const [recepcionData, setRecepcionData] = useState<RecepcionForm>({
     fechaRecepcion: dayjs(),
     items: [],
     usarDistribucionMultiple: false,
@@ -701,18 +673,6 @@ const TransferenciasPage: React.FC = () => {
     setStocksDisponibles([]);
     setStocksDestino([]);
     setEquiposDisponibles([]);
-  };
-
-  const getEstadoChip = (estado: EstadoTransferencia) => {
-    const chipProps: Record<EstadoTransferencia, { label: string; color: 'default' | 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success' }> = {
-      PENDIENTE: { label: 'Pendiente', color: 'warning' },
-      EN_TRANSITO: { label: 'En Tránsito', color: 'info' },
-      RECIBIDA: { label: 'Recibida', color: 'success' },
-      CANCELADA: { label: 'Cancelada', color: 'error' },
-    };
-
-    const props = chipProps[estado];
-    return <Chip label={props.label} color={props.color} size="small" />;
   };
 
   const filteredTransferencias = transferencias.filter(t => {
@@ -1510,110 +1470,11 @@ const TransferenciasPage: React.FC = () => {
         </Dialog>
 
         {/* Diálogo: Ver Detalle */}
-        <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle>
-            Detalle de Transferencia: {selectedTransferencia?.numero}
-          </DialogTitle>
-          <DialogContent>
-            {selectedTransferencia && (
-              <Box sx={{ mt: 2 }}>
-                <Grid container spacing={2} mb={3}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Depósito Origen
-                    </Typography>
-                    <Typography variant="body1" fontWeight="bold">
-                      {selectedTransferencia.depositoOrigenNombre}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Depósito Destino
-                    </Typography>
-                    <Typography variant="body1" fontWeight="bold">
-                      {selectedTransferencia.depositoDestinoNombre}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Fecha de Transferencia
-                    </Typography>
-                    <Typography variant="body1">
-                      {dayjs(selectedTransferencia.fechaTransferencia).format('DD/MM/YYYY HH:mm')}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Estado
-                    </Typography>
-                    <Box mt={0.5}>{getEstadoChip(selectedTransferencia.estado)}</Box>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography variant="body2" color="text.secondary">
-                      Usuario Solicitud
-                    </Typography>
-                    <Typography variant="body1">
-                      {selectedTransferencia.usuarioSolicitudNombre}
-                    </Typography>
-                  </Grid>
-                  {selectedTransferencia.observaciones && (
-                    <Grid item xs={12}>
-                      <Typography variant="body2" color="text.secondary">
-                        Observaciones
-                      </Typography>
-                      <Typography variant="body1">
-                        {selectedTransferencia.observaciones}
-                      </Typography>
-                    </Grid>
-                  )}
-                </Grid>
-
-                <Typography variant="h6" mb={2}>
-                  Items
-                </Typography>
-                <TableContainer component={Paper}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Tipo</TableCell>
-                        <TableCell>Descripción</TableCell>
-                        <TableCell align="center">Cantidad Solicitada</TableCell>
-                        <TableCell align="center">Cantidad Recibida</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {selectedTransferencia.items.map((item, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>
-                            <Chip
-                              label={item.productoId ? 'Producto' : 'Equipo'}
-                              size="small"
-                              color={item.productoId ? 'primary' : 'secondary'}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {item.productoId
-                              ? `${item.productoNombre} (${item.productoCodigo})`
-                              : `Equipo: ${item.equipoNumero}`}
-                          </TableCell>
-                          <TableCell align="center">
-                            {item.cantidadSolicitada || '-'}
-                          </TableCell>
-                          <TableCell align="center">
-                            {item.cantidadRecibida || '-'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setViewDialogOpen(false)}>Cerrar</Button>
-          </DialogActions>
-        </Dialog>
+        <ViewTransferenciaDialog
+          open={viewDialogOpen}
+          onClose={() => setViewDialogOpen(false)}
+          transferencia={selectedTransferencia}
+        />
 
         {/* Diálogo: Confirmar Recepción Mejorado */}
         <Dialog
@@ -1926,136 +1787,27 @@ const TransferenciasPage: React.FC = () => {
           </DialogActions>
         </Dialog>
 
-        {/* Modal de Confirmación de Envío */}
-        <Dialog
+        <EnvioTransferenciaDialog
           open={envioDialogOpen}
           onClose={() => setEnvioDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            <Box display="flex" alignItems="center" gap={1}>
-              <SendIcon color="primary" />
-              <Typography variant="h6">Confirmar Envío de Transferencia</Typography>
-            </Box>
-          </DialogTitle>
-          <DialogContent dividers>
-            <Box sx={{ pt: 1 }}>
-              {selectedTransferencia && (
-                <>
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    Está a punto de confirmar el envío de la transferencia <strong>{selectedTransferencia.numero}</strong>.
-                  </Alert>
-                  
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Detalles de la transferencia:
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Origen:</Typography>
-                        <Typography variant="body1" fontWeight="medium">
-                          {selectedTransferencia.depositoOrigenNombre}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Destino:</Typography>
-                        <Typography variant="body1" fontWeight="medium">
-                          {selectedTransferencia.depositoDestinoNombre}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Typography variant="body2" color="text.secondary">Items:</Typography>
-                        <Typography variant="body1">
-                          {selectedTransferencia.items?.length || 0} producto(s)
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  </Box>
-
-                  <Alert severity="warning" icon={<WarningIcon />}>
-                    <strong>Importante:</strong> Esta acción descontará el stock del depósito de origen. 
-                    Una vez enviada, solo podrá cancelarse o confirmar su recepción.
-                  </Alert>
-                </>
-              )}
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEnvioDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleConfirmarEnvio}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
-            >
-              Confirmar Envío
-            </Button>
-          </DialogActions>
-        </Dialog>
+          onConfirm={handleConfirmarEnvio}
+          loading={loading}
+          transferencia={selectedTransferencia}
+        />
 
         {/* Modal de Cancelación de Transferencia */}
-        <Dialog
+        <CancelTransferenciaDialog
           open={cancelDialogOpen}
           onClose={() => {
             setCancelDialogOpen(false);
             setMotivoCancelacion('');
           }}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            <Box display="flex" alignItems="center" gap={1}>
-              <CancelIcon color="error" />
-              <Typography variant="h6">Cancelar Transferencia</Typography>
-            </Box>
-          </DialogTitle>
-          <DialogContent dividers>
-            <Box sx={{ pt: 1 }}>
-              {selectedTransferencia && (
-                <Alert severity="warning" sx={{ mb: 2 }}>
-                  Está a punto de cancelar la transferencia <strong>{selectedTransferencia.numero}</strong> 
-                  {' '}de <strong>{selectedTransferencia.depositoOrigenNombre}</strong> hacia{' '}
-                  <strong>{selectedTransferencia.depositoDestinoNombre}</strong>.
-                  Esta acción no se puede deshacer.
-                </Alert>
-              )}
-              <TextField
-                label="Motivo de cancelación"
-                multiline
-                rows={3}
-                fullWidth
-                required
-                value={motivoCancelacion}
-                onChange={(e) => setMotivoCancelacion(e.target.value)}
-                placeholder="Ingrese el motivo por el cual se cancela esta transferencia..."
-                helperText="Este campo es obligatorio"
-              />
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button 
-              onClick={() => {
-                setCancelDialogOpen(false);
-                setMotivoCancelacion('');
-              }}
-            >
-              Volver
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleCancelarTransferencia}
-              disabled={loading || !motivoCancelacion.trim()}
-              startIcon={loading ? <CircularProgress size={20} /> : <CancelIcon />}
-            >
-              Confirmar Cancelación
-            </Button>
-          </DialogActions>
-        </Dialog>
+          onConfirm={handleCancelarTransferencia}
+          loading={loading}
+          transferencia={selectedTransferencia}
+          motivo={motivoCancelacion}
+          setMotivo={setMotivoCancelacion}
+        />
       </Box>
     </LocalizationProvider>
   );

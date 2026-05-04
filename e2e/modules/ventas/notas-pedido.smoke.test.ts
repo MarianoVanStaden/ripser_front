@@ -27,15 +27,6 @@ import type { Page } from '@playwright/test';
  *     (presupuesto → nota pedido → factura).  See `ventas.test.ts` for the
  *     API-driven version, and the `test.fixme` block at the bottom of this
  *     file for the planned UI-driven full-chain smoke.
- *
- * KNOWN PRE-EXISTING ISSUE (descubierto al crear este smoke, 2026-05-03):
- *   /ventas/presupuestos y /ventas/notas-pedido **crashean al primer mount
- *   con mocks vacíos** y caen al fallback del Sentry ErrorBoundary
- *   ("Algo salió mal").  Causa más probable: algún `useMemo` / `useEffect`
- *   asume un shape de respuesta que no coincide con `{content:[]}` o un
- *   `array[0]` sin guard.  Los tests de esas páginas comparan contra ese
- *   fallback con un mensaje claro: si el síntoma cambia (otro error o se
- *   arregla), el smoke alerta. Investigar fuera del alcance de FRONT-003.
  */
 
 /** Returns the locator for the Sentry ErrorBoundary fallback ("Algo salió mal"). */
@@ -52,89 +43,29 @@ async function assertNoErrorBoundary(page: Page, pageName: string): Promise<void
   if (await fallback.isVisible({ timeout: 1_500 }).catch(() => false)) {
     throw new Error(
       `Sentry ErrorBoundary fallback ("Algo salió mal") visible on ${pageName}. ` +
-      `Página crasheó al montar con mocks vacíos. Ver el page snapshot adjunto al ` +
-      `fallo para el árbol exacto. Issue conocido al 2026-05-03 — investigar como ` +
-      `pre-requisito de FRONT-003.`,
+      `Página crasheó al montar con los mocks empty-shape del fixture global. ` +
+      `Inspeccionar el page snapshot adjunto y agregar la mock específica que ` +
+      `falte como override LIFO-higher dentro del propio test.`,
     );
   }
 }
 
 test.describe('FRONT-003 smoke — Ventas pages render & primary CTAs wired', () => {
-  /**
-   * Override the fixture's catch-all (which returns `{content:[]}` for every
-   * endpoint) for endpoints that actually return a *flat array*.  Crashes
-   * surface when consumers call `array.find(...)` on a paginated response
-   * — see TenantContext:158 (`relaciones.find(...)`).
-   *
-   * Approach: keep the fixture's paginated default for unspecified endpoints
-   * (matches existing test contracts), and route the known flat-array URLs
-   * to `[]`.  The list grew empirically — any endpoint that triggers a
-   * "X.find is not a function" or "X.map is not a function" crash on these
-   * pages should be added.
-   *
-   * Registered later than the fixture's catch-all → LIFO priority → wins.
+  /*
+   * Empty-response shape is handled centrally by the fixture's catch-all:
+   * URLs with `?page=` get `{content:[]}`, everything else gets `[]`.
+   * That covers the Ventas catalog endpoints (productos, recetas, colores,
+   * medidas, opciones-financiamiento, …) and the helper endpoints on the
+   * tenant context (usuario-empresa, sucursales, empresas).  Any endpoint
+   * that needs a specific payload installs its own LIFO-higher override
+   * inside the test that needs it.
    */
-  test.beforeEach(async ({ page }) => {
-    // Use regex to match URLs WITH query strings — globs like
-    // `**/api/colores` don't match `/api/colores?activo=true`.
-    const flatArrayPatterns: RegExp[] = [
-      // Tenant context / org plumbing — hit on every authenticated page
-      /\/api\/usuario-empresa\/usuario\//,
-      /\/api\/usuario-empresa\/empresa\//,
-      /\/api\/sucursales(\?|\/|$)/,
-      /\/api\/empresas(\?|\/|$)/,
-      // Catalogs
-      /\/api\/productos(\?|\/|$)/,
-      /\/api\/categorias-productos(\?|\/|$)/,
-      /\/api\/categorias(\?|\/|$)/,
-      /\/api\/recetas-fabricacion(\?|\/|$)/,
-      /\/api\/equipos-fabricados(\?|\/|$)/,
-      /\/api\/colores(\?|\/|$)/,
-      /\/api\/medidas(\?|\/|$)/,
-      /\/api\/parametros(\?|\/|$)/,
-      // Financiamiento templates and options
-      /\/api\/opciones-financiamiento(\?|\/|$)/,
-      /\/api\/opciones-financiamiento-templates(\?|\/|$)/,
-      // Active sub-listings (return arrays even where parent is paginated)
-      /\/api\/bancos\/activos/,
-      /\/api\/cuentas-bancarias(\?|\/|$)/,
-      /\/api\/usuarios(\?|\/|$)/,
-      /\/api\/empleados\/activos/,
-      // Cliente/Lead helpers used by the autocomplete in the dialog
-      /\/api\/clientes\/(search|buscar)/,
-      /\/api\/leads\/(search|buscar)/,
-    ];
-
-    await page.route(/\/api\//, (route) => {
-      const url = route.request().url();
-      // Only intercept if any flat-array pattern matches; otherwise fall
-      // through to the fixture's catch-all (paginated empty response).
-      if (flatArrayPatterns.some((re) => re.test(url))) {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: '[]',
-        });
-      }
-      return route.fallback();
-    });
-  });
 
   // ── Presupuestos: heading, "Nuevo Presupuesto" CTA, dialog opens with form ──
   test('Presupuestos page mounts and the create dialog opens with cliente field', async ({
     ventasPage,
     page,
   }) => {
-    // KNOWN: el dialog "Nuevo Presupuesto" abre y luego algo dentro del
-    // árbol de componentes crashea (Sentry ErrorBoundary lo captura sin
-    // emitir console.error). El mock infrastructure ya cubrió `colores`,
-    // `usuario-empresa`, `sucursales`, `productos`, `recetas`, `medidas`,
-    // `opciones-financiamiento` y demás catalogos. La causa restante
-    // requiere debug runtime (probablemente una integración con dayjs,
-    // ColorPicker, ClienteAutocomplete o algún useMemo no defensivo
-    // contra estado vacío). Marcado test.fail() — al resolver, sacar.
-    test.fail();
-
     await ventasPage.gotoPresupuestos();
     await assertNoErrorBoundary(page, '/ventas/presupuestos');
 
@@ -150,9 +81,12 @@ test.describe('FRONT-003 smoke — Ventas pages render & primary CTAs wired', ()
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-    // The cliente autocomplete is the first identity-bearing field; if this
-    // breaks, downstream "create flow" tests would all fail.
-    await expect(dialog.getByLabel('Buscar Cliente / Lead')).toBeVisible();
+    // Identity-bearing fields render: the CLIENTE/LEAD toggle and the
+    // ClienteAutocomplete (default `label="Cliente"`).  If the dialog body
+    // ever swaps these out, the next "create flow" test would fail before
+    // even hitting the form, so this check fails fast.
+    await expect(dialog.getByRole('group', { name: /tipo de destinatario/i })).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: 'Cliente' })).toBeVisible();
 
     // Close cleanly so the next test starts from a known state.
     await dialog.getByRole('button', { name: /cancelar/i }).click();
@@ -164,23 +98,19 @@ test.describe('FRONT-003 smoke — Ventas pages render & primary CTAs wired', ()
     ventasPage,
     page,
   }) => {
-    // KNOWN: con los mocks actuales el page tree termina en el ErrorBoundary
-    // antes de que el botón "Convertir Presupuesto" se renderice. La hipótesis
-    // es la misma que en el test anterior: algún componente dentro de la lista
-    // de notas asume datos que el mock no provee. Ver el TODO del test
-    // anterior. Marcado test.fail() — al resolver, sacar.
-    test.fail();
-
     await ventasPage.gotoNotasPedido();
     await assertNoErrorBoundary(page, '/ventas/notas-pedido');
 
     await expect(page.getByRole('heading', { name: /notas de pedido/i, level: 1 }))
       .toBeVisible({ timeout: 10_000 });
 
-    // CTA — "Convertir Presupuesto" (NotasPedidoPage.tsx:1339).
-    // Disabled when there are no pending presupuestos (and our mocks return
-    // empty), so we only assert the button is *rendered*, not enabled.
-    const convertirBtn = page.getByRole('button', { name: /convertir presupuesto/i });
+    // CTA — "Convertir Presupuesto".  The label is rendered twice on the page:
+    // once as the header CTA (NotasPedidoPage.tsx:1250) and once inside the
+    // empty-state callout (NotasPedidoPage.tsx:1494).  With empty mocks both
+    // are visible at the same time, so we anchor on the header CTA via its
+    // adjacent "Crear Nota Pedido Manual" sibling.  Disabled when there are
+    // no pending presupuestos — assert it's *rendered*, not enabled.
+    const convertirBtn = page.getByRole('button', { name: /convertir presupuesto/i }).first();
     await expect(convertirBtn).toBeVisible();
   });
 
