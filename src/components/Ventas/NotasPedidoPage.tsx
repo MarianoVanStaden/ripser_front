@@ -252,7 +252,7 @@ const NotasPedidoPage: React.FC = () => {
     descuentoTipo: 'NONE',
     descuentoValor: 0,
     observaciones: '',
-    aprobar: false,
+    nuevoEstado: EstadoDocumentoEnum.PENDIENTE,
   });
   const [editLoading, setEditLoading] = useState(false);
 
@@ -863,7 +863,7 @@ const NotasPedidoPage: React.FC = () => {
       descuentoTipo: (nota.descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE',
       descuentoValor: Number(nota.descuentoValor) || 0,
       observaciones: nota.observaciones || '',
-      aprobar: false,
+      nuevoEstado: nota.estado,
     });
     setEditDialogOpen(true);
   }, []);
@@ -889,14 +889,17 @@ const NotasPedidoPage: React.FC = () => {
       if (editForm.observaciones !== obsOriginal) {
         await documentoApi.updateObservaciones(notaToEdit.id, editForm.observaciones || null);
       }
-      if (editForm.aprobar && notaToEdit.estado === EstadoDocumentoEnum.PENDIENTE) {
-        await documentoApi.updateEstado(notaToEdit.id, EstadoDocumentoEnum.APROBADO);
+      const estadoCambio = editForm.nuevoEstado !== notaToEdit.estado;
+      if (estadoCambio) {
+        await documentoApi.updateEstado(notaToEdit.id, editForm.nuevoEstado);
       }
 
       queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
       setSnackbar({
         open: true,
-        message: editForm.aprobar ? 'Nota de pedido actualizada y aprobada' : 'Nota de pedido actualizada',
+        message: estadoCambio
+          ? `Nota de pedido actualizada (estado: ${editForm.nuevoEstado})`
+          : 'Nota de pedido actualizada',
         severity: 'success',
       });
       handleCloseEditDialog();
@@ -1286,8 +1289,8 @@ const NotasPedidoPage: React.FC = () => {
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
                 <MenuItem value={EstadoDocumentoEnum.APROBADO}>Aprobado</MenuItem>
-                <MenuItem value={EstadoDocumentoEnum.PAGADA}>Pagada</MenuItem>
-                <MenuItem value={EstadoDocumentoEnum.VENCIDA}>Vencida</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>
+                <MenuItem value={EstadoDocumentoEnum.FACTURADA}>Facturada</MenuItem>
               </Select>
             </FormControl>
             <FormControl fullWidth size="small">
@@ -1532,7 +1535,6 @@ const NotasPedidoPage: React.FC = () => {
         nota={notaToEdit}
         form={editForm}
         setForm={setEditForm}
-        canAprobar={!esSoloVendedor}
       />
 
       {/* AsignarEquiposDialog for Factura conversion */}

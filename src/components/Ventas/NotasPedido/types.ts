@@ -1,7 +1,7 @@
 // FRONT-003: extracted from NotasPedidoPage.tsx — types kept colocated to
 // the page that owns them (not promoted to /src/types/ because they're not
 // shared across modules).
-import type { MetodoPago } from '../../../types';
+import type { EstadoDocumento, MetodoPago } from '../../../types';
 
 export type TipoIva = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
 
@@ -29,7 +29,7 @@ export interface EditNotaForm {
   descuentoTipo: TipoDescuento;
   descuentoValor: number;
   observaciones: string;
-  aprobar: boolean;
+  nuevoEstado: EstadoDocumento;
 }
 
 /**

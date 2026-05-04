@@ -17,7 +17,8 @@ export const EstadoDocumento = {
   CONFIRMADA: "CONFIRMADA",
   PAGADA: "PAGADA",
   VENCIDA: "VENCIDA",
-  FACTURADA: "FACTURADA"
+  FACTURADA: "FACTURADA",
+  ANULADA: "ANULADA"
 } as const;
 export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocumento];
 

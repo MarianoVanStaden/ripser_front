@@ -13,16 +13,22 @@ import {
   DialogTitle,
   Divider,
   FormControl,
-  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
-  Switch,
   TextField,
   Typography,
 } from '@mui/material';
+import { EstadoDocumento } from '../../../../types';
 import type { DocumentoComercial } from '../../../../types';
 import type { EditNotaForm, TipoDescuento } from '../types';
+
+const ESTADO_OPTIONS: { value: EstadoDocumento; label: string }[] = [
+  { value: EstadoDocumento.PENDIENTE, label: 'Pendiente' },
+  { value: EstadoDocumento.APROBADO, label: 'Aprobado' },
+  { value: EstadoDocumento.RECHAZADO, label: 'Rechazado' },
+  { value: EstadoDocumento.FACTURADA, label: 'Facturada' },
+];
 
 interface Props {
   open: boolean;
@@ -32,7 +38,6 @@ interface Props {
   nota: DocumentoComercial | null;
   form: EditNotaForm;
   setForm: Dispatch<SetStateAction<EditNotaForm>>;
-  canAprobar?: boolean;
 }
 
 const EditarNotaPedidoDialog: React.FC<Props> = ({
@@ -43,7 +48,6 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
   nota,
   form,
   setForm,
-  canAprobar = true,
 }) => {
   return (
     <Dialog
@@ -133,19 +137,22 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
                 rows={3}
                 fullWidth
               />
-              {canAprobar && (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={form.aprobar}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, aprobar: e.target.checked }))
-                      }
-                    />
+              <FormControl size="small" fullWidth>
+                <InputLabel>Estado</InputLabel>
+                <Select
+                  label="Estado"
+                  value={form.nuevoEstado}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, nuevoEstado: e.target.value as EstadoDocumento }))
                   }
-                  label="Aprobar nota al guardar (pasa de PENDIENTE a APROBADO)"
-                />
-              )}
+                >
+                  {ESTADO_OPTIONS.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <Divider />
               <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
