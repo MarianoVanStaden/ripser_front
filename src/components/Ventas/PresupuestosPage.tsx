@@ -26,9 +26,6 @@ import {
   TableHead,
   TableRow,
   Tooltip,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
   Divider,
   Snackbar,
   FormControl,
@@ -56,7 +53,7 @@ import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, MetodoPago, RecetaFabricacionDTO, TipoItemDocumento, Lead, DeudaClienteError } from "../../types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, RecetaFabricacionDTO, TipoItemDocumento, Lead, DeudaClienteError } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import ColorPicker from "../common/ColorPicker";
 import LoadingOverlay from "../common/LoadingOverlay";
@@ -64,105 +61,18 @@ import { useAuth } from "../../context/AuthContext";
 import { useTenant } from "../../context/TenantContext";
 import SuccessDialog from "../common/SuccessDialog";
 import { generarPresupuestoPDF } from "../../services/pdfService";
-import OpcionFinanciamientoLabel from "./OpcionFinanciamientoLabel";
 import { getMetodoPagoLabel as getMetodoPagoLabelShared } from "../../utils/financiamiento";
 import AuditoriaFlujo from "../common/AuditoriaFlujo";
 import UsuarioBadge from "../common/UsuarioBadge";
 import DeudaClienteConfirmDialog from "./DeudaClienteConfirmDialog";
 import ClienteAutocomplete from "../common/ClienteAutocomplete";
-
-const normalizeOpcionesFinanciamiento = (opciones?: Array<Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string }>): OpcionFinanciamientoDTO[] => {
-  if (!Array.isArray(opciones)) return [];
-  return opciones
-    .filter((opcion): opcion is Partial<OpcionFinanciamientoDTO> & { esSeleccionada?: boolean; metodoPago?: MetodoPago | string } => Boolean(opcion))
-    .map((opcion) => ({
-      id: opcion.id,
-      nombre: opcion.nombre ?? "",
-      metodoPago: (opcion.metodoPago ?? "OTRO") as MetodoPago,
-      cantidadCuotas: opcion.cantidadCuotas ?? 0,
-      tasaInteres: opcion.tasaInteres ?? 0,
-      montoTotal: opcion.montoTotal ?? 0,
-      montoCuota: opcion.montoCuota ?? 0,
-      descripcion: opcion.descripcion,
-      ordenPresentacion: opcion.ordenPresentacion,
-      esSeleccionada: opcion.esSeleccionada,
-    }));
-};
-
-interface DetalleForm {
-  id?: number;
-  tipoItem: TipoItemDocumento;
-  // For PRODUCTO type
-  productoId?: string;
-  // For EQUIPO type
-  recetaId?: string;
-  /** FK to the colores catalog (see ColoresContext). */
-  colorId?: number;
-  /** Cached display name of the color, populated from the response or
-   *  the cached catalog. The backend is the source of truth via colorId. */
-  colorNombre?: string;
-  /** Cached medida id and display name. Derived from the recipe; never user-editable. */
-  medidaId?: number;
-  medidaNombre?: string;
-  descripcion: string;
-  cantidad: number;
-  precioUnitario: number;
-  subtotal: number;
-}
-
-type TipoDescuento = 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
-
-interface FormData {
-  clienteId: string;
-  leadId: string;
-  usuarioId: string;
-  fechaEmision: string;
-  observaciones: string;
-  estado: EstadoDocumento;
-  tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
-  descuentoTipo: TipoDescuento;
-  descuentoValor: number;
-}
-
-const initialFormData: FormData = {
-  clienteId: "",
-  leadId: "",
-  usuarioId: "",
-  fechaEmision: new Date().toISOString().split("T")[0],
-  observaciones: "",
-  estado: EstadoDocumentoEnum.PENDIENTE,
-  tipoIva: 'EXENTO',
-  descuentoTipo: 'NONE',
-  descuentoValor: 0,
-};
-
-const initialDetalle: DetalleForm = {
-  tipoItem: 'EQUIPO',
-  productoId: "",
-  recetaId: "",
-  colorId: undefined,
-  colorNombre: undefined,
-  medidaId: undefined,
-  medidaNombre: undefined,
-  descripcion: "",
-  cantidad: 1,
-  precioUnitario: 0,
-  subtotal: 0,
-};
-
-const formatCurrency = (value: number | null | undefined): string =>
-  `$${Number(value ?? 0).toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
-
-const computeIva = (presupuesto: DocumentoComercial): number => {
-  if (typeof presupuesto.iva === 'number' && !Number.isNaN(presupuesto.iva)) {
-    return presupuesto.iva;
-  }
-  if (typeof presupuesto.subtotal === 'number' && typeof presupuesto.total === 'number') {
-    const diff = presupuesto.total - presupuesto.subtotal;
-    return Number.isFinite(diff) ? diff : 0;
-  }
-  return 0;
-};
+// FRONT-003: extracted to keep this file orchestrator-shaped.
+import type { DetalleForm, FormData, TipoDescuento } from './Presupuestos/types';
+import { initialDetalle, initialFormData } from './Presupuestos/constants';
+import { computeIva, formatCurrency, getStatusColor, getStatusLabel, normalizeOpcionesFinanciamiento } from './Presupuestos/utils';
+import ConfirmPresupuestoDialog from './Presupuestos/dialogs/ConfirmPresupuestoDialog';
+import OpcionesFinanciamientoDialog from './Presupuestos/dialogs/OpcionesFinanciamientoDialog';
+import VerPresupuestoDialog from './Presupuestos/dialogs/VerPresupuestoDialog';
 
 const PresupuestosPage: React.FC = () => {
   const { user } = useAuth();
@@ -436,26 +346,6 @@ const PresupuestosPage: React.FC = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
-  const getStatusColor = useCallback((estado: EstadoDocumento): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
-    switch (estado) {
-      case EstadoDocumentoEnum.PENDIENTE: return "warning";
-      case EstadoDocumentoEnum.APROBADO: return "success";
-      case EstadoDocumentoEnum.RECHAZADO: return "error";
-      case EstadoDocumentoEnum.FACTURADA: return "info";
-      default: return "default";
-    }
-  }, []);
-
-  const getStatusLabel = useCallback((estado: EstadoDocumento): string => {
-    switch (estado) {
-      case EstadoDocumentoEnum.PENDIENTE: return "Pendiente";
-      case EstadoDocumentoEnum.APROBADO: return "Aprobado";
-      case EstadoDocumentoEnum.RECHAZADO: return "Rechazado";
-      case EstadoDocumentoEnum.FACTURADA: return "Facturada";
-      default: return estado;
-    }
-  }, []);
 
   // Calculate IVA based on selected type
   const getIvaPercentage = useCallback((tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO'): number => {
@@ -1828,355 +1718,46 @@ const PresupuestosPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Confirmation Dialog */}
-      <Dialog
+      <ConfirmPresupuestoDialog
         open={confirmDialogOpen}
-        onClose={() => setConfirmDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          {confirmDialogAction === 'close' ? 'Confirmar cierre' : 'Confirmar creación'}
-        </DialogTitle>
-        <DialogContent>
-          <Typography>
-            {confirmDialogAction === 'close' 
-              ? '¿Está seguro que desea cerrar? Se perderán todos los cambios no guardados.'
-              : `¿Está seguro que desea crear este presupuesto con un total de ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}?`
-            }
-          </Typography>
-          {confirmDialogAction === 'create' && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                Cliente: {selectedCliente
-                  ? (selectedCliente.razonSocial || `${selectedCliente.nombre} ${selectedCliente.apellido || ''}`.trim())
-                  : (leads.find(l => l.id != null && l.id.toString() === formData.leadId)?.nombre || '—')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Cantidad de items: {detalles.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-              </Typography>
-              {formData.descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
-                <Typography variant="body2" color="error.main">
-                  Descuento {formData.descuentoTipo === 'PORCENTAJE' ? `(${formData.descuentoValor}%)` : '(monto fijo)'}:
-                  -${descuentoAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                </Typography>
-              )}
-              <Typography variant="body2" color="text.secondary">
-                IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}):
-                ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setConfirmDialogOpen(false);
-            setConfirmDialogAction(null);
-          }}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={confirmDialogAction === 'close' ? handleConfirmClose : handleSavePresupuesto}
-            variant="contained" 
-            color={confirmDialogAction === 'close' ? 'error' : 'primary'}
-          >
-            {confirmDialogAction === 'close' ? 'Cerrar sin guardar' : 'Confirmar y crear'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        action={confirmDialogAction}
+        onCancel={() => {
+          setConfirmDialogOpen(false);
+          setConfirmDialogAction(null);
+        }}
+        onConfirmClose={handleConfirmClose}
+        onConfirmCreate={handleSavePresupuesto}
+        total={total}
+        subtotal={subtotal}
+        ivaAmount={ivaAmount}
+        descuentoAmount={descuentoAmount}
+        selectedCliente={selectedCliente}
+        leads={leads}
+        formData={formData}
+        detallesCount={detalles.length}
+      />
 
-      {/* Dialog Opciones de Financiamiento */}
-      <Dialog
+      <OpcionesFinanciamientoDialog
         open={financiamientoDialogOpen}
         onClose={() => setFinanciamientoDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        sx={{
-          '& .MuiDialog-paper': {
-            maxHeight: { xs: '100%', sm: '90vh' },
-            m: { xs: 0, sm: 2 }
-          }
-        }}
-      >
-        <DialogTitle>
-          Opciones de Financiamiento
-          <Typography variant="body2" color="text.secondary">Seleccione la opción de pago preferida</Typography>
-        </DialogTitle>
-        <DialogContent>
-          {selectedPresupuesto && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">Presupuesto: {selectedPresupuesto.numeroDocumento}</Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedPresupuesto.clienteNombre ? 'Cliente:' : 'Lead:'} {selectedPresupuesto.clienteNombre || selectedPresupuesto.leadNombre}
-                </Typography>
-                {selectedPresupuesto.clienteNombre && (
-                  <Chip label="Cliente" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />
-                )}
-                {selectedPresupuesto.leadNombre && (
-                  <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
-                )}
-              </Box>
-              <Typography variant="subtitle1" sx={{ mt: 1 }}>Subtotal: ${selectedPresupuesto.subtotal?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-            </Box>
-          )}
-          <Divider sx={{ mb: 2 }} />
-          <RadioGroup value={selectedOpcionId} onChange={(e) => setSelectedOpcionId(Number(e.target.value))}>
-            {opcionesFinanciamiento.map((opcion) => {
-              const isSelected = selectedOpcionId === opcion.id;
-              return (
-                <Box
-                  key={opcion.id}
-                  onClick={() => opcion.id != null && setSelectedOpcionId(opcion.id)}
-                  sx={{
-                    p: 2,
-                    border: '1px solid',
-                    borderColor: isSelected ? 'primary.main' : 'divider',
-                    borderRadius: 1,
-                    mb: 1.5,
-                    cursor: 'pointer',
-                    transition: 'border-color 120ms, background-color 120ms',
-                    bgcolor: isSelected ? 'action.selected' : 'background.paper',
-                    '&:hover': { borderColor: 'primary.light' },
-                  }}
-                >
-                  <FormControlLabel
-                    value={opcion.id}
-                    control={<Radio />}
-                    sx={{ width: '100%', alignItems: 'flex-start', m: 0, '& .MuiFormControlLabel-label': { width: '100%' } }}
-                    label={
-                      <OpcionFinanciamientoLabel
-                        opcion={opcion}
-                        baseImporte={selectedPresupuesto?.subtotal ?? 0}
-                      />
-                    }
-                  />
-                </Box>
-              );
-            })}
-          </RadioGroup>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFinanciamientoDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSelectOpcion} variant="contained" disabled={!selectedOpcionId}>
-            Confirmar selección
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleSelectOpcion}
+        presupuesto={selectedPresupuesto}
+        opciones={opcionesFinanciamiento}
+        selectedOpcionId={selectedOpcionId}
+        onSelectOpcion={setSelectedOpcionId}
+      />
 
-      {/* View Dialog (read-only, espejo del de NotasPedidoPage) */}
-      <Dialog
+      <VerPresupuestoDialog
         open={viewDialogOpen}
         onClose={handleCloseViewDialog}
-        maxWidth="md"
-        fullWidth
-        sx={{
-          '& .MuiDialog-paper': {
-            maxHeight: { xs: '100%', sm: '90vh' },
-            m: { xs: 0, sm: 2 },
-          },
-        }}
-      >
-        <DialogTitle>
-          Presupuesto {viewingPresupuesto?.numeroDocumento}
-        </DialogTitle>
-        <DialogContent>
-          {viewingPresupuesto && (
-            <Box sx={{ pt: 2 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    {viewingPresupuesto.clienteNombre ? 'Cliente' : 'Lead'}
-                  </Typography>
-                  <Typography>
-                    {viewingPresupuesto.clienteNombre || viewingPresupuesto.leadNombre || '-'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Usuario
-                  </Typography>
-                  <Typography>{viewingPresupuesto.usuarioNombre || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fecha de Emisión
-                  </Typography>
-                  <Typography>
-                    {viewingPresupuesto.fechaEmision
-                      ? new Date(viewingPresupuesto.fechaEmision).toLocaleDateString('es-AR')
-                      : '-'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fecha de Vencimiento
-                  </Typography>
-                  <Typography>
-                    {viewingPresupuesto.fechaVencimiento
-                      ? new Date(viewingPresupuesto.fechaVencimiento).toLocaleDateString('es-AR')
-                      : '-'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Tipo de IVA
-                  </Typography>
-                  <Typography>
-                    {(() => {
-                      const tipoIva = (viewingPresupuesto as any).tipoIva;
-                      if (tipoIva === 'IVA_21') return 'IVA 21%';
-                      if (tipoIva === 'IVA_10_5') return 'IVA 10.5%';
-                      if (tipoIva === 'EXENTO') return 'Exento';
-                      return '-';
-                    })()}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Estado
-                  </Typography>
-                  <Chip
-                    label={getStatusLabel(viewingPresupuesto.estado)}
-                    color={getStatusColor(viewingPresupuesto.estado)}
-                    size="small"
-                  />
-                </Box>
-              </Box>
+        presupuesto={viewingPresupuesto}
+        editingObservaciones={editingObsView}
+        setEditingObservaciones={setEditingObsView}
+        observacionesValue={obsViewValue}
+        setObservacionesValue={setObsViewValue}
+        onSaveObservaciones={handleSaveObsView}
+      />
 
-              <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Observaciones
-                  </Typography>
-                  {!editingObsView && (
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        setObsViewValue(viewingPresupuesto.observaciones ?? '');
-                        setEditingObsView(true);
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </Box>
-                {editingObsView ? (
-                  <Box>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={3}
-                      value={obsViewValue}
-                      onChange={(e) => setObsViewValue(e.target.value)}
-                      size="small"
-                    />
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                      <Button size="small" variant="contained" onClick={handleSaveObsView}>
-                        Guardar
-                      </Button>
-                      <Button size="small" onClick={() => setEditingObsView(false)}>
-                        Cancelar
-                      </Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Typography color={viewingPresupuesto.observaciones ? 'text.primary' : 'text.secondary'}>
-                    {viewingPresupuesto.observaciones || 'Sin observaciones'}
-                  </Typography>
-                )}
-              </Box>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="h6" gutterBottom>
-                Detalles
-              </Typography>
-              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                <Table size="small" sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ minWidth: 120 }}>Producto/Equipo</TableCell>
-                      <TableCell sx={{ minWidth: 100 }}>Color</TableCell>
-                      <TableCell sx={{ minWidth: 100 }}>Medida</TableCell>
-                      <TableCell sx={{ minWidth: 150 }}>Descripción</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 80 }}>Cantidad</TableCell>
-                      <TableCell align="right" sx={{ minWidth: 100 }}>Precio Unit.</TableCell>
-                      <TableCell align="right" sx={{ minWidth: 100 }}>Subtotal</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {viewingPresupuesto.detalles?.map((detalle: DetalleDocumento, index: number) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          {detalle.tipoItem === 'EQUIPO'
-                            ? `${detalle.recetaNombre || ''} ${detalle.recetaModelo ? `- ${detalle.recetaModelo}` : ''}`
-                            : detalle.productoNombre || '-'}
-                        </TableCell>
-                        <TableCell>{detalle.color?.nombre || '-'}</TableCell>
-                        <TableCell>{detalle.medida?.nombre || '-'}</TableCell>
-                        <TableCell>{detalle.descripcion}</TableCell>
-                        <TableCell align="center">{detalle.cantidad}</TableCell>
-                        <TableCell align="right">
-                          ${detalle.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell align="right">
-                          ${detalle.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
-                    <Typography>
-                      ${viewingPresupuesto.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  {viewingPresupuesto.descuentoTipo && viewingPresupuesto.descuentoTipo !== 'NONE' && Number(viewingPresupuesto.descuentoValor) > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography sx={{ mr: 4 }}>
-                        Descuento {viewingPresupuesto.descuentoTipo === 'PORCENTAJE' ? `(${viewingPresupuesto.descuentoValor}%)` : '(monto fijo)'}:
-                      </Typography>
-                      <Typography color="error.main">
-                        -${Number(viewingPresupuesto.descuentoMonto ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                      </Typography>
-                    </Box>
-                  )}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography sx={{ mr: 4 }}>IVA:</Typography>
-                    <Typography>
-                      ${viewingPresupuesto.iva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  <Divider sx={{ my: 1 }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
-                    <Typography variant="h6">
-                      ${viewingPresupuesto.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle2" gutterBottom>
-                Trazabilidad del flujo
-              </Typography>
-              <AuditoriaFlujo documento={viewingPresupuesto} />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseViewDialog}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Snackbar */}
       <Snackbar

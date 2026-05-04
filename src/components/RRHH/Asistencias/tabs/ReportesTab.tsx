@@ -220,7 +220,6 @@ const ReportesTab: React.FC<Props> = ({
     { name: 'Horas Extras', value: horasExtrasEnPeriodo, color: '#2196f3' },
   ].filter((item) => item.value > 0);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const horasPorEmpleado: Array<{ nombre: string; horas: number; extras: number }> = reportEmpleadoFilter
     ? []
     : Object.values(
