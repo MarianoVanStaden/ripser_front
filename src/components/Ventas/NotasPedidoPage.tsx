@@ -79,7 +79,7 @@ const NotasPedidoPage: React.FC = () => {
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<EstadoDocumento>(EstadoDocumentoEnum.PENDIENTE);
+  const [statusFilter, setStatusFilter] = useState<EstadoDocumento | 'ALL'>(EstadoDocumentoEnum.PENDIENTE);
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
@@ -102,7 +102,7 @@ const NotasPedidoPage: React.FC = () => {
     queryKey: ['notasPedido', {
       page, size: rowsPerPage,
       busqueda: debouncedSearch.trim() || undefined,
-      estado: statusFilter || undefined,
+      estado: statusFilter === 'ALL' ? undefined : statusFilter,
       clienteId: clientFilter !== 'all' ? Number(clientFilter) : undefined,
       fechaDesde: dateFromFilter || undefined,
       fechaHasta: dateToFilter || undefined,
@@ -112,7 +112,7 @@ const NotasPedidoPage: React.FC = () => {
       { page, size: rowsPerPage, sort: 'fechaEmision,desc' },
       {
         ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
-        ...(statusFilter ? { estado: statusFilter } : {}),
+        ...(statusFilter !== 'ALL' ? { estado: statusFilter } : {}),
         ...(clientFilter !== 'all' ? { clienteId: Number(clientFilter) } : {}),
         ...(dateFromFilter ? { fechaDesde: dateFromFilter } : {}),
         ...(dateToFilter ? { fechaHasta: dateToFilter } : {}),
@@ -1284,9 +1284,9 @@ const NotasPedidoPage: React.FC = () => {
               <Select
                 value={statusFilter}
                 label="Estado"
-                onChange={(e) => setStatusFilter(e.target.value as EstadoDocumento)}
+                onChange={(e) => setStatusFilter(e.target.value as EstadoDocumento | 'ALL')}
               >
-                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="ALL">Todos</MenuItem>
                 <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
                 <MenuItem value={EstadoDocumentoEnum.APROBADO}>Aprobado</MenuItem>
                 <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>

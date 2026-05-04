@@ -11,7 +11,6 @@ import {
   TextField,
   Paper,
   Chip,
-  Autocomplete,
   FormControl,
   InputLabel,
   Select,
@@ -20,8 +19,6 @@ import {
   Tab,
   Badge,
   TablePagination,
-  useTheme,
-  useMediaQuery,
   Stack,
   Divider,
   Fab,
@@ -30,9 +27,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Dialog,
-  DialogContent,
-  DialogActions,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -52,9 +46,8 @@ import {
   Inventory as EquipmentIcon,
   PhotoCamera as PhotoCameraIcon,
   Download as DownloadIcon,
-  Article as ArticleIcon,
 } from '@mui/icons-material';
-import type { EntregaViaje, Viaje, Cliente, EstadoEntrega, DocumentoComercial, EstadoAsignacionEquipo } from '../../types';
+import type { EntregaViaje, Viaje, Cliente, EstadoEntrega, DocumentoComercial } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { entregaViajeDocumentoApi } from '../../api/services/entregaViajeDocumentoApi';
@@ -62,137 +55,14 @@ import type { DocumentoEntrega } from '../../api/services/entregaViajeDocumentoA
 import { clienteApi } from '../../api/services/clienteApi';
 import { documentoApi } from '../../api/services/documentoApi';
 import { viajeApi } from '../../api/services/viajeApi';
-
-// Custom hook for responsive breakpoints
-const useResponsive = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  return { isMobile, isTablet, isDesktop };
-};
-
-// Helper function to get color for estadoAsignacion
-const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefined): 'default' | 'warning' | 'info' | 'secondary' | 'success' => {
-  if (!estado) return 'default';
-  const colorMap: Record<EstadoAsignacionEquipo, 'default' | 'warning' | 'info' | 'secondary' | 'success'> = {
-    DISPONIBLE: 'default',
-    RESERVADO: 'warning',
-    FACTURADO: 'info',
-    EN_TRANSITO: 'secondary',
-    ENTREGADO: 'success',
-    PENDIENTE_TERMINACION: 'warning',
-  };
-  return colorMap[estado] || 'default';
-};
-
-const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefined): string => {
-  if (!estado) return 'No especificado';
-  const labelMap: Record<EstadoAsignacionEquipo, string> = {
-    DISPONIBLE: 'Disponible',
-    RESERVADO: 'Reservado',
-    FACTURADO: 'Facturado',
-    EN_TRANSITO: 'En Transito',
-    ENTREGADO: 'Entregado',
-    PENDIENTE_TERMINACION: 'Pendiente Terminación',
-  };
-  return labelMap[estado] || estado;
-};
-
-// Bottom Sheet component for mobile
-interface BottomSheetProps {
-  open: boolean;
-  onClose: () => void;
-  onOpen?: () => void;
-  title: string;
-  children: React.ReactNode;
-  actions?: React.ReactNode;
-}
-
-const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title, children, actions }) => {
-  const { isMobile } = useResponsive();
-
-  if (!isMobile) return null;
-
-  return (
-    <SwipeableDrawer
-      anchor="bottom"
-      open={open}
-      onClose={onClose}
-      onOpen={onOpen || (() => {})}
-      disableSwipeToOpen
-      PaperProps={{
-        sx: {
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          maxHeight: '95vh',
-          minHeight: '50vh',
-        },
-      }}
-    >
-      <Box
-        sx={{
-          width: 40,
-          height: 4,
-          bgcolor: 'grey.300',
-          borderRadius: 2,
-          mx: 'auto',
-          mt: 1.5,
-          mb: 1,
-        }}
-      />
-
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 2,
-          py: 1,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          position: 'sticky',
-          top: 0,
-          bgcolor: 'background.paper',
-          zIndex: 1,
-        }}
-      >
-        <Typography variant="h6">{title}</Typography>
-        <IconButton onClick={onClose} edge="end">
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
-      <Box sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
-        {children}
-      </Box>
-
-      {actions && (
-        <Box
-          sx={{
-            p: 2,
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            position: 'sticky',
-            bottom: 0,
-          }}
-        >
-          {actions}
-        </Box>
-      )}
-    </SwipeableDrawer>
-  );
-};
-
-// Predefined rejection reasons
-const REJECTION_REASONS = [
-  'Cliente ausente',
-  'Direccion incorrecta',
-  'Rechazado por cliente',
-  'Horario no disponible',
-  'Zona inaccesible',
-];
+// FRONT-003: extracted to keep this file orchestrator-shaped.
+import { useResponsive } from './Deliveries/useResponsive';
+import { getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
+import BottomSheet from './Deliveries/components/BottomSheet';
+import LightboxDialog from './Deliveries/dialogs/LightboxDialog';
+import RejectDeliveryDialog from './Deliveries/dialogs/RejectDeliveryDialog';
+import ConfirmDeliveryDialog from './Deliveries/dialogs/ConfirmDeliveryDialog';
+import DeliveryFormDialog from './Deliveries/dialogs/DeliveryFormDialog';
 
 const DeliveriesPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
@@ -1210,177 +1080,17 @@ const DeliveriesPage2: React.FC = () => {
         </Fab>
       )}
 
-      {/* Mobile Bottom Sheet for Create/Edit */}
-      {isMobile && (
-        <BottomSheet
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          title={editingDelivery ? 'Editar Entrega' : 'Nueva Entrega'}
-          actions={
-            <Stack direction="row" spacing={1.5}>
-              <Button
-                onClick={() => setDialogOpen(false)}
-                sx={{ flex: 1, minHeight: 48 }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleSave}
-                sx={{ flex: 1, minHeight: 48 }}
-              >
-                {editingDelivery ? 'Actualizar' : 'Crear'}
-              </Button>
-            </Stack>
-          }
-        >
-          <Stack spacing={2.5}>
-            <Autocomplete
-              options={facturas}
-              getOptionLabel={(f) => `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`}
-              value={facturas.find(f => f.id.toString() === formData.ventaId) || null}
-              onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
-              renderInput={(params) => (
-                <TextField {...params} label="Factura" size="medium" InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }} />
-              )}
-            />
-
-            <Autocomplete
-              options={trips}
-              getOptionLabel={(t) => `Viaje #${t.id} - ${t.destino}`}
-              value={trips.find(t => t.id.toString() === formData.viajeId) || null}
-              onChange={(_, value) => setFormData({ ...formData, viajeId: value?.id.toString() || '' })}
-              renderInput={(params) => (
-                <TextField {...params} label="Viaje" size="medium" InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }} />
-              )}
-            />
-
-            <TextField
-              label="Direccion de Entrega"
-              value={formData.direccionEntrega}
-              onChange={(e) => setFormData({ ...formData, direccionEntrega: e.target.value })}
-              fullWidth
-              required
-              multiline
-              rows={2}
-              InputProps={{ sx: { minHeight: 80 } }}
-            />
-
-            <TextField
-              label="Fecha de Entrega"
-              type="datetime-local"
-              value={formData.fechaEntrega}
-              onChange={(e) => setFormData({ ...formData, fechaEntrega: e.target.value })}
-              fullWidth
-              required
-              InputLabelProps={{ shrink: true }}
-              InputProps={{ sx: { minHeight: 56 } }}
-            />
-
-            <TextField
-              label="Observaciones"
-              value={formData.observaciones}
-              onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-              fullWidth
-              multiline
-              rows={2}
-            />
-          </Stack>
-        </BottomSheet>
-      )}
-
-      {/* Desktop Drawer for Create/Edit */}
-      {!isMobile && (
-        <SwipeableDrawer
-          anchor="right"
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          onOpen={() => {}}
-          PaperProps={{ sx: { width: isTablet ? '80%' : 450 } }}
-        >
-          <Box sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h6">
-                {editingDelivery ? 'Editar Entrega' : 'Nueva Entrega'}
-              </Typography>
-              <IconButton onClick={() => setDialogOpen(false)}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-
-            <Stack spacing={2.5}>
-              <Autocomplete
-                options={facturas}
-                getOptionLabel={(f) => `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`}
-                value={facturas.find(f => f.id.toString() === formData.ventaId) || null}
-                onChange={(_, value) => setFormData({ ...formData, ventaId: value?.id.toString() || '' })}
-                renderInput={(params) => <TextField {...params} label="Factura" />}
-              />
-
-              <Autocomplete
-                options={trips}
-                getOptionLabel={(t) => `Viaje #${t.id} - ${t.destino}`}
-                value={trips.find(t => t.id.toString() === formData.viajeId) || null}
-                onChange={(_, value) => setFormData({ ...formData, viajeId: value?.id.toString() || '' })}
-                renderInput={(params) => <TextField {...params} label="Viaje" />}
-              />
-
-              <TextField
-                label="Direccion de Entrega"
-                value={formData.direccionEntrega}
-                onChange={(e) => setFormData({ ...formData, direccionEntrega: e.target.value })}
-                fullWidth
-                required
-                multiline
-                rows={2}
-              />
-
-              <TextField
-                label="Fecha de Entrega"
-                type="datetime-local"
-                value={formData.fechaEntrega}
-                onChange={(e) => setFormData({ ...formData, fechaEntrega: e.target.value })}
-                fullWidth
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-
-              <FormControl fullWidth>
-                <InputLabel>Estado</InputLabel>
-                <Select
-                  value={formData.estado}
-                  label="Estado"
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoEntrega })}
-                >
-                  <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                  <MenuItem value="ENTREGADA">Entregada</MenuItem>
-                  <MenuItem value="NO_ENTREGADA">No Entregada</MenuItem>
-                </Select>
-              </FormControl>
-
-              <TextField
-                label="Observaciones"
-                value={formData.observaciones}
-                onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                fullWidth
-                multiline
-                rows={3}
-              />
-
-              <Divider />
-
-              <Box display="flex" gap={2}>
-                <Button onClick={() => setDialogOpen(false)} sx={{ flex: 1 }}>
-                  Cancelar
-                </Button>
-                <Button variant="contained" onClick={handleSave} sx={{ flex: 1 }}>
-                  {editingDelivery ? 'Actualizar' : 'Crear'}
-                </Button>
-              </Box>
-            </Stack>
-          </Box>
-        </SwipeableDrawer>
-      )}
+      <DeliveryFormDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSave={handleSave}
+        editing={editingDelivery}
+        formData={formData}
+        setFormData={setFormData}
+        facturas={facturas}
+        trips={trips}
+        clients={clients}
+      />
 
       {/* Details Bottom Sheet / Drawer */}
       {isMobile ? (
@@ -1849,369 +1559,34 @@ const DeliveriesPage2: React.FC = () => {
         </SwipeableDrawer>
       )}
 
-      {/* Confirm Delivery Bottom Sheet / Dialog */}
-      {isMobile ? (
-        <BottomSheet
-          open={confirmDialogOpen}
-          onClose={() => setConfirmDialogOpen(false)}
-          title="Confirmar Entrega"
-          actions={
-            <Stack direction="row" spacing={1.5}>
-              <Button onClick={() => setConfirmDialogOpen(false)} sx={{ flex: 1, minHeight: 48 }}>
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                color="success"
-                onClick={handleConfirmDelivery}
-                disabled={!receptorData.nombre.trim()}
-                sx={{ flex: 1, minHeight: 48 }}
-              >
-                Confirmar
-              </Button>
-            </Stack>
-          }
-        >
-          <Stack spacing={2}>
-            <Alert severity="info">
-              Los equipos cambiaran a estado <strong>ENTREGADO</strong>.
-            </Alert>
+      <ConfirmDeliveryDialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        onConfirm={handleConfirmDelivery}
+        receptor={receptorData}
+        setReceptor={setReceptorData}
+        fotos={contratoFotos}
+        fotoPreviews={contratoPreviews}
+        uploading={uploadingFoto}
+        onPickFile={() => fileInputRef.current?.click()}
+        onRemoveFile={removeFile}
+      />
 
-            <TextField
-              label="Nombre del Receptor *"
-              value={receptorData.nombre}
-              onChange={(e) => setReceptorData({ ...receptorData, nombre: e.target.value })}
-              fullWidth
-              required
-              placeholder="Ej: Juan Perez"
-              InputProps={{ sx: { minHeight: 56 } }}
-            />
+      <RejectDeliveryDialog
+        open={rejectDialogOpen}
+        onClose={() => setRejectDialogOpen(false)}
+        onConfirm={handleRejectDelivery}
+        motivo={rejectMotivo}
+        setMotivo={setRejectMotivo}
+      />
 
-            <TextField
-              label="DNI del Receptor"
-              value={receptorData.dni}
-              onChange={(e) => setReceptorData({ ...receptorData, dni: e.target.value })}
-              fullWidth
-              placeholder="Ej: 12345678"
-              inputMode="numeric"
-              InputProps={{ sx: { minHeight: 56 } }}
-            />
-
-            <TextField
-              label="Observaciones"
-              value={receptorData.observaciones}
-              onChange={(e) => setReceptorData({ ...receptorData, observaciones: e.target.value })}
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Notas adicionales..."
-            />
-
-            {/* Fotos / Archivos adjuntos (múltiples) */}
-            <Box>
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<PhotoCameraIcon />}
-                onClick={() => fileInputRef.current?.click()}
-                sx={{
-                  minHeight: 52,
-                  borderStyle: 'dashed',
-                  borderColor: 'divider',
-                  color: 'text.secondary',
-                }}
-              >
-                {contratoFotos.length > 0
-                  ? `${contratoFotos.length} archivo(s) — Agregar más`
-                  : 'Sacar foto / Adjuntar archivo'}
-              </Button>
-              {contratoFotos.length > 0 && (
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.75, mt: 1 }}>
-                  {contratoFotos.map((file, i) => (
-                    <Box
-                      key={i}
-                      sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}
-                    >
-                      {contratoPreviews[i] ? (
-                        <img
-                          src={contratoPreviews[i]!}
-                          alt={file.name}
-                          style={{ width: '100%', height: 72, objectFit: 'cover', display: 'block' }}
-                        />
-                      ) : (
-                        <Box sx={{ height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
-                          <ArticleIcon color="action" fontSize="small" />
-                        </Box>
-                      )}
-                      <IconButton
-                        size="small"
-                        onClick={() => removeFile(i)}
-                        sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.55)', color: 'white', p: '2px' }}
-                      >
-                        <CloseIcon sx={{ fontSize: 14 }} />
-                      </IconButton>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
-
-            {uploadingFoto && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CircularProgress size={16} />
-                <Typography variant="caption">Subiendo archivos...</Typography>
-              </Box>
-            )}
-          </Stack>
-        </BottomSheet>
-      ) : (
-        <SwipeableDrawer
-          anchor="right"
-          open={confirmDialogOpen}
-          onClose={() => setConfirmDialogOpen(false)}
-          onOpen={() => {}}
-          PaperProps={{ sx: { width: 400 } }}
-        >
-          <Box sx={{ p: 3 }}>
-            <Box display="flex" alignItems="center" gap={1} mb={3}>
-              <CheckIcon color="success" />
-              <Typography variant="h6">Confirmar Entrega</Typography>
-            </Box>
-
-            <Alert severity="info" sx={{ mb: 3 }}>
-              Los equipos cambiaran a estado <strong>ENTREGADO</strong>.
-            </Alert>
-
-            <Stack spacing={2}>
-              <TextField
-                label="Nombre del Receptor *"
-                value={receptorData.nombre}
-                onChange={(e) => setReceptorData({ ...receptorData, nombre: e.target.value })}
-                fullWidth
-                required
-              />
-              <TextField
-                label="DNI del Receptor"
-                value={receptorData.dni}
-                onChange={(e) => setReceptorData({ ...receptorData, dni: e.target.value })}
-                fullWidth
-              />
-              <TextField
-                label="Observaciones"
-                value={receptorData.observaciones}
-                onChange={(e) => setReceptorData({ ...receptorData, observaciones: e.target.value })}
-                fullWidth
-                multiline
-                rows={3}
-              />
-
-              {/* Fotos / Archivos adjuntos (múltiples) */}
-              <Box>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<PhotoCameraIcon />}
-                  onClick={() => fileInputRef.current?.click()}
-                  sx={{ borderStyle: 'dashed', borderColor: 'divider', color: 'text.secondary' }}
-                >
-                  {contratoFotos.length > 0
-                    ? `${contratoFotos.length} archivo(s) — Agregar más`
-                    : 'Sacar foto / Adjuntar archivo'}
-                </Button>
-                {contratoFotos.length > 0 && (
-                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0.75, mt: 1 }}>
-                    {contratoFotos.map((file, i) => (
-                      <Box
-                        key={i}
-                        sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}
-                      >
-                        {contratoPreviews[i] ? (
-                          <img
-                            src={contratoPreviews[i]!}
-                            alt={file.name}
-                            style={{ width: '100%', height: 72, objectFit: 'cover', display: 'block' }}
-                          />
-                        ) : (
-                          <Box sx={{ height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
-                            <ArticleIcon color="action" fontSize="small" />
-                          </Box>
-                        )}
-                        <IconButton
-                          size="small"
-                          onClick={() => removeFile(i)}
-                          sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.55)', color: 'white', p: '2px' }}
-                        >
-                          <CloseIcon sx={{ fontSize: 14 }} />
-                        </IconButton>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-
-              {uploadingFoto && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={16} />
-                  <Typography variant="caption">Subiendo archivos...</Typography>
-                </Box>
-              )}
-
-              <Box display="flex" gap={2} mt={2}>
-                <Button onClick={() => setConfirmDialogOpen(false)} sx={{ flex: 1 }}>
-                  Cancelar
-                </Button>
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleConfirmDelivery}
-                  disabled={!receptorData.nombre.trim()}
-                  sx={{ flex: 1 }}
-                >
-                  Confirmar
-                </Button>
-              </Box>
-            </Stack>
-          </Box>
-        </SwipeableDrawer>
-      )}
-
-      {/* Reject Delivery Bottom Sheet / Dialog */}
-      {isMobile ? (
-        <BottomSheet
-          open={rejectDialogOpen}
-          onClose={() => setRejectDialogOpen(false)}
-          title="Marcar como No Entregada"
-          actions={
-            <Stack direction="row" spacing={1.5}>
-              <Button onClick={() => setRejectDialogOpen(false)} sx={{ flex: 1, minHeight: 48 }}>
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={handleRejectDelivery}
-                disabled={!rejectMotivo.trim()}
-                sx={{ flex: 1, minHeight: 48 }}
-              >
-                Rechazar
-              </Button>
-            </Stack>
-          }
-        >
-          <Stack spacing={2}>
-            <Alert severity="warning">
-              Indique el motivo por el cual no se pudo entregar.
-            </Alert>
-
-            <Typography variant="subtitle2">Motivos rapidos:</Typography>
-            <Box display="flex" flexWrap="wrap" gap={1}>
-              {REJECTION_REASONS.map((reason) => (
-                <Chip
-                  key={reason}
-                  label={reason}
-                  onClick={() => setRejectMotivo(reason)}
-                  color={rejectMotivo === reason ? 'primary' : 'default'}
-                  variant={rejectMotivo === reason ? 'filled' : 'outlined'}
-                  sx={{ minHeight: 36 }}
-                />
-              ))}
-            </Box>
-
-            <TextField
-              label="Motivo del Rechazo *"
-              value={rejectMotivo}
-              onChange={(e) => setRejectMotivo(e.target.value)}
-              fullWidth
-              multiline
-              rows={3}
-              required
-              placeholder="Describa el motivo..."
-            />
-          </Stack>
-        </BottomSheet>
-      ) : (
-        <SwipeableDrawer
-          anchor="right"
-          open={rejectDialogOpen}
-          onClose={() => setRejectDialogOpen(false)}
-          onOpen={() => {}}
-          PaperProps={{ sx: { width: 400 } }}
-        >
-          <Box sx={{ p: 3 }}>
-            <Box display="flex" alignItems="center" gap={1} mb={3}>
-              <CancelIcon color="error" />
-              <Typography variant="h6">Marcar como No Entregada</Typography>
-            </Box>
-
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Indique el motivo por el cual no se pudo entregar.
-            </Alert>
-
-            <Stack spacing={2}>
-              <Typography variant="subtitle2">Motivos rapidos:</Typography>
-              <Box display="flex" flexWrap="wrap" gap={1}>
-                {REJECTION_REASONS.map((reason) => (
-                  <Chip
-                    key={reason}
-                    label={reason}
-                    onClick={() => setRejectMotivo(reason)}
-                    color={rejectMotivo === reason ? 'primary' : 'default'}
-                    variant={rejectMotivo === reason ? 'filled' : 'outlined'}
-                  />
-                ))}
-              </Box>
-
-              <TextField
-                label="Motivo del Rechazo *"
-                value={rejectMotivo}
-                onChange={(e) => setRejectMotivo(e.target.value)}
-                fullWidth
-                multiline
-                rows={4}
-                required
-              />
-
-              <Box display="flex" gap={2} mt={2}>
-                <Button onClick={() => setRejectDialogOpen(false)} sx={{ flex: 1 }}>
-                  Cancelar
-                </Button>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleRejectDelivery}
-                  disabled={!rejectMotivo.trim()}
-                  sx={{ flex: 1 }}
-                >
-                  Rechazar
-                </Button>
-              </Box>
-            </Stack>
-          </Box>
-        </SwipeableDrawer>
-      )}
-
-      {/* Lightbox — ver imagen en tamaño completo */}
-      <Dialog
-        open={!!lightboxSrc}
-        onClose={() => { if (lightboxSrc) URL.revokeObjectURL(lightboxSrc); setLightboxSrc(null); }}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogContent sx={{ p: 0, bgcolor: 'black' }}>
-          {lightboxSrc && (
-            <img
-              src={lightboxSrc}
-              alt="Vista previa"
-              style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', display: 'block' }}
-            />
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { if (lightboxSrc) URL.revokeObjectURL(lightboxSrc); setLightboxSrc(null); }}>
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <LightboxDialog
+        src={lightboxSrc}
+        onClose={() => {
+          if (lightboxSrc) URL.revokeObjectURL(lightboxSrc);
+          setLightboxSrc(null);
+        }}
+      />
     </Box>
   );
 };
