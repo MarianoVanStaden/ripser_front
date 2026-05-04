@@ -33,7 +33,7 @@ import {
   Search as SearchIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { leadApi, type LeadFilterParams } from '../../api/services/leadApi';
 import {
@@ -44,6 +44,7 @@ import {
   PRIORIDAD_LABELS
 } from '../../types/lead.types';
 import type { LeadListItemDTO, RecordatorioLeadDTO } from '../../types/lead.types';
+import type { PageResponse } from '../../types/pagination.types';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
 import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
@@ -93,6 +94,22 @@ const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
   EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
   EstadoLeadEnum.CONVERTIDO,
   EstadoLeadEnum.DESCARTADO
+];
+
+// Estados ofrecidos en el selector inline. Excluye CONVERTIDO porque la
+// conversión a cliente es un flujo dedicado (botón Convertir) que pide datos
+// extra (monto, producto, dirección) y no se puede cubrir con un simple PATCH.
+const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
+  EstadoLeadEnum.PRIMER_CONTACTO,
+  EstadoLeadEnum.MOSTRO_INTERES,
+  EstadoLeadEnum.CLIENTE_POTENCIAL,
+  EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
+  EstadoLeadEnum.VENTA,
+  EstadoLeadEnum.DESCARTADO,
+  EstadoLeadEnum.PERDIDO,
+  EstadoLeadEnum.LEAD_DUPLICADO,
+  EstadoLeadEnum.PRECIO_ELEVADO,
+  EstadoLeadEnum.COMPRA_ANULADA
 ];
 
 const PRIORIDADES_DISPONIBLES: PrioridadLeadEnum[] = [
@@ -201,6 +218,27 @@ export const LeadsTablePage = () => {
     queryClient.invalidateQueries({ queryKey: ['leads'] });
   };
 
+  // Aplica un parche local sobre todas las páginas cacheadas del listado para
+  // que el cambio se vea inmediato (sin esperar al refetch). El invalidate
+  // posterior queda como safety net por si el back devolvió algo distinto.
+  const patchLeadInCache = (leadId: number, patch: Partial<LeadListItemDTO>) => {
+    queryClient.setQueriesData<InfiniteData<PageResponse<LeadListItemDTO>>>(
+      { queryKey: ['leads'] },
+      (data) => {
+        if (!data) return data;
+        return {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            content: page.content.map((item) =>
+              item.id === leadId ? { ...item, ...patch } : item
+            ),
+          })),
+        };
+      }
+    );
+  };
+
   const handleDelete = async (id: number) => {
     if (!window.confirm('¿Está seguro de eliminar este lead?')) return;
     try {
@@ -216,6 +254,7 @@ export const LeadsTablePage = () => {
     try {
       // PATCH dedicado — no necesita el LeadDTO completo (que ya no viene en la lista).
       await leadApi.updatePrioridad(leadId, newPriority);
+      patchLeadInCache(leadId, { prioridad: newPriority });
       invalidateLeads();
     } catch (err) {
       console.error('Error al actualizar prioridad:', err);
@@ -226,6 +265,7 @@ export const LeadsTablePage = () => {
   const handleUpdateEstado = async (leadId: number, newEstado: EstadoLeadEnum) => {
     try {
       await leadApi.updateEstado(leadId, newEstado);
+      patchLeadInCache(leadId, { estadoLead: newEstado });
       invalidateLeads();
     } catch (err) {
       console.error('Error al actualizar estado:', err);
@@ -528,8 +568,9 @@ export const LeadsTablePage = () => {
                         <EstadoQuickEdit
                           leadId={lead.id!}
                           currentEstado={lead.estadoLead}
-                          options={ESTADOS_DISPONIBLES}
+                          options={ESTADOS_QUICK_EDIT}
                           onUpdate={handleUpdateEstado}
+                          disabled={lead.estadoLead === EstadoLeadEnum.CONVERTIDO}
                         />
                       </TableCell>
                       <TableCell align="center" sx={{ py: 0.75 }}>

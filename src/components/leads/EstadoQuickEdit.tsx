@@ -8,14 +8,17 @@ interface EstadoQuickEditProps {
   currentEstado: EstadoLeadEnum;
   options: EstadoLeadEnum[];
   onUpdate: (leadId: number, newEstado: EstadoLeadEnum) => Promise<void>;
+  /** Si true, sólo se muestra el badge sin permitir abrir el menú. */
+  disabled?: boolean;
 }
 
-export const EstadoQuickEdit = ({ leadId, currentEstado, options, onUpdate }: EstadoQuickEditProps) => {
+export const EstadoQuickEdit = ({ leadId, currentEstado, options, onUpdate, disabled = false }: EstadoQuickEditProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [updating, setUpdating] = useState(false);
   const open = Boolean(anchorEl);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (disabled) return;
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
   };
@@ -46,9 +49,9 @@ export const EstadoQuickEdit = ({ leadId, currentEstado, options, onUpdate }: Es
       <Box
         onClick={handleClick}
         sx={{
-          cursor: 'pointer',
+          cursor: disabled ? 'default' : 'pointer',
           display: 'inline-block',
-          '&:hover': { opacity: 0.8 }
+          '&:hover': disabled ? undefined : { opacity: 0.8 }
         }}
       >
         {updating ? (
