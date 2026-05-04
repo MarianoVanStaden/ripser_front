@@ -29,6 +29,7 @@ export interface EditNotaForm {
   descuentoTipo: TipoDescuento;
   descuentoValor: number;
   observaciones: string;
+  aprobar: boolean;
 }
 
 /**

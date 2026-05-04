@@ -252,6 +252,7 @@ const NotasPedidoPage: React.FC = () => {
     descuentoTipo: 'NONE',
     descuentoValor: 0,
     observaciones: '',
+    aprobar: false,
   });
   const [editLoading, setEditLoading] = useState(false);
 
@@ -862,6 +863,7 @@ const NotasPedidoPage: React.FC = () => {
       descuentoTipo: (nota.descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE',
       descuentoValor: Number(nota.descuentoValor) || 0,
       observaciones: nota.observaciones || '',
+      aprobar: false,
     });
     setEditDialogOpen(true);
   }, []);
@@ -887,9 +889,16 @@ const NotasPedidoPage: React.FC = () => {
       if (editForm.observaciones !== obsOriginal) {
         await documentoApi.updateObservaciones(notaToEdit.id, editForm.observaciones || null);
       }
+      if (editForm.aprobar && notaToEdit.estado === EstadoDocumentoEnum.PENDIENTE) {
+        await documentoApi.updateEstado(notaToEdit.id, EstadoDocumentoEnum.APROBADO);
+      }
 
       queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
-      setSnackbar({ open: true, message: 'Nota de pedido actualizada', severity: 'success' });
+      setSnackbar({
+        open: true,
+        message: editForm.aprobar ? 'Nota de pedido actualizada y aprobada' : 'Nota de pedido actualizada',
+        severity: 'success',
+      });
       handleCloseEditDialog();
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Error al guardar';
@@ -1523,6 +1532,7 @@ const NotasPedidoPage: React.FC = () => {
         nota={notaToEdit}
         form={editForm}
         setForm={setEditForm}
+        canAprobar={!esSoloVendedor}
       />
 
       {/* AsignarEquiposDialog for Factura conversion */}

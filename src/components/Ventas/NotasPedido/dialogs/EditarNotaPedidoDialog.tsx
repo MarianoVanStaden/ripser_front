@@ -13,9 +13,11 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material';
@@ -30,6 +32,7 @@ interface Props {
   nota: DocumentoComercial | null;
   form: EditNotaForm;
   setForm: Dispatch<SetStateAction<EditNotaForm>>;
+  canAprobar?: boolean;
 }
 
 const EditarNotaPedidoDialog: React.FC<Props> = ({
@@ -40,6 +43,7 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
   nota,
   form,
   setForm,
+  canAprobar = true,
 }) => {
   return (
     <Dialog
@@ -72,7 +76,7 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
           return (
             <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Alert severity="info">
-                Solo podés editar descuento y observaciones cuando la nota está en PENDIENTE.
+                Solo podés editar descuento, observaciones y estado cuando la nota está en PENDIENTE.
                 Cambiar el descuento regenera las opciones de financiamiento.
               </Alert>
               <FormControl size="small" fullWidth>
@@ -129,6 +133,19 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
                 rows={3}
                 fullWidth
               />
+              {canAprobar && (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.aprobar}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, aprobar: e.target.checked }))
+                      }
+                    />
+                  }
+                  label="Aprobar nota al guardar (pasa de PENDIENTE a APROBADO)"
+                />
+              )}
               <Divider />
               <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
