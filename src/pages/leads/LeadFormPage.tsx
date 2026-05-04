@@ -46,6 +46,7 @@ import {
 } from '../../types/lead.types';
 import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO, DuplicatePhoneError } from '../../types/lead.types';
 import { DuplicatePhoneDialog } from '../../components/leads/DuplicatePhoneDialog';
+import { provinciaFromTelefono } from '../../utils/argentinaPhoneToProvincia';
 import type { Producto, RecetaFabricacionListDTO } from '../../types';
 import ColorPicker from '../../components/common/ColorPicker';
 import MedidaPicker from '../../components/common/MedidaPicker';
@@ -353,6 +354,16 @@ export const LeadFormPage = () => {
   // cambios sin guardar.
   const handleTelefonoBlur = async () => {
     const telefono = (formData.telefono || '').trim();
+
+    // Auto-detectar provincia desde el código de área. Pisa siempre que se
+    // detecte un prefijo válido — si el usuario cambia el teléfono lo más
+    // probable es que la provincia tenga que seguirlo. Si el número no matchea
+    // ningún prefijo (ej. extranjero) se deja la provincia anterior intacta.
+    const detected = provinciaFromTelefono(telefono);
+    if (detected && detected !== formData.provincia) {
+      setFormData((prev) => ({ ...prev, provincia: detected }));
+    }
+
     // Sólo dígitos para decidir si vale la pena consultar; la normalización
     // real la hace el backend (PhoneNormalizer = últimos 10 dígitos = número
     // significativo nacional argentino, código de área + abonado). Con menos

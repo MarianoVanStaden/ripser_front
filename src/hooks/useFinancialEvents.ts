@@ -285,6 +285,15 @@ export function useFinancialEvents(): void {
         // before the next attempt (overrides its own fixed 1s default).
         return delay;
       },
+    }).catch((err: unknown) => {
+      // FatalSSEError is intentional terminal state (401 after failed refresh,
+      // or other non-retriable status). Swallow it so it doesn't surface as an
+      // unhandled promise rejection in Sentry / window.onunhandledrejection.
+      if (err instanceof FatalSSEError) {
+        console.warn('[SSE] terminal:', err.message);
+        return;
+      }
+      throw err;
     });
 
     // ---- Cleanup ------------------------------------------------------------
