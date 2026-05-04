@@ -87,6 +87,52 @@ const buildSort = (orderBy: OrderBy, order: Order): string => {
   return `${field},${dir}`;
 };
 
+type DatePreset = 'todos' | 'hoy' | 'semana' | 'mes' | 'personalizado';
+
+const DATE_PRESETS: { value: DatePreset; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'hoy', label: 'Hoy' },
+  { value: 'semana', label: 'Esta semana' },
+  { value: 'mes', label: 'Este mes' },
+  { value: 'personalizado', label: 'Personalizado' },
+];
+
+const toDateStr = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+// Devuelve [desde, hasta] en formato YYYY-MM-DD según el preset.
+// "semana" = lunes a domingo de la semana en curso. "mes" = primer y último
+// día del mes en curso. "todos" y "personalizado" se resuelven en el caller.
+const resolveDatePreset = (preset: DatePreset): { fechaDesde?: string; fechaHasta?: string } => {
+  const today = new Date();
+  switch (preset) {
+    case 'hoy': {
+      const d = toDateStr(today);
+      return { fechaDesde: d, fechaHasta: d };
+    }
+    case 'semana': {
+      const day = today.getDay(); // 0=dom..6=sab
+      const offsetToMonday = day === 0 ? -6 : 1 - day;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + offsetToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { fechaDesde: toDateStr(monday), fechaHasta: toDateStr(sunday) };
+    }
+    case 'mes': {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return { fechaDesde: toDateStr(first), fechaHasta: toDateStr(last) };
+    }
+    default:
+      return {};
+  }
+};
+
 const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
   EstadoLeadEnum.PRIMER_CONTACTO,
   EstadoLeadEnum.MOSTRO_INTERES,
@@ -130,15 +176,38 @@ export const LeadsTablePage = () => {
   const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadLeadEnum[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [soloMisLeads, setSoloMisLeads] = useState(false);
+  const [datePreset, setDatePreset] = useState<DatePreset>('todos');
+  const [customFechaDesde, setCustomFechaDesde] = useState('');
+  const [customFechaHasta, setCustomFechaHasta] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const filters: LeadFilterParams = useMemo(() => ({
-    ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
-    ...(selectedEstados.length > 0 ? { estados: selectedEstados } : {}),
-    ...(selectedPrioridades.length === 1 ? { prioridad: selectedPrioridades[0] } : {}),
-    ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
-    ...(soloMisLeads ? { soloMisLeads: true } : {})
-  }), [sucursalFiltro, selectedEstados, selectedPrioridades, debouncedSearch, soloMisLeads]);
+  const filters: LeadFilterParams = useMemo(() => {
+    const dateRange =
+      datePreset === 'personalizado'
+        ? {
+            ...(customFechaDesde ? { fechaDesde: customFechaDesde } : {}),
+            ...(customFechaHasta ? { fechaHasta: customFechaHasta } : {}),
+          }
+        : resolveDatePreset(datePreset);
+
+    return {
+      ...(sucursalFiltro != null ? { sucursalId: sucursalFiltro } : {}),
+      ...(selectedEstados.length > 0 ? { estados: selectedEstados } : {}),
+      ...(selectedPrioridades.length === 1 ? { prioridad: selectedPrioridades[0] } : {}),
+      ...(debouncedSearch.trim() ? { busqueda: debouncedSearch.trim() } : {}),
+      ...(soloMisLeads ? { soloMisLeads: true } : {}),
+      ...dateRange,
+    };
+  }, [
+    sucursalFiltro,
+    selectedEstados,
+    selectedPrioridades,
+    debouncedSearch,
+    soloMisLeads,
+    datePreset,
+    customFechaDesde,
+    customFechaHasta,
+  ]);
 
   const sort = buildSort(orderBy, order);
   const queryKey = ['leads', { filters, sort }] as const;
@@ -358,6 +427,46 @@ export const LeadsTablePage = () => {
               )
             }}
           />
+
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Filtrar por fecha de primer contacto:
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {DATE_PRESETS.map((preset) => (
+                <Chip
+                  key={preset.value}
+                  label={preset.label}
+                  size="small"
+                  onClick={() => setDatePreset(preset.value)}
+                  color={datePreset === preset.value ? 'primary' : 'default'}
+                  variant={datePreset === preset.value ? 'filled' : 'outlined'}
+                />
+              ))}
+            </Stack>
+            {datePreset === 'personalizado' && (
+              <Box sx={{ display: 'flex', gap: 2, mt: 1.5 }}>
+                <TextField
+                  label="Desde"
+                  type="date"
+                  size="small"
+                  value={customFechaDesde}
+                  onChange={(e) => setCustomFechaDesde(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ width: 180 }}
+                />
+                <TextField
+                  label="Hasta"
+                  type="date"
+                  size="small"
+                  value={customFechaHasta}
+                  onChange={(e) => setCustomFechaHasta(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ width: 180 }}
+                />
+              </Box>
+            )}
+          </Box>
 
           <Box>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
