@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -55,6 +55,14 @@ import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 
+// Orden visual para el selector de recetas. Tipos no listados caen al final
+// alfabéticamente — ese es el balde "y otros" del producto.
+const TIPO_EQUIPO_ORDER: Record<string, number> = {
+  EXHIBIDOR: 1,
+  COOLBOX: 2,
+  HELADERA: 3,
+};
+
 export const LeadFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -79,6 +87,17 @@ export const LeadFormPage = () => {
   const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+
+  // Recetas ordenadas por tipo (prioridad fija) y luego alfabéticamente.
+  // Memoizada para evitar reordenar en cada render del Autocomplete.
+  const sortedRecetas = useMemo(() => {
+    return [...recetas].sort((a, b) => {
+      const ordA = TIPO_EQUIPO_ORDER[a.tipoEquipo as string] ?? 99;
+      const ordB = TIPO_EQUIPO_ORDER[b.tipoEquipo as string] ?? 99;
+      if (ordA !== ordB) return ordA - ordB;
+      return (a.nombre || '').localeCompare(b.nombre || '', 'es');
+    });
+  }, [recetas]);
 
   const [formData, setFormData] = useState<Partial<LeadDTO>>({
     nombre: '',
@@ -713,15 +732,9 @@ export const LeadFormPage = () => {
 
               <Grid item xs={12} md={12}>
                 <Autocomplete
-                  options={recetas}
-                  getOptionLabel={(option) => {
-                    const parts = [option.nombre, option.tipoEquipo];
-                    if (option.modelo) parts.push(`Modelo: ${option.modelo}`);
-                    if (option.medida) parts.push(option.medida.nombre);
-                    if (option.color) parts.push(option.color.nombre);
-                    return parts.join(' - ');
-                  }}
-                  value={recetas.find(r => r.id === formData.recetaInteresId) || null}
+                  options={sortedRecetas}
+                  getOptionLabel={(option) => option.nombre}
+                  value={sortedRecetas.find(r => r.id === formData.recetaInteresId) || null}
                   onChange={(_, newValue) => {
                     setFormData({
                       ...formData,
@@ -802,13 +815,8 @@ export const LeadFormPage = () => {
                 <MedidaPicker
                   label="Medida"
                   value={formData.medidaRecetaInteresId}
-                  onChange={(id) => {
-                    setFormData({
-                      ...formData,
-                      medidaRecetaInteresId: id,
-                    });
-                  }}
-                  disabled={!formData.recetaInteresId}
+                  onChange={() => {}}
+                  disabled
                   size="medium"
                 />
               </Grid>
