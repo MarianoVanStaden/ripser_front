@@ -184,8 +184,11 @@ export const LeadFormPage = () => {
         setRecordatoriosOriginales([]);
       }
 
-      // Normalizar campos de equipo/receta para compatibilidad
-      // Si vienen datos en equipoFabricadoInteres*, copiarlos a recetaInteres*
+      // Red de seguridad para leads pre-V53_0_0 cuyo id de "equipo" en realidad
+      // era el id de una receta (bug histórico de mapeo). El backfill de la
+      // migración cubre la mayoría, pero si por algún motivo un lead quedó
+      // afuera, seguimos mostrándolo en el lado de receta. Borrar cuando todos
+      // los leads en producción tengan recetaInteresId nativo.
       if (data.equipoFabricadoInteresId && !data.recetaInteresId) {
         data.recetaInteresId = data.equipoFabricadoInteresId;
         data.recetaInteresNombre = data.equipoFabricadoInteresNombre;
@@ -724,16 +727,10 @@ export const LeadFormPage = () => {
                       ...formData,
                       recetaInteresId: newValue?.id,
                       recetaInteresNombre: newValue?.nombre,
-                      // Pre-cargar valores de la receta, pero permitir edición
+                      // Pre-cargar valores de la receta, pero permitir edición.
                       modeloRecetaInteres: newValue?.modelo || '',
                       colorRecetaInteresId: newValue?.color?.id,
                       medidaRecetaInteresId: newValue?.medida?.id,
-                      // Mapear a campos del backend
-                      equipoFabricadoInteresId: newValue?.id,
-                      equipoFabricadoInteresNombre: newValue?.nombre,
-                      modeloEquipoInteres: newValue?.modelo || '',
-                      colorEquipoInteresId: newValue?.color?.id,
-                      medidaEquipoInteresId: newValue?.medida?.id
                     });
                   }}
                   disabled={loadingCatalogs}
@@ -758,10 +755,9 @@ export const LeadFormPage = () => {
                   value={formData.cantidadRecetaInteres || ''}
                   onChange={(e) => {
                     const cantidad = e.target.value ? Number(e.target.value) : undefined;
-                    setFormData({ 
-                      ...formData, 
+                    setFormData({
+                      ...formData,
                       cantidadRecetaInteres: cantidad,
-                      cantidadEquipoInteres: cantidad // Mapear al backend
                     });
                   }}
                   disabled={!formData.recetaInteresId}
@@ -776,10 +772,9 @@ export const LeadFormPage = () => {
                   label="Modelo Personalizado"
                   value={formData.modeloRecetaInteres || ''}
                   onChange={(e) => {
-                    setFormData({ 
-                      ...formData, 
+                    setFormData({
+                      ...formData,
                       modeloRecetaInteres: e.target.value,
-                      modeloEquipoInteres: e.target.value // Mapear al backend
                     });
                   }}
                   disabled={!formData.recetaInteresId}
@@ -796,7 +791,6 @@ export const LeadFormPage = () => {
                     setFormData({
                       ...formData,
                       colorRecetaInteresId: id,
-                      colorEquipoInteresId: id, // Mapear al backend
                     });
                   }}
                   disabled={!formData.recetaInteresId}
@@ -812,7 +806,6 @@ export const LeadFormPage = () => {
                     setFormData({
                       ...formData,
                       medidaRecetaInteresId: id,
-                      medidaEquipoInteresId: id, // Mapear al backend
                     });
                   }}
                   disabled={!formData.recetaInteresId}
