@@ -37,13 +37,21 @@ export interface GestionCobranzaFilters {
 
 export type GestionCobranzaListParams = PaginationParams & GestionCobranzaFilters;
 
-/** Drop empty arrays / empty strings / undefined so they don't appear as `?key=` in the URL. */
+/**
+ * Drop empty arrays / empty strings / undefined so they don't appear as `?key=` in the URL.
+ * Arrays are joined with commas — Spring's @RequestParam List<X> binds `?k=A,B`, but axios'
+ * default `?k[]=A` serialization silently fails to bind, so filters would be ignored.
+ */
 const cleanParams = (params: GestionCobranzaListParams): Record<string, unknown> => {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(params)) {
     if (v == null) continue;
     if (typeof v === 'string' && v === '') continue;
-    if (Array.isArray(v) && v.length === 0) continue;
+    if (Array.isArray(v)) {
+      if (v.length === 0) continue;
+      out[k] = v.join(',');
+      continue;
+    }
     out[k] = v;
   }
   return out;

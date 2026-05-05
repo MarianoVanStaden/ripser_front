@@ -183,6 +183,17 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
   return <>{children}</>;
 };
 
+// COBRANZAS-only users land on /cobranzas/resumen instead of the generic
+// dashboard, which fires admin-only endpoints on mount.
+const DashboardEntry: React.FC = () => {
+  const { user, esSuperAdmin } = useAuth();
+  const roles = user?.roles ?? [];
+  const isCobranzasOnly =
+    !esSuperAdmin && !roles.includes('ADMIN') && roles.includes('COBRANZAS');
+  if (isCobranzasOnly) return <Navigate to="/cobranzas/resumen" replace />;
+  return <Dashboard />;
+};
+
 const SuperAdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user, esSuperAdmin, loading } = useAuth();
   if (loading) return <CenteredFallback />;
@@ -209,8 +220,8 @@ function App() {
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/" element={priv(<Layout />)}>
-                  <Route index element={priv(<Dashboard />)} />
-                  <Route path="dashboard" element={priv(<Dashboard />)} />
+                  <Route index element={priv(<DashboardEntry />)} />
+                  <Route path="dashboard" element={priv(<DashboardEntry />)} />
                   <Route path="dashboard/dev-kpis" element={priv(<DevKPIs />)} />
 
                   {/* ADMIN */}
