@@ -89,14 +89,14 @@ describe('DuplicatePhoneDialog', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('navega a /clientes/:id y llama onClose al confirmar con tipo CLIENTE', () => {
+  it('navega a /clientes/detalle/:id y llama onClose al confirmar con tipo CLIENTE', () => {
     const { onClose } = renderDialog({
       error: makeLead({ existingId: 99, existingType: 'CLIENTE' }),
     });
 
     fireEvent.click(screen.getByRole('button', { name: /ir al cliente existente/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/clientes/99');
+    expect(mockNavigate).toHaveBeenCalledWith('/clientes/detalle/99');
     expect(onClose).toHaveBeenCalledOnce();
   });
 
