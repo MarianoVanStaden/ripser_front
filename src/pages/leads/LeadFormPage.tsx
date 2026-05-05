@@ -317,6 +317,15 @@ export const LeadFormPage = () => {
       console.error('Error al guardar lead:', err);
       const data = (err as any)?.response?.data;
       if (data?.tipo === 'TELEFONO_DUPLICADO') {
+        const isMatchClienteOrigen =
+          modoRecompra &&
+          clienteOrigenIdParam &&
+          data.existingType === 'CLIENTE' &&
+          data.existingId === parseInt(clienteOrigenIdParam);
+        if (isMatchClienteOrigen) {
+          setError('El backend rechazó la creación del lead de recompra por teléfono duplicado. Verificá que la API permita leads asociados al cliente origen.');
+          return;
+        }
         setDuplicateError(data as DuplicatePhoneError);
         return;
       }
@@ -382,6 +391,14 @@ export const LeadFormPage = () => {
       const result = await leadApi.checkTelefono(telefono, excludeId, controller.signal);
       if (controller.signal.aborted) return;
       if (result.exists && result.existingId && result.existingType && result.existingNombre) {
+        // En modo recompra el teléfono pre-cargado pertenece al cliente origen; no
+        // tiene sentido alertar de un duplicado que es justamente la razón del lead.
+        const isMatchClienteOrigen =
+          modoRecompra &&
+          clienteOrigenIdParam &&
+          result.existingType === 'CLIENTE' &&
+          result.existingId === parseInt(clienteOrigenIdParam);
+        if (isMatchClienteOrigen) return;
         setDuplicateError({
           tipo: 'TELEFONO_DUPLICADO',
           existingId: result.existingId,
