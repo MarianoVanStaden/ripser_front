@@ -3,13 +3,9 @@ import {
   Box,
   CssBaseline,
   Toolbar,
-  Fab,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import ScrollToTopButton from './ScrollToTopButton';
-import CommandPalette from './CommandPalette'; // Make sure this component exists
 import { TenantRequiredRoute } from '../Tenant';
 import { useFinancialEvents } from '../../hooks/useFinancialEvents';
 //import { TenantDebugPanel } from '../Debug'; // Panel de debugging para desarrollo
@@ -20,7 +16,6 @@ const drawerWidth = 240;
 
 const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true); // Open by default on desktop
-  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Single SSE connection for the entire authenticated session.
   useFinancialEvents();
@@ -55,16 +50,6 @@ const Layout: React.FC = () => {
           <Outlet />
         </TenantRequiredRoute>
       </Box>
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <Fab
-        color="primary"
-        aria-label="Abrir paleta de comandos"
-        sx={{ position: 'fixed', bottom: 32, right: 32, zIndex: 1300 }}
-        onClick={() => setPaletteOpen(true)}
-      >
-        <SearchIcon />
-      </Fab>
-      <ScrollToTopButton />
       {/* Panel de debugging - Solo para desarrollo */}
       {/* {import.meta.env.DEV && <TenantDebugPanel />} */}
     </Box>

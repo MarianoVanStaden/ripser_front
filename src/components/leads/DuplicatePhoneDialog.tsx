@@ -27,7 +27,7 @@ export const DuplicatePhoneDialog: React.FC<Props> = ({ open, error, onClose, wa
   if (!error) return null;
 
   const isLead = error.existingType === 'LEAD';
-  const destino = isLead ? `/leads/${error.existingId}` : `/clientes/${error.existingId}`;
+  const destino = isLead ? `/leads/${error.existingId}` : `/clientes/detalle/${error.existingId}`;
 
   const handleNavigate = () => {
     onClose();

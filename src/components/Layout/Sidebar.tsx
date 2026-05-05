@@ -275,6 +275,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/ventas/registro'
   ];
 
+  // Rutas permitidas para el rol COBRANZAS (allowlist: rol muy acotado).
+  const cobranzasAllowedPaths = [
+    '/ventas/registro',
+    '/clientes/gestion',
+    '/clientes/carpeta',
+    '/cobranzas/resumen',
+    '/cobranzas/lista',
+  ];
+
   // Filtrar las secciones según los permisos del usuario.
   // Un ítem puede declarar su propio `modulo` para sobreescribir el de la sección
   // (útil cuando una sección agrupa rutas gateadas por permisos distintos).
@@ -293,6 +302,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isVendedor = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('VENDEDOR');
       if (isVendedor) {
         filteredItems = filteredItems.filter(item => !vendedorDeniedPaths.includes(item.path));
+      }
+
+      // Si el rol es puramente COBRANZAS (y no Admin), aplicar allowlist estricta.
+      const isCobranzasOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('COBRANZAS');
+      if (isCobranzasOnly) {
+        filteredItems = filteredItems.filter(item => cobranzasAllowedPaths.includes(item.path));
       }
 
       return {

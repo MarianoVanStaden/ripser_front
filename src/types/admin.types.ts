@@ -87,7 +87,7 @@ export interface Permiso {
   createdAt?: string;
   updatedAt?: string;
 }
-export type TipoRol = 'ADMIN' | 'USER' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USUARIO' | 'ADMIN_EMPRESA' | 'GERENTE_SUCURSAL';
+export type TipoRol = 'ADMIN' | 'USER' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USUARIO' | 'ADMIN_EMPRESA' | 'GERENTE_SUCURSAL' | 'COBRANZAS';
 
 export type Modulo =
   | 'DASHBOARD'

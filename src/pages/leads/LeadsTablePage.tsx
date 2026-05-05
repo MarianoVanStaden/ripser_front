@@ -87,10 +87,11 @@ const buildSort = (orderBy: OrderBy, order: Order): string => {
   return `${field},${dir}`;
 };
 
-type DatePreset = 'todos' | 'hoy' | 'semana' | 'mes' | 'personalizado';
+type DatePreset = 'todos' | 'ayer' | 'hoy' | 'semana' | 'mes' | 'personalizado';
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'todos', label: 'Todos' },
+  { value: 'ayer', label: 'Ayer' },
   { value: 'hoy', label: 'Hoy' },
   { value: 'semana', label: 'Esta semana' },
   { value: 'mes', label: 'Este mes' },
@@ -110,6 +111,12 @@ const toDateStr = (d: Date) => {
 const resolveDatePreset = (preset: DatePreset): { fechaDesde?: string; fechaHasta?: string } => {
   const today = new Date();
   switch (preset) {
+    case 'ayer': {
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const d = toDateStr(yesterday);
+      return { fechaDesde: d, fechaHasta: d };
+    }
     case 'hoy': {
       const d = toDateStr(today);
       return { fechaDesde: d, fechaHasta: d };

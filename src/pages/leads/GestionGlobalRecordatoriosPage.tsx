@@ -151,11 +151,12 @@ const TIPO_RECORDATORIO_ICONS: Record<string, React.ReactNode> = {
   LLAMADA: <PhoneIcon fontSize="small" />,
 };
 
-type DatePreset = 'hoy' | 'mañana' | 'semana' | 'vencidos' | 'personalizado' | 'todos';
+type DatePreset = 'hoy' | 'ayer' | 'mañana' | 'semana' | 'vencidos' | 'personalizado' | 'todos';
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'todos', label: 'Todos' },
   { value: 'vencidos', label: 'Vencidos' },
+  { value: 'ayer', label: 'Ayer' },
   { value: 'hoy', label: 'Hoy' },
   { value: 'mañana', label: 'Mañana' },
   { value: 'semana', label: 'Esta semana' },
@@ -911,6 +912,12 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
 
     const today = getTodayStr();
     switch (datePreset) {
+      case 'ayer': {
+        const ayer = getDateStr(-1);
+        f.fechaDesde = ayer;
+        f.fechaHasta = ayer;
+        break;
+      }
       case 'hoy':
         f.fechaDesde = today;
         f.fechaHasta = today;

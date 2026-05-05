@@ -61,6 +61,14 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     color: '#7b1fa2',
     requiresSucursal: true,
     systemRole: 'USUARIO'
+  },
+  {
+    value: 'COBRANZAS',
+    label: 'Cobranzas',
+    description: 'Acceso a Registro de Ventas, Gestión y Carpeta de Clientes, y módulo Cobranzas',
+    color: '#00897b',
+    requiresSucursal: true,
+    systemRole: 'COBRANZAS'
   }
 ];
 
