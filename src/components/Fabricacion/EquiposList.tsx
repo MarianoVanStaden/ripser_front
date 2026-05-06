@@ -494,6 +494,7 @@ const EquiposList: React.FC = () => {
       field: 'medida',
       headerName: 'Medida',
       width: 100,
+      valueGetter: (value: any) => (value && typeof value === 'object' ? value.nombre : value) ?? '',
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2">
           {params.value || '-'}
@@ -504,9 +505,10 @@ const EquiposList: React.FC = () => {
       field: 'color',
       headerName: 'Color',
       width: 130,
+      valueGetter: (value: any) => (value && typeof value === 'object' ? value.nombre : value) ?? '',
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2">
-          {params.value ? params.value.replace(/_/g, ' ') : '-'}
+          {params.value ? String(params.value).replace(/_/g, ' ') : '-'}
         </Typography>
       ),
     },

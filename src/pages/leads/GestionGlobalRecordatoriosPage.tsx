@@ -49,12 +49,15 @@ import {
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRecordatoriosLeads } from '../../hooks/useRecordatoriosLeads';
-import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
+import { EstadoQuickEdit } from '../../components/leads/EstadoQuickEdit';
+import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
 import { useTenant } from '../../context/TenantContext';
 import {
   TipoRecordatorioEnum,
   PrioridadLeadEnum,
+  EstadoLeadEnum,
   PrioridadRecordatorioEnum,
   TipoInteraccionEnum,
   PRIORIDAD_LABELS,
@@ -151,6 +154,19 @@ const TIPO_RECORDATORIO_ICONS: Record<string, React.ReactNode> = {
   LLAMADA: <PhoneIcon fontSize="small" />,
 };
 
+const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
+  EstadoLeadEnum.PRIMER_CONTACTO,
+  EstadoLeadEnum.MOSTRO_INTERES,
+  EstadoLeadEnum.CLIENTE_POTENCIAL,
+  EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
+  EstadoLeadEnum.VENTA,
+  EstadoLeadEnum.DESCARTADO,
+  EstadoLeadEnum.PERDIDO,
+  EstadoLeadEnum.LEAD_DUPLICADO,
+  EstadoLeadEnum.PRECIO_ELEVADO,
+  EstadoLeadEnum.COMPRA_ANULADA,
+];
+
 type DatePreset = 'hoy' | 'ayer' | 'mañana' | 'semana' | 'vencidos' | 'personalizado' | 'todos';
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
@@ -194,29 +210,6 @@ const StatCard: React.FC<StatCardProps> = ({ label, count, color, icon }) => (
     </Box>
   </Paper>
 );
-
-interface PrioridadBadgeProps {
-  prioridad?: PrioridadType;
-}
-
-const PrioridadBadge: React.FC<PrioridadBadgeProps> = ({ prioridad }) => {
-  if (!prioridad) return <Typography variant="body2" color="text.disabled">-</Typography>;
-
-  const colorMap: Record<string, 'error' | 'warning' | 'default'> = {
-    HOT: 'error',
-    WARM: 'warning',
-    COLD: 'default',
-  };
-
-  return (
-    <Chip
-      label={PRIORIDAD_LABELS[prioridad]}
-      size="small"
-      color={colorMap[prioridad] ?? 'default'}
-      sx={{ fontWeight: 700, fontSize: '0.7rem' }}
-    />
-  );
-};
 
 // ─── Interacción Dialog ───────────────────────────────────────────────────────
 
@@ -852,6 +845,7 @@ const NuevoRecordatorioDialog: React.FC<NuevoRecordatorioDialogProps> = ({
 
 export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { sucursalFiltro } = useTenant();
 
   // ── Filter state ──
@@ -874,18 +868,6 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
       })
       .catch(() => usuarioApi.getActivos().then(setUsuarios).catch(() => {}));
   }, []);
-  const usuarioNombre = useCallback(
-    (id?: number) => {
-      if (!id) return '—';
-      const u = usuarios.find((u) => u.id === id);
-      if (!u) return `#${id}`;
-      const nombre = u.nombre || (u as any).username || '';
-      const apellido = u.apellido || '';
-      return nombre ? `${nombre}${apellido ? ' ' + apellido : ''}` : `#${id}`;
-    },
-    [usuarios]
-  );
-
   // ── Dialog state ──
   const [interaccionOpen, setInteraccionOpen] = useState(false);
   const [selectedForInteraccion, setSelectedForInteraccion] = useState<RecordatorioConLeadDTO | null>(null);
@@ -1034,6 +1016,54 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     setTimeout(() => setActionSuccess(null), 3000);
   };
 
+  // Optimistic patch sobre el cache de recordatorios para reflejar cambios de
+  // estado/prioridad del lead inmediatamente, sin esperar al refetch.
+  const patchLeadInRecordatoriosCache = (
+    leadId: number,
+    patch: Partial<{ estadoLead: EstadoLeadEnum; prioridad: PrioridadType }>
+  ) => {
+    queryClient.setQueriesData<{ content: RecordatorioConLeadDTO[] } & Record<string, unknown>>(
+      { queryKey: ['recordatorios'] },
+      (data) => {
+        if (!data?.content) return data;
+        return {
+          ...data,
+          content: data.content.map((rec) =>
+            rec.leadId === leadId && rec.lead
+              ? { ...rec, lead: { ...rec.lead, ...patch } }
+              : rec
+          ),
+        };
+      }
+    );
+  };
+
+  const handleUpdateEstado = async (leadId: number, newEstado: EstadoLeadEnum) => {
+    try {
+      await leadApi.updateEstado(leadId, newEstado);
+      patchLeadInRecordatoriosCache(leadId, { estadoLead: newEstado });
+      queryClient.invalidateQueries({ queryKey: ['recordatorios'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setActionSuccess('Estado actualizado.');
+      setTimeout(() => setActionSuccess(null), 2500);
+    } catch {
+      setActionError('Error al actualizar el estado del lead.');
+    }
+  };
+
+  const handleUpdatePrioridad = async (leadId: number, newPrioridad: PrioridadType) => {
+    try {
+      await leadApi.updatePrioridad(leadId, newPrioridad);
+      patchLeadInRecordatoriosCache(leadId, { prioridad: newPrioridad });
+      queryClient.invalidateQueries({ queryKey: ['recordatorios'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setActionSuccess('Prioridad actualizada.');
+      setTimeout(() => setActionSuccess(null), 2500);
+    } catch {
+      setActionError('Error al actualizar la prioridad del lead.');
+    }
+  };
+
   const handleSubmitNuevoRecordatorio = async (
     leadId: number,
     data: Parameters<typeof crearRecordatorio>[1]
@@ -1050,6 +1080,18 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     }
     return `Lead #${rec.leadId}`;
   };
+
+  // Solo el primer nombre del asesor (sin apellido), para compactar la columna.
+  const usuarioPrimerNombre = useCallback(
+    (id?: number) => {
+      if (!id) return '—';
+      const u = usuarios.find((u) => u.id === id);
+      if (!u) return `#${id}`;
+      const nombre = u.nombre || (u as any).username || '';
+      return nombre || `#${id}`;
+    },
+    [usuarios]
+  );
 
   const getLeadTelefono = (rec: RecordatorioConLeadDTO) => rec.lead?.telefono ?? '-';
 
@@ -1350,13 +1392,29 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                       </Box>
                     </TableCell>
 
-                    {/* Tipo + prioridad + mensaje */}
+                    {/* Tipo (solo icono) + prioridad + mensaje */}
                     <TableCell sx={{ maxWidth: 260 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                        {TIPO_RECORDATORIO_ICONS[rec.tipo]}
-                        <Typography variant="body2" fontWeight={600}>
-                          {TIPO_RECORDATORIO_LABELS[rec.tipo] ?? rec.tipo}
-                        </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <Tooltip title={TIPO_RECORDATORIO_LABELS[rec.tipo] ?? rec.tipo} placement="top">
+                          <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                            {TIPO_RECORDATORIO_ICONS[rec.tipo]}
+                          </Box>
+                        </Tooltip>
+                        <Tooltip title={rec.mensaje ?? ''} placement="top">
+                          <Typography
+                            variant="body2"
+                            fontWeight={700}
+                            color="text.primary"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: 240,
+                            }}
+                          >
+                            {rec.mensaje || <span style={{ color: '#bbb', fontWeight: 400 }}>Sin mensaje</span>}
+                          </Typography>
+                        </Tooltip>
                         {rec.prioridad && (
                           <Chip
                             label={PRIORIDAD_RECORDATORIO_LABELS[rec.prioridad] ?? rec.prioridad}
@@ -1367,11 +1425,28 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                               bgcolor: PRIORIDAD_RECORDATORIO_COLORS[rec.prioridad] ?? '#9CA3AF',
                               color: 'white',
                               fontWeight: 600,
+                              flexShrink: 0,
                             }}
                           />
                         )}
                       </Box>
-                      <Tooltip title={rec.mensaje ?? ''} placement="top">
+                    </TableCell>
+
+                    {/* Lead */}
+                    <TableCell sx={{ maxWidth: 160 }}>
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={leadNombre}
+                      >
+                        {leadNombre}
+                      </Typography>
+                      {rec.lead?.email && (
                         <Typography
                           variant="caption"
                           color="text.secondary"
@@ -1380,31 +1455,18 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            maxWidth: 240,
-                            mt: 0.25,
                           }}
+                          title={rec.lead.email}
                         >
-                          {rec.mensaje || <span style={{ color: '#bbb' }}>Sin mensaje</span>}
-                        </Typography>
-                      </Tooltip>
-                    </TableCell>
-
-                    {/* Lead */}
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {leadNombre}
-                      </Typography>
-                      {rec.lead?.email && (
-                        <Typography variant="caption" color="text.secondary">
                           {rec.lead.email}
                         </Typography>
                       )}
                     </TableCell>
 
-                    {/* Asesor */}
+                    {/* Asesor (solo nombre) */}
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
                       <Typography variant="body2" color="text.secondary">
-                        {usuarioNombre(rec.usuarioId)}
+                        {usuarioPrimerNombre(rec.usuarioId)}
                       </Typography>
                     </TableCell>
 
@@ -1434,18 +1496,28 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                       )}
                     </TableCell>
 
-                    {/* Estado */}
+                    {/* Estado (quick edit) */}
                     <TableCell>
                       {rec.lead?.estadoLead ? (
-                        <LeadStatusBadge status={rec.lead.estadoLead} />
+                        <EstadoQuickEdit
+                          leadId={rec.leadId}
+                          currentEstado={rec.lead.estadoLead}
+                          options={ESTADOS_QUICK_EDIT}
+                          onUpdate={handleUpdateEstado}
+                          disabled={rec.lead.estadoLead === EstadoLeadEnum.CONVERTIDO}
+                        />
                       ) : (
                         <Typography variant="body2" color="text.disabled">-</Typography>
                       )}
                     </TableCell>
 
-                    {/* Prioridad */}
+                    {/* Prioridad (quick edit) */}
                     <TableCell>
-                      <PrioridadBadge prioridad={rec.lead?.prioridad} />
+                      <PriorityQuickEdit
+                        leadId={rec.leadId}
+                        currentPriority={rec.lead?.prioridad}
+                        onUpdate={handleUpdatePrioridad}
+                      />
                     </TableCell>
 
                     {/* Score 
