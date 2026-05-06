@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, FormControlLabel, Checkbox, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  Typography, Chip, Box, Tooltip,
+  Typography, Chip, Box,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -11,9 +11,25 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import {
-  ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
+  ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS, TipoFinanciacion,
 } from '../../types/prestamo.types';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../../types/prestamo.types';
+
+/** Mismo cálculo que el backend (calcularFechaVencimiento). cuota n -> base + n períodos. */
+const anclarFecha = (base: Dayjs, tipo: TipoFinanciacion | undefined, numeroCuota: number): Dayjs => {
+  switch (tipo) {
+    case TipoFinanciacion.SEMANAL:
+      return base.add(numeroCuota, 'week');
+    case TipoFinanciacion.QUINCENAL:
+      return base.add(numeroCuota * 2, 'week');
+    case TipoFinanciacion.MENSUAL:
+    case TipoFinanciacion.PLAN_PP:
+    case TipoFinanciacion.CONTADO:
+    case TipoFinanciacion.CHEQUES:
+    default:
+      return base.add(numeroCuota, 'month');
+  }
+};
 
 interface Props {
   open: boolean;
@@ -43,10 +59,11 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
   const motivoValido = motivo.trim().length >= 5;
   const fechaValida = !!nuevaFecha && nuevaFecha.isValid();
   const cambioReal = fechaValida && !!fechaActual && deltaDias !== 0;
-  const puedeShift = !!fechaActual; // sólo si ya había fechaEntrega previa
+  // Cuando no había fechaEntrega previa, el checkbox "shift" se interpreta como "anclar"
+  // (recalcular cuotas desde cero usando la nueva fecha + n períodos).
+  const esAnclajeInicial = !fechaActual && fechaValida;
 
-  const submitDisabled = !fechaValida || !motivoValido || submitting
-    || (aplicarShift && !puedeShift);
+  const submitDisabled = !fechaValida || !motivoValido || submitting;
 
   const handleSubmit = async () => {
     if (!nuevaFecha) return;
@@ -110,34 +127,38 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
             }
           />
 
-          <Tooltip
-            title={
-              !puedeShift
-                ? 'Sólo disponible cuando ya existe una fecha de entrega previa'
-                : ''
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={aplicarShift}
+                onChange={e => setAplicarShift(e.target.checked)}
+              />
             }
-            placement="top-start"
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={aplicarShift && puedeShift}
-                  disabled={!puedeShift}
-                  onChange={e => setAplicarShift(e.target.checked)}
-                />
-              }
-              label="Desplazar cuotas pendientes en consecuencia"
-            />
-          </Tooltip>
+            label={esAnclajeInicial
+              ? 'Anclar el cronograma de cuotas a esta fecha de entrega'
+              : 'Desplazar cuotas pendientes en consecuencia'}
+          />
 
-          {cambioReal && aplicarShift && puedeShift && (
+          {esAnclajeInicial && aplicarShift && (
+            <Alert severity="info">
+              El cronograma de cuotas estaba pendiente de anclaje. Las cuotas PENDIENTE se
+              programarán a partir de esta fecha (cuota n = fecha entrega + n períodos según
+              el tipo de financiación).
+            </Alert>
+          )}
+
+          {!esAnclajeInicial && cambioReal && aplicarShift && (
             <Alert severity="info">
               Se aplicará un desplazamiento de <strong>{deltaDias > 0 ? '+' : ''}{deltaDias} días</strong> a las
               cuotas pendientes. Las cuotas pagadas, parciales y vencidas no se moverán.
             </Alert>
           )}
 
-          {aplicarShift && puedeShift && cambioReal && (
+          {aplicarShift && esAnclajeInicial && nuevaFecha && (
+            <PreviewAnclaje cuotas={cuotas} fechaEntrega={nuevaFecha} tipo={prestamo.tipoFinanciacion} />
+          )}
+
+          {aplicarShift && !esAnclajeInicial && cambioReal && (
             <PreviewCuotas cuotas={cuotas} deltaDias={deltaDias} />
           )}
 
@@ -171,7 +192,7 @@ const PreviewCuotas: React.FC<{ cuotas: CuotaPrestamoDTO[]; deltaDias: number }>
       </TableHead>
       <TableBody>
         {cuotas.map(c => {
-          const seMueve = c.estado === 'PENDIENTE';
+          const seMueve = c.estado === 'PENDIENTE' && !!c.fechaVencimiento;
           const nueva = seMueve
             ? dayjs(c.fechaVencimiento).add(deltaDias, 'day').format('DD/MM/YYYY')
             : null;
@@ -185,9 +206,50 @@ const PreviewCuotas: React.FC<{ cuotas: CuotaPrestamoDTO[]; deltaDias: number }>
                   sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
                 />
               </TableCell>
-              <TableCell>{dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}</TableCell>
+              <TableCell>
+                {c.fechaVencimiento ? dayjs(c.fechaVencimiento).format('DD/MM/YYYY') : <em>—</em>}
+              </TableCell>
               <TableCell>
                 {seMueve ? <strong>{nueva}</strong> : <em>no se modifica</em>}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  </TableContainer>
+);
+
+const PreviewAnclaje: React.FC<{
+  cuotas: CuotaPrestamoDTO[];
+  fechaEntrega: Dayjs;
+  tipo: TipoFinanciacion | undefined;
+}> = ({ cuotas, fechaEntrega, tipo }) => (
+  <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 320 }}>
+    <Table size="small" stickyHeader>
+      <TableHead>
+        <TableRow>
+          <TableCell>N.</TableCell>
+          <TableCell>Estado</TableCell>
+          <TableCell>Fecha calculada</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {cuotas.map(c => {
+          const seAncla = c.estado === 'PENDIENTE';
+          const nueva = seAncla ? anclarFecha(fechaEntrega, tipo, c.numeroCuota).format('DD/MM/YYYY') : null;
+          return (
+            <TableRow key={c.id} sx={!seAncla ? { opacity: 0.5 } : {}}>
+              <TableCell>{c.numeroCuota}</TableCell>
+              <TableCell>
+                <Chip
+                  label={ESTADO_CUOTA_LABELS[c.estado]}
+                  size="small"
+                  sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
+                />
+              </TableCell>
+              <TableCell>
+                {seAncla ? <strong>{nueva}</strong> : <em>no se modifica</em>}
               </TableCell>
             </TableRow>
           );

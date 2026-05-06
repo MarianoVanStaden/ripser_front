@@ -27,7 +27,6 @@ const emptyForm: CreatePrestamoPersonalDTO = {
   cantidadCuotas: 0,
   valorCuota: 0,
   tipoFinanciacion: undefined,
-  primerVencimiento: undefined,
   categoria: undefined,
   observaciones: undefined,
   codigoClienteRojas: undefined,
@@ -200,16 +199,6 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                   <MenuItem key={key} value={key}>{label}</MenuItem>
                 ))}
               </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Primer Vencimiento"
-                type="date"
-                value={formData.primerVencimiento || ''}
-                onChange={(e) => handleChange('primerVencimiento', e.target.value || undefined)}
-                InputLabelProps={{ shrink: true }}
-              />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField

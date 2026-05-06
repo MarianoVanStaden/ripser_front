@@ -1096,7 +1096,7 @@ export const generarCreditoPDF = (
   const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
   const rows = cuotasOrdenadas.map(c => [
     c.numeroCuota.toString(),
-    formatDate(c.fechaVencimiento),
+    c.fechaVencimiento ? formatDate(c.fechaVencimiento) : 'Pendiente',
     formatCurrency(c.montoCuota),
     formatCurrency(c.montoPagado),
     formatCurrency(Math.max(0, Number(c.montoCuota) - Number(c.montoPagado))),

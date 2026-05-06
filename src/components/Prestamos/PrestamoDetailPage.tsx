@@ -396,6 +396,12 @@ export const PrestamoDetailPage: React.FC = () => {
 
       {/* Tab: Cuotas */}
       <TabPanel value={tabValue} index={0}>
+        {cuotas.length > 0 && cuotas.every(c => !c.fechaVencimiento) && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            El cronograma de cuotas se anclará automáticamente cuando Transporte confirme la entrega del equipo.
+            Las fechas de vencimiento quedan pendientes hasta entonces.
+          </Alert>
+        )}
         <TableContainer component={Paper}>
           <Table size="small">
             <TableHead>
@@ -415,7 +421,11 @@ export const PrestamoDetailPage: React.FC = () => {
                   <TableCell>{c.numeroCuota}</TableCell>
                   <TableCell align="right">{formatPrice(c.montoCuota)}</TableCell>
                   <TableCell align="right">{formatPrice(c.montoPagado)}</TableCell>
-                  <TableCell>{dayjs(c.fechaVencimiento).format('DD/MM/YYYY')}</TableCell>
+                  <TableCell>
+                    {c.fechaVencimiento
+                      ? dayjs(c.fechaVencimiento).format('DD/MM/YYYY')
+                      : <Typography variant="caption" color="text.disabled" fontStyle="italic">Pendiente de anclaje</Typography>}
+                  </TableCell>
                   <TableCell>{c.fechaPago ? dayjs(c.fechaPago).format('DD/MM/YYYY') : '-'}</TableCell>
                   <TableCell align="center">
                     <Chip
@@ -446,7 +456,8 @@ export const PrestamoDetailPage: React.FC = () => {
                         {puedeEditarFechas
                           && c.estado !== 'PAGADA'
                           && c.estado !== 'PARCIAL'
-                          && c.estado !== 'REFINANCIADA' && (
+                          && c.estado !== 'REFINANCIADA'
+                          && c.fechaVencimiento /* no editable hasta anclar el cronograma */ && (
                           <Tooltip title="Editar fecha de vencimiento">
                             <IconButton
                               size="small"
