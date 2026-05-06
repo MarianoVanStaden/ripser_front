@@ -566,7 +566,7 @@ export const LeadsTablePage = () => {
                   Prov.
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '6%', minWidth: 70, display: { xs: 'none', md: 'table-cell' } }}>
+              <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: 44, minWidth: 44, display: { xs: 'none', md: 'table-cell' } }}>
                 <TableSortLabel
                   active={orderBy === 'canal'}
                   direction={orderBy === 'canal' ? order : 'asc'}
@@ -677,8 +677,8 @@ export const LeadsTablePage = () => {
                       <TableCell sx={{ py: 0.75, fontSize: '0.875rem', display: { xs: 'none', lg: 'table-cell' } }}>
                         {lead.provincia ? PROVINCIA_LABELS[lead.provincia] : '-'}
                       </TableCell>
-                      <TableCell sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
-                        <CanalBadge canal={lead.canal} />
+                      <TableCell align="center" sx={{ py: 0.75, px: 0.5, display: { xs: 'none', md: 'table-cell' } }}>
+                        <CanalBadge canal={lead.canal} iconOnly />
                       </TableCell>
                       <TableCell sx={{ py: 0.75 }}>
                         <EstadoQuickEdit

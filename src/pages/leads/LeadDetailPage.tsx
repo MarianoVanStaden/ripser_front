@@ -154,10 +154,19 @@ export const LeadDetailPage = () => {
     }
   };
 
-  if (error || !lead) {
+  // Mientras está cargando no mostramos "Lead no encontrado": el overlay basta.
+  // Solo cuando termina la carga y no hay datos (o hay error) mostramos el mensaje.
+  if (loading && !lead) {
     return (
       <Box sx={{ p: 3 }}>
         <LoadingOverlay open={loading} message="Cargando lead..." />
+      </Box>
+    );
+  }
+
+  if (error || !lead) {
+    return (
+      <Box sx={{ p: 3 }}>
         <Alert severity="error">{error || 'Lead no encontrado'}</Alert>
         <Button
           startIcon={<ArrowBackIcon />}
