@@ -1,6 +1,13 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { DocumentoComercial, OpcionFinanciamientoDTO, Cliente } from '../types';
+import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../types/prestamo.types';
+import {
+  ESTADO_CUOTA_LABELS,
+  ESTADO_PRESTAMO_LABELS,
+  TIPO_FINANCIACION_LABELS,
+} from '../types/prestamo.types';
+import { addCorporateHeader, addCorporateFooter } from '../utils/pdfExportUtils';
 import {
   PORCENTAJE_ENTREGA_PROPIO,
   calcularFinanciamientoPropio,
@@ -1004,4 +1011,175 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   const archivoNombre = `${nombreArchivo}_${nombreCliente}_${fecha}.pdf`;
 
   doc.save(archivoNombre);
+};
+
+/**
+ * Genera un PDF con el estado actual de un crédito personal:
+ * datos del cliente, datos del crédito, tabla de cuotas (con estado/montos)
+ * y totales. Reutiliza el header/footer corporativo de pdfExportUtils para
+ * mantener el mismo look & feel que los PDF del módulo de Ventas.
+ *
+ * No lo guarda en disco — devuelve la instancia de jsPDF para que el caller
+ * decida (save / output / preview).
+ */
+export const generarCreditoPDF = (
+  prestamo: PrestamoPersonalDTO,
+  cuotas: CuotaPrestamoDTO[],
+): jsPDF => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 10;
+
+  let y = addCorporateHeader(doc, 'Estado del Crédito Personal');
+
+  // ---- Bloque Cliente ----
+  doc.setFillColor(...COLORS.white);
+  doc.rect(margin + 1, y, pageWidth - (margin * 2) - 2, 22, 'F');
+  doc.setTextColor(...COLORS.darkBlue);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENTE', margin + 4, y + 5);
+
+  doc.setTextColor(...COLORS.black);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Nombre: ${prestamo.clienteNombre}`, margin + 4, y + 11);
+  if (prestamo.codigoClienteRojas) {
+    doc.text(`Código Rojas: ${prestamo.codigoClienteRojas}`, margin + 4, y + 16);
+  }
+  doc.text(`Préstamo #${prestamo.id}`, pageWidth - margin - 4, y + 11, { align: 'right' });
+  if (prestamo.documentoId) {
+    doc.text(`Factura: #${prestamo.documentoId}`, pageWidth - margin - 4, y + 16, { align: 'right' });
+  }
+  y += 24;
+
+  // ---- Bloque Crédito ----
+  doc.setFillColor(...COLORS.white);
+  doc.rect(margin + 1, y, pageWidth - (margin * 2) - 2, 30, 'F');
+  doc.setTextColor(...COLORS.darkBlue);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATOS DEL CRÉDITO', margin + 4, y + 5);
+
+  doc.setTextColor(...COLORS.black);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+
+  const colW = (pageWidth - margin * 2 - 8) / 3;
+  const c1 = margin + 4;
+  const c2 = c1 + colW;
+  const c3 = c2 + colW;
+
+  doc.text(`Monto total: ${formatCurrency(prestamo.montoTotal)}`, c1, y + 11);
+  doc.text(`Cuotas: ${prestamo.cuotasPagadas}/${prestamo.cantidadCuotas}`, c2, y + 11);
+  doc.text(`Valor cuota: ${formatCurrency(prestamo.valorCuota)}`, c3, y + 11);
+
+  doc.text(`Financiación: ${TIPO_FINANCIACION_LABELS[prestamo.tipoFinanciacion] || prestamo.tipoFinanciacion}`, c1, y + 17);
+  doc.text(`Estado: ${ESTADO_PRESTAMO_LABELS[prestamo.estado] || prestamo.estado}`, c2, y + 17);
+  const fechaEntregaTxt = prestamo.fechaEntrega
+    ? formatDate(prestamo.fechaEntrega)
+    : 'Pendiente de entrega';
+  doc.text(`Fecha entrega: ${fechaEntregaTxt}`, c3, y + 17);
+
+  doc.text(`Cobrado: ${formatCurrency(prestamo.montoPagado)}`, c1, y + 23);
+  doc.text(`Saldo: ${formatCurrency(prestamo.saldoPendiente)}`, c2, y + 23);
+  if (prestamo.diasVencido && prestamo.diasVencido > 0) {
+    doc.setTextColor(...COLORS.darkGray);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Días vencido: ${prestamo.diasVencido}`, c3, y + 23);
+    doc.setTextColor(...COLORS.black);
+    doc.setFont('helvetica', 'normal');
+  }
+  y += 32;
+
+  // ---- Tabla de cuotas ----
+  const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
+  const rows = cuotasOrdenadas.map(c => [
+    c.numeroCuota.toString(),
+    formatDate(c.fechaVencimiento),
+    formatCurrency(c.montoCuota),
+    formatCurrency(c.montoPagado),
+    formatCurrency(Math.max(0, Number(c.montoCuota) - Number(c.montoPagado))),
+    ESTADO_CUOTA_LABELS[c.estado] || c.estado,
+    c.diasMora && c.diasMora > 0 ? c.diasMora.toString() : '-',
+  ]);
+
+  autoTable(doc, {
+    head: [['#', 'Vencimiento', 'Monto', 'Pagado', 'Saldo', 'Estado', 'Días mora']],
+    body: rows,
+    startY: y,
+    margin: { left: margin + 1, right: margin + 1, bottom: PAGE_MARGIN_BOTTOM },
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 1.5, textColor: COLORS.black },
+    headStyles: {
+      fillColor: COLORS.darkBlue,
+      textColor: COLORS.white,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'center' },
+      2: { halign: 'right' },
+      3: { halign: 'right' },
+      4: { halign: 'right' },
+      5: { halign: 'center' },
+      6: { halign: 'center', cellWidth: 18 },
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 5) {
+        const estado = cuotasOrdenadas[data.row.index]?.estado;
+        if (estado === 'PAGADA') {
+          data.cell.styles.textColor = [0, 128, 0];
+          data.cell.styles.fontStyle = 'bold';
+        } else if (estado === 'VENCIDA') {
+          data.cell.styles.textColor = [200, 0, 0];
+          data.cell.styles.fontStyle = 'bold';
+        } else if (estado === 'PARCIAL') {
+          data.cell.styles.textColor = [200, 130, 0];
+        } else if (estado === 'REFINANCIADA') {
+          data.cell.styles.textColor = [120, 60, 160];
+        }
+      }
+    },
+  });
+
+  // ---- Totales ----
+  const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y;
+  let yT = finalY + 6;
+
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (yT + 30 > pageHeight - PAGE_MARGIN_BOTTOM) {
+    doc.addPage();
+    yT = margin + 5;
+  }
+
+  const cuotasPagadas = cuotasOrdenadas.filter(c => c.estado === 'PAGADA').length;
+  const cuotasVencidas = cuotasOrdenadas.filter(c => c.estado === 'VENCIDA').length;
+  const cuotasPendientes = cuotasOrdenadas.filter(c => c.estado === 'PENDIENTE').length;
+
+  doc.setFillColor(...COLORS.white);
+  doc.rect(margin + 1, yT, pageWidth - (margin * 2) - 2, 22, 'F');
+
+  doc.setTextColor(...COLORS.darkBlue);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('RESUMEN', margin + 4, yT + 5);
+
+  doc.setTextColor(...COLORS.black);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Pagadas: ${cuotasPagadas}`, c1, yT + 11);
+  doc.text(`Pendientes: ${cuotasPendientes}`, c2, yT + 11);
+  doc.text(`Vencidas: ${cuotasVencidas}`, c3, yT + 11);
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Total cobrado: ${formatCurrency(prestamo.montoPagado)}`, c1, yT + 17);
+  doc.text(`Saldo pendiente: ${formatCurrency(prestamo.saldoPendiente)}`, c2, yT + 17);
+  if (prestamo.vencimientoActual) {
+    doc.text(`Próximo vence: ${formatDate(prestamo.vencimientoActual)}`, c3, yT + 17);
+  }
+
+  addCorporateFooter(doc);
+  return doc;
 };

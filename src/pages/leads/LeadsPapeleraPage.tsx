@@ -124,6 +124,7 @@ const LeadsPapeleraPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 'bold' }}>Teléfono</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Estado al borrar</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Borrado el</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Borrado por</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 'bold', width: 120 }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
@@ -131,12 +132,12 @@ const LeadsPapeleraPage: React.FC = () => {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`skel-${i}`}>
-                    <TableCell colSpan={5}><Skeleton variant="rectangular" height={28} /></TableCell>
+                    <TableCell colSpan={6}><Skeleton variant="rectangular" height={28} /></TableCell>
                   </TableRow>
                 ))
               ) : leads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
                     <Typography variant="body2" color="text.secondary">
                       La papelera está vacía.
                     </Typography>
@@ -151,6 +152,13 @@ const LeadsPapeleraPage: React.FC = () => {
                     <TableCell>{lead.telefono}</TableCell>
                     <TableCell>{ESTADO_LABELS[lead.estadoLead] ?? lead.estadoLead}</TableCell>
                     <TableCell>{formatDeletedAt(lead.deletedAt)}</TableCell>
+                    <TableCell>
+                      {lead.deletedByUsername ?? (
+                        <Typography component="span" variant="body2" color="text.disabled">
+                          (desconocido)
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Restaurar lead">
                         <span>

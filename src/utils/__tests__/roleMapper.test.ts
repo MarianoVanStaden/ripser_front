@@ -32,7 +32,9 @@ describe('roleMapper', () => {
       expect(values).toContain('TALLER');
       expect(values).toContain('OFICINA');
       expect(values).toContain('USUARIO_SUCURSAL');
-      expect(values).toContain('COBRANZAS');
+      // COBRANZAS opera a nivel empresa (cartera morosa de todas las sucursales),
+      // no requiere asignación a una sucursal específica.
+      expect(values).not.toContain('COBRANZAS');
       expect(values).not.toContain('SUPER_ADMIN');
       expect(values).not.toContain('ADMIN_EMPRESA');
     });

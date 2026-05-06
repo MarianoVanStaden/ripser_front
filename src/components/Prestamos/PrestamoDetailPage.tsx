@@ -9,6 +9,7 @@ import {
   ArrowBack, Edit, Payment, Add, Send, CheckCircle,
   Phone, Email, WhatsApp, Videocam, PersonPin, Groups,
   Delete, Notifications, Receipt, Undo, Autorenew,
+  EditCalendar, PictureAsPdf,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -34,7 +35,11 @@ import { RegistrarPagoDialog } from './RegistrarPagoDialog';
 import { RevertirPagoDialog } from './RevertirPagoDialog';
 import { SeguimientoFormDialog } from './SeguimientoFormDialog';
 import { RecordatorioFormDialog } from './RecordatorioFormDialog';
+import { EditarFechaEntregaDialog } from './EditarFechaEntregaDialog';
+import { EditarFechaCuotaDialog } from './EditarFechaCuotaDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { usePermisos } from '../../hooks/usePermisos';
+import { generarCreditoPDF } from '../../services/pdfService';
 
 const TIPO_INTERACCION_ICONS: Record<string, React.ReactElement> = {
   LLAMADA: <Phone fontSize="small" />,
@@ -91,6 +96,15 @@ export const PrestamoDetailPage: React.FC = () => {
   // Revertir pago dialog
   const [revertirOpen, setRevertirOpen] = useState(false);
   const [selectedCuotaRevertir, setSelectedCuotaRevertir] = useState<CuotaPrestamoDTO | null>(null);
+
+  // Edición de fechas (entrega + cuota individual)
+  const [editFechaEntregaOpen, setEditFechaEntregaOpen] = useState(false);
+  const [editFechaCuotaOpen, setEditFechaCuotaOpen] = useState(false);
+  const [cuotaParaEditarFecha, setCuotaParaEditarFecha] = useState<CuotaPrestamoDTO | null>(null);
+
+  // Permisos
+  const { tieneRol, esAdmin } = usePermisos();
+  const puedeEditarFechas = esAdmin || tieneRol('ADMIN_EMPRESA', 'GERENTE_SUCURSAL');
 
   // Cascade highlight (Task 2)
   const [highlightedCuotaIds, setHighlightedCuotaIds] = useState<Set<number>>(new Set());
@@ -265,6 +279,13 @@ export const PrestamoDetailPage: React.FC = () => {
             Refinanciar
           </Button>
         )}
+        <Button
+          variant="outlined"
+          startIcon={<PictureAsPdf />}
+          onClick={() => generarCreditoPDF(prestamo, cuotas).save(`credito-${prestamo.id}-${prestamo.clienteNombre.replace(/\s+/g, '_')}-${dayjs().format('YYYYMMDD')}.pdf`)}
+        >
+          Exportar PDF
+        </Button>
         <Button variant="outlined" startIcon={<Edit />} onClick={() => setEditOpen(true)}>Editar</Button>
       </Box>
 
@@ -334,12 +355,26 @@ export const PrestamoDetailPage: React.FC = () => {
                 <Typography variant="body1" color="error.main" fontWeight="bold">{prestamo.diasVencido}</Typography>
               </Grid>
             )}
-            {prestamo.fechaEntrega && (
-              <Grid item xs={6} sm={4} md={2}>
-                <Typography variant="caption" color="text.secondary">Fecha Entrega</Typography>
-                <Typography variant="body1">{dayjs(prestamo.fechaEntrega).format('DD/MM/YYYY')}</Typography>
-              </Grid>
-            )}
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary">Fecha Entrega</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography
+                  variant="body1"
+                  sx={{ color: prestamo.fechaEntrega ? 'text.primary' : 'text.disabled', fontStyle: prestamo.fechaEntrega ? 'normal' : 'italic' }}
+                >
+                  {prestamo.fechaEntrega
+                    ? dayjs(prestamo.fechaEntrega).format('DD/MM/YYYY')
+                    : 'Pendiente de entrega'}
+                </Typography>
+                {puedeEditarFechas && (
+                  <Tooltip title="Editar fecha de entrega">
+                    <IconButton size="small" onClick={() => setEditFechaEntregaOpen(true)}>
+                      <EditCalendar fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            </Grid>
             {prestamo.observaciones && (
               <Grid item xs={12}>
                 <Typography variant="caption" color="text.secondary">Observaciones</Typography>
@@ -405,6 +440,19 @@ export const PrestamoDetailPage: React.FC = () => {
                           <Tooltip title="Revertir pago">
                             <IconButton size="small" color="warning" onClick={() => { setSelectedCuotaRevertir(c); setRevertirOpen(true); }}>
                               <Undo fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {puedeEditarFechas
+                          && c.estado !== 'PAGADA'
+                          && c.estado !== 'PARCIAL'
+                          && c.estado !== 'REFINANCIADA' && (
+                          <Tooltip title="Editar fecha de vencimiento">
+                            <IconButton
+                              size="small"
+                              onClick={() => { setCuotaParaEditarFecha(c); setEditFechaCuotaOpen(true); }}
+                            >
+                              <EditCalendar fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         )}
@@ -601,6 +649,33 @@ export const PrestamoDetailPage: React.FC = () => {
         cuotaId={recordatorioCuotaId}
         recordatorio={editingRecordatorio}
       />
+      {editFechaEntregaOpen && (
+        <EditarFechaEntregaDialog
+          open={editFechaEntregaOpen}
+          prestamo={prestamo}
+          cuotas={cuotas}
+          onClose={() => setEditFechaEntregaOpen(false)}
+          onSaved={async (msg) => {
+            await loadData();
+            setSnackbar({ open: true, message: msg, severity: 'success' });
+          }}
+          onConflict={loadData}
+        />
+      )}
+      {editFechaCuotaOpen && cuotaParaEditarFecha && (
+        <EditarFechaCuotaDialog
+          open={editFechaCuotaOpen}
+          prestamo={prestamo}
+          cuota={cuotaParaEditarFecha}
+          cuotas={cuotas}
+          onClose={() => { setEditFechaCuotaOpen(false); setCuotaParaEditarFecha(null); }}
+          onSaved={async (msg) => {
+            await loadData();
+            setSnackbar({ open: true, message: msg, severity: 'success' });
+          }}
+          onConflict={loadData}
+        />
+      )}
 
       {/* Snackbar */}
       <Snackbar

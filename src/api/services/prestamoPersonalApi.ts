@@ -2,9 +2,12 @@ import api from '../config';
 import type {
   PrestamoPersonalDTO,
   CreatePrestamoPersonalDTO,
+  CuotaPrestamoDTO,
   ResumenPrestamosDTO,
   EstadoPrestamo,
   CategoriaPrestamo,
+  UpdateFechaEntregaDTO,
+  UpdateFechaVencimientoCuotaDTO,
 } from '../../types/prestamo.types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
@@ -73,6 +76,38 @@ export const prestamoPersonalApi = {
     const response = await api.patch<PrestamoPersonalDTO>(`${BASE_PATH}/${id}/categoria`, null, {
       params: { categoria },
     });
+    return response.data;
+  },
+
+  /**
+   * Edita manualmente la fecha de entrega. Si dto.aplicarDesplazamientoCuotas es true,
+   * desplaza las cuotas PENDIENTE el mismo Δdías. Devuelve 409 si la version no coincide.
+   */
+  actualizarFechaEntrega: async (
+    id: number,
+    dto: UpdateFechaEntregaDTO,
+  ): Promise<PrestamoPersonalDTO> => {
+    const response = await api.patch<PrestamoPersonalDTO>(
+      `${BASE_PATH}/${id}/fecha-entrega`,
+      dto,
+    );
+    return response.data;
+  },
+
+  /**
+   * Edita la fechaVencimiento de una cuota individual.
+   * Si dto.propagarSiguientes es true, aplica el mismo Δdías a las cuotas siguientes pendientes.
+   * Devuelve 409 si la prestamoVersion no coincide.
+   */
+  actualizarFechaVencimientoCuota: async (
+    prestamoId: number,
+    cuotaId: number,
+    dto: UpdateFechaVencimientoCuotaDTO,
+  ): Promise<CuotaPrestamoDTO> => {
+    const response = await api.patch<CuotaPrestamoDTO>(
+      `${BASE_PATH}/${prestamoId}/cuotas/${cuotaId}/fecha-vencimiento`,
+      dto,
+    );
     return response.data;
   },
 };

@@ -140,6 +140,10 @@ export interface LeadDTO {
   recordatorios?: RecordatorioLeadDTO[];
   /** Marca de soft delete. null = vigente; ISO timestamp = en papelera. */
   deletedAt?: string;
+  /** ID del usuario que ejecutó el soft-delete. */
+  deletedById?: number;
+  /** Username de quien borró, hidratado por el backend en /api/leads/papelera. */
+  deletedByUsername?: string;
 }
 
 export interface ConversionLeadRequest {

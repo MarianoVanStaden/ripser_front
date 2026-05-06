@@ -148,6 +148,26 @@ export interface PrestamoPersonalDTO {
   montoPagado: number;
   saldoPendiente: number;
   documentoId?: number | null;
+  /** Optimistic locking — debe enviarse en PATCH para detectar ediciones concurrentes. */
+  version?: number;
+}
+
+export interface UpdateFechaEntregaDTO {
+  /** Nueva fecha de entrega en formato ISO yyyy-MM-dd. */
+  nuevaFecha: string;
+  motivo: string;
+  aplicarDesplazamientoCuotas: boolean;
+  /** Versión actual conocida por el cliente (optimistic locking). */
+  version: number;
+}
+
+export interface UpdateFechaVencimientoCuotaDTO {
+  /** Nueva fechaVencimiento en formato ISO yyyy-MM-dd. */
+  nuevaFecha: string;
+  motivo: string;
+  propagarSiguientes: boolean;
+  /** Versión actual del préstamo conocida por el cliente (optimistic locking). */
+  prestamoVersion: number;
 }
 
 export interface CreatePrestamoPersonalDTO {
