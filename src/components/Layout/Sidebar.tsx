@@ -277,11 +277,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
 
   // Rutas permitidas para el rol COBRANZAS (allowlist: rol muy acotado).
   const cobranzasAllowedPaths = [
-    '/ventas/registro',
     '/clientes/gestion',
     '/clientes/carpeta',
+    '/clientes/cuenta-corriente',
     '/cobranzas/resumen',
     '/cobranzas/lista',
+    '/garantias/registro',
+    '/garantias/reclamos',
+    '/garantias/reporte',
   ];
 
   // Filtrar las secciones según los permisos del usuario.

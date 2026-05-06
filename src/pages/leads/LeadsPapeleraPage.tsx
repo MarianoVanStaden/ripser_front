@@ -27,10 +27,15 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { leadApi } from '../../api/services/leadApi';
 import { ESTADO_LABELS } from '../../types/lead.types';
 import { formatDate } from '../../utils/leadValidations';
+import { useTenant } from '../../context/TenantContext';
+import { usePermisos } from '../../hooks/usePermisos';
 
 const LeadsPapeleraPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { esSuperAdmin } = useTenant();
+  const { tieneRol } = usePermisos();
+  const canManageDeleted = esSuperAdmin || tieneRol('ADMIN', 'GERENTE_SUCURSAL');
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -40,6 +45,9 @@ const LeadsPapeleraPage: React.FC = () => {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: () => leadApi.getDeleted(page, rowsPerPage),
+    // No tiene sentido pegarle al backend si el usuario no tiene permiso —
+    // devolvería 403 igual.
+    enabled: canManageDeleted,
   });
 
   const restoreMutation = useMutation({
@@ -62,6 +70,23 @@ const LeadsPapeleraPage: React.FC = () => {
     if (!iso) return '-';
     return `${formatDate(iso)} ${new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
   };
+
+  if (!canManageDeleted) {
+    return (
+      <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 'md', mx: 'auto' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/leads')}>
+            Volver
+          </Button>
+          <Typography variant="h5" component="h1">Papelera de Leads</Typography>
+        </Box>
+        <Alert severity="warning">
+          No tenés permisos para ver la papelera. Pedile acceso a un usuario con
+          rol Administrador o Gerente de Sucursal.
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: 'lg', mx: 'auto' }}>

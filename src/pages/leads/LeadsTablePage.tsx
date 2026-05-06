@@ -22,7 +22,12 @@ import {
   InputAdornment,
   Skeleton,
   CircularProgress,
-  Snackbar
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -53,6 +58,7 @@ import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStat
 import { PriorityQuickEdit } from '../../components/leads/PriorityQuickEdit';
 import { EstadoQuickEdit } from '../../components/leads/EstadoQuickEdit';
 import { useTenant } from '../../context/TenantContext';
+import { usePermisos } from '../../hooks/usePermisos';
 import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
 import { useDebounce } from '../../hooks/useDebounce';
 import { openWhatsAppWeb } from '../../utils/whatsapp';
@@ -177,14 +183,21 @@ const PRIORIDADES_DISPONIBLES: PrioridadLeadEnum[] = [
 
 export const LeadsTablePage = () => {
   const navigate = useNavigate();
-  const { sucursalFiltro } = useTenant();
+  const { sucursalFiltro, esSuperAdmin } = useTenant();
   const { showModal, closeModal } = useSuperAdminContextCheck();
   const queryClient = useQueryClient();
+  const { tieneRol } = usePermisos();
+  // Solo gerencia/admin puede eliminar, restaurar y ver papelera. El backend
+  // también lo enforce con @PreAuthorize — esto es para la UX (ocultar acciones).
+  const canManageDeleted = esSuperAdmin || tieneRol('ADMIN', 'GERENTE_SUCURSAL');
 
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('dias');
   const [undoSnack, setUndoSnack] = useState<{ id: number; nombre: string } | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; nombre: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [errorSnack, setErrorSnack] = useState<string | null>(null);
   const [selectedEstados, setSelectedEstados] = useState<EstadoLeadEnum[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadLeadEnum[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -321,17 +334,24 @@ export const LeadsTablePage = () => {
     );
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     const lead = leads.find((l) => l.id === id);
-    const nombre = lead?.nombre ?? 'Lead';
-    if (!window.confirm(`¿Está seguro de eliminar a "${nombre}"? Podrá restaurarlo desde la papelera.`)) return;
+    setDeleteTarget({ id, nombre: lead?.nombre ?? 'Lead' });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
     try {
-      await leadApi.delete(id);
+      await leadApi.delete(deleteTarget.id);
       invalidateLeads();
-      setUndoSnack({ id, nombre });
+      setUndoSnack({ id: deleteTarget.id, nombre: deleteTarget.nombre });
+      setDeleteTarget(null);
     } catch (err) {
       console.error('Error al eliminar lead:', err);
-      alert('Error al eliminar el lead');
+      setErrorSnack('No se pudo eliminar el lead');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -344,7 +364,7 @@ export const LeadsTablePage = () => {
       setUndoSnack(null);
     } catch (err) {
       console.error('Error al restaurar lead:', err);
-      alert('No se pudo restaurar el lead');
+      setErrorSnack('No se pudo restaurar el lead');
     } finally {
       setRestoring(false);
     }
@@ -441,15 +461,17 @@ export const LeadsTablePage = () => {
           <Typography variant="body2" color="text.secondary">
             Total: {totalElements} leads
           </Typography>
-          <Tooltip title="Ver papelera">
-            <Button
-              variant="outlined"
-              startIcon={<DeleteSweepIcon />}
-              onClick={() => navigate('/leads/papelera')}
-            >
-              Papelera
-            </Button>
-          </Tooltip>
+          {canManageDeleted && (
+            <Tooltip title="Ver papelera">
+              <Button
+                variant="outlined"
+                startIcon={<DeleteSweepIcon />}
+                onClick={() => navigate('/leads/papelera')}
+              >
+                Papelera
+              </Button>
+            </Tooltip>
+          )}
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/leads/nuevo')}>
             Nuevo Lead
           </Button>
@@ -820,7 +842,7 @@ export const LeadsTablePage = () => {
                             </Tooltip>
                           )}
 
-                          {lead.estadoLead !== EstadoLeadEnum.CONVERTIDO && (
+                          {canManageDeleted && lead.estadoLead !== EstadoLeadEnum.CONVERTIDO && (
                             <Tooltip title="Eliminar">
                               <IconButton
                                 size="small"
@@ -887,6 +909,49 @@ export const LeadsTablePage = () => {
           </Button>
         }
       />
+
+      <Snackbar
+        open={Boolean(errorSnack)}
+        autoHideDuration={5000}
+        onClose={() => setErrorSnack(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" onClose={() => setErrorSnack(null)}>
+          {errorSnack}
+        </Alert>
+      </Snackbar>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => { if (!deleting) setDeleteTarget(null); }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Eliminar lead</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Estás seguro de que querés eliminar a <strong>{deleteTarget?.nombre}</strong>?
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 1, fontSize: '0.875rem' }}>
+            Vas a poder restaurarlo desde la <strong>Papelera</strong> (botón arriba a la derecha) o
+            apretando "Deshacer" en el aviso que aparece después de eliminar.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+            startIcon={<DeleteIcon />}
+          >
+            {deleting ? 'Eliminando…' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -25,7 +25,7 @@ const PERMISOS_POR_ROL: PermisosMap = {
   GERENTE_SUCURSAL: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
 
   // Acceso restringido: el filtrado fino por path se hace en Sidebar (cobranzasAllowedPaths).
-  COBRANZAS: ['VENTAS', 'CLIENTES', 'PRESTAMOS', 'ADMINISTRACION'],
+  COBRANZAS: ['CLIENTES', 'ADMINISTRACION', 'GARANTIAS'],
 };
 
 export const usePermisos = () => {
