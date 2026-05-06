@@ -76,6 +76,7 @@ import type {
 import { leadApi } from '../../api/services/leadApi';
 import { usuarioApi } from '../../api/services/usuarioApi';
 import { sucursalService } from '../../services/sucursalService';
+import { openWhatsAppWeb } from '../../utils/whatsapp';
 import type { Sucursal, Usuario } from '../../types';
 import type {
   RecordatorioConLeadDTO,
@@ -1095,10 +1096,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
 
   const getLeadTelefono = (rec: RecordatorioConLeadDTO) => rec.lead?.telefono ?? '-';
 
-  const openWhatsApp = (telefono: string) => {
-    const phone = telefono.replace(/\D/g, '');
-    window.open(`https://wa.me/${phone}`, '_blank');
-  };
+  const openWhatsApp = (telefono: string) => openWhatsAppWeb(telefono);
 
   // ── Render ──
   return (

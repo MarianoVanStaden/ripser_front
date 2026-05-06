@@ -52,6 +52,7 @@ import { EstadoQuickEdit } from '../../components/leads/EstadoQuickEdit';
 import { useTenant } from '../../context/TenantContext';
 import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
 import { useDebounce } from '../../hooks/useDebounce';
+import { openWhatsAppWeb } from '../../utils/whatsapp';
 
 const PAGE_SIZE = 100;
 const ROW_HEIGHT = 44;
@@ -740,10 +741,7 @@ export const LeadsTablePage = () => {
                               <IconButton
                                 size="small"
                                 sx={{ p: 0.5, color: '#25D366' }}
-                                onClick={() => {
-                                  const phone = lead.telefono.replace(/\D/g, '');
-                                  window.open(`https://wa.me/${phone}`, '_blank');
-                                }}
+                                onClick={() => openWhatsAppWeb(lead.telefono)}
                               >
                                 <WhatsAppIcon sx={{ fontSize: 18 }} />
                               </IconButton>
