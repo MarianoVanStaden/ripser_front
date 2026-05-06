@@ -41,6 +41,7 @@ import { useTenant } from '../../context/TenantContext';
 import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { RUBRO_LABELS } from '../../types/rubro.types';
 
 const ClientesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -320,6 +321,16 @@ const ClientesPage: React.FC = () => {
                   <Box display="flex" alignItems="center" gap={1} mb={1}>
                     <PhoneIcon fontSize="small" color="action" />
                     <Typography variant="body2">{cliente.telefono}</Typography>
+                  </Box>
+                )}
+
+                {cliente.rubro && (
+                  <Box mb={1}>
+                    <Chip
+                      label={RUBRO_LABELS[cliente.rubro] + (cliente.rubroDetalle ? ` · ${cliente.rubroDetalle}` : '')}
+                      size="small"
+                      variant="outlined"
+                    />
                   </Box>
                 )}
 

@@ -27,6 +27,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { leadApi } from '../../api/services/leadApi';
 import { EstadoLeadEnum, PROVINCIA_LABELS } from '../../types/lead.types';
+import { RUBRO_LABELS } from '../../types/rubro.types';
 import type { LeadDTO, InteraccionLeadDTO } from '../../types/lead.types';
 import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
@@ -156,6 +157,24 @@ export const LeadDetailPage = () => {
 
   // Mientras está cargando no mostramos "Lead no encontrado": el overlay basta.
   // Solo cuando termina la carga y no hay datos (o hay error) mostramos el mensaje.
+  // Filtra fechas absurdas (typos como año 5026) para no mostrar valores
+  // disparatados como "-1095663 días".
+  const isFechaRazonable = (fecha?: string | null): boolean => {
+    if (!fecha) return false;
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const currentYear = new Date().getFullYear();
+    return year >= 2000 && year <= currentYear + 1;
+  };
+
+  const formatearFecha = (fecha?: string | null): string => {
+    if (!fecha) return '-';
+    if (!isFechaRazonable(fecha)) return 'Fecha inválida';
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha)!;
+    return `${match[3]}/${match[2]}/${match[1]}`;
+  };
+
   if (loading && !lead) {
     return (
       <Box sx={{ p: 3 }}>
@@ -199,10 +218,10 @@ export const LeadDetailPage = () => {
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <LeadStatusBadge status={lead.estadoLead} size="medium" />
-              {lead.dias !== null && lead.dias !== undefined && (
-                <Chip 
-                  label={`${lead.dias} días desde primer contacto`} 
-                  size="small" 
+              {lead.dias !== null && lead.dias !== undefined && isFechaRazonable(lead.fechaPrimerContacto) && lead.dias >= 0 && (
+                <Chip
+                  label={`${lead.dias} días desde primer contacto`}
+                  size="small"
                   color="default"
                 />
               )}
@@ -273,6 +292,27 @@ export const LeadDetailPage = () => {
                 </Box>
               </Box>
 
+              {lead.telefonoAlternativo && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Teléfono alternativo
+                  </Typography>
+                  <Typography variant="body1">{lead.telefonoAlternativo}</Typography>
+                </Box>
+              )}
+
+              {lead.rubro && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Rubro
+                  </Typography>
+                  <Typography variant="body1">
+                    {RUBRO_LABELS[lead.rubro]}
+                    {lead.rubroDetalle ? ` — ${lead.rubroDetalle}` : ''}
+                  </Typography>
+                </Box>
+              )}
+
               {lead.provincia && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -294,7 +334,17 @@ export const LeadDetailPage = () => {
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Fecha Primer Contacto
                   </Typography>
-                  <Typography variant="body1">{lead.fechaPrimerContacto}</Typography>
+                  <Typography
+                    variant="body1"
+                    color={isFechaRazonable(lead.fechaPrimerContacto) ? 'text.primary' : 'error.main'}
+                  >
+                    {formatearFecha(lead.fechaPrimerContacto)}
+                    {!isFechaRazonable(lead.fechaPrimerContacto) && (
+                      <Typography variant="caption" color="error" sx={{ display: 'block' }}>
+                        Valor original: {lead.fechaPrimerContacto} — corregir editando el lead.
+                      </Typography>
+                    )}
+                  </Typography>
                 </Box>
               )}
             </CardContent>

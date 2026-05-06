@@ -24,6 +24,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import type { TipoCliente, EstadoCliente, ProvinciaEnum } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
+import { RUBRO_OPTIONS, type RubroEnum } from '../../types/rubro.types';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import LoadingOverlay from '../common/LoadingOverlay';
 
@@ -45,6 +46,9 @@ const ClienteFormPage: React.FC = () => {
     cuit: '',
     email: '',
     telefono: '',
+    telefonoAlternativo: '',
+    rubro: undefined as RubroEnum | undefined,
+    rubroDetalle: '',
     direccion: '',
     ciudad: '',
     provincia: undefined as ProvinciaEnum | undefined,
@@ -72,6 +76,9 @@ const ClienteFormPage: React.FC = () => {
         cuit: cliente.cuit || '',
         email: cliente.email || '',
         telefono: cliente.telefono || '',
+        telefonoAlternativo: cliente.telefonoAlternativo || '',
+        rubro: cliente.rubro,
+        rubroDetalle: cliente.rubroDetalle || '',
         direccion: cliente.direccion || '',
         ciudad: cliente.ciudad || '',
         provincia: cliente.provincia,
@@ -121,6 +128,10 @@ const ClienteFormPage: React.FC = () => {
       setError('El email es obligatorio');
       return;
     }
+    if (formData.rubro === 'OTRO' && !formData.rubroDetalle.trim()) {
+      setError('Especificá el rubro en "Detalle del rubro"');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -146,6 +157,9 @@ const ClienteFormPage: React.FC = () => {
           cuit: '',
           email: '',
           telefono: '',
+          telefonoAlternativo: '',
+          rubro: undefined as RubroEnum | undefined,
+          rubroDetalle: '',
           direccion: '',
           ciudad: '',
           provincia: undefined as ProvinciaEnum | undefined,
@@ -314,6 +328,48 @@ const ClienteFormPage: React.FC = () => {
                 value={formData.telefono}
                 onChange={handleFormChange}
                 name="telefono"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Teléfono alternativo"
+                placeholder="opcional"
+                value={formData.telefonoAlternativo}
+                onChange={handleFormChange}
+                name="telefonoAlternativo"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                select
+                size="small"
+                label="Rubro"
+                value={formData.rubro || ''}
+                onChange={handleFormChange}
+                name="rubro"
+              >
+                <MenuItem value="">
+                  <em>Sin especificar</em>
+                </MenuItem>
+                {RUBRO_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label={formData.rubro === 'OTRO' ? 'Detalle del rubro (especificar)' : 'Detalle del rubro'}
+                placeholder={formData.rubro === 'OTRO' ? 'ej: heladerías, carnicería' : 'opcional'}
+                value={formData.rubroDetalle}
+                onChange={handleFormChange}
+                name="rubroDetalle"
               />
             </Grid>
             <Grid item xs={12}>

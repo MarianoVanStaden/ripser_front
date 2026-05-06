@@ -45,6 +45,7 @@ import {
   PROVINCIA_LABELS
 } from '../../types/lead.types';
 import type { LeadDTO, ValidationErrors, RecordatorioLeadDTO, DuplicatePhoneError } from '../../types/lead.types';
+import { RUBRO_OPTIONS } from '../../types/rubro.types';
 import { DuplicatePhoneDialog } from '../../components/leads/DuplicatePhoneDialog';
 import { provinciaFromTelefono } from '../../utils/argentinaPhoneToProvincia';
 import type { Producto, RecetaFabricacionListDTO } from '../../types';
@@ -251,6 +252,26 @@ export const LeadFormPage = () => {
 
     if (!formData.estadoLead) {
       newErrors.estadoLead = 'El estado es obligatorio';
+    }
+
+    if (formData.rubro === 'OTRO' && (!formData.rubroDetalle || formData.rubroDetalle.trim() === '')) {
+      newErrors.rubroDetalle = 'Especificá el rubro';
+    }
+
+    // Validar fechaPrimerContacto: rango razonable (evita typos como año 5026).
+    if (formData.fechaPrimerContacto) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(formData.fechaPrimerContacto);
+      if (!match) {
+        newErrors.fechaPrimerContacto = 'Formato de fecha inválido';
+      } else {
+        const year = Number(match[1]);
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (year < 2000 || year > new Date().getFullYear()) {
+          newErrors.fechaPrimerContacto = 'Año fuera de rango (2000 – actual)';
+        } else if (formData.fechaPrimerContacto > todayStr) {
+          newErrors.fechaPrimerContacto = 'La fecha no puede ser futura';
+        }
+      }
     }
 
     setErrors(newErrors);
@@ -544,6 +565,50 @@ export const LeadFormPage = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
+                  label="Teléfono alternativo"
+                  placeholder="opcional"
+                  value={formData.telefonoAlternativo ?? ''}
+                  onChange={handleChange('telefonoAlternativo')}
+                  error={Boolean(errors.telefonoAlternativo)}
+                  helperText={errors.telefonoAlternativo}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Rubro</InputLabel>
+                  <Select
+                    value={formData.rubro || ''}
+                    onChange={handleChange('rubro')}
+                    label="Rubro"
+                  >
+                    <MenuItem value="">
+                      <em>Sin especificar</em>
+                    </MenuItem>
+                    {RUBRO_OPTIONS.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label={formData.rubro === 'OTRO' ? 'Detalle del rubro (especificar)' : 'Detalle del rubro'}
+                  placeholder={formData.rubro === 'OTRO' ? 'ej: heladerías, carnicería' : 'opcional'}
+                  value={formData.rubroDetalle ?? ''}
+                  onChange={handleChange('rubroDetalle')}
+                  error={Boolean(errors.rubroDetalle)}
+                  helperText={errors.rubroDetalle}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
                   type="email"
                   label="Email"
                   placeholder="opcional"
@@ -624,6 +689,12 @@ export const LeadFormPage = () => {
                   value={formData.fechaPrimerContacto}
                   onChange={handleChange('fechaPrimerContacto')}
                   InputLabelProps={{ shrink: true }}
+                  inputProps={{
+                    min: '2000-01-01',
+                    max: new Date().toISOString().split('T')[0],
+                  }}
+                  error={Boolean(errors.fechaPrimerContacto)}
+                  helperText={errors.fechaPrimerContacto}
                 />
               </Grid>
 

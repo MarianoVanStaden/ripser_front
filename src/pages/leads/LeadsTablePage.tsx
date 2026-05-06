@@ -21,7 +21,8 @@ import {
   TextField,
   InputAdornment,
   Skeleton,
-  CircularProgress
+  CircularProgress,
+  Snackbar
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -30,7 +31,8 @@ import {
   SwapHoriz as ConvertIcon,
   WhatsApp as WhatsAppIcon,
   Add as AddIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  DeleteSweep as DeleteSweepIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
@@ -44,6 +46,7 @@ import {
   PRIORIDAD_LABELS
 } from '../../types/lead.types';
 import type { LeadListItemDTO, RecordatorioLeadDTO } from '../../types/lead.types';
+import { RUBRO_LABELS } from '../../types/rubro.types';
 import type { PageResponse } from '../../types/pagination.types';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { RecordatorioStatusBadge } from '../../components/leads/RecordatorioStatusBadge';
@@ -180,6 +183,8 @@ export const LeadsTablePage = () => {
 
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('dias');
+  const [undoSnack, setUndoSnack] = useState<{ id: number; nombre: string } | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const [selectedEstados, setSelectedEstados] = useState<EstadoLeadEnum[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadLeadEnum[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -317,13 +322,31 @@ export const LeadsTablePage = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Está seguro de eliminar este lead?')) return;
+    const lead = leads.find((l) => l.id === id);
+    const nombre = lead?.nombre ?? 'Lead';
+    if (!window.confirm(`¿Está seguro de eliminar a "${nombre}"? Podrá restaurarlo desde la papelera.`)) return;
     try {
       await leadApi.delete(id);
       invalidateLeads();
+      setUndoSnack({ id, nombre });
     } catch (err) {
       console.error('Error al eliminar lead:', err);
       alert('Error al eliminar el lead');
+    }
+  };
+
+  const handleUndoDelete = async () => {
+    if (!undoSnack || restoring) return;
+    setRestoring(true);
+    try {
+      await leadApi.restore(undoSnack.id);
+      invalidateLeads();
+      setUndoSnack(null);
+    } catch (err) {
+      console.error('Error al restaurar lead:', err);
+      alert('No se pudo restaurar el lead');
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -355,15 +378,28 @@ export const LeadsTablePage = () => {
     lead.estadoLead !== EstadoLeadEnum.DESCARTADO &&
     !lead.clienteOrigenId;
 
+  // Considera fechas razonables solo entre 2000 y año actual + 1 (margen).
+  // Una fecha como 5026-03-03 (typo de carga) genera resultados absurdos
+  // (-1095663 días) — descartarla y mostrar "-" en su lugar.
+  const isFechaRazonable = (fecha?: string): boolean => {
+    if (!fecha) return false;
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const currentYear = new Date().getFullYear();
+    return year >= 2000 && year <= currentYear + 1;
+  };
+
   const calcularDias = (fechaPrimerContacto?: string): number => {
-    if (!fechaPrimerContacto) return 0;
+    if (!isFechaRazonable(fechaPrimerContacto)) return 0;
     const hoy = new Date();
-    const fechaContacto = new Date(fechaPrimerContacto);
+    const fechaContacto = new Date(fechaPrimerContacto!);
     return Math.floor((hoy.getTime() - fechaContacto.getTime()) / (1000 * 60 * 60 * 24));
   };
 
   const formatearFecha = (fecha?: string): string => {
     if (!fecha) return '-';
+    if (!isFechaRazonable(fecha)) return 'Fecha inválida';
     const date = new Date(fecha);
     const dia = String(date.getDate()).padStart(2, '0');
     const mes = String(date.getMonth() + 1).padStart(2, '0');
@@ -405,6 +441,15 @@ export const LeadsTablePage = () => {
           <Typography variant="body2" color="text.secondary">
             Total: {totalElements} leads
           </Typography>
+          <Tooltip title="Ver papelera">
+            <Button
+              variant="outlined"
+              startIcon={<DeleteSweepIcon />}
+              onClick={() => navigate('/leads/papelera')}
+            >
+              Papelera
+            </Button>
+          </Tooltip>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/leads/nuevo')}>
             Nuevo Lead
           </Button>
@@ -673,7 +718,14 @@ export const LeadsTablePage = () => {
                         '&:hover': { bgcolor: 'action.hover' }
                       }}
                     >
-                      <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>{lead.nombre}</TableCell>
+                      <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>
+                        {lead.nombre}
+                        {lead.rubro && (
+                          <Typography component="span" variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.1 }}>
+                            {RUBRO_LABELS[lead.rubro]}
+                          </Typography>
+                        )}
+                      </TableCell>
                       <TableCell sx={{ py: 0.75, fontSize: '0.875rem' }}>{lead.telefono}</TableCell>
                       <TableCell sx={{ py: 0.75, fontSize: '0.875rem', display: { xs: 'none', lg: 'table-cell' } }}>
                         {lead.provincia ? PROVINCIA_LABELS[lead.provincia] : '-'}
@@ -816,6 +868,24 @@ export const LeadsTablePage = () => {
         onClose={closeModal}
         customMessage="Para gestionar leads correctamente, necesitas seleccionar una empresa.
           Esto asegura que los leads se registren y filtren según el contexto de la empresa seleccionada."
+      />
+
+      <Snackbar
+        open={Boolean(undoSnack)}
+        autoHideDuration={6000}
+        onClose={(_, reason) => { if (reason !== 'clickaway') setUndoSnack(null); }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        message={undoSnack ? `Lead "${undoSnack.nombre}" enviado a papelera` : ''}
+        action={
+          <Button
+            color="inherit"
+            size="small"
+            onClick={handleUndoDelete}
+            disabled={restoring}
+          >
+            {restoring ? 'Restaurando…' : 'Deshacer'}
+          </Button>
+        }
       />
     </Box>
   );

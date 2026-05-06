@@ -82,6 +82,7 @@ const LeadsTablePage = lazyNamed(() => import('./pages/leads/LeadsTablePage'), '
 const LeadFormPage = lazyNamed(() => import('./pages/leads/LeadFormPage'), 'LeadFormPage');
 const LeadDetailPage = lazyNamed(() => import('./pages/leads/LeadDetailPage'), 'LeadDetailPage');
 const ConvertLeadPage = lazyNamed(() => import('./pages/leads/ConvertLeadPage'), 'ConvertLeadPage');
+const LeadsPapeleraPage = lazy(() => import('./pages/leads/LeadsPapeleraPage'));
 const LeadMetricasPage = lazy(() => import('./pages/leads/LeadMetricasPage'));
 const GestionGlobalRecordatoriosPage = lazy(() => import('./pages/leads/GestionGlobalRecordatoriosPage'));
 
@@ -288,6 +289,7 @@ function App() {
                   <Route path="leads" element={priv(<LeadsTablePage />)} />
                   <Route path="leads/metricas" element={priv(<LeadMetricasPage />)} />
                   <Route path="leads/recordatorios" element={priv(<GestionGlobalRecordatoriosPage />)} />
+                  <Route path="leads/papelera" element={priv(<LeadsPapeleraPage />)} />
                   <Route path="leads/nuevo" element={priv(<LeadFormPage />)} />
                   <Route path="leads/:id" element={priv(<LeadDetailPage />)} />
                   <Route path="leads/:id/editar" element={priv(<LeadFormPage />)} />

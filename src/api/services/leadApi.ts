@@ -148,9 +148,26 @@ export const leadApi = {
     return response.data;
   },
 
-  // Eliminar lead
+  // Eliminar lead (soft delete: el backend hace UPDATE deleted_at = NOW()).
+  // Idempotente desde el punto de vista del front: si el lead ya estaba en
+  // papelera, devuelve 404 y el caller lo trata como ya borrado.
   delete: async (id: number): Promise<void> => {
     await api.delete(`${BASE_PATH}/${id}`);
+  },
+
+  // Restaurar un lead que está en papelera. Devuelve el lead vigente.
+  restore: async (id: number): Promise<LeadDTO> => {
+    const response = await api.post<LeadDTO>(`${BASE_PATH}/${id}/restore`);
+    return response.data;
+  },
+
+  // Listar leads en papelera (paginated). Usa LeadDTO completo — la papelera
+  // no es hot path y necesitamos más campos para el modal de revisión.
+  getDeleted: async (page = 0, size = 20): Promise<PageResponse<LeadDTO>> => {
+    const response = await api.get<PageResponse<LeadDTO>>(`${BASE_PATH}/papelera`, {
+      params: { page, size },
+    });
+    return response.data;
   },
 
   // Convertir lead a cliente

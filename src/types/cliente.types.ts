@@ -1,4 +1,5 @@
 import type { ProvinciaEnum } from './shared.enums';
+import type { RubroEnum } from './rubro.types';
 import type { ProductoSimple } from './producto.types';
 import type { MetodoPago, Venta } from './venta.types';
 import type { OpcionFinanciamientoDTO, DocumentoComercial } from './documentoComercial.types';
@@ -15,6 +16,8 @@ export interface Cliente {
   email?: string;
   telefono?: string;
   telefonoAlternativo?: string;
+  rubro?: RubroEnum;
+  rubroDetalle?: string;
   whatsapp?: string;
   direccion?: string;
   ciudad?: string;
@@ -109,6 +112,9 @@ export interface CreateClienteRequest {
   cuit?: string;
   email?: string;
   telefono?: string;
+  telefonoAlternativo?: string;
+  rubro?: RubroEnum;
+  rubroDetalle?: string;
   direccion?: string;
   ciudad?: string;
   provincia?: ProvinciaEnum;

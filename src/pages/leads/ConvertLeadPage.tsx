@@ -23,6 +23,7 @@ import { leadApi } from '../../api/services/leadApi';
 import { productApi } from '../../api/services';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import { PROVINCIA_LABELS } from '../../types/lead.types';
+import { RUBRO_LABELS } from '../../types/rubro.types';
 import type { Producto } from '../../types';
 import type {
   LeadDTO,
@@ -369,6 +370,27 @@ export const ConvertLeadPage = () => {
                 </Typography>
                 <Typography variant="body1">{lead.telefono}</Typography>
               </Box>
+
+              {lead.telefonoAlternativo && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Teléfono alternativo:
+                  </Typography>
+                  <Typography variant="body1">{lead.telefonoAlternativo}</Typography>
+                </Box>
+              )}
+
+              {lead.rubro && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Rubro:
+                  </Typography>
+                  <Typography variant="body1">
+                    {RUBRO_LABELS[lead.rubro]}
+                    {lead.rubroDetalle ? ` — ${lead.rubroDetalle}` : ''}
+                  </Typography>
+                </Box>
+              )}
 
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">

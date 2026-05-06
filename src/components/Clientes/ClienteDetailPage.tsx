@@ -35,6 +35,7 @@ import { leadApi } from '../../api/services/leadApi';
 import type { LeadDTO } from '../../types/lead.types';
 import { ESTADO_LABELS, CANAL_LABELS } from '../../types/lead.types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
+import { RUBRO_LABELS } from '../../types/rubro.types';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import { ContactosTab, CuentaCorrienteTab } from './index';
@@ -269,6 +270,18 @@ const ClienteDetailPage: React.FC = () => {
                   <Typography>{cliente.telefono}</Typography>
                 </Box>
               )}
+              {cliente.telefonoAlternativo && (
+                <Box display="flex" alignItems="center" gap={1}>
+                  <PhoneIcon fontSize="small" color="action" />
+                  <Typography>{cliente.telefonoAlternativo} <em>(alternativo)</em></Typography>
+                </Box>
+              )}
+              {cliente.rubro && (
+                <Typography>
+                  <strong>Rubro:</strong> {RUBRO_LABELS[cliente.rubro]}
+                  {cliente.rubroDetalle ? ` — ${cliente.rubroDetalle}` : ''}
+                </Typography>
+              )}
               {cliente.direccion && (
                 <Box display="flex" alignItems="center" gap={1}>
                   <LocationIcon fontSize="small" color="action" />
@@ -362,6 +375,15 @@ const ClienteDetailPage: React.FC = () => {
                 <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Email:</strong> {cliente.email || 'No especificado'}</Typography>
                   <Typography><strong>Teléfono:</strong> {cliente.telefono || 'No especificado'}</Typography>
+                  {cliente.telefonoAlternativo && (
+                    <Typography><strong>Teléfono alternativo:</strong> {cliente.telefonoAlternativo}</Typography>
+                  )}
+                  {cliente.rubro && (
+                    <Typography>
+                      <strong>Rubro:</strong> {RUBRO_LABELS[cliente.rubro]}
+                      {cliente.rubroDetalle ? ` — ${cliente.rubroDetalle}` : ''}
+                    </Typography>
+                  )}
                 </Box>
                 <Box flex="1" minWidth={{ xs: '100%', sm: 250 }}>
                   <Typography><strong>Dirección:</strong> {cliente.direccion || 'No especificada'}</Typography>

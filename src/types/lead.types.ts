@@ -1,5 +1,6 @@
 // Import shared enums
 import type { ProvinciaEnum } from './shared.enums';
+import type { RubroEnum } from './rubro.types';
 export { ProvinciaEnum, PROVINCIA_LABELS } from './shared.enums';
 
 // Enums as const objects (compatible with erasableSyntaxOnly)
@@ -56,6 +57,7 @@ export interface LeadListItemDTO {
   nombre: string;
   apellido?: string;
   telefono: string;
+  rubro?: RubroEnum;
   provincia?: ProvinciaEnum;
   canal: CanalEnum;
   estadoLead: EstadoLeadEnum;
@@ -83,6 +85,8 @@ export interface LeadDTO {
   apellido?: string;
   telefono: string;
   telefonoAlternativo?: string;
+  rubro?: RubroEnum;
+  rubroDetalle?: string;
   email?: string;
   provincia?: ProvinciaEnum;
   ciudad?: string;
@@ -134,6 +138,8 @@ export interface LeadDTO {
   fechaActualizacion?: string;
   dias?: number; // calculado automáticamente
   recordatorios?: RecordatorioLeadDTO[];
+  /** Marca de soft delete. null = vigente; ISO timestamp = en papelera. */
+  deletedAt?: string;
 }
 
 export interface ConversionLeadRequest {
