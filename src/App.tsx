@@ -42,6 +42,7 @@ const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
 const RolesPage = lazy(() => import('./components/Admin/RolesPage'));
 const ColoresPage = lazy(() => import('./components/Admin/ColoresPage'));
 const MedidasPage = lazy(() => import('./components/Admin/MedidasPage'));
+const EspecificacionesTecnicasPage = lazy(() => import('./components/Admin/EspecificacionesTecnicasPage'));
 const SettingsPage = lazy(() => import('./components/Admin/SettingsPage'));
 const FlujoCajaPage = lazy(() => import('./components/Admin/FlujoCaja/FlujoCajaPage'));
 const EmpresasPage = lazyNamed(() => import('./components/Admin/EmpresasPage'), 'EmpresasPage');
@@ -160,6 +161,7 @@ const RecetaForm = lazy(() => import('./components/Fabricacion/RecetaForm'));
 const EquiposList = lazy(() => import('./components/Fabricacion/EquiposList'));
 const EquipoDetail = lazy(() => import('./components/Fabricacion/EquipoDetail'));
 const EquipoForm = lazy(() => import('./components/Fabricacion/EquipoForm'));
+const FichaEquipoPage = lazy(() => import('./components/Fabricacion/FichaEquipoPage'));
 const DashboardFabricacion = lazy(() => import('./components/Fabricacion/DashboardFabricacion'));
 const ReportesEstadosPage = lazy(() => import('./components/Fabricacion/ReportesEstadosPage'));
 const StockPlanificacionPage = lazyNamed(() => import('./components/Fabricacion/StockPlanificacion'), 'StockPlanificacionPage');
@@ -230,6 +232,7 @@ function App() {
                   <Route path="admin/roles" element={priv(<RolesPage />)} />
                   <Route path="admin/colores" element={priv(<ColoresPage />)} />
                   <Route path="admin/medidas" element={priv(<MedidasPage />)} />
+                  <Route path="admin/especificaciones-tecnicas" element={priv(<EspecificacionesTecnicasPage />)} />
                   <Route path="admin/settings" element={priv(<SettingsPage />)} />
                   <Route path="admin/flujo-caja" element={priv(<FlujoCajaPage />)} />
                   <Route path="admin/bancos" element={priv(<BancosPage />)} />
@@ -366,6 +369,8 @@ function App() {
                   <Route path="fabricacion/equipos/:id" element={priv(<EquipoDetail />)} />
                   <Route path="fabricacion/equipos/nuevo" element={priv(<EquipoForm />)} />
                   <Route path="fabricacion/equipos/editar/:id" element={priv(<EquipoForm />)} />
+                  <Route path="fabricacion/equipos/:numeroHeladera/ficha" element={priv(<FichaEquipoPage />)} />
+                  <Route path="fabricacion/ficha-equipo" element={priv(<FichaEquipoPage />)} />
                   <Route path="fabricacion/reportes-estados" element={priv(<ReportesEstadosPage />)} />
                   <Route path="fabricacion/stock-planificacion" element={priv(<StockPlanificacionPage />)} />
                 </Route>

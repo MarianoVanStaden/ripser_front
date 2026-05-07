@@ -9,7 +9,7 @@ import {
   TimelineContent, TimelineDot, TimelineOppositeContent,
 } from '@mui/lab';
 import {
-  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History, PlayArrow,
+  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History, PlayArrow, QrCode2,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -380,6 +380,14 @@ const loadClientes = async () => {
             }}
           >
             Cambiar Estado
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<QrCode2 />}
+            onClick={() => navigate(`/fabricacion/equipos/${equipo.numeroHeladera}/ficha`)}
+          >
+            Ficha + QR
           </Button>
           <Button
             variant="contained"
