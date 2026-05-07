@@ -104,7 +104,7 @@ export const PrestamoDetailPage: React.FC = () => {
 
   // Permisos
   const { tieneRol, esAdmin } = usePermisos();
-  const puedeEditarFechas = esAdmin || tieneRol('ADMIN_EMPRESA', 'GERENTE_SUCURSAL');
+  const puedeEditarFechas = esAdmin || tieneRol('ADMIN_EMPRESA', 'GERENTE_SUCURSAL', 'COBRANZAS');
 
   // Cascade highlight (Task 2)
   const [highlightedCuotaIds, setHighlightedCuotaIds] = useState<Set<number>>(new Set());
