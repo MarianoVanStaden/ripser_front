@@ -282,6 +282,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/clientes/gestion',
     '/clientes/carpeta',
     '/clientes/cuenta-corriente',
+    '/prestamos/resumen',
+    '/prestamos/lista',
     '/cobranzas/resumen',
     '/cobranzas/lista',
     '/garantias/registro',
