@@ -11,7 +11,8 @@ import {
   CircularProgress,
   Divider,
   Chip,
-  Autocomplete
+  Autocomplete,
+  MenuItem
 } from '@mui/material';
 import {
   SwapHoriz as ConvertIcon,
@@ -23,7 +24,8 @@ import { leadApi } from '../../api/services/leadApi';
 import { productApi } from '../../api/services';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import { PROVINCIA_LABELS } from '../../types/lead.types';
-import { RUBRO_LABELS } from '../../types/rubro.types';
+import { RUBRO_LABELS, RUBRO_OPTIONS } from '../../types/rubro.types';
+import type { RubroEnum } from '../../types/rubro.types';
 import type { Producto } from '../../types';
 import type {
   LeadDTO,
@@ -56,7 +58,10 @@ export const ConvertLeadPage = () => {
     montoConversion: undefined,
     emailCliente: '',
     direccionCliente: '',
-    ciudadCliente: ''
+    ciudadCliente: '',
+    telefonoAlternativoCliente: '',
+    rubroCliente: undefined,
+    rubroDetalleCliente: ''
   });
 
   useEffect(() => {
@@ -71,7 +76,7 @@ export const ConvertLeadPage = () => {
       const [leadData, productosData, recetasData] = await Promise.all([
         leadApi.getById(leadId),
         productApi.getAll({ page: 0, size: 10000 }).then(r => r.content).catch(() => []),
-        recetaFabricacionApi.findAllActive().catch(() => [])
+        recetaFabricacionApi.findDisponiblesParaVenta().catch(() => [])
       ]);
       
       if (leadData.estadoLead === 'CONVERTIDO' || leadData.clienteOrigenId) {
@@ -87,6 +92,16 @@ export const ConvertLeadPage = () => {
       setLead(leadData);
       setProductos(productosData);
       setRecetas(recetasData);
+
+      // Prefill datos del cliente con valores del lead (editables en el form)
+      setConversionData((prev) => ({
+        ...prev,
+        emailCliente: leadData.email || '',
+        ciudadCliente: leadData.ciudad || '',
+        telefonoAlternativoCliente: leadData.telefonoAlternativo || '',
+        rubroCliente: leadData.rubro,
+        rubroDetalleCliente: leadData.rubroDetalle || ''
+      }));
 
       // Pre-seleccionar producto/receta si está disponible
       if (leadData.recetaInteresId || leadData.equipoFabricadoInteresId) {
@@ -214,11 +229,15 @@ export const ConvertLeadPage = () => {
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any
   ) => {
     const value = event.target.value;
+    let nextValue: any = value;
+    if (field === 'productoCompradoId' || field === 'montoConversion') {
+      nextValue = value === '' ? undefined : Number(value);
+    } else if (field === 'rubroCliente') {
+      nextValue = value === '' ? undefined : (value as RubroEnum);
+    }
     setConversionData({
       ...conversionData,
-      [field]: field === 'productoCompradoId' || field === 'montoConversion' 
-        ? (value === '' ? undefined : Number(value))
-        : value
+      [field]: nextValue
     });
 
     // Limpiar error del campo
@@ -488,7 +507,7 @@ export const ConvertLeadPage = () => {
 
               <form onSubmit={handleSubmit}>
                 <Grid container spacing={3}>
-                  <Grid item xs={12}>
+                  <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
                       type="email"
@@ -497,6 +516,16 @@ export const ConvertLeadPage = () => {
                       onChange={handleChange('emailCliente')}
                       error={Boolean(errors.emailCliente)}
                       helperText={errors.emailCliente || 'Email para el nuevo cliente'}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Teléfono alternativo"
+                      value={conversionData.telefonoAlternativoCliente || ''}
+                      onChange={handleChange('telefonoAlternativoCliente')}
+                      helperText="Segundo teléfono de contacto (opcional)"
                     />
                   </Grid>
 
@@ -519,6 +548,38 @@ export const ConvertLeadPage = () => {
                       helperText="Ciudad del cliente"
                     />
                   </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Rubro"
+                      value={conversionData.rubroCliente || ''}
+                      onChange={handleChange('rubroCliente')}
+                      helperText="Rubro del cliente"
+                    >
+                      <MenuItem value="">
+                        <em>Sin especificar</em>
+                      </MenuItem>
+                      {RUBRO_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+
+                  {conversionData.rubroCliente === 'OTRO' && (
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Detalle del rubro"
+                        value={conversionData.rubroDetalleCliente || ''}
+                        onChange={handleChange('rubroDetalleCliente')}
+                        helperText="Especificar el rubro"
+                      />
+                    </Grid>
+                  )}
 
                   <Grid item xs={12}>
                     <Autocomplete

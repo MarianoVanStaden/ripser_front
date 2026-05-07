@@ -152,6 +152,9 @@ export interface ConversionLeadRequest {
   emailCliente?: string;
   direccionCliente?: string;
   ciudadCliente?: string;
+  telefonoAlternativoCliente?: string;
+  rubroCliente?: RubroEnum;
+  rubroDetalleCliente?: string;
 }
 
 export interface ConversionLeadResponse {

@@ -9,7 +9,7 @@ import {
 import {
   Visibility, Add, Search, Phone,
   PhoneInTalk, Alarm, CheckCircleOutline, Clear,
-  Lock, FlagOutlined,
+  Lock, FlagOutlined, WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -31,6 +31,7 @@ import {
 } from '../../../types/cobranza.types';
 import type { GestionCobranzaDTO } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
+import { openWhatsAppWeb } from '../../../utils/whatsapp';
 import { usePagination } from '../../../hooks/usePagination';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useUrlFilters } from '../../../hooks/useUrlFilters';
@@ -672,11 +673,20 @@ export const CobranzasListPage: React.FC = () => {
                           {g.clienteNombre} {g.clienteApellido}
                         </Typography>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {g.clienteTelefono ? (
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Phone sx={{ fontSize: 14, color: 'text.secondary' }} />
                             <Typography variant="body2">{g.clienteTelefono}</Typography>
+                            <Tooltip title="WhatsApp">
+                              <IconButton
+                                size="small"
+                                sx={{ color: '#25D366', p: 0.25 }}
+                                onClick={() => openWhatsAppWeb(g.clienteTelefono)}
+                              >
+                                <WhatsAppIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </Box>
                         ) : (
                           <Typography variant="body2" color="text.disabled">-</Typography>
