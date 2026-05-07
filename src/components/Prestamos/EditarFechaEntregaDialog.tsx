@@ -73,7 +73,7 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
       await prestamoPersonalApi.actualizarFechaEntrega(prestamo.id, {
         nuevaFecha: nuevaFecha.format('YYYY-MM-DD'),
         motivo: motivo.trim(),
-        aplicarDesplazamientoCuotas: aplicarShift && puedeShift,
+        aplicarDesplazamientoCuotas: aplicarShift,
         version: prestamo.version ?? 0,
       });
       onSaved('Fecha de entrega actualizada correctamente.');
