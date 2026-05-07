@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ArrowBack, Print, Search } from '@mui/icons-material';
+import { ArrowBack, Download, Print, Search } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -25,16 +25,57 @@ import {
 import LoadingOverlay from '../common/LoadingOverlay';
 
 /**
- * Build the URL the QR encodes. Resolution order:
- *  1. VITE_QR_BASE_URL env var (production override — points QR at the prod
- *     host even if the page is being printed from localhost).
- *  2. window.location.origin (sane default for dev).
+ * Genera el payload JSON que se embebe en el QR. Incluye toda la ficha
+ * (datos del equipo + specs del modelo) para que un técnico pueda
+ * consultarlo escaneando con cualquier lector estándar, sin necesidad
+ * de internet ni acceso al sistema. Se omiten campos null/vacíos para
+ * minimizar densidad del QR.
+ *
+ * Se prefieren claves cortas (n, mod, fab, ...) sobre las completas:
+ * un payload de ~400-600 bytes entra holgado en QR Versión ~14-17 con
+ * corrección M y módulos legibles desde 30 cm con cámara de celular.
  */
-const buildQrUrl = (numeroHeladera: string): string => {
-  const envBase = (import.meta.env.VITE_QR_BASE_URL as string | undefined)?.trim();
-  const base = envBase && envBase !== '' ? envBase : window.location.origin;
-  const cleaned = base.replace(/\/$/, '');
-  return `${cleaned}/fabricacion/equipos/${numeroHeladera}`;
+const buildQrPayload = (
+  data: FichaTecnicaEquipoDTO,
+  fabricacion: Dayjs | null,
+  entrega: Dayjs | null,
+): string => {
+  const equipo = data.equipo;
+  const spec = data.especificacion;
+
+  const payload: Record<string, unknown> = {
+    n: equipo.numeroHeladera,
+    tipo: equipo.tipo,
+    modelo: equipo.modelo,
+  };
+  if (equipo.medida?.nombre) payload.medida = equipo.medida.nombre;
+  if (equipo.color?.nombre) payload.color = equipo.color.nombre;
+  if (equipo.clienteNombre) payload.cliente = equipo.clienteNombre;
+  if (fabricacion) payload.fab = fabricacion.format('YYYY-MM-DD');
+  if (entrega) payload.ent = entrega.format('YYYY-MM-DD');
+
+  if (spec) {
+    if (spec.motor) payload.motor = spec.motor;
+    if (spec.gas) payload.gas = spec.gas;
+    if (spec.humedad) payload.humedad = spec.humedad;
+    if (spec.sistema) payload.sistema = spec.sistema;
+    if (spec.estructura) payload.estructura = spec.estructura;
+    if (spec.gabinete) payload.gabinete = spec.gabinete;
+    if (spec.iluminacion) payload.iluminacion = spec.iluminacion;
+    if (spec.transformador) payload.transformador = spec.transformador;
+    if (spec.leds) payload.leds = spec.leds;
+    if (spec.vidrios) payload.vidrios = spec.vidrios;
+    if (spec.paneles) payload.paneles = spec.paneles;
+    if (spec.puertas) payload.puertas = spec.puertas;
+    if (spec.revestimiento) payload.revestimiento = spec.revestimiento;
+    if (spec.estanteriasCantidad != null) payload.estanterias = spec.estanteriasCantidad;
+    if (spec.estanteriasFormato) payload.formato = spec.estanteriasFormato;
+    if (spec.alto != null) payload.alto = spec.alto;
+    if (spec.profundidad != null) payload.profundidad = spec.profundidad;
+    if (spec.ancho != null) payload.ancho = spec.ancho;
+  }
+
+  return JSON.stringify(payload);
 };
 
 interface PreviewRowProps {
@@ -51,25 +92,6 @@ const PreviewRow: React.FC<PreviewRowProps> = ({ label, value }) => (
   </Box>
 );
 
-/**
- * Renderiza una fila compacta del sticker (label : value) en 2 mm de alto
- * aprox., diseñada para entrar en 60×80mm con el QR ocupando ~32mm.
- */
-const StickerRow: React.FC<PreviewRowProps> = ({ label, value }) => (
-  <Box
-    sx={{
-      display: 'flex',
-      fontSize: '6.5pt',
-      lineHeight: 1.15,
-      borderBottom: '0.3mm solid #000',
-    }}
-  >
-    <Box sx={{ width: '14mm', fontWeight: 700, pr: '0.5mm' }}>{label}</Box>
-    <Box sx={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-      {value ?? ''}
-    </Box>
-  </Box>
-);
 
 /**
  * Ficha técnica + QR imprimible para un equipo fabricado. Carga el equipo
@@ -130,9 +152,9 @@ const FichaEquipoPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramNumero]);
 
-  const qrUrl = useMemo(
-    () => (data ? buildQrUrl(data.equipo.numeroHeladera) : ''),
-    [data],
+  const qrPayload = useMemo(
+    () => (data ? buildQrPayload(data, fechaFabricacion, fechaEntrega) : ''),
+    [data, fechaFabricacion, fechaEntrega],
   );
 
   const handleSearch = (e: React.FormEvent) => {
@@ -145,6 +167,53 @@ const FichaEquipoPage: React.FC = () => {
   };
 
   const handlePrint = () => window.print();
+
+  /**
+   * Renderiza el sticker (QR + código) a un canvas en alta resolución
+   * (300dpi para 60×80mm) y dispara la descarga como PNG. No depende del
+   * DOM rendereado, así que sale el mismo bitmap independiente del zoom
+   * del navegador.
+   */
+  const handleDownload = () => {
+    if (!data) return;
+    const qrCanvas = document.querySelector<HTMLCanvasElement>(
+      '#sticker-print canvas',
+    );
+    if (!qrCanvas) return;
+
+    const DPI = 300;
+    const mmToPx = (mm: number) => Math.round((mm * DPI) / 25.4);
+    const W = mmToPx(60);
+    const H = mmToPx(80);
+
+    const out = document.createElement('canvas');
+    out.width = W;
+    out.height = H;
+    const ctx = out.getContext('2d');
+    if (!ctx) return;
+
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+
+    const qrSize = mmToPx(56);
+    const qrX = (W - qrSize) / 2;
+    const qrY = mmToPx(2);
+    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${mmToPx(7)}px monospace`;
+    ctx.fillText(data.equipo.numeroHeladera, W / 2, mmToPx(70));
+
+    const url = out.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${data.equipo.numeroHeladera}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -224,6 +293,14 @@ const FichaEquipoPage: React.FC = () => {
                 />
                 <Box sx={{ flexGrow: 1 }} />
                 <Button
+                  variant="outlined"
+                  startIcon={<Download />}
+                  onClick={handleDownload}
+                  disabled={!data}
+                >
+                  Descargar PNG
+                </Button>
+                <Button
                   variant="contained"
                   color="primary"
                   startIcon={<Print />}
@@ -234,7 +311,7 @@ const FichaEquipoPage: React.FC = () => {
                 </Button>
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Las fechas se usan únicamente para la impresión. No modifican el equipo.
+                Las fechas se incluyen en el QR (junto al resto de la ficha). No modifican el equipo.
               </Typography>
             </Paper>
           )}
@@ -292,7 +369,7 @@ const FichaEquipoPage: React.FC = () => {
                     alignItems: 'center',
                   }}
                 >
-                  <QRCodeCanvas value={qrUrl} size={160} level="M" includeMargin={false} />
+                  <QRCodeCanvas value={qrPayload} size={160} level="M" includeMargin={false} />
                   <Typography variant="caption" sx={{ mt: 1, fontFamily: 'monospace' }}>
                     {data.equipo.numeroHeladera}
                   </Typography>
@@ -346,65 +423,43 @@ const FichaEquipoPage: React.FC = () => {
             sx={{
               width: '60mm',
               height: '80mm',
-              border: '0.3mm solid #000',
-              p: '1.5mm',
               boxSizing: 'border-box',
               fontFamily: 'Arial, sans-serif',
               color: '#000',
               backgroundColor: '#fff',
               display: 'flex',
               flexDirection: 'column',
-              gap: '1mm',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              p: '2mm',
               mx: 'auto',
               my: 2,
             }}
           >
-            <Box sx={{ textAlign: 'center', borderBottom: '0.3mm solid #000', pb: '0.5mm' }}>
-              <Typography sx={{ fontSize: '9pt', fontWeight: 800, lineHeight: 1.1 }}>
-                {data.equipo.tipo} {data.equipo.modelo}
-              </Typography>
-              <Typography sx={{ fontSize: '7pt', fontFamily: 'monospace', lineHeight: 1.1 }}>
-                {data.equipo.numeroHeladera}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', gap: '1.5mm', alignItems: 'flex-start' }}>
-              <Box sx={{ flexShrink: 0 }}>
-                <QRCodeCanvas value={qrUrl} size={110} level="M" includeMargin={false} />
-              </Box>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <StickerRow label="Cliente" value={data.equipo.clienteNombre ?? ''} />
-                <StickerRow label="Medida" value={data.equipo.medida?.nombre ?? ''} />
-                <StickerRow label="Color" value={data.equipo.color?.nombre ?? ''} />
-                {data.especificacion?.motor && (
-                  <StickerRow label="Motor" value={data.especificacion.motor} />
-                )}
-                {data.especificacion?.gas && (
-                  <StickerRow label="Gas" value={data.especificacion.gas} />
-                )}
-                {data.especificacion?.sistema && (
-                  <StickerRow label="Sistema" value={data.especificacion.sistema} />
-                )}
-                <StickerRow
-                  label="Fab."
-                  value={fechaFabricacion ? fechaFabricacion.format('D/M/YY') : ''}
-                />
-                <StickerRow
-                  label="Entr."
-                  value={fechaEntrega ? fechaEntrega.format('D/M/YY') : ''}
-                />
-              </Box>
-            </Box>
-
+            {/*
+              Canvas a 600px (≈300dpi para 56mm) → escalado vía CSS.
+              `level="M"` para resistir doblado/manchas mínimas; el JSON
+              completo entra cómodo en QR versión ~14-17.
+            */}
+            <QRCodeCanvas
+              value={qrPayload}
+              size={600}
+              level="M"
+              includeMargin={false}
+              style={{ width: '56mm', height: '56mm' }}
+            />
             <Typography
               sx={{
-                fontSize: '5.5pt',
+                fontFamily: 'monospace',
+                fontWeight: 800,
+                fontSize: '14pt',
+                lineHeight: 1.1,
+                mt: '3mm',
                 textAlign: 'center',
-                mt: 'auto',
-                color: '#444',
+                letterSpacing: '0.5px',
               }}
             >
-              Escanear para historial / garantía
+              {data.equipo.numeroHeladera}
             </Typography>
           </Box>
         )}
