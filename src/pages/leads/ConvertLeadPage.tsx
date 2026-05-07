@@ -249,10 +249,18 @@ export const ConvertLeadPage = () => {
   };
 
   if (!lead) {
+    // Mientras carga, sólo mostrar el overlay — el Alert "Lead no encontrado"
+    // sólo aparece cuando ya terminó la carga sin lead (404 real o error).
+    if (loading) {
+      return (
+        <Box sx={{ p: 3, minHeight: '60vh' }}>
+          <LoadingOverlay open message="Cargando lead..." />
+        </Box>
+      );
+    }
     return (
       <Box sx={{ p: 3 }}>
-        <LoadingOverlay open={loading} message="Cargando lead..." />
-        <Alert severity="error">Lead no encontrado</Alert>
+        <Alert severity="error">{error ?? 'Lead no encontrado'}</Alert>
       </Box>
     );
   }

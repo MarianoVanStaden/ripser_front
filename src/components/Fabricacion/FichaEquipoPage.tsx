@@ -109,7 +109,12 @@ const FichaEquipoPage: React.FC = () => {
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
-        setError(`No se encontró ningún equipo con número ${numero}.`);
+        setError(
+          `No se encontró ningún equipo con número "${numero}". ` +
+          'Verificá el formato — los números van con padding de 4 dígitos ' +
+          '(ej: COOL-0003, no COOL-3 ni COOL-003). ' +
+          'Para evitar tipear, podés entrar desde la lista de equipos con el botón "Ficha + QR".',
+        );
       } else {
         setError('Error al cargar la ficha técnica del equipo.');
       }

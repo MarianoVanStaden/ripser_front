@@ -11,6 +11,7 @@ import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending, Brush,
+  QrCode2,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
 import UsuarioBadge from '../common/UsuarioBadge';
@@ -644,6 +645,15 @@ const EquiposList: React.FC = () => {
                 onClick={() => navigate(`/fabricacion/equipos/${params.row.numeroHeladera}`)}
               >
                 <Visibility fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Ficha + QR">
+              <IconButton
+                size="small"
+                color="secondary"
+                onClick={() => navigate(`/fabricacion/equipos/${params.row.numeroHeladera}/ficha`)}
+              >
+                <QrCode2 fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title={canEdit ? "Editar" : `No se puede editar (Estado: ${getEstadoAsignacionLabel(estadoAsignacion)})`}>
