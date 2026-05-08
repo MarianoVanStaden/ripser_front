@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { DocumentoComercial, OpcionFinanciamientoDTO, Cliente } from '../types';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../types/prestamo.types';
+import type { FichaTecnicaEquipoDTO } from '../api/services/especificacionTecnicaApi';
 import {
   ESTADO_CUOTA_LABELS,
   ESTADO_PRESTAMO_LABELS,
@@ -1181,5 +1182,196 @@ export const generarCreditoPDF = (
   }
 
   addCorporateFooter(doc);
+  return doc;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FICHA TÉCNICA DEL EQUIPO FABRICADO (uso interno + control de garantía)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface FichaTecnicaPDFInput {
+  ficha: FichaTecnicaEquipoDTO;
+  cliente?: Pick<Cliente, 'provincia' | 'ciudad'> | null;
+  fechaFabricacion?: string | null;  // YYYY-MM-DD o ISO
+  fechaEntrega?: string | null;
+  /** PNG base64 del QR ya rendereado en pantalla. Opcional. */
+  qrDataUrl?: string;
+}
+
+/**
+ * Genera la ficha técnica A4 del equipo fabricado en el formato corporativo
+ * de Ripser (mismo header/footer que presupuestos y facturas). Replica la
+ * planilla original que la empresa imprimía a mano:
+ *   - Datos cliente / equipo arriba (CODIGO, CLIENTE, EQUIPO, MODELO, etc.)
+ *   - Componentes del modelo abajo (motor, gas, sistema, ...)
+ *   - Estanterías / dimensiones a la derecha
+ *   - QR chico en la esquina sup-derecha del header (escanear → detail interno)
+ *
+ * El QR se pasa pre-rendereado como dataURL desde el caller para no atar este
+ * módulo a `qrcode.react` ni levantar canvas en runtime.
+ */
+export const generarFichaTecnicaPDF = ({
+  ficha,
+  cliente,
+  fechaFabricacion,
+  fechaEntrega,
+  qrDataUrl,
+}: FichaTecnicaPDFInput): jsPDF => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 10;
+
+  // Header corporativo (logo + contactos + título). Devuelve la y donde
+  // arrancar el contenido.
+  let y = addCorporateHeader(doc, 'ESPECIFICACIONES TECNICAS');
+
+  // Si tenemos QR, va incrustado sobre la barra superior, alineado a la
+  // derecha. addCorporateHeader pinta la barra azul de y=10 a y=35; el QR
+  // se monta dentro de ese rectángulo, lado 22mm, con un blanco mínimo.
+  if (qrDataUrl) {
+    const qrSize = 22;
+    const qrX = pageWidth - margin - qrSize - 1;
+    const qrY = 11;
+    doc.setFillColor(...COLORS.white);
+    doc.rect(qrX - 0.5, qrY - 0.5, qrSize + 1, qrSize + 1, 'F');
+    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+  }
+
+  const e = ficha.equipo;
+  const s = ficha.especificacion;
+
+  const fmtDate = (raw?: string | null): string => {
+    if (!raw) return '';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return '';
+    return formatDate(d.toISOString());
+  };
+
+  const labelStyle = {
+    fontStyle: 'bold' as const,
+    fillColor: COLORS.lightBlue,
+    textColor: COLORS.black,
+  };
+  const valueStyle = {
+    fillColor: COLORS.white,
+    textColor: COLORS.black,
+  };
+
+  // ── Tabla 1: identificación del equipo ────────────────────────────────
+  // 4 columnas: label-izq | valor-izq | label-der | valor-der.
+  // Cada fila es un par (cliente / equipo).
+  autoTable(doc, {
+    startY: y,
+    body: [
+      [
+        { content: 'N° CODIGO', styles: labelStyle },
+        { content: e.numeroHeladera ?? '', styles: { ...valueStyle, fontStyle: 'bold' as const } },
+        { content: 'EQUIPO', styles: labelStyle },
+        { content: e.tipo ?? '', styles: valueStyle },
+      ],
+      [
+        { content: 'CLIENTE', styles: labelStyle },
+        { content: e.clienteNombre ?? '', styles: valueStyle },
+        { content: 'MODELO', styles: labelStyle },
+        { content: e.modelo ?? '', styles: valueStyle },
+      ],
+      [
+        { content: 'PROVINCIA', styles: labelStyle },
+        { content: cliente?.provincia ?? '', styles: valueStyle },
+        { content: 'MEDIDA', styles: labelStyle },
+        { content: e.medida?.nombre ?? '', styles: valueStyle },
+      ],
+      [
+        { content: 'LOCALIDAD', styles: labelStyle },
+        { content: cliente?.ciudad ?? '', styles: valueStyle },
+        { content: 'COLOR', styles: labelStyle },
+        { content: e.color?.nombre ?? '', styles: valueStyle },
+      ],
+      [
+        { content: 'ENTREGA', styles: labelStyle },
+        { content: fmtDate(fechaEntrega), styles: { ...valueStyle, fontStyle: 'bold' as const } },
+        { content: 'FECHA', styles: labelStyle },
+        { content: fmtDate(fechaFabricacion), styles: valueStyle },
+      ],
+    ],
+    theme: 'grid',
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      lineColor: COLORS.black,
+      lineWidth: 0.3,
+    },
+    columnStyles: {
+      0: { cellWidth: 32 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 32 },
+      3: { cellWidth: 'auto' },
+    },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 6;
+
+  // ── Tabla 2: componentes (col izquierda) + estantería/dimensiones (col derecha)
+  // Agrupamos en filas alineadas — algunas celdas de la columna derecha
+  // quedan vacías porque la columna izquierda tiene más entradas.
+  const compRows: Array<[string, string, string, string]> = [
+    ['MOTOR',         s?.motor ?? '',         'ESTANTERIAS',          s?.estanteriasCantidad?.toString() ?? ''],
+    ['GAS',           s?.gas ?? '',           'FORMATO ESTANTERIAS',  s?.estanteriasFormato ?? ''],
+    ['HUMEDAD',       s?.humedad ?? '',       'ALTO',                 s?.alto != null ? s.alto.toString().replace('.', ',') : ''],
+    ['SISTEMA',       s?.sistema ?? '',       'PROFUNDIDAD',          s?.profundidad != null ? s.profundidad.toString().replace('.', ',') : ''],
+    ['ESTRUCTURA',    s?.estructura ?? '',    'ANCHO',                s?.ancho != null ? s.ancho.toString().replace('.', ',') : ''],
+    ['GABINETE',      s?.gabinete ?? '',      '',                     ''],
+    ['ILUMINACION',   s?.iluminacion ?? '',   '',                     ''],
+    ['TRANSFORMADOR', s?.transformador ?? '', '',                     ''],
+    ['TIPO',          s?.leds ?? '',          '',                     ''],
+    ['VIDRIO',        s?.vidrios ?? '',       '',                     ''],
+    ['PANELES',       s?.paneles ?? '',       '',                     ''],
+    ['PUERTAS',       s?.puertas ?? '',       '',                     ''],
+    ['REVESTIMIENTO', s?.revestimiento ?? '', '',                     ''],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    body: compRows.map((row) => [
+      { content: row[0], styles: labelStyle },
+      { content: row[1], styles: valueStyle },
+      {
+        content: row[2],
+        styles: row[2] ? labelStyle : { fillColor: COLORS.white, textColor: COLORS.black },
+      },
+      { content: row[3], styles: valueStyle },
+    ]),
+    theme: 'grid',
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+    },
+    columnStyles: {
+      0: { cellWidth: 38 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 42 },
+      3: { cellWidth: 'auto' },
+    },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  // Footer azul corporativo (mismo que presupuestos/facturas).
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const footerY = pageHeight - 15;
+  doc.setFillColor(...COLORS.darkBlue);
+  doc.rect(margin, footerY, pageWidth - (margin * 2), 10, 'F');
+  doc.setTextColor(...COLORS.white);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    `Ficha técnica generada el ${formatDate(new Date().toISOString())} — Ripser Instalaciones Comerciales`,
+    pageWidth / 2,
+    footerY + 6,
+    { align: 'center' },
+  );
+
   return doc;
 };

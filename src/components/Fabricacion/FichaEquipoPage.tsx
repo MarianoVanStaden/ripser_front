@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -22,73 +22,134 @@ import {
   especificacionTecnicaApi,
   type FichaTecnicaEquipoDTO,
 } from '../../api/services/especificacionTecnicaApi';
+import { clienteApi } from '../../api/services/clienteApi';
+import { generarFichaTecnicaPDF } from '../../services/pdfService';
+import type { Cliente } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 
 /**
- * Genera el payload JSON que se embebe en el QR. Incluye toda la ficha
- * (datos del equipo + specs del modelo) para que un técnico pueda
- * consultarlo escaneando con cualquier lector estándar, sin necesidad
- * de internet ni acceso al sistema. Se omiten campos null/vacíos para
- * minimizar densidad del QR.
- *
- * Se prefieren claves cortas (n, mod, fab, ...) sobre las completas:
- * un payload de ~400-600 bytes entra holgado en QR Versión ~14-17 con
- * corrección M y módulos legibles desde 30 cm con cámara de celular.
+ * Resolución del host base para el QR:
+ *  1. VITE_QR_BASE_URL (override de prod cuando se imprime desde otro entorno)
+ *  2. window.location.origin (default para dev/staging)
  */
-const buildQrPayload = (
+const resolveQrBase = (): string => {
+  const envBase = (import.meta.env.VITE_QR_BASE_URL as string | undefined)?.trim();
+  const base = envBase && envBase !== '' ? envBase : window.location.origin;
+  return base.replace(/\/$/, '');
+};
+
+const buildQrUrl = (numeroHeladera: string): string =>
+  `${resolveQrBase()}/fabricacion/equipos/${numeroHeladera}/ficha`;
+
+/**
+ * Contenido del QR — híbrido URL + texto plano:
+ *
+ *   1ra línea: URL absoluta a la ficha online (lo que detectan los scanners
+ *              de cámara de iPhone/Android para auto-ofrecer "abrir").
+ *   resto:     resumen legible de la ficha (cliente, fechas, motor, gas...)
+ *              para que un técnico en campo SIN internet pueda leer la
+ *              info directamente del QR como texto.
+ *
+ * Trade-off: el QR se vuelve más denso (~600-900 chars vs. los 50 de sólo
+ * la URL), pero entra holgado en QR versión ~17-20 con corrección M y los
+ * módulos siguen siendo legibles a 56mm de lado desde 30cm.
+ */
+const buildQrContent = (
   data: FichaTecnicaEquipoDTO,
+  cliente: Cliente | null,
   fabricacion: Dayjs | null,
   entrega: Dayjs | null,
 ): string => {
-  const equipo = data.equipo;
-  const spec = data.especificacion;
+  const url = buildQrUrl(data.equipo.numeroHeladera);
+  const e = data.equipo;
+  const s = data.especificacion;
 
-  const payload: Record<string, unknown> = {
-    n: equipo.numeroHeladera,
-    tipo: equipo.tipo,
-    modelo: equipo.modelo,
-  };
-  if (equipo.medida?.nombre) payload.medida = equipo.medida.nombre;
-  if (equipo.color?.nombre) payload.color = equipo.color.nombre;
-  if (equipo.clienteNombre) payload.cliente = equipo.clienteNombre;
-  if (fabricacion) payload.fab = fabricacion.format('YYYY-MM-DD');
-  if (entrega) payload.ent = entrega.format('YYYY-MM-DD');
+  const lines: string[] = [url, ''];
+  lines.push(`N° ${e.numeroHeladera}`);
+  lines.push(`${e.tipo} ${e.modelo}`);
+  if (e.medida?.nombre) lines.push(`Medida: ${e.medida.nombre}`);
+  if (e.color?.nombre) lines.push(`Color: ${e.color.nombre}`);
+  if (e.clienteNombre) lines.push(`Cliente: ${e.clienteNombre}`);
+  if (cliente?.provincia) lines.push(`Provincia: ${cliente.provincia}`);
+  if (cliente?.ciudad) lines.push(`Localidad: ${cliente.ciudad}`);
+  if (fabricacion) lines.push(`Fabricación: ${fabricacion.format('DD/MM/YYYY')}`);
+  if (entrega) lines.push(`Entrega: ${entrega.format('DD/MM/YYYY')}`);
 
-  if (spec) {
-    if (spec.motor) payload.motor = spec.motor;
-    if (spec.gas) payload.gas = spec.gas;
-    if (spec.humedad) payload.humedad = spec.humedad;
-    if (spec.sistema) payload.sistema = spec.sistema;
-    if (spec.estructura) payload.estructura = spec.estructura;
-    if (spec.gabinete) payload.gabinete = spec.gabinete;
-    if (spec.iluminacion) payload.iluminacion = spec.iluminacion;
-    if (spec.transformador) payload.transformador = spec.transformador;
-    if (spec.leds) payload.leds = spec.leds;
-    if (spec.vidrios) payload.vidrios = spec.vidrios;
-    if (spec.paneles) payload.paneles = spec.paneles;
-    if (spec.puertas) payload.puertas = spec.puertas;
-    if (spec.revestimiento) payload.revestimiento = spec.revestimiento;
-    if (spec.estanteriasCantidad != null) payload.estanterias = spec.estanteriasCantidad;
-    if (spec.estanteriasFormato) payload.formato = spec.estanteriasFormato;
-    if (spec.alto != null) payload.alto = spec.alto;
-    if (spec.profundidad != null) payload.profundidad = spec.profundidad;
-    if (spec.ancho != null) payload.ancho = spec.ancho;
+  if (s) {
+    lines.push('');
+    if (s.motor) lines.push(`Motor: ${s.motor}`);
+    if (s.gas) lines.push(`Gas: ${s.gas}`);
+    if (s.humedad) lines.push(`Humedad: ${s.humedad}`);
+    if (s.sistema) lines.push(`Sistema: ${s.sistema}`);
+    if (s.estructura) lines.push(`Estructura: ${s.estructura}`);
+    if (s.gabinete) lines.push(`Gabinete: ${s.gabinete}`);
+    if (s.iluminacion) lines.push(`Iluminación: ${s.iluminacion}`);
+    if (s.transformador) lines.push(`Transf.: ${s.transformador}`);
+    if (s.leds) lines.push(`Leds: ${s.leds}`);
+    if (s.vidrios) lines.push(`Vidrios: ${s.vidrios}`);
+    if (s.paneles) lines.push(`Paneles: ${s.paneles}`);
+    if (s.puertas) lines.push(`Puertas: ${s.puertas}`);
+    if (s.revestimiento) lines.push(`Revest.: ${s.revestimiento}`);
+    if (s.estanteriasCantidad != null) lines.push(`Estant.: ${s.estanteriasCantidad}`);
+    if (s.estanteriasFormato) lines.push(`Formato: ${s.estanteriasFormato}`);
+    if (s.alto != null) lines.push(`Alto: ${s.alto}`);
+    if (s.profundidad != null) lines.push(`Prof.: ${s.profundidad}`);
+    if (s.ancho != null) lines.push(`Ancho: ${s.ancho}`);
   }
 
-  return JSON.stringify(payload);
+  return lines.join('\n');
 };
 
-interface PreviewRowProps {
-  label: string;
+// Paleta corporativa (espejo de la usada en pdfService).
+const COLORS = {
+  darkBlue: '#144272',
+  lightBlue: '#CDE2EF',
+  white: '#ffffff',
+  black: '#000000',
+  gray: '#808080',
+} as const;
+
+interface FichaCellProps {
+  label?: string;
   value?: string | number | null;
+  bold?: boolean;
 }
 
-const PreviewRow: React.FC<PreviewRowProps> = ({ label, value }) => (
-  <Box sx={{ display: 'flex', borderBottom: '1px solid #ccc' }}>
-    <Box sx={{ width: 140, p: 0.75, bgcolor: '#f0f0f0', fontWeight: 600, fontSize: 12 }}>
-      {label}
-    </Box>
-    <Box sx={{ flex: 1, p: 0.75, fontSize: 12 }}>{value ?? ''}</Box>
+/** Una fila label/valor del PDF. Reutilizada en ambas tablas. */
+const Cell: React.FC<{ children?: React.ReactNode; bg?: string; bold?: boolean; width?: string | number }> = ({
+  children, bg = COLORS.white, bold = false, width,
+}) => (
+  <Box
+    sx={{
+      flex: width ? `0 0 ${typeof width === 'number' ? `${width}mm` : width}` : 1,
+      bgcolor: bg,
+      borderRight: `0.3mm solid ${COLORS.black}`,
+      borderBottom: `0.3mm solid ${COLORS.black}`,
+      p: '1.5mm 2mm',
+      fontSize: '9pt',
+      fontWeight: bold ? 700 : 400,
+      minHeight: '6mm',
+      display: 'flex',
+      alignItems: 'center',
+      '&:last-child': { borderRight: `0.3mm solid ${COLORS.black}` },
+    }}
+  >
+    {children}
+  </Box>
+);
+
+const FichaRow: React.FC<{
+  rows: Array<{ label: string; value: string; bold?: boolean }>;
+  labelWidth?: number;
+  valueWidth?: number;
+}> = ({ rows, labelWidth = 32, valueWidth = 60 }) => (
+  <Box sx={{ display: 'flex', borderTop: `0.3mm solid ${COLORS.black}`, borderLeft: `0.3mm solid ${COLORS.black}` }}>
+    {rows.map((r, i) => (
+      <React.Fragment key={i}>
+        <Cell bg={COLORS.lightBlue} bold width={labelWidth}>{r.label}</Cell>
+        <Cell bold={r.bold} width={i === rows.length - 1 ? undefined : valueWidth}>{r.value}</Cell>
+      </React.Fragment>
+    ))}
   </Box>
 );
 
@@ -106,6 +167,7 @@ const FichaEquipoPage: React.FC = () => {
 
   const [searchInput, setSearchInput] = useState(paramNumero ?? '');
   const [data, setData] = useState<FichaTecnicaEquipoDTO | null>(null);
+  const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,6 +181,7 @@ const FichaEquipoPage: React.FC = () => {
     setLoading(true);
     setError(null);
     setData(null);
+    setCliente(null);
     try {
       const result = await especificacionTecnicaApi.getFichaTecnica(numero.trim());
       setData(result);
@@ -128,6 +191,18 @@ const FichaEquipoPage: React.FC = () => {
       setFechaEntrega(
         result.equipo.fechaEntrega ? dayjs(result.equipo.fechaEntrega) : null,
       );
+
+      // Provincia/localidad no vienen en el DTO de la ficha; se cargan
+      // del cliente. Falla silenciosa: si no se puede traer, el PDF
+      // muestra esos campos en blanco.
+      if (result.equipo.clienteId) {
+        try {
+          const c = await clienteApi.getById(result.equipo.clienteId);
+          setCliente(c);
+        } catch (cliErr) {
+          console.warn('No se pudo cargar el cliente para la ficha:', cliErr);
+        }
+      }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
@@ -152,9 +227,16 @@ const FichaEquipoPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramNumero]);
 
-  const qrPayload = useMemo(
-    () => (data ? buildQrPayload(data, fechaFabricacion, fechaEntrega) : ''),
-    [data, fechaFabricacion, fechaEntrega],
+  // URL "limpia" para mostrar en el toolbar/preview (escaneable a ojo).
+  const qrUrl = useMemo(
+    () => (data ? buildQrUrl(data.equipo.numeroHeladera) : ''),
+    [data],
+  );
+
+  // Contenido completo del QR: URL primera línea + resumen legible offline.
+  const qrContent = useMemo(
+    () => (data ? buildQrContent(data, cliente, fechaFabricacion, fechaEntrega) : ''),
+    [data, cliente, fechaFabricacion, fechaEntrega],
   );
 
   const handleSearch = (e: React.FormEvent) => {
@@ -166,15 +248,38 @@ const FichaEquipoPage: React.FC = () => {
     }
   };
 
-  const handlePrint = () => window.print();
+  /**
+   * Construye la ficha técnica en PDF (formato corporativo Ripser, A4).
+   * Toma el QR del canvas que ya se renderiza en pantalla y lo embebe
+   * pequeño en la esquina superior derecha del header.
+   */
+  const buildFichaPdf = () => {
+    if (!data) return null;
+    const qrCanvas = document.querySelector<HTMLCanvasElement>(
+      '#sticker-print canvas',
+    );
+    const qrDataUrl = qrCanvas?.toDataURL('image/png');
+    return generarFichaTecnicaPDF({
+      ficha: data,
+      cliente: cliente ?? undefined,
+      fechaFabricacion: fechaFabricacion?.toISOString() ?? null,
+      fechaEntrega: fechaEntrega?.toISOString() ?? null,
+      qrDataUrl,
+    });
+  };
+
+  const handleDownload = () => {
+    const doc = buildFichaPdf();
+    if (!doc || !data) return;
+    doc.save(`Ficha_${data.equipo.numeroHeladera}.pdf`);
+  };
 
   /**
-   * Renderiza el sticker (QR + código) a un canvas en alta resolución
-   * (300dpi para 60×80mm) y dispara la descarga como PNG. No depende del
-   * DOM rendereado, así que sale el mismo bitmap independiente del zoom
-   * del navegador.
+   * Descarga el sticker autoadhesivo 60×80mm como PNG a 300dpi.
+   * El QR codifica la URL pública de esta misma página, así que escanear
+   * el sticker abre el browser con la ficha rendereada en formato PDF.
    */
-  const handleDownload = () => {
+  const handleDownloadSticker = () => {
     if (!data) return;
     const qrCanvas = document.querySelector<HTMLCanvasElement>(
       '#sticker-print canvas',
@@ -197,22 +302,44 @@ const FichaEquipoPage: React.FC = () => {
 
     const qrSize = mmToPx(56);
     const qrX = (W - qrSize) / 2;
-    const qrY = mmToPx(2);
-    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+    ctx.drawImage(qrCanvas, qrX, mmToPx(2), qrSize, qrSize);
 
+    // Auto-shrink del código para que entre en cualquier largo.
+    const text = data.equipo.numeroHeladera;
+    const maxTextWidth = W - mmToPx(4);
+    let fontPx = mmToPx(7);
+    const minPx = mmToPx(2.5);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `bold ${mmToPx(7)}px monospace`;
-    ctx.fillText(data.equipo.numeroHeladera, W / 2, mmToPx(70));
+    ctx.font = `bold ${fontPx}px monospace`;
+    while (ctx.measureText(text).width > maxTextWidth && fontPx > minPx) {
+      fontPx -= 2;
+      ctx.font = `bold ${fontPx}px monospace`;
+    }
+    ctx.fillText(text, W / 2, mmToPx(70));
 
-    const url = out.toDataURL('image/png');
+    const dataUrl = out.toDataURL('image/png');
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `${data.equipo.numeroHeladera}.png`;
+    a.href = dataUrl;
+    a.download = `${data.equipo.numeroHeladera}_sticker.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  /**
+   * Imprimir = abrir el PDF en una pestaña nueva con autoPrint disparado.
+   * Más confiable que usar @media print sobre el DOM (el sidebar y demás
+   * chrome del Layout interfieren) y produce exactamente el mismo PDF que
+   * se descarga.
+   */
+  const handlePrint = () => {
+    const doc = buildFichaPdf();
+    if (!doc) return;
+    doc.autoPrint();
+    const blobUrl = doc.output('bloburl');
+    window.open(blobUrl, '_blank');
   };
 
   return (
@@ -298,7 +425,7 @@ const FichaEquipoPage: React.FC = () => {
                   onClick={handleDownload}
                   disabled={!data}
                 >
-                  Descargar PNG
+                  Descargar PDF
                 </Button>
                 <Button
                   variant="contained"
@@ -319,165 +446,250 @@ const FichaEquipoPage: React.FC = () => {
 
         {loading && <LoadingOverlay open message="Cargando ficha…" />}
 
-        {/* === PREVIEW EN PANTALLA — vista grande para revisión visual === */}
+        {/*
+          === FICHA HTML — replica visual del PDF descargable ===
+          Lo que ve el operador en pantalla y lo que ve el técnico al
+          escanear el QR. Los colores, tablas y espaciados son los
+          mismos que `generarFichaTecnicaPDF` en pdfService.ts —
+          cualquier cambio acá hay que reflejarlo allá.
+        */}
         {data && (
-          <Paper className="no-print" sx={{ p: 3, maxWidth: 800, mx: 'auto', mb: 3 }}>
-            <Typography variant="overline" color="text.secondary">
-              Vista previa (no se imprime tal cual)
-            </Typography>
+          <Paper
+            sx={{
+              maxWidth: '21cm',
+              mx: 'auto',
+              mb: 3,
+              p: 0,
+              overflow: 'hidden',
+              boxShadow: 3,
+              fontFamily: 'Arial, sans-serif',
+              color: COLORS.black,
+            }}
+          >
+            {/* Header azul corporativo */}
             <Box
               sx={{
-                bgcolor: '#000',
-                color: '#fff',
-                p: 1,
-                textAlign: 'center',
-                mb: 2,
+                bgcolor: COLORS.darkBlue,
+                color: COLORS.white,
+                p: 2,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
               }}
             >
-              <Typography variant="subtitle1" fontWeight={700}>
-                ESPECIFICACIONES TÉCNICAS — {data.equipo.numeroHeladera}
+              <Box>
+                <Typography
+                  sx={{
+                    fontFamily: 'Times New Roman, serif',
+                    fontStyle: 'italic',
+                    fontSize: '24pt',
+                    lineHeight: 1,
+                  }}
+                >
+                  Ripser
+                </Typography>
+                <Typography sx={{ fontSize: '7pt', letterSpacing: 1, mt: 0.5 }}>
+                  INSTALACIONES
+                </Typography>
+                <Typography sx={{ fontSize: '7pt', letterSpacing: 1 }}>
+                  COMERCIALES
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right', fontSize: '7pt', lineHeight: 1.6 }}>
+                <Typography sx={{ fontSize: '7pt' }}>📷 @RipserInstalacionesComerciales</Typography>
+                <Typography sx={{ fontSize: '7pt' }}>www.ripser.com.ar</Typography>
+                <Typography sx={{ fontSize: '7pt' }}>+54 2235332796</Typography>
+              </Box>
+            </Box>
+
+            {/* Título */}
+            <Box
+              sx={{
+                bgcolor: COLORS.white,
+                p: 1,
+                textAlign: 'center',
+                borderBottom: `1px solid ${COLORS.gray}`,
+              }}
+            >
+              <Typography
+                sx={{ color: COLORS.darkBlue, fontWeight: 700, fontSize: '14pt' }}
+              >
+                ESPECIFICACIONES TECNICAS
               </Typography>
             </Box>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={8}>
-                <PreviewRow label="Código" value={data.equipo.numeroHeladera} />
-                <PreviewRow label="Equipo" value={data.equipo.tipo} />
-                <PreviewRow label="Modelo" value={data.equipo.modelo} />
-                <PreviewRow label="Cliente" value={data.equipo.clienteNombre ?? '-'} />
-                <PreviewRow label="Medida" value={data.equipo.medida?.nombre ?? '-'} />
-                <PreviewRow label="Color" value={data.equipo.color?.nombre ?? '-'} />
-                <PreviewRow
-                  label="Fecha"
-                  value={fechaFabricacion ? fechaFabricacion.format('D/M/YYYY') : ''}
-                />
-                <PreviewRow
-                  label="Entrega"
-                  value={fechaEntrega ? fechaEntrega.format('D/M/YYYY') : ''}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Box
-                  sx={{
-                    border: '1px solid #000',
-                    p: 1.5,
-                    textAlign: 'center',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <QRCodeCanvas value={qrPayload} size={160} level="M" includeMargin={false} />
-                  <Typography variant="caption" sx={{ mt: 1, fontFamily: 'monospace' }}>
-                    {data.equipo.numeroHeladera}
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
+            {/* Cuerpo con fondo light blue */}
+            <Box sx={{ bgcolor: COLORS.lightBlue, p: 3 }}>
+              {/* Tabla 1: identificación */}
+              <Box sx={{ bgcolor: COLORS.white, mb: 2 }}>
+                <FichaRow rows={[
+                  { label: 'N° CODIGO', value: data.equipo.numeroHeladera ?? '', bold: true },
+                  { label: 'EQUIPO', value: data.equipo.tipo ?? '' },
+                ]} />
+                <FichaRow rows={[
+                  { label: 'CLIENTE', value: data.equipo.clienteNombre ?? '' },
+                  { label: 'MODELO', value: data.equipo.modelo ?? '' },
+                ]} />
+                <FichaRow rows={[
+                  { label: 'PROVINCIA', value: cliente?.provincia ?? '' },
+                  { label: 'MEDIDA', value: data.equipo.medida?.nombre ?? '' },
+                ]} />
+                <FichaRow rows={[
+                  { label: 'LOCALIDAD', value: cliente?.ciudad ?? '' },
+                  { label: 'COLOR', value: data.equipo.color?.nombre ?? '' },
+                ]} />
+                <FichaRow rows={[
+                  { label: 'ENTREGA', value: fechaEntrega ? fechaEntrega.format('DD/MM/YYYY') : '', bold: true },
+                  { label: 'FECHA', value: fechaFabricacion ? fechaFabricacion.format('D/M/YYYY') : '' },
+                ]} />
+              </Box>
 
-            {data.especificacion ? (
-              <>
-                <Divider sx={{ my: 2, borderColor: '#000' }} />
-                <Grid container spacing={0}>
-                  <Grid item xs={6}>
-                    <PreviewRow label="Motor" value={data.especificacion.motor} />
-                    <PreviewRow label="Gas" value={data.especificacion.gas} />
-                    <PreviewRow label="Humedad" value={data.especificacion.humedad} />
-                    <PreviewRow label="Sistema" value={data.especificacion.sistema} />
-                    <PreviewRow label="Estructura" value={data.especificacion.estructura} />
-                    <PreviewRow label="Gabinete" value={data.especificacion.gabinete} />
-                    <PreviewRow label="Iluminación" value={data.especificacion.iluminacion} />
-                    <PreviewRow label="Transformador" value={data.especificacion.transformador} />
-                    <PreviewRow label="Leds" value={data.especificacion.leds} />
-                    <PreviewRow label="Vidrios" value={data.especificacion.vidrios} />
-                    <PreviewRow label="Paneles" value={data.especificacion.paneles} />
-                    <PreviewRow label="Puertas" value={data.especificacion.puertas} />
-                    <PreviewRow label="Revestimiento" value={data.especificacion.revestimiento} />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <PreviewRow label="Estanterías" value={data.especificacion.estanteriasCantidad} />
-                    <PreviewRow label="Formato" value={data.especificacion.estanteriasFormato} />
-                    <PreviewRow label="Alto" value={data.especificacion.alto} />
-                    <PreviewRow label="Profundidad" value={data.especificacion.profundidad} />
-                    <PreviewRow label="Ancho" value={data.especificacion.ancho} />
-                  </Grid>
-                </Grid>
-              </>
-            ) : null}
+              {/* Tabla 2: componentes + dimensiones */}
+              {data.especificacion ? (
+                <Box sx={{ bgcolor: COLORS.white }}>
+                  {[
+                    ['MOTOR', data.especificacion.motor ?? '', 'ESTANTERIAS', data.especificacion.estanteriasCantidad?.toString() ?? ''],
+                    ['GAS', data.especificacion.gas ?? '', 'FORMATO ESTANTERIAS', data.especificacion.estanteriasFormato ?? ''],
+                    ['HUMEDAD', data.especificacion.humedad ?? '', 'ALTO', data.especificacion.alto != null ? data.especificacion.alto.toString().replace('.', ',') : ''],
+                    ['SISTEMA', data.especificacion.sistema ?? '', 'PROFUNDIDAD', data.especificacion.profundidad != null ? data.especificacion.profundidad.toString().replace('.', ',') : ''],
+                    ['ESTRUCTURA', data.especificacion.estructura ?? '', 'ANCHO', data.especificacion.ancho != null ? data.especificacion.ancho.toString().replace('.', ',') : ''],
+                    ['GABINETE', data.especificacion.gabinete ?? '', '', ''],
+                    ['ILUMINACION', data.especificacion.iluminacion ?? '', '', ''],
+                    ['TRANSFORMADOR', data.especificacion.transformador ?? '', '', ''],
+                    ['TIPO', data.especificacion.leds ?? '', '', ''],
+                    ['VIDRIO', data.especificacion.vidrios ?? '', '', ''],
+                    ['PANELES', data.especificacion.paneles ?? '', '', ''],
+                    ['PUERTAS', data.especificacion.puertas ?? '', '', ''],
+                    ['REVESTIMIENTO', data.especificacion.revestimiento ?? '', '', ''],
+                  ].map(([l1, v1, l2, v2], idx) => (
+                    <Box key={idx} sx={{ display: 'flex', borderTop: idx === 0 ? `0.3mm solid ${COLORS.black}` : 'none', borderLeft: `0.3mm solid ${COLORS.black}` }}>
+                      <Cell bg={COLORS.lightBlue} bold width={38}>{l1}</Cell>
+                      <Cell width={60}>{v1}</Cell>
+                      <Cell bg={l2 ? COLORS.lightBlue : COLORS.white} bold={!!l2} width={42}>{l2}</Cell>
+                      <Cell>{v2}</Cell>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  No hay ficha técnica cargada para{' '}
+                  <strong>{data.equipo.tipo} / {data.equipo.modelo}</strong>.
+                </Alert>
+              )}
+            </Box>
+
+            {/* Footer azul */}
+            <Box
+              sx={{
+                bgcolor: COLORS.darkBlue,
+                color: COLORS.white,
+                p: 1,
+                textAlign: 'center',
+                fontSize: '7pt',
+              }}
+            >
+              <Typography sx={{ fontSize: '7pt' }}>
+                Ripser Instalaciones Comerciales
+              </Typography>
+            </Box>
           </Paper>
         )}
 
-        {/* === STICKER 60×80mm — lo único que se imprime === */}
         {/*
-          La hoja A4 lleva la etiqueta autoadhesiva en la esquina superior
-          izquierda; el resto del A4 queda en blanco. Se especifica @page con
-          tamaño A4 + márgenes 0 y se posiciona el sticker como bloque fijo
-          arriba-izquierda. Si la impresora aplica margen mínimo (típico
-          ~5mm) el sticker queda igualmente dentro del área imprimible.
+          === STICKER AUTOADHESIVO 60×80mm ===
+          Lo que se imprime en una etiqueta 6×8cm para pegar al equipo.
+          El QR codifica la URL de esta misma página, así que escanear
+          → ver la ficha completa rendereada arriba (idéntica al PDF).
+          El canvas también se reusa al generar el PDF descargable.
         */}
         {data && (
-          <Box
-            id="sticker-print"
+          <Paper
             sx={{
-              width: '60mm',
-              height: '80mm',
-              boxSizing: 'border-box',
-              fontFamily: 'Arial, sans-serif',
-              color: '#000',
-              backgroundColor: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              p: '2mm',
+              maxWidth: '21cm',
               mx: 'auto',
-              my: 2,
+              p: 2,
+              mb: 3,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: 'center',
+              gap: 3,
             }}
           >
-            {/*
-              Canvas a 600px (≈300dpi para 56mm) → escalado vía CSS.
-              `level="M"` para resistir doblado/manchas mínimas; el JSON
-              completo entra cómodo en QR versión ~14-17.
-            */}
-            <QRCodeCanvas
-              value={qrPayload}
-              size={600}
-              level="M"
-              includeMargin={false}
-              style={{ width: '56mm', height: '56mm' }}
-            />
-            <Typography
+            <Box
+              id="sticker-print"
               sx={{
-                fontFamily: 'monospace',
-                fontWeight: 800,
-                fontSize: '14pt',
-                lineHeight: 1.1,
-                mt: '3mm',
-                textAlign: 'center',
-                letterSpacing: '0.5px',
+                width: '60mm',
+                height: '80mm',
+                boxSizing: 'border-box',
+                fontFamily: 'Arial, sans-serif',
+                color: '#000',
+                backgroundColor: '#fff',
+                border: `0.3mm solid ${COLORS.gray}`,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                p: '2mm',
+                flexShrink: 0,
               }}
             >
-              {data.equipo.numeroHeladera}
-            </Typography>
-          </Box>
-        )}
+              <QRCodeCanvas
+                value={qrContent}
+                size={600}
+                level="M"
+                includeMargin={false}
+                style={{ width: '56mm', height: '56mm' }}
+              />
+              {(() => {
+                const num = data.equipo.numeroHeladera;
+                const maxMm = 56 - 2;
+                const fontMm = Math.min(5, maxMm / Math.max(num.length, 1) / 0.62);
+                const fontPt = (fontMm * 2.83).toFixed(1);
+                return (
+                  <Typography
+                    sx={{
+                      fontFamily: 'monospace',
+                      fontWeight: 800,
+                      fontSize: `${fontPt}pt`,
+                      lineHeight: 1.1,
+                      mt: '3mm',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {num}
+                  </Typography>
+                );
+              })()}
+            </Box>
 
-        <style>{`
-          @media print {
-            @page { size: A4; margin: 0; }
-            body { background: #fff !important; margin: 0 !important; }
-            .no-print { display: none !important; }
-            #sticker-print {
-              position: fixed !important;
-              top: 5mm !important;
-              left: 5mm !important;
-              margin: 0 !important;
-              page-break-after: avoid !important;
-            }
-          }
-        `}</style>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Sticker 6×8cm para pegar al equipo
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                <strong>Online</strong> — el celular detecta la URL de la primera
+                línea y al tocarla abre la misma ficha que ves arriba.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <strong>Offline</strong> — debajo de la URL, el QR contiene un
+                resumen en texto plano (cliente, fechas, motor, gas, sistema...)
+                que cualquier scanner muestra como notas. Sirve cuando el técnico
+                de garantía no tiene internet en el lugar.
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                URL: {qrUrl}
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={handleDownloadSticker}
+              >
+                Descargar sticker (PNG)
+              </Button>
+            </Box>
+          </Paper>
+        )}
       </Box>
     </LocalizationProvider>
   );

@@ -32,6 +32,7 @@ import {
   Link,
   Autocomplete,
   createFilterOptions,
+  TableSortLabel,
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
@@ -61,6 +62,7 @@ import {
   PrioridadRecordatorioEnum,
   TipoInteraccionEnum,
   PRIORIDAD_LABELS,
+  ESTADO_LABELS,
   TIPO_INTERACCION_LABELS,
   RESULTADO_INTERACCION_LABELS,
 } from '../../types/lead.types';
@@ -167,6 +169,25 @@ const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
   EstadoLeadEnum.PRECIO_ELEVADO,
   EstadoLeadEnum.COMPRA_ANULADA,
 ];
+
+const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
+  EstadoLeadEnum.PRIMER_CONTACTO,
+  EstadoLeadEnum.MOSTRO_INTERES,
+  EstadoLeadEnum.CLIENTE_POTENCIAL,
+  EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
+  EstadoLeadEnum.VENTA,
+  EstadoLeadEnum.CONVERTIDO,
+  EstadoLeadEnum.DESCARTADO,
+  EstadoLeadEnum.PERDIDO,
+  EstadoLeadEnum.LEAD_DUPLICADO,
+  EstadoLeadEnum.PRECIO_ELEVADO,
+  EstadoLeadEnum.COMPRA_ANULADA,
+];
+
+type OrderByRec = 'fecha' | 'tipo' | 'lead' | 'asesor' | 'telefono' | 'estado' | 'prioridad';
+type Order = 'asc' | 'desc';
+
+const PRIORIDAD_LEAD_RANK: Record<string, number> = { HOT: 3, WARM: 2, COLD: 1 };
 
 type DatePreset = 'hoy' | 'ayer' | 'mañana' | 'semana' | 'vencidos' | 'personalizado' | 'todos';
 
@@ -857,6 +878,32 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const [filterTipo, setFilterTipo] = useState<TipoRecordatorioType | ''>('');
   const [filterUsuarioId, setFilterUsuarioId] = useState<number | ''>('');
   const [soloMios, setSoloMios] = useState(false);
+  const [selectedEstados, setSelectedEstados] = useState<EstadoLeadEnum[]>([]);
+
+  // Sort: orderBy = null deja el orden default del hook (fecha→prioridad→score).
+  // Al clickear un header se cicla asc → desc → default.
+  const [order, setOrder] = useState<Order>('asc');
+  const [orderBy, setOrderBy] = useState<OrderByRec | null>(null);
+
+  const toggleEstado = (estado: EstadoLeadEnum) => {
+    setSelectedEstados((prev) =>
+      prev.includes(estado) ? prev.filter((e) => e !== estado) : [...prev, estado]
+    );
+  };
+
+  const handleRequestSort = (property: OrderByRec) => {
+    if (orderBy !== property) {
+      setOrderBy(property);
+      setOrder('asc');
+      return;
+    }
+    if (order === 'asc') {
+      setOrder('desc');
+      return;
+    }
+    setOrderBy(null);
+    setOrder('asc');
+  };
 
   // ── Usuarios (asesores) ──
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -951,6 +998,60 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const refresh = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  // Filter por estado del lead + sort por columna se aplican client-side: el
+  // endpoint global de recordatorios no soporta esos params y la lista ya está
+  // acotada por los demás filtros del backend.
+  const recordatoriosFiltrados = useMemo(() => {
+    let list = recordatorios;
+
+    if (selectedEstados.length > 0) {
+      list = list.filter(
+        (r) => r.lead?.estadoLead && selectedEstados.includes(r.lead.estadoLead as EstadoLeadEnum)
+      );
+    }
+
+    if (orderBy) {
+      const dir = order === 'asc' ? 1 : -1;
+      const getValue = (rec: RecordatorioConLeadDTO): string | number | null => {
+        switch (orderBy) {
+          case 'fecha':
+            return `${rec.fechaRecordatorio}T${rec.hora ?? '00:00'}`;
+          case 'tipo':
+            return rec.tipo ?? '';
+          case 'lead':
+            return rec.lead
+              ? `${rec.lead.nombre ?? ''} ${rec.lead.apellido ?? ''}`.trim().toLowerCase()
+              : `lead #${rec.leadId}`;
+          case 'asesor': {
+            if (!rec.usuarioId) return '';
+            const u = usuarios.find((x) => x.id === rec.usuarioId);
+            return (u?.nombre || (u as any)?.username || `#${rec.usuarioId}`).toLowerCase();
+          }
+          case 'telefono':
+            return rec.lead?.telefono ?? '';
+          case 'estado':
+            return rec.lead?.estadoLead ?? null;
+          case 'prioridad':
+            return rec.lead?.prioridad ? PRIORIDAD_LEAD_RANK[rec.lead.prioridad] ?? 0 : 0;
+          default:
+            return null;
+        }
+      };
+      list = [...list].sort((a, b) => {
+        const av = getValue(a);
+        const bv = getValue(b);
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      });
+    }
+
+    return list;
+  }, [recordatorios, selectedEstados, orderBy, order, usuarios]);
 
   // ── Stable today string for row coloring ──
   const today = getTodayStr();
@@ -1224,6 +1325,25 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
             </Box>
           )}
 
+          {/* Estado filter (multi-select chips) */}
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Filtrar por estado del lead:
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {ESTADOS_DISPONIBLES.map((estado) => (
+                <Chip
+                  key={estado}
+                  label={ESTADO_LABELS[estado]}
+                  size="small"
+                  onClick={() => toggleEstado(estado)}
+                  color={selectedEstados.includes(estado) ? 'primary' : 'default'}
+                  variant={selectedEstados.includes(estado) ? 'filled' : 'outlined'}
+                />
+              ))}
+            </Stack>
+          </Box>
+
           {/* Additional filters */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
             <FormControl size="small" sx={{ minWidth: 140 }}>
@@ -1287,7 +1407,12 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
               label={<Typography variant="body2">Solo mis recordatorios</Typography>}
             />
 
-            {(filterPrioridad || filterTipo || filterUsuarioId || soloMios || datePreset !== 'todos') && (
+            {(filterPrioridad ||
+              filterTipo ||
+              filterUsuarioId ||
+              soloMios ||
+              datePreset !== 'todos' ||
+              selectedEstados.length > 0) && (
               <Button
                 size="small"
                 variant="text"
@@ -1300,6 +1425,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
                   setSoloMios(false);
                   setCustomFechaDesde('');
                   setCustomFechaHasta('');
+                  setSelectedEstados([]);
                 }}
               >
                 Limpiar filtros
@@ -1314,14 +1440,19 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
         </Box>
-      ) : recordatorios.length === 0 ? (
+      ) : recordatoriosFiltrados.length === 0 ? (
         <Paper sx={{ p: 6, textAlign: 'center' }}>
           <CheckCircleIcon sx={{ fontSize: 56, color: 'success.light', mb: 1 }} />
           <Typography variant="h6" color="text.secondary">
             No hay recordatorios pendientes
           </Typography>
           <Typography variant="body2" color="text.disabled" mt={0.5}>
-            {datePreset !== 'todos' || filterPrioridad || filterTipo || filterUsuarioId || soloMios
+            {datePreset !== 'todos' ||
+            filterPrioridad ||
+            filterTipo ||
+            filterUsuarioId ||
+            soloMios ||
+            selectedEstados.length > 0
               ? 'Pruebe cambiando los filtros.'
               : '¡Excelente trabajo! Todo al día.'}
           </Typography>
@@ -1331,18 +1462,81 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
           <Table size="small" stickyHeader sx={{ minWidth: 880 }}>
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.100' }}>
-                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Fecha</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Tipo / Mensaje</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Lead</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Asesor</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Teléfono</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Prioridad</TableCell>
+                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+                  sortDirection={orderBy === 'fecha' ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === 'fecha'}
+                    direction={orderBy === 'fecha' ? order : 'asc'}
+                    onClick={() => handleRequestSort('fecha')}
+                  >
+                    Fecha
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}
+                  sortDirection={orderBy === 'tipo' ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === 'tipo'}
+                    direction={orderBy === 'tipo' ? order : 'asc'}
+                    onClick={() => handleRequestSort('tipo')}
+                  >
+                    Tipo / Mensaje
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}
+                  sortDirection={orderBy === 'lead' ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === 'lead'}
+                    direction={orderBy === 'lead' ? order : 'asc'}
+                    onClick={() => handleRequestSort('lead')}
+                  >
+                    Lead
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}
+                  sortDirection={orderBy === 'asesor' ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === 'asesor'}
+                    direction={orderBy === 'asesor' ? order : 'asc'}
+                    onClick={() => handleRequestSort('asesor')}
+                  >
+                    Asesor
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}
+                  sortDirection={orderBy === 'telefono' ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === 'telefono'}
+                    direction={orderBy === 'telefono' ? order : 'asc'}
+                    onClick={() => handleRequestSort('telefono')}
+                  >
+                    Teléfono
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}
+                  sortDirection={orderBy === 'estado' ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === 'estado'}
+                    direction={orderBy === 'estado' ? order : 'asc'}
+                    onClick={() => handleRequestSort('estado')}
+                  >
+                    Estado
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}
+                  sortDirection={orderBy === 'prioridad' ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === 'prioridad'}
+                    direction={orderBy === 'prioridad' ? order : 'asc'}
+                    onClick={() => handleRequestSort('prioridad')}
+                  >
+                    Prioridad
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {recordatorios.map((rec) => {
+              {recordatoriosFiltrados.map((rec) => {
                 const bgColor = getRowBgColor(rec.fechaRecordatorio);
                 const esVencido = rec.fechaRecordatorio < today;
                 const esHoy = rec.fechaRecordatorio === today;
@@ -1583,9 +1777,13 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
           </Table>
         </TableContainer>
       )}
-      {recordatorios.length > 0 && (
+      {recordatoriosFiltrados.length > 0 && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          Mostrando {recordatorios.length} recordatorios
+          Mostrando {recordatoriosFiltrados.length}
+          {recordatoriosFiltrados.length !== recordatorios.length
+            ? ` de ${recordatorios.length}`
+            : ''}{' '}
+          recordatorios
         </Typography>
       )}
 

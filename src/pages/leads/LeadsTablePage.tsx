@@ -155,8 +155,13 @@ const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
   EstadoLeadEnum.MOSTRO_INTERES,
   EstadoLeadEnum.CLIENTE_POTENCIAL,
   EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
+  EstadoLeadEnum.VENTA,
   EstadoLeadEnum.CONVERTIDO,
-  EstadoLeadEnum.DESCARTADO
+  EstadoLeadEnum.DESCARTADO,
+  EstadoLeadEnum.PERDIDO,
+  EstadoLeadEnum.LEAD_DUPLICADO,
+  EstadoLeadEnum.PRECIO_ELEVADO,
+  EstadoLeadEnum.COMPRA_ANULADA
 ];
 
 // Estados ofrecidos en el selector inline. Excluye CONVERTIDO porque la
