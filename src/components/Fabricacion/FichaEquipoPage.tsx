@@ -4,8 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Divider,
-  Grid,
   IconButton,
   Paper,
   Stack,
@@ -108,12 +106,6 @@ const COLORS = {
   black: '#000000',
   gray: '#808080',
 } as const;
-
-interface FichaCellProps {
-  label?: string;
-  value?: string | number | null;
-  bold?: boolean;
-}
 
 /** Una fila label/valor del PDF. Reutilizada en ambas tablas. */
 const Cell: React.FC<{ children?: React.ReactNode; bg?: string; bold?: boolean; width?: string | number }> = ({
