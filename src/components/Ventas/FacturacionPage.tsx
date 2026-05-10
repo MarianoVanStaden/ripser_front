@@ -21,7 +21,7 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 // Real API services
 import { productApi, usuarioApi } from '../../api/services';
-import { documentoApi } from '../../api/services/documentoApi';
+import { documentoApi, type CreateFacturaDirectaPayload } from '../../api/services/documentoApi';
 import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
@@ -146,6 +146,13 @@ const FacturacionPage = () => {
   const [asignarEquiposDialogOpen, setAsignarEquiposDialogOpen] = useState(false);
   const [notaParaAsignacion, setNotaParaAsignacion] = useState<DocumentoComercial | null>(null);
   const [isManualInvoice, setIsManualInvoice] = useState(false);
+  // Snapshot del payload + detalles virtuales cuando el flujo manual con equipos
+  // tiene que pausar para que el usuario asigne equipos en AsignarEquiposDialog.
+  // El factura se crea recién cuando el usuario confirma la asignación.
+  const [manualFacturaDraft, setManualFacturaDraft] = useState<{
+    payload: CreateFacturaDirectaPayload;
+    virtualDetallesEquipo: DetalleDocumento[];
+  } | null>(null);
   const [notaOpcionesFinanciamiento, setNotaOpcionesFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
 
   // Pagination for Notas de Pedido (server-side ahora).
@@ -250,6 +257,7 @@ const FacturacionPage = () => {
     setSelectedOpcionId(null);
     setOpcionesFinanciamiento([]);
     setIsManualInvoice(false);
+    setManualFacturaDraft(null);
   }, []);
 
   // Billing Dialog state (Datos de Financiación Propia) — mirrors NotasPedidoPage
@@ -785,6 +793,175 @@ const FacturacionPage = () => {
     setItemPendienteFabricacion(null);
   }, []);
 
+  // Construye el payload para POST /api/documentos/factura-directa a partir del estado
+  // del carrito y la financiación. equiposAsignaciones se agrega aparte cuando el
+  // usuario los confirma desde AsignarEquiposDialog.
+  const buildFacturaDirectaPayload = (): CreateFacturaDirectaPayload => {
+    const fin = billingForm;
+    const finPorcentajeEntrega = fin.usePorcentaje ? fin.porcentajeEntregaInicial : null;
+    const finMontoFijoEntrega = !fin.usePorcentaje ? fin.montoEntregaInicial : null;
+
+    // tasaInteres: el modal manual gana sobre la plantilla seleccionada cuando el usuario la fijó.
+    const tasaInteresManual = fin.tasaInteres > 0
+      ? fin.tasaInteres
+      : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0);
+
+    const detalles = cart.map((item) => {
+      const subtotal = Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100));
+      const detalle: any = {
+        tipoItem: item.tipoItem || 'PRODUCTO',
+        cantidad: Number(item.cantidad),
+        precioUnitario: Number(item.precioUnitario),
+        descuento: Number(item.descuento) || 0,
+        subtotal,
+      };
+      if (item.tipoItem === 'EQUIPO') {
+        detalle.recetaId = Number(item.recetaId);
+        const equipoDesc = item.recetaNombre
+          ? `${item.recetaNombre}${item.recetaModelo ? ` - ${item.recetaModelo}` : ''}`
+          : undefined;
+        detalle.descripcionEquipo = equipoDesc;
+        detalle.descripcion = equipoDesc;
+        if (item.colorId != null) detalle.colorId = item.colorId;
+      } else {
+        detalle.productoId = Number(item.productoId);
+        detalle.descripcion = item.productoNombre || undefined;
+      }
+      return detalle;
+    });
+
+    return {
+      clienteId: Number(selectedClientId),
+      usuarioId: Number(selectedUsuarioId),
+      metodoPago: paymentMethod,
+      tipoIva: selectedIva,
+      descuentoTipo,
+      descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
+      observaciones: notes || undefined,
+      detalles,
+      ...(isFinanciamiento(paymentMethod) && {
+        cantidadCuotas: fin.cantidadCuotas,
+        tipoFinanciacion: fin.tipoFinanciacion,
+        tasaInteres: tasaInteresManual,
+        ...(fin.primerVencimiento && { primerVencimiento: fin.primerVencimiento }),
+        ...resolveEntregaFields(paymentMethod, fin.entregarInicial, fin.usePorcentaje, finPorcentajeEntrega, finMontoFijoEntrega),
+      }),
+      ...buildCajaPayload(paymentMethod, cajaContadoRef),
+    };
+  };
+
+  // Detalles "virtuales" para que AsignarEquiposDialog funcione con líneas que
+  // todavía no fueron persistidas. Usa el índice en `cart` como id; el backend
+  // remappea ese índice al detalleId real después de crear la factura.
+  const buildVirtualDetallesEquipo = (): DetalleDocumento[] =>
+    cart
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.tipoItem === 'EQUIPO' && item.recetaId)
+      .map(({ item, index }) => ({
+        id: index,
+        tipoItem: 'EQUIPO',
+        recetaId: item.recetaId,
+        recetaNombre: item.recetaNombre,
+        recetaModelo: item.recetaModelo,
+        recetaTipo: item.recetaTipo,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        descuento: item.descuento || 0,
+        subtotal: 0,
+        ...(item.colorId != null && {
+          color: { id: item.colorId, nombre: item.colorNombre || '' } as any,
+        }),
+        ...(item.medidaId != null && {
+          medida: { id: item.medidaId, nombre: item.medidaNombre || '' } as any,
+        }),
+      }) as unknown as DetalleDocumento);
+
+  // Llama al endpoint factura-directa, maneja deuda pendiente (HTTP 409) y
+  // navega al success dialog. Reusable entre el path "sin equipos" (submit
+  // directo) y el path "con equipos" (después de AsignarEquiposDialog).
+  const submitFacturaDirecta = async (
+    payload: CreateFacturaDirectaPayload,
+    asignaciones?: { [lineIndex: number]: number[] }
+  ) => {
+    setLoading(true);
+    setError(null);
+    const deudaPreconfirmada = deudaYaConfirmadaRef.current;
+    deudaYaConfirmadaRef.current = false;
+    try {
+      const factura = await documentoApi.createFacturaDirecta({
+        ...payload,
+        ...(asignaciones && { equiposAsignaciones: asignaciones }),
+        ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
+      });
+
+      const fin = billingForm;
+      const finMontoEntregaCalculado = fin.entregarInicial
+        ? (fin.usePorcentaje ? subtotalVenta * (fin.porcentajeEntregaInicial / 100) : fin.montoEntregaInicial)
+        : 0;
+      const finMontoFinanciado = subtotalVenta - finMontoEntregaCalculado;
+      if (isFinanciamiento(payload.metodoPago) && fin.entregarInicial && finMontoEntregaCalculado > 0) {
+        setFacturaEntregaInfo({
+          montoEntrega: finMontoEntregaCalculado,
+          montoFinanciado: finMontoFinanciado,
+          cantidadCuotas: payload.cantidadCuotas ?? null,
+        });
+      } else {
+        setFacturaEntregaInfo(null);
+      }
+      setAsignarEquiposDialogOpen(false);
+      setManualFacturaDraft(null);
+      setIsManualInvoice(false);
+      setCreatedFactura(factura);
+      setSuccessDialogOpen(true);
+      clearForm();
+      setSelectedOpcionId(null);
+      setOpcionesFinanciamiento([]);
+      await loadData();
+    } catch (err: any) {
+      console.error('Error creando factura directa:', err);
+      const deudaData = parseDeudaError(err);
+      if (deudaData) {
+        setDeudaError(deudaData);
+        pendingDeudaRef.current = async () => {
+          deudaYaConfirmadaRef.current = true;
+          await submitFacturaDirecta(payload, asignaciones);
+        };
+        setLoading(false);
+        return;
+      }
+
+      const data = err?.response?.data;
+      const rawText = data ? JSON.stringify(data) : '';
+      const backendMsg: string = data?.message || data?.error || data?.detail || '';
+
+      let errorMessage: string;
+      if (
+        rawText.includes('uk_equipo_unico') ||
+        rawText.includes('Duplicate') ||
+        backendMsg.includes('constraint') ||
+        backendMsg.includes('ya está asignado') ||
+        backendMsg.includes('already assigned')
+      ) {
+        errorMessage =
+          '⚠️ Error de Asignación Duplicada\n\n' +
+          'Uno o más equipos ya están asignados a otra factura. ' +
+          'Cada equipo solo puede ser asignado una vez.\n\n' +
+          '💡 Verifique los equipos seleccionados o consulte el inventario.';
+      } else if (backendMsg) {
+        errorMessage = backendMsg;
+      } else if (err?.response?.status === 500) {
+        errorMessage =
+          'Error interno del servidor al crear la factura. ' +
+          'Intente con equipos diferentes o contacte al administrador.';
+      } else {
+        errorMessage = err?.message || 'Error desconocido al crear la factura';
+      }
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmitManualInvoice = async () => {
     if (!selectedClientId) return setError('Debe seleccionar un cliente.');
     if (!selectedUsuarioId) return setError('Debe seleccionar un usuario.');
@@ -822,8 +999,7 @@ const FacturacionPage = () => {
       return;
     }
 
-    // Gate 2 — Preemptive debt check before generating the presupuesto.
-    // Same pattern as NotasPedidoPage.handleConvertToNotaPedido.
+    // Gate 2 — Preemptive debt check before facturar.
     if (!deudaYaConfirmadaRef.current) {
       const deudaData = await checkClienteDeuda(Number(selectedClientId));
       if (deudaData) {
@@ -836,14 +1012,13 @@ const FacturacionPage = () => {
       }
     }
 
-    // Verificar stock de equipos antes de crear factura
+    // Gate 3 — Stock de equipos.
     const equiposEnCarrito = cart.filter(item => item.tipoItem === 'EQUIPO' && item.recetaId);
-    
+
     for (const item of equiposEnCarrito) {
       const stockDisponible = await verificarStockEquipo(item.recetaId!, item.colorId, item.medidaId);
 
       if (stockDisponible < item.cantidad) {
-        // Mostrar dialog de confirmación
         setItemPendienteFabricacion({
           recetaId: item.recetaId!,
           recetaNombre: item.recetaNombre || 'Equipo',
@@ -854,368 +1029,83 @@ const FacturacionPage = () => {
           stockDisponible,
         });
         setFabricacionDialogOpen(true);
-        return; // Detener el proceso hasta que el usuario decida
+        return;
       }
     }
 
-    setLoading(true);
     setError(null);
     setSuccess(null);
 
-    // Financing data source: once the billing modal has been confirmed (Gate 1 passed),
-    // read from billingForm rather than state. The setTimeout re-entry from submitBillingDialog
-    // sees a stale closure where the setCantidadCuotas/etc writes have not yet been committed,
-    // so state-backed reads return pre-modal defaults (cantidadCuotas=null → empty financing
-    // payload → backend falls back to defaults). billingForm was already captured with the
-    // user's latest inputs at click time, so it is safe to use directly.
-    const fin = billingForm;
-    const finPorcentajeEntrega = fin.usePorcentaje ? fin.porcentajeEntregaInicial : null;
-    const finMontoFijoEntrega = !fin.usePorcentaje ? fin.montoEntregaInicial : null;
-    const finMontoEntregaCalculado = fin.entregarInicial
-      ? (fin.usePorcentaje ? subtotalVenta * (fin.porcentajeEntregaInicial / 100) : fin.montoEntregaInicial)
-      : 0;
-    const finMontoFinanciado = subtotalVenta - finMontoEntregaCalculado;
+    const payload = buildFacturaDirectaPayload();
 
-    // Use the user-entered tasaInteres (for FINANCIACION_PROPIA),
-    // falling back to the selected financing template (for FINANCIAMIENTO with templates)
-    const tasaInteresManual = fin.tasaInteres > 0
-      ? fin.tasaInteres
-      : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0);
-
-    try {
-      const presupuesto = await documentoApi.createPresupuesto({
-        clienteId: Number(selectedClientId),
-        usuarioId: Number(selectedUsuarioId),
-        tipoIva: selectedIva,
-        descuentoTipo,
-        descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
-        observaciones: notes || undefined,
-        detalles: cart.map((item) => {
-          const subtotal = Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100));
-
-          // Base detalle with common fields
-          const detalle: any = {
-            tipoItem: item.tipoItem || 'PRODUCTO',
-            cantidad: Number(item.cantidad),
-            precioUnitario: Number(item.precioUnitario),
-            descuento: Number(item.descuento) || 0,
-            subtotal: subtotal,
-          };
-
-          // Add type-specific fields
-          if (item.tipoItem === 'EQUIPO') {
-            detalle.recetaId = Number(item.recetaId);
-            const equipoDesc = item.recetaNombre
-              ? `${item.recetaNombre}${item.recetaModelo ? ` - ${item.recetaModelo}` : ''}`
-              : undefined;
-            detalle.descripcionEquipo = equipoDesc;
-            detalle.descripcion = equipoDesc; // Also set general descripcion for reports
-            // colorId goes through; medida is intentionally omitted: the backend
-            // derives it from the recipe so the request stays consistent.
-            if (item.colorId != null) {
-              detalle.colorId = item.colorId;
-            }
-          } else {
-            detalle.productoId = Number(item.productoId);
-            detalle.descripcion = item.productoNombre || undefined;
-          }
-
-          return detalle;
-        }),
+    // Si hay equipos, abrir AsignarEquiposDialog: la factura se crea recién
+    // cuando el usuario confirma la asignación. Snapshot del payload para que
+    // los cambios al carrito durante el modal no afecten la factura final.
+    if (equiposEnCarrito.length > 0) {
+      setManualFacturaDraft({
+        payload,
+        virtualDetallesEquipo: buildVirtualDetallesEquipo(),
       });
-
-      // If user selected a financing option, load generated options and select it
-      if (selectedOpcionId !== null && typeof selectedOpcionId === 'number') {
-        // Load the auto-generated financing options
-        const generatedOpciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
-        
-        // Find the option that matches the selected template index
-        const selectedTemplate = plantillasFinanciamiento[selectedOpcionId];
-        if (selectedTemplate && generatedOpciones.length > 0) {
-          const matchingOpcion = generatedOpciones.find(o => 
-            o.nombre === selectedTemplate.nombre && 
-            o.cantidadCuotas === selectedTemplate.cantidadCuotas
-          );
-          
-          if (matchingOpcion?.id) {
-            await documentoApi.selectFinanciamiento(presupuesto.id, matchingOpcion.id);
-          }
-        }
-      }
-
-      let nota: DocumentoComercial;
-      try {
-        // Backend returns { documento, resolucionesEquipo }; unwrap documento.
-        // resolucionesEquipo is intentionally ignored here — this flow defers to
-        // AsignarEquiposDialog (manual assignment) when EQUIPO detalles exist.
-        const result = await documentoApi.convertToNotaPedido({
-          presupuestoId: presupuesto.id,
-          metodoPago: paymentMethod,
-          tipoIva: selectedIva,
-          descuentoTipo,
-          descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
-          ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
-          ...buildCajaPayload(paymentMethod, cajaContadoRef),
-        });
-        nota = result.documento;
-      } catch (notaErr: any) {
-        const deudaNotaData = parseDeudaError(notaErr);
-        if (deudaNotaData) {
-          setDeudaError(deudaNotaData);
-          const presupuestoId = presupuesto.id;
-          const capturedPayment = paymentMethod;
-          const capturedIva = selectedIva;
-          const capturedCuotas = fin.cantidadCuotas;
-          const capturedTipoFin = fin.tipoFinanciacion;
-          const capturedVencimiento = fin.primerVencimiento;
-          const capturedEntregaInicial1 = fin.entregarInicial;
-          const capturedUsePorcentaje1 = fin.usePorcentaje;
-          const capturedPorcentajeEntrega1 = finPorcentajeEntrega;
-          const capturedMontoFijoEntrega1 = finMontoFijoEntrega;
-          const capturedMontoEntrega1 = finMontoEntregaCalculado;
-          const capturedMontoFinanciado1 = finMontoFinanciado;
-          const capturedTasaInteres1 = tasaInteresManual;
-          pendingDeudaRef.current = async () => {
-            setLoading(true);
-            try {
-              const { documento: retryNota } = await documentoApi.convertToNotaPedido({
-                presupuestoId,
-                metodoPago: capturedPayment,
-                tipoIva: capturedIva,
-                descuentoTipo,
-                descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
-                confirmarConDeudaPendiente: true,
-              });
-              const detallesEquipoRetry = retryNota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
-              if (detallesEquipoRetry.length > 0) {
-                deudaYaConfirmadaRef.current = true; // debt confirmed — skip second dialog at factura step
-                setNotaParaAsignacion(retryNota);
-                setIsManualInvoice(true);
-                setAsignarEquiposDialogOpen(true);
-              } else {
-                const facturaRetry = await documentoApi.convertToFactura({
-                  notaPedidoId: retryNota.id,
-                  confirmarConDeudaPendiente: true,
-                  ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
-                  tipoFinanciacion: capturedTipoFin,
-                  tasaInteres: capturedTasaInteres1,
-                  ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
-                  ...resolveEntregaFields(capturedPayment, capturedEntregaInicial1, capturedUsePorcentaje1, capturedPorcentajeEntrega1, capturedMontoFijoEntrega1),
-                  ...buildCajaPayload(capturedPayment, cajaContadoRef),
-                });
-                if (isFinanciamiento(capturedPayment) && capturedEntregaInicial1 && capturedMontoEntrega1 > 0) {
-                  setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega1, montoFinanciado: capturedMontoFinanciado1, cantidadCuotas: capturedCuotas });
-                } else {
-                  setFacturaEntregaInfo(null);
-                }
-                setCreatedFactura(facturaRetry);
-                setSuccessDialogOpen(true);
-                clearForm();
-                setSelectedOpcionId(null);
-                setOpcionesFinanciamiento([]);
-                await loadData();
-              }
-            } catch (retryErr: any) {
-              setError(retryErr?.response?.data?.message || retryErr?.message || 'Error desconocido al crear la factura');
-            } finally {
-              setLoading(false);
-            }
-          };
-          setLoading(false);
-          return;
-        }
-        throw notaErr;
-      }
-
-      // Check if there are EQUIPO items in the nota
-      const detallesEquipo = nota.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [];
-
-      if (detallesEquipo.length > 0) {
-        // Open AsignarEquiposDialog for equipment assignment
-        setNotaParaAsignacion(nota);
-        setIsManualInvoice(true);
-        setAsignarEquiposDialogOpen(true);
-        setLoading(false);
-      } else {
-        // No equipos, proceed directly with factura creation
-        let factura: DocumentoComercial;
-        try {
-          factura = await documentoApi.convertToFactura({
-            notaPedidoId: nota.id,
-            ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
-            ...(isFinanciamiento(paymentMethod) && {
-              cantidadCuotas: fin.cantidadCuotas,
-              tipoFinanciacion: fin.tipoFinanciacion,
-              tasaInteres: tasaInteresManual,
-              ...(fin.primerVencimiento && { primerVencimiento: fin.primerVencimiento }),
-              ...resolveEntregaFields(paymentMethod, fin.entregarInicial, fin.usePorcentaje, finPorcentajeEntrega, finMontoFijoEntrega),
-            }),
-            ...buildCajaPayload(paymentMethod, cajaContadoRef),
-          });
-        } catch (facturaErr: any) {
-          const deudaFacturaData = parseDeudaError(facturaErr);
-          if (deudaFacturaData) {
-            setDeudaError(deudaFacturaData);
-            const notaId = nota.id;
-            const capturedPayment = paymentMethod;
-            const capturedCuotas = fin.cantidadCuotas;
-            const capturedTipoFin = fin.tipoFinanciacion;
-            const capturedVencimiento = fin.primerVencimiento;
-            const capturedEntregaInicial2 = fin.entregarInicial;
-            const capturedUsePorcentaje2 = fin.usePorcentaje;
-            const capturedPorcentajeEntrega2 = finPorcentajeEntrega;
-            const capturedMontoFijoEntrega2 = finMontoFijoEntrega;
-            const capturedMontoEntrega2 = finMontoEntregaCalculado;
-            const capturedMontoFinanciado2 = finMontoFinanciado;
-            const capturedTasaInteres2 = tasaInteresManual;
-            pendingDeudaRef.current = async () => {
-              setLoading(true);
-              try {
-                const facturaRetry = await documentoApi.convertToFactura({
-                  notaPedidoId: notaId,
-                  confirmarConDeudaPendiente: true,
-                  ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
-                  tipoFinanciacion: capturedTipoFin,
-                  tasaInteres: capturedTasaInteres2,
-                  ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
-                  ...resolveEntregaFields(capturedPayment, capturedEntregaInicial2, capturedUsePorcentaje2, capturedPorcentajeEntrega2, capturedMontoFijoEntrega2),
-                  ...buildCajaPayload(capturedPayment, cajaContadoRef),
-                });
-                if (isFinanciamiento(capturedPayment) && capturedEntregaInicial2 && capturedMontoEntrega2 > 0) {
-                  setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega2, montoFinanciado: capturedMontoFinanciado2, cantidadCuotas: capturedCuotas });
-                } else {
-                  setFacturaEntregaInfo(null);
-                }
-                setCreatedFactura(facturaRetry);
-                setSuccessDialogOpen(true);
-                clearForm();
-                setSelectedOpcionId(null);
-                setOpcionesFinanciamiento([]);
-                await loadData();
-              } catch (retryErr: any) {
-                setError(retryErr?.response?.data?.message || retryErr?.message || 'Error desconocido al crear la factura');
-              } finally {
-                setLoading(false);
-              }
-            };
-            setLoading(false);
-            return;
-          }
-          throw facturaErr;
-        }
-
-        if (isFinanciamiento(paymentMethod) && fin.entregarInicial && finMontoEntregaCalculado > 0) {
-          setFacturaEntregaInfo({ montoEntrega: finMontoEntregaCalculado, montoFinanciado: finMontoFinanciado, cantidadCuotas: fin.cantidadCuotas });
-        } else {
-          setFacturaEntregaInfo(null);
-        }
-        setCreatedFactura(factura);
-        setSuccessDialogOpen(true);
-        clearForm();
-        setSelectedOpcionId(null);
-        setOpcionesFinanciamiento([]);
-        await loadData();
-        setLoading(false);
-      }
-    } catch (err: any) {
-      console.error('Error creando factura manual:', err);
-      let errorMessage = 'Error desconocido al crear la factura';
-
-      if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-
-        // Detectar error de lead conversion
-        if (errorMessage.includes('lead')) {
-          errorMessage = '⚠️ No se puede crear Factura: El presupuesto está asociado a un lead.\n\n' +
-                        'Para continuar, primero debe convertir el lead a cliente.\n' +
-                        'Puede hacerlo desde la página de Leads.';
-        }
-        // Detectar error de constraint de equipo único
-        else if (errorMessage.includes('uk_equipo_unico') ||
-            errorMessage.includes('constraint') ||
-            errorMessage.includes('Duplicate entry') ||
-            errorMessage.includes('ya está asignado') ||
-            errorMessage.includes('already assigned')) {
-          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
-                        'Uno o más equipos ya están asignados a esta u otra factura. ' +
-                        'Cada equipo solo puede ser asignado una vez.\n\n' +
-                        '💡 Soluciones:\n' +
-                        '• Verifique que no haya seleccionado el mismo equipo múltiples veces\n' +
-                        '• Revise si los equipos ya fueron facturados previamente\n' +
-                        '• Seleccione equipos diferentes del inventario';
-        }
-      } else if (err?.response?.status === 500 && err?.response?.data) {
-        // Intentar extraer información del error 500
-        const responseData = JSON.stringify(err.response.data);
-        if (responseData.includes('uk_equipo_unico') || responseData.includes('Duplicate')) {
-          errorMessage = '⚠️ Error de Asignación Duplicada\n\n' +
-                        'El sistema detectó que está intentando asignar equipos que ya están en uso.\n\n' +
-                        '💡 Por favor:\n' +
-                        '• Verifique los equipos seleccionados\n' +
-                        '• Asegúrese de no repetir números de equipo\n' +
-                        '• Consulte el inventario de equipos disponibles';
-        }
-      } else if (err?.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
-      setLoading(false);
+      setIsManualInvoice(true);
+      setNotaParaAsignacion(null);
+      setAsignarEquiposDialogOpen(true);
+      return;
     }
+
+    // Sin equipos: factura directa al toque.
+    await submitFacturaDirecta(payload);
   };
 
   const handleConfirmEquiposAsignacion = async (asignaciones: { [detalleId: number]: number[] }) => {
+    // Flujo manual: la "factura" todavía no existe; el dialog devuelve un mapa
+    // indexado por línea del carrito (ver buildVirtualDetallesEquipo), que el
+    // backend remappea a detalleIds reales después de crear la factura directa.
+    if (isManualInvoice) {
+      if (!manualFacturaDraft) {
+        setError('Estado inconsistente: borrador de factura manual perdido. Volvé a intentar.');
+        return;
+      }
+      await submitFacturaDirecta(manualFacturaDraft.payload, asignaciones);
+      return;
+    }
+
+    // Flujo desde Nota de Pedido: la NP ya existe, convertimos a Factura.
     if (!notaParaAsignacion) return;
 
     setLoading(true);
     setError(null);
 
-    const cuotasParaEnviar = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
-    // For the nota flow, prefer the billing modal's tasa when the user set one; otherwise
-    // fall back to the selected financing option's tasa.
+    const cuotasParaEnviar = notaCantidadCuotas;
+    // Prefer the billing modal's tasa when the user set one; otherwise fall back
+    // to the selected financing option's tasa.
     const notaMetodoEsFinanciamiento = isFinanciamiento(selectedNotaPedido?.metodoPago ?? '');
-    const tasaInteresParaEnviar = isManualInvoice
-      ? (manualTasaInteres > 0 ? manualTasaInteres : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0))
-      : (notaMetodoEsFinanciamiento && billingForm.tasaInteres > 0
-          ? billingForm.tasaInteres
-          : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0));
+    const tasaInteresParaEnviar = notaMetodoEsFinanciamiento && billingForm.tasaInteres > 0
+      ? billingForm.tasaInteres
+      : (opcionesFinanciamiento.find(o => o.id === selectedOpcionId)?.tasaInteres ?? 0);
 
     try {
       const deudaPreconfirmada = deudaYaConfirmadaRef.current;
-      deudaYaConfirmadaRef.current = false; // reset before the call
+      deudaYaConfirmadaRef.current = false;
       const factura = await documentoApi.convertToFactura({
         notaPedidoId: notaParaAsignacion.id,
         equiposAsignaciones: asignaciones,
-        ...(isManualInvoice
-          ? {
-              descuentoTipo,
-              descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
-            }
-          : {
-              descuentoTipo: notaDescuentoTipo,
-              descuentoValor: notaDescuentoTipo === 'NONE' ? 0 : notaDescuentoValor,
-            }),
+        descuentoTipo: notaDescuentoTipo,
+        descuentoValor: notaDescuentoTipo === 'NONE' ? 0 : notaDescuentoValor,
         ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
         ...(cuotasParaEnviar != null && { cantidadCuotas: cuotasParaEnviar }),
-        tipoFinanciacion: isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion,
+        tipoFinanciacion: notaTipoFinanciacion,
         tasaInteres: tasaInteresParaEnviar,
-        ...((isManualInvoice ? primerVencimiento : notaPrimerVencimiento) && {
-          primerVencimiento: isManualInvoice ? primerVencimiento : notaPrimerVencimiento,
-        }),
-        ...(isManualInvoice
-          ? resolveEntregaFields(paymentMethod, entregarInicial, usePorcentaje, porcentajeEntrega, montoFijoEntrega)
-          : resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega)),
-        ...buildCajaPayload(
-          isManualInvoice ? paymentMethod : (selectedNotaPedido?.metodoPago ?? ''),
-          cajaContadoRef
-        ),
+        ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
+        ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
+        ...buildCajaPayload(selectedNotaPedido?.metodoPago ?? '', cajaContadoRef),
       });
 
-      const entregaActiva = isManualInvoice ? entregarInicial : notaEntregaInicial;
-      const entregaMonto = isManualInvoice ? montoEntregaCalculado : notaMontoEntregaCalculado;
-      const entregaFinanciado = isManualInvoice ? montoFinanciado : notaMontoFinanciado;
-      if (entregaActiva && entregaMonto > 0) {
-        setFacturaEntregaInfo({ montoEntrega: entregaMonto, montoFinanciado: entregaFinanciado, cantidadCuotas: cuotasParaEnviar });
+      if (notaEntregaInicial && notaMontoEntregaCalculado > 0) {
+        setFacturaEntregaInfo({
+          montoEntrega: notaMontoEntregaCalculado,
+          montoFinanciado: notaMontoFinanciado,
+          cantidadCuotas: cuotasParaEnviar,
+        });
       } else {
         setFacturaEntregaInfo(null);
       }
@@ -1223,37 +1113,26 @@ const FacturacionPage = () => {
       setNotaParaAsignacion(null);
       setCreatedFactura(factura);
       setSuccessDialogOpen(true);
-
-      if (isManualInvoice) {
-        clearForm();
-        setSelectedOpcionId(null);
-        setOpcionesFinanciamiento([]);
-        setIsManualInvoice(false);
-        await loadData();
-      } else {
-        invalidateNotas();
-        handleCloseConvertDialog();
-      }
+      invalidateNotas();
+      handleCloseConvertDialog();
     } catch (err: any) {
       console.error('Error converting to factura with equipos:', err);
 
-      // Deuda cliente: mostrar modal de confirmación
       const deudaEquiposData = parseDeudaError(err);
       if (deudaEquiposData) {
         setDeudaError(deudaEquiposData);
         const notaId = notaParaAsignacion.id;
-        const capturedIsManual = isManualInvoice;
-        const capturedMetodoPago3 = isManualInvoice ? paymentMethod : (selectedNotaPedido?.metodoPago ?? '');
-        const capturedCuotas = isManualInvoice ? cantidadCuotas : notaCantidadCuotas;
-        const capturedTipoFin = isManualInvoice ? tipoFinanciacion : notaTipoFinanciacion;
-        const capturedVencimiento = isManualInvoice ? primerVencimiento : notaPrimerVencimiento;
-        const capturedEntregaInicial3 = isManualInvoice ? entregarInicial : notaEntregaInicial;
-        const capturedUsePorcentaje3 = isManualInvoice ? usePorcentaje : notaUsePorcentaje;
-        const capturedPorcentajeEntrega3 = isManualInvoice ? porcentajeEntrega : notaPorcentajeEntrega;
-        const capturedMontoFijoEntrega3 = isManualInvoice ? montoFijoEntrega : notaMontoFijoEntrega;
-        const capturedMontoEntrega3 = isManualInvoice ? montoEntregaCalculado : notaMontoEntregaCalculado;
-        const capturedMontoFinanciado3 = isManualInvoice ? montoFinanciado : notaMontoFinanciado;
-        const capturedTasaInteres3 = tasaInteresParaEnviar;
+        const capturedMetodoPago = selectedNotaPedido?.metodoPago ?? '';
+        const capturedCuotas = cuotasParaEnviar;
+        const capturedTipoFin = notaTipoFinanciacion;
+        const capturedVencimiento = notaPrimerVencimiento;
+        const capturedEntregaInicial = notaEntregaInicial;
+        const capturedUsePorcentaje = notaUsePorcentaje;
+        const capturedPorcentajeEntrega = notaPorcentajeEntrega;
+        const capturedMontoFijoEntrega = notaMontoFijoEntrega;
+        const capturedMontoEntrega = notaMontoEntregaCalculado;
+        const capturedMontoFinanciado = notaMontoFinanciado;
+        const capturedTasaInteres = tasaInteresParaEnviar;
         pendingDeudaRef.current = async () => {
           setLoading(true);
           try {
@@ -1263,13 +1142,17 @@ const FacturacionPage = () => {
               confirmarConDeudaPendiente: true,
               ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
               tipoFinanciacion: capturedTipoFin,
-              tasaInteres: capturedTasaInteres3,
+              tasaInteres: capturedTasaInteres,
               ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
-              ...resolveEntregaFields(capturedMetodoPago3, capturedEntregaInicial3, capturedUsePorcentaje3, capturedPorcentajeEntrega3, capturedMontoFijoEntrega3),
-              ...buildCajaPayload(capturedMetodoPago3, cajaContadoRef),
+              ...resolveEntregaFields(capturedMetodoPago, capturedEntregaInicial, capturedUsePorcentaje, capturedPorcentajeEntrega, capturedMontoFijoEntrega),
+              ...buildCajaPayload(capturedMetodoPago, cajaContadoRef),
             });
-            if (capturedEntregaInicial3 && capturedMontoEntrega3 > 0) {
-              setFacturaEntregaInfo({ montoEntrega: capturedMontoEntrega3, montoFinanciado: capturedMontoFinanciado3, cantidadCuotas: capturedCuotas });
+            if (capturedEntregaInicial && capturedMontoEntrega > 0) {
+              setFacturaEntregaInfo({
+                montoEntrega: capturedMontoEntrega,
+                montoFinanciado: capturedMontoFinanciado,
+                cantidadCuotas: capturedCuotas,
+              });
             } else {
               setFacturaEntregaInfo(null);
             }
@@ -1277,16 +1160,8 @@ const FacturacionPage = () => {
             setNotaParaAsignacion(null);
             setCreatedFactura(facturaRetry);
             setSuccessDialogOpen(true);
-            if (capturedIsManual) {
-              clearForm();
-              setSelectedOpcionId(null);
-              setOpcionesFinanciamiento([]);
-              setIsManualInvoice(false);
-              await loadData();
-            } else {
-              invalidateNotas();
-              handleCloseConvertDialog();
-            }
+            invalidateNotas();
+            handleCloseConvertDialog();
           } catch (retryErr: any) {
             setError(retryErr?.response?.data?.message || retryErr?.message || 'Error desconocido al convertir a factura');
           } finally {
@@ -1302,7 +1177,6 @@ const FacturacionPage = () => {
       const backendMsg: string = data?.message || data?.error || data?.detail || '';
 
       let errorMessage: string;
-
       if (
         rawText.includes('uk_equipo_unico') ||
         rawText.includes('Duplicate') ||
@@ -1333,6 +1207,7 @@ const FacturacionPage = () => {
     setAsignarEquiposDialogOpen(false);
     setNotaParaAsignacion(null);
     setIsManualInvoice(false);
+    setManualFacturaDraft(null);
   };
 
   const handleCloseBillingDialog = () => setBillingDialogOpen(false);
@@ -1910,8 +1785,13 @@ const FacturacionPage = () => {
         open={asignarEquiposDialogOpen}
         onClose={handleCloseAsignarEquiposDialog}
         onConfirm={handleConfirmEquiposAsignacion}
-        detallesEquipo={notaParaAsignacion?.detalles?.filter(d => d.tipoItem === 'EQUIPO') || []}
-        notaPedidoId={notaParaAsignacion?.id}
+        detallesEquipo={
+          isManualInvoice
+            ? (manualFacturaDraft?.virtualDetallesEquipo ?? [])
+            : (notaParaAsignacion?.detalles?.filter(d => d.tipoItem === 'EQUIPO') || [])
+        }
+        clienteId={isManualInvoice ? selectedCliente?.id : undefined}
+        notaPedidoId={isManualInvoice ? undefined : notaParaAsignacion?.id}
       />
 
       <BillingDialog

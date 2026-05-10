@@ -71,6 +71,30 @@ export type CreatePresupuestoPayload = {
   detalles: DetalleDocumentoCreateDTO[];
 };
 
+// Crea una Factura directamente sin pasar por Presupuesto/Nota de Pedido.
+// Mirrors backend CreateFacturaDirectaDTO. equiposAsignaciones se indexa por
+// posición de la línea en `detalles` (0-based), no por id.
+export type CreateFacturaDirectaPayload = {
+  clienteId: number;
+  usuarioId: number;
+  metodoPago: MetodoPago;
+  tipoIva: 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+  detalles: DetalleDocumentoCreateDTO[];
+  descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+  descuentoValor?: number;
+  observaciones?: string;
+  equiposAsignaciones?: { [lineaIndex: number]: number[] };
+  cantidadCuotas?: number | null;
+  tipoFinanciacion?: string;
+  primerVencimiento?: string;
+  porcentajeEntregaInicial?: number | null;
+  montoEntregaInicial?: number | null;
+  tasaInteres?: number;
+  confirmarConDeudaPendiente?: boolean;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
+};
+
 export const documentoApi = {
 
 
@@ -259,6 +283,13 @@ export const documentoApi = {
   // Convert nota de pedido to factura
   convertToFactura: async (dto: ConvertToFacturaDTO): Promise<DocumentoComercial> => {
     const response = await api.post<DocumentoComercial>('/api/documentos/factura', dto);
+    return response.data;
+  },
+
+  // Crea una Factura directamente (sin Presupuesto ni Nota de Pedido).
+  // Usado por el flujo de facturación manual / venta de mostrador.
+  createFacturaDirecta: async (dto: CreateFacturaDirectaPayload): Promise<DocumentoComercial> => {
+    const response = await api.post<DocumentoComercial>('/api/documentos/factura-directa', dto);
     return response.data;
   },
 
