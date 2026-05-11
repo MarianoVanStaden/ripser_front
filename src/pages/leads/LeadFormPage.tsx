@@ -81,6 +81,10 @@ export const LeadFormPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [duplicateError, setDuplicateError] = useState<DuplicatePhoneError | null>(null);
+  // Guard sincrónico contra doble submit (doble click / Enter repetido):
+  // setSaving es asíncrono, así que el flag `saving` puede aún ser false en el
+  // segundo click. El ref bloquea inmediatamente.
+  const savingRef = useRef(false);
   // Cancela el chequeo en vuelo cuando el usuario sigue editando: si tabbing
   // entre campos, sólo nos importa la respuesta del último blur.
   const checkTelefonoAbortRef = useRef<AbortController | null>(null);
@@ -281,11 +285,17 @@ export const LeadFormPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Bloqueo sincrónico: si ya hay un submit en vuelo, ignoramos el click extra.
+    if (savingRef.current) {
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
 
     try {
+      savingRef.current = true;
       setSaving(true);
       setError(null);
 
@@ -379,6 +389,7 @@ export const LeadFormPage = () => {
         setError('Error al guardar el lead. Por favor, intente nuevamente.');
       }
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };

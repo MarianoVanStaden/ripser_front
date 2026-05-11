@@ -476,8 +476,6 @@ const FacturacionPage = () => {
     return montoFijoEntrega || 0;
   }, [entregarInicial, usePorcentaje, totalVenta, porcentajeEntrega, montoFijoEntrega]);
 
-  const montoFinanciado = useMemo(() => totalVenta - montoEntregaCalculado, [totalVenta, montoEntregaCalculado]);
-
   // Entrega inicial computed (nota de pedido) — based on product subtotal, not on notaTotalVenta,
   // so the down payment percentage applies to the product price (matching backend behaviour).
   const notaMontoEntregaCalculado = useMemo(() => {
