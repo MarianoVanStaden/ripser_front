@@ -308,6 +308,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/distribucion/entregas-equipos',
     '/logistica/vehiculos/incidencias',
     '/fabricacion/equipos',
+    '/fabricacion/ficha-equipo',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',
