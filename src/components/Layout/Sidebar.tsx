@@ -291,6 +291,32 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/garantias/reporte',
   ];
 
+  // Rutas permitidas para el rol TRANSPORTE (allowlist):
+  // - VENTAS: solo Registro Ventas.
+  // - CLIENTES: Gestión + Carpeta.
+  // - TRANSPORTE: todo el módulo.
+  // - PRODUCCION: solo Equipos Fabricados.
+  // - GARANTIAS: todo.
+  // - TALLER: todo menos Configuración.
+  const transporteAllowedPaths = [
+    '/',
+    '/ventas/registro',
+    '/clientes/gestion',
+    '/clientes/carpeta',
+    '/logistica/distribucion/viajes',
+    '/logistica/distribucion/entregas-productos',
+    '/logistica/distribucion/entregas-equipos',
+    '/logistica/vehiculos/incidencias',
+    '/fabricacion/equipos',
+    '/garantias/registro',
+    '/garantias/reclamos',
+    '/garantias/reporte',
+    '/taller/ordenes',
+    '/taller/materiales',
+    '/taller/tareas',
+    '/taller/trabajos',
+  ];
+
   // Filtrar las secciones según los permisos del usuario.
   // Un ítem puede declarar su propio `modulo` para sobreescribir el de la sección
   // (útil cuando una sección agrupa rutas gateadas por permisos distintos).
@@ -315,6 +341,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isCobranzasOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('COBRANZAS');
       if (isCobranzasOnly) {
         filteredItems = filteredItems.filter(item => cobranzasAllowedPaths.includes(item.path));
+      }
+
+      // Si el rol es puramente TRANSPORTE (y no Admin), aplicar allowlist estricta.
+      const isTransporteOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('TRANSPORTE');
+      if (isTransporteOnly) {
+        filteredItems = filteredItems.filter(item => transporteAllowedPaths.includes(item.path));
       }
 
       return {

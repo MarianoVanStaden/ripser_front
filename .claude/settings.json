@@ -12,7 +12,8 @@
       "Bash(mvn -q test -Dtest=PatrimonioServiceImplTest)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\dto\\documentoComercial"
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\dto\\documentoComercial",
+      "C:\\Users\\maria\\Documents\\GitHub\\ripser_back\\src\\main\\java\\com\\ripser_back\\security\\config"
     ]
   }
 }

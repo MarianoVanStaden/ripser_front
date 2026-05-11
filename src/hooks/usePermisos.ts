@@ -26,6 +26,11 @@ const PERMISOS_POR_ROL: PermisosMap = {
 
   // Acceso restringido: el filtrado fino por path se hace en Sidebar (cobranzasAllowedPaths).
   COBRANZAS: ['CLIENTES', 'ADMINISTRACION', 'GARANTIAS', 'PRESTAMOS'],
+
+  // Armado de viajes / entregas. Igual que COBRANZAS: declaramos los módulos
+  // (secciones) que se ven y el detalle se filtra por allowlist en Sidebar
+  // (transporteAllowedPaths) para esconder items dentro de cada sección.
+  TRANSPORTE: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER'],
 };
 
 export const usePermisos = () => {

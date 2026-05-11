@@ -83,6 +83,7 @@ const systemRoleOptions: { value: TipoRol; label: string; description: string; c
   { value: 'TALLER', label: 'Técnico de Taller', description: 'Acceso a taller, garantías y logística', color: '#5d4037' },
   { value: 'OFICINA', label: 'Personal de Oficina', description: 'Acceso a ventas, clientes, proveedores y logística', color: '#0288d1' },
   { value: 'COBRANZAS', label: 'Cobranzas', description: 'Acceso a Registro de Ventas, Gestión y Carpeta de Clientes, y módulo Cobranzas', color: '#00897b' },
+  { value: 'TRANSPORTE', label: 'Transporte', description: 'Arma viajes y gestiona entregas. Acceso a Registro Ventas, Clientes, Transporte, Equipos Fabricados, Garantías y Taller', color: '#6a1b9a' },
   { value: 'USUARIO', label: 'Usuario', description: 'Solo acceso al dashboard', color: '#7b1fa2' },
 ];
 

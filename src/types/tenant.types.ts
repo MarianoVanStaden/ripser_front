@@ -56,7 +56,8 @@ export type RolEmpresa =
   | 'TALLER'
   | 'OFICINA'
   | 'USUARIO_SUCURSAL'
-  | 'COBRANZAS';
+  | 'COBRANZAS'
+  | 'TRANSPORTE';
 
 export interface CreateEmpresaDTO {
   nombre: string;
