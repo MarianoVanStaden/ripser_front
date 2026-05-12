@@ -21,6 +21,7 @@ import { Delete as DeleteIcon } from '@mui/icons-material';
 import type { Producto, RecetaFabricacionDTO } from '../../../types';
 import ColorPicker from '../../common/ColorPicker';
 import type { CartItem, NotaCartItem } from './types';
+import { useOfertasVigentes } from '../../../hooks/useOfertasVigentes';
 
 // Memoized so React keeps a stable component reference across re-renders,
 // preventing input focus loss when editing cart fields.
@@ -43,6 +44,7 @@ export const ProductsTable = React.memo(
   }) => {
     type TipoEquipoFiltro = '' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
     const [tipoEquipoFiltro, setTipoEquipoFiltro] = React.useState<TipoEquipoFiltro>('');
+    const { getOferta } = useOfertasVigentes();
 
     const recetasCountPorTipo = React.useMemo(() => {
       const counts: Record<'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO', number> = {
@@ -117,6 +119,12 @@ export const ProductsTable = React.memo(
                 const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemAny = item as any;
+                const refId = itemAny.tipoItem === 'EQUIPO'
+                  ? (itemAny.recetaId ? Number(itemAny.recetaId) : null)
+                  : (itemAny.productoId ? Number(itemAny.productoId) : null);
+                const ofertaRow = refId
+                  ? getOferta(itemAny.tipoItem === 'EQUIPO' ? 'RECETA' : 'PRODUCTO', refId)
+                  : undefined;
                 return (
                   <TableRow key={index} hover>
                     {editable && (
@@ -180,6 +188,14 @@ export const ProductsTable = React.memo(
                             : item.productoNombre}
                         </Typography>
                       )}
+                      {ofertaRow && (
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={`OFERTA${ofertaRow.descuentoPct ? ` -${ofertaRow.descuentoPct}%` : ''}`}
+                          sx={{ mt: 0.5, fontWeight: 700, height: 20 }}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       {editable && itemAny.tipoItem === 'EQUIPO' ? (
@@ -229,6 +245,14 @@ export const ProductsTable = React.memo(
                       </Box>
                     </TableCell>
                     <TableCell align="right">
+                      {ofertaRow && Number(ofertaRow.precioOriginal) > Number(item.precioUnitario) && (
+                        <Typography
+                          variant="caption"
+                          sx={{ textDecoration: 'line-through', color: 'text.disabled', display: 'block' }}
+                        >
+                          ${Number(ofertaRow.precioOriginal).toLocaleString('es-AR')}
+                        </Typography>
+                      )}
                       {editable ? (
                         <TextField
                           type="number"

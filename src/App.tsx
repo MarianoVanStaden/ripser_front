@@ -45,6 +45,8 @@ const ColoresPage = lazy(() => import('./components/Admin/ColoresPage'));
 const MedidasPage = lazy(() => import('./components/Admin/MedidasPage'));
 const EspecificacionesTecnicasPage = lazy(() => import('./components/Admin/EspecificacionesTecnicasPage'));
 const SettingsPage = lazy(() => import('./components/Admin/SettingsPage'));
+const ImportadorPreciosPage = lazy(() => import('./pages/admin/ImportadorPreciosPage'));
+const OfertasPrecioPage = lazy(() => import('./pages/admin/OfertasPrecioPage'));
 const FlujoCajaPage = lazy(() => import('./components/Admin/FlujoCaja/FlujoCajaPage'));
 const EmpresasPage = lazyNamed(() => import('./components/Admin/EmpresasPage'), 'EmpresasPage');
 const SucursalesPage = lazyNamed(() => import('./components/Admin/SucursalesPage'), 'SucursalesPage');
@@ -238,6 +240,8 @@ function App() {
                   <Route path="admin/medidas" element={priv(<MedidasPage />)} />
                   <Route path="admin/especificaciones-tecnicas" element={priv(<EspecificacionesTecnicasPage />)} />
                   <Route path="admin/settings" element={priv(<SettingsPage />)} />
+                  <Route path="admin/importador-precios" element={priv(<ImportadorPreciosPage />)} />
+                  <Route path="admin/ofertas" element={priv(<OfertasPrecioPage />)} />
                   <Route path="admin/flujo-caja" element={priv(<FlujoCajaPage />)} />
                   <Route path="admin/bancos" element={priv(<BancosPage />)} />
                   <Route path="admin/cuentas-bancarias" element={priv(<CuentasBancariasPage />)} />

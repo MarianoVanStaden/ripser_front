@@ -50,6 +50,7 @@ import {
 import { clienteApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
+import { useOfertasVigentes } from "../../hooks/useOfertasVigentes";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
@@ -147,6 +148,7 @@ const PresupuestosPage: React.FC = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
+  const { getPrecioEfectivo, getOferta } = useOfertasVigentes();
   const [tipoEquipoFiltro, setTipoEquipoFiltro] = useState<'' | 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO'>('');
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -444,18 +446,25 @@ const PresupuestosPage: React.FC = () => {
       if (field === "productoId" && value) {
         const producto = productos.find((p) => p.id === Number(value));
         if (producto) {
-          detalle.descripcion = producto.nombre;
-          detalle.precioUnitario = producto.precio || 0;
-          detalle.subtotal = detalle.cantidad * (producto.precio || 0);
+          const base = producto.precio || 0;
+          const { precioEfectivo, hayOferta } = getPrecioEfectivo('PRODUCTO', Number(value), base);
+          detalle.descripcion = hayOferta
+            ? `${producto.nombre} [OFERTA]`
+            : producto.nombre;
+          detalle.precioUnitario = precioEfectivo;
+          detalle.subtotal = detalle.cantidad * precioEfectivo;
         }
       }
 
       if (field === "recetaId" && value) {
         const receta = recetas.find((r) => r.id === Number(value));
         if (receta) {
-          detalle.descripcion = `${receta.nombre} - ${receta.modelo || ''} (${receta.tipoEquipo})`;
-          detalle.precioUnitario = receta.precioVenta || 0;
-          detalle.subtotal = detalle.cantidad * (receta.precioVenta || 0);
+          const base = receta.precioVenta || 0;
+          const { precioEfectivo, hayOferta } = getPrecioEfectivo('RECETA', Number(value), base);
+          const baseDesc = `${receta.nombre} - ${receta.modelo || ''} (${receta.tipoEquipo})`;
+          detalle.descripcion = hayOferta ? `${baseDesc} [OFERTA]` : baseDesc;
+          detalle.precioUnitario = precioEfectivo;
+          detalle.subtotal = detalle.cantidad * precioEfectivo;
           // La medida proviene siempre de la receta (no es editable por el usuario).
           detalle.medidaId = receta.medida?.id;
           detalle.medidaNombre = receta.medida?.nombre;
@@ -468,7 +477,7 @@ const PresupuestosPage: React.FC = () => {
       return newDetalles;
     });
     setHasUnsavedChanges(true);
-  }, [readOnly, productos, recetas]);
+  }, [readOnly, productos, recetas, getPrecioEfectivo]);
 
   const removeDetalle = useCallback((index: number) => {
     if (readOnly) return;
@@ -1471,7 +1480,14 @@ const PresupuestosPage: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {detalles.length > 0 ? (
-                    detalles.map((detalle, index) => (
+                    detalles.map((detalle, index) => {
+                      const refId = detalle.tipoItem === 'PRODUCTO'
+                        ? (detalle.productoId ? Number(detalle.productoId) : null)
+                        : (detalle.recetaId ? Number(detalle.recetaId) : null);
+                      const ofertaDelDetalle = refId
+                        ? getOferta(detalle.tipoItem === 'PRODUCTO' ? 'PRODUCTO' : 'RECETA', refId)
+                        : undefined;
+                      return (
                       <TableRow key={index}>
                         {!readOnly && !editingPresupuesto && (
                           <TableCell>
@@ -1536,6 +1552,14 @@ const PresupuestosPage: React.FC = () => {
                               )}
                             </TextField>
                           )}
+                          {ofertaDelDetalle && (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              label={`OFERTA${ofertaDelDetalle.descuentoPct ? ` -${ofertaDelDetalle.descuentoPct}%` : ''}`}
+                              sx={{ mt: 0.5, fontWeight: 700 }}
+                            />
+                          )}
                         </TableCell>
                         <TableCell>
                           {readOnly || editingPresupuesto ? (
@@ -1569,6 +1593,14 @@ const PresupuestosPage: React.FC = () => {
                           />
                         </TableCell>
                         <TableCell>
+                          {ofertaDelDetalle && Number(ofertaDelDetalle.precioOriginal) > Number(detalle.precioUnitario) && (
+                            <Typography
+                              variant="caption"
+                              sx={{ textDecoration: 'line-through', color: 'text.disabled', display: 'block' }}
+                            >
+                              ${Number(ofertaDelDetalle.precioOriginal).toLocaleString('es-AR')}
+                            </Typography>
+                          )}
                           <TextField
                             size="small"
                             type="number"
@@ -1593,7 +1625,8 @@ const PresupuestosPage: React.FC = () => {
                           </TableCell>
                         )}
                       </TableRow>
-                    ))
+                      );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell colSpan={readOnly || editingPresupuesto ? 7 : 9} align="center">

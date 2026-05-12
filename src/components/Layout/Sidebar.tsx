@@ -239,6 +239,8 @@ const navigation: NavigationSection[] = [
       { text: 'Colores', icon: <SettingsIcon />, path: '/admin/colores' },
       { text: 'Medidas', icon: <SettingsIcon />, path: '/admin/medidas' },
       { text: 'Fichas técnicas', icon: <SettingsIcon />, path: '/admin/especificaciones-tecnicas' },
+      { text: 'Importador de Precios', icon: <SettingsIcon />, path: '/admin/importador-precios' },
+      { text: 'Ofertas Mensuales', icon: <SettingsIcon />, path: '/admin/ofertas' },
       { text: 'Gestión Depósitos', icon: <SettingsIcon />, path: '/logistica/configuracion/depositos' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
     ],

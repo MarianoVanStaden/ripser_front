@@ -25,6 +25,7 @@ import { documentoApi, type CreateFacturaDirectaPayload } from '../../api/servic
 import opcionFinanciamientoApi from '../../api/services/opcionFinanciamientoApi';
 import opcionFinanciamientoTemplateApi, { type OpcionFinanciamientoTemplateDTO } from '../../api/services/opcionFinanciamientoTemplateApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
+import { useOfertasVigentes } from '../../hooks/useOfertasVigentes';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
@@ -78,6 +79,7 @@ const FacturacionPage = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [products, setProducts] = useState<Producto[]>([]);
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
+  const { getPrecioEfectivo } = useOfertasVigentes();
   // notasPedido viene de useQuery server-side; mantenemos la variable con
   // el mismo nombre para no romper el resto de la página.
 
@@ -537,6 +539,7 @@ const FacturacionPage = () => {
     // Add EQUIPO by default if available, otherwise PRODUCTO
     if (recetas.length > 0) {
       const defaultReceta = recetas[0];
+      const precioRec = getPrecioEfectivo('RECETA', defaultReceta.id!, defaultReceta.precioVenta || 0).precioEfectivo;
       setCart((prev) => [
         ...prev,
         {
@@ -546,13 +549,14 @@ const FacturacionPage = () => {
           recetaModelo: defaultReceta.modelo,
           recetaTipo: defaultReceta.tipoEquipo,
           cantidad: 1,
-          precioUnitario: defaultReceta.precioVenta || 0,
+          precioUnitario: precioRec,
           descuento: 0,
           precioManualmenteModificado: false,
         },
       ]);
     } else if (products.length > 0) {
       const defaultProduct = products[0];
+      const precioProd = getPrecioEfectivo('PRODUCTO', defaultProduct.id!, defaultProduct.precio || 0).precioEfectivo;
       setCart((prev) => [
         ...prev,
         {
@@ -560,7 +564,7 @@ const FacturacionPage = () => {
           productoId: defaultProduct.id,
           productoNombre: defaultProduct.nombre || 'Producto sin nombre',
           cantidad: 1,
-          precioUnitario: defaultProduct.precio || 0,
+          precioUnitario: precioProd,
           descuento: 0,
           precioManualmenteModificado: false,
         },
@@ -601,7 +605,7 @@ const FacturacionPage = () => {
         const defaultProduct = products[0];
         item.productoId = defaultProduct.id;
         item.productoNombre = defaultProduct.nombre;
-        item.precioUnitario = defaultProduct.precio || 0;
+        item.precioUnitario = getPrecioEfectivo('PRODUCTO', defaultProduct.id!, defaultProduct.precio || 0).precioEfectivo;
         // Clear equipo fields
         delete item.recetaId;
         delete item.recetaNombre;
@@ -620,7 +624,7 @@ const FacturacionPage = () => {
         item.recetaNombre = defaultReceta.nombre;
         item.recetaModelo = defaultReceta.modelo;
         item.recetaTipo = defaultReceta.tipoEquipo;
-        item.precioUnitario = defaultReceta.precioVenta || 0;
+        item.precioUnitario = getPrecioEfectivo('RECETA', defaultReceta.id!, defaultReceta.precioVenta || 0).precioEfectivo;
         // Set default color and medida from receta
         item.colorId = defaultReceta.color?.id;
         item.colorNombre = defaultReceta.color?.nombre;
@@ -641,7 +645,7 @@ const FacturacionPage = () => {
         item.productoId = product.id;
         item.productoNombre = product.nombre || 'Producto sin nombre';
         if (!item.precioManualmenteModificado) {
-          item.precioUnitario = product.precio || 0;
+          item.precioUnitario = getPrecioEfectivo('PRODUCTO', product.id!, product.precio || 0).precioEfectivo;
         }
       }
     } else if (field === 'recetaId') {
@@ -657,7 +661,7 @@ const FacturacionPage = () => {
         item.medidaId = receta.medida?.id;
         item.medidaNombre = receta.medida?.nombre;
         if (!item.precioManualmenteModificado) {
-          item.precioUnitario = receta.precioVenta || 0;
+          item.precioUnitario = getPrecioEfectivo('RECETA', receta.id!, receta.precioVenta || 0).precioEfectivo;
         }
         // Reset stock verification
         item.stockVerificado = false;
