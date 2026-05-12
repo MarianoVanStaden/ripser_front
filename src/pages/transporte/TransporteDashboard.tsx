@@ -15,9 +15,22 @@ import {
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import api from '../../api/config';
-import { resumenViajeApi, type ResumenViaje } from '../../api/services/resumenViajeApi';
 import { useAuth } from '../../context/AuthContext';
 import { getFirstName } from '../../utils/userDisplay';
+
+// Forma mínima del ViajeDTO que devuelve /api/viajes (paginado). Sólo declaramos
+// los campos que usa el dashboard — alcanzar al type real de logistica.types.ts
+// arrastra dependencias que no necesitamos acá.
+interface ViajeResponse {
+  id: number;
+  numeroViaje?: string;
+  fechaViaje: string;
+  destino: string;
+  conductorNombre?: string;
+  vehiculoPatente?: string;
+  estado: 'PLANIFICADO' | 'EN_CURSO' | 'COMPLETADO' | 'CANCELADO';
+  entregas?: Array<{ estado?: string }>;
+}
 
 // Counts por estado de asignación, calculados client-side desde el listado de
 // equipos. El back ya expone /api/equipos-fabricados con paginación, alcanza
@@ -58,7 +71,7 @@ const TransporteDashboard: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<EquipoMetrics>(initialMetrics);
-  const [viajes, setViajes] = useState<ResumenViaje[]>([]);
+  const [viajes, setViajes] = useState<ViajeResponse[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +81,7 @@ const TransporteDashboard: React.FC = () => {
       try {
         const [equiposResp, viajesResp] = await Promise.all([
           api.get('/api/equipos-fabricados', { params: { page: 0, size: 10000 } }),
-          resumenViajeApi.getAll(),
+          api.get('/api/viajes', { params: { page: 0, size: 500 } }),
         ]);
 
         if (cancelled) return;
@@ -85,7 +98,8 @@ const TransporteDashboard: React.FC = () => {
           }
         }
         setMetrics(next);
-        setViajes(viajesResp);
+        const viajesData: ViajeResponse[] = viajesResp.data.content || [];
+        setViajes(viajesData);
       } catch (err) {
         console.error('Error cargando dashboard de transporte', err);
       } finally {
@@ -99,9 +113,14 @@ const TransporteDashboard: React.FC = () => {
 
   const viajesEnCurso = viajes.filter(v => v.estado === 'EN_CURSO');
   const viajesPlanificados = viajes.filter(v => v.estado === 'PLANIFICADO');
-  const entregasPendientes = viajesEnCurso.reduce(
-    (acc, v) => acc + Math.max(0, v.totalEntregas - v.entregasCompletadas), 0
-  );
+  const countEntregas = (v: ViajeResponse) => ({
+    total: v.entregas?.length ?? 0,
+    completadas: v.entregas?.filter(e => e.estado === 'ENTREGADA').length ?? 0,
+  });
+  const entregasPendientes = viajesEnCurso.reduce((acc, v) => {
+    const { total, completadas } = countEntregas(v);
+    return acc + Math.max(0, total - completadas);
+  }, 0);
 
   return (
     <Box>
@@ -222,19 +241,20 @@ const TransporteDashboard: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {[...viajesEnCurso, ...viajesPlanificados].slice(0, 10).map(v => (
-                  <TableRow key={v.id} hover>
-                    <TableCell>{v.numeroViaje}</TableCell>
-                    <TableCell>{dayjs(v.fechaViaje).format('DD/MM/YYYY')}</TableCell>
-                    <TableCell>{v.destino}</TableCell>
-                    <TableCell>{v.conductorNombre}</TableCell>
-                    <TableCell>{v.vehiculoInfo}</TableCell>
-                    <TableCell align="center">
-                      {v.entregasCompletadas}/{v.totalEntregas}
-                    </TableCell>
-                    <TableCell>{estadoChip(v.estado)}</TableCell>
-                  </TableRow>
-                ))}
+                {[...viajesEnCurso, ...viajesPlanificados].slice(0, 10).map(v => {
+                  const { total, completadas } = countEntregas(v);
+                  return (
+                    <TableRow key={v.id} hover>
+                      <TableCell>{v.numeroViaje || `#${v.id}`}</TableCell>
+                      <TableCell>{dayjs(v.fechaViaje).format('DD/MM/YYYY')}</TableCell>
+                      <TableCell>{v.destino}</TableCell>
+                      <TableCell>{v.conductorNombre || '-'}</TableCell>
+                      <TableCell>{v.vehiculoPatente || '-'}</TableCell>
+                      <TableCell align="center">{completadas}/{total}</TableCell>
+                      <TableCell>{estadoChip(v.estado)}</TableCell>
+                    </TableRow>
+                  );
+                })}
                 {viajesEnCurso.length + viajesPlanificados.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} align="center">
