@@ -36,6 +36,7 @@ const lazyNamed = <T extends ComponentType<any>>(
 // ---------------------------------------------------------------------------
 // Dashboard / dev
 const DevKPIs = lazy(() => import('./components/Dashboard/DevKPIs'));
+const TransporteDashboard = lazy(() => import('./pages/transporte/TransporteDashboard'));
 
 // Admin
 const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
@@ -186,14 +187,17 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
   return <>{children}</>;
 };
 
-// COBRANZAS-only users land on /cobranzas/resumen instead of the generic
-// dashboard, which fires admin-only endpoints on mount.
+// Roles acotados no deben ver el dashboard genérico (que dispara endpoints
+// admin-only y muestra métricas que no les corresponden). Cada uno cae en su
+// dashboard específico.
 const DashboardEntry: React.FC = () => {
   const { user, esSuperAdmin } = useAuth();
   const roles = user?.roles ?? [];
-  const isCobranzasOnly =
-    !esSuperAdmin && !roles.includes('ADMIN') && roles.includes('COBRANZAS');
-  if (isCobranzasOnly) return <Navigate to="/cobranzas/resumen" replace />;
+  const isAdminLike = esSuperAdmin || roles.includes('ADMIN');
+  if (!isAdminLike) {
+    if (roles.includes('COBRANZAS')) return <Navigate to="/cobranzas/resumen" replace />;
+    if (roles.includes('TRANSPORTE')) return <TransporteDashboard />;
+  }
   return <Dashboard />;
 };
 

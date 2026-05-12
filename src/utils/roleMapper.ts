@@ -73,9 +73,9 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
   {
     value: 'TRANSPORTE',
     label: 'Transporte',
-    description: 'Arma viajes y gestiona entregas. Acceso a Registro de Ventas, Clientes (carpeta/gestión), módulo Transporte, Equipos Fabricados, Garantías y Taller',
+    description: 'Arma viajes y gestiona entregas. Opera en todas las sucursales. Acceso a Registro Ventas, Clientes, Transporte, Equipos Fabricados, Garantías y Taller',
     color: '#6a1b9a',
-    requiresSucursal: true,
+    requiresSucursal: false,
     systemRole: 'TRANSPORTE'
   }
 ];
