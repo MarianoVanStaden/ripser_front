@@ -20,7 +20,7 @@ import {
 } from '../../api/services/ofertaPrecioApi';
 import { productApi } from '../../api/services/productApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
-import type { Producto, RecetaFabricacionListDTO } from '../../types';
+import type { Producto, RecetaFabricacionDTO } from '../../types';
 
 interface FormState {
   tipo: TipoReferenciaOferta;
@@ -58,7 +58,7 @@ const estadoChip = (oferta: OfertaPrecioDTO) => {
 const OfertasPrecioPage: React.FC = () => {
   const [ofertas, setOfertas] = useState<OfertaPrecioDTO[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [recetas, setRecetas] = useState<RecetaFabricacionListDTO[]>([]);
+  const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'TODAS' | 'VIGENTES' | 'INACTIVAS'>('TODAS');
@@ -87,10 +87,10 @@ const OfertasPrecioPage: React.FC = () => {
       try {
         const [p, r] = await Promise.all([
           productApi.getAll({ size: 5000 }),
-          recetaFabricacionApi.findAll({ size: 5000 }),
+          recetaFabricacionApi.findDisponiblesParaVenta(),
         ]);
         setProductos(p.content || []);
-        setRecetas(r.content || []);
+        setRecetas(r || []);
       } catch (e) {
         console.error('Error cargando catálogos para ofertas', e);
       }
@@ -132,7 +132,7 @@ const OfertasPrecioPage: React.FC = () => {
       if (form.tipo === 'PRODUCTO') {
         precioOriginal = Number(productos.find(p => p.id === refId)?.precio ?? 0);
       } else {
-        precioOriginal = Number((recetas.find(r => r.id === refId) as any)?.precioVenta ?? 0);
+        precioOriginal = Number(recetas.find(r => r.id === refId)?.precioVenta ?? 0);
       }
     }
     setForm(f => ({
@@ -386,7 +386,7 @@ const OfertasPrecioPage: React.FC = () => {
               <Autocomplete
                 size="small"
                 options={recetas}
-                getOptionLabel={r => `${r.codigo || '—'} · ${r.nombre} · $${Number((r as any).precioVenta ?? 0).toLocaleString('es-AR')}`}
+                getOptionLabel={r => `${r.codigo || '—'} · ${r.nombre} · $${Number(r.precioVenta ?? 0).toLocaleString('es-AR')}`}
                 value={recetas.find(r => r.id === form.referenciaId) ?? null}
                 onChange={(_, v) => handleReferenciaChange(v?.id ?? null)}
                 renderInput={params => <TextField {...params} label="Equipo" />}
