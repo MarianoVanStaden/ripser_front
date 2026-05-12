@@ -8,8 +8,8 @@ import {
 
 describe('roleMapper', () => {
   describe('ROLES_EMPRESA_OPTIONS', () => {
-    it('has 8 role options', () => {
-      expect(ROLES_EMPRESA_OPTIONS).toHaveLength(8);
+    it('has 9 role options', () => {
+      expect(ROLES_EMPRESA_OPTIONS).toHaveLength(9);
     });
 
     it('includes all expected roles', () => {
@@ -22,6 +22,7 @@ describe('roleMapper', () => {
       expect(values).toContain('OFICINA');
       expect(values).toContain('USUARIO_SUCURSAL');
       expect(values).toContain('COBRANZAS');
+      expect(values).toContain('TRANSPORTE');
     });
 
     it('roles that require sucursal are marked correctly', () => {
@@ -32,6 +33,7 @@ describe('roleMapper', () => {
       expect(values).toContain('TALLER');
       expect(values).toContain('OFICINA');
       expect(values).toContain('USUARIO_SUCURSAL');
+      expect(values).toContain('TRANSPORTE');
       // COBRANZAS opera a nivel empresa (cartera morosa de todas las sucursales),
       // no requiere asignación a una sucursal específica.
       expect(values).not.toContain('COBRANZAS');
@@ -92,13 +94,13 @@ describe('roleMapper', () => {
   describe('getAvailableRolesForUser', () => {
     it('super admin gets all roles', () => {
       const roles = getAvailableRolesForUser(true);
-      expect(roles).toHaveLength(8);
+      expect(roles).toHaveLength(9);
       expect(roles.map(r => r.value)).toContain('SUPER_ADMIN');
     });
 
     it('non-super admin cannot create SUPER_ADMIN', () => {
       const roles = getAvailableRolesForUser(false);
-      expect(roles).toHaveLength(7);
+      expect(roles).toHaveLength(8);
       expect(roles.map(r => r.value)).not.toContain('SUPER_ADMIN');
     });
   });
