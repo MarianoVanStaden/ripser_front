@@ -134,10 +134,8 @@ const DeliveriesPage = lazy(() => import('./components/Logistica/DeliveriesPage'
 const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
 const IncidenciasVehiculoPage = lazy(() => import('./components/Logistica/IncidenciasVehiculoPage'));
 const DepositosPage = lazy(() => import('./components/Logistica/Depositos/DepositosPage'));
-const InventarioDepositoPage = lazy(() => import('./components/Logistica/Depositos/InventarioDepositoPage'));
 const UbicacionEquiposPage = lazy(() => import('./components/Logistica/Depositos/UbicacionEquiposPage'));
 const AuditoriaPage = lazy(() => import('./components/Logistica/Depositos/AuditoriaPage'));
-const TransferenciasPage = lazy(() => import('./components/Logistica/Depositos/TransferenciasPage'));
 const ReconciliacionStockPage = lazy(() => import('./components/Logistica/Depositos/ReconciliacionStockPage'));
 
 // Taller
@@ -332,7 +330,6 @@ function App() {
 
                   {/* LOGÍSTICA */}
                   <Route path="logistica/stock" element={priv(<StockPage />)} />
-                  <Route path="logistica/inventario/depositos" element={priv(<InventarioDepositoPage />)} />
                   <Route path="logistica/inventario/stock-equipos" element={priv(<StockEquiposPage />)} />
                   <Route path="logistica/inventario/ubicaciones" element={priv(<UbicacionEquiposPage />)} />
                   <Route path="logistica/inventario/recuentos" element={priv(<RecountTasksPage />)} />
@@ -342,7 +339,6 @@ function App() {
                   <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
                   <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} />
                   <Route path="logistica/vehiculos/incidencias" element={priv(<IncidenciasVehiculoPage />)} />
-                  <Route path="logistica/movimientos/transferencias" element={priv(<TransferenciasPage />)} />
                   <Route path="logistica/movimientos/auditoria" element={priv(<AuditoriaPage />)} />
                   <Route path="logistica/configuracion/depositos" element={priv(<DepositosPage />)} />
 
@@ -354,10 +350,8 @@ function App() {
                   <Route path="logistica/entregas" element={<Navigate to="/logistica/distribucion/entregas-productos" replace />} />
                   <Route path="logistica/entregas-equipos" element={<Navigate to="/logistica/distribucion/entregas-equipos" replace />} />
                   <Route path="logistica/depositos" element={<Navigate to="/logistica/configuracion/depositos" replace />} />
-                  <Route path="logistica/inventario-deposito" element={<Navigate to="/logistica/inventario/depositos" replace />} />
                   <Route path="logistica/ubicacion-equipos" element={<Navigate to="/logistica/inventario/ubicaciones" replace />} />
                   <Route path="logistica/auditoria" element={<Navigate to="/logistica/movimientos/auditoria" replace />} />
-                  <Route path="logistica/transferencias" element={<Navigate to="/logistica/movimientos/transferencias" replace />} />
                   <Route path="logistica/reconciliacion" element={<Navigate to="/logistica/inventario/reconciliacion" replace />} />
 
                   {/* TALLER */}

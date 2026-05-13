@@ -149,7 +149,6 @@ const navigation: NavigationSection[] = [
     items: [
       // INVENTARIO - Gestión de stock, productos y conteo SIDEBAR
       { text: 'Gestión Stock', icon: <AssignmentIcon />, path: '/logistica/stock' },
-      { text: 'Inventario por Depósito', icon: <AssignmentIcon />, path: '/logistica/inventario/depositos' },
       { text: 'Stock de Equipos', icon: <AssignmentIcon />, path: '/logistica/inventario/stock-equipos' },
       { text: 'Ubicación Equipos', icon: <AssignmentIcon />, path: '/logistica/inventario/ubicaciones' },
       { text: 'Recuento Manual', icon: <AssignmentIcon />, path: '/logistica/inventario' },
@@ -157,7 +156,6 @@ const navigation: NavigationSection[] = [
       { text: 'Reconciliación Stock', icon: <SyncIcon />, path: '/logistica/inventario/reconciliacion' },
             // MOVIMIENTOS - Trazabilidad
       { text: 'Auditoría', icon: <AssignmentIcon />, path: '/logistica/movimientos/auditoria' },
-      { text: 'Transferencias', icon: <SwapHorizIcon />, path: '/logistica/movimientos/transferencias' },
     ],
   },
   {
@@ -241,7 +239,6 @@ const navigation: NavigationSection[] = [
       { text: 'Fichas técnicas', icon: <SettingsIcon />, path: '/admin/especificaciones-tecnicas' },
       { text: 'Importador de Precios', icon: <SettingsIcon />, path: '/admin/importador-precios' },
       { text: 'Ofertas Mensuales', icon: <SettingsIcon />, path: '/admin/ofertas' },
-      { text: 'Gestión Depósitos', icon: <SettingsIcon />, path: '/logistica/configuracion/depositos' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
     ],
   },

@@ -1,15 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box, Typography, Card, CardContent, TextField, Button, Stack, Alert,
   Table, TableHead, TableRow, TableCell, TableBody, TableContainer, Paper,
   Chip, Select, MenuItem, FormControl, LinearProgress, Dialog,
-  DialogTitle, DialogContent, DialogActions,
+  DialogTitle, DialogContent, DialogActions, Divider,
 } from '@mui/material';
 import {
   CloudUpload as CloudUploadIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
   PlayArrow as PlayArrowIcon,
+  TableChart as TableChartIcon,
 } from '@mui/icons-material';
 import { productApi } from '../../api/services/productApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
@@ -56,6 +57,15 @@ const SAMPLE_JSON = `[
   {"modelo":"Cortadora Systel 330","precio_estandar":2242000}
 ]`;
 
+// Normaliza el nombre de la columna: minúsculas, sin acentos, sin espacios.
+// Tolera variaciones como "Código", "  MODELO ", "Precio Lista", etc.
+const normalizeHeader = (s: string): string =>
+  s.toString()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
 const ImportadorPreciosPage: React.FC = () => {
   const [jsonText, setJsonText] = useState('');
   const [precioPreferido, setPrecioPreferido] = useState<'precio_estandar' | 'precio_mayo' | 'precio'>('precio_estandar');
@@ -67,6 +77,8 @@ const ImportadorPreciosPage: React.FC = () => {
   const [applying, setApplying] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
+  const [excelInfo, setExcelInfo] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Cargar catálogos una vez. Sólo entidades destinadas a venta (no MP).
   useEffect(() => {
@@ -91,23 +103,8 @@ const ImportadorPreciosPage: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const handleParse = () => {
-    setParseError(null);
-    setRows([]);
-    setResultMsg(null);
-    let parsed: ListadoItem[];
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch (e) {
-      setParseError('JSON inválido: ' + (e as Error).message);
-      return;
-    }
-    if (!Array.isArray(parsed)) {
-      setParseError('El JSON debe ser un array de items.');
-      return;
-    }
-
-    const newRows: MatchRow[] = parsed.map((item, idx) => {
+  const runMatch = (items: ListadoItem[]) => {
+    const newRows: MatchRow[] = items.map((item, idx) => {
       const query = item.modelo || item.nombre || String(item.codigo || `item-${idx}`);
       const precioNuevo =
         item[precioPreferido] ??
@@ -152,6 +149,125 @@ const ImportadorPreciosPage: React.FC = () => {
       };
     });
     setRows(newRows);
+  };
+
+  const handleParse = () => {
+    setParseError(null);
+    setRows([]);
+    setResultMsg(null);
+    setExcelInfo(null);
+    let parsed: ListadoItem[];
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (e) {
+      setParseError('JSON inválido: ' + (e as Error).message);
+      return;
+    }
+    if (!Array.isArray(parsed)) {
+      setParseError('El JSON debe ser un array de items.');
+      return;
+    }
+    runMatch(parsed);
+  };
+
+  const handleUploadExcel = async (file: File) => {
+    setParseError(null);
+    setRows([]);
+    setResultMsg(null);
+    setExcelInfo(null);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const buffer = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) {
+        setParseError('El archivo no contiene hojas.');
+        return;
+      }
+
+      // Tomar la primera fila como headers
+      const headerRow = worksheet.getRow(1);
+      const headerMap: Record<number, string> = {};
+      headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const raw = cell.text ?? cell.value;
+        if (raw != null && String(raw).trim() !== '') {
+          headerMap[colNumber] = normalizeHeader(String(raw));
+        }
+      });
+
+      const colNumbers = Object.keys(headerMap).map(Number);
+      const findCol = (...aliases: string[]): number | undefined =>
+        colNumbers.find(n => aliases.includes(headerMap[n]));
+
+      const colCodigo = findCol('codigo', 'cod', 'sku');
+      const colModelo = findCol('modelo', 'nombre', 'descripcion', 'producto');
+      const colPrecio = findCol(
+        'precio',
+        'precioestandar',
+        'preciolista',
+        'preciomayo',
+        'preciomayorista',
+        'preciooferta',
+        'precioventa',
+      );
+
+      if (colModelo == null && colCodigo == null) {
+        setParseError('No se encontró la columna "modelo" (o "codigo") en la primera fila.');
+        return;
+      }
+      if (colPrecio == null) {
+        setParseError('No se encontró la columna "precio" en la primera fila.');
+        return;
+      }
+
+      const items: ListadoItem[] = [];
+      // worksheet.rowCount puede incluir filas vacías al final; iteramos y descartamos.
+      for (let r = 2; r <= worksheet.rowCount; r++) {
+        const row = worksheet.getRow(r);
+        const readCell = (col?: number): string => {
+          if (col == null) return '';
+          const v = row.getCell(col).value;
+          if (v == null) return '';
+          if (typeof v === 'object' && 'text' in (v as any)) return String((v as any).text ?? '');
+          if (typeof v === 'object' && 'result' in (v as any)) return String((v as any).result ?? '');
+          return String(v);
+        };
+        const codigo = readCell(colCodigo).trim();
+        const modelo = readCell(colModelo).trim();
+        const precioRaw = readCell(colPrecio).trim();
+        if (!codigo && !modelo) continue;
+        // Limpiar separadores típicos de Excel argentino: "1.234.567,89" → 1234567.89
+        const precioClean = precioRaw
+          .replace(/[^\d,.\-]/g, '')
+          .replace(/\.(?=\d{3}(\D|$))/g, '')
+          .replace(',', '.');
+        const precio = Number(precioClean);
+        items.push({
+          codigo: codigo || undefined,
+          modelo: modelo || undefined,
+          precio: Number.isFinite(precio) ? precio : 0,
+        });
+      }
+
+      if (items.length === 0) {
+        setParseError('El archivo no tiene filas de datos.');
+        return;
+      }
+
+      setExcelInfo(`${file.name} · ${items.length} filas leídas`);
+      runMatch(items);
+    } catch (e: any) {
+      console.error('Error leyendo Excel', e);
+      setParseError('No se pudo leer el Excel: ' + (e.message || 'archivo inválido'));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUploadExcel(file);
+    // Permitir volver a subir el mismo archivo
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const matchSummary = useMemo(() => {
@@ -220,9 +336,9 @@ const ImportadorPreciosPage: React.FC = () => {
         Importador de Precios
       </Typography>
       <Typography variant="body2" color="text.secondary" mb={3}>
-        Pegá un listado en formato JSON. Cada item debe tener al menos
-        <code> modelo </code> (o <code> nombre </code>) y un campo de precio.
-        Hace fuzzy match contra productos y recetas, podés ajustar manualmente antes de aplicar.
+        Subí un Excel (<code>.xlsx</code>) con columnas <code>codigo</code>, <code>modelo</code> y <code>precio</code>,
+        o pegá un listado en formato JSON. Hace fuzzy match contra productos y recetas; podés
+        ajustar manualmente antes de aplicar.
       </Typography>
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -244,9 +360,31 @@ const ImportadorPreciosPage: React.FC = () => {
               />
             </Box>
             <Stack spacing={1.5} sx={{ minWidth: 240 }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<TableChartIcon />}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+              >
+                Cargar Excel (.xlsx)
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                hidden
+                onChange={handleFileChange}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Columnas esperadas: <b>codigo</b>, <b>modelo</b>, <b>precio</b> (primera fila = encabezados).
+              </Typography>
+
+              <Divider flexItem sx={{ my: 0.5 }}>o</Divider>
+
               <FormControl size="small" fullWidth>
                 <Typography variant="caption" color="text.secondary">
-                  Campo de precio a usar
+                  Campo de precio a usar (JSON)
                 </Typography>
                 <Select
                   value={precioPreferido}
@@ -263,16 +401,21 @@ const ImportadorPreciosPage: React.FC = () => {
                 onClick={handleParse}
                 disabled={!jsonText.trim() || loading}
               >
-                Analizar y matchear
+                Analizar JSON
               </Button>
               <Button
                 size="small"
                 onClick={() => setJsonText(SAMPLE_JSON)}
               >
-                Cargar ejemplo
+                Cargar ejemplo JSON
               </Button>
             </Stack>
           </Stack>
+          {excelInfo && (
+            <Alert severity="success" sx={{ mt: 2 }} onClose={() => setExcelInfo(null)}>
+              Excel cargado: {excelInfo}
+            </Alert>
+          )}
           {parseError && (
             <Alert severity="error" sx={{ mt: 2 }}>{parseError}</Alert>
           )}

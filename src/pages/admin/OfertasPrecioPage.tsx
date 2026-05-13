@@ -12,6 +12,7 @@ import {
   Delete as DeleteIcon,
   ToggleOn as ToggleOnIcon,
   LocalOffer as LocalOfferIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import {
@@ -61,12 +62,22 @@ const OfertasPrecioPage: React.FC = () => {
   const [recetas, setRecetas] = useState<RecetaFabricacionDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [filter, setFilter] = useState<'TODAS' | 'VIGENTES' | 'INACTIVAS'>('TODAS');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ofertaToDelete, setOfertaToDelete] = useState<OfertaPrecioDTO | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const notifySuccess = (msg: string) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(null), 3000);
+  };
 
   const loadOfertas = async () => {
     setLoading(true);
@@ -195,8 +206,10 @@ const OfertasPrecioPage: React.FC = () => {
       };
       if (editingId) {
         await ofertaPrecioApi.update(editingId, dto);
+        notifySuccess('Oferta actualizada correctamente');
       } else {
         await ofertaPrecioApi.create(dto);
+        notifySuccess('Oferta creada correctamente');
       }
       setDialogOpen(false);
       loadOfertas();
@@ -210,19 +223,39 @@ const OfertasPrecioPage: React.FC = () => {
   const handleDesactivar = async (id: number) => {
     try {
       await ofertaPrecioApi.desactivar(id);
+      notifySuccess('Oferta desactivada correctamente');
       loadOfertas();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(e.response?.data?.message || 'Error al desactivar la oferta');
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Eliminar definitivamente esta oferta?')) return;
+  const openDeleteDialog = (o: OfertaPrecioDTO) => {
+    setOfertaToDelete(o);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleting) return;
+    setDeleteDialogOpen(false);
+    setOfertaToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!ofertaToDelete) return;
+    setDeleting(true);
     try {
-      await ofertaPrecioApi.delete(id);
+      await ofertaPrecioApi.delete(ofertaToDelete.id);
+      notifySuccess('Oferta eliminada correctamente');
+      setDeleteDialogOpen(false);
+      setOfertaToDelete(null);
       loadOfertas();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError(e.response?.data?.message || 'Error al eliminar la oferta');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -245,6 +278,11 @@ const OfertasPrecioPage: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+          {success}
         </Alert>
       )}
 
@@ -325,7 +363,7 @@ const OfertasPrecioPage: React.FC = () => {
                         </Tooltip>
                       )}
                       <Tooltip title="Eliminar">
-                        <IconButton size="small" onClick={() => handleDelete(o.id)}>
+                        <IconButton size="small" onClick={() => openDeleteDialog(o)}>
                           <DeleteIcon fontSize="small" color="error" />
                         </IconButton>
                       </Tooltip>
@@ -466,6 +504,50 @@ const OfertasPrecioPage: React.FC = () => {
           <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
           <Button variant="contained" onClick={handleSave} disabled={saving}>
             {saving ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onClose={closeDeleteDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+          <WarningIcon color="error" />
+          ¿Eliminar oferta?
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <strong>¡Atención!</strong> Esta acción no se puede deshacer.
+          </Alert>
+          {ofertaToDelete && (
+            <Box>
+              <Typography variant="body1" gutterBottom>
+                Está a punto de eliminar la oferta:
+              </Typography>
+              <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+                <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  {ofertaToDelete.referenciaNombre}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {ofertaToDelete.tipo === 'PRODUCTO' ? 'Producto' : 'Equipo / Receta'} ·{' '}
+                  ${Number(ofertaToDelete.precioOferta).toLocaleString('es-AR')} ·{' '}
+                  {dayjs(ofertaToDelete.fechaInicio).format('DD/MM/YY')} →{' '}
+                  {dayjs(ofertaToDelete.fechaFin).format('DD/MM/YY')}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+            startIcon={<DeleteIcon />}
+          >
+            {deleting ? 'Eliminando...' : 'Eliminar'}
           </Button>
         </DialogActions>
       </Dialog>
