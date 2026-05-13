@@ -14,7 +14,10 @@ const PERMISOS_POR_ROL: PermisosMap = {
 
   VENDEDOR: ['VENTAS', 'CLIENTES'], // Se removió GARANTIAS
 
-  TALLER: ['DASHBOARD', 'TALLER', 'GARANTIAS', 'LOGISTICA'],
+  // El rol TALLER ve: Proveedores (sólo gestión y compras — filtrado fino en Sidebar),
+  // Logística completa, Taller completo, Producción completa, Garantías completa.
+  // El detalle por path se controla en tallerAllowedPaths en Sidebar.tsx.
+  TALLER: ['DASHBOARD', 'TALLER', 'GARANTIAS', 'LOGISTICA', 'PROVEEDORES', 'PRODUCCION'],
 
   USER: ['DASHBOARD'],
 

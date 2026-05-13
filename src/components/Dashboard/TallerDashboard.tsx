@@ -1,5 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { Grid, Paper, Typography, Box, Card, CardContent, Chip, LinearProgress, Stack, Divider, Alert } from '@mui/material';
+import React, { useEffect, useState, useMemo } from 'react';
+import {
+  Grid,
+  Paper,
+  Typography,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  LinearProgress,
+  Stack,
+  Divider,
+  Alert,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableContainer,
+  Skeleton,
+  Tooltip,
+} from '@mui/material';
+import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import BuildIcon from '@mui/icons-material/Build';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -7,142 +28,147 @@ import WarningIcon from '@mui/icons-material/Warning';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-
-interface TallerMetrics {
-  ordenesActivas: number;
-  ordenesPendientes: number;
-  ordenesCompletadasHoy: number;
-  ordenesCompletadasMes: number;
-  materialesUsados: number;
-  materialesBajos: number;
-  tiempoPromedioReparacion: number;
-  eficienciaDelMes: number;
-}
-
-interface OrdenServicio {
-  id: number;
-  numeroOrden: string;
-  cliente: string;
-  equipo: string;
-  estado: string;
-  prioridad: string;
-  fechaIngreso: string;
-  tecnicoAsignado?: string;
-}
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import dayjs from 'dayjs';
+import { equipoFabricadoApi } from '../../api/services';
+import { ordenServicioApi } from '../../api/services/ordenServicioApi';
+import type {
+  EquipoFabricadoListDTO,
+  DesgloseModeloDTO,
+  OrdenServicio,
+} from '../../types';
 
 const TallerDashboard: React.FC = () => {
-  const [metrics, setMetrics] = useState<TallerMetrics>({
-    ordenesActivas: 0,
-    ordenesPendientes: 0,
-    ordenesCompletadasHoy: 0,
-    ordenesCompletadasMes: 0,
-    materialesUsados: 0,
-    materialesBajos: 0,
-    tiempoPromedioReparacion: 0,
-    eficienciaDelMes: 0,
-  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [ordenesUrgentes, setOrdenesUrgentes] = useState<OrdenServicio[]>([]);
+  const [equiposEnProceso, setEquiposEnProceso] = useState<EquipoFabricadoListDTO[]>([]);
+  const [completadosMes, setCompletadosMes] = useState<EquipoFabricadoListDTO[]>([]);
+  const [pendientesTerminacion, setPendientesTerminacion] = useState<EquipoFabricadoListDTO[]>([]);
+  const [desglose, setDesglose] = useState<DesgloseModeloDTO[]>([]);
+  const [ordenesActivas, setOrdenesActivas] = useState<OrdenServicio[]>([]);
 
   useEffect(() => {
-    fetchTallerMetrics();
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const inicioMes = dayjs().startOf('month').format('YYYY-MM-DD');
+        const hoy = dayjs().format('YYYY-MM-DD');
+
+        const [enProc, compMes, pendTerm, desgl, ordPage] = await Promise.all([
+          equipoFabricadoApi.findByEstado('EN_PROCESO'),
+          equipoFabricadoApi.findCompletadosEntreFechas(inicioMes, hoy),
+          equipoFabricadoApi.findPendientesTerminacion(),
+          equipoFabricadoApi.getDesgloseModelo(),
+          ordenServicioApi.getAll({ page: 0, size: 200, sort: 'id,desc' }),
+        ]);
+        if (cancelled) return;
+
+        setEquiposEnProceso(enProc || []);
+        setCompletadosMes(compMes || []);
+        setPendientesTerminacion(pendTerm || []);
+        setDesglose(desgl || []);
+
+        const ordenesList = Array.isArray(ordPage)
+          ? (ordPage as OrdenServicio[])
+          : (ordPage as any)?.content || [];
+        const activas: OrdenServicio[] = ordenesList.filter(
+          (o: OrdenServicio) => o.estado === 'PENDIENTE' || o.estado === 'EN_PROCESO'
+        );
+        setOrdenesActivas(activas);
+      } catch (e: any) {
+        console.error('Error cargando dashboard de taller', e);
+        if (!cancelled) setError('Error cargando datos del dashboard');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, []);
 
-  const fetchTallerMetrics = async () => {
-    try {
-      // TODO: Fetch real data from API
-      // Ejemplo: const response = await tallerApi.getMetrics();
-      
-      // Datos de ejemplo
-      setMetrics({
-        ordenesActivas: 12,
-        ordenesPendientes: 8,
-        ordenesCompletadasHoy: 5,
-        ordenesCompletadasMes: 87,
-        materialesUsados: 45,
-        materialesBajos: 3,
-        tiempoPromedioReparacion: 3.5,
-        eficienciaDelMes: 85,
-      });
+  // ── Métricas derivadas ────────────────────────────────────────────────
+  const totalEquiposEnService = useMemo(
+    () => desglose.reduce((sum, d) => sum + (d.enService || 0), 0),
+    [desglose]
+  );
 
-      setOrdenesUrgentes([
-        {
-          id: 1,
-          numeroOrden: 'OS-2024-001',
-          cliente: 'Juan Pérez',
-          equipo: 'Equipo Industrial A',
-          estado: 'EN_PROCESO',
-          prioridad: 'ALTA',
-          fechaIngreso: '2024-12-01',
-          tecnicoAsignado: 'Carlos Gomez',
-        },
-        {
-          id: 2,
-          numeroOrden: 'OS-2024-002',
-          cliente: 'María López',
-          equipo: 'Sistema de Enfriamiento',
-          estado: 'PENDIENTE',
-          prioridad: 'URGENTE',
-          fechaIngreso: '2024-12-01',
-        },
-        {
-          id: 3,
-          numeroOrden: 'OS-2024-003',
-          cliente: 'Empresa XYZ',
-          equipo: 'Motor Industrial',
-          estado: 'EN_PROCESO',
-          prioridad: 'ALTA',
-          fechaIngreso: '2024-11-30',
-          tecnicoAsignado: 'Roberto Silva',
-        },
-      ]);
-    } catch (error) {
-      console.error('Error fetching taller metrics:', error);
-    }
+  const totalEquiposEnDeposito = useMemo(
+    () => desglose.reduce((sum, d) => sum + (d.total || 0), 0),
+    [desglose]
+  );
+
+  const promedioProgreso = useMemo(() => {
+    if (equiposEnProceso.length === 0) return 0;
+    const sum = equiposEnProceso.reduce(
+      (acc, eq) => acc + (eq.progresoFabricacion ?? 0),
+      0
+    );
+    return Math.round(sum / equiposEnProceso.length);
+  }, [equiposEnProceso]);
+
+  // Top 8 equipos EN_PROCESO ordenados por progreso descendente (los más cerca de listos primero)
+  const topEnProceso = useMemo(() => {
+    return [...equiposEnProceso]
+      .sort((a, b) => (b.progresoFabricacion ?? 0) - (a.progresoFabricacion ?? 0))
+      .slice(0, 8);
+  }, [equiposEnProceso]);
+
+  // Top modelos por equipos disponibles (excluyendo los que tienen 0)
+  const topDesglose = useMemo(() => {
+    return [...desglose]
+      .filter(d => d.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+  }, [desglose]);
+
+  // Órdenes activas ordenadas por fecha de creación ascendente (las más viejas primero)
+  const ordenesPrioritarias = useMemo(() => {
+    return [...ordenesActivas]
+      .sort((a, b) =>
+        new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime()
+      )
+      .slice(0, 6);
+  }, [ordenesActivas]);
+
+  // Estimación de antigüedad para los chips
+  const diasDesde = (fecha: string): number => {
+    return dayjs().startOf('day').diff(dayjs(fecha).startOf('day'), 'day');
   };
 
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case 'PENDIENTE':
-        return 'warning';
-      case 'EN_PROCESO':
-        return 'info';
-      case 'COMPLETADO':
-        return 'success';
-      case 'CANCELADO':
-        return 'error';
-      default:
-        return 'default';
-    }
+  const getEstadoOSColor = (estado: string): 'default' | 'warning' | 'info' => {
+    if (estado === 'EN_PROCESO') return 'info';
+    if (estado === 'PENDIENTE') return 'warning';
+    return 'default';
   };
 
-  const getPrioridadColor = (prioridad: string) => {
-    switch (prioridad) {
-      case 'URGENTE':
-        return 'error';
-      case 'ALTA':
-        return 'warning';
-      case 'MEDIA':
-        return 'info';
-      case 'BAJA':
-        return 'default';
-      default:
-        return 'default';
-    }
+  const getProgresoColor = (pct: number): 'success' | 'warning' | 'info' | 'error' => {
+    if (pct >= 80) return 'success';
+    if (pct >= 50) return 'info';
+    if (pct >= 25) return 'warning';
+    return 'error';
   };
 
   return (
     <Box sx={{ p: { xs: 0, sm: 1 } }}>
-      <Typography 
-        variant="h4" 
-        gutterBottom 
-        sx={{ 
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{
           mb: 3,
-          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
+          fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
         }}
       >
         Dashboard de Taller
       </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       {/* KPI Cards */}
       <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }} sx={{ mb: 3 }}>
@@ -150,22 +176,15 @@ const TallerDashboard: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'primary.light',
-                    color: 'primary.main',
-                  }}
-                >
-                  <BuildIcon sx={{ fontSize: 32 }} />
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.main' }}>
+                  <PrecisionManufacturingIcon sx={{ fontSize: 32 }} />
                 </Box>
                 <Box>
                   <Typography variant="h4" fontWeight="bold">
-                    {metrics.ordenesActivas}
+                    {loading ? <Skeleton width={40} /> : equiposEnProceso.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Órdenes Activas
+                    Equipos en fabricación
                   </Typography>
                 </Box>
               </Box>
@@ -177,49 +196,15 @@ const TallerDashboard: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'warning.light',
-                    color: 'warning.main',
-                  }}
-                >
-                  <ScheduleIcon sx={{ fontSize: 32 }} />
-                </Box>
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {metrics.ordenesPendientes}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Pendientes
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'success.light',
-                    color: 'success.main',
-                  }}
-                >
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'success.light', color: 'success.main' }}>
                   <CheckCircleIcon sx={{ fontSize: 32 }} />
                 </Box>
                 <Box>
                   <Typography variant="h4" fontWeight="bold">
-                    {metrics.ordenesCompletadasHoy}
+                    {loading ? <Skeleton width={40} /> : completadosMes.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Completadas Hoy
+                    Completados este mes
                   </Typography>
                 </Box>
               </Box>
@@ -231,22 +216,35 @@ const TallerDashboard: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: 'error.light',
-                    color: 'error.main',
-                  }}
-                >
-                  <WarningIcon sx={{ fontSize: 32 }} />
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.light', color: 'warning.main' }}>
+                  <HourglassEmptyIcon sx={{ fontSize: 32 }} />
                 </Box>
                 <Box>
                   <Typography variant="h4" fontWeight="bold">
-                    {metrics.materialesBajos}
+                    {loading ? <Skeleton width={40} /> : pendientesTerminacion.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Materiales Bajos
+                    Pendientes de terminación
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'error.light', color: 'error.main' }}>
+                  <BuildIcon sx={{ fontSize: 32 }} />
+                </Box>
+                <Box>
+                  <Typography variant="h4" fontWeight="bold">
+                    {loading ? <Skeleton width={40} /> : totalEquiposEnService}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Equipos en service
                   </Typography>
                 </Box>
               </Box>
@@ -257,127 +255,183 @@ const TallerDashboard: React.FC = () => {
 
       {/* Main Content */}
       <Grid container spacing={{ xs: 1.5, sm: 2, md: 3 }}>
-        {/* Órdenes Urgentes */}
+        {/* Progreso de fabricación */}
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-            <Typography 
-              variant="h6" 
-              gutterBottom 
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                fontSize: { xs: '1rem', sm: '1.25rem' }
-              }}
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography
+                variant="h6"
+                sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+              >
+                <PrecisionManufacturingIcon color="primary" />
+                Equipos en fabricación
+              </Typography>
+              <Chip
+                label={`Avance promedio: ${promedioProgreso}%`}
+                color={getProgresoColor(promedioProgreso)}
+                size="small"
+              />
+            </Box>
+            {loading ? (
+              <Stack spacing={1.5}>
+                {[1, 2, 3].map(i => <Skeleton key={i} variant="rounded" height={56} />)}
+              </Stack>
+            ) : topEnProceso.length === 0 ? (
+              <Alert severity="info">No hay equipos en fabricación en este momento.</Alert>
+            ) : (
+              <Stack spacing={2}>
+                {topEnProceso.map((eq) => {
+                  const pct = eq.progresoFabricacion ?? 0;
+                  return (
+                    <Box key={eq.id}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                        <Box>
+                          <Typography variant="body2" fontWeight="600">
+                            {eq.numeroHeladera}
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ ml: 1 }}
+                            >
+                              {eq.tipo} · {eq.modelo}
+                            </Typography>
+                          </Typography>
+                          {eq.responsableNombre && (
+                            <Box display="flex" alignItems="center" gap={0.5} mt={0.25}>
+                              <EngineeringIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                              <Typography variant="caption" color="text.secondary">
+                                {eq.responsableNombre}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                        <Chip
+                          label={`${pct}%`}
+                          color={getProgresoColor(pct)}
+                          size="small"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={pct}
+                        color={getProgresoColor(pct)}
+                        sx={{ height: 8, borderRadius: 4 }}
+                      />
+                    </Box>
+                  );
+                })}
+                {equiposEnProceso.length > topEnProceso.length && (
+                  <Typography variant="caption" color="text.secondary" textAlign="center">
+                    Mostrando {topEnProceso.length} de {equiposEnProceso.length} equipos.
+                    Ver todos en Producción → Equipos Fabricados.
+                  </Typography>
+                )}
+              </Stack>
+            )}
+          </Paper>
+
+          {/* Órdenes de servicio activas */}
+          <Paper sx={{ p: { xs: 2, sm: 3 }, mt: { xs: 2, sm: 3 } }}>
+            <Typography
+              variant="h6"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}
             >
               <AssignmentIcon color="primary" />
-              Órdenes Prioritarias
+              Órdenes de servicio activas
+              <Chip label={ordenesActivas.length} size="small" sx={{ ml: 1 }} />
             </Typography>
-            <Stack spacing={2} sx={{ mt: 2 }}>
-              {ordenesUrgentes.length === 0 ? (
-                <Alert severity="success">
-                  No hay órdenes urgentes en este momento
-                </Alert>
-              ) : (
-                ordenesUrgentes.map((orden) => (
-                  <Card key={orden.id} variant="outlined">
-                    <CardContent>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                        <Box>
-                          <Typography variant="subtitle1" fontWeight="600">
-                            {orden.numeroOrden}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Cliente: {orden.cliente}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Equipo: {orden.equipo}
-                          </Typography>
-                        </Box>
-                        <Box textAlign="right">
-                          <Chip
-                            label={orden.prioridad}
-                            color={getPrioridadColor(orden.prioridad) as any}
-                            size="small"
-                            sx={{ mb: 0.5 }}
-                          />
-                          <Chip
-                            label={orden.estado.replace('_', ' ')}
-                            color={getEstadoColor(orden.estado) as any}
-                            size="small"
-                            variant="outlined"
-                          />
-                        </Box>
-                      </Box>
-                      <Divider sx={{ my: 1 }} />
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="caption" color="text.secondary">
-                          Ingreso: {new Date(orden.fechaIngreso).toLocaleDateString()}
-                        </Typography>
-                        {orden.tecnicoAsignado && (
-                          <Box display="flex" alignItems="center" gap={0.5}>
-                            <EngineeringIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                            <Typography variant="caption" color="text.secondary">
-                              {orden.tecnicoAsignado}
-                            </Typography>
-                          </Box>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </Stack>
+            {loading ? (
+              <Skeleton variant="rounded" height={180} />
+            ) : ordenesPrioritarias.length === 0 ? (
+              <Alert severity="success">No hay órdenes activas pendientes.</Alert>
+            ) : (
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>N° Orden</TableCell>
+                      <TableCell>Cliente</TableCell>
+                      <TableCell>Descripción</TableCell>
+                      <TableCell align="center">Antigüedad</TableCell>
+                      <TableCell align="center">Estado</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {ordenesPrioritarias.map((o) => {
+                      const dias = diasDesde(o.fechaCreacion);
+                      return (
+                        <TableRow key={o.id} hover>
+                          <TableCell sx={{ fontWeight: 600 }}>{o.numeroOrden}</TableCell>
+                          <TableCell>
+                            {o.clienteNombre ||
+                              [o.cliente?.nombre, o.cliente?.apellido].filter(Boolean).join(' ') ||
+                              '—'}
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              maxWidth: 220,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            <Tooltip title={o.descripcionTrabajo || ''}>
+                              <span>{o.descripcionTrabajo || '—'}</span>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              icon={<ScheduleIcon sx={{ fontSize: 14 }} />}
+                              label={dias === 0 ? 'Hoy' : `${dias} d`}
+                              size="small"
+                              color={dias > 7 ? 'error' : dias > 3 ? 'warning' : 'default'}
+                              variant={dias > 3 ? 'filled' : 'outlined'}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={o.estado.replace('_', ' ')}
+                              color={getEstadoOSColor(o.estado)}
+                              size="small"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Paper>
         </Grid>
 
-        {/* Indicadores de Rendimiento */}
+        {/* Panel lateral: stock y producción del mes */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
-            <Typography 
-              variant="h6" 
-              gutterBottom 
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                fontSize: { xs: '1rem', sm: '1.25rem' }
-              }}
+            <Typography
+              variant="h6"
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}
             >
               <TrendingUpIcon color="primary" />
-              Rendimiento del Mes
+              Rendimiento del mes
             </Typography>
-            <Stack spacing={3} sx={{ mt: 2 }}>
+            <Stack spacing={3}>
               <Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Órdenes Completadas
+                    Avance promedio en fabricación
                   </Typography>
                   <Typography variant="body2" fontWeight="600">
-                    {metrics.ordenesCompletadasMes}
+                    {promedioProgreso}%
                   </Typography>
                 </Box>
                 <LinearProgress
                   variant="determinate"
-                  value={Math.min(100, (metrics.ordenesCompletadasMes / 100) * 100)}
+                  value={promedioProgreso}
+                  color={getProgresoColor(promedioProgreso)}
                   sx={{ height: 8, borderRadius: 4 }}
-                />
-              </Box>
-
-              <Box>
-                <Box display="flex" justifyContent="space-between" mb={1}>
-                  <Typography variant="body2" color="text.secondary">
-                    Eficiencia del Taller
-                  </Typography>
-                  <Typography variant="body2" fontWeight="600">
-                    {metrics.eficienciaDelMes}%
-                  </Typography>
-                </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={metrics.eficienciaDelMes}
-                  sx={{ height: 8, borderRadius: 4 }}
-                  color="success"
                 />
               </Box>
 
@@ -388,23 +442,38 @@ const TallerDashboard: React.FC = () => {
                   Estadísticas
                 </Typography>
                 <Stack spacing={1.5}>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2">Tiempo Promedio</Typography>
-                    <Chip label={`${metrics.tiempoPromedioReparacion} días`} size="small" />
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2">Completados (mes)</Typography>
+                    <Chip
+                      label={loading ? '…' : completadosMes.length}
+                      size="small"
+                      color="success"
+                    />
                   </Box>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2">Materiales Usados</Typography>
-                    <Chip label={metrics.materialesUsados} size="small" color="primary" />
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2">En fabricación</Typography>
+                    <Chip
+                      label={loading ? '…' : equiposEnProceso.length}
+                      size="small"
+                      color="primary"
+                    />
                   </Box>
-                  <Box display="flex" justifyContent="space-between">
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2">Stock total</Typography>
+                    <Chip
+                      label={loading ? '…' : totalEquiposEnDeposito}
+                      size="small"
+                    />
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="body2">
                       <WarningIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
-                      Stock Bajo
+                      Pendientes terminación
                     </Typography>
-                    <Chip 
-                      label={metrics.materialesBajos} 
-                      size="small" 
-                      color={metrics.materialesBajos > 0 ? 'error' : 'success'} 
+                    <Chip
+                      label={loading ? '…' : pendientesTerminacion.length}
+                      size="small"
+                      color={pendientesTerminacion.length > 0 ? 'warning' : 'default'}
                     />
                   </Box>
                 </Stack>
@@ -412,28 +481,57 @@ const TallerDashboard: React.FC = () => {
             </Stack>
           </Paper>
 
-          {/* Alertas */}
-          {metrics.materialesBajos > 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="body2" fontWeight="600" gutterBottom>
-                Atención requerida
-              </Typography>
-              <Typography variant="body2">
-                Hay {metrics.materialesBajos} materiales con stock bajo. Revisar inventario.
-              </Typography>
-            </Alert>
-          )}
-
-          {metrics.ordenesPendientes > 10 && (
-            <Alert severity="info">
-              <Typography variant="body2" fontWeight="600" gutterBottom>
-                Alta carga de trabajo
-              </Typography>
-              <Typography variant="body2">
-                {metrics.ordenesPendientes} órdenes pendientes de asignación.
-              </Typography>
-            </Alert>
-          )}
+          {/* Top modelos */}
+          <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+            <Typography
+              variant="h6"
+              sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+            >
+              Stock por modelo
+            </Typography>
+            {loading ? (
+              <Skeleton variant="rounded" height={160} />
+            ) : topDesglose.length === 0 ? (
+              <Alert severity="info">Sin datos de stock.</Alert>
+            ) : (
+              <Stack spacing={1.5}>
+                {topDesglose.map((d) => (
+                  <Box key={`${d.tipo}-${d.modelo}`}>
+                    <Box display="flex" justifyContent="space-between" mb={0.5}>
+                      <Typography variant="body2" fontWeight="600">
+                        {d.modelo}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {d.total} u.
+                      </Typography>
+                    </Box>
+                    <Box display="flex" gap={0.5} flexWrap="wrap">
+                      <Chip
+                        label={`Disp: ${d.disponibles}`}
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                      />
+                      <Chip
+                        label={`Asig: ${d.asignados}`}
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                      />
+                      {d.enService > 0 && (
+                        <Chip
+                          label={`Service: ${d.enService}`}
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </Paper>
         </Grid>
       </Grid>
     </Box>

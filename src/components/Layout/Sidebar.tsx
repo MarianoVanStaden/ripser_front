@@ -290,6 +290,41 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/garantias/reporte',
   ];
 
+  // Rutas permitidas para el rol TALLER (allowlist):
+  // - PROVEEDORES: solo Gestión + Compras/Pedidos.
+  // - LOGISTICA, TALLER, PRODUCCION, GARANTIAS: todo el módulo.
+  const tallerAllowedPaths = [
+    '/',
+    // PROVEEDORES (recortado)
+    '/proveedores/gestion',
+    '/proveedores/compras',
+    // LOGISTICA (todo)
+    '/logistica/stock',
+    '/logistica/inventario/stock-equipos',
+    '/logistica/inventario/ubicaciones',
+    '/logistica/inventario',
+    '/logistica/inventario/recuentos',
+    '/logistica/inventario/reconciliacion',
+    '/logistica/movimientos/auditoria',
+    // TALLER (todo)
+    '/taller/ordenes',
+    '/taller/materiales',
+    '/taller/tareas',
+    '/taller/trabajos',
+    '/taller/configuracion',
+    // PRODUCCION (todo)
+    '/fabricacion/dashboard',
+    '/fabricacion/recetas',
+    '/fabricacion/equipos',
+    '/fabricacion/ficha-equipo',
+    '/fabricacion/reportes-estados',
+    '/fabricacion/stock-planificacion',
+    // GARANTIAS (todo)
+    '/garantias/registro',
+    '/garantias/reclamos',
+    '/garantias/reporte',
+  ];
+
   // Rutas permitidas para el rol TRANSPORTE (allowlist):
   // - VENTAS: solo Registro Ventas.
   // - CLIENTES: Gestión + Carpeta.
@@ -347,6 +382,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isTransporteOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('TRANSPORTE');
       if (isTransporteOnly) {
         filteredItems = filteredItems.filter(item => transporteAllowedPaths.includes(item.path));
+      }
+
+      // Si el rol es puramente TALLER (y no Admin), aplicar allowlist estricta.
+      const isTallerOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('TALLER');
+      if (isTallerOnly) {
+        filteredItems = filteredItems.filter(item => tallerAllowedPaths.includes(item.path));
       }
 
       return {
