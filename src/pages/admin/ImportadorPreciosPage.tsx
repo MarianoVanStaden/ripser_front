@@ -239,7 +239,7 @@ const ImportadorPreciosPage: React.FC = () => {
         if (!codigo && !modelo) continue;
         // Limpiar separadores típicos de Excel argentino: "1.234.567,89" → 1234567.89
         const precioClean = precioRaw
-          .replace(/[^\d,.\-]/g, '')
+          .replace(/[^\d,.-]/g, '')
           .replace(/\.(?=\d{3}(\D|$))/g, '')
           .replace(',', '.');
         const precio = Number(precioClean);
