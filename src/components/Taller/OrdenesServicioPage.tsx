@@ -125,10 +125,12 @@ const OrdenesServicioPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await ordenServicioApi.getAll();
+      // size grande + sort desc por id para garantizar que las recién creadas
+      // entren en la página y aparezcan arriba (la default del backend solo trae ~20).
+      const data = await ordenServicioApi.getAll({ page: 0, size: 1000, sort: 'id,desc' });
       // Handle paginated response
-      const ordenesList = Array.isArray(data) 
-        ? data 
+      const ordenesList = Array.isArray(data)
+        ? data
         : (data as any).content || [];
       setOrdenes(ordenesList);
     } catch (err) {
@@ -1041,7 +1043,7 @@ const OrdenesServicioPage: React.FC = () => {
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {equipoEncontrado.tipo} · {equipoEncontrado.modelo}
-                          {equipoEncontrado.color ? ` · ${equipoEncontrado.color}` : ''}
+                          {equipoEncontrado.color?.nombre ? ` · ${equipoEncontrado.color.nombre}` : ''}
                         </Typography>
                         <Box mt={0.5}>
                           <Chip label={equipoEncontrado.estadoAsignacion} size="small" />
