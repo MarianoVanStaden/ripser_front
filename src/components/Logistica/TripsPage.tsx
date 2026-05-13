@@ -32,6 +32,10 @@ import {
   Badge,
   Tabs,
   Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -52,6 +56,9 @@ import {
   ExpandLess as ExpandLessIcon,
   KeyboardArrowLeft as BackIcon,
   KeyboardArrowRight as NextIcon,
+  ErrorOutline as ErrorOutlineIcon,
+  InfoOutlined as InfoOutlinedIcon,
+  WarningAmber as WarningAmberIcon,
 } from '@mui/icons-material';
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -199,6 +206,23 @@ const TripsPage2: React.FC = () => {
   // Details tab state
   const [detailsTab, setDetailsTab] = useState(0);
 
+  // Modal de aviso al seleccionar vehículo no DISPONIBLE
+  const [vehiculoEstadoDialog, setVehiculoEstadoDialog] = useState<{
+    open: boolean;
+    vehiculo: Vehiculo | null;
+    severity: 'info' | 'error';
+  }>({ open: false, vehiculo: null, severity: 'info' });
+
+  // Modal "vehículo ya en uso por otro viaje"
+  const [vehicleInUseDialogOpen, setVehicleInUseDialogOpen] = useState(false);
+
+  // Modal de error al cambiar estado del viaje (e.g. equipo no COMPLETADO)
+  const [changeEstadoErrorDialog, setChangeEstadoErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({ open: false, title: '', message: '' });
+
   // Form data
   const [formData, setFormData] = useState({
     fechaViaje: '',
@@ -252,14 +276,9 @@ const TripsPage2: React.FC = () => {
 
       try {
         const allVehiclesResponse = await vehiculoApi.getAll({ page: 0, size: 1000 });
-        const allVehicles = Array.isArray(allVehiclesResponse) 
-          ? allVehiclesResponse 
+        vehiclesData = Array.isArray(allVehiclesResponse)
+          ? allVehiclesResponse
           : (allVehiclesResponse as any).content || [];
-          
-        vehiclesData = allVehicles.filter((v: any) => v.estado === 'DISPONIBLE');
-        if (allVehicles.length > 0 && vehiclesData.length === 0) {
-          errors.push(`Hay ${allVehicles.length} vehículos pero ninguno está DISPONIBLE`);
-        }
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
         errors.push(`Vehículos: ${errorMsg}`);
@@ -361,6 +380,99 @@ const TripsPage2: React.FC = () => {
       trip.vehiculoId.toString() === vehicleId &&
       trip.estado === 'EN_CURSO'
     );
+  };
+
+  const VEHICULO_ESTADO_LABEL: Record<string, string> = {
+    DISPONIBLE: 'Disponible',
+    EN_USO: 'En uso',
+    MANTENIMIENTO: 'En mantenimiento',
+    FUERA_SERVICIO: 'Fuera de servicio',
+  };
+
+  const VEHICULO_ESTADO_COLOR: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+    DISPONIBLE: 'success',
+    EN_USO: 'warning',
+    MANTENIMIENTO: 'warning',
+    FUERA_SERVICIO: 'error',
+  };
+
+  const getSelectedVehicle = (vehicleId: string): Vehiculo | undefined =>
+    vehicles.find(v => v.id.toString() === vehicleId);
+
+  const renderVehiculoEstadoChip = (estado?: string) => {
+    if (!estado) return null;
+    return (
+      <Chip
+        size="small"
+        label={VEHICULO_ESTADO_LABEL[estado] || estado}
+        color={VEHICULO_ESTADO_COLOR[estado] || 'default'}
+        variant="outlined"
+      />
+    );
+  };
+
+  // Arma "calle, ciudad" desde un Cliente (formato compatible con Google Maps).
+  const buildDireccionFromCliente = (cliente: Cliente | null | undefined): string => {
+    if (!cliente) return '';
+    const partes: string[] = [];
+    if (cliente.direccion) partes.push(cliente.direccion);
+    if (cliente.ciudad) partes.push(cliente.ciudad);
+    return partes.join(', ');
+  };
+
+  // Selecciona una factura para una entrega nueva: autocompleta dirección
+  // (direccion + ciudad del cliente). Si el cliente no está en el cache local,
+  // lo trae por API. El campo queda editable por el usuario.
+  const handleSelectFacturaForDelivery = async (factura: DocumentoComercial | null) => {
+    setSelectedDeliveryFactura(factura);
+
+    if (!factura) {
+      setNewDelivery(prev => ({ ...prev, facturaId: '', direccionEntrega: '' }));
+      return;
+    }
+
+    const facturaIdStr = factura.id.toString();
+    let cliente = factura.clienteId
+      ? clientes.find(c => c.id === factura.clienteId)
+      : undefined;
+
+    // Pre-fill con lo que tengamos en cache (puede ser "")
+    setNewDelivery(prev => ({
+      ...prev,
+      facturaId: facturaIdStr,
+      direccionEntrega: buildDireccionFromCliente(cliente),
+    }));
+
+    // Si no hay cliente en cache, traerlo por API y completar la dirección.
+    if (!cliente && factura.clienteId) {
+      try {
+        const fetched = await clienteApi.getById(factura.clienteId);
+        cliente = fetched;
+        // Cachearlo para próximas selecciones
+        setClientes(prev => (prev.some(c => c.id === fetched.id) ? prev : [...prev, fetched]));
+        // Solo sobrescribir si el usuario no editó manualmente todavía.
+        setNewDelivery(prev =>
+          prev.facturaId === facturaIdStr && !prev.direccionEntrega
+            ? { ...prev, direccionEntrega: buildDireccionFromCliente(fetched) }
+            : prev
+        );
+      } catch {
+        // si falla, dejamos el campo vacío para que el usuario lo escriba.
+      }
+    }
+  };
+
+  // Selecciona un vehículo y, si no está DISPONIBLE, abre el modal informativo
+  // (severidad depende del estado actual del viaje en el form).
+  const handleSelectVehicle = (vehiculo: Vehiculo | null) => {
+    setFormData(prev => ({ ...prev, vehiculoId: vehiculo?.id.toString() || '' }));
+    if (vehiculo && vehiculo.estado !== 'DISPONIBLE') {
+      setVehiculoEstadoDialog({
+        open: true,
+        vehiculo,
+        severity: formData.estado === 'EN_CURSO' ? 'error' : 'info',
+      });
+    }
   };
 
   const handleAdd = () => {
@@ -526,14 +638,26 @@ const TripsPage2: React.FC = () => {
       await viajeApi.changeEstado(id, nuevoEstado);
       await loadData();
     } catch (err) {
-      const error = err as { response?: { data?: { message?: string } }; message?: string };
-      let errorMessage = error.response?.data?.message || error.message || 'Error al cambiar el estado del viaje';
+      const error = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const backendMessage = error.response?.data?.message;
+      let errorMessage = backendMessage || error.message || 'Error al cambiar el estado del viaje';
 
-      if (errorMessage.includes('no está disponible')) {
-        errorMessage = `No se puede iniciar el viaje porque el vehículo ya está en uso.`;
+      // Backend formato: "No se puede iniciar el viaje: el equipo {numeroHeladera} aún no
+      // está COMPLETADO (estado: {estado}). Finalizá la producción antes de salir."
+      if (!backendMessage && errorMessage.includes('no está disponible')) {
+        errorMessage = 'No se puede iniciar el viaje porque el vehículo ya está en uso.';
       }
 
-      setError(errorMessage);
+      const isIniciarEquipoError = nuevoEstado === 'EN_CURSO'
+        && errorMessage.toLowerCase().includes('completado');
+
+      setChangeEstadoErrorDialog({
+        open: true,
+        title: isIniciarEquipoError
+          ? 'No se puede iniciar el viaje'
+          : 'No se pudo cambiar el estado del viaje',
+        message: errorMessage,
+      });
     }
   };
 
@@ -651,14 +775,22 @@ const TripsPage2: React.FC = () => {
               options={vehicles}
               getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
               value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
-              onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
+              onChange={(_, value) => handleSelectVehicle(value)}
+              renderOption={({ key: _key, ...props }, option) => (
+                <li key={option.id} {...props}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
+                    <span>{`${option.marca} ${option.modelo} (${option.patente})`}</span>
+                    {renderVehiculoEstadoChip(option.estado)}
+                  </Box>
+                </li>
+              )}
               renderInput={(params) => (
                 <TextField
                   {...params}
                   label="Vehículo"
                   required
                   size="medium"
-                  helperText={vehicles.length === 0 ? 'No hay vehículos' : `${vehicles.length} disponibles`}
+                  helperText={vehicles.length === 0 ? 'No hay vehículos cargados' : `${vehicles.length} totales`}
                   InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
                 />
               )}
@@ -666,9 +798,16 @@ const TripsPage2: React.FC = () => {
             />
 
             {formData.vehiculoId && isVehicleInUse(formData.vehiculoId) && (
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                Este vehículo está en uso por el Viaje #{getTripUsingVehicle(formData.vehiculoId)?.id}
-              </Alert>
+              <Box>
+                <Button
+                  size="small"
+                  variant="text"
+                  color="warning"
+                  onClick={() => setVehicleInUseDialogOpen(true)}
+                >
+                  Este vehículo está en uso por el Viaje #{getTripUsingVehicle(formData.vehiculoId)?.id}. Ver detalle
+                </Button>
+              </Box>
             )}
 
             <TextField
@@ -747,26 +886,7 @@ const TripsPage2: React.FC = () => {
               options={facturasDisponibles}
               getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
               value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
-              onChange={(_, value) => {
-                setSelectedDeliveryFactura(value);
-                let direccion = '';
-                if (value) {
-                  const cliente = clientes.find(c => c.id === value.clienteId);
-                  if (cliente) {
-                    const partes = [];
-                    if (cliente.direccion) partes.push(cliente.direccion);
-                    if (cliente.ciudad) partes.push(cliente.ciudad);
-                    direccion = partes.join(', ') || value.clienteNombre || '';
-                  } else {
-                    direccion = value.clienteNombre || '';
-                  }
-                }
-                setNewDelivery({
-                  ...newDelivery,
-                  facturaId: value?.id.toString() || '',
-                  direccionEntrega: direccion
-                });
-              }}
+              onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -797,6 +917,7 @@ const TripsPage2: React.FC = () => {
               fullWidth
               size="medium"
               placeholder="Calle 123, Ciudad"
+              helperText="Se autocompleta con la dirección del cliente al elegir la factura. Editable."
               InputProps={{ sx: { minHeight: 56 } }}
             />
 
@@ -1491,7 +1612,15 @@ const TripsPage2: React.FC = () => {
                 options={vehicles}
                 getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
                 value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
-                onChange={(_, value) => setFormData({ ...formData, vehiculoId: value?.id.toString() || '' })}
+                onChange={(_, value) => handleSelectVehicle(value)}
+                renderOption={({ key: _key, ...props }, option) => (
+                  <li key={option.id} {...props}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
+                      <span>{`${option.marca} ${option.modelo} (${option.patente})`}</span>
+                      {renderVehiculoEstadoChip(option.estado)}
+                    </Box>
+                  </li>
+                )}
                 renderInput={(params) => (
                   <TextField {...params} label="Vehículo" required />
                 )}
@@ -1556,24 +1685,7 @@ const TripsPage2: React.FC = () => {
                 options={facturasDisponibles}
                 getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
                 value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
-                onChange={(_, value) => {
-                  setSelectedDeliveryFactura(value);
-                  let direccion = '';
-                  if (value) {
-                    const cliente = clientes.find(c => c.id === value.clienteId);
-                    if (cliente) {
-                      const partes = [];
-                      if (cliente.direccion) partes.push(cliente.direccion);
-                      if (cliente.ciudad) partes.push(cliente.ciudad);
-                      direccion = partes.join(', ') || value.clienteNombre || '';
-                    }
-                  }
-                  setNewDelivery({
-                    ...newDelivery,
-                    facturaId: value?.id.toString() || '',
-                    direccionEntrega: direccion
-                  });
-                }}
+                onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
                 renderInput={(params) => (
                   <TextField {...params} label="Factura" size="small" />
                 )}
@@ -1585,6 +1697,8 @@ const TripsPage2: React.FC = () => {
                 onChange={(e) => setNewDelivery({ ...newDelivery, direccionEntrega: e.target.value })}
                 fullWidth
                 size="small"
+                placeholder="Calle 123, Ciudad"
+                helperText="Se autocompleta con la dirección del cliente al elegir la factura. Editable."
               />
 
               <Button
@@ -1878,6 +1992,129 @@ const TripsPage2: React.FC = () => {
           )}
         </SwipeableDrawer>
       )}
+
+      {/* Modal: vehículo seleccionado no está DISPONIBLE */}
+      <Dialog
+        open={vehiculoEstadoDialog.open}
+        onClose={() => setVehiculoEstadoDialog(prev => ({ ...prev, open: false }))}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            {vehiculoEstadoDialog.severity === 'error'
+              ? <ErrorOutlineIcon sx={{ fontSize: 40, color: 'error.main' }} />
+              : <InfoOutlinedIcon sx={{ fontSize: 40, color: 'info.main' }} />}
+            <Box>
+              <Typography variant="h6" fontWeight={600}>
+                {vehiculoEstadoDialog.severity === 'error'
+                  ? 'Vehículo no disponible'
+                  : 'Vehículo en uso'}
+              </Typography>
+              {vehiculoEstadoDialog.vehiculo && (
+                <Typography variant="caption" color="text.secondary">
+                  {vehiculoEstadoDialog.vehiculo.marca} {vehiculoEstadoDialog.vehiculo.modelo} ({vehiculoEstadoDialog.vehiculo.patente})
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            {vehiculoEstadoDialog.severity === 'error'
+              ? `El vehículo está ${VEHICULO_ESTADO_LABEL[vehiculoEstadoDialog.vehiculo?.estado || ''] || vehiculoEstadoDialog.vehiculo?.estado}. No se puede iniciar un viaje con un vehículo que no esté DISPONIBLE.`
+              : 'Este vehículo está en uso actualmente. Podés planificar el viaje, y podrá salir cuando esté libre.'}
+          </Typography>
+          {vehiculoEstadoDialog.vehiculo?.estado && (
+            <Box mt={2}>
+              <Typography variant="caption" color="text.secondary">Estado actual: </Typography>
+              {renderVehiculoEstadoChip(vehiculoEstadoDialog.vehiculo.estado)}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            variant="contained"
+            color={vehiculoEstadoDialog.severity === 'error' ? 'error' : 'primary'}
+            fullWidth
+            onClick={() => setVehiculoEstadoDialog(prev => ({ ...prev, open: false }))}
+          >
+            Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal: vehículo en uso por otro viaje */}
+      <Dialog
+        open={vehicleInUseDialogOpen}
+        onClose={() => setVehicleInUseDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <WarningAmberIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+            <Typography variant="h6" fontWeight={600}>Vehículo ya asignado</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {(() => {
+            const tripUsing = getTripUsingVehicle(formData.vehiculoId);
+            return (
+              <Typography variant="body2">
+                Este vehículo está actualmente asignado al
+                {' '}<strong>Viaje #{tripUsing?.id}</strong>
+                {tripUsing?.destino ? ` (destino: ${tripUsing.destino})` : ''}.
+                {' '}Podés planificar este viaje y saldrá cuando el vehículo quede libre.
+              </Typography>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={() => setVehicleInUseDialogOpen(false)}
+          >
+            Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal: error al cambiar estado del viaje (e.g. equipo no COMPLETADO) */}
+      <Dialog
+        open={changeEstadoErrorDialog.open}
+        onClose={() => setChangeEstadoErrorDialog(prev => ({ ...prev, open: false }))}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <ErrorOutlineIcon sx={{ fontSize: 40, color: 'error.main' }} />
+            <Typography variant="h6" fontWeight={600} color="error.main">
+              {changeEstadoErrorDialog.title}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+            {changeEstadoErrorDialog.message}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            variant="contained"
+            color="error"
+            fullWidth
+            onClick={() => setChangeEstadoErrorDialog(prev => ({ ...prev, open: false }))}
+          >
+            Entendido
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
