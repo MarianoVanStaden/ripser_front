@@ -16,7 +16,6 @@ import {
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
-import UsuarioBadge from '../common/UsuarioBadge';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -24,6 +23,7 @@ import {
 
 } from '../../api/services/equipoFabricadoApi';
 import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO } from '../../types';
+import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import api from '../../api/config';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -54,11 +54,76 @@ const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefi
   return labelMap[estado] || estado;
 };
 
+export const FABRICACION_DURACION_ESTIMADA_DIAS_DEFAULT = 7;
+export const FABRICACION_DURACION_ESTIMADA_CLAVE = 'FABRICACION_DURACION_ESTIMADA_DIAS';
+
+type EstadoAvance = 'EXCELENTE' | 'ATRASADO' | 'CRITICO' | 'NA';
+
+interface AvanceInfo {
+  estado: EstadoAvance;
+  real: number;
+  previsto: number;
+  retraso: number;
+}
+
+const calcularAvance = (
+  estadoFab: EstadoFabricacion,
+  progresoRaw: number | undefined,
+  fechaCreacion: string,
+  duracionEstimadaDias: number,
+): AvanceInfo => {
+  if (estadoFab === 'CANCELADO') {
+    return { estado: 'NA', real: 0, previsto: 0, retraso: 0 };
+  }
+
+  const real =
+    estadoFab === 'COMPLETADO' || estadoFab === 'FABRICADO_SIN_TERMINACION'
+      ? 100
+      : estadoFab === 'PENDIENTE'
+        ? 0
+        : Math.min(100, Math.max(0, progresoRaw ?? 0));
+
+  const start = new Date(fechaCreacion).getTime();
+  const dias = duracionEstimadaDias > 0 ? duracionEstimadaDias : FABRICACION_DURACION_ESTIMADA_DIAS_DEFAULT;
+  const elapsedDays = Number.isFinite(start)
+    ? Math.max(0, (Date.now() - start) / (1000 * 60 * 60 * 24))
+    : 0;
+  const previsto = Math.min(100, Math.round((elapsedDays / dias) * 100));
+  const retraso = Math.max(0, previsto - real);
+
+  let estado: EstadoAvance;
+  if (real >= previsto) estado = 'EXCELENTE';
+  else if (retraso <= 50) estado = 'ATRASADO';
+  else estado = 'CRITICO';
+
+  return { estado, real, previsto, retraso };
+};
+
+const AVANCE_LABEL: Record<EstadoAvance, string> = {
+  EXCELENTE: 'Excelente',
+  ATRASADO: 'Atrasado',
+  CRITICO: 'Crítico',
+  NA: '—',
+};
+
+const AVANCE_COLOR: Record<EstadoAvance, 'success' | 'warning' | 'error' | 'default'> = {
+  EXCELENTE: 'success',
+  ATRASADO: 'warning',
+  CRITICO: 'error',
+  NA: 'default',
+};
+
 const EquiposList: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { value: duracionEstimadaDias } = useParametroSistema<number>(
+    FABRICACION_DURACION_ESTIMADA_CLAVE,
+    FABRICACION_DURACION_ESTIMADA_DIAS_DEFAULT,
+    parseIntOr(FABRICACION_DURACION_ESTIMADA_DIAS_DEFAULT),
+  );
+
   const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [page] = useState(0);
@@ -517,8 +582,6 @@ const EquiposList: React.FC = () => {
     color: false,
     asignado: false,
     clienteNombre: false,
-    responsableNombre: false,
-    usuarioCreadorNombre: false,
     fechaCreacion: false,
   } : {};
 
@@ -581,22 +644,12 @@ const EquiposList: React.FC = () => {
           FABRICADO_SIN_TERMINACION: 'Sin Terminación',
         };
         const estado = params.value as EstadoFabricacion;
-        const progreso = params.row.progresoFabricacion as number | undefined;
         return (
-          <Box display="flex" flexDirection="column" gap={0.5} width="100%">
-            <Chip
-              label={labelMap[estado] ?? estado.replace(/_/g, ' ')}
-              color={colorMap[estado] ?? 'default'}
-              size="small"
-            />
-            {estado === 'EN_PROCESO' && typeof progreso === 'number' && (
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(100, Math.max(0, progreso))}
-                sx={{ height: 4, borderRadius: 2 }}
-              />
-            )}
-          </Box>
+          <Chip
+            label={labelMap[estado] ?? estado.replace(/_/g, ' ')}
+            color={colorMap[estado] ?? 'default'}
+            size="small"
+          />
         );
       },
     },
@@ -648,25 +701,112 @@ const EquiposList: React.FC = () => {
       renderCell: (params: GridRenderCellParams) => params.value || '-',
     },
     {
-      field: 'responsableNombre',
-      headerName: 'Responsable',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => params.value || '-',
-    },
-    {
-      field: 'usuarioCreadorNombre',
-      headerName: 'Creado por',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => (
-        <UsuarioBadge nombre={params.value ?? null} />
-      ),
-    },
-    {
       field: 'fechaCreacion',
       headerName: 'Fecha',
       width: 90,
       renderCell: (params: GridRenderCellParams) =>
         dayjs(params.value).format('DD/MM/YY'),
+    },
+    {
+      field: 'progresoFabricacion',
+      headerName: 'Producción',
+      width: 160,
+      align: 'center',
+      headerAlign: 'center',
+      sortable: false,
+      renderCell: (params: GridRenderCellParams) => {
+        const estado = params.row.estado as EstadoFabricacion;
+
+        if (estado === 'CANCELADO') {
+          return (
+            <Typography variant="caption" color="text.disabled">
+              —
+            </Typography>
+          );
+        }
+
+        const TOTAL_ETAPAS = 4;
+        const progresoRaw = params.row.progresoFabricacion as number | undefined;
+
+        let completadas: number;
+        if (estado === 'COMPLETADO' || estado === 'FABRICADO_SIN_TERMINACION') {
+          completadas = TOTAL_ETAPAS;
+        } else if (estado === 'PENDIENTE') {
+          completadas = 0;
+        } else if (typeof progresoRaw === 'number') {
+          completadas = Math.min(
+            TOTAL_ETAPAS,
+            Math.max(0, Math.round((progresoRaw / 100) * TOTAL_ETAPAS)),
+          );
+        } else {
+          completadas = 0;
+        }
+
+        const progreso = Math.round((completadas / TOTAL_ETAPAS) * 100);
+
+        const color: 'success' | 'primary' | 'warning' =
+          completadas === TOTAL_ETAPAS
+            ? 'success'
+            : completadas >= 2
+              ? 'primary'
+              : 'warning';
+
+        return (
+          <Box display="flex" flexDirection="column" gap={0.5} width="100%">
+            <LinearProgress
+              variant="determinate"
+              value={progreso}
+              color={color}
+              sx={{
+                height: 8,
+                borderRadius: 4,
+                bgcolor: 'action.hover',
+              }}
+            />
+            <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>
+              {completadas}/{TOTAL_ETAPAS} etapas
+              {estado === 'FABRICADO_SIN_TERMINACION' && ' · sin term.'}
+            </Typography>
+          </Box>
+        );
+      },
+    },
+    {
+      field: 'avance',
+      headerName: 'Avance',
+      width: 110,
+      align: 'center',
+      headerAlign: 'center',
+      sortable: false,
+      renderCell: (params: GridRenderCellParams) => {
+        const info = calcularAvance(
+          params.row.estado as EstadoFabricacion,
+          params.row.progresoFabricacion as number | undefined,
+          params.row.fechaCreacion as string,
+          duracionEstimadaDias,
+        );
+        if (info.estado === 'NA') {
+          return (
+            <Typography variant="caption" color="text.disabled">
+              —
+            </Typography>
+          );
+        }
+        const tooltip =
+          info.estado === 'EXCELENTE'
+            ? `Avance real ${info.real}% ≥ previsto ${info.previsto}%`
+            : `Avance real ${info.real}% vs previsto ${info.previsto}% (retraso ${info.retraso}%)`;
+        return (
+          <Tooltip title={tooltip} enterDelay={300}>
+            <Chip
+              label={AVANCE_LABEL[info.estado]}
+              color={AVANCE_COLOR[info.estado]}
+              size="small"
+              variant={info.estado === 'EXCELENTE' ? 'filled' : 'filled'}
+            />
+          </Tooltip>
+        );
+      },
     },
     {
       field: 'actions',

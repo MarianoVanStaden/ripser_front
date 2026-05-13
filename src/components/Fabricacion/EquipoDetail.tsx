@@ -72,12 +72,35 @@ const EquipoDetail: React.FC = () => {
   }, [equipo?.id]);
 
   useEffect(() => {
-    if (equipo?.estado === 'EN_PROCESO' && equipo.etapasFabricacion) {
-      setEtapas(equipo.etapasFabricacion);
-    } else {
-      setEtapas([]);
-    }
     setCompletarError(null);
+    if (!equipo?.id) {
+      setEtapas([]);
+      return;
+    }
+    if (equipo.estado === 'EN_PROCESO' && equipo.etapasFabricacion) {
+      setEtapas(equipo.etapasFabricacion);
+      return;
+    }
+    const tieneHistorialEtapas =
+      equipo.estado === 'EN_PROCESO' ||
+      equipo.estado === 'COMPLETADO' ||
+      equipo.estado === 'FABRICADO_SIN_TERMINACION';
+    if (!tieneHistorialEtapas) {
+      setEtapas([]);
+      return;
+    }
+    let cancelled = false;
+    equipoFabricadoApi
+      .getEtapasProduccion(equipo.id)
+      .then((data) => {
+        if (!cancelled) setEtapas(data);
+      })
+      .catch(() => {
+        if (!cancelled) setEtapas([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [equipo?.id, equipo?.estado, equipo?.etapasFabricacion]);
 
   const etapasCompletadas = etapas.filter((e) => e.completado).length;
@@ -447,13 +470,22 @@ const loadClientes = async () => {
         </Alert>
       )}
 
-      {equipo.estado === 'EN_PROCESO' && etapas.length > 0 && (
+      {etapas.length > 0 && (
+        equipo.estado === 'EN_PROCESO' ||
+        equipo.estado === 'COMPLETADO' ||
+        equipo.estado === 'FABRICADO_SIN_TERMINACION'
+      ) && (
         <Box mb={3}>
           <ChecklistProduccionPanel
             equipoId={equipo.id}
             etapas={etapas}
-            progreso={progresoFabricacion}
+            progreso={
+              equipo.estado === 'EN_PROCESO'
+                ? progresoFabricacion
+                : Math.round((etapasCompletadas / (etapas.length || 4)) * 100)
+            }
             onEtapaActualizada={handleEtapaActualizada}
+            readOnly={equipo.estado !== 'EN_PROCESO'}
           />
         </Box>
       )}

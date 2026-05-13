@@ -174,6 +174,7 @@ const SettingsPage: React.FC = () => {
     PORCENTAJE: 'Calculo de Precios',
     REDONDEO: 'Calculo de Precios',
     COSTEO: 'Costos de Fabricación',
+    FABRICACION: 'Fabricación',
     VALOR: 'Valores de Referencia',
     GENERAL: 'General',
   };
@@ -366,6 +367,43 @@ const SettingsPage: React.FC = () => {
               </Button>
             )}
           </Stack>
+        </Alert>
+      ) : null}
+
+      {/* Ayuda Rápida - Parámetro de Fabricación */}
+      {!parameters.find(p => p.clave === 'FABRICACION_DURACION_ESTIMADA_DIAS') ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            🏭 Configuración de Fabricación
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Define la duración estimada de fabricación de un equipo para calcular el avance previsto
+            (Excelente / Atrasado / Crítico) en el listado de equipos:
+          </Typography>
+          <Box sx={{ ml: 2, mb: 2 }}>
+            <Typography variant="body2" fontWeight="600">• FABRICACION_DURACION_ESTIMADA_DIAS</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Días estimados para completar la fabricación de un equipo (ej: 7).
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            fullWidth={isMobile}
+            onClick={() => {
+              setEditingParameter(null);
+              setFormData({
+                clave: 'FABRICACION_DURACION_ESTIMADA_DIAS',
+                valor: '7',
+                descripcion: 'Duración estimada (en días) de la fabricación de un equipo. Se utiliza para calcular el avance previsto en el listado de equipos fabricados.',
+                tipo: 'INTEGER',
+              });
+              setDialogOpen(true);
+            }}
+          >
+            Crear FABRICACION_DURACION_ESTIMADA_DIAS
+          </Button>
         </Alert>
       ) : null}
 

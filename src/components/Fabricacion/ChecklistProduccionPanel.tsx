@@ -221,7 +221,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                   p: 1.5,
                   borderRadius: 2,
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   gap: 2,
                   bgcolor: etapa.completado ? 'success.lighter' : 'background.default',
                   borderColor: etapa.completado ? 'success.light' : 'divider',
@@ -230,14 +230,14 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
               >
                 <Fade in key={etapa.completado ? 'done' : 'pending'} timeout={300}>
                   {etapa.completado ? (
-                    <CheckCircle sx={{ color: 'success.main', fontSize: 28 }} />
+                    <CheckCircle sx={{ color: 'success.main', fontSize: 28, mt: 0.25 }} />
                   ) : (
-                    <RadioButtonUnchecked sx={{ color: 'text.disabled', fontSize: 28 }} />
+                    <RadioButtonUnchecked sx={{ color: 'text.disabled', fontSize: 28, mt: 0.25 }} />
                   )}
                 </Fade>
 
                 <Box flex={1} minWidth={0}>
-                  <Typography variant="body1" fontWeight={600} noWrap>
+                  <Typography variant="body1" fontWeight={600}>
                     {etapa.tipoEtapaLabel}
                   </Typography>
                   {etapa.completado && (etapa.responsableNombre || etapa.fechaCompletado) && (
@@ -258,6 +258,22 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                         />
                       )}
                     </Stack>
+                  )}
+                  {etapa.observaciones && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 0.75,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        borderLeft: 2,
+                        borderColor: etapa.completado ? 'success.light' : 'divider',
+                        pl: 1,
+                      }}
+                    >
+                      {etapa.observaciones}
+                    </Typography>
                   )}
                 </Box>
 
