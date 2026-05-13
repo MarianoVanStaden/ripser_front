@@ -91,7 +91,7 @@ export interface RecetaFabricacionUpdateDTO {
 }
 export type TipoEquipo = 'HELADERA' | 'COOLBOX' | 'EXHIBIDOR' | 'OTRO';
 
-export type EstadoAsignacionEquipo = 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'EN_TRANSITO' | 'ENTREGADO' | 'PENDIENTE_TERMINACION';
+export type EstadoAsignacionEquipo = 'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'EN_TRANSITO' | 'ENTREGADO' | 'PENDIENTE_TERMINACION' | 'EN_SERVICE';
 
 export interface HistorialEstadoEquipo {
   id: number;
