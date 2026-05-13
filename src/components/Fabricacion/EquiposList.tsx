@@ -5,15 +5,17 @@ import {
   Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
   DialogContentText, DialogActions, Stack, Autocomplete, Card, CardContent,
   Grid, Tabs, Tab, Divider, Accordion, AccordionSummary, AccordionDetails,
+  LinearProgress, CircularProgress,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending, Brush,
-  QrCode2,
+  QrCode2, AssignmentTurnedIn,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
+import ChecklistProduccionPanel from './ChecklistProduccionPanel';
 import UsuarioBadge from '../common/UsuarioBadge';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -21,7 +23,7 @@ import {
   equipoFabricadoApi,
 
 } from '../../api/services/equipoFabricadoApi';
-import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsignacionEquipo } from '../../types';
+import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO } from '../../types';
 import api from '../../api/config';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -118,6 +120,52 @@ const EquiposList: React.FC = () => {
     open: boolean;
     equipo: EquipoFabricadoListDTO | null;
   }>({ open: false, equipo: null });
+
+  const [checklistDialog, setChecklistDialog] = useState<{
+    open: boolean;
+    equipoId: number | null;
+    equipo: EquipoFabricadoListDTO | null;
+    etapas: EtapaFabricacionDTO[];
+    loading: boolean;
+    error: string | null;
+  }>({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null });
+
+  const openChecklistDialog = async (equipo: EquipoFabricadoListDTO) => {
+    setChecklistDialog({
+      open: true,
+      equipoId: equipo.id,
+      equipo,
+      etapas: [],
+      loading: true,
+      error: null,
+    });
+    try {
+      const data = await equipoFabricadoApi.getEtapasProduccion(equipo.id);
+      setChecklistDialog((prev) =>
+        prev.equipoId === equipo.id
+          ? { ...prev, etapas: data, loading: false }
+          : prev
+      );
+    } catch (error: any) {
+      const message = error.response?.data?.message ?? error.message ?? 'Error al cargar el checklist';
+      setChecklistDialog((prev) =>
+        prev.equipoId === equipo.id
+          ? { ...prev, loading: false, error: message }
+          : prev
+      );
+    }
+  };
+
+  const closeChecklistDialog = () => {
+    setChecklistDialog({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null });
+  };
+
+  const handleChecklistEtapaActualizada = (etapa: EtapaFabricacionDTO) => {
+    setChecklistDialog((prev) => ({
+      ...prev,
+      etapas: prev.etapas.map((e) => (e.id === etapa.id ? etapa : e)),
+    }));
+  };
 
   const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
@@ -533,12 +581,22 @@ const EquiposList: React.FC = () => {
           FABRICADO_SIN_TERMINACION: 'Sin Terminación',
         };
         const estado = params.value as EstadoFabricacion;
+        const progreso = params.row.progresoFabricacion as number | undefined;
         return (
-          <Chip
-            label={labelMap[estado] ?? estado.replace(/_/g, ' ')}
-            color={colorMap[estado] ?? 'default'}
-            size="small"
-          />
+          <Box display="flex" flexDirection="column" gap={0.5} width="100%">
+            <Chip
+              label={labelMap[estado] ?? estado.replace(/_/g, ' ')}
+              color={colorMap[estado] ?? 'default'}
+              size="small"
+            />
+            {estado === 'EN_PROCESO' && typeof progreso === 'number' && (
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(100, Math.max(0, progreso))}
+                sx={{ height: 4, borderRadius: 2 }}
+              />
+            )}
+          </Box>
         );
       },
     },
@@ -682,6 +740,18 @@ const EquiposList: React.FC = () => {
                   }
                 >
                   <PlayArrow fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {params.row.estado === 'EN_PROCESO' && (
+              <Tooltip title="Ver checklist de producción" enterDelay={300}>
+                <IconButton
+                  size="small"
+                  color="info"
+                  aria-label="Ver checklist de producción"
+                  onClick={() => openChecklistDialog(params.row)}
+                >
+                  <AssignmentTurnedIn fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}
@@ -1874,6 +1944,53 @@ const EquiposList: React.FC = () => {
           loadEquipos();
         }}
       />
+
+      <Dialog
+        open={checklistDialog.open}
+        onClose={closeChecklistDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>
+          Checklist de producción
+          {checklistDialog.equipo && (
+            <Typography variant="body2" color="text.secondary">
+              {checklistDialog.equipo.numeroHeladera} — {checklistDialog.equipo.modelo}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent dividers>
+          {checklistDialog.loading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress />
+            </Box>
+          ) : checklistDialog.error ? (
+            <Alert severity="error">{checklistDialog.error}</Alert>
+          ) : checklistDialog.equipoId != null && checklistDialog.etapas.length > 0 ? (
+            <ChecklistProduccionPanel
+              equipoId={checklistDialog.equipoId}
+              etapas={checklistDialog.etapas}
+              progreso={Math.round(
+                (checklistDialog.etapas.filter((e) => e.completado).length /
+                  (checklistDialog.etapas.length || 1)) * 100
+              )}
+              onEtapaActualizada={handleChecklistEtapaActualizada}
+            />
+          ) : (
+            <Alert severity="info">No hay etapas de producción registradas.</Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              closeChecklistDialog();
+              loadEquipos();
+            }}
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

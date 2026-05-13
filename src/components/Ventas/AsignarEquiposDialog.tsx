@@ -19,7 +19,7 @@ import {
   Stack,
   Divider,
 } from '@mui/material';
-import { CheckCircle, Warning } from '@mui/icons-material';
+import { CheckCircle, Warning, HourglassEmpty, Build, ColorLens } from '@mui/icons-material';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import type { DetalleDocumento, EquipoFabricadoDTO, EstadoAsignacionEquipo } from '../../types';
 
@@ -62,10 +62,17 @@ const ESTADO_FABRICACION_LABEL: Record<string, string> = {
 
 const ESTADO_FABRICACION_COLOR: Record<string, EstadoEquipoChipColor> = {
   PENDIENTE: 'default',
-  EN_PROCESO: 'info',
+  EN_PROCESO: 'primary',
   FABRICADO_SIN_TERMINACION: 'warning',
   COMPLETADO: 'success',
   CANCELADO: 'error',
+};
+
+const ESTADO_FABRICACION_ICON: Record<string, React.ReactElement> = {
+  PENDIENTE: <HourglassEmpty fontSize="small" />,
+  EN_PROCESO: <Build fontSize="small" />,
+  FABRICADO_SIN_TERMINACION: <ColorLens fontSize="small" />,
+  COMPLETADO: <CheckCircle fontSize="small" />,
 };
 
 interface AsignarEquiposDialogProps {
@@ -430,6 +437,12 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           </Alert>
         )}
 
+        {!loading && hayEquiposIncompletos && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Uno o más equipos aún están en producción. El viaje no podrá iniciarse hasta que estén completados.
+          </Alert>
+        )}
+
         {!loading && asignaciones.length > 0 && (
           <Stack spacing={2}>
             {asignaciones.map((asignacion, index) => (
@@ -539,6 +552,7 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
                                 </Box>
                                 <Box display="flex" gap={1} alignItems="center">
                                   <Chip
+                                    icon={ESTADO_FABRICACION_ICON[equipo.estado]}
                                     label={ESTADO_FABRICACION_LABEL[equipo.estado] || equipo.estado}
                                     size="small"
                                     color={ESTADO_FABRICACION_COLOR[equipo.estado] || 'default'}

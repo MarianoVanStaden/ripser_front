@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, Card, CardContent, Chip, IconButton,
   Stack, Alert, Snackbar, CircularProgress, Grid, Divider, Dialog,
-  DialogTitle, DialogContent, DialogActions, Autocomplete, TextField,
+  DialogTitle, DialogContent, DialogActions, Autocomplete, TextField, Tooltip,
 } from '@mui/material';
 import {
   Timeline, TimelineItem, TimelineSeparator, TimelineConnector, 
@@ -18,8 +18,9 @@ import {
 } from '../../api/services/equipoFabricadoApi';
 import { historialEstadoEquipoApi } from '../../api/historialEstadoEquipoApi';
 import api from '../../api/config';
-import type { EquipoFabricadoDTO, HistorialEstadoEquipo } from '../../types';
+import type { EquipoFabricadoDTO, EtapaFabricacionDTO, HistorialEstadoEquipo } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ChecklistProduccionPanel from './ChecklistProduccionPanel';
 
 
 const EquipoDetail: React.FC = () => {
@@ -54,6 +55,9 @@ const EquipoDetail: React.FC = () => {
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
 
+  const [etapas, setEtapas] = useState<EtapaFabricacionDTO[]>([]);
+  const [completarError, setCompletarError] = useState<string | null>(null);
+
   useEffect(() => {
     if (numeroHeladera) {
       loadEquipo();
@@ -66,6 +70,26 @@ const EquipoDetail: React.FC = () => {
       loadHistorial();
     }
   }, [equipo?.id]);
+
+  useEffect(() => {
+    if (equipo?.estado === 'EN_PROCESO' && equipo.etapasFabricacion) {
+      setEtapas(equipo.etapasFabricacion);
+    } else {
+      setEtapas([]);
+    }
+    setCompletarError(null);
+  }, [equipo?.id, equipo?.estado, equipo?.etapasFabricacion]);
+
+  const etapasCompletadas = etapas.filter((e) => e.completado).length;
+  const totalEtapas = etapas.length || 4;
+  const progresoFabricacion = equipo?.estado === 'EN_PROCESO'
+    ? Math.round((etapasCompletadas / totalEtapas) * 100)
+    : 0;
+  const checklistCompleto = etapas.length > 0 && etapasCompletadas === etapas.length;
+
+  const handleEtapaActualizada = (etapa: EtapaFabricacionDTO) => {
+    setEtapas((prev) => prev.map((e) => (e.id === etapa.id ? etapa : e)));
+  };
 
   const loadEquipo = async () => {
     try {
@@ -134,6 +158,7 @@ const loadClientes = async () => {
 
   const handleCompletar = async () => {
     if (!equipo) return;
+    setCompletarError(null);
     try {
       await equipoFabricadoApi.completarFabricacion(equipo.id);
       setSnackbar({
@@ -142,12 +167,17 @@ const loadClientes = async () => {
         severity: 'success',
       });
       loadEquipo();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Error al completar el equipo',
-        severity: 'error',
-      });
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message ?? error.message ?? 'Error al completar el equipo';
+      if (errorMessage.includes('Etapas de producción pendientes')) {
+        setCompletarError(errorMessage);
+      } else {
+        setSnackbar({
+          open: true,
+          message: errorMessage,
+          severity: 'error',
+        });
+      }
     }
   };
 
@@ -321,14 +351,22 @@ const loadClientes = async () => {
             </Button>
           )}
           {equipo.estado === 'EN_PROCESO' && (
-            <Button
-              variant="outlined"
-              color="success"
-              startIcon={<CheckCircle />}
-              onClick={handleCompletar}
+            <Tooltip
+              title={!checklistCompleto ? 'Faltan etapas de producción por completar.' : ''}
+              enterDelay={300}
             >
-              Completar
-            </Button>
+              <span>
+                <Button
+                  variant="outlined"
+                  color="success"
+                  startIcon={<CheckCircle />}
+                  disabled={!checklistCompleto}
+                  onClick={handleCompletar}
+                >
+                  Completar
+                </Button>
+              </span>
+            </Tooltip>
           )}
           {equipo.estado !== 'CANCELADO' && (
             <Button
@@ -398,6 +436,27 @@ const loadClientes = async () => {
           </Button>
         </Stack>
       </Box>
+
+      {completarError && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          onClose={() => setCompletarError(null)}
+        >
+          {completarError}
+        </Alert>
+      )}
+
+      {equipo.estado === 'EN_PROCESO' && etapas.length > 0 && (
+        <Box mb={3}>
+          <ChecklistProduccionPanel
+            equipoId={equipo.id}
+            etapas={etapas}
+            progreso={progresoFabricacion}
+            onEtapaActualizada={handleEtapaActualizada}
+          />
+        </Box>
+      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>

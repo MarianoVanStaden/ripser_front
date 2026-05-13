@@ -14,6 +14,9 @@ import type {
   EtapaTerminacionDTO,
   HistorialFabricacionDTO,
   DesgloseModeloDTO,
+  EtapaFabricacionDTO,
+  TipoEtapaFabricacion,
+  ActualizarEtapaFabricacionDTO,
   PageResponse,
   PaginationParams,
 } from '../../types';
@@ -292,6 +295,25 @@ export const equipoFabricadoApi = {
     const response = await api.patch<EquipoFabricadoDTO>(
       `/api/equipos-fabricados/${equipoId}/aplicar-terminacion`,
       data
+    );
+    return response.data;
+  },
+
+  getEtapasProduccion: async (equipoId: number): Promise<EtapaFabricacionDTO[]> => {
+    const response = await api.get<EtapaFabricacionDTO[]>(
+      `/api/equipos-fabricados/${equipoId}/etapas-produccion`
+    );
+    return response.data;
+  },
+
+  actualizarEtapaProduccion: async (
+    equipoId: number,
+    tipo: TipoEtapaFabricacion,
+    dto: ActualizarEtapaFabricacionDTO
+  ): Promise<EtapaFabricacionDTO> => {
+    const response = await api.patch<EtapaFabricacionDTO>(
+      `/api/equipos-fabricados/${equipoId}/etapas-produccion/${tipo}`,
+      dto
     );
     return response.data;
   },

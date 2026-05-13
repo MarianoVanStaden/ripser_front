@@ -135,6 +135,27 @@ export interface EquipoFabricadoDTO {
   fechaEntrega?: string;
   usuarioCreadorId:     number | null;
   usuarioCreadorNombre: string | null;
+  progresoFabricacion?: number;
+  etapasFabricacion?: EtapaFabricacionDTO[];
+}
+
+export type TipoEtapaFabricacion = 'AISLACION' | 'CHAPA' | 'MOTOR' | 'VIDRIOS';
+
+export interface EtapaFabricacionDTO {
+  id: number;
+  tipoEtapa: TipoEtapaFabricacion;
+  tipoEtapaLabel: string;
+  completado: boolean;
+  responsableId?: number;
+  responsableNombre?: string;
+  observaciones?: string;
+  fechaCompletado?: string;
+}
+
+export interface ActualizarEtapaFabricacionDTO {
+  responsableId?: number;
+  observaciones?: string;
+  completado: boolean;
 }
 
 export interface EquipoFabricadoListDTO {
@@ -157,6 +178,7 @@ export interface EquipoFabricadoListDTO {
   clienteNombre?: string;
   usuarioCreadorId:     number | null;
   usuarioCreadorNombre: string | null;
+  progresoFabricacion?: number;
 }
 
 export interface EquipoFabricadoCreateDTO {

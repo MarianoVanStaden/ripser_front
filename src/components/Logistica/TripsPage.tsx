@@ -36,6 +36,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tooltip,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -68,6 +69,7 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { documentoApi } from '../../api/services/documentoApi';
 import { clienteApi } from '../../api/services/clienteApi';
+import type { EquipoFabricadoDTO } from '../../types';
 
 // Custom hook for responsive breakpoints
 const useResponsive = () => {
@@ -223,6 +225,9 @@ const TripsPage2: React.FC = () => {
     message: string;
   }>({ open: false, title: '', message: '' });
 
+  // Preflight: para cada viaje PLANIFICADO, marca si tiene equipos en estado != COMPLETADO
+  const [tripsConEquiposPendientes, setTripsConEquiposPendientes] = useState<Set<number>>(new Set());
+
   // Form data
   const [formData, setFormData] = useState({
     fechaViaje: '',
@@ -252,6 +257,44 @@ const TripsPage2: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const computePreflight = async () => {
+      const planificados = trips.filter((t) => t.estado === 'PLANIFICADO');
+      if (planificados.length === 0) {
+        setTripsConEquiposPendientes(new Set());
+        return;
+      }
+      const pendientes = new Set<number>();
+      for (const trip of planificados) {
+        const tripEntregas = deliveries.filter((d) => d.viajeId === trip.id);
+        if (tripEntregas.length === 0) continue;
+        let tieneIncompleto = false;
+        for (const entrega of tripEntregas) {
+          try {
+            const detalles = await entregaViajeApi.getDetalles(entrega.id);
+            const lista: Array<{ equipo?: EquipoFabricadoDTO }> = Array.isArray(detalles)
+              ? detalles
+              : (detalles?.detalles ?? []);
+            if (lista.some((d) => d.equipo && d.equipo.estado !== 'COMPLETADO')) {
+              tieneIncompleto = true;
+              break;
+            }
+          } catch {
+            // Ignorar: la falta de datos no debe bloquear el badge
+          }
+        }
+        if (cancelled) return;
+        if (tieneIncompleto) pendientes.add(trip.id);
+      }
+      if (!cancelled) setTripsConEquiposPendientes(pendientes);
+    };
+    void computePreflight();
+    return () => {
+      cancelled = true;
+    };
+  }, [trips, deliveries]);
 
   const loadData = async () => {
     try {
@@ -462,15 +505,16 @@ const TripsPage2: React.FC = () => {
     }
   };
 
-  // Selecciona un vehículo y, si no está DISPONIBLE, abre el modal informativo
-  // (severidad depende del estado actual del viaje en el form).
+  // Selecciona un vehículo. Para PLANIFICADO se muestra un Alert info inline
+  // bajo el selector; para EN_CURSO con vehículo no DISPONIBLE se mantiene el
+  // dialog de error bloqueante.
   const handleSelectVehicle = (vehiculo: Vehiculo | null) => {
     setFormData(prev => ({ ...prev, vehiculoId: vehiculo?.id.toString() || '' }));
-    if (vehiculo && vehiculo.estado !== 'DISPONIBLE') {
+    if (vehiculo && vehiculo.estado !== 'DISPONIBLE' && formData.estado === 'EN_CURSO') {
       setVehiculoEstadoDialog({
         open: true,
         vehiculo,
-        severity: formData.estado === 'EN_CURSO' ? 'error' : 'info',
+        severity: 'error',
       });
     }
   };
@@ -810,6 +854,15 @@ const TripsPage2: React.FC = () => {
               </Box>
             )}
 
+            {formData.vehiculoId &&
+              formData.estado === 'PLANIFICADO' &&
+              getSelectedVehicle(formData.vehiculoId) &&
+              getSelectedVehicle(formData.vehiculoId)!.estado !== 'DISPONIBLE' && (
+                <Alert severity="info">
+                  Este vehículo está actualmente en uso. Podrás iniciarlo cuando esté disponible.
+                </Alert>
+              )}
+
             <TextField
               label="Fecha y Hora"
               type="datetime-local"
@@ -1144,14 +1197,31 @@ const TripsPage2: React.FC = () => {
               </IconButton>
 
               {trip.estado === 'PLANIFICADO' && (
-                <IconButton
-                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_CURSO'); }}
-                  size="small"
-                  color="success"
-                  sx={{ minWidth: 44, minHeight: 44 }}
+                <Tooltip
+                  title={
+                    tripsConEquiposPendientes.has(trip.id)
+                      ? 'Hay equipos en producción. Verificá el checklist antes de salir.'
+                      : 'Iniciar viaje'
+                  }
+                  enterDelay={300}
                 >
-                  <StartIcon />
-                </IconButton>
+                  <Badge
+                    color="warning"
+                    variant="dot"
+                    invisible={!tripsConEquiposPendientes.has(trip.id)}
+                    overlap="circular"
+                  >
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_CURSO'); }}
+                      size="small"
+                      color="success"
+                      aria-label="Iniciar viaje"
+                      sx={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <StartIcon />
+                    </IconButton>
+                  </Badge>
+                </Tooltip>
               )}
 
               {trip.estado === 'EN_CURSO' && (
@@ -1442,9 +1512,30 @@ const TripsPage2: React.FC = () => {
                                 <MapIcon fontSize="small" />
                               </IconButton>
                               {trip.estado === 'PLANIFICADO' && (
-                                <IconButton onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')} size="small" color="success">
-                                  <StartIcon fontSize="small" />
-                                </IconButton>
+                                <Tooltip
+                                  title={
+                                    tripsConEquiposPendientes.has(trip.id)
+                                      ? 'Hay equipos en producción. Verificá el checklist antes de salir.'
+                                      : 'Iniciar viaje'
+                                  }
+                                  enterDelay={300}
+                                >
+                                  <Badge
+                                    color="warning"
+                                    variant="dot"
+                                    invisible={!tripsConEquiposPendientes.has(trip.id)}
+                                    overlap="circular"
+                                  >
+                                    <IconButton
+                                      onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')}
+                                      size="small"
+                                      color="success"
+                                      aria-label="Iniciar viaje"
+                                    >
+                                      <StartIcon fontSize="small" />
+                                    </IconButton>
+                                  </Badge>
+                                </Tooltip>
                               )}
                               {trip.estado === 'EN_CURSO' && (
                                 <IconButton onClick={() => handleChangeEstado(trip.id, 'COMPLETADO')} size="small" color="primary">
@@ -1625,6 +1716,15 @@ const TripsPage2: React.FC = () => {
                   <TextField {...params} label="Vehículo" required />
                 )}
               />
+
+              {formData.vehiculoId &&
+                formData.estado === 'PLANIFICADO' &&
+                getSelectedVehicle(formData.vehiculoId) &&
+                getSelectedVehicle(formData.vehiculoId)!.estado !== 'DISPONIBLE' && (
+                  <Alert severity="info">
+                    Este vehículo está actualmente en uso. Podrás iniciarlo cuando esté disponible.
+                  </Alert>
+                )}
 
               <TextField
                 label="Fecha y Hora"
