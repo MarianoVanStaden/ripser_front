@@ -53,37 +53,49 @@ const TallerDashboard: React.FC = () => {
     const load = async () => {
       setLoading(true);
       setError(null);
-      try {
-        const inicioMes = dayjs().startOf('month').format('YYYY-MM-DD');
-        const hoy = dayjs().format('YYYY-MM-DD');
 
-        const [enProc, compMes, pendTerm, desgl, ordPage] = await Promise.all([
-          equipoFabricadoApi.findByEstado('EN_PROCESO'),
-          equipoFabricadoApi.findCompletadosEntreFechas(inicioMes, hoy),
-          equipoFabricadoApi.findPendientesTerminacion(),
-          equipoFabricadoApi.getDesgloseModelo(),
-          ordenServicioApi.getAll({ page: 0, size: 200, sort: 'id,desc' }),
-        ]);
-        if (cancelled) return;
+      // El endpoint del backend exige LocalDateTime (ISO con tiempo), no LocalDate.
+      const inicioMes = dayjs().startOf('month').format('YYYY-MM-DDTHH:mm:ss');
+      const hoy = dayjs().endOf('day').format('YYYY-MM-DDTHH:mm:ss');
 
-        setEquiposEnProceso(enProc || []);
-        setCompletadosMes(compMes || []);
-        setPendientesTerminacion(pendTerm || []);
-        setDesglose(desgl || []);
+      // allSettled para que una falla puntual (ej. 403/500 de un endpoint) no
+      // tire el dashboard entero. Cada bloque que rechaza simplemente queda en [].
+      const results = await Promise.allSettled([
+        equipoFabricadoApi.findByEstado('EN_PROCESO'),
+        equipoFabricadoApi.findCompletadosEntreFechas(inicioMes, hoy),
+        equipoFabricadoApi.findPendientesTerminacion(),
+        equipoFabricadoApi.getDesgloseModelo(),
+        ordenServicioApi.getAll({ page: 0, size: 200, sort: 'id,desc' }),
+      ]);
 
-        const ordenesList = Array.isArray(ordPage)
-          ? (ordPage as OrdenServicio[])
-          : (ordPage as any)?.content || [];
-        const activas: OrdenServicio[] = ordenesList.filter(
-          (o: OrdenServicio) => o.estado === 'PENDIENTE' || o.estado === 'EN_PROCESO'
-        );
-        setOrdenesActivas(activas);
-      } catch (e: any) {
-        console.error('Error cargando dashboard de taller', e);
-        if (!cancelled) setError('Error cargando datos del dashboard');
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (cancelled) return;
+
+      const unwrap = <T,>(r: PromiseSettledResult<T>, fallback: T, label: string): T => {
+        if (r.status === 'fulfilled') return r.value;
+        console.warn(`[TallerDashboard] ${label} falló:`, r.reason);
+        return fallback;
+      };
+
+      setEquiposEnProceso(unwrap(results[0], [] as EquipoFabricadoListDTO[], 'equipos en proceso'));
+      setCompletadosMes(unwrap(results[1], [] as EquipoFabricadoListDTO[], 'completados del mes'));
+      setPendientesTerminacion(unwrap(results[2], [] as EquipoFabricadoListDTO[], 'pendientes terminación'));
+      setDesglose(unwrap(results[3], [] as DesgloseModeloDTO[], 'desglose por modelo'));
+
+      const ordPage = unwrap(results[4], null as any, 'órdenes de servicio');
+      const ordenesList = Array.isArray(ordPage)
+        ? (ordPage as OrdenServicio[])
+        : (ordPage as any)?.content || [];
+      const activas: OrdenServicio[] = ordenesList.filter(
+        (o: OrdenServicio) => o.estado === 'PENDIENTE' || o.estado === 'EN_PROCESO'
+      );
+      setOrdenesActivas(activas);
+
+      // Mostrar Alert sólo si TODO falló — fallas parciales se loguean nomás.
+      if (results.every(r => r.status === 'rejected')) {
+        setError('No se pudieron cargar los datos del dashboard');
       }
+
+      setLoading(false);
     };
     load();
     return () => { cancelled = true; };
