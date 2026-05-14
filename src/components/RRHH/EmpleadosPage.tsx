@@ -63,6 +63,7 @@ import { useTenant } from '../../context/TenantContext';
 import DocumentManager from '../shared/DocumentManager';
 import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 // Categorías de documentos para empleados
 const CATEGORIAS_EMPLEADO = [
@@ -105,6 +106,10 @@ const EmpleadosPage: React.FC = () => {
   const [usuarios, setUsuarios] = useState<UsuarioDTO[]>([]);
   const [selectedUsuario, setSelectedUsuario] = useState<UsuarioDTO | null>(null);
   const [vincularLoading, setVincularLoading] = useState(false);
+  const [empleadoToDelete, setEmpleadoToDelete] = useState<Empleado | null>(null);
+  const [deleteEmpleadoLoading, setDeleteEmpleadoLoading] = useState(false);
+  const [desvincularTarget, setDesvincularTarget] = useState<Empleado | null>(null);
+  const [desvincularLoading, setDesvincularLoading] = useState(false);
   const [inactiveWarning, setInactiveWarning] = useState<string | null>(null);
 
   // Filtros
@@ -272,17 +277,25 @@ const EmpleadosPage: React.FC = () => {
     }
   };
 
-  const handleDeleteEmpleado = async (id: number) => {
-    if (!window.confirm('¿Está seguro de eliminar este empleado?')) return;
+  const handleDeleteEmpleado = (id: number) => {
+    const emp = empleados.find((e) => e.id === id);
+    if (emp) setEmpleadoToDelete(emp);
+  };
 
+  const handleConfirmDeleteEmpleado = async () => {
+    if (!empleadoToDelete) return;
+    setDeleteEmpleadoLoading(true);
     try {
-      await employeeApi.delete(id);
+      await employeeApi.delete(empleadoToDelete.id);
       setSuccess('Empleado eliminado exitosamente');
       await loadData();
       setTimeout(() => setSuccess(null), 3000);
+      setEmpleadoToDelete(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al eliminar el empleado');
       console.error('Error deleting empleado:', err);
+    } finally {
+      setDeleteEmpleadoLoading(false);
     }
   };
 
@@ -315,19 +328,26 @@ const EmpleadosPage: React.FC = () => {
     }
   };
 
-  const handleDesvincularUsuario = async (empleado: Empleado) => {
-    if (!window.confirm('¿Desvincular la cuenta de acceso de este empleado?')) return;
+  const handleDesvincularUsuario = (empleado: Empleado) => {
+    setDesvincularTarget(empleado);
+  };
+
+  const handleConfirmDesvincularUsuario = async () => {
+    if (!desvincularTarget) return;
+    setDesvincularLoading(true);
     try {
-      await employeeApi.desvincularUsuario(empleado.id);
+      await employeeApi.desvincularUsuario(desvincularTarget.id);
       setSuccess('Usuario desvinculado correctamente');
       await loadData();
-      // Update detail dialog if open
-      if (selectedEmpleado?.id === empleado.id) {
+      if (selectedEmpleado?.id === desvincularTarget.id) {
         setSelectedEmpleado({ ...selectedEmpleado, usuarioId: null });
       }
       setTimeout(() => setSuccess(null), 3000);
+      setDesvincularTarget(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al desvincular usuario');
+    } finally {
+      setDesvincularLoading(false);
     }
   };
 
@@ -1039,6 +1059,51 @@ const EmpleadosPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!empleadoToDelete}
+        onClose={() => setEmpleadoToDelete(null)}
+        onConfirm={handleConfirmDeleteEmpleado}
+        title="¿Eliminar empleado?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar el siguiente empleado:"
+        itemDetails={
+          empleadoToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {empleadoToDelete.nombre} {empleadoToDelete.apellido}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                DNI: {empleadoToDelete.dni}
+                {empleadoToDelete.puesto?.nombre ? ` · ${empleadoToDelete.puesto.nombre}` : ''}
+              </Typography>
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteEmpleadoLoading}
+      />
+
+      <ConfirmDialog
+        open={!!desvincularTarget}
+        onClose={() => setDesvincularTarget(null)}
+        onConfirm={handleConfirmDesvincularUsuario}
+        title="Desvincular cuenta de acceso"
+        severity="warning"
+        description="La cuenta de usuario va a dejar de estar asociada al empleado. El empleado y la cuenta siguen existiendo y se pueden volver a vincular más adelante."
+        itemDetails={
+          desvincularTarget && (
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {desvincularTarget.nombre} {desvincularTarget.apellido}
+            </Typography>
+          )
+        }
+        confirmLabel="Desvincular"
+        loadingLabel="Desvinculando…"
+        loading={desvincularLoading}
+      />
     </Box>
   );
 };

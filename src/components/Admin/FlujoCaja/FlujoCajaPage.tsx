@@ -53,6 +53,7 @@ import MovimientoExtraDialog from './dialogs/MovimientoExtraDialog';
 import TransferirPesosDialog from '../CajasPesos/dialogs/TransferirPesosDialog';
 import { movimientoExtraApi } from '../../../api/services/movimientoExtraApi';
 import LoadingOverlay from '../../common/LoadingOverlay';
+import ConfirmDialog from '../../common/ConfirmDialog';
 
 dayjs.locale('es');
 
@@ -75,6 +76,8 @@ const FlujoCajaPage: React.FC = () => {
 
   // Transferencia entre cajas pesos
   const [transferirDialogOpen, setTransferirDialogOpen] = useState(false);
+  const [movimientoToAnular, setMovimientoToAnular] = useState<number | null>(null);
+  const [anularLoading, setAnularLoading] = useState(false);
 
   // React Query — datos del flujo de caja
   const {
@@ -209,17 +212,22 @@ const FlujoCajaPage: React.FC = () => {
     setMovimientoDialogOpen(true);
   };
 
-  const handleAnularMovimiento = async (movimientoExtraId: number) => {
-    if (!window.confirm('¿Estás seguro de que querés anular este movimiento?')) {
-      return;
-    }
+  const handleAnularMovimiento = (movimientoExtraId: number) => {
+    setMovimientoToAnular(movimientoExtraId);
+  };
 
+  const handleConfirmAnularMovimiento = async () => {
+    if (movimientoToAnular == null) return;
+    setAnularLoading(true);
     try {
-      await movimientoExtraApi.anular(movimientoExtraId);
+      await movimientoExtraApi.anular(movimientoToAnular);
       invalidate();
+      setMovimientoToAnular(null);
     } catch (err: any) {
       console.error('Error al anular movimiento:', err);
       setLocalError('Error al anular el movimiento. Por favor intentá de nuevo.');
+    } finally {
+      setAnularLoading(false);
     }
   };
 
@@ -559,6 +567,19 @@ const FlujoCajaPage: React.FC = () => {
             invalidate();
             setTransferirDialogOpen(false);
           }}
+        />
+
+        <ConfirmDialog
+          open={movimientoToAnular != null}
+          onClose={() => setMovimientoToAnular(null)}
+          onConfirm={handleConfirmAnularMovimiento}
+          title="¿Anular movimiento?"
+          severity="warning"
+          warning="El movimiento dejará de impactar en el flujo de caja. Esta acción no se puede deshacer."
+          description="¿Estás seguro de que querés anular este movimiento del flujo de caja?"
+          confirmLabel="Anular movimiento"
+          loadingLabel="Anulando…"
+          loading={anularLoading}
         />
       </Box>
     </LocalizationProvider>

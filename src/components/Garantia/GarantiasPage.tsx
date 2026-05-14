@@ -20,6 +20,7 @@ import { documentoApi } from '../../api/documentoApi';
 import GarantiaFormDialog from './GarantiaFormDialog';
 import GarantiaDetailPage from './GarantiaDetailPage';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const GarantiasPage: React.FC = () => {
   const [garantias, setGarantias] = useState<GarantiaDTO[]>([]);
@@ -41,6 +42,9 @@ const GarantiasPage: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedGarantia, setSelectedGarantia] = useState<GarantiaDTO | null>(null);
+  const [anularTarget, setAnularTarget] = useState<GarantiaDTO | null>(null);
+  const [anularLoading, setAnularLoading] = useState(false);
+  const [anularError, setAnularError] = useState<string | null>(null);
 
   // Load data
   useEffect(() => {
@@ -94,14 +98,26 @@ const GarantiasPage: React.FC = () => {
   };
 
   // Handle anular garantia
-  const handleAnular = async (id: number) => {
-    if (!window.confirm('¿Está seguro de anular esta garantía?')) return;
-    
+  const handleAnular = (id: number) => {
+    const target = garantias.find((g) => g.id === id);
+    if (target) {
+      setAnularError(null);
+      setAnularTarget(target);
+    }
+  };
+
+  const handleConfirmAnular = async () => {
+    if (!anularTarget) return;
+    setAnularLoading(true);
+    setAnularError(null);
     try {
-      const updated = await garantiaApi.anular(id);
-      setGarantias(garantias.map(g => g.id === id ? updated : g));
+      const updated = await garantiaApi.anular(anularTarget.id);
+      setGarantias(garantias.map(g => g.id === anularTarget.id ? updated : g));
+      setAnularTarget(null);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error al anular la garantía');
+      setAnularError(err.response?.data?.message || 'Error al anular la garantía');
+    } finally {
+      setAnularLoading(false);
     }
   };
 
@@ -505,6 +521,31 @@ const GarantiasPage: React.FC = () => {
           />
         )}
       </Dialog>
+
+      <ConfirmDialog
+        open={!!anularTarget}
+        onClose={() => { if (!anularLoading) { setAnularTarget(null); setAnularError(null); } }}
+        onConfirm={handleConfirmAnular}
+        title="¿Anular garantía?"
+        severity="warning"
+        warning={anularError ?? 'La garantía quedará marcada como anulada y dejará de cubrir reclamos.'}
+        description="Está a punto de anular la siguiente garantía:"
+        itemDetails={
+          anularTarget && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {anularTarget.equipoFabricadoModelo}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                N° serie: {anularTarget.numeroSerie}
+              </Typography>
+            </>
+          )
+        }
+        confirmLabel="Anular garantía"
+        loadingLabel="Anulando…"
+        loading={anularLoading}
+      />
     </Box>
   );
 };

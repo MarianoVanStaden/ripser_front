@@ -38,6 +38,7 @@ import { useUrlFilters } from '../../../hooks/useUrlFilters';
 import { NuevaGestionDialog } from './NuevaGestionDialog';
 import { RegistrarAccionDialog } from './RegistrarAccionDialog';
 import { RecordatorioCobranzaDialog } from './RecordatorioCobranzaDialog';
+import ConfirmDialog from '../../common/ConfirmDialog';
 
 type FechaGestionFiltro = 'VENCIDAS' | 'HOY' | 'MANANA' | 'ESTA_SEMANA' | 'PROXIMOS_7' | 'ESTE_MES' | 'SIN_FECHA';
 
@@ -128,6 +129,8 @@ export const CobranzasListPage: React.FC = () => {
   const [bulkPrioridadAnchor, setBulkPrioridadAnchor] = useState<HTMLElement | null>(null);
   const [bulkCierreAnchor, setBulkCierreAnchor] = useState<HTMLElement | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  // Diálogo de confirmación para cerrar gestiones en bulk.
+  const [confirmCierre, setConfirmCierre] = useState<{ estado: EstadoGestionCobranza; cantidad: number } | null>(null);
 
   const [snack, setSnack] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
     open: false,
@@ -290,9 +293,15 @@ export const CobranzasListPage: React.FC = () => {
     }
   };
 
-  const handleBulkCierre = async (estado: EstadoGestionCobranza) => {
+  const handleBulkCierre = (estado: EstadoGestionCobranza) => {
     setBulkCierreAnchor(null);
-    if (!window.confirm(`¿Cerrar ${selectedIds.size} gestión(es) como "${ESTADO_GESTION_COBRANZA_LABELS[estado]}"?`)) return;
+    if (selectedIds.size === 0) return;
+    setConfirmCierre({ estado, cantidad: selectedIds.size });
+  };
+
+  const handleConfirmBulkCierre = async () => {
+    if (!confirmCierre) return;
+    const { estado } = confirmCierre;
     setBulkBusy(true);
     try {
       const result = await gestionCobranzaApi.bulkCerrar(Array.from(selectedIds), estado);
@@ -304,6 +313,7 @@ export const CobranzasListPage: React.FC = () => {
       console.error(e);
     } finally {
       setBulkBusy(false);
+      setConfirmCierre(null);
     }
   };
 
@@ -922,6 +932,41 @@ export const CobranzasListPage: React.FC = () => {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmCierre}
+        onClose={() => { if (!bulkBusy) setConfirmCierre(null); }}
+        onConfirm={handleConfirmBulkCierre}
+        title="Cerrar gestiones"
+        severity="warning"
+        description={
+          confirmCierre
+            ? `Vas a cerrar ${confirmCierre.cantidad} gestión(es) con el estado seleccionado. Las gestiones cerradas dejan de aparecer en la vista de activas.`
+            : ''
+        }
+        itemDetails={
+          confirmCierre && (
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Typography variant="body2" color="text.secondary">Nuevo estado:</Typography>
+              <Chip
+                size="small"
+                label={ESTADO_GESTION_COBRANZA_LABELS[confirmCierre.estado]}
+                sx={{
+                  bgcolor: ESTADO_GESTION_COBRANZA_COLORS[confirmCierre.estado],
+                  color: '#fff',
+                  fontWeight: 600,
+                }}
+              />
+              <Typography variant="body2" sx={{ ml: 'auto' }}>
+                <strong>{confirmCierre.cantidad}</strong> gestión(es)
+              </Typography>
+            </Stack>
+          )
+        }
+        confirmLabel="Cerrar gestiones"
+        loadingLabel="Cerrando…"
+        loading={bulkBusy}
+      />
 
       <Snackbar
         open={snack.open}

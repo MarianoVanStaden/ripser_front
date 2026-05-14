@@ -286,6 +286,23 @@ export interface DesgloseModeloDTO {
   numerosEnService?: string[];
 }
 
+/**
+ * Desglose de equipos VENDIDOS y EN TRÁNSITO agrupados por tipo+modelo.
+ * Complementa a {@link DesgloseModeloDTO} con los equipos fuera del depósito.
+ */
+export interface DesgloseModeloVendidosDTO {
+  tipo: string;
+  modelo: string;
+  /** enTransito + entregados */
+  total: number;
+  /** Equipos que salieron en un viaje inicializado pero no fueron entregados aún */
+  enTransito: number;
+  /** Equipos entregados al cliente final */
+  entregados: number;
+  numerosEnTransito: string[];
+  numerosEntregados: string[];
+}
+
 /** Equipo físico asociado a una OrdenServicio (dentro de OrdenServicioDTO) */
 export interface EquipoEnOrdenDTO {
   equipoFabricadoId: number;

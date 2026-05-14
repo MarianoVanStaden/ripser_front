@@ -51,6 +51,7 @@ import {
   TipoInteraccionEnum as TipoInteraccion,
 } from '../../types/lead.types';
 import { leadApi } from '../../api/services/leadApi';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const mapLeadPrioridadToRecordatorio = (p?: string) =>
   p === 'HOT' ? 'ALTA' as const : p === 'WARM' ? 'MEDIA' as const : 'BAJA' as const;
@@ -94,6 +95,9 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingInteraccion, setEditingInteraccion] = useState<InteraccionLeadDTO | null>(null);
   const [saving, setSaving] = useState(false);
+  const [interaccionToDelete, setInteraccionToDelete] = useState<InteraccionLeadDTO | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<InteraccionLeadDTO>>({
@@ -186,17 +190,27 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
     }
   };
 
-  const handleDelete = async (interaccionId: number) => {
-    if (!window.confirm('¿Está seguro de eliminar esta interacción?')) {
-      return;
+  const handleDelete = (interaccionId: number) => {
+    const target = interacciones.find((i) => i.id === interaccionId);
+    if (target) {
+      setDeleteError(null);
+      setInteraccionToDelete(target);
     }
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!interaccionToDelete) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
     try {
-      await leadApi.deleteInteraccion(leadId, interaccionId);
+      await leadApi.deleteInteraccion(leadId, interaccionToDelete.id);
       onInteraccionesChange();
+      setInteraccionToDelete(null);
     } catch (err: any) {
       console.error('Error al eliminar interacción:', err);
-      alert(err.response?.data?.message || 'Error al eliminar la interacción');
+      setDeleteError(err.response?.data?.message || 'Error al eliminar la interacción');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -527,6 +541,33 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!interaccionToDelete}
+        onClose={() => { if (!deleteLoading) { setInteraccionToDelete(null); setDeleteError(null); } }}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar interacción?"
+        severity="error"
+        warning={deleteError ?? 'Esta acción no se puede deshacer.'}
+        description="Está a punto de eliminar el siguiente registro de interacción con el lead:"
+        itemDetails={
+          interaccionToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {interaccionToDelete.tipo}
+              </Typography>
+              {interaccionToDelete.descripcion && (
+                <Typography variant="body2" color="text.secondary">
+                  {interaccionToDelete.descripcion}
+                </Typography>
+              )}
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
+      />
     </Card>
   );
 };

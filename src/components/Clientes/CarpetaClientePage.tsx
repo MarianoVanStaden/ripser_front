@@ -49,6 +49,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 import type { Cliente, DocumentoCliente } from '../../types';
 import { HistoricoComercialTab } from './HistoricoComercial';
 
@@ -115,6 +116,8 @@ const CarpetaClientePage: React.FC = () => {
   const [uploadCategoria, setUploadCategoria] = useState('');
   const [uploadDescripcion, setUploadDescripcion] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<DocumentoCliente | null>(null);
+  const [deleteDocLoading, setDeleteDocLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Paginación para documentos
@@ -240,18 +243,23 @@ const CarpetaClientePage: React.FC = () => {
     }
   };
 
-  const handleDeleteDocument = async (doc: DocumentoCliente) => {
-    if (!window.confirm(`¿Está seguro que desea eliminar el documento "${doc.nombreArchivo}"?`)) {
-      return;
-    }
+  const handleDeleteDocument = (doc: DocumentoCliente) => {
+    setDocToDelete(doc);
+  };
 
+  const handleConfirmDeleteDocument = async () => {
+    if (!docToDelete) return;
+    setDeleteDocLoading(true);
     try {
-      await documentoClienteApi.delete(doc.id);
+      await documentoClienteApi.delete(docToDelete.id);
       setSuccessMessage('Documento eliminado exitosamente');
       await loadDocumentos();
+      setDocToDelete(null);
     } catch (err) {
       console.error('Error deleting documento:', err);
       setError('Error al eliminar el documento');
+    } finally {
+      setDeleteDocLoading(false);
     }
   };
 
@@ -826,6 +834,26 @@ const CarpetaClientePage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!docToDelete}
+        onClose={() => setDocToDelete(null)}
+        onConfirm={handleConfirmDeleteDocument}
+        title="¿Eliminar documento?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar el siguiente documento del cliente:"
+        itemDetails={
+          docToDelete && (
+            <Typography variant="body1" sx={{ fontWeight: 600, wordBreak: 'break-all' }}>
+              {docToDelete.nombreArchivo}
+            </Typography>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteDocLoading}
+      />
     </Box>
   );
 };

@@ -34,6 +34,7 @@ import { bancoApi } from '../../api/services/bancoApi';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { Banco } from '../../types';
 import BancoFormDialog from './BancoFormDialog';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const BancosPage: React.FC = () => {
   // Permisos y contexto
@@ -48,6 +49,8 @@ const BancosPage: React.FC = () => {
   // Estados de dialogs
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedBanco, setSelectedBanco] = useState<Banco | null>(null);
+  const [bancoToDelete, setBancoToDelete] = useState<Banco | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,23 +120,25 @@ const BancosPage: React.FC = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const handleDelete = async (banco: Banco) => {
-    if (!window.confirm(`¿Está seguro de eliminar el banco "${banco.nombre}"?`)) {
-      return;
-    }
+  const handleDelete = (banco: Banco) => {
+    setBancoToDelete(banco);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!bancoToDelete) return;
+    setDeleteLoading(true);
     try {
-      setLoading(true);
-      await bancoApi.delete(banco.id);
+      await bancoApi.delete(bancoToDelete.id);
       await loadData();
       setSuccess('Banco eliminado correctamente');
       setTimeout(() => setSuccess(null), 3000);
+      setBancoToDelete(null);
     } catch (err: any) {
       console.error('Error deleting banco:', err);
       setError(err.response?.data?.message || 'Error al eliminar el banco');
       setTimeout(() => setError(null), 5000);
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
 
@@ -314,6 +319,26 @@ const BancosPage: React.FC = () => {
         banco={selectedBanco}
         onClose={handleCloseForm}
         onSave={handleSave}
+      />
+
+      <ConfirmDialog
+        open={!!bancoToDelete}
+        onClose={() => setBancoToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar banco?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar el siguiente banco:"
+        itemDetails={
+          bancoToDelete && (
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {bancoToDelete.nombre}
+            </Typography>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
       />
     </Box>
   );

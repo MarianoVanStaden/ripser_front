@@ -11,8 +11,10 @@ import {
   Alert,
   IconButton,
   TextField,
+  Menu,
   MenuItem,
   Chip,
+  CircularProgress,
   Paper,
   Table,
   TableBody,
@@ -67,6 +69,7 @@ import EditarNotaPedidoDialog from './NotasPedido/dialogs/EditarNotaPedidoDialog
 import ConvertirLeadDialog from './NotasPedido/dialogs/ConvertirLeadDialog';
 import BillingDialog from './NotasPedido/dialogs/BillingDialog';
 import OpcionesFinanciamientoDialog from './NotasPedido/dialogs/OpcionesFinanciamientoDialog';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
@@ -434,6 +437,58 @@ const NotasPedidoPage: React.FC = () => {
       default: return estado;
     }
   }, []);
+
+  // Estados ofrecidos en el quick-edit. FACTURADA/PAGADA se setean desde el
+  // flujo de facturación, no manualmente. ANULADA queda fuera por seguridad.
+  const ESTADOS_QUICK_EDIT_NOTA: EstadoDocumento[] = [
+    EstadoDocumentoEnum.PENDIENTE,
+    EstadoDocumentoEnum.APROBADO,
+    EstadoDocumentoEnum.RECHAZADO,
+  ];
+  const [estadoMenuAnchor, setEstadoMenuAnchor] = useState<null | HTMLElement>(null);
+  const [estadoMenuNota, setEstadoMenuNota] = useState<DocumentoComercial | null>(null);
+  const [estadoUpdatingId, setEstadoUpdatingId] = useState<number | null>(null);
+
+  const handleOpenEstadoMenu = useCallback(
+    (event: React.MouseEvent<HTMLElement>, nota: DocumentoComercial) => {
+      event.stopPropagation();
+      setEstadoMenuAnchor(event.currentTarget);
+      setEstadoMenuNota(nota);
+    },
+    []
+  );
+  const handleCloseEstadoMenu = useCallback(() => {
+    setEstadoMenuAnchor(null);
+    setEstadoMenuNota(null);
+  }, []);
+
+  const handleQuickUpdateEstado = useCallback(
+    async (nuevoEstado: EstadoDocumento) => {
+      if (!estadoMenuNota) return;
+      const nota = estadoMenuNota;
+      if (nuevoEstado === nota.estado) {
+        handleCloseEstadoMenu();
+        return;
+      }
+      handleCloseEstadoMenu();
+      setEstadoUpdatingId(nota.id);
+      try {
+        await documentoApi.updateEstado(nota.id, nuevoEstado);
+        invalidateNotas();
+        setSnackbar({
+          open: true,
+          message: `Estado actualizado a ${getStatusLabel(nuevoEstado)}`,
+          severity: 'success',
+        });
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || 'Error al actualizar el estado';
+        setSnackbar({ open: true, message: msg, severity: 'error' });
+      } finally {
+        setEstadoUpdatingId(null);
+      }
+    },
+    [estadoMenuNota, handleCloseEstadoMenu, invalidateNotas, getStatusLabel]
+  );
 
   const getSelectedFinancingOption = useCallback((nota: DocumentoComercial): OpcionFinanciamientoDTO | undefined => {
     const opciones = notasFinanciamiento[nota.id] ?? [];
@@ -914,6 +969,10 @@ const NotasPedidoPage: React.FC = () => {
   // Billing Dialog state (para Financiación Propia)
   const [billingDialogOpen, setBillingDialogOpen] = useState(false);
   const [notaToBill, setNotaToBill] = useState<DocumentoComercial | null>(null);
+  // Confirmación previa a convertir una nota (sin equipos) a factura.
+  // Antes era un window.confirm; ahora pasa por ConfirmDialog para mantener UX.
+  const [confirmConvertFactura, setConfirmConvertFactura] = useState<{ nota: DocumentoComercial; payload: any } | null>(null);
+  const [convertFacturaLoading, setConvertFacturaLoading] = useState(false);
   const [billingForm, setBillingForm] = useState<BillingForm>({
     cantidadCuotas: 1,
     tipoFinanciacion: 'MENSUAL',
@@ -1076,20 +1135,29 @@ const NotasPedidoPage: React.FC = () => {
         setAsignarEquiposDialogOpen(true);
       }
     } else {
-      // No equipos, proceed directly with conversion
-      if (!confirmarConDeudaPendiente && !window.confirm("¿Está seguro de convertir esta Nota de Pedido en Factura?")) {
+      // No equipos: pedimos confirmación al usuario (antes era window.confirm).
+      // Si ya fue confirmado (recursión post-deuda), saltamos la confirmación.
+      if (!confirmarConDeudaPendiente) {
+        setConfirmConvertFactura({ nota, payload: baseFacturaPayload });
         return;
       }
 
+      await executeConvertToFacturaNoEquipos(baseFacturaPayload, true);
+    }
+  }, [notasPedido, invalidateNotas]);
+
+  // Ejecuta efectivamente la conversión a factura cuando la nota no tiene
+  // equipos (ya pasó la confirmación). Manejamos acá el flujo de deuda para
+  // mantener la lógica original.
+  const executeConvertToFacturaNoEquipos = useCallback(
+    async (baseFacturaPayload: any, confirmarConDeudaPendiente: boolean) => {
       try {
         setError(null);
         const factura = await documentoApi.convertToFactura({
           ...baseFacturaPayload,
           ...(confirmarConDeudaPendiente && { confirmarConDeudaPendiente: true }),
         });
-        // Remove nota from local state
         invalidateNotas();
-        // Show success dialog
         setCreatedFactura(factura);
         setFacturaSuccessDialogOpen(true);
       } catch (err: any) {
@@ -1113,8 +1181,20 @@ const NotasPedidoPage: React.FC = () => {
         const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido al convertir a factura";
         setError(errorMessage);
       }
+    },
+    [invalidateNotas]
+  );
+
+  const handleConfirmConvertFactura = useCallback(async () => {
+    if (!confirmConvertFactura) return;
+    setConvertFacturaLoading(true);
+    try {
+      await executeConvertToFacturaNoEquipos(confirmConvertFactura.payload, false);
+    } finally {
+      setConvertFacturaLoading(false);
+      setConfirmConvertFactura(null);
     }
-  }, [notasPedido, invalidateNotas]);
+  }, [confirmConvertFactura, executeConvertToFacturaNoEquipos]);
 
   // Handler para exportar nota de pedido a PDF
   const handleExportarPDF = useCallback(async (nota: DocumentoComercial) => {
@@ -1381,11 +1461,36 @@ const NotasPedidoPage: React.FC = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        label={getStatusLabel(nota.estado)}
-                        color={getStatusColor(nota.estado)}
-                        size="small"
-                      />
+                      {estadoUpdatingId === nota.id ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        <Tooltip
+                          title={
+                            nota.estado === EstadoDocumentoEnum.FACTURADA
+                              ? 'Una nota facturada no se puede modificar'
+                              : 'Click para cambiar de estado'
+                          }
+                        >
+                          <span>
+                            <Chip
+                              label={getStatusLabel(nota.estado)}
+                              color={getStatusColor(nota.estado)}
+                              size="small"
+                              onClick={
+                                nota.estado === EstadoDocumentoEnum.FACTURADA
+                                  ? undefined
+                                  : (e) => handleOpenEstadoMenu(e, nota)
+                              }
+                              sx={{
+                                cursor:
+                                  nota.estado === EstadoDocumentoEnum.FACTURADA
+                                    ? 'default'
+                                    : 'pointer',
+                              }}
+                            />
+                          </span>
+                        </Tooltip>
+                      )}
                     </TableCell>
                     <TableCell align="right">
                       ${nota.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
@@ -1601,6 +1706,55 @@ const NotasPedidoPage: React.FC = () => {
         }}
         lead={leadToConvert}
       />
+
+      <ConfirmDialog
+        open={!!confirmConvertFactura}
+        onClose={() => { if (!convertFacturaLoading) setConfirmConvertFactura(null); }}
+        onConfirm={handleConfirmConvertFactura}
+        title="Convertir a factura"
+        severity="question"
+        description="¿Está seguro de convertir esta Nota de Pedido en Factura? Una vez convertida, la nota queda en estado FACTURADA y no se puede modificar."
+        itemDetails={
+          confirmConvertFactura && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {confirmConvertFactura.nota.numeroDocumento}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {confirmConvertFactura.nota.clienteNombre || '-'}
+                {' · '}
+                ${confirmConvertFactura.nota.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              </Typography>
+            </>
+          )
+        }
+        confirmLabel="Convertir a factura"
+        loadingLabel="Convirtiendo…"
+        loading={convertFacturaLoading}
+      />
+
+      {/* Quick-edit de estado de la nota de pedido desde el chip de la tabla */}
+      <Menu
+        anchorEl={estadoMenuAnchor}
+        open={Boolean(estadoMenuAnchor)}
+        onClose={handleCloseEstadoMenu}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {ESTADOS_QUICK_EDIT_NOTA.map((estado) => (
+          <MenuItem
+            key={estado}
+            selected={estado === estadoMenuNota?.estado}
+            onClick={() => handleQuickUpdateEstado(estado)}
+          >
+            <Chip
+              label={getStatusLabel(estado)}
+              color={getStatusColor(estado)}
+              size="small"
+              sx={{ mr: 1 }}
+            />
+          </MenuItem>
+        ))}
+      </Menu>
 
       {/* Snackbar for equipment creation messages */}
       <Snackbar

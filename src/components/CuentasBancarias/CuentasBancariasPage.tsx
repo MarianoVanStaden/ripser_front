@@ -34,6 +34,7 @@ import { cuentaBancariaApi } from '../../api/services/cuentaBancariaApi';
 import { usePermisos } from '../../hooks/usePermisos';
 import type { CuentaBancaria } from '../../types';
 import CuentaBancariaFormDialog from './CuentaBancariaFormDialog';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const CuentasBancariasPage: React.FC = () => {
   const { tienePermiso } = usePermisos();
@@ -45,6 +46,8 @@ const CuentasBancariasPage: React.FC = () => {
 
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedCuenta, setSelectedCuenta] = useState<CuentaBancaria | null>(null);
+  const [cuentaToDelete, setCuentaToDelete] = useState<CuentaBancaria | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -109,23 +112,25 @@ const CuentasBancariasPage: React.FC = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const handleDelete = async (cuenta: CuentaBancaria) => {
-    if (!window.confirm(`¿Está seguro de eliminar esta cuenta bancaria?`)) {
-      return;
-    }
+  const handleDelete = (cuenta: CuentaBancaria) => {
+    setCuentaToDelete(cuenta);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!cuentaToDelete) return;
+    setDeleteLoading(true);
     try {
-      setLoading(true);
-      await cuentaBancariaApi.delete(cuenta.id);
+      await cuentaBancariaApi.delete(cuentaToDelete.id);
       await loadData();
       setSuccess('Cuenta bancaria eliminada correctamente');
       setTimeout(() => setSuccess(null), 3000);
+      setCuentaToDelete(null);
     } catch (err: any) {
       console.error('Error deleting cuenta:', err);
       setError(err.response?.data?.message || 'Error al eliminar la cuenta bancaria');
       setTimeout(() => setError(null), 5000);
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
 
@@ -313,6 +318,32 @@ const CuentasBancariasPage: React.FC = () => {
         cuenta={selectedCuenta}
         onClose={handleCloseForm}
         onSave={handleSave}
+      />
+
+      <ConfirmDialog
+        open={!!cuentaToDelete}
+        onClose={() => setCuentaToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar cuenta bancaria?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar la siguiente cuenta bancaria:"
+        itemDetails={
+          cuentaToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {cuentaToDelete.alias || cuentaToDelete.numeroCuenta || `Cuenta #${cuentaToDelete.id}`}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {cuentaToDelete.bancoNombre}
+                {cuentaToDelete.tipoCuenta ? ` · ${cuentaToDelete.tipoCuenta}` : ''}
+              </Typography>
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
       />
     </Box>
   );

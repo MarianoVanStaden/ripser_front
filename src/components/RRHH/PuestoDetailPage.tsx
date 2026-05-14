@@ -54,6 +54,7 @@ import PuestoFormDialog from './PuestoFormDialog';
 import TareaFormDialog from './TareaFormDialog';
 import SubtareaFormDialog from './SubtareaFormDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 import dayjs from 'dayjs';
 
 interface TabPanelProps {
@@ -92,6 +93,12 @@ const PuestoDetailPage: React.FC = () => {
   const [subtareaParentTareaId, setSubtareaParentTareaId] = useState<number>(0);
   const [versionSnapshotOpen, setVersionSnapshotOpen] = useState(false);
   const [selectedSnapshot, setSelectedSnapshot] = useState<string>('');
+  const [tareaToDelete, setTareaToDelete] = useState<TareaPuestoDTO | null>(null);
+  const [tareaDeleteLoading, setTareaDeleteLoading] = useState(false);
+  const [subtareaToDelete, setSubtareaToDelete] = useState<
+    { tareaId: number; subtarea: SubtareaPuestoDTO } | null
+  >(null);
+  const [subtareaDeleteLoading, setSubtareaDeleteLoading] = useState(false);
 
   const puestoId = Number(id);
 
@@ -166,14 +173,23 @@ const PuestoDetailPage: React.FC = () => {
     setSnackbar({ open: true, message: 'Tarea guardada', severity: 'success' });
   };
 
-  const handleDeleteTarea = async (tareaId: number) => {
-    if (!window.confirm('¿Eliminar esta tarea?')) return;
+  const handleDeleteTarea = (tareaId: number) => {
+    const tarea = puesto?.tareas?.find((t) => t.id === tareaId);
+    if (tarea) setTareaToDelete(tarea);
+  };
+
+  const handleConfirmDeleteTarea = async () => {
+    if (!tareaToDelete) return;
+    setTareaDeleteLoading(true);
     try {
-      await puestoApi.deleteTarea(puestoId, tareaId);
+      await puestoApi.deleteTarea(puestoId, tareaToDelete.id);
       await loadData();
       setSnackbar({ open: true, message: 'Tarea eliminada', severity: 'success' });
+      setTareaToDelete(null);
     } catch (err: any) {
       setSnackbar({ open: true, message: err.response?.data?.message || 'Error al eliminar la tarea', severity: 'error' });
+    } finally {
+      setTareaDeleteLoading(false);
     }
   };
 
@@ -191,14 +207,24 @@ const PuestoDetailPage: React.FC = () => {
     setSnackbar({ open: true, message: 'Subtarea guardada', severity: 'success' });
   };
 
-  const handleDeleteSubtarea = async (tareaId: number, subtareaId: number) => {
-    if (!window.confirm('¿Eliminar esta subtarea?')) return;
+  const handleDeleteSubtarea = (tareaId: number, subtareaId: number) => {
+    const tarea = puesto?.tareas?.find((t) => t.id === tareaId);
+    const subtarea = tarea?.subtareas?.find((s) => s.id === subtareaId);
+    if (subtarea) setSubtareaToDelete({ tareaId, subtarea });
+  };
+
+  const handleConfirmDeleteSubtarea = async () => {
+    if (!subtareaToDelete) return;
+    setSubtareaDeleteLoading(true);
     try {
-      await puestoApi.deleteSubtarea(puestoId, tareaId, subtareaId);
+      await puestoApi.deleteSubtarea(puestoId, subtareaToDelete.tareaId, subtareaToDelete.subtarea.id);
       await loadData();
       setSnackbar({ open: true, message: 'Subtarea eliminada', severity: 'success' });
+      setSubtareaToDelete(null);
     } catch (err: any) {
       setSnackbar({ open: true, message: err.response?.data?.message || 'Error al eliminar la subtarea', severity: 'error' });
+    } finally {
+      setSubtareaDeleteLoading(false);
     }
   };
 
@@ -547,6 +573,46 @@ const PuestoDetailPage: React.FC = () => {
           <Button onClick={() => setVersionSnapshotOpen(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!tareaToDelete}
+        onClose={() => setTareaToDelete(null)}
+        onConfirm={handleConfirmDeleteTarea}
+        title="¿Eliminar tarea?"
+        severity="error"
+        warning="Se eliminarán también las subtareas asociadas. Esta acción no se puede deshacer."
+        description="Está a punto de eliminar la siguiente tarea del puesto:"
+        itemDetails={
+          tareaToDelete && (
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {tareaToDelete.nombre}
+            </Typography>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={tareaDeleteLoading}
+      />
+
+      <ConfirmDialog
+        open={!!subtareaToDelete}
+        onClose={() => setSubtareaToDelete(null)}
+        onConfirm={handleConfirmDeleteSubtarea}
+        title="¿Eliminar subtarea?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar la siguiente subtarea:"
+        itemDetails={
+          subtareaToDelete && (
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {subtareaToDelete.subtarea.nombre}
+            </Typography>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={subtareaDeleteLoading}
+      />
 
       {/* Snackbar */}
       <Snackbar

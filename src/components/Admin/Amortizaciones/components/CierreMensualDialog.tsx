@@ -97,11 +97,34 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
     Promise.all([
       amortizacionApi.getActivos(),
       adminFlujoCajaApi.getFlujoCaja(fechaDesde, fechaHasta),
+      // Pre-fill desde lo ya registrado por activo: km recorridos y valor dólar.
+      // Si el usuario cargó cada vehículo individualmente con "Registrar", esos
+      // valores ya viven en AmortizacionMensual y deben aparecer en el cierre.
+      amortizacionApi.getDetallesMes(anio, mes),
     ])
-      .then(([activosData, flujoData]) => {
-        const activos = activosData.filter((a) => a.activo);
-        setActivos(activos);
+      .then(([activosData, flujoData, detallesMes]) => {
+        const activosActivos = activosData.filter((a) => a.activo);
+        setActivos(activosActivos);
         setFlujoCajaMensual(String(flujoData.totalIngresos));
+
+        // Pre-llenar km por activo desde lo registrado en el mes.
+        const kmIniciales: Record<string, string> = {};
+        for (const det of detallesMes) {
+          if (det.kmRecorridos != null) {
+            kmIniciales[String(det.activoId)] = String(det.kmRecorridos);
+          }
+        }
+        if (Object.keys(kmIniciales).length > 0) setKmPorActivo(kmIniciales);
+
+        // Pre-llenar valor del dólar desde el último registro del mes (todos
+        // deberían usar el mismo TC, pero por las dudas tomamos el más reciente).
+        const conTC = detallesMes.filter((d) => d.valorDolar > 0);
+        if (conTC.length > 0) {
+          const ultimo = conTC.reduce((a, b) =>
+            new Date(b.fechaCreacion).getTime() > new Date(a.fechaCreacion).getTime() ? b : a
+          );
+          setValorDolar(String(ultimo.valorDolar));
+        }
       })
       .catch((err: any) => {
         setError(err?.response?.data?.message ?? 'Error al cargar los datos del mes');
@@ -210,6 +233,7 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
                   onChange={(e) => { setValorDolar(e.target.value); setError(null); }}
                   inputProps={{ step: '0.01', min: '0.01' }}
                   disabled={calculando}
+                  helperText="Pre-llenado desde el último registro del mes si existe"
                 />
               </Grid>
 
@@ -232,7 +256,11 @@ export default function CierreMensualDialog({ open, anio, mes, onClose, onSucces
                           }
                           inputProps={{ step: '1', min: '0' }}
                           disabled={calculando}
-                          helperText="Dejar vacío = backend usará 0 y emitirá advertencia"
+                          helperText={
+                            kmPorActivo[String(a.id)]
+                              ? 'Pre-llenado desde lo ya registrado este mes'
+                              : 'Dejar vacío = backend usará 0 y emitirá advertencia'
+                          }
                         />
                       </Grid>
                     ))}

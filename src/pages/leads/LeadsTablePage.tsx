@@ -383,7 +383,7 @@ export const LeadsTablePage = () => {
       invalidateLeads();
     } catch (err) {
       console.error('Error al actualizar prioridad:', err);
-      alert('Error al actualizar la prioridad del lead');
+      setErrorSnack('Error al actualizar la prioridad del lead');
     }
   };
 
@@ -394,7 +394,7 @@ export const LeadsTablePage = () => {
       invalidateLeads();
     } catch (err) {
       console.error('Error al actualizar estado:', err);
-      alert('Error al actualizar el estado del lead');
+      setErrorSnack('Error al actualizar el estado del lead');
     }
   };
 

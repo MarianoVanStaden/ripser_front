@@ -27,6 +27,7 @@ import {
   Select,
   Divider,
   TablePagination,
+  Snackbar,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -77,6 +78,7 @@ const InformeVentasPage = () => {
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorSnack, setErrorSnack] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<SaleRecord | null>(null);
@@ -619,7 +621,7 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
       );
     } catch (error) {
       console.error('Error al generar PDF:', error);
-      alert('Error al generar el PDF. Por favor, intente nuevamente.');
+      setErrorSnack('Error al generar el PDF. Por favor, intente nuevamente.');
     }
   };
 
@@ -637,7 +639,7 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
       );
     } catch (error) {
       console.error('Error al generar PDF de detalle:', error);
-      alert('Error al generar el PDF. Por favor, intente nuevamente.');
+      setErrorSnack('Error al generar el PDF. Por favor, intente nuevamente.');
     }
   };
 
@@ -1320,6 +1322,17 @@ const getUsuarioFullName = (usuario: UsuarioRecord, usuarioId: number | string |
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={!!errorSnack}
+        autoHideDuration={5000}
+        onClose={() => setErrorSnack(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" onClose={() => setErrorSnack(null)}>
+          {errorSnack}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

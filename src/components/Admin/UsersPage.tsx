@@ -62,6 +62,7 @@ import { getAvailableRolesForUser, getRolEmpresaOption, mapRolEmpresaToSystemRol
 import type { CreateUsuarioWithEmpresaDTO, UsuarioWithEmpresa, RolEmpresaOption } from '../../types/usuario-enhanced.types';
 import type { Empresa, Sucursal, RolEmpresa } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 // Available roles with labels and colors (for table display)
 const availableRoles = [
@@ -108,6 +109,8 @@ const UsersPage: React.FC = () => {
   const [createdUserInfo, setCreatedUserInfo] = useState<{ username: string; role: string; isEdit: boolean } | null>(null);
   const [editingUser, setEditingUser] = useState<UsuarioWithEmpresa | null>(null);
   const [userToDelete, setUserToDelete] = useState<UsuarioWithEmpresa | null>(null);
+  const [desvincularTarget, setDesvincularTarget] = useState<UsuarioWithEmpresa | null>(null);
+  const [desvincularLoading, setDesvincularLoading] = useState(false);
   const [viewingUser, setViewingUser] = useState<UsuarioWithEmpresa | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -594,18 +597,26 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleDesvincularEmpleado = async (user: UsuarioWithEmpresa) => {
-    if (!window.confirm('¿Desvincular el empleado de este usuario?')) return;
+  const handleDesvincularEmpleado = (user: UsuarioWithEmpresa) => {
+    setDesvincularTarget(user);
+  };
+
+  const handleConfirmDesvincularEmpleado = async () => {
+    if (!desvincularTarget) return;
+    setDesvincularLoading(true);
     try {
-      await usuarioAdminApi.desvincularEmpleado(user.id);
+      await usuarioAdminApi.desvincularEmpleado(desvincularTarget.id);
       setSuccess('Empleado desvinculado correctamente');
-      if (viewingUser?.id === user.id) {
+      if (viewingUser?.id === desvincularTarget.id) {
         setViewingUser({ ...viewingUser, empleadoId: null } as UsuarioWithEmpresa);
       }
       loadData();
       setTimeout(() => setSuccess(null), 3000);
+      setDesvincularTarget(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al desvincular empleado');
+    } finally {
+      setDesvincularLoading(false);
     }
   };
 
@@ -1662,6 +1673,32 @@ const UsersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!desvincularTarget}
+        onClose={() => setDesvincularTarget(null)}
+        onConfirm={handleConfirmDesvincularEmpleado}
+        title="Desvincular empleado"
+        severity="warning"
+        description="El usuario va a dejar de estar vinculado al empleado, pero el usuario y el empleado siguen existiendo y se pueden volver a vincular más adelante."
+        itemDetails={
+          desvincularTarget && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {desvincularTarget.username}
+              </Typography>
+              {desvincularTarget.email && (
+                <Typography variant="body2" color="text.secondary">
+                  {desvincularTarget.email}
+                </Typography>
+              )}
+            </>
+          )
+        }
+        confirmLabel="Desvincular"
+        loadingLabel="Desvinculando…"
+        loading={desvincularLoading}
+      />
     </Box>
   );
 };

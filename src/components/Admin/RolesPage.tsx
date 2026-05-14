@@ -39,6 +39,7 @@ import {
 } from '@mui/icons-material';
 import type { Role, Permission } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 // Mock data for development
 const mockPermissions: Permission[] = [
@@ -111,6 +112,8 @@ const RolesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -194,15 +197,23 @@ const RolesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este rol?')) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setRoles(roles.filter(role => role.id !== id));
-      } catch (err) {
-        setError('Error al eliminar el rol');
-        console.error('Error deleting role:', err);
-      }
+  const handleDelete = (id: number) => {
+    const role = roles.find((r) => r.id === id);
+    if (role) setRoleToDelete(role);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!roleToDelete) return;
+    setDeleteLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setRoles(roles.filter(role => role.id !== roleToDelete.id));
+      setRoleToDelete(null);
+    } catch (err) {
+      setError('Error al eliminar el rol');
+      console.error('Error deleting role:', err);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -394,6 +405,33 @@ const RolesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!roleToDelete}
+        onClose={() => setRoleToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar rol?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar el siguiente rol del sistema:"
+        itemDetails={
+          roleToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {roleToDelete.name}
+              </Typography>
+              {roleToDelete.description && (
+                <Typography variant="body2" color="text.secondary">
+                  {roleToDelete.description}
+                </Typography>
+              )}
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
+      />
     </Box>
   );
 };

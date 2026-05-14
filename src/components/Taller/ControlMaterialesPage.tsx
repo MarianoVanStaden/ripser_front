@@ -42,6 +42,7 @@ import { productApi } from '../../api/services/productApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { MaterialUtilizado, Producto, OrdenServicio } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const ControlMaterialesPage: React.FC = () => {
   const theme = useTheme();
@@ -53,6 +54,8 @@ const ControlMaterialesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<MaterialUtilizado | null>(null);
+  const [materialToDelete, setMaterialToDelete] = useState<MaterialUtilizado | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [ordenFilter, setOrdenFilter] = useState<number | null>(null);
 
@@ -237,16 +240,24 @@ const ControlMaterialesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteMaterial = async (id: number) => {
-    if (!window.confirm('¿Está seguro de eliminar este material?')) return;
+  const handleDeleteMaterial = (id: number) => {
+    const material = materiales.find((m) => m.id === id);
+    if (material) setMaterialToDelete(material);
+  };
 
+  const handleConfirmDeleteMaterial = async () => {
+    if (!materialToDelete) return;
+    setDeleteLoading(true);
     try {
-      await materialUtilizadoApi.delete(id);
+      await materialUtilizadoApi.delete(materialToDelete.id);
       await loadMateriales();
       setError(null);
+      setMaterialToDelete(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al eliminar el material');
       console.error('Error deleting material:', err);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -576,6 +587,31 @@ const ControlMaterialesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!materialToDelete}
+        onClose={() => setMaterialToDelete(null)}
+        onConfirm={handleConfirmDeleteMaterial}
+        title="¿Eliminar material?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar el siguiente material utilizado:"
+        itemDetails={
+          materialToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {getProductoNombre(materialToDelete)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {getOrdenInfo(materialToDelete)}
+              </Typography>
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
+      />
     </Box>
   );
 };

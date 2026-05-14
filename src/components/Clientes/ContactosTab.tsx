@@ -26,6 +26,7 @@ import {
 import type { ContactoCliente, CreateContactoClienteRequest, TipoContacto } from '../../types';
 import { contactoClienteApiWithFallback as contactoClienteApi } from '../../api/services/apiWithFallback';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 interface ContactosTabProps {
   clienteId: number;
@@ -37,6 +38,8 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContacto, setEditingContacto] = useState<ContactoCliente | null>(null);
+  const [contactoToDelete, setContactoToDelete] = useState<ContactoCliente | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [formData, setFormData] = useState<CreateContactoClienteRequest>({
     clienteId,
     fechaContacto: new Date().toISOString().split('T')[0],
@@ -138,14 +141,22 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este contacto?')) {
-      try {
-        await contactoClienteApi.delete(id);
-        loadContactos();
-      } catch (err) {
-        setError('Error al eliminar el contacto');
-      }
+  const handleDelete = (id: number) => {
+    const contacto = contactos.find((c) => c.id === id);
+    if (contacto) setContactoToDelete(contacto);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!contactoToDelete) return;
+    setDeleteLoading(true);
+    try {
+      await contactoClienteApi.delete(contactoToDelete.id);
+      loadContactos();
+      setContactoToDelete(null);
+    } catch (err) {
+      setError('Error al eliminar el contacto');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -329,6 +340,33 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
           </DialogActions>
         </form>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!contactoToDelete}
+        onClose={() => setContactoToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar contacto?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar el siguiente registro de contacto:"
+        itemDetails={
+          contactoToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {contactoToDelete.tipoContacto} · {contactoToDelete.fechaContacto}
+              </Typography>
+              {contactoToDelete.descripcion && (
+                <Typography variant="body2" color="text.secondary">
+                  {contactoToDelete.descripcion}
+                </Typography>
+              )}
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
+      />
     </Box>
   );
 };

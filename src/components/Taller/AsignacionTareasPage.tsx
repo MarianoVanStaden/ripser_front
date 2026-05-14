@@ -46,6 +46,7 @@ import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { TareaServicio, OrdenServicio, Empleado } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const AsignacionTareasPage: React.FC = () => {
   const theme = useTheme();
@@ -57,6 +58,8 @@ const AsignacionTareasPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingTarea, setEditingTarea] = useState<TareaServicio | null>(null);
+  const [tareaToDelete, setTareaToDelete] = useState<TareaServicio | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Estados para modal de completar tarea
   const [completarDialogOpen, setCompletarDialogOpen] = useState(false);
@@ -227,16 +230,24 @@ const AsignacionTareasPage: React.FC = () => {
     }
   };
 
-  const handleDeleteTarea = async (id: number) => {
-    if (!window.confirm('¿Está seguro de eliminar esta tarea?')) return;
+  const handleDeleteTarea = (id: number) => {
+    const tarea = tareas.find((t) => t.id === id);
+    if (tarea) setTareaToDelete(tarea);
+  };
 
+  const handleConfirmDeleteTarea = async () => {
+    if (!tareaToDelete) return;
+    setDeleteLoading(true);
     try {
-      await tareaServicioApi.delete(id);
+      await tareaServicioApi.delete(tareaToDelete.id);
       await loadTareas();
       setError(null);
+      setTareaToDelete(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al eliminar la tarea');
       console.error('Error deleting tarea:', err);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -948,6 +959,33 @@ const AsignacionTareasPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!tareaToDelete}
+        onClose={() => setTareaToDelete(null)}
+        onConfirm={handleConfirmDeleteTarea}
+        title="¿Eliminar tarea?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar la siguiente tarea de servicio:"
+        itemDetails={
+          tareaToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {tareaToDelete.descripcion || `Tarea #${tareaToDelete.id}`}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {getOrdenInfo(tareaToDelete)}
+                {' · '}
+                {getEmpleadoNombre(tareaToDelete)}
+              </Typography>
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
+      />
     </Box>
   );
 };

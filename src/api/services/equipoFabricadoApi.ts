@@ -14,6 +14,7 @@ import type {
   EtapaTerminacionDTO,
   HistorialFabricacionDTO,
   DesgloseModeloDTO,
+  DesgloseModeloVendidosDTO,
   EtapaFabricacionDTO,
   TipoEtapaFabricacion,
   ActualizarEtapaFabricacionDTO,
@@ -390,6 +391,16 @@ export const equipoFabricadoApi = {
    */
   getDesgloseModelo: async (): Promise<DesgloseModeloDTO[]> => {
     const response = await api.get<DesgloseModeloDTO[]>('/api/equipos-fabricados/desglose-modelo');
+    return response.data;
+  },
+
+  /**
+   * Desglose de equipos VENDIDOS (ENTREGADO) y EN TRÁNSITO (salieron en un
+   * viaje inicializado pero no fueron entregados aún), agrupados por tipo+modelo.
+   * Complementa a {@link getDesgloseModelo} con los equipos fuera del depósito.
+   */
+  getDesgloseModeloVendidos: async (): Promise<DesgloseModeloVendidosDTO[]> => {
+    const response = await api.get<DesgloseModeloVendidosDTO[]>('/api/equipos-fabricados/desglose-modelo/vendidos');
     return response.data;
   },
 };

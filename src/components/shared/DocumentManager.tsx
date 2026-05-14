@@ -32,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import type { DocumentoLegajo, DocumentoCliente } from '../../types';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 type Documento = DocumentoLegajo | DocumentoCliente | {
   id: number;
@@ -72,6 +73,8 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
   const [categoria, setCategoria] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [docIdToDelete, setDocIdToDelete] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     loadDocumentos();
@@ -117,21 +120,23 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Está seguro que desea eliminar este documento?')) {
-      return;
-    }
+  const handleDelete = (id: number) => {
+    setDocIdToDelete(id);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (docIdToDelete == null) return;
+    setDeleteLoading(true);
     try {
-      setLoading(true);
       setError(null);
-      await onDelete(id);
+      await onDelete(docIdToDelete);
       setSuccess('Documento eliminado exitosamente');
       await loadDocumentos();
+      setDocIdToDelete(null);
     } catch (err: any) {
       setError(err.message || 'Error al eliminar documento');
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
 
@@ -299,6 +304,19 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={docIdToDelete != null}
+        onClose={() => setDocIdToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar documento?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar este documento. No vas a poder recuperarlo desde la aplicación."
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
+      />
     </Card>
   );
 };

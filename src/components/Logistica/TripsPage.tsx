@@ -63,6 +63,7 @@ import {
 } from '@mui/icons-material';
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { viajeApi } from '../../api/services/viajeApi';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -189,6 +190,8 @@ const TripsPage2: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Viaje | null>(null);
+  const [tripToDelete, setTripToDelete] = useState<Viaje | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, any>>({});
 
@@ -665,15 +668,23 @@ const TripsPage2: React.FC = () => {
     setTripDeliveries(tripDeliveries.filter((_, i) => i !== index));
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este viaje?')) {
-      try {
-        await viajeApi.delete(id);
-        await loadData();
-      } catch (err) {
-        const error = err as { response?: { data?: { message?: string } } };
-        setError(error?.response?.data?.message || 'Error al eliminar el viaje');
-      }
+  const handleDelete = (id: number) => {
+    const trip = trips.find((t) => t.id === id);
+    if (trip) setTripToDelete(trip);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!tripToDelete) return;
+    setDeleteLoading(true);
+    try {
+      await viajeApi.delete(tripToDelete.id);
+      await loadData();
+      setTripToDelete(null);
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Error al eliminar el viaje');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -2215,6 +2226,32 @@ const TripsPage2: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!tripToDelete}
+        onClose={() => setTripToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar viaje?"
+        severity="error"
+        warning="Esta acción no se puede deshacer."
+        description="Está a punto de eliminar el siguiente viaje:"
+        itemDetails={
+          tripToDelete && (
+            <>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {tripToDelete.destino || `Viaje #${tripToDelete.id}`}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {tripToDelete.fechaViaje}
+                {tripToDelete.vehiculo?.patente ? ` · ${tripToDelete.vehiculo.patente}` : ''}
+              </Typography>
+            </>
+          )
+        }
+        confirmLabel="Eliminar"
+        loadingLabel="Eliminando…"
+        loading={deleteLoading}
+      />
     </Box>
   );
 };
