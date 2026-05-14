@@ -199,7 +199,7 @@ export const InteraccionesTimeline = ({ leadId, lead, interacciones, onInteracci
   };
 
   const handleConfirmDelete = async () => {
-    if (!interaccionToDelete) return;
+    if (!interaccionToDelete || interaccionToDelete.id == null) return;
     setDeleteLoading(true);
     setDeleteError(null);
     try {
