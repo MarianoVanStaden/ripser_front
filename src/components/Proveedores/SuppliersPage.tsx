@@ -37,6 +37,7 @@ import {
   Email as EmailIcon,
   Inventory as InventoryIcon,
   Search as SearchIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { supplierApi } from '../../api/services/supplierApi';
@@ -52,8 +53,17 @@ const SuppliersPage: React.FC = () => {
   const [suppliers, setSuppliers] = useState<ProveedorDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<ProveedorDTO | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<ProveedorDTO | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const notifySuccess = (msg: string) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(null), 3000);
+  };
   const [formData, setFormData] = useState<CreateProveedorDTO>({
     razonSocial: '',
     cuit: '',
@@ -199,19 +209,31 @@ const SuppliersPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este proveedor?')) {
-      try {
-        setLoading(true);
-        await supplierApi.delete(id);
-        setSuppliers(suppliers.filter(supplier => supplier.id !== id));
-        setError(null);
-      } catch (err) {
-        setError('Error al eliminar el proveedor');
-        console.error('Error deleting supplier:', err);
-      } finally {
-        setLoading(false);
-      }
+  const openDeleteDialog = (supplier: ProveedorDTO) => {
+    setSupplierToDelete(supplier);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleting) return;
+    setDeleteDialogOpen(false);
+    setSupplierToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!supplierToDelete) return;
+    setDeleting(true);
+    try {
+      await supplierApi.delete(supplierToDelete.id);
+      setSuppliers(suppliers.filter(supplier => supplier.id !== supplierToDelete.id));
+      notifySuccess('Proveedor eliminado correctamente');
+      setDeleteDialogOpen(false);
+      setSupplierToDelete(null);
+    } catch (err: any) {
+      console.error('Error deleting supplier:', err);
+      setError(err.response?.data?.message || 'Error al eliminar el proveedor');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -312,8 +334,13 @@ const SuppliersPage: React.FC = () => {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
+          {success}
         </Alert>
       )}
 
@@ -452,7 +479,7 @@ const SuppliersPage: React.FC = () => {
                         >
                           <InventoryIcon />
                         </IconButton>
-                        <IconButton onClick={() => handleDelete(supplier.id)} size="small" title="Eliminar">
+                        <IconButton onClick={() => openDeleteDialog(supplier)} size="small" title="Eliminar">
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
@@ -597,6 +624,48 @@ const SuppliersPage: React.FC = () => {
         proveedor={proveedorParaProductos}
         onClose={() => setProductosDialogOpen(false)}
       />
+
+      <Dialog open={deleteDialogOpen} onClose={closeDeleteDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main' }}>
+          <WarningIcon color="error" />
+          ¿Eliminar proveedor?
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <strong>¡Atención!</strong> Esta acción no se puede deshacer.
+          </Alert>
+          {supplierToDelete && (
+            <Box>
+              <Typography variant="body1" gutterBottom>
+                Está a punto de eliminar el proveedor:
+              </Typography>
+              <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+                <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  {supplierToDelete.razonSocial}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {supplierToDelete.cuit ? `CUIT: ${supplierToDelete.cuit}` : ''}
+                  {supplierToDelete.email ? ` · ${supplierToDelete.email}` : ''}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+            startIcon={<DeleteIcon />}
+          >
+            {deleting ? 'Eliminando...' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
