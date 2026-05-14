@@ -33,6 +33,7 @@ const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefi
     EN_TRANSITO: 'secondary',
     ENTREGADO: 'success',
     PENDIENTE_TERMINACION: 'warning',
+    EN_SERVICE: 'warning',
   };
   return colorMap[estado] || 'default';
 };
@@ -46,6 +47,7 @@ const getEstadoAsignacionLabel = (estado: EstadoAsignacionEquipo | null | undefi
     EN_TRANSITO: 'En Tránsito',
     ENTREGADO: 'Entregado',
     PENDIENTE_TERMINACION: 'Pendiente Terminación',
+    EN_SERVICE: 'En Service',
   };
   return labelMap[estado] || estado;
 };

@@ -23,6 +23,7 @@ interface EstadisticasEstados {
   EN_TRANSITO: number;
   ENTREGADO: number;
   PENDIENTE_TERMINACION: number;
+  EN_SERVICE: number;
   total: number;
 }
 
@@ -35,6 +36,7 @@ const ReportesEstadosPage: React.FC = () => {
     EN_TRANSITO: 0,
     ENTREGADO: 0,
     PENDIENTE_TERMINACION: 0,
+    EN_SERVICE: 0,
     total: 0,
   });
   const [equipos, setEquipos] = useState<EquipoFabricadoDTO[]>([]);
@@ -84,6 +86,7 @@ const ReportesEstadosPage: React.FC = () => {
         EN_TRANSITO: 0,  // En viaje hacia el cliente
         ENTREGADO: 0,    // Entregado al cliente
         PENDIENTE_TERMINACION: 0,
+        EN_SERVICE: 0,   // Equipo ingresado a OrdenServicio activa
         total: equiposData.length,
       };
 

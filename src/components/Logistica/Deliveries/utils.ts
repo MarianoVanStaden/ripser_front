@@ -16,6 +16,7 @@ export const getEstadoAsignacionColor = (
     EN_TRANSITO: 'secondary',
     ENTREGADO: 'success',
     PENDIENTE_TERMINACION: 'warning',
+    EN_SERVICE: 'warning',
   };
   return colorMap[estado] || 'default';
 };
@@ -32,6 +33,7 @@ export const getEstadoAsignacionLabel = (
     EN_TRANSITO: 'En Transito',
     ENTREGADO: 'Entregado',
     PENDIENTE_TERMINACION: 'Pendiente Terminación',
+    EN_SERVICE: 'En Service',
   };
   return labelMap[estado] || estado;
 };
