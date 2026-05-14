@@ -197,10 +197,6 @@ export const RegistroActividadPage = () => {
     setFilters(backendFilters);
   }, [backendFilters, setFilters]);
 
-  const toggleTipo = (t: TipoAccionActividad) => {
-    setTiposSel((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
-  };
-
   if (!tienePermiso('ADMINISTRACION')) {
     return (
       <Box sx={{ p: 3 }}>

@@ -455,7 +455,7 @@ const DashboardRRHH: React.FC = () => {
       {/* KPIs */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {kpis.map((kpi, i) => (
-          <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+          <Grid item key={i} xs={12} sm={6} md={4} lg={2}>
             <KpiCard {...kpi} loading={loading} />
           </Grid>
         ))}
@@ -478,7 +478,7 @@ const DashboardRRHH: React.FC = () => {
           </Typography>
           <Grid container spacing={1.5}>
             {quickActions.map(action => (
-              <Grid key={action.label} size={{ xs: 6, sm: 3 }}>
+              <Grid item key={action.label} xs={6} sm={3}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -508,7 +508,7 @@ const DashboardRRHH: React.FC = () => {
 
       {/* Charts: asistencia + rotación */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid item xs={12} md={8}>
           <SectionCard
             title="Asistencia"
             subtitle={periodoAsistencia === 'semanal' ? 'Últimos 14 días' : 'Últimos 6 meses'}
@@ -536,7 +536,7 @@ const DashboardRRHH: React.FC = () => {
             {loading ? <ChartSkeleton /> : <AsistenciaChart data={asistenciaData} />}
           </SectionCard>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid item xs={12} md={4}>
           <SectionCard title="Rotación de personal" subtitle="Altas vs bajas (12 meses)">
             {loading ? <ChartSkeleton /> : <RotacionChart data={data?.rotacionMensual ?? []} />}
           </SectionCard>
@@ -545,12 +545,12 @@ const DashboardRRHH: React.FC = () => {
 
       {/* Charts: distribución + horas */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, md: 5 }}>
+        <Grid item xs={12} md={5}>
           <SectionCard title="Distribución por sector" subtitle="Empleados por puesto / departamento">
             {loading ? <ChartSkeleton /> : <DistribucionChart data={data?.distribucionPorSector ?? []} />}
           </SectionCard>
         </Grid>
-        <Grid size={{ xs: 12, md: 7 }}>
+        <Grid item xs={12} md={7}>
           <SectionCard title="Horas trabajadas" subtitle="Por semana (últimas 6)">
             {loading ? <ChartSkeleton /> : <HorasTrabajadasChart data={data?.horasTrabajadasSemanal ?? []} />}
           </SectionCard>
@@ -559,7 +559,7 @@ const DashboardRRHH: React.FC = () => {
 
       {/* Listados: últimos ingresos + solicitudes + cumpleaños */}
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+        <Grid item xs={12} md={6} lg={4}>
           <SectionCard
             title="Últimos ingresos"
             subtitle="Nuevos empleados"
@@ -612,7 +612,7 @@ const DashboardRRHH: React.FC = () => {
           </SectionCard>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+        <Grid item xs={12} md={6} lg={4}>
           <SectionCard
             title="Solicitudes pendientes"
             subtitle="Licencias por aprobar"
@@ -649,7 +649,7 @@ const DashboardRRHH: React.FC = () => {
           </SectionCard>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 12, lg: 4 }}>
+        <Grid item xs={12} md={12} lg={4}>
           <SectionCard
             title={isMobile ? 'Cumpleaños' : 'Cumpleaños del mes'}
             subtitle="Empleados activos"
