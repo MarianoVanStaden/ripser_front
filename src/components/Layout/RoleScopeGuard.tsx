@@ -1,7 +1,5 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { Box, Typography, Button } from '@mui/material';
-import LockIcon from '@mui/icons-material/Lock';
 import { useAuth } from '../../context/AuthContext';
 import { usePermisos } from '../../hooks/usePermisos';
 
@@ -30,32 +28,6 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
   },
 ];
 
-const AccessDenied: React.FC<{ home: string }> = ({ home }) => (
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '60vh',
-      gap: 2,
-      px: 2,
-      textAlign: 'center',
-    }}
-  >
-    <LockIcon sx={{ fontSize: 80, color: 'error.main' }} />
-    <Typography variant="h4" color="error">
-      Acceso denegado
-    </Typography>
-    <Typography variant="body1" color="text.secondary" maxWidth={420}>
-      Tu rol no tiene permisos para acceder a esta sección.
-    </Typography>
-    <Button variant="contained" href={home}>
-      Ir a mi inicio
-    </Button>
-  </Box>
-);
-
 const RoleScopeGuard: React.FC<Props> = ({ children }) => {
   const { esSuperAdmin } = useAuth();
   const { tieneRol } = usePermisos();
@@ -74,18 +46,11 @@ const RoleScopeGuard: React.FC<Props> = ({ children }) => {
     prefix => path === prefix || path.startsWith(prefix + '/'),
   );
 
-  // Aterrizaje en "/" (DashboardEntry ya redirige roles conocidos; este guard
-  // cubre cualquier path) o cualquier ruta fuera de scope → mandar al home
-  // del rol con Navigate (preserva el historial limpio).
-  if (path === '/') {
-    return <Navigate to={restricted.home} replace />;
-  }
-
+  // Cualquier ruta fuera de scope (incluido "/") → redirect al home del rol.
+  // Sin pantalla de "acceso denegado": para estos usuarios todo lo que existe
+  // es su módulo, así que aterrizar siempre en su dashboard es la UX correcta.
   if (!dentroDeScope) {
-    // Si el usuario llegó por click en algo del sidebar mal filtrado, lo
-    // mandamos al home. Si llegó tipeando una URL ajena (ej. /admin/users),
-    // mostramos el cartel de acceso denegado para que entienda el motivo.
-    return <AccessDenied home={restricted.home} />;
+    return <Navigate to={restricted.home} replace />;
   }
 
   return <>{children}</>;
