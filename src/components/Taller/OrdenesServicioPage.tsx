@@ -89,10 +89,12 @@ const OrdenesServicioPage: React.FC = () => {
   // Estado para equipos en service vinculados a la orden
   const [equiposOrden, setEquiposOrden] = useState<EquipoFabricadoDTO[]>([]);
   const [descripcionFalla, setDescripcionFalla] = useState('');
-  const [equipoQuery, setEquipoQuery] = useState('');
   const [equipoEncontrado, setEquipoEncontrado] = useState<EquipoFabricadoDTO | null>(null);
-  const [buscandoEquipo, setBuscandoEquipo] = useState(false);
   const [equipoError, setEquipoError] = useState<string | null>(null);
+  // Equipos del cliente seleccionado: se cargan al elegir cliente y se usan
+  // como opciones del Autocomplete (evita tipear el código a mano).
+  const [equiposCliente, setEquiposCliente] = useState<EquipoFabricadoDTO[]>([]);
+  const [loadingEquiposCliente, setLoadingEquiposCliente] = useState(false);
 
   useEffect(() => {
     loadOrdenes();
@@ -170,9 +172,9 @@ const OrdenesServicioPage: React.FC = () => {
   const resetEquiposState = () => {
     setEquiposOrden([]);
     setDescripcionFalla('');
-    setEquipoQuery('');
     setEquipoEncontrado(null);
     setEquipoError(null);
+    setEquiposCliente([]);
   };
 
   const handleCloseForm = () => {
@@ -189,30 +191,36 @@ const OrdenesServicioPage: React.FC = () => {
     resetEquiposState();
   };
 
-  const MIN_QUERY_LENGTH = 5; // ej: "HEL-1" — evita llamadas con prefijos incompletos
-
-  const handleBuscarEquipo = async () => {
-    const query = equipoQuery.trim();
-    if (query.length < MIN_QUERY_LENGTH) {
-      setEquipoError(`Ingrese al menos ${MIN_QUERY_LENGTH} caracteres para buscar`);
+  // Cargar equipos del cliente seleccionado para el combo del formulario.
+  // Se ejecuta cuando el cliente del form cambia (incluyendo cuando se abre
+  // en modo edición con cliente preseleccionado).
+  useEffect(() => {
+    if (!formOpen) return;
+    const clienteId = formData.clienteId ? parseInt(formData.clienteId) : null;
+    if (!clienteId) {
+      setEquiposCliente([]);
+      setEquipoEncontrado(null);
       return;
     }
-    setBuscandoEquipo(true);
-    setEquipoEncontrado(null);
-    setEquipoError(null);
-    try {
-      const equipo = await equipoFabricadoApi.findByNumeroHeladera(equipoQuery.trim());
-      setEquipoEncontrado(equipo);
-    } catch (err: any) {
-      if (err.response?.status === 404) {
-        setEquipoError(`No se encontró ningún equipo con número "${equipoQuery.trim()}"`);
-      } else {
-        setEquipoError('Error al buscar el equipo');
+    let cancelled = false;
+    (async () => {
+      setLoadingEquiposCliente(true);
+      setEquipoError(null);
+      try {
+        const list = await equipoFabricadoApi.findByCliente(clienteId);
+        if (!cancelled) setEquiposCliente((list as any) || []);
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('Error cargando equipos del cliente:', err);
+          setEquipoError('Error al cargar equipos del cliente');
+          setEquiposCliente([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingEquiposCliente(false);
       }
-    } finally {
-      setBuscandoEquipo(false);
-    }
-  };
+    })();
+    return () => { cancelled = true; };
+  }, [formOpen, formData.clienteId]);
 
   const handleAgregarEquipo = () => {
     if (!equipoEncontrado) return;
@@ -222,7 +230,6 @@ const OrdenesServicioPage: React.FC = () => {
     }
     setEquiposOrden((prev) => [...prev, equipoEncontrado]);
     setEquipoEncontrado(null);
-    setEquipoQuery('');
     setEquipoError(null);
   };
 
@@ -981,40 +988,64 @@ const OrdenesServicioPage: React.FC = () => {
                   Opcional — vincula los equipos físicos que ingresan a reparación. El conteo "En Service" se actualiza automáticamente.
                 </Typography>
 
-                {/* Búsqueda por número de heladera */}
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-                  <TextField
+                {/* Selector de equipos del cliente — sólo aparecen equipos asociados */}
+                {!formData.clienteId ? (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Seleccioná un cliente para ver sus equipos.
+                  </Alert>
+                ) : (
+                  <Autocomplete
                     fullWidth
-                    label="Número de Heladera"
-                    value={equipoQuery}
-                    onChange={(e) => {
-                      setEquipoQuery(e.target.value);
-                      setEquipoEncontrado(null);
+                    size="small"
+                    loading={loadingEquiposCliente}
+                    options={equiposCliente.filter(
+                      (e) => e.id != null && !equiposOrden.some((eo) => eo.id === e.id)
+                    )}
+                    value={equipoEncontrado}
+                    onChange={(_, val) => {
+                      setEquipoEncontrado(val);
                       setEquipoError(null);
                     }}
-                    onKeyPress={(e) => e.key === 'Enter' && handleBuscarEquipo()}
-                    placeholder="Ej: HEL-0001"
-                    size="small"
-                    sx={{ bgcolor: 'white' }}
-                    helperText="Ingrese el número completo del equipo"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
+                    getOptionLabel={(eq) =>
+                      `${eq.numeroHeladera} · ${eq.tipo} · ${eq.modelo}${
+                        eq.color?.nombre ? ` · ${eq.color.nombre}` : ''
+                      }`
+                    }
+                    isOptionEqualToValue={(a, b) => a.id === b.id}
+                    noOptionsText={
+                      loadingEquiposCliente
+                        ? 'Cargando…'
+                        : 'El cliente no tiene equipos disponibles para service'
+                    }
+                    sx={{ mb: 2, bgcolor: 'white' }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Equipo del cliente"
+                        placeholder="Buscar por número, modelo, color..."
+                        helperText={
+                          equiposCliente.length === 0 && !loadingEquiposCliente
+                            ? 'Este cliente no tiene equipos vinculados.'
+                            : `${equiposCliente.length} equipo(s) del cliente`
+                        }
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon fontSize="small" />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <>
+                              {loadingEquiposCliente ? <CircularProgress size={18} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
                   />
-                  <Button
-                    variant="outlined"
-                    color="warning"
-                    onClick={handleBuscarEquipo}
-                    disabled={equipoQuery.trim().length < MIN_QUERY_LENGTH || buscandoEquipo}
-                    sx={{ minWidth: 110, height: 40, whiteSpace: 'nowrap' }}
-                  >
-                    {buscandoEquipo ? <CircularProgress size={18} color="warning" /> : 'Buscar'}
-                  </Button>
-                </Stack>
+                )}
 
                 {/* Error de búsqueda */}
                 {equipoError && (
