@@ -34,6 +34,11 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // (secciones) que se ven y el detalle se filtra por allowlist en Sidebar
   // (transporteAllowedPaths) para esconder items dentro de cada sección.
   TRANSPORTE: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER'],
+
+  // Acceso EXCLUSIVO al módulo RRHH. No incluye DASHBOARD genérico — la home
+  // (/) redirige a /rrhh/dashboard via DashboardEntry. Todo el resto queda
+  // bloqueado por usePermisos + allowlist de Sidebar (rrhhAllowedPaths).
+  RECURSOS_HUMANOS: ['RRHH'],
 };
 
 export const usePermisos = () => {

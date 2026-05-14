@@ -8,6 +8,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { TenantRequiredRoute } from '../Tenant';
 import { useFinancialEvents } from '../../hooks/useFinancialEvents';
+import RoleScopeGuard from './RoleScopeGuard';
 //import { TenantDebugPanel } from '../Debug'; // Panel de debugging para desarrollo
 
 
@@ -47,7 +48,9 @@ const Layout: React.FC = () => {
         {/* Spacer for AppBar on mobile or Toolbar on desktop */}
         <Toolbar />
         <TenantRequiredRoute>
-          <Outlet />
+          <RoleScopeGuard>
+            <Outlet />
+          </RoleScopeGuard>
         </TenantRequiredRoute>
       </Box>
       {/* Panel de debugging - Solo para desarrollo */}

@@ -32,6 +32,7 @@ export * from './deposito.types';
 export * from './cheque.types';
 export * from './reconciliacion-stock.types';
 export * from './flujoCaja.types';
+export * from './actividad.types';
 
 export * from './stockPlanificacion.types';
 export * from './posicionPatrimonial.types';

@@ -49,6 +49,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import SavingsIcon from '@mui/icons-material/Savings';
+import HistoryIcon from '@mui/icons-material/History';
 // import GavelIcon from '@mui/icons-material/Gavel';
 import PhoneCallbackIcon from '@mui/icons-material/PhoneCallback';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -205,6 +206,7 @@ const navigation: NavigationSection[] = [
     title: 'RRHH',
     modulo: 'RRHH',
     items: [
+      { text: 'Dashboard RRHH', icon: <DashboardIcon />, path: '/rrhh/dashboard' },
       { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
       { text: 'Legajos', icon: <AssignmentIcon />, path: '/rrhh/legajos' },
       { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
@@ -240,6 +242,7 @@ const navigation: NavigationSection[] = [
       { text: 'Importador de Precios', icon: <SettingsIcon />, path: '/admin/importador-precios' },
       { text: 'Ofertas Mensuales', icon: <SettingsIcon />, path: '/admin/ofertas' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
+      { text: 'Actividad del sistema', icon: <HistoryIcon />, path: '/admin/actividad' },
     ],
   },
 ];
@@ -325,6 +328,20 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/garantias/reporte',
   ];
 
+  // Rutas permitidas para el rol RECURSOS_HUMANOS (allowlist estricta):
+  // sólo el módulo RRHH; cualquier otra cosa queda fuera del menú y
+  // bloqueada por usePermisos + ProtectedRoute en App.tsx.
+  const rrhhAllowedPaths = [
+    '/rrhh/dashboard',
+    '/rrhh/empleados',
+    '/rrhh/legajos',
+    '/rrhh/sueldos',
+    '/rrhh/asistencia',
+    '/rrhh/capacitaciones',
+    '/rrhh/puestos',
+    '/rrhh/licencias',
+  ];
+
   // Rutas permitidas para el rol TRANSPORTE (allowlist):
   // - VENTAS: solo Registro Ventas.
   // - CLIENTES: Gestión + Carpeta.
@@ -388,6 +405,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isTallerOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('TALLER');
       if (isTallerOnly) {
         filteredItems = filteredItems.filter(item => tallerAllowedPaths.includes(item.path));
+      }
+
+      // Si el rol es puramente RECURSOS_HUMANOS (y no Admin), aplicar allowlist estricta.
+      const isRrhhOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('RECURSOS_HUMANOS');
+      if (isRrhhOnly) {
+        filteredItems = filteredItems.filter(item => rrhhAllowedPaths.includes(item.path));
       }
 
       return {

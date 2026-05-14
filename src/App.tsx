@@ -54,6 +54,7 @@ const BalanceAnualPage = lazy(() => import('./components/Admin/BalanceAnual/Bala
 const BalanceMesPage = lazy(() => import('./components/Admin/BalanceAnual/BalanceMesPage'));
 const AmortizacionesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionesPage'));
 const AmortizacionMesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionMesPage'));
+const RegistroActividadPage = lazy(() => import('./components/Admin/RegistroActividadPage'));
 const ProvisionesPage = lazy(() => import('./components/Admin/Provisiones/ProvisionesPage'));
 const ProvisionResumenAnualPage = lazy(() => import('./components/Admin/Provisiones/ProvisionResumenAnualPage'));
 const TiposProvisionPage = lazy(() => import('./components/Admin/TiposProvision/TiposProvisionPage'));
@@ -154,6 +155,7 @@ const LicenciasPage = lazy(() => import('./components/RRHH/LicenciasPage'));
 const CapacitacionesPage = lazy(() => import('./components/RRHH/CapacitacionesPage'));
 const SueldosPage = lazy(() => import('./components/RRHH/SueldosPage'));
 const LegajosPage = lazy(() => import('./components/RRHH/LegajosPage'));
+const DashboardRRHH = lazy(() => import('./components/RRHH/DashboardRRHH'));
 
 // Fabricación
 const RecetasList = lazy(() => import('./components/Fabricacion/RecetasList'));
@@ -195,6 +197,7 @@ const DashboardEntry: React.FC = () => {
   const roles = user?.roles ?? [];
   const isAdminLike = esSuperAdmin || roles.includes('ADMIN');
   if (!isAdminLike) {
+    if (roles.includes('RECURSOS_HUMANOS')) return <Navigate to="/rrhh/dashboard" replace />;
     if (roles.includes('COBRANZAS')) return <Navigate to="/cobranzas/resumen" replace />;
     if (roles.includes('TRANSPORTE')) return <TransporteDashboard />;
   }
@@ -250,6 +253,7 @@ function App() {
                   <Route path="admin/balance/:anio/:mes" element={priv(<BalanceMesPage />)} />
                   <Route path="admin/amortizaciones" element={priv(<AmortizacionesPage />)} />
                   <Route path="admin/amortizaciones/:anio/:mes" element={priv(<AmortizacionMesPage />)} />
+                  <Route path="admin/actividad" element={priv(<RegistroActividadPage />)} />
                   <Route path="admin/provisiones" element={priv(<ProvisionesPage />)} />
                   <Route path="admin/provisiones/:anio/:mes" element={priv(<ProvisionesPage />)} />
                   <Route path="admin/provisiones/resumen/:tipoId/:anio" element={priv(<ProvisionResumenAnualPage />)} />
@@ -319,6 +323,7 @@ function App() {
                   <Route path="garantias/reporte" element={priv(<GarantiaReportPage />)} />
 
                   {/* RRHH */}
+                  <Route path="rrhh/dashboard" element={priv(<DashboardRRHH />)} />
                   <Route path="rrhh/empleados" element={priv(<EmpleadosPage />)} />
                   <Route path="rrhh/puestos" element={priv(<PuestosPage />)} />
                   <Route path="rrhh/puestos/:id" element={priv(<PuestoDetailPage />)} />
