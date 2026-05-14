@@ -77,6 +77,14 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     color: '#6a1b9a',
     requiresSucursal: false,
     systemRole: 'TRANSPORTE'
+  },
+  {
+    value: 'RECURSOS_HUMANOS',
+    label: 'Recursos Humanos',
+    description: 'Acceso exclusivo al módulo RRHH: empleados, legajos, sueldos, asistencias, licencias, capacitaciones y puestos',
+    color: '#2e7d32',
+    requiresSucursal: true,
+    systemRole: 'RECURSOS_HUMANOS'
   }
 ];
 
