@@ -238,8 +238,14 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 setSucursalFiltroState(sucursalSeleccionada);
                 sessionStorage.setItem('sucursalFiltro', sucursalSeleccionada.toString());
               }
-            } catch (err) {
-              console.error('❌ Error al cargar sucursales para auto-selección:', err);
+            } catch (err: any) {
+              // 403 esperado para roles con permisos recortados (TALLER, etc.).
+              // No es error, sólo significa que no auto-seleccionamos sucursal.
+              if (err?.response?.status === 403) {
+                console.info('ℹ️ Sin permisos para listar sucursales (auto-selección omitida)');
+              } else {
+                console.error('❌ Error al cargar sucursales para auto-selección:', err);
+              }
             }
           } else {
             console.log('⚠️ No se encontró relación para empresa:', empresaId);
@@ -282,8 +288,12 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         } else {
           console.log('⚠️ Usuario NO puede cambiar y NO tiene sucursalId asignada');
         }
-      } catch (err) {
-        console.error('❌ Error al cargar sucursales:', err);
+      } catch (err: any) {
+        if (err?.response?.status === 403) {
+          console.info('ℹ️ Sin permisos para listar sucursales');
+        } else {
+          console.error('❌ Error al cargar sucursales:', err);
+        }
       }
     };
 

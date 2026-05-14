@@ -201,11 +201,23 @@ const Dashboard: React.FC = () => {
   })();
   const isAdminRole = userRole === 'ADMIN' || userRole === 'GERENTE' || user?.esSuperAdmin;
 
+  // Roles que renderizan su propio dashboard especializado y no necesitan
+  // los datos del shell (clientes/facturas/stock bajo). Evita 403 ruidosos
+  // por endpoints que esos roles no tienen permitidos.
+  const hasSpecificDashboard =
+    userRole === 'VENDEDOR' ||
+    userRole === 'PRODUCCION' ||
+    userRole === 'TALLER';
+
   useEffect(() => {
     checkConnection();
-    fetchDashboardData();
+    if (!hasSpecificDashboard) {
+      fetchDashboardData();
+    } else {
+      setLoading(false);
+    }
     if (isAdminRole) loadMetaVentas();
-  }, [empresaId, isAdminRole]); // Re-fetch when tenant changes
+  }, [empresaId, isAdminRole, hasSpecificDashboard]); // Re-fetch when tenant changes
 
   const loadMetaVentas = async () => {
     try {
