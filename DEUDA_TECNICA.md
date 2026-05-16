@@ -1,157 +1,172 @@
 # Deuda técnica — Manual de Puestos, Empleados y Carreras
 
-> Última actualización: 2026-05-15
-> Alcance: ítems no entregados, decisiones pospuestas y mejoras conocidas durante la implementación de F0+F1 del Manual de Puestos extendido. Las prioridades son indicativas (P0 = bloqueante / P3 = nice-to-have).
+> Última actualización: 2026-05-16
+> Alcance: ítems no entregados, decisiones pospuestas y mejoras conocidas durante la implementación. Prioridades: P0 = bloqueante / P3 = nice-to-have.
+
+## Estado actual (snapshot)
+
+| Componente | Estado |
+|---|---|
+| Backend F0 — Catálogos (13) | ✅ Compila en VPS |
+| Backend F1 — Manual de Puestos extendido | ✅ Compila en VPS |
+| Frontend F0 — `/admin/catalogos-rrhh` | ✅ `tsc --noEmit` clean |
+| Frontend F1 — `PuestoFormDialog` (10 tabs) + `PuestoDetailPage` (tab "Manual") | ✅ `tsc --noEmit` clean |
+| Seed universal de catálogos (`sql/seed_catalogos_rrhh.sql`) | ✅ Listo para correr en VPS |
+| Importer Excel (29 puestos + catálogos específicos de RIPSER) | ⏳ Pendiente |
+| Backend F2-F4 (importer endpoint, empleados, carreras) | ⏳ Pendiente |
+| `PuestoPdfService` con layout Excel | ⏳ Pendiente |
 
 ## 0. Validación inmediata (P0)
 
-- [ ] **Compilar el backend.** `cd ripser_back && ./mvnw compile`. Hasta no correrlo no podemos garantizar que todas las nuevas entidades / FKs / colecciones lookean bien con el DDL. El back se generó referenciando entidades creadas por un agente en paralelo; el flujo es razonable pero el compilador es la única autoridad.
-- [ ] **Smoke test del front.** `cd ripser_front && pnpm dev` y abrir `/admin/catalogos-rrhh`. Verificar que los 13 tabs cargan y que el CRUD funciona contra cada `/api/catalogos/<x>`. El TanStack/React Query no se usa acá (los componentes hacen fetch directo con `useEffect`); está alineado al patrón de `ColoresPage`.
-- [ ] **Validar nombres de constraints / índices.** El agente que generó los 9 catálogos restantes anotó que **no leyó el DDL** y dedujo los nombres por convención. Si `spring.jpa.hibernate.ddl-auto = validate` en algún profile, va a fallar. Si está en `update` o `none`, no pasa nada. Confirmar el setting actual y, si es validate, alinear los names.
+- [x] **Compilar el backend.** ✅ Listo en VPS.
+- [x] **`tsc --noEmit` en el front.** ✅ Pasa.
+- [ ] **Correr seed universal.** `sql/seed_catalogos_rrhh.sql` contra la DB del VPS (empresa_id=1). Carga ~60 items: 8 áreas genéricas, 5 bandas (D, D-1...D-4), 6 niveles jerárquicos, 5 educación, 5 formación, 6 experiencia, 18 competencias (6 corporativas + 6 jerárquicas + 6 funcionales), 11 riesgos, 10 EPP, 1 unidad de negocio, 1 lugar de trabajo.
+- [ ] **Smoke E2E navegador.** Login → `/admin/catalogos-rrhh` → ver que cargan los 13 tabs. Después `/rrhh/puestos` → crear puesto usando los catálogos.
+- [ ] **Validar `spring.jpa.hibernate.ddl-auto`.** Si está en `validate`, alinear nombres de constraints/índices con el DDL real. Si está en `update` o `none`, ignorar.
 
 ## 1. Backend F1 — restos (P1)
 
 ### 1.1 `PuestoPdfService` con layout del Excel
-- Estado: stub viejo intacto. Sigue funcionando para los campos básicos (nombre, departamento, salario, tareas/subtareas) pero **no renderea** mision, objetivos, responsabilidades, habilidades, conocimientos, contactos, competencias, riesgos, EPP, requerimientos, reemplazos, FKs de catálogo, ni fecha de revisión.
-- Tamaño estimado: ~300 LOC en `services/impl/PuestoPdfService.java`.
-- Diseño sugerido: tablas anidadas con iText / OpenPDF replicando el layout del `.xlsm` original. Considerar inyectar `PuestoResponseAssembler` para tener el modelo armado en vez de leer la entidad directamente.
+- **Stub viejo intacto.** Sigue funcionando para campos base pero no renderea: misión, objetivos, R&A, habilidades, conocimientos, contactos, competencias, riesgos, EPP, requerimientos, reemplazos, FKs de catálogo, ni fecha de revisión.
+- Tamaño: ~300 LOC en `services/impl/PuestoPdfService.java`.
+- Diseño: inyectar `PuestoResponseAssembler` para tener el modelo armado en vez de leer la entidad directamente. Tablas anidadas con iText/OpenPDF replicando el layout del `.xlsm`.
 
-### 1.2 Endpoints bulk-replace por categoría
-- Hoy se hace todo vía `PUT /api/rrhh/puestos/{id}` con `UpdatePuestoDTO`. Funciona, pero exige que el front mande el puesto entero.
-- Opcional: agregar `PUT /api/rrhh/puestos/{id}/competencias`, `/riesgos`, `/epp`, `/contactos`, etc. con un payload menor para sincronizar una sola categoría. Servicio ya tiene `PuestoChildSyncer` listo — sólo hay que exponer un endpoint por categoría.
+### 1.2 Endpoints bulk-replace por categoría (opcional)
+- Hoy el `PUT /api/rrhh/puestos/{id}` ya hace replace selectivo. Agregar endpoints `PUT /{id}/competencias`, `/riesgos`, `/epp`, `/contactos`, etc. sólo cuando el front lo necesite por performance.
 
 ### 1.3 Cutover del campo legacy `Puesto.departamento` (String)
-- Coexiste con `departamentoRef` (FK). El String se mantuvo para compat con queries existentes (`findByEmpresaIdAndDepartamento`, `findDistinctDepartamentosByEmpresaId`, `findByDepartamento`).
-- Pendiente: detectar todos los consumers de `Puesto.departamento` String, migrarlos a la FK, deprecar el campo y eventualmente borrarlo en una migración futura.
+- Coexiste con `departamentoRef` (FK). El String se mantuvo para compat con `findByEmpresaIdAndDepartamento`, `findDistinctDepartamentosByEmpresaId`, `findByDepartamento`, y el filtro del front en `PuestosPage`.
+- Pendiente: migrar consumers a la FK, deprecar el campo, borrarlo en migración futura.
 
-### 1.4 `PuestoVersion` snapshot — consideraciones
-- Ahora guardo el `PuestoResponseDTO` completo serializado a JSON. Es lo correcto pero ojo:
-  - El tamaño por versión va a crecer ~10× respecto al snapshot viejo (ahora ~20-50KB por versión).
-  - Si MySQL/MariaDB tiene `max_allowed_packet` chico podrían cortarse — verificar.
-  - Considerar compresión (zstd) o columna `JSONB` con índices selectivos en un futuro.
+### 1.4 `PuestoVersion` snapshot — tamaño
+- Ahora guarda el `PuestoResponseDTO` completo serializado a JSON. Va a crecer ~10× respecto al snapshot viejo (~20-50KB por versión). Verificar `max_allowed_packet` en MySQL/MariaDB. Considerar compresión zstd o `JSONB` con índices selectivos en el futuro.
 
-### 1.5 Mappers de catálogos — MapStruct
-- Decidí no usar MapStruct para los catálogos y mapear inline en `AbstractCatalogoCrudServiceImpl` + `CatalogoMappingHelper`. Funciona pero rompe la convención del proyecto (Banco, Empleado, etc. todos usan MapStruct).
-- Opcional: agregar 13 mappers MapStruct minimalistas. Lo dejé inline porque los catálogos casi no tienen campos planos extra y MapStruct con `@MappedSuperclass` + herencia se vuelve molesto.
+### 1.5 Mappers MapStruct para catálogos
+- Decidí no usarlos y mapear inline en `AbstractCatalogoCrudServiceImpl` + `CatalogoMappingHelper`. Funciona pero rompe convención del proyecto (Banco, Empleado usan MapStruct). Bajo prio.
 
-### 1.6 `Puesto.departamento` (String) en el Sidebar / filtros del front
-- `puestoApi.getDepartamentos()` y `puestoApi.getByDepartamento()` aún consultan el campo legacy. Una vez hecho el cutover (1.3) hay que migrar también el front.
-
-### 1.7 Tests
-- Cero tests escritos para todo lo nuevo. Mínimo a agregar:
-  - `@DataJpaTest` por catálogo verificando que el `find*ByEmpresaId` filtra correctamente.
+### 1.6 Tests
+- **Cero tests** para todo lo nuevo. Mínimo a agregar:
+  - `@DataJpaTest` por catálogo verificando filtro `findByEmpresaId`.
   - Integration test del flujo create→update→snapshot del Puesto extendido.
-  - Unit test del `PuestoChildSyncer.syncCompetencias` validando que el `Set` rechaza duplicados.
+  - Unit test del `PuestoChildSyncer.syncCompetencias` validando rechazo de duplicados.
 
-## 2. Frontend F1 — restos (P1)
+## 2. Frontend F1 — restos (P2)
 
-### 2.1 `PuestoFormDialog` tabbed
-- **El form actual** (`PuestoFormDialog.tsx`) sigue exponiendo sólo los campos viejos (nombre, descripcion, departamento String, salarioBase, requisitos, objetivoGeneral, motivoCambio). No expone ni FKs ni listas ni M:N.
-- Diseño objetivo: 11 tabs siguiendo el Excel:
-  1. **Identificación** — nombre, área (FK), departamento (FK), sector (FK), unidad de negocio, lugar de trabajo, banda jerárquica, nivel jerárquico, CIUO, volumen de dotación, reportaA.
-  2. **Misión + Objetivos** — texto único `mision` + lista dinámica de objetivos.
-  3. **Tareas** — reuso del flujo existente (`TareaFormDialog` / `SubtareaFormDialog`).
-  4. **Responsabilidad y Autoridad** — lista con toggle RESPONSABILIDAD / AUTORIDAD.
-  5. **Competencias** — selector múltiple del catálogo + nivel requerido 1-5.
-  6. **Habilidades y Conocimientos** — dos listas planas.
-  7. **Interacción Social** — contactos INTERNO/EXTERNO + reportaA/supervisaA preview.
-  8. **Riesgos y EPP** — selectores múltiples + flag "obligatorio".
-  9. **Requerimientos** — selects de nivel educación, tipo formación, nivel experiencia + texto libre observaciones.
-  10. **Reemplazos** — multi-select de puestos.
-  11. **Revisión** — fecha revisión + motivo de cambio (sólo en edit).
-- Tamaño estimado: ~600 LOC totales, probablemente partido en 5 archivos (orquestador + 4 sub-componentes para las listas reutilizables).
+### 2.1 Carga de catálogos en `PuestoFormDialog`
+- Al abrir el dialog se hace `Promise.all` de 14 fetches (13 catálogos + lista de puestos). Es aceptable porque las listas son chicas (~6-20 items cada una) pero pega 14 requests en mount. Optimizable con un endpoint backend `GET /api/catalogos/bundle` que devuelva todo en una sola respuesta, o con React Query + cache compartida.
 
-### 2.2 `PuestoDetailPage` extendido
-- Hoy muestra sólo los campos viejos en un layout simple. Hay que sumar accordions/secciones para todo lo nuevo, espejando el form. Estimo ~250 LOC.
+### 2.2 Sidebar para usuarios RRHH
+- El item "Catálogos RRHH" lo agregué bajo la sección Admin. Si el rol `RECURSOS_HUMANOS` no ve la sección Admin, hay que duplicarlo bajo "RRHH > Configuración" o ajustar permisos en `Sidebar.tsx`.
 
-### 2.3 Sidebar para usuarios RRHH
-- El item "Catálogos RRHH" lo agregué bajo la sección de Admin actual. Si el rol `RECURSOS_HUMANOS` no ve esa sección, hay que duplicarlo bajo una sección "RRHH > Configuración". Revisar `Sidebar.tsx` y los permisos.
+### 2.3 Mensaje 409 vs 400 en `CatalogoTablaCRUD`
+- Muestra "Ya existe otro registro con código X" sólo si el back devuelve 409 o un mensaje con "ya existe". Aceptable para MVP pero frágil. Idealmente que el back siempre devuelva 409 para conflictos de unicidad.
 
-### 2.4 Validación de unicidad por código en el dialog
-- `CatalogoTablaCRUD.handleSave` muestra "Ya existe otro registro con código X" sólo si el back devuelve 409 o un mensaje con "ya existe". Aceptable para MVP pero frágil — si el back devuelve 400, el usuario verá un genérico. Mejor: que el back devuelva siempre 409 para conflictos de unicidad.
+### 2.4 Hack de typing en `CatalogosRRHHPage`
+- Uso un helper `useDummyType()` para forzar al inferidor de TS sobre el genérico de `CatalogoTablaCRUD<LugarTrabajo, ...>`. Es feo. Refactor: imports directos por tab.
 
-### 2.5 Loading global de catálogos
-- Cada tab del `CatalogosRRHHPage` fetchea su lista en mount. Tabs jerárquicos (Departamento, Sector, Competencia) **fetchan adicionalmente** el catálogo padre. Sin caching → si el usuario salta entre tabs vuelve a pegar. Mejorable con React Query o un Context simple. Bajo prio: las listas son chicas (<100 items).
+### 2.5 `PuestoDetailPage.tsx` tiene `@ts-nocheck`
+- El archivo arranca con `// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue`. Pendiente sacar el nocheck — verificar que mis cambios no rompan cuando se levante esa restricción.
 
-### 2.6 Hack de typing en `CatalogosRRHHPage`
-- Usé un helper `useDummyType()` para forzar al inferidor de TS a aceptar los tipos de `CatalogoTablaCRUD<LugarTrabajo, ...>` sin escribir todos los imports inline. Es feo. Refactor cuando se toque el archivo: imports directos en cada tab.
+### 2.6 `puestoApi.getDepartamentos()` y `getByDepartamento()` aún apuntan al String legacy
+- Una vez hecho el cutover backend (1.3), migrar también estos consumers.
 
-## 3. F2 — Importer del Excel del Manual (P1)
+## 3. F2 — Importer del Excel (P1)
 
-- Estado: diseñado en la fase de planificación; **no implementado**.
-- Componentes faltantes:
-  - **`scripts/excel-importer/import_manual_puestos.py`** (Python con `openpyxl`) — parsea las hojas "Tablas y Datos", "Bases" y "Competencias" y genera SQL seed idempotente con `INSERT ... ON DUPLICATE KEY UPDATE`.
-  - **Seed SQL** (`V20260516_01__seed_manual_puestos.sql`) generado para `empresa_id=1` con los 29 puestos del manual + catálogos referenciados.
-  - **Endpoint backend opcional**: `POST /api/puestos/import-xlsm` (multipart) con modo dry-run + commit. Permitiría reusar el importer desde la UI en vez de tener que correr Python a mano.
-  - **Wizard frontend**: `ImportadorManualWizard.tsx` con drag&drop + preview de diff (creados / actualizados / catálogos nuevos).
-- Estimado: 2 días-persona.
+### 3.1 Importer Python
+- **No implementado.** Componentes faltantes:
+  - **`scripts/excel-importer/import_manual_puestos.py`** (Python con `openpyxl`) — parsea las hojas "Tablas y Datos", "Bases" y "Competencias" del `RIPSER - Manual de Puestos - 202603.xlsm`. Genera SQL seed idempotente con `INSERT IGNORE`.
+  - Debe completar lo que no está en el seed universal:
+    - Áreas/Departamentos/Sectores específicos de RIPSER.
+    - Lugares de trabajo reales (no sólo "Casa Central").
+    - Competencias específicas del rubro vidrio/cristalería.
+    - Riesgos y EPP propios.
+    - **29 puestos** con todos sus campos del manual.
+  - Necesita: confirmación del `empresa_id` (asumimos 1) y el `.xlsm`.
+
+### 3.2 Endpoint backend opcional
+- `POST /api/puestos/import-xlsm` (multipart) con modo dry-run + commit. Permitiría reusar el importer desde la UI en vez de tener que correr Python a mano.
+
+### 3.3 Wizard frontend
+- `ImportadorManualWizard.tsx` con drag&drop + preview de diff (creados / actualizados / catálogos nuevos).
+
+**Estimado total F2: 2 días-persona.**
 
 ## 4. F3 — Empleados, historial y gap analysis (P2)
 
-- Estado: DDL ya aplicado para `historial_puesto_empleado` y `empleado_competencia`. Sin entidades JPA, sin controllers, sin UI.
+- DDL ya aplicado para `historial_puesto_empleado` y `empleado_competencia`. **Cero código JPA.**
 - Faltante:
   - `HistorialPuestoEmpleado` entity + repo + service. Hook en `EmpleadoServiceImpl.cambiarPuesto()` que cierre el registro vigente (fecha_hasta = hoy) y abra uno nuevo con `snapshot_puesto` (JSON del PuestoResponseDTO en ese momento).
   - `EmpleadoCompetencia` entity + repo + service. Endpoint `GET /api/empleados/{id}/gap-analysis?puestoObjetivoId=X` que retorna matriz {competencia, nivel_requerido, nivel_actual, gap}.
-  - Frontend: `EmpleadoDetailPage` con tab "Trayectoria" (timeline de historial) y tab "Competencias" (radar chart con recharts).
-- Estimado: 4 días-persona.
+  - Frontend: `EmpleadoDetailPage` con tab "Trayectoria" (timeline) y tab "Competencias" (radar chart con recharts ya está como dep).
+
+**Estimado: 4 días-persona.**
 
 ## 5. F4 — Carreras Profesionales (P2)
 
-- Estado: DDL ya aplicado para `carreras_profesionales`, `nodos_carrera`, `transiciones_carrera`, `planes_carrera`, `planes_carrera_pasos`, `empleado_plan_carrera`. Cero código.
+- DDL ya aplicado: `carreras_profesionales`, `nodos_carrera`, `transiciones_carrera`, `planes_carrera`, `planes_carrera_pasos`, `empleado_plan_carrera`. **Cero código.**
 - Faltante:
-  - Entities + repos + service + controller para las 6 tablas.
-  - Endpoint `GET /api/carreras/{id}/grafo` retornando `{ nodos, transiciones }` para el visor.
+  - Entities + repos + service + controllers para las 6 tablas.
+  - Endpoint `GET /api/carreras/{id}/grafo` retornando `{ nodos, transiciones }`.
   - Validación de DAG en `PUT /api/carreras/{id}/grafo` (Tarjan o topological sort) para rechazar ciclos.
-  - Frontend: `CarreraGrafoEditor` con react-flow (nuevo dep), drag&drop de Puestos al grafo, panel de planes curados, asignación a empleado.
-- Estimado: 5 días-persona.
+  - Frontend: `CarreraGrafoEditor` con `react-flow` (nuevo dep), drag&drop de Puestos al grafo, panel de planes curados, asignación a empleado.
+
+**Estimado: 5 días-persona.**
 
 ## 6. F5 — Reportes y dashboard (P3)
 
-- Endpoint `GET /api/reportes/manual-puestos` con métricas: cobertura del manual (% puestos con todos los campos completos), revisiones vencidas, puestos sin titular, dotación por área, etc.
+- `GET /api/reportes/manual-puestos` con métricas: cobertura del manual (% puestos con todos los campos), revisiones vencidas, puestos sin titular, dotación por área, etc.
 - Tarjetas + gráficos en `DashboardRRHH`.
-- Export Excel respetando el layout del `.xlsm` original (uso de `ApachePOI`).
-- Estimado: 2 días-persona.
+- Export Excel respetando el layout del `.xlsm` original (Apache POI).
+
+**Estimado: 2 días-persona.**
 
 ## 7. Decisiones registradas / "rationale"
 
 ### 7.1 No usamos Hibernate Envers
-- El sistema ya tiene `PuestoVersion` con snapshot JSON. Envers sería más completo (auto-historial de TODOS los campos sin código) pero el refactor de migraciones + reentrenamiento del equipo no justifica el costo para v1. Reconsiderar en v3.
+- El sistema ya tiene `PuestoVersion` con snapshot JSON. Envers sería más completo pero el refactor de migraciones + reentrenamiento no justifica el costo para v1.
 
-### 7.2 `@MappedSuperclass` para catálogos (CatalogoBaseEntity)
-- Decidido para evitar 1700 LOC duplicados entre 13 catálogos casi idénticos. El proyecto histórico no usa `@MappedSuperclass`; esta es la primera. Si genera fricción (problemas con MapStruct, herencia, etc.), considerar volver a clases concretas con copy/paste explícito.
+### 7.2 `@MappedSuperclass CatalogoBaseEntity` para los 13 catálogos
+- Decidido para evitar ~1700 LOC duplicados. Primera vez que el proyecto usa `@MappedSuperclass`. Si genera fricción, volver a clases concretas.
 
-### 7.3 Snapshot del PuestoVersion = PuestoResponseDTO serializado
-- Antes el snapshot era un `Map<String, Object>` hand-rolled. Cambié a `objectMapper.writeValueAsString(responseAssembler.assemble(puesto))` para tener una sola fuente de verdad: lo que muestra el detail page = lo que se snapshotea. Trade-off: cualquier nuevo campo de `PuestoResponseDTO` entra al snapshot automáticamente, lo cual también significa que **agregar campos sensibles al DTO los persiste en snapshots históricos**. Revisar antes de exponer salarios detallados, datos personales, etc.
+### 7.3 Snapshot de `PuestoVersion` = `PuestoResponseDTO` serializado
+- Una sola fuente de verdad: lo que muestra el detail page = lo que se snapshotea. Trade-off: cualquier campo nuevo del DTO entra al snapshot automáticamente, lo cual significa que agregar campos sensibles (salarios detallados, datos personales) los persiste en snapshots históricos. **Revisar antes de exponer datos sensibles en el DTO.**
 
-### 7.4 `Puesto.departamento` String coexiste con `departamentoRef` FK
-- Estricto por compat: 6+ consumers (queries, dashboard, filtros del front) leen el String. Cutover en una fase separada — ver 1.3.
+### 7.4 `Puesto.departamento` (String) coexiste con `departamentoRef` (FK)
+- Compat: 6+ consumers leen el String. Cutover en fase separada — ver 1.3.
 
 ### 7.5 Catálogos sin paginación
-- Asumimos < 100 items por catálogo por empresa. Si una empresa carga 500+ riesgos, la página se vuelve lenta. Bajo prio.
+- Asumimos < 100 items por catálogo por empresa. Si una empresa carga 500+ riesgos, la página se vuelve lenta.
 
-### 7.6 Resolución de FK no permite "limpiar" (set null) sin re-modelado
-- `PuestoFkResolver.applyCatalogoFks` ignora valores null (no toca la FK). Si el usuario quiere quitar el área de un puesto, no hay forma desde el DTO actual. Solución: usar `Optional<Long>` o un patrón de sentinela explícito. No urgente — el patrón en el sistema es "una vez asignado, siempre asignado".
+### 7.6 `PuestoFkResolver` no permite "limpiar" FKs (set null)
+- Ignora valores null para no pisar la FK. Si el usuario quiere desasignar el área de un puesto, no hay forma desde el DTO actual. Solución futura: patrón de sentinela explícito (`Optional<Long>` o `JsonNullable<Long>`). No urgente.
 
 ### 7.7 Bulk replace = "null no toca / array reemplaza"
-- Es la convención de `syncObjetivos`, `syncCompetencias`, etc. Documentar en el contrato del UpdatePuestoDTO (en el TSDoc del front ya está; agregar también al JavaDoc del back).
+- Convención de `PuestoChildSyncer.sync*`. Documentado en el TSDoc del front y JavaDoc del back.
+
+### 7.8 Departamentos del Sidebar
+- El item "Catálogos RRHH" lo metí en la sección Admin. Si los usuarios RRHH no ven Admin, hay que mover o duplicar el ítem.
 
 ## 8. Quality issues conocidos
 
-- [ ] **No corrí `./mvnw compile` ni `pnpm tsc --noEmit`** — la única validación fue lectura cruzada. Probable que haya 5-15 errores menores (import faltante, signature mismatch). Ningún error de diseño esperado.
-- [ ] **Lombok `@AllArgsConstructor` removido** de algunas entidades de catálogo por un linter del usuario (UnidadNegocio, Area, Epp, TipoFormacion). Es inofensivo pero deja inconsistente: las demás entidades tienen el constructor. Considerar pasar de `@AllArgsConstructor` (que es boilerplate inútil con `@Setter`) a sólo `@NoArgsConstructor` en todos los catálogos.
-- [ ] **DDL del importer no committeado.** El archivo `V20260516_01__seed_manual_puestos.sql` que se generó en una pasada anterior **no está en el repo** — se perdió en compaction del contexto. Hay que regenerarlo cuando arranquemos F2.
+- [ ] **Lombok `@AllArgsConstructor` removido** de algunas entidades de catálogo por un linter (UnidadNegocio, Area, Epp, TipoFormacion). Inocuo pero deja inconsistente. Considerar pasar todos a sólo `@NoArgsConstructor`.
+- [x] ~~DDL del importer no committeado~~ — Se reemplazó por el seed universal `sql/seed_catalogos_rrhh.sql`.
+- [ ] **PuestoDetailPage usa `@ts-nocheck`** desde antes — ver 2.5.
 
 ## 9. Convenciones a propagar
 
 - **Multi-tenant en todo lo nuevo**: `empresa_id NOT NULL` + `@EntityListeners(TenantEntityListener.class)` + `implements TenantAware` + queries explícitas con `findByEmpresaId`.
 - **Soft delete**: `activo BOOLEAN`. Nunca borrar físicamente.
 - **Códigos únicos por empresa**: `UNIQUE (empresa_id, codigo)` en todos los catálogos. El front impone que el código es inmutable (input disabled en edit).
-- **Patron sync = clear + repopulate** aprovecha `orphanRemoval=true` en `Puesto.{objetivos|...}`. Si se replica en otra entidad, agregar `orphanRemoval` y `cascade=ALL` o no va a funcionar.
-- **DTOs con id+nombre para FKs**: evita lookups en el front. Lo hace `PuestoResponseAssembler`; mantenerlo si se agrega más front.
+- **Patron sync = clear + repopulate** aprovecha `orphanRemoval=true` en `Puesto.{objetivos|...}`. Si se replica en otra entidad, agregar `orphanRemoval` y `cascade=ALL`.
+- **DTOs con id+nombre para FKs**: lo hace `PuestoResponseAssembler`; mantener si se agrega más front.
 
 ## 10. Quick wins post-merge
 
-1. Correr `./mvnw compile` y arreglar lo que aparezca (5-30 min).
-2. Si la DB es nueva, popular catálogos manualmente vía la UI (Áreas, Departamentos, Sectores, etc.) — toma ~15 min.
-3. Cargar 1 puesto de prueba con todos los campos para validar create/update end-to-end.
-4. Hacer `git commit` separando F0 backend, F0 frontend, F1 backend, F1 frontend para que el log quede legible.
+1. Correr `sql/seed_catalogos_rrhh.sql` en el VPS.
+2. Loguearse, ir a `/admin/catalogos-rrhh`, validar que los 13 tabs muestran los items sembrados.
+3. Crear 1 puesto de prueba usando los catálogos (Área = "Producción", Banda = "D-2", Nivel Jerárquico = "Supervisión", etc.). Verificar que:
+   - Las FKs encadenadas filtran (al elegir Área se filtran Departamentos, etc.).
+   - El detail page muestra correctamente todo en el tab "Manual".
+   - El PDF se descarga (aunque le falten secciones).
+4. Hacer `git commit` separando F0 backend / F0 frontend / F1 backend / F1 frontend / Seed + Deuda técnica para que el log quede legible.
+5. Si todo OK, conseguir el `.xlsm` actualizado y arrancar el importer (F2).
