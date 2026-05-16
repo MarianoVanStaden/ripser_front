@@ -23,7 +23,7 @@ import {
   Email as EmailIcon,
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
-import type { ContactoCliente, CreateContactoClienteRequest, TipoContacto } from '../../types';
+import type { ContactoCliente, CreateContactoClienteRequest, TipoContactoPuesto } from '../../types';
 import { contactoClienteApiWithFallback as contactoClienteApi } from '../../api/services/apiWithFallback';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -160,7 +160,7 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
     }
   };
 
-  const getTipoIcon = (tipo: TipoContacto) => {
+  const getTipoIcon = (tipo: TipoContactoPuesto) => {
     switch (tipo) {
       case 'LLAMADA':
         return <PhoneIcon />;
@@ -173,7 +173,7 @@ const ContactosTab: React.FC<ContactosTabProps> = ({ clienteId }) => {
     }
   };
 
-  const getTipoColor = (tipo: TipoContacto) => {
+  const getTipoColor = (tipo: TipoContactoPuesto) => {
     switch (tipo) {
       case 'LLAMADA':
         return 'primary';

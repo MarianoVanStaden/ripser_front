@@ -123,7 +123,7 @@ export interface PuestoListDTO {
 
 // ===== Manual de Puestos: tipos auxiliares =====
 export type TipoResponsabilidad = 'RESPONSABILIDAD' | 'AUTORIDAD';
-export type TipoContacto = 'INTERNO' | 'EXTERNO';
+export type TipoContactoPuesto = 'INTERNO' | 'EXTERNO';
 
 export interface ObjetivoPuestoDTO {
   id?: number;
@@ -156,7 +156,7 @@ export interface ConocimientoPuestoDTO {
 
 export interface ContactoPuestoDTO {
   id?: number;
-  tipo: TipoContacto;
+  tipo: TipoContactoPuesto;
   descripcion: string;
   orden?: number;
   activo?: boolean;
