@@ -42,6 +42,7 @@ const TransporteDashboard = lazy(() => import('./pages/transporte/TransporteDash
 const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
 const RolesPage = lazy(() => import('./components/Admin/RolesPage'));
 const ColoresPage = lazy(() => import('./components/Admin/ColoresPage'));
+const CatalogosRRHHPage = lazy(() => import('./components/Admin/CatalogosRRHH/CatalogosRRHHPage'));
 const MedidasPage = lazy(() => import('./components/Admin/MedidasPage'));
 const EspecificacionesTecnicasPage = lazy(() => import('./components/Admin/EspecificacionesTecnicasPage'));
 const SettingsPage = lazy(() => import('./components/Admin/SettingsPage'));
@@ -238,6 +239,7 @@ function App() {
                   <Route path="admin/users" element={priv(<UsersPage />)} />
                   <Route path="admin/roles" element={priv(<RolesPage />)} />
                   <Route path="admin/colores" element={priv(<ColoresPage />)} />
+                  <Route path="admin/catalogos-rrhh" element={priv(<CatalogosRRHHPage />)} />
                   <Route path="admin/medidas" element={priv(<MedidasPage />)} />
                   <Route path="admin/especificaciones-tecnicas" element={priv(<EspecificacionesTecnicasPage />)} />
                   <Route path="admin/settings" element={priv(<SettingsPage />)} />

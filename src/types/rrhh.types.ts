@@ -121,10 +121,89 @@ export interface PuestoListDTO {
   cantidadTareas: number;
 }
 
+// ===== Manual de Puestos: tipos auxiliares =====
+export type TipoResponsabilidad = 'RESPONSABILIDAD' | 'AUTORIDAD';
+export type TipoContacto = 'INTERNO' | 'EXTERNO';
+
+export interface ObjetivoPuestoDTO {
+  id?: number;
+  descripcion: string;
+  orden?: number;
+  activo?: boolean;
+}
+
+export interface ResponsabilidadPuestoDTO {
+  id?: number;
+  tipo: TipoResponsabilidad;
+  descripcion: string;
+  orden?: number;
+  activo?: boolean;
+}
+
+export interface HabilidadPuestoDTO {
+  id?: number;
+  descripcion: string;
+  orden?: number;
+  activo?: boolean;
+}
+
+export interface ConocimientoPuestoDTO {
+  id?: number;
+  descripcion: string;
+  orden?: number;
+  activo?: boolean;
+}
+
+export interface ContactoPuestoDTO {
+  id?: number;
+  tipo: TipoContacto;
+  descripcion: string;
+  orden?: number;
+  activo?: boolean;
+}
+
+export interface PuestoCompetenciaDTO {
+  id?: number;
+  competenciaId: number;
+  competenciaNombre?: string;
+  competenciaTipo?: string;
+  nivelRequerido?: number;
+  observaciones?: string;
+}
+
+export interface PuestoRiesgoDTO {
+  id?: number;
+  riesgoId: number;
+  riesgoNombre?: string;
+  nivelSeveridad?: string;
+  observaciones?: string;
+}
+
+export interface PuestoEppDTO {
+  id?: number;
+  eppId: number;
+  eppNombre?: string;
+  obligatorio?: boolean;
+}
+
+export interface PuestoReemplazoDTO {
+  id?: number;
+  puestoRelacionadoId: number;
+  puestoRelacionadoNombre?: string;
+}
+
+export interface PuestoReferenciaDTO {
+  id: number;
+  nombre: string;
+}
+
+// ===== Puesto extendido =====
 export interface PuestoResponseDTO {
+  // Identificación básica
   id: number;
   nombre: string;
   descripcion?: string;
+  /** Texto libre legacy. Preferir `departamentoId`. */
   departamento?: string;
   salarioBase: number;
   version: number;
@@ -134,7 +213,56 @@ export interface PuestoResponseDTO {
   fechaCreacion?: string;
   fechaActualizacion?: string;
   cantidadEmpleados: number;
+
+  // Manual de Puestos
+  mision?: string;
+  ciuo?: string;
+  volumenDotacion?: number;
+  fechaRevision?: string;
+  observacionesRequisitos?: string;
+
+  // FKs (id + nombre)
+  unidadNegocioId?: number;
+  unidadNegocioNombre?: string;
+  lugarTrabajoId?: number;
+  lugarTrabajoNombre?: string;
+  areaId?: number;
+  areaNombre?: string;
+  departamentoId?: number;
+  departamentoNombre?: string;
+  sectorId?: number;
+  sectorNombre?: string;
+  bandaJerarquicaId?: number;
+  bandaJerarquicaCodigo?: string;
+  bandaJerarquicaNombre?: string;
+  nivelJerarquicoId?: number;
+  nivelJerarquicoNombre?: string;
+  nivelEducacionId?: number;
+  nivelEducacionNombre?: string;
+  tipoFormacionId?: number;
+  tipoFormacionNombre?: string;
+  nivelExperienciaId?: number;
+  nivelExperienciaNombre?: string;
+
+  // Jerarquía
+  reportaAPuestoId?: number;
+  reportaAPuestoNombre?: string;
+  supervisaA?: PuestoReferenciaDTO[];
+
+  // Listas estructuradas
   tareas: TareaPuestoDTO[];
+  objetivos?: ObjetivoPuestoDTO[];
+  responsabilidades?: ResponsabilidadPuestoDTO[];
+  habilidades?: HabilidadPuestoDTO[];
+  conocimientos?: ConocimientoPuestoDTO[];
+  contactos?: ContactoPuestoDTO[];
+
+  // M:N
+  competencias?: PuestoCompetenciaDTO[];
+  riesgos?: PuestoRiesgoDTO[];
+  epps?: PuestoEppDTO[];
+  reemplaza?: PuestoReemplazoDTO[];
+  reemplazadoPor?: PuestoReemplazoDTO[];
 }
 
 export interface CreatePuestoDTO {
@@ -144,8 +272,46 @@ export interface CreatePuestoDTO {
   salarioBase?: number;
   requisitos?: string;
   objetivoGeneral?: string;
+
+  // Manual
+  mision?: string;
+  ciuo?: string;
+  volumenDotacion?: number;
+  fechaRevision?: string;
+  observacionesRequisitos?: string;
+
+  // FKs
+  unidadNegocioId?: number;
+  lugarTrabajoId?: number;
+  areaId?: number;
+  departamentoId?: number;
+  sectorId?: number;
+  bandaJerarquicaId?: number;
+  nivelJerarquicoId?: number;
+  nivelEducacionId?: number;
+  tipoFormacionId?: number;
+  nivelExperienciaId?: number;
+  reportaAPuestoId?: number;
+
+  // Listas
+  tareas?: CreateTareaPuestoDTO[];
+  objetivos?: ObjetivoPuestoDTO[];
+  responsabilidades?: ResponsabilidadPuestoDTO[];
+  habilidades?: HabilidadPuestoDTO[];
+  conocimientos?: ConocimientoPuestoDTO[];
+  contactos?: ContactoPuestoDTO[];
+
+  // M:N
+  competencias?: PuestoCompetenciaDTO[];
+  riesgos?: PuestoRiesgoDTO[];
+  epps?: PuestoEppDTO[];
+  reemplazaPuestoIds?: number[];
 }
 
+/**
+ * Update: las listas con valor `undefined` se ignoran; con un array (incluso
+ * vacío) reemplazan por completo el contenido en el backend.
+ */
 export interface UpdatePuestoDTO {
   nombre?: string;
   descripcion?: string;
@@ -153,6 +319,37 @@ export interface UpdatePuestoDTO {
   salarioBase?: number;
   requisitos?: string;
   objetivoGeneral?: string;
+  activo?: boolean;
+
+  mision?: string;
+  ciuo?: string;
+  volumenDotacion?: number;
+  fechaRevision?: string;
+  observacionesRequisitos?: string;
+
+  unidadNegocioId?: number;
+  lugarTrabajoId?: number;
+  areaId?: number;
+  departamentoId?: number;
+  sectorId?: number;
+  bandaJerarquicaId?: number;
+  nivelJerarquicoId?: number;
+  nivelEducacionId?: number;
+  tipoFormacionId?: number;
+  nivelExperienciaId?: number;
+  reportaAPuestoId?: number;
+
+  objetivos?: ObjetivoPuestoDTO[];
+  responsabilidades?: ResponsabilidadPuestoDTO[];
+  habilidades?: HabilidadPuestoDTO[];
+  conocimientos?: ConocimientoPuestoDTO[];
+  contactos?: ContactoPuestoDTO[];
+
+  competencias?: PuestoCompetenciaDTO[];
+  riesgos?: PuestoRiesgoDTO[];
+  epps?: PuestoEppDTO[];
+  reemplazaPuestoIds?: number[];
+
   motivoCambio?: string;
 }
 

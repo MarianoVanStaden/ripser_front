@@ -131,7 +131,8 @@ const PuestoDetailPage: React.FC = () => {
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
-    if (newValue === 1 && versiones.length === 0) {
+    // Lazy-load versiones cuando se abre la pestaña (ahora index 2)
+    if (newValue === 2 && versiones.length === 0) {
       loadVersiones();
     }
   };
@@ -287,9 +288,32 @@ const PuestoDetailPage: React.FC = () => {
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="textSecondary">Área</Typography>
+              <Typography variant="body1" fontWeight="600">
+                {puesto.areaNombre || puesto.departamento || 'Sin asignar'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
               <Typography variant="caption" color="textSecondary">Departamento</Typography>
               <Typography variant="body1" fontWeight="600">
-                {puesto.departamento || 'Sin asignar'}
+                {puesto.departamentoNombre || puesto.departamento || 'Sin asignar'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="textSecondary">Sector</Typography>
+              <Typography variant="body1" fontWeight="600">{puesto.sectorNombre || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="textSecondary">Banda / Nivel</Typography>
+              <Typography variant="body1" fontWeight="600">
+                {puesto.bandaJerarquicaCodigo ? `${puesto.bandaJerarquicaCodigo} · ` : ''}
+                {puesto.nivelJerarquicoNombre || '—'}
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="textSecondary">Reporta a</Typography>
+              <Typography variant="body1" fontWeight="600">
+                {puesto.reportaAPuestoNombre || '—'}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -303,9 +327,21 @@ const PuestoDetailPage: React.FC = () => {
               <Typography variant="body1" fontWeight="600">{puesto.cantidadEmpleados}</Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="caption" color="textSecondary">Tareas</Typography>
-              <Typography variant="body1" fontWeight="600">{puesto.tareas?.length || 0}</Typography>
+              <Typography variant="caption" color="textSecondary">Volumen dotación / CIUO</Typography>
+              <Typography variant="body1" fontWeight="600">
+                {puesto.volumenDotacion ?? '—'}
+                {puesto.ciuo ? ` · CIUO ${puesto.ciuo}` : ''}
+              </Typography>
             </Grid>
+            {puesto.mision && (
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="caption" color="textSecondary">Misión</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mt: 0.5, fontStyle: 'italic' }}>
+                  {puesto.mision}
+                </Typography>
+              </Grid>
+            )}
             {puesto.descripcion && (
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />
@@ -338,12 +374,319 @@ const PuestoDetailPage: React.FC = () => {
       {/* Tabs */}
       <Card>
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+          <Tab icon={<WorkIcon />} iconPosition="start" label="Manual" />
           <Tab icon={<AssignmentIcon />} iconPosition="start" label={`Tareas (${puesto.tareas?.length || 0})`} />
           <Tab icon={<HistoryIcon />} iconPosition="start" label="Versiones" />
         </Tabs>
 
-        {/* Tab 0: Tareas */}
+        {/* Tab 0: Manual de Puestos — secciones del Excel */}
         <TabPanel value={tabValue} index={0}>
+          <Box px={2} pb={2}>
+            {(!puesto.objetivos?.length
+              && !puesto.responsabilidades?.length
+              && !puesto.habilidades?.length
+              && !puesto.conocimientos?.length
+              && !puesto.contactos?.length
+              && !puesto.competencias?.length
+              && !puesto.riesgos?.length
+              && !puesto.epps?.length
+              && !puesto.reemplaza?.length
+              && !puesto.nivelEducacionNombre
+              && !puesto.tipoFormacionNombre
+              && !puesto.nivelExperienciaNombre
+              && !puesto.observacionesRequisitos
+              && !puesto.fechaRevision
+            ) && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Aún no se cargaron las secciones del Manual. Editá el puesto para completarlas.
+              </Alert>
+            )}
+
+            {/* Objetivos específicos */}
+            {!!puesto.objetivos?.length && (
+              <Accordion defaultExpanded>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>Objetivos específicos ({puesto.objetivos.length})</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <ol style={{ marginTop: 0 }}>
+                    {puesto.objetivos.map((o) => (
+                      <li key={o.id ?? Math.random()}>
+                        <Typography variant="body2">{o.descripcion}</Typography>
+                      </li>
+                    ))}
+                  </ol>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Responsabilidad y Autoridad */}
+            {!!puesto.responsabilidades?.length && (
+              <Accordion defaultExpanded={false}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>Responsabilidad y Autoridad ({puesto.responsabilidades.length})</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  {['RESPONSABILIDAD', 'AUTORIDAD'].map((t) => {
+                    const items = puesto.responsabilidades!.filter((r) => r.tipo === t);
+                    if (!items.length) return null;
+                    return (
+                      <Box key={t} sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {t === 'RESPONSABILIDAD' ? 'Responsabilidades' : 'Autoridades'}
+                        </Typography>
+                        <ul>
+                          {items.map((r) => (
+                            <li key={r.id ?? Math.random()}>
+                              <Typography variant="body2">{r.descripcion}</Typography>
+                            </li>
+                          ))}
+                        </ul>
+                      </Box>
+                    );
+                  })}
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Competencias */}
+            {!!puesto.competencias?.length && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>Competencias ({puesto.competencias.length})</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Competencia</TableCell>
+                          <TableCell>Tipo</TableCell>
+                          <TableCell align="center">Nivel requerido</TableCell>
+                          <TableCell>Observaciones</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {puesto.competencias.map((c) => (
+                          <TableRow key={c.id ?? c.competenciaId}>
+                            <TableCell>{c.competenciaNombre}</TableCell>
+                            <TableCell><Chip size="small" label={c.competenciaTipo} /></TableCell>
+                            <TableCell align="center">
+                              <Chip size="small" color="primary" label={`Nivel ${c.nivelRequerido ?? '—'}`} />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {c.observaciones ?? '—'}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Habilidades y Conocimientos */}
+            {(!!puesto.habilidades?.length || !!puesto.conocimientos?.length) && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>
+                    Habilidades ({puesto.habilidades?.length ?? 0}) y Conocimientos ({puesto.conocimientos?.length ?? 0})
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Habilidades</Typography>
+                      {puesto.habilidades?.length ? (
+                        <ul>
+                          {puesto.habilidades.map((h) => (
+                            <li key={h.id ?? Math.random()}>
+                              <Typography variant="body2">{h.descripcion}</Typography>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <Typography variant="body2" color="text.secondary">—</Typography>}
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Conocimientos</Typography>
+                      {puesto.conocimientos?.length ? (
+                        <ul>
+                          {puesto.conocimientos.map((c) => (
+                            <li key={c.id ?? Math.random()}>
+                              <Typography variant="body2">{c.descripcion}</Typography>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <Typography variant="body2" color="text.secondary">—</Typography>}
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Interacción Social */}
+            {!!puesto.contactos?.length && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>Interacción Social ({puesto.contactos.length})</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  {['INTERNO', 'EXTERNO'].map((t) => {
+                    const items = puesto.contactos!.filter((c) => c.tipo === t);
+                    if (!items.length) return null;
+                    return (
+                      <Box key={t} sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {t === 'INTERNO' ? 'Contactos internos' : 'Contactos externos'}
+                        </Typography>
+                        <ul>
+                          {items.map((c) => (
+                            <li key={c.id ?? Math.random()}>
+                              <Typography variant="body2">{c.descripcion}</Typography>
+                            </li>
+                          ))}
+                        </ul>
+                      </Box>
+                    );
+                  })}
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Riesgos y EPP */}
+            {(!!puesto.riesgos?.length || !!puesto.epps?.length) && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>
+                    Riesgos ({puesto.riesgos?.length ?? 0}) y EPP ({puesto.epps?.length ?? 0})
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Riesgos</Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                        {puesto.riesgos?.map((r) => (
+                          <Chip
+                            key={r.id ?? r.riesgoId}
+                            label={`${r.riesgoNombre}${r.nivelSeveridad ? ` · ${r.nivelSeveridad}` : ''}`}
+                            color={
+                              r.nivelSeveridad === 'CRITICO' ? 'error'
+                              : r.nivelSeveridad === 'ALTO' ? 'warning'
+                              : 'default'
+                            }
+                            size="small"
+                          />
+                        ))}
+                        {!puesto.riesgos?.length && <Typography variant="body2" color="text.secondary">—</Typography>}
+                      </Stack>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle2" color="text.secondary">EPP</Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                        {puesto.epps?.map((e) => (
+                          <Chip
+                            key={e.id ?? e.eppId}
+                            label={`${e.eppNombre}${e.obligatorio ? ' (obligatorio)' : ''}`}
+                            variant={e.obligatorio ? 'filled' : 'outlined'}
+                            size="small"
+                          />
+                        ))}
+                        {!puesto.epps?.length && <Typography variant="body2" color="text.secondary">—</Typography>}
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Requerimientos */}
+            {(puesto.nivelEducacionNombre
+              || puesto.tipoFormacionNombre
+              || puesto.nivelExperienciaNombre
+              || puesto.observacionesRequisitos
+            ) && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>Requerimientos</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="textSecondary">Nivel de Educación</Typography>
+                      <Typography variant="body2">{puesto.nivelEducacionNombre ?? '—'}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="textSecondary">Tipo de Formación</Typography>
+                      <Typography variant="body2">{puesto.tipoFormacionNombre ?? '—'}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Typography variant="caption" color="textSecondary">Nivel de Experiencia</Typography>
+                      <Typography variant="body2">{puesto.nivelExperienciaNombre ?? '—'}</Typography>
+                    </Grid>
+                    {puesto.observacionesRequisitos && (
+                      <Grid item xs={12}>
+                        <Typography variant="caption" color="textSecondary">Observaciones</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                          {puesto.observacionesRequisitos}
+                        </Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Reemplazos */}
+            {(!!puesto.reemplaza?.length || !!puesto.reemplazadoPor?.length) && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography fontWeight={600}>
+                    Reemplazos · reemplaza a {puesto.reemplaza?.length ?? 0} · reemplazado por {puesto.reemplazadoPor?.length ?? 0}
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Reemplaza a</Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                        {puesto.reemplaza?.map((r) => (
+                          <Chip key={r.id ?? r.puestoRelacionadoId} label={r.puestoRelacionadoNombre} size="small" />
+                        ))}
+                        {!puesto.reemplaza?.length && <Typography variant="body2" color="text.secondary">—</Typography>}
+                      </Stack>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Reemplazado por</Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                        {puesto.reemplazadoPor?.map((r) => (
+                          <Chip key={r.id ?? r.puestoRelacionadoId} label={r.puestoRelacionadoNombre} size="small" />
+                        ))}
+                        {!puesto.reemplazadoPor?.length && <Typography variant="body2" color="text.secondary">—</Typography>}
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Revisión */}
+            {puesto.fechaRevision && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" color="textSecondary">Última revisión: </Typography>
+                <Typography component="span" variant="body2">
+                  {dayjs(puesto.fechaRevision).format('DD/MM/YYYY')}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Tab 1: Tareas */}
+        <TabPanel value={tabValue} index={1}>
           <Box px={2} pb={2}>
             {canWrite && (
               <Box display="flex" justifyContent="flex-end" mb={2}>
@@ -471,8 +814,8 @@ const PuestoDetailPage: React.FC = () => {
           </Box>
         </TabPanel>
 
-        {/* Tab 1: Versiones */}
-        <TabPanel value={tabValue} index={1}>
+        {/* Tab 2: Versiones */}
+        <TabPanel value={tabValue} index={2}>
           <Box px={2} pb={2}>
             {versiones.length === 0 ? (
               <Alert severity="info">No hay versiones registradas.</Alert>

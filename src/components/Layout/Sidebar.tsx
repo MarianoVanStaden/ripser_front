@@ -237,6 +237,7 @@ const navigation: NavigationSection[] = [
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
       { text: 'Colores', icon: <SettingsIcon />, path: '/admin/colores' },
+      { text: 'Catálogos RRHH', icon: <SettingsIcon />, path: '/admin/catalogos-rrhh' },
       { text: 'Medidas', icon: <SettingsIcon />, path: '/admin/medidas' },
       { text: 'Fichas técnicas', icon: <SettingsIcon />, path: '/admin/especificaciones-tecnicas' },
       { text: 'Importador de Precios', icon: <SettingsIcon />, path: '/admin/importador-precios' },
