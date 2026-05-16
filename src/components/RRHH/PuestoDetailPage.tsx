@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -10,7 +8,7 @@ import {
   Alert,
   IconButton,
   Tooltip,
-  Grid,
+  Grid2 as Grid,
   Chip,
   Tabs,
   Tab,
@@ -287,46 +285,46 @@ const PuestoDetailPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Área</Typography>
               <Typography variant="body1" fontWeight="600">
                 {puesto.areaNombre || puesto.departamento || 'Sin asignar'}
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Departamento</Typography>
               <Typography variant="body1" fontWeight="600">
                 {puesto.departamentoNombre || puesto.departamento || 'Sin asignar'}
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Sector</Typography>
               <Typography variant="body1" fontWeight="600">{puesto.sectorNombre || '—'}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Banda / Nivel</Typography>
               <Typography variant="body1" fontWeight="600">
                 {puesto.bandaJerarquicaCodigo ? `${puesto.bandaJerarquicaCodigo} · ` : ''}
                 {puesto.nivelJerarquicoNombre || '—'}
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Reporta a</Typography>
               <Typography variant="body1" fontWeight="600">
                 {puesto.reportaAPuestoNombre || '—'}
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Salario Base</Typography>
               <Typography variant="body1" fontWeight="600" color="success.main">
                 {formatPrice(puesto.salarioBase || 0)}
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Empleados</Typography>
               <Typography variant="body1" fontWeight="600">{puesto.cantidadEmpleados}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Typography variant="caption" color="textSecondary">Volumen dotación / CIUO</Typography>
               <Typography variant="body1" fontWeight="600">
                 {puesto.volumenDotacion ?? '—'}
@@ -334,7 +332,7 @@ const PuestoDetailPage: React.FC = () => {
               </Typography>
             </Grid>
             {puesto.mision && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="caption" color="textSecondary">Misión</Typography>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mt: 0.5, fontStyle: 'italic' }}>
@@ -343,7 +341,7 @@ const PuestoDetailPage: React.FC = () => {
               </Grid>
             )}
             {puesto.descripcion && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="caption" color="textSecondary">Descripción</Typography>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mt: 0.5 }}>
@@ -352,7 +350,7 @@ const PuestoDetailPage: React.FC = () => {
               </Grid>
             )}
             {puesto.objetivoGeneral && (
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="textSecondary">Objetivo General</Typography>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mt: 0.5 }}>
                   {puesto.objetivoGeneral}
@@ -360,7 +358,7 @@ const PuestoDetailPage: React.FC = () => {
               </Grid>
             )}
             {puesto.requisitos && (
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="caption" color="textSecondary">Requisitos</Typography>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mt: 0.5 }}>
                   {puesto.requisitos}
@@ -498,7 +496,7 @@ const PuestoDetailPage: React.FC = () => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="subtitle2" color="text.secondary">Habilidades</Typography>
                       {puesto.habilidades?.length ? (
                         <ul>
@@ -510,7 +508,7 @@ const PuestoDetailPage: React.FC = () => {
                         </ul>
                       ) : <Typography variant="body2" color="text.secondary">—</Typography>}
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="subtitle2" color="text.secondary">Conocimientos</Typography>
                       {puesto.conocimientos?.length ? (
                         <ul>
@@ -566,7 +564,7 @@ const PuestoDetailPage: React.FC = () => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="subtitle2" color="text.secondary">Riesgos</Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
                         {puesto.riesgos?.map((r) => (
@@ -584,7 +582,7 @@ const PuestoDetailPage: React.FC = () => {
                         {!puesto.riesgos?.length && <Typography variant="body2" color="text.secondary">—</Typography>}
                       </Stack>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="subtitle2" color="text.secondary">EPP</Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
                         {puesto.epps?.map((e) => (
@@ -615,20 +613,20 @@ const PuestoDetailPage: React.FC = () => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                       <Typography variant="caption" color="textSecondary">Nivel de Educación</Typography>
                       <Typography variant="body2">{puesto.nivelEducacionNombre ?? '—'}</Typography>
                     </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                       <Typography variant="caption" color="textSecondary">Tipo de Formación</Typography>
                       <Typography variant="body2">{puesto.tipoFormacionNombre ?? '—'}</Typography>
                     </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                       <Typography variant="caption" color="textSecondary">Nivel de Experiencia</Typography>
                       <Typography variant="body2">{puesto.nivelExperienciaNombre ?? '—'}</Typography>
                     </Grid>
                     {puesto.observacionesRequisitos && (
-                      <Grid item xs={12}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="caption" color="textSecondary">Observaciones</Typography>
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
                           {puesto.observacionesRequisitos}
@@ -650,7 +648,7 @@ const PuestoDetailPage: React.FC = () => {
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="subtitle2" color="text.secondary">Reemplaza a</Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
                         {puesto.reemplaza?.map((r) => (
@@ -659,7 +657,7 @@ const PuestoDetailPage: React.FC = () => {
                         {!puesto.reemplaza?.length && <Typography variant="body2" color="text.secondary">—</Typography>}
                       </Stack>
                     </Grid>
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <Typography variant="subtitle2" color="text.secondary">Reemplazado por</Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
                         {puesto.reemplazadoPor?.map((r) => (

@@ -9,9 +9,9 @@
 |---|---|
 | Backend F0 — Catálogos (13) | ✅ Compila en VPS |
 | Backend F1 — Manual de Puestos extendido | ✅ Compila en VPS |
-| Frontend F0 — `/admin/catalogos-rrhh` | ✅ `tsc --noEmit` clean |
+| Frontend F0 — `/admin/catalogos-rrhh` | ✅ `tsc --noEmit` clean — deuda 2.2–2.5 resuelta |
 | Frontend F1 — `PuestoFormDialog` (10 tabs) + `PuestoDetailPage` (tab "Manual") | ✅ `tsc --noEmit` clean |
-| Seed universal de catálogos (`sql/seed_catalogos_rrhh.sql`) | ✅ Listo para correr en VPS |
+| Seed universal de catálogos (`sql/seed_catalogos_rrhh.sql`) | ✅ Corrido en VPS — 75 registros verificados |
 | Importer Excel (29 puestos + catálogos específicos de RIPSER) | ⏳ Pendiente |
 | Backend F2-F4 (importer endpoint, empleados, carreras) | ⏳ Pendiente |
 | `PuestoPdfService` con layout Excel | ⏳ Pendiente |
@@ -20,7 +20,7 @@
 
 - [x] **Compilar el backend.** ✅ Listo en VPS.
 - [x] **`tsc --noEmit` en el front.** ✅ Pasa.
-- [ ] **Correr seed universal.** `sql/seed_catalogos_rrhh.sql` contra la DB del VPS (empresa_id=1). Carga ~60 items: 8 áreas genéricas, 5 bandas (D, D-1...D-4), 6 niveles jerárquicos, 5 educación, 5 formación, 6 experiencia, 18 competencias (6 corporativas + 6 jerárquicas + 6 funcionales), 11 riesgos, 10 EPP, 1 unidad de negocio, 1 lugar de trabajo.
+- [x] **Correr seed universal.** ✅ Ejecutado. Conteo verificado: unidades_negocio=1, lugares_trabajo=1, areas=8, bandas_jerarquicas=5, niveles_jerarquicos=6, niveles_educacion=5, tipos_formacion=5, niveles_experiencia=6, competencias=18, riesgos=11, epp=10.
 - [ ] **Smoke E2E navegador.** Login → `/admin/catalogos-rrhh` → ver que cargan los 13 tabs. Después `/rrhh/puestos` → crear puesto usando los catálogos.
 - [ ] **Validar `spring.jpa.hibernate.ddl-auto`.** Si está en `validate`, alinear nombres de constraints/índices con el DDL real. Si está en `update` o `none`, ignorar.
 
@@ -55,17 +55,17 @@
 ### 2.1 Carga de catálogos en `PuestoFormDialog`
 - Al abrir el dialog se hace `Promise.all` de 14 fetches (13 catálogos + lista de puestos). Es aceptable porque las listas son chicas (~6-20 items cada una) pero pega 14 requests en mount. Optimizable con un endpoint backend `GET /api/catalogos/bundle` que devuelva todo en una sola respuesta, o con React Query + cache compartida.
 
-### 2.2 Sidebar para usuarios RRHH
-- El item "Catálogos RRHH" lo agregué bajo la sección Admin. Si el rol `RECURSOS_HUMANOS` no ve la sección Admin, hay que duplicarlo bajo "RRHH > Configuración" o ajustar permisos en `Sidebar.tsx`.
+### 2.2 ~~Sidebar para usuarios RRHH~~ ✅
+- Ítem duplicado en la sección RRHH con `modulo: 'RRHH'`. Path `/admin/catalogos-rrhh` agregado a `rrhhAllowedPaths`. Admins lo ven en ADMINISTRACIÓN; RRHH-only lo ven en RRHH.
 
-### 2.3 Mensaje 409 vs 400 en `CatalogoTablaCRUD`
-- Muestra "Ya existe otro registro con código X" sólo si el back devuelve 409 o un mensaje con "ya existe". Aceptable para MVP pero frágil. Idealmente que el back siempre devuelva 409 para conflictos de unicidad.
+### 2.3 ~~Mensaje 409 vs 400 en `CatalogoTablaCRUD`~~ ✅
+- Detección ampliada y case-insensitive: cubre 409, mensajes "ya existe", "duplicate entry" y "unique constraint". El back idealmente debería retornar 409 siempre, pero el front ya es robusto.
 
-### 2.4 Hack de typing en `CatalogosRRHHPage`
-- Uso un helper `useDummyType()` para forzar al inferidor de TS sobre el genérico de `CatalogoTablaCRUD<LugarTrabajo, ...>`. Es feo. Refactor: imports directos por tab.
+### 2.4 ~~Hack de typing en `CatalogosRRHHPage`~~ ✅
+- Reemplazado por imports directos (`LugarTrabajo`, `Riesgo`, `NivelEducacion`, `NivelExperiencia`, `Sector`). `useDummyType()` eliminado.
 
-### 2.5 `PuestoDetailPage.tsx` tiene `@ts-nocheck`
-- El archivo arranca con `// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue`. Pendiente sacar el nocheck — verificar que mis cambios no rompan cuando se levante esa restricción.
+### 2.5 ~~`PuestoDetailPage.tsx` tiene `@ts-nocheck`~~ ✅
+- Removido `@ts-nocheck`. `Grid item xs/sm/md` migrado a `Grid2 as Grid` con prop `size`. `tsc --noEmit` limpio.
 
 ### 2.6 `puestoApi.getDepartamentos()` y `getByDepartamento()` aún apuntan al String legacy
 - Una vez hecho el cutover backend (1.3), migrar también estos consumers.
@@ -150,7 +150,7 @@
 
 - [ ] **Lombok `@AllArgsConstructor` removido** de algunas entidades de catálogo por un linter (UnidadNegocio, Area, Epp, TipoFormacion). Inocuo pero deja inconsistente. Considerar pasar todos a sólo `@NoArgsConstructor`.
 - [x] ~~DDL del importer no committeado~~ — Se reemplazó por el seed universal `sql/seed_catalogos_rrhh.sql`.
-- [ ] **PuestoDetailPage usa `@ts-nocheck`** desde antes — ver 2.5.
+- [x] ~~**PuestoDetailPage usa `@ts-nocheck`**~~ — Resuelto en 2.5.
 
 ## 9. Convenciones a propagar
 

@@ -159,9 +159,16 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
       await load();
       setOpen(false);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
-      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      if (status === 409 || apiMsg?.includes('ya existe')) {
+      const resp = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
+      const status = resp?.status;
+      const apiMsg = resp?.data?.message ?? '';
+      const msgLower = apiMsg.toLowerCase();
+      const isDuplicate =
+        status === 409 ||
+        msgLower.includes('ya existe') ||
+        msgLower.includes('duplicate entry') ||
+        msgLower.includes('unique constraint');
+      if (isDuplicate) {
         setFormError(`Ya existe otro registro con código '${baseCodigo}'`);
       } else {
         setFormError(apiMsg || 'No se pudo guardar');

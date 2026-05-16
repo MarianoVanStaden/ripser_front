@@ -38,7 +38,12 @@ import type {
   CreateRiesgoPayload,
   CreateSectorPayload,
   Departamento,
+  LugarTrabajo,
+  NivelEducacion,
+  NivelExperiencia,
   NivelJerarquico,
+  Riesgo,
+  Sector,
   TipoCompetencia,
   NivelSeveridad,
 } from '../../../types/catalogos.types';
@@ -99,7 +104,7 @@ export default function CatalogosRRHHPage() {
       )}
 
       {tab === 4 && (
-        <CatalogoTablaCRUD<ReturnType<typeof useDummyType>['lt'], CreateLugarTrabajoPayload>
+        <CatalogoTablaCRUD<LugarTrabajo, CreateLugarTrabajoPayload>
           titulo="Lugar de Trabajo"
           pluralLabel="lugares de trabajo"
           api={lugarTrabajoApi}
@@ -172,7 +177,7 @@ export default function CatalogosRRHHPage() {
       {tab === 7 && <CompetenciasTab />}
 
       {tab === 8 && (
-        <CatalogoTablaCRUD<ReturnType<typeof useDummyType>['ri'], CreateRiesgoPayload>
+        <CatalogoTablaCRUD<Riesgo, CreateRiesgoPayload>
           titulo="Riesgo"
           pluralLabel="riesgos"
           api={riesgoApi}
@@ -203,7 +208,7 @@ export default function CatalogosRRHHPage() {
       )}
 
       {tab === 10 && (
-        <CatalogoTablaCRUD<ReturnType<typeof useDummyType>['ne'], CreateNivelEducacionPayload>
+        <CatalogoTablaCRUD<NivelEducacion, CreateNivelEducacionPayload>
           titulo="Nivel de Educación"
           pluralLabel="niveles de educación"
           api={nivelEducacionApi}
@@ -229,7 +234,7 @@ export default function CatalogosRRHHPage() {
       )}
 
       {tab === 12 && (
-        <CatalogoTablaCRUD<ReturnType<typeof useDummyType>['nx'], CreateNivelExperienciaPayload>
+        <CatalogoTablaCRUD<NivelExperiencia, CreateNivelExperienciaPayload>
           titulo="Nivel de Experiencia"
           pluralLabel="niveles de experiencia"
           api={nivelExperienciaApi}
@@ -296,7 +301,7 @@ function SectoresTab() {
   useEffect(() => { void departamentoApi.list().then(setDepartamentos).catch(() => setDepartamentos([])); }, []);
 
   return (
-    <CatalogoTablaCRUD<ReturnType<typeof useDummyType>['se'], CreateSectorPayload>
+    <CatalogoTablaCRUD<Sector, CreateSectorPayload>
       titulo="Sector"
       pluralLabel="sectores"
       api={sectorApi}
@@ -377,14 +382,3 @@ function CompetenciasTab() {
   );
 }
 
-// Hack: el tipo genérico de los tabs inline está bien inferido, pero
-// TypeScript no expone el alias. Esta función es sólo para el typing.
-function useDummyType() {
-  return {
-    lt: undefined as unknown as import('../../../types/catalogos.types').LugarTrabajo,
-    ri: undefined as unknown as import('../../../types/catalogos.types').Riesgo,
-    ne: undefined as unknown as import('../../../types/catalogos.types').NivelEducacion,
-    nx: undefined as unknown as import('../../../types/catalogos.types').NivelExperiencia,
-    se: undefined as unknown as import('../../../types/catalogos.types').Sector,
-  };
-}

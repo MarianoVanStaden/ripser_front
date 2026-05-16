@@ -131,7 +131,9 @@
       "Bash(/c/Users/santi/Documents/GitHub/ripser_back/mvnw.cmd compile *)",
       "Bash(JAVA_HOME=\"C:/Users/santi/.jdks/openjdk-23\" cd C:/Users/santi/Documents/GitHub/ripser_back)",
       "Bash(JAVA_HOME=\"C:/Users/santi/.jdks/openjdk-23\" \"C:/Users/santi/.jdks/openjdk-23/bin/java\" -version)",
-      "Bash(jobs)"
+      "Bash(jobs)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_back\\\\src\\\\main\\\\java\\\\com\\\\ripser_back\\\\services\\\\impl\")",
+      "Bash(Select-Object Name)"
     ],
     "deny": [],
     "ask": [],
