@@ -28,7 +28,8 @@ export const EstadoLeadEnum = {
   PERDIDO: 'PERDIDO',
   LEAD_DUPLICADO: 'LEAD_DUPLICADO',
   PRECIO_ELEVADO: 'PRECIO_ELEVADO',
-  COMPRA_ANULADA: 'COMPRA_ANULADA'
+  COMPRA_ANULADA: 'COMPRA_ANULADA',
+  POSTERGADO: 'POSTERGADO'
 } as const;
 
 export type EstadoLeadEnum = typeof EstadoLeadEnum[keyof typeof EstadoLeadEnum];
@@ -273,6 +274,7 @@ export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
   LEAD_DUPLICADO: '#94A3B8',  // Gris azulado — descartado sin impacto en KPIs
   PRECIO_ELEVADO: '#F97316',  // Naranja — objeción de precio
   COMPRA_ANULADA: '#DC2626',  // Rojo intenso — caída de última instancia
+  POSTERGADO: '#0EA5E9',      // Celeste — interés vigente, compra diferida
 };
 
 export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
@@ -287,6 +289,7 @@ export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
   LEAD_DUPLICADO: 'Lead Duplicado',
   PRECIO_ELEVADO: 'Rechazó por Precio Elevado',
   COMPRA_ANULADA: 'Compra Anulada',
+  POSTERGADO: 'Postergado',
 };
 
 export const PRIORIDAD_COLORS: Record<PrioridadLeadEnum, string> = {

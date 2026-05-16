@@ -68,6 +68,7 @@ import ConfirmDialog from '../common/ConfirmDialog';
 const availableRoles = [
   { value: 'SUPER_ADMIN' as TipoRol, label: 'Super Administrador', color: '#d32f2f' },
   { value: 'ADMIN' as TipoRol, label: 'Administrador', color: '#c62828' },
+  { value: 'ADMIN_EMPRESA_LIMITADO' as TipoRol, label: 'Administrador (Limitado)', color: '#ef6c00' },
   { value: 'GERENTE_SUCURSAL' as TipoRol, label: 'Gerente de Sucursal', color: '#1976d2' },
   { value: 'VENDEDOR' as TipoRol, label: 'Vendedor', color: '#1565c0' },
   { value: 'TALLER' as TipoRol, label: 'Técnico de Taller', color: '#5d4037' },
@@ -80,6 +81,7 @@ const availableRoles = [
 // System roles available for explicit assignment in the form
 const systemRoleOptions: { value: TipoRol; label: string; description: string; color: string }[] = [
   { value: 'ADMIN', label: 'Administrador', description: 'Acceso completo a todos los módulos', color: '#c62828' },
+  { value: 'ADMIN_EMPRESA_LIMITADO', label: 'Administrador (Limitado)', description: 'Administrador interno: acceso a casi toda la empresa salvo RRHH y configuraciones sensibles (reservadas al dueño)', color: '#ef6c00' },
   { value: 'GERENTE_SUCURSAL', label: 'Gerente de Sucursal', description: 'Gestión completa de una sucursal', color: '#1976d2' },
   { value: 'VENDEDOR', label: 'Vendedor', description: 'Acceso a ventas y clientes', color: '#1565c0' },
   { value: 'TALLER', label: 'Técnico de Taller', description: 'Acceso a taller, garantías y logística', color: '#5d4037' },

@@ -342,6 +342,15 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/rrhh/licencias',
   ];
 
+  // Rutas denegadas para el rol ADMIN_EMPRESA_LIMITADO (denylist):
+  // Tiene acceso casi total como un ADMIN_EMPRESA, pero se le ocultan pantallas
+  // sensibles que sólo debería tocar el dueño (configuración de costos, etc.).
+  // El módulo RRHH ya queda fuera por PERMISOS_POR_ROL — no hace falta listarlo
+  // acá. Agregar pantallas nuevas a esta lista a medida que se restrinjan.
+  const adminEmpresaLimitadoDeniedPaths = [
+    '/taller/configuracion',
+  ];
+
   // Rutas permitidas para el rol TRANSPORTE (allowlist):
   // - VENTAS: solo Registro Ventas.
   // - CLIENTES: Gestión + Carpeta.
@@ -411,6 +420,13 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isRrhhOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('RECURSOS_HUMANOS');
       if (isRrhhOnly) {
         filteredItems = filteredItems.filter(item => rrhhAllowedPaths.includes(item.path));
+      }
+
+      // ADMIN_EMPRESA_LIMITADO: admin "empleado" sin acceso a RRHH (ya filtrado
+      // por módulo) ni a pantallas sensibles puntuales. Denylist específica.
+      const isAdminEmpresaLimitado = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('ADMIN_EMPRESA_LIMITADO');
+      if (isAdminEmpresaLimitado) {
+        filteredItems = filteredItems.filter(item => !adminEmpresaLimitadoDeniedPaths.includes(item.path));
       }
 
       return {

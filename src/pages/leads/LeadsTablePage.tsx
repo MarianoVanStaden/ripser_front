@@ -161,7 +161,8 @@ const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
   EstadoLeadEnum.PERDIDO,
   EstadoLeadEnum.LEAD_DUPLICADO,
   EstadoLeadEnum.PRECIO_ELEVADO,
-  EstadoLeadEnum.COMPRA_ANULADA
+  EstadoLeadEnum.COMPRA_ANULADA,
+  EstadoLeadEnum.POSTERGADO
 ];
 
 // Estados ofrecidos en el selector inline. Excluye CONVERTIDO porque la
@@ -177,7 +178,8 @@ const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
   EstadoLeadEnum.PERDIDO,
   EstadoLeadEnum.LEAD_DUPLICADO,
   EstadoLeadEnum.PRECIO_ELEVADO,
-  EstadoLeadEnum.COMPRA_ANULADA
+  EstadoLeadEnum.COMPRA_ANULADA,
+  EstadoLeadEnum.POSTERGADO
 ];
 
 const PRIORIDADES_DISPONIBLES: PrioridadLeadEnum[] = [

@@ -23,6 +23,18 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     systemRole: 'ADMIN'
   },
   {
+    // Admin empresa "empleado": tiene acceso de admin a la mayoría de los
+    // módulos pero NO ve RRHH, y ciertas pantallas sensibles (ej. configuración
+    // del costo de mano de obra de taller) le quedan ocultas. El dueño usa
+    // ADMIN_EMPRESA; este rol es para administrativos internos.
+    value: 'ADMIN_EMPRESA_LIMITADO',
+    label: 'Administrador de Empresa (Limitado)',
+    description: 'Administrador con acceso a toda la empresa excepto RRHH y configuraciones sensibles',
+    color: '#ef6c00',
+    requiresSucursal: false,
+    systemRole: 'ADMIN_EMPRESA_LIMITADO'
+  },
+  {
     value: 'GERENTE_SUCURSAL',
     label: 'Gerente de Sucursal',
     description: 'Gestiona una sucursal específica',

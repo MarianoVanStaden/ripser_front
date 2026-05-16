@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E5BA8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a4a8c;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2E75B6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E5BA8;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background with gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fafbfc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f0f4f8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="1000" fill="url(#bgGrad)"/>
+
+  <!-- Decorative top bar -->
+  <rect width="1400" height="60" fill="url(#grad1)"/>
+  <text x="700" y="40" font-size="36" font-weight="bold" text-anchor="middle" fill="white" font-family="Segoe UI, Arial">Ysy Empresa - Arquitectura Técnica</text>
+
+  <!-- Layer 1: Frontend -->
+  <g id="frontend-layer" filter="url(#shadow)">
+    <rect x="60" y="90" width="1280" height="160" fill="#E8F4F8" stroke="#2E75B6" stroke-width="2" rx="12"/>
+    <text x="80" y="115" font-size="16" font-weight="bold" fill="#1E5BA8" font-family="Segoe UI">Presentation Layer (Frontend)</text>
+
+    <rect x="90" y="135" width="130" height="90" fill="url(#grad2)" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="155" y="165" font-size="12" font-weight="bold" text-anchor="middle" fill="white">React 19.1</text>
+    <text x="155" y="185" font-size="10" text-anchor="middle" fill="white">TypeScript</text>
+    <text x="155" y="205" font-size="10" text-anchor="middle" fill="white">Vite</text>
+
+    <rect x="250" y="135" width="130" height="90" fill="url(#grad2)" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="315" y="165" font-size="12" font-weight="bold" text-anchor="middle" fill="white">Material-UI</text>
+    <text x="315" y="185" font-size="10" text-anchor="middle" fill="white">React Router</text>
+    <text x="315" y="205" font-size="10" text-anchor="middle" fill="white">React Query</text>
+
+    <rect x="410" y="135" width="130" height="90" fill="url(#grad2)" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="475" y="165" font-size="12" font-weight="bold" text-anchor="middle" fill="white">Módulos</text>
+    <text x="475" y="185" font-size="10" text-anchor="middle" fill="white">CRM, Ventas</text>
+    <text x="475" y="205" font-size="10" text-anchor="middle" fill="white">Stock, Logística</text>
+
+    <rect x="570" y="135" width="130" height="90" fill="url(#grad2)" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="635" y="165" font-size="12" font-weight="bold" text-anchor="middle" fill="white">Exportación</text>
+    <text x="635" y="185" font-size="10" text-anchor="middle" fill="white">PDF, Excel</text>
+    <text x="635" y="205" font-size="10" text-anchor="middle" fill="white">QR, Charts</text>
+
+    <rect x="730" y="135" width="130" height="90" fill="url(#grad2)" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="795" y="165" font-size="12" font-weight="bold" text-anchor="middle" fill="white">Monitoreo</text>
+    <text x="795" y="185" font-size="10" text-anchor="middle" fill="white">Sentry</text>
+    <text x="795" y="205" font-size="10" text-anchor="middle" fill="white">Error Tracking</text>
+
+    <rect x="890" y="135" width="130" height="90" fill="url(#grad2)" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="955" y="165" font-size="12" font-weight="bold" text-anchor="middle" fill="white">Auth</text>
+    <text x="955" y="185" font-size="10" text-anchor="middle" fill="white">JWT Tokens</text>
+    <text x="955" y="205" font-size="10" text-anchor="middle" fill="white">Multi-Tenant</text>
+
+    <rect x="1050" y="135" width="130" height="90" fill="url(#grad2)" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="1115" y="165" font-size="12" font-weight="bold" text-anchor="middle" fill="white">Performance</text>
+    <text x="1115" y="185" font-size="10" text-anchor="middle" fill="white">Caching</text>
+    <text x="1115" y="205" font-size="10" text-anchor="middle" fill="white">Optimization</text>
+  </g>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="250" x2="700" y2="280" stroke="#1E5BA8" stroke-width="3"/>
+  <polygon points="700,295 690,280 710,280" fill="#1E5BA8"/>
+
+  <!-- Layer 2: Backend -->
+  <g id="backend-layer" filter="url(#shadow)">
+    <rect x="60" y="300" width="1280" height="350" fill="#F5F9FC" stroke="#2E75B6" stroke-width="2" rx="12"/>
+    <text x="80" y="325" font-size="16" font-weight="bold" fill="#1E5BA8" font-family="Segoe UI">Application Layer (Backend - Java 21 + Spring Boot)</text>
+
+    <!-- Core Components -->
+    <rect x="90" y="350" width="145" height="85" fill="#FF6B6B" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="162" y="380" font-size="13" font-weight="bold" text-anchor="middle" fill="white">Java 21</text>
+    <text x="162" y="400" font-size="10" text-anchor="middle" fill="white">Spring Boot</text>
+    <text x="162" y="420" font-size="10" text-anchor="middle" fill="white">Virtual Threads</text>
+
+    <rect x="265" y="350" width="145" height="85" fill="#4ECDC4" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="337" y="380" font-size="13" font-weight="bold" text-anchor="middle" fill="white">Controllers</text>
+    <text x="337" y="400" font-size="10" text-anchor="middle" fill="white">104 REST APIs</text>
+    <text x="337" y="420" font-size="10" text-anchor="middle" fill="white">Services (110)</text>
+
+    <rect x="440" y="350" width="145" height="85" fill="#95E1D3" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="512" y="380" font-size="13" font-weight="bold" text-anchor="middle" fill="white">Security</text>
+    <text x="512" y="400" font-size="10" text-anchor="middle" fill="white">JWT + Spring Sec</text>
+    <text x="512" y="420" font-size="10" text-anchor="middle" fill="white">RBAC / Multi-T</text>
+
+    <rect x="615" y="350" width="145" height="85" fill="#A8DADC" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="687" y="380" font-size="13" font-weight="bold" text-anchor="middle" fill="white">Data Layer</text>
+    <text x="687" y="400" font-size="10" text-anchor="middle" fill="white">Spring JPA</text>
+    <text x="687" y="420" font-size="10" text-anchor="middle" fill="white">122 Entities</text>
+
+    <rect x="790" y="350" width="145" height="85" fill="#FFD93D" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="862" y="380" font-size="13" font-weight="bold" text-anchor="middle" fill="#333">Cache &amp;</text>
+    <text x="862" y="400" font-size="10" text-anchor="middle" fill="#333">Monitoring</text>
+    <text x="862" y="420" font-size="10" text-anchor="middle" fill="#333">Sentry, Prom.</text>
+
+    <rect x="965" y="350" width="145" height="85" fill="#E8B4D0" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="1037" y="380" font-size="13" font-weight="bold" text-anchor="middle" fill="white">Validation</text>
+    <text x="1037" y="400" font-size="10" text-anchor="middle" fill="white">MapStruct</text>
+    <text x="1037" y="420" font-size="10" text-anchor="middle" fill="white">Jackson, AOP</text>
+
+    <rect x="1140" y="350" width="160" height="85" fill="#B4A7D6" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="1220" y="380" font-size="13" font-weight="bold" text-anchor="middle" fill="white">Testing</text>
+    <text x="1220" y="400" font-size="10" text-anchor="middle" fill="white">JUnit</text>
+    <text x="1220" y="420" font-size="10" text-anchor="middle" fill="white">Testcontainers</text>
+
+    <!-- Modules -->
+    <text x="90" y="465" font-size="13" font-weight="bold" fill="#1E5BA8">Módulos de Negocio:</text>
+
+    <g id="modules">
+      <rect x="90" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="139" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">CRM</text>
+      <text x="139" y="520" font-size="9" text-anchor="middle" fill="#666">Clientes, Leads</text>
+
+      <rect x="208" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="257" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Ventas</text>
+      <text x="257" y="520" font-size="9" text-anchor="middle" fill="#666">Facturas, Presup.</text>
+
+      <rect x="326" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="375" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Fabricación</text>
+      <text x="375" y="520" font-size="9" text-anchor="middle" fill="#666">Recetas, Órdenes</text>
+
+      <rect x="444" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="493" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Stock</text>
+      <text x="493" y="520" font-size="9" text-anchor="middle" fill="#666">Motor Inteligente</text>
+
+      <rect x="562" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="611" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Logística</text>
+      <text x="611" y="520" font-size="9" text-anchor="middle" fill="#666">Viajes, Entregas</text>
+
+      <rect x="680" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="729" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">RRHH</text>
+      <text x="729" y="520" font-size="9" text-anchor="middle" fill="#666">Empleados, Sueldos</text>
+
+      <rect x="798" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="847" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Finanzas</text>
+      <text x="847" y="520" font-size="9" text-anchor="middle" fill="#666">Cajas, Bancos</text>
+
+      <rect x="916" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="965" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Proveedores</text>
+      <text x="965" y="520" font-size="9" text-anchor="middle" fill="#666">Compras, Eval.</text>
+
+      <rect x="1034" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="1083" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Préstamos</text>
+      <text x="1083" y="520" font-size="9" text-anchor="middle" fill="#666">Cuotas, Refinanc.</text>
+
+      <rect x="1152" y="480" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+      <text x="1201" y="500" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Admin</text>
+      <text x="1201" y="520" font-size="9" text-anchor="middle" fill="#666">Usuarios, Roles</text>
+    </g>
+
+    <!-- Second row of modules -->
+    <rect x="326" y="555" width="98" height="55" fill="#FFF5E6" stroke="#FFD93D" stroke-width="2" rx="6" filter="url(#shadow)"/>
+    <text x="375" y="575" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Garantías</text>
+    <text x="375" y="595" font-size="9" text-anchor="middle" fill="#666">Reclamos</text>
+  </g>
+
+  <!-- Arrow down -->
+  <line x1="700" y1="650" x2="700" y2="680" stroke="#1E5BA8" stroke-width="3"/>
+  <polygon points="700,695 690,680 710,680" fill="#1E5BA8"/>
+
+  <!-- Layer 3: Database -->
+  <g id="database-layer" filter="url(#shadow)">
+    <rect x="60" y="700" width="1280" height="270" fill="#F5F5F5" stroke="#2E75B6" stroke-width="2" rx="12"/>
+    <text x="80" y="725" font-size="16" font-weight="bold" fill="#1E5BA8" font-family="Segoe UI">Data Layer &amp; Infrastructure</text>
+
+    <!-- Database -->
+    <rect x="120" y="760" width="200" height="120" fill="#E74C3C" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="220" y="795" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Database</text>
+    <text x="220" y="820" font-size="12" text-anchor="middle" fill="white">MariaDB</text>
+    <text x="220" y="845" font-size="10" text-anchor="middle" fill="white">70+ Migrations</text>
+    <text x="220" y="865" font-size="10" text-anchor="middle" fill="white">122 Entities</text>
+
+    <!-- Connection Pool -->
+    <rect x="360" y="760" width="200" height="120" fill="#9B59B6" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="460" y="795" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Connection Pool</text>
+    <text x="460" y="820" font-size="12" text-anchor="middle" fill="white">HikariCP</text>
+    <text x="460" y="845" font-size="10" text-anchor="middle" fill="white">Min: 5 / Max: 20</text>
+    <text x="460" y="865" font-size="10" text-anchor="middle" fill="white">High Performance</text>
+
+    <!-- Caching -->
+    <rect x="600" y="760" width="200" height="120" fill="#3498DB" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="700" y="795" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Query Engine</text>
+    <text x="700" y="820" font-size="12" text-anchor="middle" fill="white">Caching &amp;</text>
+    <text x="700" y="845" font-size="10" text-anchor="middle" fill="white">Optimization</text>
+    <text x="700" y="865" font-size="10" text-anchor="middle" fill="white">Indexing</text>
+
+    <!-- DevOps -->
+    <rect x="840" y="760" width="180" height="120" fill="#2ECC71" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="930" y="795" font-size="14" font-weight="bold" text-anchor="middle" fill="white">DevOps</text>
+    <text x="930" y="820" font-size="11" text-anchor="middle" fill="white">Docker</text>
+    <text x="930" y="840" font-size="11" text-anchor="middle" fill="white">CI/CD (GitHub)</text>
+    <text x="930" y="860" font-size="11" text-anchor="middle" fill="white">Cloud Deploy</text>
+
+    <!-- Monitoring -->
+    <rect x="1050" y="760" width="180" height="120" fill="#E67E22" stroke="none" rx="8" filter="url(#shadow)"/>
+    <text x="1140" y="795" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Monitoring</text>
+    <text x="1140" y="820" font-size="11" text-anchor="middle" fill="white">Sentry</text>
+    <text x="1140" y="840" font-size="11" text-anchor="middle" fill="white">Prometheus</text>
+    <text x="1140" y="860" font-size="11" text-anchor="middle" fill="white">Actuator</text>
+  </g>
+
+  <!-- Footer -->
+  <rect x="0" y="980" width="1400" height="20" fill="url(#grad1)"/>
+  <text x="700" y="1010" font-size="11" text-anchor="middle" fill="#666" font-family="Segoe UI">
+    Ysy Empresa: Trazabilidad End-to-End • Motor Inteligente de Stock • Arquitectura Multi-Tenant • Implementación Rápida
+  </text>
+</svg>

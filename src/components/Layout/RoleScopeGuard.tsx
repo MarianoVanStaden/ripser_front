@@ -28,6 +28,15 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
   },
 ];
 
+// ADMIN_EMPRESA_LIMITADO: admin "empleado" que ve casi todo el sistema pero
+// no debe entrar a RRHH ni a configuraciones reservadas al dueño. Usamos
+// denylist (no allowlist) porque su scope es prácticamente todo el sistema.
+// Acceso por URL directa a estos prefijos → redirect al dashboard genérico.
+const ADMIN_EMPRESA_LIMITADO_DENIED_PREFIXES = [
+  '/rrhh',
+  '/taller/configuracion',
+];
+
 const RoleScopeGuard: React.FC<Props> = ({ children }) => {
   const { esSuperAdmin } = useAuth();
   const { tieneRol } = usePermisos();
@@ -38,10 +47,25 @@ const RoleScopeGuard: React.FC<Props> = ({ children }) => {
     return <>{children}</>;
   }
 
+  const path = location.pathname;
+
+  // ADMIN_EMPRESA_LIMITADO: chequear denylist primero. Si pega contra alguno
+  // de los prefijos denegados, redirigir al dashboard (no a "acceso denegado":
+  // el sidebar ni siquiera muestra el ítem, así que llegar acá es un link viejo
+  // o una URL escrita a mano).
+  if (tieneRol('ADMIN_EMPRESA_LIMITADO')) {
+    const denegado = ADMIN_EMPRESA_LIMITADO_DENIED_PREFIXES.some(
+      prefix => path === prefix || path.startsWith(prefix + '/'),
+    );
+    if (denegado) {
+      return <Navigate to="/" replace />;
+    }
+    return <>{children}</>;
+  }
+
   const restricted = RESTRICTED_ROLES.find(r => tieneRol(r.rol));
   if (!restricted) return <>{children}</>;
 
-  const path = location.pathname;
   const dentroDeScope = restricted.allowedPrefixes.some(
     prefix => path === prefix || path.startsWith(prefix + '/'),
   );

@@ -37,6 +37,7 @@
     "@tanstack/react-virtual": "^3.13.24",
     "axios": "^1.10.0",
     "dayjs": "^1.11.13",
+    "docx": "^9.6.1",
     "exceljs": "^4.4.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",

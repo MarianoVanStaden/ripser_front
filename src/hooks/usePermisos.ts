@@ -25,6 +25,12 @@ const PERMISOS_POR_ROL: PermisosMap = {
 
   ADMIN_EMPRESA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'ADMINISTRACION', 'PRESTAMOS'],
 
+  // Administrador "empleado": ve lo mismo que ADMIN_EMPRESA salvo RRHH. El
+  // filtrado fino por pantalla (ej. /taller/configuracion) se maneja en Sidebar
+  // via adminEmpresaLimitadoDeniedPaths. NO incluye 'ADMIN' como systemRole para
+  // no bypassear los guards de scope.
+  ADMIN_EMPRESA_LIMITADO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'ADMINISTRACION', 'PRESTAMOS'],
+
   GERENTE_SUCURSAL: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
 
   // Acceso restringido: el filtrado fino por path se hace en Sidebar (cobranzasAllowedPaths).

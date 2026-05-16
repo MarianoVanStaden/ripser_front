@@ -112,6 +112,18 @@ const getWeekEndStr = () => {
   return d.toISOString().split('T')[0];
 };
 
+const getMonthStartStr = () => {
+  const d = new Date();
+  d.setDate(1);
+  return d.toISOString().split('T')[0];
+};
+
+const getMonthEndStr = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1, 0); // último día del mes actual
+  return d.toISOString().split('T')[0];
+};
+
 const formatDateDisplay = (dateStr: string) => {
   if (!dateStr) return '-';
   const [year, month, day] = dateStr.split('-');
@@ -168,6 +180,7 @@ const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
   EstadoLeadEnum.LEAD_DUPLICADO,
   EstadoLeadEnum.PRECIO_ELEVADO,
   EstadoLeadEnum.COMPRA_ANULADA,
+  EstadoLeadEnum.POSTERGADO,
 ];
 
 const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
@@ -182,6 +195,7 @@ const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
   EstadoLeadEnum.LEAD_DUPLICADO,
   EstadoLeadEnum.PRECIO_ELEVADO,
   EstadoLeadEnum.COMPRA_ANULADA,
+  EstadoLeadEnum.POSTERGADO,
 ];
 
 type OrderByRec = 'fecha' | 'tipo' | 'lead' | 'asesor' | 'telefono' | 'estado' | 'prioridad';
@@ -189,7 +203,7 @@ type Order = 'asc' | 'desc';
 
 const PRIORIDAD_LEAD_RANK: Record<string, number> = { HOT: 3, WARM: 2, COLD: 1 };
 
-type DatePreset = 'hoy' | 'ayer' | 'mañana' | 'semana' | 'vencidos' | 'personalizado' | 'todos';
+type DatePreset = 'hoy' | 'ayer' | 'mañana' | 'semana' | 'mes' | 'vencidos' | 'personalizado' | 'todos';
 
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'todos', label: 'Todos' },
@@ -198,6 +212,7 @@ const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'hoy', label: 'Hoy' },
   { value: 'mañana', label: 'Mañana' },
   { value: 'semana', label: 'Esta semana' },
+  { value: 'mes', label: 'Este mes' },
   { value: 'personalizado', label: 'Personalizado' },
 ];
 
@@ -959,6 +974,10 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
       case 'semana':
         f.fechaDesde = today;
         f.fechaHasta = getWeekEndStr();
+        break;
+      case 'mes':
+        f.fechaDesde = getMonthStartStr();
+        f.fechaHasta = getMonthEndStr();
         break;
       case 'vencidos':
         f.fechaHasta = getDateStr(-1);

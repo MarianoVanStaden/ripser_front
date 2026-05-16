@@ -51,6 +51,7 @@ export interface UsuarioEmpresa {
 export type RolEmpresa =
   | 'SUPER_ADMIN'
   | 'ADMIN_EMPRESA'
+  | 'ADMIN_EMPRESA_LIMITADO'
   | 'GERENTE_SUCURSAL'
   | 'SUPERVISOR'
   | 'TALLER'
