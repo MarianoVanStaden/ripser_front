@@ -133,7 +133,10 @@
       "Bash(JAVA_HOME=\"C:/Users/santi/.jdks/openjdk-23\" \"C:/Users/santi/.jdks/openjdk-23/bin/java\" -version)",
       "Bash(jobs)",
       "Bash(Get-ChildItem \"C:\\\\Users\\\\maria\\\\Documents\\\\GitHub\\\\ripser_back\\\\src\\\\main\\\\java\\\\com\\\\ripser_back\\\\services\\\\impl\")",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(python3 -c ' *)",
+      "Bash(python *)",
+      "PowerShell(Get-Content \"c:\\\\Users\\\\maria\\\\Downloads\\\\RIPSER - Manual de Puestos.csv\" -TotalCount 10 | ForEach-Object { $_ })"
     ],
     "deny": [],
     "ask": [],

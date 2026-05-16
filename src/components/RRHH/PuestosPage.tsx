@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
-// @ts-nocheck - Temporary: MUI v7 Grid compatibility issue
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -24,7 +22,7 @@ import {
   DialogContent,
   DialogActions,
   InputAdornment,
-  Grid,
+  Grid2 as Grid,
   Chip,
   TablePagination,
 } from '@mui/material';
@@ -210,7 +208,7 @@ const PuestosPage: React.FC = () => {
 
       {/* Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <Card sx={{ borderLeft: '4px solid', borderColor: 'primary.main' }}>
             <CardContent sx={{ p: 1.5 }}>
               <Typography variant="body2" color="textSecondary">Total Puestos</Typography>
@@ -218,7 +216,7 @@ const PuestosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <Card sx={{ borderLeft: '4px solid', borderColor: 'success.main' }}>
             <CardContent sx={{ p: 1.5 }}>
               <Typography variant="body2" color="textSecondary">Activos</Typography>
@@ -226,7 +224,7 @@ const PuestosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <Card sx={{ borderLeft: '4px solid', borderColor: 'info.main' }}>
             <CardContent sx={{ p: 1.5 }}>
               <Typography variant="body2" color="textSecondary">Departamentos</Typography>
@@ -234,7 +232,7 @@ const PuestosPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={3}>
+        <Grid size={{ xs: 6, sm: 3 }}>
           <Card sx={{ borderLeft: '4px solid', borderColor: 'warning.main' }}>
             <CardContent sx={{ p: 1.5 }}>
               <Typography variant="body2" color="textSecondary">Empleados Asignados</Typography>
@@ -248,7 +246,7 @@ const PuestosPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={8}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -265,7 +263,7 @@ const PuestosPage: React.FC = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
                 select

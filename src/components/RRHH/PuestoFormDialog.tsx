@@ -25,21 +25,7 @@ import {
   Typography,
 } from '@mui/material';
 import { puestoApi } from '../../api/services/puestoApi';
-import {
-  areaApi,
-  bandaJerarquicaApi,
-  competenciaApi,
-  departamentoApi,
-  eppApi,
-  lugarTrabajoApi,
-  nivelEducacionApi,
-  nivelExperienciaApi,
-  nivelJerarquicoApi,
-  riesgoApi,
-  sectorApi,
-  tipoFormacionApi,
-  unidadNegocioApi,
-} from '../../api/services/catalogosApi';
+import { fetchCatalogosSnapshot } from '../../api/services/catalogosCache';
 import type {
   CreatePuestoDTO,
   PuestoResponseDTO,
@@ -208,22 +194,11 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
 
     const loadCatalogos = async () => {
       try {
-        const [
-          unidadesNegocio, lugaresTrabajo, areas, departamentos, sectores,
-          bandas, niveles, competencias, riesgos, epp,
-          nivelesEducacion, tiposFormacion, nivelesExperiencia, puestos,
-        ] = await Promise.all([
-          unidadNegocioApi.list(true), lugarTrabajoApi.list(true), areaApi.list(true),
-          departamentoApi.list(true), sectorApi.list(true), bandaJerarquicaApi.list(true),
-          nivelJerarquicoApi.list(true), competenciaApi.list(true), riesgoApi.list(true),
-          eppApi.list(true), nivelEducacionApi.list(true), tipoFormacionApi.list(true),
-          nivelExperienciaApi.list(true), puestoApi.getActivos(),
+        const [snapshot, puestos] = await Promise.all([
+          fetchCatalogosSnapshot(),
+          puestoApi.getActivos(),
         ]);
-        setCats({
-          unidadesNegocio, lugaresTrabajo, areas, departamentos, sectores,
-          bandas, niveles, competencias, riesgos, epp,
-          nivelesEducacion, tiposFormacion, nivelesExperiencia, puestos,
-        });
+        setCats({ ...snapshot, puestos });
       } catch {
         setError('No se pudieron cargar los catálogos de referencia');
       }

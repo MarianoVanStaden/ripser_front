@@ -27,6 +27,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import type { CatalogoApi } from '../../../api/services/catalogosApi';
+import { invalidateCatalogosCache } from '../../../api/services/catalogosCache';
 import type { CatalogoBase, CatalogoCreatePayload } from '../../../types/catalogos.types';
 
 export interface ExtraColumn<T> {
@@ -156,6 +157,7 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
     try {
       if (editing) await api.update(editing.id, payload);
       else await api.create(payload);
+      invalidateCatalogosCache();
       await load();
       setOpen(false);
     } catch (err: unknown) {
@@ -182,6 +184,7 @@ export default function CatalogoTablaCRUD<T extends CatalogoBase, C extends Cata
     if (!window.confirm(`¿Desactivar "${row.nombre}"?`)) return;
     try {
       await api.delete(row.id);
+      invalidateCatalogosCache();
       await load();
     } catch {
       setError('No se pudo desactivar el registro');

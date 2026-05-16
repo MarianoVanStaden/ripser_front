@@ -12,9 +12,9 @@
 | Frontend F0 — `/admin/catalogos-rrhh` | ✅ `tsc --noEmit` clean — deuda 2.2–2.5 resuelta |
 | Frontend F1 — `PuestoFormDialog` (10 tabs) + `PuestoDetailPage` (tab "Manual") | ✅ `tsc --noEmit` clean |
 | Seed universal de catálogos (`sql/seed_catalogos_rrhh.sql`) | ✅ Corrido en VPS — 75 registros verificados |
-| Importer Excel (29 puestos + catálogos específicos de RIPSER) | ⏳ Pendiente |
+| Importer Excel (29 puestos + catálogos específicos de RIPSER) | ✅ `sql/seed_ripser_catalogos_puestos.sql` generado |
 | Backend F2-F4 (importer endpoint, empleados, carreras) | ⏳ Pendiente |
-| `PuestoPdfService` con layout Excel | ⏳ Pendiente |
+| `PuestoPdfService` con layout Excel | ✅ Implementado — todas las secciones del Manual |
 
 ## 0. Validación inmediata (P0)
 
@@ -26,10 +26,8 @@
 
 ## 1. Backend F1 — restos (P1)
 
-### 1.1 `PuestoPdfService` con layout del Excel
-- **Stub viejo intacto.** Sigue funcionando para campos base pero no renderea: misión, objetivos, R&A, habilidades, conocimientos, contactos, competencias, riesgos, EPP, requerimientos, reemplazos, FKs de catálogo, ni fecha de revisión.
-- Tamaño: ~300 LOC en `services/impl/PuestoPdfService.java`.
-- Diseño: inyectar `PuestoResponseAssembler` para tener el modelo armado en vez de leer la entidad directamente. Tablas anidadas con iText/OpenPDF replicando el layout del `.xlsm`.
+### 1.1 ~~`PuestoPdfService` con layout del Excel~~ ✅
+- Reescrito completamente. Inyecta `PuestoResponseAssembler` (constructor injection). Renderea: identificación (tabla 4 columnas con todas las FKs), misión, objetivo general, objetivos específicos, R&A (separados por tipo), habilidades/conocimientos (tabla 2 col), interacción social, competencias (tabla con nivel), riesgos (tabla con severidad), EPP, requerimientos, reemplazos, tareas + subtareas, footer con versión + fecha revisión. Diseño: secciones con fondo azul claro, filas alternadas en tablas.
 
 ### 1.2 Endpoints bulk-replace por categoría (opcional)
 - Hoy el `PUT /api/rrhh/puestos/{id}` ya hace replace selectivo. Agregar endpoints `PUT /{id}/competencias`, `/riesgos`, `/epp`, `/contactos`, etc. sólo cuando el front lo necesite por performance.
@@ -44,16 +42,15 @@
 ### 1.5 Mappers MapStruct para catálogos
 - Decidí no usarlos y mapear inline en `AbstractCatalogoCrudServiceImpl` + `CatalogoMappingHelper`. Funciona pero rompe convención del proyecto (Banco, Empleado usan MapStruct). Bajo prio.
 
-### 1.6 Tests
-- **Cero tests** para todo lo nuevo. Mínimo a agregar:
-  - `@DataJpaTest` por catálogo verificando filtro `findByEmpresaId`.
-  - Integration test del flujo create→update→snapshot del Puesto extendido.
-  - Unit test del `PuestoChildSyncer.syncCompetencias` validando rechazo de duplicados.
+### 1.6 Tests — parcialmente implementado
+- ✅ `PuestoChildSyncerTest.java` — 12 tests: `syncObjetivos` (noop/clear/replace/autoOrden), `syncCompetencias` (happy path, duplicado, empresa ajena, noop, clear), `syncRiesgos` (duplicado), `syncReemplazos` (noop, self-ref, dedup, empresa ajena), guard TenantContext.
+- ✅ `AreaServiceImplTest.java` — 10 tests del patrón `AbstractCatalogoCrudServiceImpl`: findAll con filtro activo/total, findById, create con unicidad de código, soft-delete, guard TenantContext.
+- ⏳ Pendiente: integration test flujo create→update→snapshot (necesita @SpringBootTest + DB embebida).
 
 ## 2. Frontend F1 — restos (P2)
 
-### 2.1 Carga de catálogos en `PuestoFormDialog`
-- Al abrir el dialog se hace `Promise.all` de 14 fetches (13 catálogos + lista de puestos). Es aceptable porque las listas son chicas (~6-20 items cada una) pero pega 14 requests en mount. Optimizable con un endpoint backend `GET /api/catalogos/bundle` que devuelva todo en una sola respuesta, o con React Query + cache compartida.
+### 2.1 ~~Carga de catálogos en `PuestoFormDialog`~~ ✅
+- Implementado caché de módulo con TTL 5 min en `src/api/services/catalogosCache.ts`. Los 13 catálogos se cachean; `puestos activos` se sigue pidiendo fresco. `CatalogoTablaCRUD` invalida el caché en save/delete.
 
 ### 2.2 ~~Sidebar para usuarios RRHH~~ ✅
 - Ítem duplicado en la sección RRHH con `modulo: 'RRHH'`. Path `/admin/catalogos-rrhh` agregado a `rrhhAllowedPaths`. Admins lo ven en ADMINISTRACIÓN; RRHH-only lo ven en RRHH.
@@ -72,16 +69,12 @@
 
 ## 3. F2 — Importer del Excel (P1)
 
-### 3.1 Importer Python
-- **No implementado.** Componentes faltantes:
-  - **`scripts/excel-importer/import_manual_puestos.py`** (Python con `openpyxl`) — parsea las hojas "Tablas y Datos", "Bases" y "Competencias" del `RIPSER - Manual de Puestos - 202603.xlsm`. Genera SQL seed idempotente con `INSERT IGNORE`.
-  - Debe completar lo que no está en el seed universal:
-    - Áreas/Departamentos/Sectores específicos de RIPSER.
-    - Lugares de trabajo reales (no sólo "Casa Central").
-    - Competencias específicas del rubro vidrio/cristalería.
-    - Riesgos y EPP propios.
-    - **29 puestos** con todos sus campos del manual.
-  - Necesita: confirmación del `empresa_id` (asumimos 1) y el `.xlsm`.
+### 3.1 ~~Importer del Excel~~ ✅
+- Generado `sql/seed_ripser_catalogos_puestos.sql` (1768 líneas, UTF-8) desde los dos CSVs exportados del `.xlsm`.
+- **Parte 1 — Catálogos RIPSER**: 4 áreas (DIR/ADM/MKT/OPS), 6 departamentos, 18 sectores, 3 lugares de trabajo (Taller Guanahani, Taller Savio, Varios), 14 competencias, 4 riesgos, 10 EPP.
+- **Parte 2 — 29 Puestos**: misión, 3 objetivos, tareas (hasta 15), R&A, habilidades, conocimientos, contactos, competencias M:N, riesgos M:N, EPP M:N. FK lookups por código (idempotente con INSERT IGNORE + WHERE NOT EXISTS).
+- Encoding: CSV estaba en CP850 (DOS Latin America); convertido a UTF-8 antes de generar SQL.
+- **Para correr**: en VPS ejecutar `sql/seed_catalogos_rrhh.sql` primero, luego `sql/seed_ripser_catalogos_puestos.sql`.
 
 ### 3.2 Endpoint backend opcional
 - `POST /api/puestos/import-xlsm` (multipart) con modo dry-run + commit. Permitiría reusar el importer desde la UI en vez de tener que correr Python a mano.
@@ -148,7 +141,7 @@
 
 ## 8. Quality issues conocidos
 
-- [ ] **Lombok `@AllArgsConstructor` removido** de algunas entidades de catálogo por un linter (UnidadNegocio, Area, Epp, TipoFormacion). Inocuo pero deja inconsistente. Considerar pasar todos a sólo `@NoArgsConstructor`.
+- [x] ~~**Lombok `@AllArgsConstructor` removido**~~ — No es un defecto. Area, UnidadNegocio, Epp, TipoFormacion no tienen campos propios; añadir `@AllArgsConstructor` generaría un constructor duplicado con `@NoArgsConstructor`. Estado actual es correcto.
 - [x] ~~DDL del importer no committeado~~ — Se reemplazó por el seed universal `sql/seed_catalogos_rrhh.sql`.
 - [x] ~~**PuestoDetailPage usa `@ts-nocheck`**~~ — Resuelto en 2.5.
 
