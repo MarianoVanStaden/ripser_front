@@ -65,7 +65,13 @@ interface RowState {
   incluir: boolean;
 }
 
-const LiquidacionMasivaPage: React.FC = () => {
+interface LiquidacionMasivaPageProps {
+  /** Si true, oculta el header propio y el botón "volver" porque la página
+   *  está embebida en un Tabs dentro de SueldosPage. */
+  embedded?: boolean;
+}
+
+const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -84,7 +90,9 @@ const LiquidacionMasivaPage: React.FC = () => {
   // Filtros de filtrado de filas
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaSalarial | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [ocultarLiquidados, setOcultarLiquidados] = useState<boolean>(false);
+  // Por default ocultos: lo común es trabajar con los que faltan liquidar.
+  // Se puede destildar para revisar / corregir lo ya hecho.
+  const [ocultarLiquidados, setOcultarLiquidados] = useState<boolean>(true);
 
   // ─── Data ──────────────────────────────────────────────────────────────
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -413,15 +421,17 @@ const LiquidacionMasivaPage: React.FC = () => {
   );
 
   return (
-    <Box p={{ xs: 2, sm: 3 }}>
+    <Box p={embedded ? 0 : { xs: 2, sm: 3 }}>
       <LoadingOverlay open={loading} message="Cargando datos..." />
 
-      <Stack direction="row" alignItems="center" spacing={2} mb={2}>
-        <IconButton onClick={() => navigate('/rrhh/sueldos')}><ArrowBackIcon /></IconButton>
-        <Typography variant="h4" fontWeight={700} color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
-          Liquidación masiva del mes
-        </Typography>
-      </Stack>
+      {!embedded && (
+        <Stack direction="row" alignItems="center" spacing={2} mb={2}>
+          <IconButton onClick={() => navigate('/rrhh/sueldos')}><ArrowBackIcon /></IconButton>
+          <Typography variant="h4" fontWeight={700} color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+            Liquidación masiva del mes
+          </Typography>
+        </Stack>
+      )}
 
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mb: 2 }}>{success}</Alert>}

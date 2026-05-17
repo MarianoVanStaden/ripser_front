@@ -37,7 +37,12 @@ const metodosDeCaja = (caja: CajaPesos | undefined): MetodoPago[] => {
   return caja.metodosAceptados.map(m => m.metodoPago);
 };
 
-const PagoMasivoSueldosPage: React.FC = () => {
+interface PagoMasivoSueldosPageProps {
+  /** Si true, oculta el header propio porque está embebido en un Tabs. */
+  embedded?: boolean;
+}
+
+const PagoMasivoSueldosPage: React.FC<PagoMasivoSueldosPageProps> = ({ embedded = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
@@ -208,15 +213,17 @@ const PagoMasivoSueldosPage: React.FC = () => {
   };
 
   return (
-    <Box p={{ xs: 2, sm: 3 }}>
+    <Box p={embedded ? 0 : { xs: 2, sm: 3 }}>
       <LoadingOverlay open={loading} message="Cargando datos..." />
 
-      <Stack direction="row" alignItems="center" spacing={2} mb={3}>
-        <IconButton onClick={() => navigate('/rrhh/sueldos')}><ArrowBackIcon /></IconButton>
-        <Typography variant="h4" fontWeight={700} color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
-          Pago masivo de sueldos
-        </Typography>
-      </Stack>
+      {!embedded && (
+        <Stack direction="row" alignItems="center" spacing={2} mb={3}>
+          <IconButton onClick={() => navigate('/rrhh/sueldos')}><ArrowBackIcon /></IconButton>
+          <Typography variant="h4" fontWeight={700} color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+            Pago masivo de sueldos
+          </Typography>
+        </Stack>
+      )}
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, whiteSpace: 'pre-line' }}>

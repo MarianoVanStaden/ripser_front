@@ -3,7 +3,7 @@ import {
   Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Stack, IconButton, Tooltip, Chip, Alert,
-  Autocomplete, useMediaQuery, useTheme,
+  Autocomplete, useMediaQuery, useTheme, Tabs, Tab,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -23,7 +23,7 @@ import {
   Payments as PaymentsIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { sueldoApi } from '../../api/services/sueldoApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
@@ -36,12 +36,40 @@ import { CONCEPTO_SUELDO_LABELS } from '../../types/remuneraciones.types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import SueldoFormDialog from './Sueldos/SueldoFormDialog';
 import PagoSueldoDialog from './Sueldos/PagoSueldoDialog';
+import LiquidacionMasivaPage from './Sueldos/LiquidacionMasivaPage';
+import PagoMasivoSueldosPage from './Sueldos/PagoMasivoSueldosPage';
 import { generarReciboHaberesPDF } from '../../services/pdfService';
+
+type TabKey = 'sueldos' | 'liquidar' | 'pagar';
+
+/**
+ * Mapea la ruta al tab activo. Mantenemos las rutas existentes
+ * (/rrhh/sueldos/liquidacion-masiva, /pago-masivo) como deep-links a los
+ * tabs correspondientes para no romper links/marcadores externos.
+ */
+const pathToTab = (pathname: string): TabKey => {
+  if (pathname.endsWith('/liquidacion-masiva')) return 'liquidar';
+  if (pathname.endsWith('/pago-masivo')) return 'pagar';
+  return 'sueldos';
+};
+
+const tabToPath = (tab: TabKey): string => {
+  switch (tab) {
+    case 'liquidar': return '/rrhh/sueldos/liquidacion-masiva';
+    case 'pagar':    return '/rrhh/sueldos/pago-masivo';
+    default:         return '/rrhh/sueldos';
+  }
+};
 
 const SueldosPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const location = useLocation();
+  const tab: TabKey = pathToTab(location.pathname);
+  const handleTabChange = (_: React.SyntheticEvent, value: TabKey) => {
+    navigate(tabToPath(value));
+  };
 
   const [sueldos, setSueldos] = useState<Sueldo[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -179,32 +207,14 @@ const SueldosPage: React.FC = () => {
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
-      <LoadingOverlay open={loading} message="Cargando sueldos..." />
+      <LoadingOverlay open={loading && tab === 'sueldos'} message="Cargando sueldos..." />
 
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+      {/* Header + tabs (siempre visible) */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={2}>
         <Typography variant="h4" fontWeight={700} color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Sueldos
         </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} width={isMobile ? '100%' : 'auto'}>
-          <Button
-            variant="outlined"
-            startIcon={<PlaylistAddCheckIcon />}
-            onClick={() => navigate('/rrhh/sueldos/liquidacion-masiva')}
-            size={isMobile ? 'medium' : 'large'}
-            fullWidth={isMobile}
-          >
-            Liquidar mes (masivo)
-          </Button>
-          <Button
-            variant="outlined"
-            color="success"
-            startIcon={<PaymentsIcon />}
-            onClick={() => navigate('/rrhh/sueldos/pago-masivo')}
-            size={isMobile ? 'medium' : 'large'}
-            fullWidth={isMobile}
-          >
-            Pago masivo
-          </Button>
+        {tab === 'sueldos' && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -214,8 +224,28 @@ const SueldosPage: React.FC = () => {
           >
             Nuevo Sueldo
           </Button>
-        </Stack>
+        )}
       </Box>
+
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={tab}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab icon={<ReceiptIcon />} iconPosition="start" label="Sueldos" value="sueldos" />
+          <Tab icon={<PlaylistAddCheckIcon />} iconPosition="start" label="Liquidar mes (masivo)" value="liquidar" />
+          <Tab icon={<PaymentsIcon />} iconPosition="start" label="Pago masivo" value="pagar" />
+        </Tabs>
+      </Paper>
+
+      {/* Switch de contenido. Cada tab monta su propio componente para que el
+          state interno no se mezcle entre vistas. */}
+      {tab === 'liquidar' && <LiquidacionMasivaPage embedded />}
+      {tab === 'pagar' && <PagoMasivoSueldosPage embedded />}
+      {/* === Grilla principal del tab "Sueldos" === */}
+      {tab === 'sueldos' && (<>
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
@@ -423,8 +453,9 @@ const SueldosPage: React.FC = () => {
           </TableContainer>
         </CardContent>
       </Card>
+      </>)}
 
-      {/* Detail Dialog */}
+      {/* Detail Dialog (siempre montado, visible solo si openDetail) */}
       <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth fullScreen={isMobile}>
         {selected && (
           <>
