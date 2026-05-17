@@ -1516,10 +1516,6 @@ export const generarReciboHaberesPDF = ({ sueldo, empleado, categoria }: ReciboH
     if (n === undefined || n === null || Number(n) === 0) return '-';
     return String(n);
   };
-  const fmtTarifa = (n: number | undefined | null): string => {
-    if (n === undefined || n === null || Number(n) === 0) return '-';
-    return formatCurrency(n);
-  };
 
   type Row = { concepto: string; cantidad: string; tarifa: string; suma: number; resta: number };
   const rows: Row[] = [];
