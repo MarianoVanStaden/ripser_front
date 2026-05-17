@@ -19,8 +19,10 @@ import {
   Receipt as ReceiptIcon,
   Payment as PaymentIcon,
   PictureAsPdf as PictureAsPdfIcon,
+  PlaylistAddCheck as PlaylistAddCheckIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import { sueldoApi } from '../../api/services/sueldoApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
@@ -37,6 +39,7 @@ import { generarReciboHaberesPDF } from '../../services/pdfService';
 const SueldosPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
 
   const [sueldos, setSueldos] = useState<Sueldo[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -178,15 +181,26 @@ const SueldosPage: React.FC = () => {
         <Typography variant="h4" fontWeight={700} color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Sueldos
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => { setEditingSueldo(null); setOpenForm(true); }}
-          size={isMobile ? 'medium' : 'large'}
-          fullWidth={isMobile}
-        >
-          Nuevo Sueldo
-        </Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} width={isMobile ? '100%' : 'auto'}>
+          <Button
+            variant="outlined"
+            startIcon={<PlaylistAddCheckIcon />}
+            onClick={() => navigate('/rrhh/sueldos/liquidacion-masiva')}
+            size={isMobile ? 'medium' : 'large'}
+            fullWidth={isMobile}
+          >
+            Liquidar mes (masivo)
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => { setEditingSueldo(null); setOpenForm(true); }}
+            size={isMobile ? 'medium' : 'large'}
+            fullWidth={isMobile}
+          >
+            Nuevo Sueldo
+          </Button>
+        </Stack>
       </Box>
 
       {error && (

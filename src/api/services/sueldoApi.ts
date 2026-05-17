@@ -60,7 +60,14 @@ export const sueldoApi = {
   // Delete sueldo
   delete: async (id: number): Promise<void> => {
     await axios.delete(`${BASE_URL}/${id}`);
-  }
+  },
+
+  // Liquidación masiva del mes: upsert por (empleadoId, periodo).
+  // Devuelve la lista de sueldos creados o actualizados.
+  liquidarMasivo: async (items: any[]): Promise<Sueldo[]> => {
+    const { data } = await axios.post<Sueldo[]>(`${BASE_URL}/liquidacion-masiva`, items);
+    return data;
+  },
 };
 
 export default sueldoApi;

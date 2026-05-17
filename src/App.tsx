@@ -160,6 +160,7 @@ const DashboardRRHH = lazy(() => import('./components/RRHH/DashboardRRHH'));
 const DisciplinaPage = lazy(() => import('./components/RRHH/Disciplina/DisciplinaPage'));
 const AdelantosPage = lazy(() => import('./components/RRHH/Adelantos/AdelantosPage'));
 const ConfigSueldosPage = lazy(() => import('./components/RRHH/ConfigSueldos/ConfigSueldosPage'));
+const LiquidacionMasivaPage = lazy(() => import('./components/RRHH/Sueldos/LiquidacionMasivaPage'));
 
 // Fabricación
 const RecetasList = lazy(() => import('./components/Fabricacion/RecetasList'));
@@ -336,6 +337,7 @@ function App() {
                   <Route path="rrhh/licencias" element={priv(<LicenciasPage />)} />
                   <Route path="rrhh/capacitaciones" element={priv(<CapacitacionesPage />)} />
                   <Route path="rrhh/sueldos" element={priv(<SueldosPage />)} />
+                  <Route path="rrhh/sueldos/liquidacion-masiva" element={priv(<LiquidacionMasivaPage />)} />
                   <Route path="rrhh/adelantos" element={priv(<AdelantosPage />)} />
                   <Route path="rrhh/config-sueldos" element={priv(<ConfigSueldosPage />)} />
                   <Route path="rrhh/legajos" element={priv(<LegajosPage />)} />
