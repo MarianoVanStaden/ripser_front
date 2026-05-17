@@ -20,6 +20,7 @@ import dayjs from 'dayjs';
 import { cajasPesosApi } from '../../../api/services/cajasPesosApi';
 import { sueldoApi } from '../../../api/services/sueldoApi';
 import type { CajaPesos, Sueldo } from '../../../types';
+import type { MetodoPago } from '../../../types/prestamo.types';
 
 interface Props {
   open: boolean;
@@ -31,13 +32,27 @@ interface Props {
 interface PayRow {
   cajaPesosId: number | null;
   monto: number;
-  metodoPago: string;
+  metodoPago: MetodoPago | '';
   observaciones: string;
 }
 
-const METODOS_PAGO = [
-  'EFECTIVO', 'TRANSFERENCIA', 'DEPOSITO', 'CHEQUE', 'TARJETA_DEBITO',
-] as const;
+/**
+ * Devuelve los métodos de pago que una caja acepta. Si la caja no tiene
+ * configuración explícita, usamos EFECTIVO como fallback razonable.
+ */
+const metodosDeCaja = (caja: CajaPesos | undefined): MetodoPago[] => {
+  if (!caja || !caja.metodosAceptados || caja.metodosAceptados.length === 0) {
+    return ['EFECTIVO'];
+  }
+  return caja.metodosAceptados.map(m => m.metodoPago);
+};
+
+/** Método default a usar al elegir una caja: el marcado default o el primero aceptado. */
+const metodoDefaultDeCaja = (caja: CajaPesos | undefined): MetodoPago => {
+  if (!caja) return 'EFECTIVO';
+  if (caja.metodoPagoPrincipal) return caja.metodoPagoPrincipal;
+  return metodosDeCaja(caja)[0];
+};
 
 const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess }) => {
   const theme = useTheme();
@@ -62,11 +77,11 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
       .then(list => {
         const activas = (Array.isArray(list) ? list : []).filter(c => c.estado === 'ACTIVA');
         setCajas(activas);
-        // Arrancar con un renglón vacío con la caja default (primera activa).
+        const cajaDefault = activas[0];
         setRows([{
-          cajaPesosId: activas[0]?.id ?? null,
+          cajaPesosId: cajaDefault?.id ?? null,
           monto: Number(sueldo?.sueldoNeto ?? 0),
-          metodoPago: 'EFECTIVO',
+          metodoPago: metodoDefaultDeCaja(cajaDefault),
           observaciones: '',
         }]);
       })
@@ -93,10 +108,11 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
   const addRow = () => {
     // Pre-llenar el monto del nuevo renglón con la diferencia faltante.
     const faltante = Math.max(0, sueldoNeto - totalRows);
+    const cajaDefault = cajas[0];
     setRows(prev => [...prev, {
-      cajaPesosId: cajas[0]?.id ?? null,
+      cajaPesosId: cajaDefault?.id ?? null,
       monto: faltante,
-      metodoPago: 'EFECTIVO',
+      metodoPago: metodoDefaultDeCaja(cajaDefault),
       observaciones: '',
     }]);
   };
@@ -199,14 +215,15 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
             No hay cajas en pesos activas. Cargá al menos una en <strong>Administración → Cajas en Pesos</strong>.
           </Alert>
         ) : (
-          <Table size="small">
+          <Box sx={{ overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 800 }}>
             <TableHead>
               <TableRow>
-                <TableCell>Caja en pesos</TableCell>
-                <TableCell>Método</TableCell>
-                <TableCell align="right">Monto</TableCell>
-                <TableCell>Observación</TableCell>
-                <TableCell align="right">Saldo actual</TableCell>
+                <TableCell sx={{ minWidth: 180 }}>Caja en pesos</TableCell>
+                <TableCell sx={{ minWidth: 170 }}>Método</TableCell>
+                <TableCell align="right" sx={{ minWidth: 200 }}>Monto</TableCell>
+                <TableCell sx={{ minWidth: 160 }}>Observación</TableCell>
+                <TableCell align="right" sx={{ minWidth: 180 }}>Saldo actual</TableCell>
                 <TableCell />
               </TableRow>
             </TableHead>
@@ -214,13 +231,24 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
               {rows.map((r, idx) => {
                 const caja = cajas.find(c => c.id === r.cajaPesosId);
                 const saldoFinal = caja ? Number(caja.saldoActual) - (Number(r.monto) || 0) : null;
+                const metodosCaja = metodosDeCaja(caja);
                 return (
                   <TableRow key={idx}>
                     <TableCell>
                       <TextField
                         select size="small" fullWidth
                         value={r.cajaPesosId ?? ''}
-                        onChange={(e) => updateRow(idx, { cajaPesosId: e.target.value === '' ? null : Number(e.target.value) })}
+                        onChange={(e) => {
+                          // Al cambiar de caja, autoseleccionamos su método default
+                          // así no se manda un método no aceptado por la caja
+                          // (el backend rechaza si no coincide con metodosAceptados).
+                          const nuevoId = e.target.value === '' ? null : Number(e.target.value);
+                          const nuevaCaja = cajas.find(c => c.id === nuevoId);
+                          updateRow(idx, {
+                            cajaPesosId: nuevoId,
+                            metodoPago: metodoDefaultDeCaja(nuevaCaja),
+                          });
+                        }}
                       >
                         {cajas.map(c => (
                           <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
@@ -229,16 +257,17 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
                     </TableCell>
                     <TableCell>
                       <TextField
-                        select size="small" sx={{ minWidth: 130 }}
+                        select size="small" sx={{ minWidth: 160 }}
                         value={r.metodoPago}
-                        onChange={(e) => updateRow(idx, { metodoPago: e.target.value })}
+                        onChange={(e) => updateRow(idx, { metodoPago: e.target.value as MetodoPago })}
+                        helperText={metodosCaja.length === 1 ? 'único método de la caja' : undefined}
                       >
-                        {METODOS_PAGO.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+                        {metodosCaja.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
                       </TextField>
                     </TableCell>
                     <TableCell align="right">
                       <TextField
-                        size="small" type="number" sx={{ width: 130 }}
+                        size="small" type="number" sx={{ width: 180 }}
                         value={r.monto}
                         onChange={(e) => updateRow(idx, { monto: Number(e.target.value) || 0 })}
                         InputProps={{
@@ -297,6 +326,7 @@ const PagoSueldoDialog: React.FC<Props> = ({ open, sueldo, onClose, onSuccess })
               })}
             </TableBody>
           </Table>
+          </Box>
         )}
 
         <Box mt={1}>

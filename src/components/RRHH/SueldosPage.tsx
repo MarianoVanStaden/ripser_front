@@ -196,6 +196,16 @@ const SueldosPage: React.FC = () => {
             Liquidar mes (masivo)
           </Button>
           <Button
+            variant="outlined"
+            color="success"
+            startIcon={<PaymentsIcon />}
+            onClick={() => navigate('/rrhh/sueldos/pago-masivo')}
+            size={isMobile ? 'medium' : 'large'}
+            fullWidth={isMobile}
+          >
+            Pago masivo
+          </Button>
+          <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => { setEditingSueldo(null); setOpenForm(true); }}

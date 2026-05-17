@@ -344,6 +344,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/rrhh/legajos',
     '/rrhh/sueldos',
     '/rrhh/sueldos/liquidacion-masiva',
+    '/rrhh/sueldos/pago-masivo',
     '/rrhh/adelantos',
     '/rrhh/config-sueldos',
     '/rrhh/asistencia',
