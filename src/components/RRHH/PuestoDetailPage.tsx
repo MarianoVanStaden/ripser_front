@@ -53,6 +53,7 @@ import TareaFormDialog from './TareaFormDialog';
 import SubtareaFormDialog from './SubtareaFormDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
+import { generarPuestoPDF } from '../../services/puestoPdfService';
 import dayjs from 'dayjs';
 
 interface TabPanelProps {
@@ -136,20 +137,8 @@ const PuestoDetailPage: React.FC = () => {
   };
 
   // PDF download
-  const handleDownloadPdf = async () => {
-    try {
-      const blob = await puestoApi.downloadPdf(puestoId);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `puesto_${puesto?.nombre || puestoId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      setSnackbar({ open: true, message: 'Error al descargar el PDF', severity: 'error' });
-    }
+  const handleDownloadPdf = () => {
+    if (puesto) generarPuestoPDF(puesto);
   };
 
   // Edit puesto

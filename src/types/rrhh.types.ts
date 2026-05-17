@@ -441,17 +441,42 @@ export interface Licencia {
   estado: EstadoLicencia;
 }
 
+export type MotivoCapacitacion = 'DNC' | 'PAC' | 'INDUCCION';
+
+export const MOTIVO_CAPACITACION_LABEL: Record<MotivoCapacitacion, string> = {
+  DNC: 'DNC — Detección de Necesidad de Capacitación',
+  PAC: 'PAC — Plan Anual de Capacitación',
+  INDUCCION: 'Inducción / Onboarding',
+};
+
+export interface CapacitacionAsistencia {
+  id?: number;
+  empleadoId: number;
+  empleadoNombre?: string;
+  empleadoApellido?: string;
+  empleadoDni?: string;
+  asistio: boolean;
+  firmaUrl?: string | null;
+}
+
 export interface Capacitacion {
   id: number;
-  empleado: Empleado;
+  motivo?: MotivoCapacitacion | null;
+  areaId?: number | null;
+  areaNombre?: string | null;
+  actividad?: string | null;
   nombre: string;
-  descripcion?: string;
-  institucion?: string;
+  objetivo?: string | null;
+  descripcion?: string | null;
+  institucion?: string | null;
+  capacitador?: string | null;
   fechaInicio: string;
   fechaFin: string;
   horas: number;
   certificado: boolean;
   costo: number;
+  empleadoIds: number[];
+  asistencias: CapacitacionAsistencia[];
 }
 
 export interface Sueldo {
