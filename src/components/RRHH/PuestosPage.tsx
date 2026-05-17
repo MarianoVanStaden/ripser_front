@@ -33,7 +33,6 @@ import {
   Refresh as RefreshIcon,
   Search as SearchIcon,
   Work as WorkIcon,
-  Business as BusinessIcon,
   People as PeopleIcon,
   Visibility as VisibilityIcon,
   CheckCircle as CheckCircleIcon,
