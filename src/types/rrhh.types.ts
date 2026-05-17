@@ -482,17 +482,45 @@ export interface Capacitacion {
 export interface Sueldo {
   id: number;
   empleado: Empleado;
+  empleadoId?: number;
+  empleadoNombre?: string;
+  empleadoApellido?: string;
+
+  // Categoría salarial (referencia a la tabla configurable)
+  categoriaSalarialId?: number | null;
+  categoriaSalarialNombre?: string | null;
+
   periodo: string; // YYYY-MM format
+  concepto?: 'SALARIO' | 'AGUINALDO';
+
+  // Conceptos positivos (SUMA)
   sueldoBasico: number;
   bonificaciones: number;
   horasExtras: number;
+  horasExtraCant?: number;
   comisiones: number;
+  presentismoPct?: number;
+  presentismoMonto?: number;
+  kmCant?: number;
+  kmMonto?: number;
+  bonoProduccion?: number;
+  bonoVentas?: number;
+  bonoEspecial?: number;
+
   totalBruto: number;
+
+  // Descuentos (RESTA)
   descuentosLegales: number;
   descuentosOtros: number;
+  horasAusenteCant?: number;
+  horasAusenteMonto?: number;
+  adelantos?: number;
+
   totalDescuentos: number;
   sueldoNeto: number;
+
   fechaPago?: string;
+  historial?: boolean;
   observaciones?: string;
 }
 

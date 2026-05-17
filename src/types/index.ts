@@ -35,6 +35,7 @@ export * from './flujoCaja.types';
 export * from './actividad.types';
 
 export * from './stockPlanificacion.types';
+export * from './remuneraciones.types';
 export * from './posicionPatrimonial.types';
 export * from './cajasAhorro.types';
 export * from './cajasPesos.types';

@@ -48,6 +48,8 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import TuneIcon from '@mui/icons-material/Tune';
 import SavingsIcon from '@mui/icons-material/Savings';
 import HistoryIcon from '@mui/icons-material/History';
 // import GavelIcon from '@mui/icons-material/Gavel';
@@ -210,6 +212,8 @@ const navigation: NavigationSection[] = [
       { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
       { text: 'Legajos', icon: <AssignmentIcon />, path: '/rrhh/legajos' },
       { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
+      { text: 'Adelantos', icon: <PaymentsIcon />, path: '/rrhh/adelantos' },
+      { text: 'Config. Sueldos', icon: <TuneIcon />, path: '/rrhh/config-sueldos' },
       { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },
       { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
       { text: 'Puestos', icon: <AssignmentIcon />, path: '/rrhh/puestos' },
@@ -339,6 +343,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/rrhh/empleados',
     '/rrhh/legajos',
     '/rrhh/sueldos',
+    '/rrhh/adelantos',
+    '/rrhh/config-sueldos',
     '/rrhh/asistencia',
     '/rrhh/capacitaciones',
     '/rrhh/puestos',

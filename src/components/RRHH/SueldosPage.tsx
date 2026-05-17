@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box, Typography, Card, CardContent, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Grid, Stack, IconButton, Tooltip, Chip, Alert,
-  Autocomplete, InputAdornment, useMediaQuery, useTheme
+  Autocomplete, useMediaQuery, useTheme,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -19,262 +17,171 @@ import {
   Person as PersonIcon,
   CalendarMonth as CalendarIcon,
   Receipt as ReceiptIcon,
-  Payment as PaymentIcon
+  Payment as PaymentIcon,
+  PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { sueldoApi } from '../../api/services/sueldoApi';
 import { employeeApi } from '../../api/services/employeeApi';
-import type { Sueldo, Empleado } from '../../types';
+import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
+import { bonoProduccionApi } from '../../api/services/bonoProduccionApi';
+import { bonoVentasApi } from '../../api/services/bonoVentasApi';
+import type {
+  Sueldo, Empleado, CategoriaSalarial, BonoProduccionTabla, BonoVentasTabla,
+} from '../../types';
+import { CONCEPTO_SUELDO_LABELS } from '../../types/remuneraciones.types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import SueldoFormDialog from './Sueldos/SueldoFormDialog';
+import { generarReciboHaberesPDF } from '../../services/pdfService';
 
 const SueldosPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [sueldos, setSueldos] = useState<Sueldo[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaSalarial[]>([]);
+  const [bonosProduccion, setBonosProduccion] = useState<BonoProduccionTabla[]>([]);
+  const [bonosVentas, setBonosVentas] = useState<BonoVentasTabla[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [empleadoFilter, setEmpleadoFilter] = useState<Empleado | null>(null);
   const [periodoFilter, setPeriodoFilter] = useState(dayjs().format('YYYY-MM'));
-  
-  // Dialog states
+
+  // Dialogs
   const [openForm, setOpenForm] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [selected, setSelected] = useState<Sueldo | null>(null);
   const [editingSueldo, setEditingSueldo] = useState<Sueldo | null>(null);
-  
-  // Form data
-  const [formData, setFormData] = useState({
-    empleadoId: '',
-    periodo: dayjs().format('YYYY-MM'),
-    sueldoBasico: '',
-    bonificaciones: '0',
-    horasExtras: '0',
-    comisiones: '0',
-    descuentosLegales: '0',
-    descuentosOtros: '0',
-    fechaPago: '',
-    observaciones: ''
-  });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [sueldosData, empleadosData] = await Promise.all([
+      const [sueldosResp, empleadosData, cats, bonosP, bonosV] = await Promise.all([
         sueldoApi.getAll(),
-        employeeApi.getAllList()
+        employeeApi.getAllList(),
+        categoriaSalarialApi.getAll().catch(() => []),
+        bonoProduccionApi.getAll().catch(() => []),
+        bonoVentasApi.getAll().catch(() => []),
       ]);
-      
-      console.log('Sueldos raw data:', sueldosData);
-      console.log('Empleados data:', empleadosData);
-      
-      // Mapear los sueldos para incluir el objeto empleado completo
-      const sueldosConEmpleado = Array.isArray(sueldosData) 
-        ? sueldosData.map((sueldo: any) => {
-            const empleado = empleadosData.find((e: any) => e.id === sueldo.empleadoId);
-            return {
-              ...sueldo,
-              empleado: empleado || {
-                id: sueldo.empleadoId,
-                nombre: sueldo.empleadoNombre || '',
-                apellido: sueldo.empleadoApellido || '',
-                dni: sueldo.empleadoDni || ''
-              }
-            };
-          })
-        : [];
-      
-      console.log('Sueldos mapped:', sueldosConEmpleado);
-      
-      setSueldos(sueldosConEmpleado);
+
+      // sueldoApi.getAll devuelve PageResponse<Sueldo> o array según servidor
+      const rawSueldos: any[] = Array.isArray(sueldosResp)
+        ? sueldosResp
+        : (sueldosResp as any)?.content ?? [];
+
+      // Enriquecer cada sueldo con el objeto empleado completo (la API devuelve
+      // empleadoId + empleadoNombre/Apellido). El form/detalle usa s.empleado.
+      const sueldosEnriquecidos: Sueldo[] = rawSueldos.map((s: any) => {
+        const empleado = Array.isArray(empleadosData)
+          ? empleadosData.find((e: any) => e.id === s.empleadoId)
+          : undefined;
+        return {
+          ...s,
+          empleado: empleado || ({
+            id: s.empleadoId,
+            nombre: s.empleadoNombre || '',
+            apellido: s.empleadoApellido || '',
+            dni: s.empleadoDni || '',
+          } as Empleado),
+        };
+      });
+
+      setSueldos(sueldosEnriquecidos);
       setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
+      setCategorias(Array.isArray(cats) ? cats : []);
+      setBonosProduccion(Array.isArray(bonosP) ? bonosP : []);
+      setBonosVentas(Array.isArray(bonosV) ? bonosV : []);
     } catch (err) {
+      console.error('Error loading sueldos:', err);
       setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
       setSueldos([]);
       setEmpleados([]);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const getEmpleadoNombre = (empleado: Empleado | null | undefined) => {
+    if (!empleado) return 'N/A';
+    return `${empleado.nombre ?? ''} ${empleado.apellido ?? ''}`.trim();
   };
 
-  const getEmpleadoNombre = (empleado: Empleado) => {
-    return `${empleado.nombre} ${empleado.apellido}`;
-  };
-
-  const filteredSueldos = sueldos.filter(s => {
+  const filteredSueldos = useMemo(() => sueldos.filter(s => {
     if (!s.empleado) return false;
-    
-    const matchesEmpleado = !empleadoFilter || s.empleado.id === empleadoFilter.id;
-    const matchesPeriodo = !periodoFilter || s.periodo === periodoFilter;
-    
-    const matchesSearch = !searchTerm ||
+    const okEmp = !empleadoFilter || s.empleado.id === empleadoFilter.id;
+    const okPer = !periodoFilter || s.periodo === periodoFilter;
+    const okSearch = !searchTerm ||
       getEmpleadoNombre(s.empleado).toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.periodo.includes(searchTerm);
+    return okEmp && okPer && okSearch;
+  }), [sueldos, empleadoFilter, periodoFilter, searchTerm]);
 
-    return matchesEmpleado && matchesPeriodo && matchesSearch;
-  });
-
-  const calcularTotales = () => {
-    const basico = parseFloat(formData.sueldoBasico) || 0;
-    const bonif = parseFloat(formData.bonificaciones) || 0;
-    const extras = parseFloat(formData.horasExtras) || 0;
-    const com = parseFloat(formData.comisiones) || 0;
-    const descLeg = parseFloat(formData.descuentosLegales) || 0;
-    const descOtros = parseFloat(formData.descuentosOtros) || 0;
-    
-    const totalBruto = basico + bonif + extras + com;
-    const totalDescuentos = descLeg + descOtros;
-    const sueldoNeto = totalBruto - totalDescuentos;
-    
-    return { totalBruto, totalDescuentos, sueldoNeto };
-  };
-
-  const handleOpenForm = (sueldo?: Sueldo) => {
-    if (sueldo) {
-      setEditingSueldo(sueldo);
-      setFormData({
-        empleadoId: sueldo.empleado?.id?.toString() || '',
-        periodo: sueldo.periodo,
-        sueldoBasico: sueldo.sueldoBasico.toString(),
-        bonificaciones: sueldo.bonificaciones.toString(),
-        horasExtras: sueldo.horasExtras.toString(),
-        comisiones: sueldo.comisiones.toString(),
-        descuentosLegales: sueldo.descuentosLegales.toString(),
-        descuentosOtros: sueldo.descuentosOtros.toString(),
-        fechaPago: sueldo.fechaPago || '',
-        observaciones: sueldo.observaciones || ''
-      });
+  const handleSubmitSueldo = async (payload: any) => {
+    if (editingSueldo) {
+      await sueldoApi.update(editingSueldo.id, payload);
     } else {
-      setEditingSueldo(null);
-      setFormData({
-        empleadoId: '',
-        periodo: dayjs().format('YYYY-MM'),
-        sueldoBasico: '',
-        bonificaciones: '0',
-        horasExtras: '0',
-        comisiones: '0',
-        descuentosLegales: '0',
-        descuentosOtros: '0',
-        fechaPago: '',
-        observaciones: ''
-      });
+      await sueldoApi.create(payload);
     }
-    setOpenForm(true);
-  };
-
-  const handleCloseForm = () => {
     setOpenForm(false);
     setEditingSueldo(null);
-  };
-
-  const handleFormChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveSueldo = async () => {
-    try {
-      if (!formData.empleadoId || !formData.periodo || !formData.sueldoBasico) {
-        setError('Por favor complete los campos obligatorios');
-        return;
-      }
-
-      const empleadoIdParsed = parseInt(formData.empleadoId);
-      if (isNaN(empleadoIdParsed) || empleadoIdParsed <= 0) {
-        setError('ID de empleado inválido');
-        return;
-      }
-
-      const { totalBruto, totalDescuentos, sueldoNeto } = calcularTotales();
-
-      const sueldoData = {
-        empleadoId: empleadoIdParsed,
-        periodo: formData.periodo,
-        sueldoBasico: parseFloat(formData.sueldoBasico),
-        bonificaciones: parseFloat(formData.bonificaciones) || 0,
-        horasExtras: parseFloat(formData.horasExtras) || 0,
-        comisiones: parseFloat(formData.comisiones) || 0,
-        totalBruto,
-        descuentosLegales: parseFloat(formData.descuentosLegales) || 0,
-        descuentosOtros: parseFloat(formData.descuentosOtros) || 0,
-        totalDescuentos,
-        sueldoNeto,
-        fechaPago: formData.fechaPago || null,
-        observaciones: formData.observaciones || null
-      };
-
-      if (editingSueldo) {
-        await sueldoApi.update(editingSueldo.id, sueldoData);
-      } else {
-        await sueldoApi.create(sueldoData as any);
-      }
-
-      await loadData();
-      handleCloseForm();
-      setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar el sueldo');
-      console.error('Error saving sueldo:', err);
-    }
+    await loadData();
   };
 
   const handleDeleteSueldo = async () => {
     if (!selected) return;
-    
     try {
       await sueldoApi.delete(selected.id);
       await loadData();
       setOpenDelete(false);
       setSelected(null);
-      setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al eliminar el sueldo');
-      console.error('Error deleting sueldo:', err);
+      setError(err?.response?.data?.message || 'Error al eliminar el sueldo');
     }
   };
 
-  const handleViewDetails = (sueldo: Sueldo) => {
-    setSelected(sueldo);
-    setOpenDetail(true);
+  const handleExportarRecibo = (sueldo: Sueldo) => {
+    const empleado = sueldo.empleado ?? empleados.find(e => e.id === sueldo.empleadoId);
+    if (!empleado) {
+      setError('No se encontró el empleado del sueldo para generar el recibo');
+      return;
+    }
+    const categoria = sueldo.categoriaSalarialId
+      ? categorias.find(c => c.id === sueldo.categoriaSalarialId) ?? null
+      : null;
+    try {
+      generarReciboHaberesPDF({ sueldo, empleado, categoria });
+    } catch (err: any) {
+      console.error('Error generando recibo:', err);
+      setError('Error al generar el recibo PDF');
+    }
   };
 
-  const handleOpenDelete = (sueldo: Sueldo) => {
-    setSelected(sueldo);
-    setOpenDelete(true);
-  };
-
-  // Estadísticas
-  const totalSueldosNeto = filteredSueldos.reduce((sum, s) => sum + s.sueldoNeto, 0);
-  const totalBruto = filteredSueldos.reduce((sum, s) => sum + s.totalBruto, 0);
-  const totalDescuentos = filteredSueldos.reduce((sum, s) => sum + s.totalDescuentos, 0);
-  const empleadosCobrados = new Set(
-    filteredSueldos
-      .filter(s => s.empleado?.id)
-      .map(s => s.empleado.id)
-  ).size;
-
-  const { totalBruto: formBruto, totalDescuentos: formDescuentos, sueldoNeto: formNeto } = calcularTotales();
+  // KPIs
+  const totalSueldosNeto = filteredSueldos.reduce((sum, s) => sum + Number(s.sueldoNeto || 0), 0);
+  const totalBruto = filteredSueldos.reduce((sum, s) => sum + Number(s.totalBruto || 0), 0);
+  const totalDescuentos = filteredSueldos.reduce((sum, s) => sum + Number(s.totalDescuentos || 0), 0);
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
       <LoadingOverlay open={loading} message="Cargando sueldos..." />
+
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" fontWeight="700" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
+        <Typography variant="h4" fontWeight={700} color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Sueldos
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => handleOpenForm()}
+          onClick={() => { setEditingSueldo(null); setOpenForm(true); }}
           size={isMobile ? 'medium' : 'large'}
           fullWidth={isMobile}
         >
@@ -288,6 +195,12 @@ const SueldosPage: React.FC = () => {
         </Alert>
       )}
 
+      {categorias.length === 0 && !loading && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Aún no hay categorías salariales configuradas. Andá a <strong>RRHH → Config. Sueldos</strong> para crearlas antes de liquidar.
+        </Alert>
+      )}
+
       {/* KPIs */}
       <Grid container spacing={{ xs: 2, sm: 3 }} mb={3}>
         <Grid item xs={6} sm={6} md={3}>
@@ -295,66 +208,55 @@ const SueldosPage: React.FC = () => {
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h4" fontWeight="700" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                  <Typography variant="h4" fontWeight={700} color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     {filteredSueldos.length}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Sueldos Registrados
-                  </Typography>
+                  <Typography variant="body2" color="textSecondary">Sueldos Registrados</Typography>
                 </Box>
                 <ReceiptIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'success.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
-
         <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'primary.main', boxShadow: 2 }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h5" fontWeight="700" color="primary.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
+                  <Typography variant="h5" fontWeight={700} color="primary.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${totalBruto.toLocaleString('es-AR')}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Total Bruto
-                  </Typography>
+                  <Typography variant="body2" color="textSecondary">Total Bruto</Typography>
                 </Box>
                 <TrendingUpIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'primary.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
-
         <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'error.main', boxShadow: 2 }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h5" fontWeight="700" color="error.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
+                  <Typography variant="h5" fontWeight={700} color="error.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${totalDescuentos.toLocaleString('es-AR')}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Total Descuentos
-                  </Typography>
+                  <Typography variant="body2" color="textSecondary">Total Descuentos</Typography>
                 </Box>
                 <TrendingDownIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'error.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
             </CardContent>
           </Card>
         </Grid>
-
         <Grid item xs={6} sm={6} md={3}>
           <Card sx={{ borderLeft: 4, borderColor: 'warning.main', boxShadow: 2 }}>
             <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1, sm: 0 }}>
                 <Box>
-                  <Typography variant="h5" fontWeight="700" color="warning.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
+                  <Typography variant="h5" fontWeight={700} color="warning.main" sx={{ fontSize: { xs: '1rem', sm: '1.5rem' } }}>
                     ${totalSueldosNeto.toLocaleString('es-AR')}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                    Total Neto
-                  </Typography>
+                  <Typography variant="body2" color="textSecondary">Total Neto</Typography>
                 </Box>
                 <AccountBalanceIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'warning.main', opacity: 0.3, display: { xs: 'none', sm: 'block' } }} />
               </Stack>
@@ -368,34 +270,25 @@ const SueldosPage: React.FC = () => {
         <CardContent>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Buscar"
-                variant="outlined"
+              <TextField fullWidth size="small" label="Buscar"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por empleado o período..."
-                size="small"
+                placeholder="Empleado o período..."
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <Autocomplete
                 options={empleados}
-                getOptionLabel={(empleado) => getEmpleadoNombre(empleado)}
+                getOptionLabel={(e) => `${e.nombre} ${e.apellido}`}
                 value={empleadoFilter}
-                onChange={(_, newValue) => setEmpleadoFilter(newValue)}
-                renderInput={(params) => <TextField {...params} label="Empleado" size="small" />}
+                onChange={(_, v) => setEmpleadoFilter(v)}
+                renderInput={(p) => <TextField {...p} label="Empleado" size="small" />}
               />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                type="month"
-                label="Período"
-                variant="outlined"
+              <TextField fullWidth size="small" type="month" label="Período"
                 value={periodoFilter}
                 onChange={(e) => setPeriodoFilter(e.target.value)}
-                size="small"
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
@@ -407,116 +300,89 @@ const SueldosPage: React.FC = () => {
       <Card sx={{ boxShadow: 3 }}>
         <CardContent>
           <TableContainer component={Paper} elevation={0} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 900, md: 'auto' } }}>
+            <Table sx={{ minWidth: { xs: 1000, md: 'auto' } }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 150 }}>Empleado</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 130 }} align="center">Período</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 110 }} align="right">Sueldo Básico</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 100 }} align="right">Total Bruto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 100 }} align="right">Descuentos</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 100 }} align="right">Sueldo Neto</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 130 }} align="center">Estado Pago</TableCell>
-                  <TableCell sx={{ color: 'white', fontWeight: 'bold', minWidth: 110 }} align="center">Acciones</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Categoría</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Período</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Bruto</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Descuentos</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">Neto</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Estado Pago</TableCell>
+                  <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="center">Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredSueldos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
-                      <Typography variant="body2" color="textSecondary">
-                        No hay sueldos registrados
-                      </Typography>
+                      <Typography variant="body2" color="textSecondary">No hay sueldos registrados</Typography>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredSueldos.map(sueldo => (
-                    <TableRow key={sueldo.id} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="600">
-                          {sueldo.empleado ? getEmpleadoNombre(sueldo.empleado) : 'N/A'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          icon={<CalendarIcon />}
-                          label={dayjs(sueldo.periodo).format('MMMM YYYY')}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="500">
-                          ${sueldo.sueldoBasico.toLocaleString('es-AR')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="600" color="primary.main">
-                          ${sueldo.totalBruto.toLocaleString('es-AR')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="500" color="error.main">
-                          ${sueldo.totalDescuentos.toLocaleString('es-AR')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" fontWeight="700" color="success.main">
-                          ${sueldo.sueldoNeto.toLocaleString('es-AR')}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        {sueldo.fechaPago ? (
-                          <Chip
-                            icon={<PaymentIcon />}
-                            label={`Pagado ${dayjs(sueldo.fechaPago).format('DD/MM/YYYY')}`}
-                            size="small"
-                            color="success"
-                          />
-                        ) : (
-                          <Chip
-                            label="Pendiente"
-                            size="small"
-                            color="warning"
-                            variant="outlined"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" spacing={0.5} justifyContent="center">
-                          <Tooltip title="Ver Detalle">
-                            <IconButton
-                              size="small"
-                              color="info"
-                              onClick={() => handleViewDetails(sueldo)}
-                            >
-                              <ViewIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Editar">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleOpenForm(sueldo)}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Eliminar">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleOpenDelete(sueldo)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ) : filteredSueldos.map(sueldo => (
+                  <TableRow key={sueldo.id} hover>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600}>{getEmpleadoNombre(sueldo.empleado)}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="textSecondary">
+                        {sueldo.categoriaSalarialNombre ?? '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip icon={<CalendarIcon />} label={dayjs(sueldo.periodo).format('MMMM YYYY')}
+                        size="small" color="primary" variant="outlined" />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={600} color="primary.main">
+                        ${Number(sueldo.totalBruto || 0).toLocaleString('es-AR')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={500} color="error.main">
+                        ${Number(sueldo.totalDescuentos || 0).toLocaleString('es-AR')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={700} color="success.main">
+                        ${Number(sueldo.sueldoNeto || 0).toLocaleString('es-AR')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      {sueldo.fechaPago ? (
+                        <Chip icon={<PaymentIcon />} label={`Pagado ${dayjs(sueldo.fechaPago).format('DD/MM/YYYY')}`}
+                          size="small" color="success" />
+                      ) : (
+                        <Chip label="Pendiente" size="small" color="warning" variant="outlined" />
+                      )}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Stack direction="row" spacing={0.5} justifyContent="center">
+                        <Tooltip title="Ver Detalle">
+                          <IconButton size="small" color="info" onClick={() => { setSelected(sueldo); setOpenDetail(true); }}>
+                            <ViewIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Descargar Recibo PDF">
+                          <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleExportarRecibo(sueldo)}>
+                            <PictureAsPdfIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Editar">
+                          <IconButton size="small" color="primary" onClick={() => { setEditingSueldo(sueldo); setOpenForm(true); }}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar">
+                          <IconButton size="small" color="error" onClick={() => { setSelected(sueldo); setOpenDelete(true); }}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
@@ -530,160 +396,80 @@ const SueldosPage: React.FC = () => {
             <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
               <Box display="flex" alignItems="center" gap={2}>
                 <MoneyIcon />
-                <Typography variant="h6" fontWeight="600">
-                  Detalle de Sueldo - {selected.empleado ? getEmpleadoNombre(selected.empleado) : 'N/A'}
+                <Typography variant="h6" fontWeight={600}>
+                  Detalle de Sueldo — {getEmpleadoNombre(selected.empleado)}
                 </Typography>
               </Box>
             </DialogTitle>
             <DialogContent sx={{ mt: 2 }}>
               <Grid container spacing={3}>
-                {/* Información del Empleado y Período */}
                 <Grid item xs={12} md={6}>
-                  <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
+                  <Card variant="outlined" sx={{ height: '100%', borderRadius: 2 }}>
                     <CardContent>
-                      <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
-                        <PersonIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Información General
+                      <Typography variant="h6" color="primary" gutterBottom fontWeight={600}>
+                        <PersonIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> General
                       </Typography>
-                      <Stack spacing={2}>
-                        <Box>
-                          <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase">
-                            Empleado
-                          </Typography>
-                          <Typography variant="body1" fontWeight="500" sx={{ mt: 0.5 }}>
-                            {selected.empleado ? getEmpleadoNombre(selected.empleado) : 'N/A'}
-                          </Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase">
-                            Período
-                          </Typography>
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>
-                            {dayjs(selected.periodo).format('MMMM YYYY')}
-                          </Typography>
-                        </Box>
-                        {selected.fechaPago && (
-                          <Box>
-                            <Typography variant="caption" color="textSecondary" fontWeight="600" textTransform="uppercase">
-                              Fecha de Pago
-                            </Typography>
-                            <Typography variant="body1" sx={{ mt: 0.5 }}>
-                              {dayjs(selected.fechaPago).format('DD/MM/YYYY')}
-                            </Typography>
-                          </Box>
-                        )}
+                      <Stack spacing={1.5}>
+                        <DetailRow label="Empleado" value={getEmpleadoNombre(selected.empleado)} />
+                        <DetailRow label="Categoría" value={selected.categoriaSalarialNombre ?? '—'} />
+                        <DetailRow label="Período" value={dayjs(selected.periodo).format('MMMM YYYY')} />
+                        <DetailRow label="Concepto" value={selected.concepto ? CONCEPTO_SUELDO_LABELS[selected.concepto] : 'Salario'} />
+                        {selected.fechaPago && <DetailRow label="Fecha de Pago" value={dayjs(selected.fechaPago).format('DD/MM/YYYY')} />}
                       </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
 
-                {/* Conceptos del Sueldo */}
                 <Grid item xs={12} md={6}>
-                  <Card variant="outlined" sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
+                  <Card variant="outlined" sx={{ height: '100%', borderRadius: 2 }}>
                     <CardContent>
-                      <Typography variant="h6" color="primary" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
-                        <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Conceptos Positivos
+                      <Typography variant="h6" color="primary" gutterBottom fontWeight={600}>
+                        <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> Haberes
                       </Typography>
-                      <Stack spacing={2}>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" color="textSecondary" fontWeight="600">
-                            Sueldo Básico
-                          </Typography>
-                          <Typography variant="body2" fontWeight="600">
-                            ${selected.sueldoBasico.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" color="textSecondary" fontWeight="600">
-                            Bonificaciones
-                          </Typography>
-                          <Typography variant="body2">
-                            ${selected.bonificaciones.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" color="textSecondary" fontWeight="600">
-                            Horas Extras
-                          </Typography>
-                          <Typography variant="body2">
-                            ${selected.horasExtras.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" color="textSecondary" fontWeight="600">
-                            Comisiones
-                          </Typography>
-                          <Typography variant="body2">
-                            ${selected.comisiones.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
+                      <Stack spacing={1}>
+                        <DetailMoney label="Sueldo Básico"     value={selected.sueldoBasico} />
+                        <DetailMoney label={`Presentismo (${selected.presentismoPct ?? 100}%)`} value={selected.presentismoMonto ?? 0} />
+                        <DetailMoney label="Horas Extra"       value={selected.horasExtras} />
+                        <DetailMoney label="Bono Producción"   value={selected.bonoProduccion ?? 0} />
+                        <DetailMoney label="Bono Ventas"       value={selected.bonoVentas ?? 0} />
+                        <DetailMoney label="Bono Especial"     value={selected.bonoEspecial ?? 0} />
+                        <DetailMoney label="Bonificaciones"    value={selected.bonificaciones} />
+                        <DetailMoney label="Comisiones"        value={selected.comisiones} />
+                        <DetailMoney label="Reintegro KM"      value={selected.kmMonto ?? 0} />
                       </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
 
-                {/* Descuentos */}
                 <Grid item xs={12} md={6}>
-                  <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+                  <Card variant="outlined" sx={{ borderRadius: 2 }}>
                     <CardContent>
-                      <Typography variant="h6" color="error" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
-                        <TrendingDownIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Descuentos
+                      <Typography variant="h6" color="error" gutterBottom fontWeight={600}>
+                        <TrendingDownIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> Descuentos
                       </Typography>
-                      <Stack spacing={2}>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" color="textSecondary" fontWeight="600">
-                            Descuentos Legales
-                          </Typography>
-                          <Typography variant="body2" color="error.main" fontWeight="500">
-                            ${selected.descuentosLegales.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" color="textSecondary" fontWeight="600">
-                            Otros Descuentos
-                          </Typography>
-                          <Typography variant="body2" color="error.main" fontWeight="500">
-                            ${selected.descuentosOtros.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
+                      <Stack spacing={1}>
+                        <DetailMoney label="Descuentos Legales" value={selected.descuentosLegales} negative />
+                        <DetailMoney label="Otros Descuentos"   value={selected.descuentosOtros} negative />
+                        <DetailMoney label="Horas Ausente"      value={selected.horasAusenteMonto ?? 0} negative />
+                        <DetailMoney label="Adelantos"          value={selected.adelantos ?? 0} negative />
                       </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
 
-                {/* Totales */}
                 <Grid item xs={12} md={6}>
-                  <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1, bgcolor: 'success.lighter' }}>
+                  <Card variant="outlined" sx={{ borderRadius: 2, bgcolor: 'success.lighter' }}>
                     <CardContent>
-                      <Typography variant="h6" color="success.dark" gutterBottom fontWeight="600" sx={{ mb: 2 }}>
-                        <MoneyIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Resumen
+                      <Typography variant="h6" color="success.dark" gutterBottom fontWeight={600}>
+                        <MoneyIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> Resumen
                       </Typography>
-                      <Stack spacing={2}>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" fontWeight="600">
-                            Total Bruto
-                          </Typography>
-                          <Typography variant="body2" fontWeight="600" color="primary.main">
-                            ${selected.totalBruto.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2" fontWeight="600">
-                            Total Descuentos
-                          </Typography>
-                          <Typography variant="body2" fontWeight="600" color="error.main">
-                            -${selected.totalDescuentos.toLocaleString('es-AR')}
-                          </Typography>
-                        </Box>
+                      <Stack spacing={1.5}>
+                        <DetailMoney label="Total Bruto"      value={selected.totalBruto} bold />
+                        <DetailMoney label="Total Descuentos" value={selected.totalDescuentos} bold negative />
                         <Box display="flex" justifyContent="space-between" pt={1} borderTop={1} borderColor="divider">
-                          <Typography variant="h6" fontWeight="700">
-                            Sueldo Neto
-                          </Typography>
-                          <Typography variant="h6" fontWeight="700" color="success.main">
-                            ${selected.sueldoNeto.toLocaleString('es-AR')}
+                          <Typography variant="h6" fontWeight={700}>Sueldo Neto</Typography>
+                          <Typography variant="h6" fontWeight={700} color="success.main">
+                            ${Number(selected.sueldoNeto || 0).toLocaleString('es-AR')}
                           </Typography>
                         </Box>
                       </Stack>
@@ -691,17 +477,14 @@ const SueldosPage: React.FC = () => {
                   </Card>
                 </Grid>
 
-                {/* Observaciones */}
                 {selected.observaciones && (
                   <Grid item xs={12}>
-                    <Card variant="outlined" sx={{ borderRadius: 2, boxShadow: 1 }}>
+                    <Card variant="outlined" sx={{ borderRadius: 2 }}>
                       <CardContent>
-                        <Typography variant="subtitle2" color="textSecondary" fontWeight="600" textTransform="uppercase" gutterBottom>
+                        <Typography variant="subtitle2" color="textSecondary" fontWeight={600} textTransform="uppercase" gutterBottom>
                           Observaciones
                         </Typography>
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          {selected.observaciones}
-                        </Typography>
+                        <Typography variant="body2">{selected.observaciones}</Typography>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -709,235 +492,68 @@ const SueldosPage: React.FC = () => {
               </Grid>
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setOpenDetail(false)} variant="outlined">
-                Cerrar
+              <Button variant="outlined" startIcon={<PictureAsPdfIcon />} onClick={() => handleExportarRecibo(selected)}>
+                Descargar Recibo
               </Button>
+              <Button variant="contained" onClick={() => setOpenDetail(false)}>Cerrar</Button>
             </DialogActions>
           </>
         )}
       </Dialog>
 
       {/* Form Dialog */}
-      <Dialog open={openForm} onClose={handleCloseForm} maxWidth="md" fullWidth fullScreen={isMobile}>
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
-          <Box display="flex" alignItems="center" gap={2}>
-            <MoneyIcon />
-            <Typography variant="h6" fontWeight="600">
-              {editingSueldo ? 'Editar Sueldo' : 'Nuevo Sueldo'}
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <Autocomplete
-                options={empleados}
-                getOptionLabel={(empleado) => getEmpleadoNombre(empleado)}
-                value={empleados.find(e => e.id.toString() === formData.empleadoId) || null}
-                onChange={(_, newValue) => handleFormChange('empleadoId', newValue?.id.toString() || '')}
-                renderInput={(params) => (
-                  <TextField {...params} label="Empleado *" required />
-                )}
-                disabled={!!editingSueldo}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="month"
-                label="Período *"
-                value={formData.periodo}
-                onChange={(e) => handleFormChange('periodo', e.target.value)}
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
+      <SueldoFormDialog
+        open={openForm}
+        empleados={empleados}
+        categorias={categorias}
+        bonosProduccion={bonosProduccion}
+        bonosVentas={bonosVentas}
+        editing={editingSueldo}
+        onClose={() => { setOpenForm(false); setEditingSueldo(null); }}
+        onSubmit={handleSubmitSueldo}
+      />
 
-            {/* Conceptos Positivos */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="600" color="primary" gutterBottom>
-                Conceptos Positivos
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Sueldo Básico *"
-                value={formData.sueldoBasico}
-                onChange={(e) => handleFormChange('sueldoBasico', e.target.value)}
-                required
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Bonificaciones"
-                value={formData.bonificaciones}
-                onChange={(e) => handleFormChange('bonificaciones', e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Horas Extras"
-                value={formData.horasExtras}
-                onChange={(e) => handleFormChange('horasExtras', e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Comisiones"
-                value={formData.comisiones}
-                onChange={(e) => handleFormChange('comisiones', e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>
-                }}
-              />
-            </Grid>
-
-            {/* Descuentos */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" fontWeight="600" color="error" gutterBottom>
-                Descuentos
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Descuentos Legales"
-                value={formData.descuentosLegales}
-                onChange={(e) => handleFormChange('descuentosLegales', e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Otros Descuentos"
-                value={formData.descuentosOtros}
-                onChange={(e) => handleFormChange('descuentosOtros', e.target.value)}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>
-                }}
-              />
-            </Grid>
-
-            {/* Totales Calculados */}
-            <Grid item xs={12}>
-              <Card variant="outlined" sx={{ bgcolor: 'grey.50', p: 2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={4}>
-                    <Typography variant="caption" color="textSecondary" display="block">
-                      Total Bruto
-                    </Typography>
-                    <Typography variant="h6" color="primary.main" fontWeight="600">
-                      ${formBruto.toLocaleString('es-AR')}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="caption" color="textSecondary" display="block">
-                      Total Descuentos
-                    </Typography>
-                    <Typography variant="h6" color="error.main" fontWeight="600">
-                      ${formDescuentos.toLocaleString('es-AR')}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="caption" color="textSecondary" display="block">
-                      Sueldo Neto
-                    </Typography>
-                    <Typography variant="h6" color="success.main" fontWeight="700">
-                      ${formNeto.toLocaleString('es-AR')}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Fecha de Pago"
-                value={formData.fechaPago}
-                onChange={(e) => handleFormChange('fechaPago', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Observaciones"
-                value={formData.observaciones}
-                onChange={(e) => handleFormChange('observaciones', e.target.value)}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseForm} variant="outlined">
-            Cancelar
-          </Button>
-          <Button onClick={handleSaveSueldo} variant="contained" startIcon={<MoneyIcon />}>
-            {editingSueldo ? 'Actualizar' : 'Crear'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
-        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white' }}>
-          Confirmar Eliminación
-        </DialogTitle>
+        <DialogTitle sx={{ bgcolor: 'error.main', color: 'white' }}>Confirmar Eliminación</DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
-          <Typography variant="body1">
-            ¿Está seguro que desea eliminar este registro de sueldo?
-          </Typography>
+          <Typography variant="body1">¿Está seguro que desea eliminar este registro de sueldo?</Typography>
           {selected && (
             <Box mt={2} p={2} bgcolor="grey.100" borderRadius={1}>
-              <Typography variant="body2">
-                <strong>Empleado:</strong> {selected.empleado ? getEmpleadoNombre(selected.empleado) : 'N/A'}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Período:</strong> {dayjs(selected.periodo).format('MMMM YYYY')}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Sueldo Neto:</strong> ${selected.sueldoNeto.toLocaleString('es-AR')}
-              </Typography>
+              <Typography variant="body2"><strong>Empleado:</strong> {getEmpleadoNombre(selected.empleado)}</Typography>
+              <Typography variant="body2"><strong>Período:</strong> {dayjs(selected.periodo).format('MMMM YYYY')}</Typography>
+              <Typography variant="body2"><strong>Sueldo Neto:</strong> ${Number(selected.sueldoNeto || 0).toLocaleString('es-AR')}</Typography>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)} variant="outlined">
-            Cancelar
-          </Button>
-          <Button onClick={handleDeleteSueldo} variant="contained" color="error" startIcon={<DeleteIcon />}>
-            Eliminar
-          </Button>
+          <Button variant="outlined" onClick={() => setOpenDelete(false)}>Cancelar</Button>
+          <Button variant="contained" color="error" startIcon={<DeleteIcon />} onClick={handleDeleteSueldo}>Eliminar</Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 };
+
+const DetailRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <Box>
+    <Typography variant="caption" color="textSecondary" fontWeight={600} textTransform="uppercase">{label}</Typography>
+    <Typography variant="body1" sx={{ mt: 0.5 }}>{value}</Typography>
+  </Box>
+);
+
+const DetailMoney: React.FC<{ label: string; value: number | undefined | null; negative?: boolean; bold?: boolean }> =
+  ({ label, value, negative, bold }) => {
+    const n = Number(value || 0);
+    if (n === 0) return null;
+    return (
+      <Box display="flex" justifyContent="space-between">
+        <Typography variant="body2" color="textSecondary" fontWeight={600}>{label}</Typography>
+        <Typography variant="body2" fontWeight={bold ? 700 : 500} color={negative ? 'error.main' : 'text.primary'}>
+          {negative ? '-' : ''}${n.toLocaleString('es-AR')}
+        </Typography>
+      </Box>
+    );
+  };
 
 export default SueldosPage;

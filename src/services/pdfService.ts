@@ -1,6 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { DocumentoComercial, OpcionFinanciamientoDTO, Cliente } from '../types';
+import type {
+  DocumentoComercial,
+  OpcionFinanciamientoDTO,
+  Cliente,
+  Sueldo,
+  Empleado,
+  CategoriaSalarial,
+} from '../types';
+import { CONCEPTO_SUELDO_LABELS } from '../types/remuneraciones.types';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../types/prestamo.types';
 import type { FichaTecnicaEquipoDTO } from '../api/services/especificacionTecnicaApi';
 import {
@@ -1374,4 +1382,359 @@ export const generarFichaTecnicaPDF = ({
   );
 
   return doc;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RECIBO DE HABERES (módulo Sueldos / Remuneraciones)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ReciboHaberesInput {
+  sueldo: Sueldo;
+  empleado: Empleado;
+  categoria?: CategoriaSalarial | null;
+}
+
+/**
+ * Genera y descarga el Recibo de Haberes A4 de un sueldo, replicando el
+ * formato corporativo de Ripser (mismo header/footer azul que presupuestos
+ * y facturas) y la estructura visual del recibo manual que la empresa
+ * llenaba en Sheets:
+ *   - Encabezado azul + título "RECIBO DE HABERES {MES} {AÑO}"
+ *   - Datos del empleado (nombre, DNI, categoría, período, concepto, puesto)
+ *   - Tabla de conceptos con columnas SUMA / RESTA. Las filas con valor 0
+ *     se omiten para que el recibo quede limpio.
+ *   - Bloque de totales (subtotal haberes, total descuentos, total a cobrar)
+ *   - Bloque de firmas (empleado / responsable)
+ *   - Pie azul con leyenda
+ */
+export const generarReciboHaberesPDF = ({ sueldo, empleado, categoria }: ReciboHaberesInput): void => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  let y = margin;
+
+  // ===== Header azul (igual que presupuesto) =====
+  doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  doc.rect(margin, y, pageWidth - margin * 2, 25, 'F');
+
+  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.setFontSize(24);
+  doc.setFont('times', 'italic');
+  doc.text('Ripser', margin + 5, y + 12);
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('INSTALACIONES', margin + 5, y + 16);
+  doc.text('COMERCIALES', margin + 5, y + 19);
+
+  const contactX = pageWidth - margin - 5;
+  doc.text('@RipserInstalacionesComerciales', contactX, y + 10, { align: 'right' });
+  doc.text('www.ripser.com.ar', contactX, y + 14, { align: 'right' });
+  doc.text('+54 2235332796', contactX, y + 18, { align: 'right' });
+
+  // Fondo celeste claro para el cuerpo
+  doc.setFillColor(COLORS.lightBlue[0], COLORS.lightBlue[1], COLORS.lightBlue[2]);
+  doc.rect(margin, y + 25, pageWidth - margin * 2, pageHeight - y - 35, 'F');
+
+  y += 30;
+
+  // ===== Título =====
+  const periodoLabel = (() => {
+    // sueldo.periodo viene como YYYY-MM
+    const [yyyy, mm] = (sueldo.periodo || '').split('-');
+    const monthNames = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+    const m = Number(mm);
+    return (m >= 1 && m <= 12 && yyyy) ? `${monthNames[m - 1]} ${yyyy}` : (sueldo.periodo || '');
+  })();
+
+  doc.setFillColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.rect(margin + 1, y, pageWidth - margin * 2 - 2, 8, 'F');
+  doc.setTextColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`RECIBO DE HABERES ${periodoLabel}`, pageWidth / 2, y + 5.5, { align: 'center' });
+
+  y += 10;
+
+  // ===== Datos del empleado =====
+  const nombreCompleto = `${empleado.apellido ?? ''}, ${empleado.nombre ?? ''}`.replace(/^,\s*/, '').trim();
+  const puestoNombre = (empleado as any)?.puesto?.nombre ?? '';
+  const conceptoLabel = sueldo.concepto ? (CONCEPTO_SUELDO_LABELS[sueldo.concepto] ?? sueldo.concepto) : 'Salario';
+
+  autoTable(doc, {
+    startY: y,
+    body: [
+      [
+        { content: 'Empleado:',    styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: nombreCompleto,  styles: { fillColor: COLORS.white } },
+        { content: 'N° Recibo:',   styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: sueldo.id ? String(sueldo.id) : '-', styles: { fillColor: COLORS.white } },
+      ],
+      [
+        { content: 'DNI:',         styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: empleado.dni ?? '', styles: { fillColor: COLORS.white } },
+        { content: 'Período:',     styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: periodoLabel,    styles: { fillColor: COLORS.white } },
+      ],
+      [
+        { content: 'Categoría:',   styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: sueldo.categoriaSalarialNombre ?? categoria?.nombre ?? '-', styles: { fillColor: COLORS.white } },
+        { content: 'Concepto:',    styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: conceptoLabel,   styles: { fillColor: COLORS.white } },
+      ],
+      [
+        { content: 'Puesto:',      styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: puestoNombre,    styles: { fillColor: COLORS.white } },
+        { content: 'Fecha pago:',  styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
+        { content: sueldo.fechaPago ? formatDate(sueldo.fechaPago) : 'Pendiente', styles: { fillColor: COLORS.white } },
+      ],
+    ],
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      textColor: COLORS.black,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+    },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 'auto' },
+    },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  // ===== Tabla de conceptos (SUMA / RESTA) =====
+  // Solo se incluyen las filas cuyo monto efectivo es distinto de 0 (replica
+  // el patrón del recibo manual original).
+  const fmtCantidad = (n: number | undefined | null): string => {
+    if (n === undefined || n === null || Number(n) === 0) return '-';
+    return String(n);
+  };
+  const fmtTarifa = (n: number | undefined | null): string => {
+    if (n === undefined || n === null || Number(n) === 0) return '-';
+    return formatCurrency(n);
+  };
+
+  type Row = { concepto: string; cantidad: string; tarifa: string; suma: number; resta: number };
+  const rows: Row[] = [];
+
+  const cat = categoria; // alias
+
+  // SUMAS
+  if (Number(sueldo.sueldoBasico) > 0) {
+    rows.push({
+      concepto: cat?.nombre ? `Sueldo Básico (${cat.nombre})` : 'Sueldo Básico',
+      cantidad: '-', tarifa: '-',
+      suma: Number(sueldo.sueldoBasico) || 0, resta: 0,
+    });
+  }
+  if (Number(sueldo.presentismoMonto) > 0) {
+    const pct = Number(sueldo.presentismoPct) || 0;
+    rows.push({
+      concepto: `Presentismo (${pct}%)`,
+      cantidad: '-', tarifa: '-',
+      suma: Number(sueldo.presentismoMonto) || 0, resta: 0,
+    });
+  }
+  const heCant = Number(sueldo.horasExtraCant) || 0;
+  const heMonto = Number(sueldo.horasExtras) || 0;
+  if (heMonto > 0 || heCant > 0) {
+    rows.push({
+      concepto: 'Horas Extra',
+      cantidad: fmtCantidad(heCant),
+      tarifa: cat ? formatCurrency(cat.horaExtraValor) : '-',
+      suma: heMonto, resta: 0,
+    });
+  }
+  if (Number(sueldo.bonoProduccion) > 0) {
+    rows.push({ concepto: 'Bono Producción', cantidad: '-', tarifa: '-', suma: Number(sueldo.bonoProduccion), resta: 0 });
+  }
+  if (Number(sueldo.bonoVentas) > 0) {
+    rows.push({ concepto: 'Bono Ventas', cantidad: '-', tarifa: '-', suma: Number(sueldo.bonoVentas), resta: 0 });
+  }
+  if (Number(sueldo.bonoEspecial) > 0) {
+    rows.push({ concepto: 'Bono Especial', cantidad: '-', tarifa: '-', suma: Number(sueldo.bonoEspecial), resta: 0 });
+  }
+  if (Number(sueldo.bonificaciones) > 0) {
+    rows.push({ concepto: 'Bonificaciones', cantidad: '-', tarifa: '-', suma: Number(sueldo.bonificaciones), resta: 0 });
+  }
+  const kmCant = Number(sueldo.kmCant) || 0;
+  const kmMonto = Number(sueldo.kmMonto) || 0;
+  if (kmMonto > 0 || kmCant > 0) {
+    rows.push({
+      concepto: `Reintegro KM`,
+      cantidad: fmtCantidad(kmCant),
+      tarifa: cat ? formatCurrency(cat.kmValor) : '-',
+      suma: kmMonto, resta: 0,
+    });
+  }
+  if (Number(sueldo.comisiones) > 0) {
+    rows.push({ concepto: 'Comisiones', cantidad: '-', tarifa: '-', suma: Number(sueldo.comisiones), resta: 0 });
+  }
+
+  // RESTAS
+  const haCant = Number(sueldo.horasAusenteCant) || 0;
+  const haMonto = Number(sueldo.horasAusenteMonto) || 0;
+  if (haMonto > 0 || haCant > 0) {
+    rows.push({
+      concepto: 'Horas Ausente',
+      cantidad: fmtCantidad(haCant),
+      tarifa: cat ? formatCurrency(cat.horaAusenteValor) : '-',
+      suma: 0, resta: haMonto,
+    });
+  }
+  if (Number(sueldo.descuentosLegales) > 0) {
+    rows.push({ concepto: 'Descuentos Legales', cantidad: '-', tarifa: '-', suma: 0, resta: Number(sueldo.descuentosLegales) });
+  }
+  if (Number(sueldo.descuentosOtros) > 0) {
+    rows.push({ concepto: 'Otros Descuentos', cantidad: '-', tarifa: '-', suma: 0, resta: Number(sueldo.descuentosOtros) });
+  }
+  if (Number(sueldo.adelantos) > 0) {
+    rows.push({ concepto: 'Adelantos del período', cantidad: '-', tarifa: '-', suma: 0, resta: Number(sueldo.adelantos) });
+  }
+
+  // Si no hay nada (sueldo en cero raro), igual mostrar al menos el básico
+  if (rows.length === 0) {
+    rows.push({
+      concepto: cat?.nombre ? `Sueldo Básico (${cat.nombre})` : 'Sueldo Básico',
+      cantidad: '-', tarifa: '-', suma: Number(sueldo.sueldoBasico) || 0, resta: 0,
+    });
+  }
+
+  autoTable(doc, {
+    startY: y,
+    head: [[
+      { content: 'Concepto',   styles: { halign: 'center', fillColor: COLORS.darkGray, textColor: COLORS.white } },
+      { content: 'Cantidad',   styles: { halign: 'center', fillColor: COLORS.darkGray, textColor: COLORS.white } },
+      { content: 'Tarifa',     styles: { halign: 'center', fillColor: COLORS.darkGray, textColor: COLORS.white } },
+      { content: 'SUMA',       styles: { halign: 'center', fillColor: COLORS.darkGray, textColor: COLORS.white } },
+      { content: 'RESTA',      styles: { halign: 'center', fillColor: COLORS.darkGray, textColor: COLORS.white } },
+    ]],
+    body: rows.map(r => [
+      { content: r.concepto, styles: { halign: 'left' } },
+      { content: r.cantidad, styles: { halign: 'center' } },
+      { content: r.tarifa,   styles: { halign: 'right' } },
+      { content: r.suma > 0  ? formatCurrency(r.suma)  : '', styles: { halign: 'right' } },
+      { content: r.resta > 0 ? formatCurrency(r.resta) : '', styles: { halign: 'right' } },
+    ]),
+    theme: 'grid',
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+      textColor: COLORS.black,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+      fillColor: COLORS.white,
+    },
+    headStyles: { fontStyle: 'bold' as const, fontSize: 9 },
+    alternateRowStyles: { fillColor: [245, 248, 250] as [number, number, number] },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 28 },
+    },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 2;
+
+  // ===== Bloque de totales =====
+  const subtotalHaberes = rows.reduce((s, r) => s + r.suma, 0);
+  const totalDescuentosFinal = rows.reduce((s, r) => s + r.resta, 0);
+  const totalACobrar = Number(sueldo.sueldoNeto ?? subtotalHaberes - totalDescuentosFinal);
+
+  autoTable(doc, {
+    startY: y,
+    body: [
+      [
+        { content: 'SUBTOTAL HABERES', styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
+        { content: formatCurrency(subtotalHaberes), styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+      ],
+      [
+        { content: 'TOTAL DESCUENTOS', styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
+        { content: `- ${formatCurrency(totalDescuentosFinal)}`, styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+      ],
+      [
+        { content: 'TOTAL A COBRAR', styles: { ...TOTAL_LABEL_STYLE, fontSize: 11 } },
+        { content: formatCurrency(totalACobrar), styles: { ...TOTAL_ROW_STYLE, fontSize: 11 } },
+      ],
+    ],
+    theme: 'grid',
+    styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+    columnStyles: { 0: { cellWidth: 156 }, 1: { cellWidth: 28 } },
+    margin: { left: margin + 1, right: margin + 1 },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 4;
+
+  // ===== Observaciones (opcional) =====
+  if (sueldo.observaciones && sueldo.observaciones.trim().length > 0) {
+    autoTable(doc, {
+      startY: y,
+      body: [[
+        {
+          content: `Observaciones: ${sueldo.observaciones}`,
+          styles: {
+            halign: 'left' as const,
+            fontSize: 8,
+            fontStyle: 'italic' as const,
+            fillColor: COLORS.white,
+            textColor: COLORS.darkGray,
+            cellPadding: 2,
+          },
+        },
+      ]],
+      theme: 'grid',
+      styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
+      margin: { left: margin + 1, right: margin + 1 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 4;
+  }
+
+  // ===== Bloque de firmas =====
+  // Posicionamos a la altura disponible (mínimo 40mm antes del pie).
+  const minFirmasY = pageHeight - 45;
+  const firmasY = Math.max(y + 12, minFirmasY);
+  const colWidth = (pageWidth - margin * 2 - 10) / 2;
+
+  doc.setDrawColor(COLORS.black[0], COLORS.black[1], COLORS.black[2]);
+  doc.setLineWidth(0.2);
+
+  // Línea + leyenda empleado
+  doc.line(margin + 10, firmasY, margin + 10 + colWidth - 20, firmasY);
+  doc.setTextColor(COLORS.black[0], COLORS.black[1], COLORS.black[2]);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Firma del Empleado', margin + 10 + (colWidth - 20) / 2, firmasY + 4, { align: 'center' });
+  doc.text(`Aclaración: ${nombreCompleto}`, margin + 10 + (colWidth - 20) / 2, firmasY + 8, { align: 'center' });
+
+  // Línea + leyenda responsable
+  const respX = margin + 10 + colWidth + 10;
+  doc.line(respX, firmasY, respX + colWidth - 20, firmasY);
+  doc.text('Firma del Responsable', respX + (colWidth - 20) / 2, firmasY + 4, { align: 'center' });
+  doc.text('Ripser Instalaciones Comerciales', respX + (colWidth - 20) / 2, firmasY + 8, { align: 'center' });
+
+  // ===== Pie azul =====
+  const footerY = pageHeight - 15;
+  doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  doc.rect(margin, footerY, pageWidth - margin * 2, 10, 'F');
+
+  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  const notaText = 'Recibo conforme. Importes en pesos argentinos. Ripser Instalaciones Comerciales.';
+  doc.text(notaText, pageWidth / 2, footerY + 6, { align: 'center' });
+
+  // ===== Descarga =====
+  const apellido = (empleado.apellido ?? 'Empleado').replace(/\s+/g, '_');
+  const archivo = `Recibo_${apellido}_${sueldo.periodo || 'sin-periodo'}.pdf`;
+  doc.save(archivo);
 };
