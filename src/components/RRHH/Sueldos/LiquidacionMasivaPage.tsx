@@ -335,7 +335,13 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     setRows(prev => prev.map(r => ({ ...r, concepto })));
   };
   const handleSelectAll = (checked: boolean) => {
-    setRows(prev => prev.map(r => ({ ...r, incluir: checked })));
+    // Nunca marcamos sueldos ya liquidados: para corregirlos hay que usar
+    // el botón "Editar" individual desde la grilla principal (más seguro,
+    // un caso a la vez con todos los valores a la vista).
+    setRows(prev => prev.map(r => ({
+      ...r,
+      incluir: r.existingId ? false : checked,
+    })));
   };
 
   const handleLiquidar = async () => {
@@ -661,12 +667,22 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white' }} padding="checkbox">
-                    <Checkbox
-                      sx={{ color: 'white' }}
-                      indeterminate={rows.some(r => r.incluir) && rows.some(r => !r.incluir)}
-                      checked={rows.length > 0 && rows.every(r => r.incluir)}
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                    />
+                    <Tooltip title="Marcar/desmarcar todos los liquidables">
+                      <Checkbox
+                        sx={{ color: 'white' }}
+                        // Sólo cuentan los liquidables (no los ya existentes —
+                        // a esos no se les puede tocar desde acá).
+                        indeterminate={
+                          rows.some(r => !r.existingId && r.incluir) &&
+                          rows.some(r => !r.existingId && !r.incluir)
+                        }
+                        checked={
+                          rows.filter(r => !r.existingId).length > 0 &&
+                          rows.filter(r => !r.existingId).every(r => r.incluir)
+                        }
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                      />
+                    </Tooltip>
                   </TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Empleado</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Categoría</TableCell>
@@ -700,10 +716,18 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                   return (
                     <TableRow key={row.empleadoId} hover sx={{ opacity: row.incluir ? 1 : 0.5 }}>
                       <TableCell padding="checkbox">
-                        <Checkbox
-                          checked={row.incluir}
-                          onChange={(e) => updateRow(idx, { incluir: e.target.checked })}
-                        />
+                        {row.existingId ? (
+                          <Tooltip title="Ya liquidado. Para corregirlo, usá el botón ✏️ Editar en la grilla 'Sueldos'.">
+                            <span>
+                              <Checkbox checked={false} disabled />
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <Checkbox
+                            checked={row.incluir}
+                            onChange={(e) => updateRow(idx, { incluir: e.target.checked })}
+                          />
+                        )}
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight={600}>
