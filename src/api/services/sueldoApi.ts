@@ -68,6 +68,31 @@ export const sueldoApi = {
     const { data } = await axios.post<Sueldo[]>(`${BASE_URL}/liquidacion-masiva`, items);
     return data;
   },
+
+  // Cuenta automática de unidades del mes para alimentar la calculadora de
+  // bonos: producidas = equipos fabricados / vendidas = notas pedido aprobadas.
+  getUnidadesMes: async (periodo: string): Promise<{ producidas: number; vendidas: number }> => {
+    const { data } = await axios.get<{ producidas: number; vendidas: number }>(
+      `${BASE_URL}/unidades-mes`, { params: { periodo } },
+    );
+    return {
+      producidas: Number(data.producidas) || 0,
+      vendidas: Number(data.vendidas) || 0,
+    };
+  },
+
+  // Pagar un sueldo distribuyendo el monto entre N cajas en pesos.
+  pagarSueldo: async (
+    sueldoId: number,
+    payload: {
+      fecha: string;
+      items: Array<{ cajaPesosId: number; monto: number; metodoPago?: string; observaciones?: string }>;
+      observaciones?: string;
+    },
+  ): Promise<Sueldo> => {
+    const { data } = await axios.post<Sueldo>(`${BASE_URL}/${sueldoId}/pagar`, payload);
+    return data;
+  },
 };
 
 export default sueldoApi;

@@ -20,6 +20,7 @@ import {
   Payment as PaymentIcon,
   PictureAsPdf as PictureAsPdfIcon,
   PlaylistAddCheck as PlaylistAddCheckIcon,
+  Payments as PaymentsIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -34,6 +35,7 @@ import type {
 import { CONCEPTO_SUELDO_LABELS } from '../../types/remuneraciones.types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import SueldoFormDialog from './Sueldos/SueldoFormDialog';
+import PagoSueldoDialog from './Sueldos/PagoSueldoDialog';
 import { generarReciboHaberesPDF } from '../../services/pdfService';
 
 const SueldosPage: React.FC = () => {
@@ -59,6 +61,8 @@ const SueldosPage: React.FC = () => {
   const [openForm, setOpenForm] = useState(false);
   const [openDetail, setOpenDetail] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openPago, setOpenPago] = useState(false);
+  const [pagoTarget, setPagoTarget] = useState<Sueldo | null>(null);
   const [selected, setSelected] = useState<Sueldo | null>(null);
   const [editingSueldo, setEditingSueldo] = useState<Sueldo | null>(null);
 
@@ -378,6 +382,13 @@ const SueldosPage: React.FC = () => {
                             <ViewIcon />
                           </IconButton>
                         </Tooltip>
+                        {!sueldo.fechaPago && (
+                          <Tooltip title="Registrar pago (multi-cuenta)">
+                            <IconButton size="small" color="success" onClick={() => { setPagoTarget(sueldo); setOpenPago(true); }}>
+                              <PaymentsIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         <Tooltip title="Descargar Recibo PDF">
                           <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleExportarRecibo(sueldo)}>
                             <PictureAsPdfIcon />
@@ -514,6 +525,18 @@ const SueldosPage: React.FC = () => {
           </>
         )}
       </Dialog>
+
+      {/* Pago Dialog */}
+      <PagoSueldoDialog
+        open={openPago}
+        sueldo={pagoTarget}
+        onClose={() => { setOpenPago(false); setPagoTarget(null); }}
+        onSuccess={async () => {
+          setOpenPago(false);
+          setPagoTarget(null);
+          await loadData();
+        }}
+      />
 
       {/* Form Dialog */}
       <SueldoFormDialog

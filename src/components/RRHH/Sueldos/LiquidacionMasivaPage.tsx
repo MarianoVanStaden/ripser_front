@@ -76,10 +76,15 @@ const LiquidacionMasivaPage: React.FC = () => {
   const [fechaPagoDefault, setFechaPagoDefault] = useState<string>('');
   const [unidadesProducidas, setUnidadesProducidas] = useState<number>(0);
   const [unidadesVendidas, setUnidadesVendidas] = useState<number>(0);
+  // Auto-conteo del backend (referencia para mostrar al usuario y permitir override).
+  const [unidadesAutoProducidas, setUnidadesAutoProducidas] = useState<number | null>(null);
+  const [unidadesAutoVendidas, setUnidadesAutoVendidas] = useState<number | null>(null);
+  const [loadingUnidades, setLoadingUnidades] = useState<boolean>(false);
 
   // Filtros de filtrado de filas
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaSalarial | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [ocultarLiquidados, setOcultarLiquidados] = useState<boolean>(false);
 
   // ─── Data ──────────────────────────────────────────────────────────────
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
@@ -141,6 +146,31 @@ const LiquidacionMasivaPage: React.FC = () => {
 
   useEffect(() => { loadPeriodo(); }, [loadPeriodo]);
 
+  // Carga automática de unidades del mes (equipos fabricados + notas pedido
+  // aprobadas) cuando cambia el período. El usuario puede sobreescribir los
+  // valores con el input — eso queda registrado y NO recargamos al editar.
+  useEffect(() => {
+    if (!periodo) return;
+    let cancelado = false;
+    setLoadingUnidades(true);
+    sueldoApi.getUnidadesMes(periodo)
+      .then(r => {
+        if (cancelado) return;
+        setUnidadesAutoProducidas(r.producidas);
+        setUnidadesAutoVendidas(r.vendidas);
+        setUnidadesProducidas(r.producidas);
+        setUnidadesVendidas(r.vendidas);
+      })
+      .catch(() => {/* mantener 0 si falla */})
+      .finally(() => { if (!cancelado) setLoadingUnidades(false); });
+    return () => { cancelado = true; };
+  }, [periodo]);
+
+  const resetUnidadesAuto = () => {
+    if (unidadesAutoProducidas != null) setUnidadesProducidas(unidadesAutoProducidas);
+    if (unidadesAutoVendidas != null) setUnidadesVendidas(unidadesAutoVendidas);
+  };
+
   // Cuando tengo empleados + sueldosExistentes + adelantos → armar filas.
   // Sólo regenero la grilla cuando cambia el período o se recargan datos —
   // así no piso las ediciones del usuario en cada keystroke.
@@ -159,6 +189,9 @@ const LiquidacionMasivaPage: React.FC = () => {
         .reduce((sum, a) => sum + Number(a.monto || 0), 0);
 
       if (sueldoExistente) {
+        // Ya tiene sueldo del mes — lo mostramos con sus valores actuales
+        // pero DESMARCADO. Si el usuario quiere re-liquidar (corrección)
+        // tilda manualmente; así evitamos sobreescribir sin querer.
         return {
           empleadoId: emp.id,
           empleadoNombre: emp.nombre,
@@ -180,9 +213,12 @@ const LiquidacionMasivaPage: React.FC = () => {
           fechaPago: sueldoExistente.fechaPago ?? fechaPagoDefault,
           observaciones: sueldoExistente.observaciones ?? '',
           existingId: sueldoExistente.id,
-          incluir: true,
+          incluir: false,
         };
       }
+      // Empleado nuevo en el período: por default lo incluimos, salvo que no
+      // tenga categoría salarial asignada (ahí no se puede liquidar igual).
+      const tieneCategoria = emp.categoriaSalarialId != null;
       return {
         empleadoId: emp.id,
         empleadoNombre: emp.nombre,
@@ -201,7 +237,7 @@ const LiquidacionMasivaPage: React.FC = () => {
         adelantos: adelantoTotal,
         fechaPago: fechaPagoDefault,
         observaciones: '',
-        incluir: true,
+        incluir: tieneCategoria,
       };
     });
     setRows(newRows);
@@ -252,6 +288,7 @@ const LiquidacionMasivaPage: React.FC = () => {
     return rows
       .map((row, idx) => ({ row, idx }))   // mantengo el índice real para updates
       .filter(({ row }) => {
+        if (ocultarLiquidados && row.existingId) return false;
         if (categoriaFiltro && row.categoriaSalarialId !== categoriaFiltro.id) return false;
         if (searchTerm) {
           const full = `${row.empleadoNombre} ${row.empleadoApellido}`.toLowerCase();
@@ -259,7 +296,7 @@ const LiquidacionMasivaPage: React.FC = () => {
         }
         return true;
       });
-  }, [rows, categoriaFiltro, searchTerm]);
+  }, [rows, categoriaFiltro, searchTerm, ocultarLiquidados]);
 
   // KPIs de las filas incluidas
   const totales = useMemo(() => {
@@ -453,7 +490,13 @@ const LiquidacionMasivaPage: React.FC = () => {
                 fullWidth size="small" type="number" label="Unidades producidas"
                 value={unidadesProducidas}
                 onChange={(e) => setUnidadesProducidas(Number(e.target.value) || 0)}
-                helperText="Dispara bono producción"
+                helperText={
+                  loadingUnidades
+                    ? 'Cargando...'
+                    : unidadesAutoProducidas != null
+                      ? `Auto: ${unidadesAutoProducidas} equipos fabricados`
+                      : 'Dispara bono producción'
+                }
               />
             </Grid>
             <Grid item xs={6} sm={4} md={2}>
@@ -461,18 +504,41 @@ const LiquidacionMasivaPage: React.FC = () => {
                 fullWidth size="small" type="number" label="Unidades vendidas"
                 value={unidadesVendidas}
                 onChange={(e) => setUnidadesVendidas(Number(e.target.value) || 0)}
-                helperText="Dispara bono ventas"
+                helperText={
+                  loadingUnidades
+                    ? 'Cargando...'
+                    : unidadesAutoVendidas != null
+                      ? `Auto: ${unidadesAutoVendidas} unid. en notas aprobadas`
+                      : 'Dispara bono ventas'
+                }
               />
             </Grid>
             <Grid item xs={12} sm={4} md={2}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={() => { loadEverything(); loadPeriodo(); }}
-              >
-                Recargar
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={() => { loadEverything(); loadPeriodo(); }}
+                  size="small"
+                >
+                  Recargar
+                </Button>
+                {(unidadesAutoProducidas != null || unidadesAutoVendidas != null) && (
+                  <Tooltip title="Restaurar valores auto (equipos fabricados / notas aprobadas)">
+                    <span>
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={resetUnidadesAuto}
+                        disabled={loadingUnidades}
+                      >
+                        <AutoFixHighIcon fontSize="small" />
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
+              </Stack>
             </Grid>
           </Grid>
         </CardContent>
@@ -543,7 +609,7 @@ const LiquidacionMasivaPage: React.FC = () => {
       {/* Filtros de la grilla */}
       <Card sx={{ mb: 2, boxShadow: 1 }}>
         <CardContent sx={{ py: 1.5 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
             <TextField
               size="small" label="Buscar empleado"
               value={searchTerm}
@@ -559,8 +625,19 @@ const LiquidacionMasivaPage: React.FC = () => {
               renderInput={(p) => <TextField {...p} label="Filtrar por categoría" />}
               sx={{ minWidth: 240 }}
             />
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Checkbox
+                size="small"
+                checked={ocultarLiquidados}
+                onChange={(e) => setOcultarLiquidados(e.target.checked)}
+              />
+              <Typography variant="body2">Ocultar ya liquidados</Typography>
+            </Stack>
             <Typography variant="caption" color="textSecondary" alignSelf="center">
               Mostrando {filteredRows.length} de {rows.length} empleados activos
+              {rows.filter(r => r.existingId).length > 0 && (
+                <> · <strong>{rows.filter(r => r.existingId).length}</strong> ya tienen sueldo del mes</>
+              )}
             </Typography>
           </Stack>
         </CardContent>

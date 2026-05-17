@@ -673,7 +673,22 @@ const EmpleadosPage: React.FC = () => {
                       </Box>
                       <Box display="flex" alignItems="center" gap={1}>
                         <AttachMoneyIcon color="action" />
-                        <Typography><strong>Salario:</strong> ${selectedEmpleado.salario?.toLocaleString('es-AR') || '0'}</Typography>
+                        {(() => {
+                          // Salario derivado de la categoría (no del campo legacy).
+                          // Si todavía no tiene categoría asignada, fallback al campo viejo
+                          // por retro-compatibilidad de empleados antes del cutover.
+                          const cat = categoriasSalariales.find(c => c.id === selectedEmpleado.categoriaSalarialId);
+                          const sueldoCalc = cat ? Number(cat.sueldoFijo) : Number(selectedEmpleado.salario || 0);
+                          const fuente = cat ? `según categoría ${cat.nombre}` : 'sin categoría asignada';
+                          return (
+                            <Typography>
+                              <strong>Salario:</strong> ${sueldoCalc.toLocaleString('es-AR')}
+                              <Typography component="span" variant="caption" color="textSecondary" ml={1}>
+                                ({fuente})
+                              </Typography>
+                            </Typography>
+                          );
+                        })()}
                       </Box>
                       <Typography><strong>Fecha Nacimiento:</strong> {selectedEmpleado.fechaNacimiento || '-'}</Typography>
                       <Typography><strong>Fecha Ingreso:</strong> {selectedEmpleado.fechaIngreso || '-'}</Typography>
@@ -936,16 +951,31 @@ const EmpleadosPage: React.FC = () => {
                   </TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Salario"
-                    type="number"
-                    value={formData.salario}
-                    onChange={(e) => setFormData({ ...formData, salario: Number(e.target.value) })}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                    }}
-                  />
+                  {(() => {
+                    // El sueldo ya no se edita acá: se deriva de la categoría salarial
+                    // asignada. Si todavía no hay categoría, mostramos un fallback al
+                    // campo legacy 'salario' (que sigue persistiéndose para no romper
+                    // empleados anteriores al cutover).
+                    const cat = categoriasSalariales.find(c => c.id === formData.categoriaSalarialId);
+                    const valor = cat ? Number(cat.sueldoFijo) : Number(formData.salario || 0);
+                    return (
+                      <TextField
+                        fullWidth
+                        label="Salario (derivado)"
+                        type="number"
+                        value={valor}
+                        disabled
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        }}
+                        helperText={
+                          cat
+                            ? `Tomado de la categoría "${cat.nombre}". Para cambiarlo, editá la categoría en RRHH → Config. Sueldos.`
+                            : 'Asigná una categoría salarial arriba para definir el salario.'
+                        }
+                      />
+                    );
+                  })()}
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
