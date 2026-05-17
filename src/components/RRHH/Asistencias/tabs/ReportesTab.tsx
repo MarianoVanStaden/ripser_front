@@ -33,6 +33,7 @@ import {
 import {
   AccessTime as TimeIcon,
   BarChart as ChartIcon,
+  BeachAccess as BeachAccessIcon,
   CalendarToday as CalendarIcon,
   Cancel as CancelIcon,
   CheckCircle as CheckCircleIcon,
@@ -61,8 +62,8 @@ import {
   YAxis,
 } from 'recharts';
 import dayjs from 'dayjs';
-import type { Empleado, RegistroAsistencia } from '../../../../types';
-import { getEmpleadoNombre } from '../utils';
+import type { Empleado, Licencia, RegistroAsistencia } from '../../../../types';
+import { buildLicenciaRows, getEmpleadoNombre } from '../utils';
 import {
   exportAsistenciasToExcel,
   exportAsistenciasToPDF,
@@ -73,6 +74,9 @@ interface Props {
   asistencias: RegistroAsistencia[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   excepciones: any[];
+  /** Licencias del período visible (cualquier estado). Las APROBADAS aparecen
+   * como filas sintéticas "En Licencia" en el Detalle y suman a sus KPIs. */
+  licencias?: Licencia[];
   empleados: Empleado[];
   reportEmpleadoFilter: Empleado | null;
   setReportEmpleadoFilter: (value: Empleado | null) => void;
@@ -101,7 +105,19 @@ const TIPO_REGISTRO_OPTIONS: { value: string; label: string }[] = [
   { value: 'SALIDA_ANTICIPADA', label: 'Salida Anticipada' },
   { value: 'PERMISO', label: 'Permiso' },
   { value: 'MODIFICACION_HORARIO', label: 'Modificación de Horario' },
+  { value: 'EN_LICENCIA', label: 'En Licencia' },
 ];
+
+/** Color por tipo de licencia para el chip "En Licencia". */
+const colorLicencia = (tipo?: string): 'primary' | 'error' | 'warning' | 'info' => {
+  switch (tipo) {
+    case 'VACACIONES': return 'primary';
+    case 'ENFERMEDAD': return 'error';
+    case 'MATERNIDAD': return 'warning';
+    case 'PERSONAL':   return 'info';
+    default:           return 'info';
+  }
+};
 
 const DIAS_SEMANA_LABEL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -116,6 +132,7 @@ interface DiaSemanaStats {
 const ReportesTab: React.FC<Props> = ({
   asistencias,
   excepciones,
+  licencias = [],
   empleados,
   reportEmpleadoFilter,
   setReportEmpleadoFilter,
@@ -159,6 +176,9 @@ const ReportesTab: React.FC<Props> = ({
 
     let matchesTipo = true;
     if (reportTipoFilter !== 'TODOS') {
+      // EN_LICENCIA no aplica a asistencias; los días de licencia se
+      // representan como filas sintéticas (ver licenciaRowsFiltradas).
+      if (reportTipoFilter === 'EN_LICENCIA') return false;
       const excepcion = findExcepcion(a);
       if (reportTipoFilter === 'PRESENTE') matchesTipo = !excepcion;
       else matchesTipo = excepcion?.tipo === reportTipoFilter;
@@ -166,6 +186,23 @@ const ReportesTab: React.FC<Props> = ({
 
     return matchesEmpleado && matchesFecha && matchesTipo;
   });
+
+  // Filas sintéticas de licencia (dedupeadas contra asistencias del período
+  // visible y filtradas por empleado seleccionado). Sólo APROBADAS.
+  const licenciasFiltradasPorEmpleado = (Array.isArray(licencias) ? licencias : []).filter((l) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const empId: number | undefined = (l as any).empleadoId ?? l.empleado?.id;
+    return !reportEmpleadoFilter || empId === reportEmpleadoFilter.id;
+  });
+  const licenciaRowsBase = buildLicenciaRows(
+    licenciasFiltradasPorEmpleado,
+    asistencias,
+    empleados,
+    reportFechaDesde,
+    reportFechaHasta
+  );
+  const licenciaRowsFiltradas =
+    reportTipoFilter === 'TODOS' || reportTipoFilter === 'EN_LICENCIA' ? licenciaRowsBase : [];
 
   const tardanzasInPeriodo = (desde: string, hasta: string) =>
     excepcionesArr.filter(
@@ -209,6 +246,8 @@ const ReportesTab: React.FC<Props> = ({
         (!reportEmpleadoFilter || ex.empleadoId === reportEmpleadoFilter.id)
     ).length;
 
+  const diasEnLicencia = licenciaRowsBase.length;
+
   const estadosDistribucion = [
     {
       name: 'Presente',
@@ -218,6 +257,7 @@ const ReportesTab: React.FC<Props> = ({
     { name: 'Tardanza', value: reportStats.tardanzas, color: '#ff9800' },
     { name: 'Inasistencia', value: reportStats.inasistencias, color: '#f44336' },
     { name: 'Horas Extras', value: horasExtrasEnPeriodo, color: '#2196f3' },
+    { name: 'En Licencia', value: diasEnLicencia, color: '#9c27b0' },
   ].filter((item) => item.value > 0);
 
   const horasPorEmpleado: Array<{ nombre: string; horas: number; extras: number }> = reportEmpleadoFilter
@@ -723,6 +763,24 @@ const ReportesTab: React.FC<Props> = ({
           </Card>
         </Grid>
 
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
+            <CardContent>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <BeachAccessIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+                <Box>
+                  <Typography variant="h4" fontWeight="bold" color="primary.main">
+                    {diasEnLicencia}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Días en Licencia
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
         <Grid item xs={12} sm={6} md={4}>
           <Card sx={{ bgcolor: 'info.50', borderLeft: '4px solid', borderColor: 'info.main' }}>
             <CardContent>
@@ -991,7 +1049,46 @@ const ReportesTab: React.FC<Props> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {reportFilteredAsistencias.length === 0 ? (
+                {/* Filas sintéticas para días de licencia APROBADA (sin
+                    registro real ese día). Aparecen primero para que el
+                    bloque de cada empleado quede agrupado por fecha. */}
+                {licenciaRowsFiltradas.map((row) => (
+                  <TableRow key={row.id} hover sx={{ bgcolor: 'primary.50' }}>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="500">
+                        {dayjs(row.fecha).format('DD/MM/YYYY')}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        {dayjs(row.fecha).format('dddd')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="600">
+                        {row.empleado ? getEmpleadoNombre(row.empleado) : 'N/A'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        icon={<BeachAccessIcon />}
+                        label={`En Licencia (${row.licencia.tipo})`}
+                        size="small"
+                        color={colorLicencia(row.licencia.tipo)}
+                      />
+                    </TableCell>
+                    <TableCell align="center">-</TableCell>
+                    <TableCell align="center">-</TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2" color="textSecondary">-</Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2" color="textSecondary">-</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" noWrap>{row.licencia.motivo || '-'}</Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {reportFilteredAsistencias.length === 0 && licenciaRowsFiltradas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography variant="body2" color="textSecondary" py={3}>

@@ -16,6 +16,14 @@ const PAGE_BTM = 22;
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
+// Mayúscula en la primera letra de cada ítem del manual. Espejo del helper
+// usado en PuestoDetailPage para que la pantalla y el PDF se vean igual.
+function capFirst(s?: string | null): string {
+  if (!s) return '';
+  const t = s.trimStart();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 function safe(doc: jsPDF, y: number, need: number): number {
   const h = doc.internal.pageSize.getHeight();
   if (y + need > h - PAGE_BTM) { doc.addPage(); return MARGIN + 5; }
@@ -130,7 +138,7 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
   }
 
   // ── 4. OBJETIVOS ESPECÍFICOS ───────────────────────────────────────
-  const objetivos = (dto.objetivos ?? []).map(o => o.descripcion).filter(Boolean);
+  const objetivos = (dto.objetivos ?? []).map(o => capFirst(o.descripcion)).filter(Boolean);
   if (objetivos.length) {
     y = sectionHeader(doc, y, 'Objetivos Específicos');
     y = bulletList(doc, y, objetivos);
@@ -146,8 +154,8 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
   }
 
   // ── 6. RESPONSABILIDADES Y AUTORIDADES ────────────────────────────
-  const resps = (dto.responsabilidades ?? []).filter(r => r.tipo === 'RESPONSABILIDAD').map(r => r.descripcion);
-  const auths = (dto.responsabilidades ?? []).filter(r => r.tipo === 'AUTORIDAD').map(r => r.descripcion);
+  const resps = (dto.responsabilidades ?? []).filter(r => r.tipo === 'RESPONSABILIDAD').map(r => capFirst(r.descripcion));
+  const auths = (dto.responsabilidades ?? []).filter(r => r.tipo === 'AUTORIDAD').map(r => capFirst(r.descripcion));
   if (resps.length || auths.length) {
     y = sectionHeader(doc, y, 'Responsabilidades y Autoridades');
     if (resps.length) {
@@ -200,8 +208,8 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
   }
 
   // ── 8. HABILIDADES Y CONOCIMIENTOS ────────────────────────────────
-  const habs = (dto.habilidades ?? []).map(h => h.descripcion).filter(Boolean);
-  const cons = (dto.conocimientos ?? []).map(c => c.descripcion).filter(Boolean);
+  const habs = (dto.habilidades ?? []).map(h => capFirst(h.descripcion)).filter(Boolean);
+  const cons = (dto.conocimientos ?? []).map(c => capFirst(c.descripcion)).filter(Boolean);
   if (habs.length || cons.length) {
     y = sectionHeader(doc, y, 'Habilidades y Conocimientos');
     const maxR = Math.max(habs.length, cons.length);
@@ -227,8 +235,8 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
   }
 
   // ── 9. INTERACCIÓN SOCIAL ──────────────────────────────────────────
-  const internos = (dto.contactos ?? []).filter(c => c.tipo === 'INTERNO').map(c => c.descripcion);
-  const externos = (dto.contactos ?? []).filter(c => c.tipo === 'EXTERNO').map(c => c.descripcion);
+  const internos = (dto.contactos ?? []).filter(c => c.tipo === 'INTERNO').map(c => capFirst(c.descripcion));
+  const externos = (dto.contactos ?? []).filter(c => c.tipo === 'EXTERNO').map(c => capFirst(c.descripcion));
   if (internos.length || externos.length) {
     y = sectionHeader(doc, y, 'Interacción Social');
     const contRows: [string, string][] = [];

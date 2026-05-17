@@ -34,7 +34,7 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import type { Empleado, Licencia, RegistroAsistencia } from '../../../../types';
-import { getEmpleadoNombre } from '../utils';
+import { buildLicenciaRows, getEmpleadoNombre } from '../utils';
 
 interface Props {
   asistencias: RegistroAsistencia[];
@@ -78,33 +78,10 @@ const ResumenDiarioTab: React.FC<Props> = ({
 }) => {
   const excepcionesArr = Array.isArray(excepciones) ? excepciones : [];
 
-  // Construye filas sintéticas (1 por día) para licencias APROBADAS que
-  // intersectan [fechaDesde, fechaHasta]. El backend ya no genera registro
-  // AUSENTE para esos días — esto rellena el hueco en la tabla con un chip
-  // "En Licencia".
-  const empleadosById = new Map<number, Empleado>();
-  empleados.forEach((e) => empleadosById.set(e.id, e));
-  const desde = dayjs(fechaDesde);
-  const hasta = dayjs(fechaHasta);
-  const licenciaRows = (Array.isArray(licencias) ? licencias : [])
-    .filter((l) => l.estado === 'APROBADA')
-    .flatMap((l) => {
-      const li = dayjs(l.fechaInicio).isAfter(desde) ? dayjs(l.fechaInicio) : desde;
-      const lf = dayjs(l.fechaFin).isBefore(hasta) ? dayjs(l.fechaFin) : hasta;
-      const out: { id: string; licencia: Licencia; fecha: string; empleado?: Empleado }[] = [];
-      let cur = li;
-      while (!cur.isAfter(lf)) {
-        const empId = (l as any).empleadoId ?? l.empleado?.id;
-        out.push({
-          id: `lic-${l.id}-${cur.format('YYYY-MM-DD')}`,
-          licencia: l,
-          fecha: cur.format('YYYY-MM-DD'),
-          empleado: empId ? empleadosById.get(empId) ?? l.empleado : l.empleado,
-        });
-        cur = cur.add(1, 'day');
-      }
-      return out;
-    });
+  // Filas sintéticas para licencias APROBADAS, deduplicadas: si el empleado
+  // igualmente fichó ese día (registro real existe), no mostramos el chip
+  // "En Licencia" para evitar la doble fila empleado+día.
+  const licenciaRows = buildLicenciaRows(licencias, asistencias, empleados, fechaDesde, fechaHasta);
 
   const findExcepcion = (a: RegistroAsistencia) =>
     excepcionesArr.find(

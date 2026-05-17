@@ -56,6 +56,15 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import { generarPuestoPDF } from '../../services/puestoPdfService';
 import dayjs from 'dayjs';
 
+// El usuario suele cargar los ítems en minúscula; los normalizamos al
+// renderizar para que el manual se vea prolijo sin forzar el formato en
+// la base ni en el form de edición.
+const capFirst = (s?: string | null): string => {
+  if (!s) return '';
+  const t = s.trimStart();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
 interface TabPanelProps {
   children?: React.ReactNode;
   value: number;
@@ -399,7 +408,7 @@ const PuestoDetailPage: React.FC = () => {
                   <ol style={{ marginTop: 0 }}>
                     {puesto.objetivos.map((o) => (
                       <li key={o.id ?? Math.random()}>
-                        <Typography variant="body2">{o.descripcion}</Typography>
+                        <Typography variant="body2">{capFirst(o.descripcion)}</Typography>
                       </li>
                     ))}
                   </ol>
@@ -425,7 +434,7 @@ const PuestoDetailPage: React.FC = () => {
                         <ul>
                           {items.map((r) => (
                             <li key={r.id ?? Math.random()}>
-                              <Typography variant="body2">{r.descripcion}</Typography>
+                              <Typography variant="body2">{capFirst(r.descripcion)}</Typography>
                             </li>
                           ))}
                         </ul>
@@ -491,7 +500,7 @@ const PuestoDetailPage: React.FC = () => {
                         <ul>
                           {puesto.habilidades.map((h) => (
                             <li key={h.id ?? Math.random()}>
-                              <Typography variant="body2">{h.descripcion}</Typography>
+                              <Typography variant="body2">{capFirst(h.descripcion)}</Typography>
                             </li>
                           ))}
                         </ul>
@@ -503,7 +512,7 @@ const PuestoDetailPage: React.FC = () => {
                         <ul>
                           {puesto.conocimientos.map((c) => (
                             <li key={c.id ?? Math.random()}>
-                              <Typography variant="body2">{c.descripcion}</Typography>
+                              <Typography variant="body2">{capFirst(c.descripcion)}</Typography>
                             </li>
                           ))}
                         </ul>
@@ -532,7 +541,7 @@ const PuestoDetailPage: React.FC = () => {
                         <ul>
                           {items.map((c) => (
                             <li key={c.id ?? Math.random()}>
-                              <Typography variant="body2">{c.descripcion}</Typography>
+                              <Typography variant="body2">{capFirst(c.descripcion)}</Typography>
                             </li>
                           ))}
                         </ul>

@@ -111,6 +111,31 @@ const AsistenciasPage: React.FC = () => {
     }
   }, [fechaDesde, fechaHasta]);
 
+  // Licencias necesitan cubrir cualquier rango visible (Resumen, Reportes,
+  // Comparación). Recargamos cuando cambia alguno de esos rangos usando la
+  // unión [min(desde), max(hasta)] así un único fetch alcanza para todos los tabs.
+  useEffect(() => {
+    const allDates = [
+      fechaDesde, fechaHasta,
+      reportFechaDesde, reportFechaHasta,
+      ...(showComparison ? [comparisonFechaDesde, comparisonFechaHasta] : []),
+    ].filter(Boolean);
+    if (allDates.length === 0) return;
+    const minDesde = allDates.reduce((min, d) => (d < min ? d : min), allDates[0]);
+    const maxHasta = allDates.reduce((max, d) => (d > max ? d : max), allDates[0]);
+    licenciaApi
+      .getByPeriodo(minDesde, maxHasta)
+      .then((data) => setLicencias(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        console.error('Error loading licencias (unión rangos):', err);
+        setLicencias([]);
+      });
+  }, [
+    fechaDesde, fechaHasta,
+    reportFechaDesde, reportFechaHasta,
+    showComparison, comparisonFechaDesde, comparisonFechaHasta,
+  ]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -439,6 +464,7 @@ const AsistenciasPage: React.FC = () => {
         <ReportesTab
           asistencias={asistencias}
           excepciones={excepciones}
+          licencias={licencias}
           empleados={empleados}
           reportEmpleadoFilter={reportEmpleadoFilter}
           setReportEmpleadoFilter={setReportEmpleadoFilter}
