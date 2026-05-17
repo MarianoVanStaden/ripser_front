@@ -214,6 +214,7 @@ const navigation: NavigationSection[] = [
       { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
       { text: 'Puestos', icon: <AssignmentIcon />, path: '/rrhh/puestos' },
       { text: 'Licencias', icon: <AssignmentIcon />, path: '/rrhh/licencias' },
+      { text: 'Disciplina', icon: <AssignmentIcon />, path: '/rrhh/disciplina' },
       { text: 'Catálogos RRHH', icon: <SettingsIcon />, path: '/admin/catalogos-rrhh', modulo: 'RRHH' },
     ],
   },
@@ -342,6 +343,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/rrhh/capacitaciones',
     '/rrhh/puestos',
     '/rrhh/licencias',
+    '/rrhh/disciplina',
     '/admin/catalogos-rrhh',
   ];
 

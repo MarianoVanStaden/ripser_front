@@ -57,6 +57,7 @@ import {
 import { employeeApi } from '../../api/services/employeeApi';
 import { puestoApi } from '../../api/services/puestoApi';
 import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
+import EmpleadoDisciplinaTab from './Disciplina/EmpleadoDisciplinaTab';
 import usuarioAdminApi, { type UsuarioDTO } from '../../api/services/usuarioAdminApi';
 import { sucursalService } from '../../services/sucursalService';
 import { useTenant } from '../../context/TenantContext';
@@ -619,6 +620,7 @@ const EmpleadosPage: React.FC = () => {
               <Tab label="Información" />
               <Tab label="Acceso al sistema" />
               <Tab label="Documentos" />
+              <Tab label="Disciplina" />
             </Tabs>
             <DialogContent sx={{ pt: 3, minHeight: 400 }}>
               {detailTabValue === 0 && (
@@ -722,6 +724,10 @@ const EmpleadosPage: React.FC = () => {
                     </Box>
                   )}
                 </Stack>
+              )}
+
+              {detailTabValue === 3 && (
+                <EmpleadoDisciplinaTab empleado={selectedEmpleado} />
               )}
 
               {detailTabValue === 2 && (

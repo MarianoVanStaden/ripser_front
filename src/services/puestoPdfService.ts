@@ -34,9 +34,21 @@ function lastY(doc: jsPDF): number {
   return (doc as any).lastAutoTable?.finalY ?? MARGIN;
 }
 
-/** Fila de sección azul (encabezado de bloque). */
-function sectionHeader(doc: jsPDF, y: number, title: string): number {
-  y = safe(doc, y, 10);
+/**
+ * Fila de sección azul (encabezado de bloque). `nextContentMinHeight` es
+ * un hint del alto (mm) del contenido inmediatamente siguiente: si la sección
+ * + contenido no entran en lo que queda de página, saltamos de página ANTES
+ * de imprimir el header — así evitamos el patrón "header solito al final de
+ * la página y los ítems empezando arriba de la siguiente".
+ *
+ * Por defecto reserva ~16mm (header + ~3 filas) para cubrir el caso común.
+ */
+function sectionHeader(doc: jsPDF, y: number, title: string, nextContentMinHeight = 16): number {
+  const pageH = doc.internal.pageSize.getHeight();
+  // Cap a casi una página, sino una sección gigante reservaría todo y forzaría
+  // un addPage perpetuo. Si el bloque excede la página, autoTable paginará.
+  const usableCap = pageH - PAGE_BTM - MARGIN - 10;
+  y = safe(doc, y, 10 + Math.min(nextContentMinHeight, usableCap));
   autoTable(doc, {
     startY: y,
     body: [[{ content: title, styles: { halign: 'left', fontStyle: 'bold', fontSize: 9,
@@ -140,7 +152,7 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
   // ── 4. OBJETIVOS ESPECÍFICOS ───────────────────────────────────────
   const objetivos = (dto.objetivos ?? []).map(o => capFirst(o.descripcion)).filter(Boolean);
   if (objetivos.length) {
-    y = sectionHeader(doc, y, 'Objetivos Específicos');
+    y = sectionHeader(doc, y, 'Objetivos Específicos', objetivos.length * 6 + 4);
     y = bulletList(doc, y, objetivos);
   }
 
@@ -149,7 +161,7 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
     .filter(t => t.activo !== false)
     .sort((a, b) => a.orden - b.orden);
   if (tareas.length) {
-    y = sectionHeader(doc, y, 'Tareas y Funciones');
+    y = sectionHeader(doc, y, 'Tareas y Funciones', tareas.length * 6 + 4);
     y = bulletList(doc, y, tareas.map(t => t.nombre));
   }
 
@@ -157,7 +169,9 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
   const resps = (dto.responsabilidades ?? []).filter(r => r.tipo === 'RESPONSABILIDAD').map(r => capFirst(r.descripcion));
   const auths = (dto.responsabilidades ?? []).filter(r => r.tipo === 'AUTORIDAD').map(r => capFirst(r.descripcion));
   if (resps.length || auths.length) {
-    y = sectionHeader(doc, y, 'Responsabilidades y Autoridades');
+    const respNeed = (resps.length ? 8 + resps.length * 6 + 4 : 0)
+                   + (auths.length ? 8 + auths.length * 6 + 4 : 0);
+    y = sectionHeader(doc, y, 'Responsabilidades y Autoridades', respNeed);
     if (resps.length) {
       y = safe(doc, y, 8);
       autoTable(doc, {
@@ -182,7 +196,7 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
 
   // ── 7. COMPETENCIAS ────────────────────────────────────────────────
   if (dto.competencias?.length) {
-    y = sectionHeader(doc, y, 'Competencias Requeridas');
+    y = sectionHeader(doc, y, 'Competencias Requeridas', dto.competencias.length * 7 + 10);
     y = safe(doc, y, dto.competencias.length * 7 + 10);
     autoTable(doc, {
       startY: y,
@@ -211,8 +225,8 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
   const habs = (dto.habilidades ?? []).map(h => capFirst(h.descripcion)).filter(Boolean);
   const cons = (dto.conocimientos ?? []).map(c => capFirst(c.descripcion)).filter(Boolean);
   if (habs.length || cons.length) {
-    y = sectionHeader(doc, y, 'Habilidades y Conocimientos');
     const maxR = Math.max(habs.length, cons.length);
+    y = sectionHeader(doc, y, 'Habilidades y Conocimientos', maxR * 7 + 10);
     const rows = Array.from({ length: maxR }, (_, i) => [
       { content: habs[i] ? `• ${habs[i]}` : '',
         styles: { fontSize: 8, fillColor: i%2===0?WHITE:ALT_ROW, cellPadding: { top: 2, bottom: 2, left: 5, right: 3 } } },
@@ -247,7 +261,7 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
 
   // ── 10. RIESGOS ────────────────────────────────────────────────────
   if (dto.riesgos?.length) {
-    y = sectionHeader(doc, y, 'Riesgos y Condiciones de Trabajo');
+    y = sectionHeader(doc, y, 'Riesgos y Condiciones de Trabajo', dto.riesgos.length * 7 + 10);
     y = safe(doc, y, dto.riesgos.length * 7 + 10);
     autoTable(doc, {
       startY: y,
@@ -272,7 +286,7 @@ export function generarPuestoPDF(dto: PuestoResponseDTO): void {
 
   // ── 11. EPP ────────────────────────────────────────────────────────
   if (dto.epps?.length) {
-    y = sectionHeader(doc, y, 'Elementos de Protección Personal (EPP)');
+    y = sectionHeader(doc, y, 'Elementos de Protección Personal (EPP)', dto.epps.length * 7 + 10);
     y = safe(doc, y, dto.epps.length * 7 + 10);
     autoTable(doc, {
       startY: y,
