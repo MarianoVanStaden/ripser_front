@@ -56,13 +56,14 @@ import {
 } from '@mui/icons-material';
 import { employeeApi } from '../../api/services/employeeApi';
 import { puestoApi } from '../../api/services/puestoApi';
+import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
 import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
 import EmpleadoDisciplinaTab from './Disciplina/EmpleadoDisciplinaTab';
 import usuarioAdminApi, { type UsuarioDTO } from '../../api/services/usuarioAdminApi';
 import { sucursalService } from '../../services/sucursalService';
 import { useTenant } from '../../context/TenantContext';
 import DocumentManager from '../shared/DocumentManager';
-import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal } from '../../types';
+import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal, CategoriaSalarial } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 
@@ -89,6 +90,7 @@ const EmpleadosPage: React.FC = () => {
 
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
+  const [categoriasSalariales, setCategoriasSalariales] = useState<CategoriaSalarial[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +131,7 @@ const EmpleadosPage: React.FC = () => {
     fechaNacimiento: '',
     fechaIngreso: '',
     puestoId: 0,
+    categoriaSalarialId: null,
     salario: 0,
     estado: 'ACTIVO',
     sucursalId: undefined,
@@ -145,12 +148,14 @@ const EmpleadosPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [empleadosData, puestosData] = await Promise.all([
+      const [empleadosData, puestosData, categoriasData] = await Promise.all([
         employeeApi.getAllList(),
         puestoApi.getAll(),
+        categoriaSalarialApi.getAll().catch(() => [] as CategoriaSalarial[]),
       ]);
       setEmpleados(empleadosData);
       setPuestos(puestosData.content || []);
+      setCategoriasSalariales(Array.isArray(categoriasData) ? categoriasData : []);
 
       if (empresaId) {
         try {
@@ -187,6 +192,7 @@ const EmpleadosPage: React.FC = () => {
         fechaNacimiento: empleado.fechaNacimiento || '',
         fechaIngreso: empleado.fechaIngreso || '',
         puestoId: empleado.puesto?.id || 0,
+        categoriaSalarialId: empleado.categoriaSalarialId ?? null,
         salario: empleado.salario || 0,
         estado: empleado.estado || 'ACTIVO',
         sucursalId: empleado.sucursalId,
@@ -206,6 +212,7 @@ const EmpleadosPage: React.FC = () => {
         fechaNacimiento: '',
         fechaIngreso: new Date().toISOString().split('T')[0],
         puestoId: 0,
+        categoriaSalarialId: null,
         salario: 0,
         estado: 'ACTIVO',
         sucursalId: undefined,
@@ -661,6 +668,10 @@ const EmpleadosPage: React.FC = () => {
                         <Typography><strong>Puesto:</strong> {selectedEmpleado.puesto?.nombre || selectedEmpleado.puestoNombre || '-'}</Typography>
                       </Box>
                       <Box display="flex" alignItems="center" gap={1}>
+                        <BadgeIcon color="action" />
+                        <Typography><strong>Categoría salarial:</strong> {selectedEmpleado.categoriaSalarialNombre || '— sin asignar —'}</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
                         <AttachMoneyIcon color="action" />
                         <Typography><strong>Salario:</strong> ${selectedEmpleado.salario?.toLocaleString('es-AR') || '0'}</Typography>
                       </Box>
@@ -895,6 +906,33 @@ const EmpleadosPage: React.FC = () => {
                         {puesto.nombre}
                       </MenuItem>
                     ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Categoría Salarial"
+                    value={formData.categoriaSalarialId ?? ''}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      categoriaSalarialId: e.target.value === '' ? null : Number(e.target.value),
+                    })}
+                    helperText={
+                      categoriasSalariales.length === 0
+                        ? 'Sin categorías — configurarlas en RRHH → Config. Sueldos'
+                        : 'Default de la calculadora de Sueldos (editable al liquidar)'
+                    }
+                  >
+                    <MenuItem value="">— Sin asignar —</MenuItem>
+                    {categoriasSalariales
+                      .filter(c => c.activo !== false)
+                      .map(c => (
+                        <MenuItem key={c.id} value={c.id}>
+                          {c.nombre} (${Number(c.sueldoFijo).toLocaleString('es-AR')})
+                        </MenuItem>
+                      ))
+                    }
                   </TextField>
                 </Grid>
                 <Grid item xs={12} sm={6}>

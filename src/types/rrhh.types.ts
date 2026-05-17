@@ -411,6 +411,9 @@ export interface Empleado {
   estado: EstadoEmpleado;
   puesto?: Puesto;
   puestoNombre?: string;
+  /** Categoría salarial (módulo Remuneraciones) — default que usa la calculadora de Sueldos */
+  categoriaSalarialId?: number | null;
+  categoriaSalarialNombre?: string | null;
   salario: number;
   usuarioId: number | null;
   asistencias?: RegistroAsistencia[];
@@ -587,6 +590,7 @@ export interface EmpleadoCreateDTO {
   fechaNacimiento?: string;
   fechaIngreso: string;
   puestoId?: number;
+  categoriaSalarialId?: number | null;
   salario: number;
   estado?: EstadoEmpleado;
   sucursalId?: number;
@@ -603,6 +607,7 @@ export interface EmpleadoUpdateDTO {
   fechaNacimiento?: string;
   fechaEgreso?: string;
   puestoId?: number;
+  categoriaSalarialId?: number | null;
   salario?: number;
   estado?: EstadoEmpleado;
 }

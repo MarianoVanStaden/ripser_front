@@ -260,9 +260,31 @@ const SueldoFormDialog: React.FC<Props> = ({
             <Autocomplete
               options={empleados}
               value={empleados.find(e => e.id === form.empleadoId) ?? null}
-              onChange={(_, v) => setForm({ ...form, empleadoId: v?.id ?? null })}
+              onChange={(_, v) => {
+                // Al elegir empleado, autoprecargar su categoría salarial por
+                // default (si tiene). El usuario puede sobreescribir manual.
+                // No sobreescribimos si ya hay un sueldo en edición.
+                const nuevaCategoria = !editing && v?.categoriaSalarialId
+                  ? v.categoriaSalarialId
+                  : form.categoriaSalarialId;
+                setForm({
+                  ...form,
+                  empleadoId: v?.id ?? null,
+                  categoriaSalarialId: nuevaCategoria,
+                });
+              }}
               getOptionLabel={(e) => `${e.nombre} ${e.apellido}`}
-              renderInput={(p) => <TextField {...p} label="Empleado *" />}
+              renderInput={(p) => (
+                <TextField {...p} label="Empleado *"
+                  helperText={
+                    form.empleadoId
+                      ? (empleados.find(e => e.id === form.empleadoId)?.categoriaSalarialNombre
+                        ? `Categoría asignada: ${empleados.find(e => e.id === form.empleadoId)?.categoriaSalarialNombre}`
+                        : 'Sin categoría asignada en su ficha — elegila manualmente')
+                      : ' '
+                  }
+                />
+              )}
               disabled={!!editing}
             />
           </Grid>
