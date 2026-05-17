@@ -24,6 +24,7 @@ import {
 import {
   AccessTime as TimeIcon,
   AutoAwesome as AutoAwesomeIcon,
+  BeachAccess as BeachAccessIcon,
   Cancel as CancelIcon,
   CheckCircle as CheckCircleIcon,
   Create as CreateIcon,
@@ -32,13 +33,20 @@ import {
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import type { RegistroAsistencia } from '../../../../types';
+import type { Empleado, Licencia, RegistroAsistencia } from '../../../../types';
 import { getEmpleadoNombre } from '../utils';
 
 interface Props {
   asistencias: RegistroAsistencia[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   excepciones: any[];
+  /**
+   * Licencias del período (cualquier estado). Se renderizan como filas
+   * sintéticas "En Licencia" en los días APROBADA dentro de [fechaDesde, fechaHasta].
+   */
+  licencias?: Licencia[];
+  /** Empleados para resolver el nombre de la fila sintética de licencia. */
+  empleados?: Empleado[];
   fechaDesde: string;
   fechaHasta: string;
   onChangeFechaDesde: (value: string) => void;
@@ -46,9 +54,22 @@ interface Props {
   onGenerarAutomaticas: () => Promise<void> | void;
 }
 
+/** Color por tipo de licencia para el chip "En Licencia". */
+const colorLicencia = (tipo?: string): 'primary' | 'error' | 'warning' | 'info' => {
+  switch (tipo) {
+    case 'VACACIONES': return 'primary';
+    case 'ENFERMEDAD': return 'error';
+    case 'MATERNIDAD': return 'warning';
+    case 'PERSONAL':   return 'info';
+    default:           return 'info';
+  }
+};
+
 const ResumenDiarioTab: React.FC<Props> = ({
   asistencias,
   excepciones,
+  licencias = [],
+  empleados = [],
   fechaDesde,
   fechaHasta,
   onChangeFechaDesde,
@@ -56,6 +77,34 @@ const ResumenDiarioTab: React.FC<Props> = ({
   onGenerarAutomaticas,
 }) => {
   const excepcionesArr = Array.isArray(excepciones) ? excepciones : [];
+
+  // Construye filas sintéticas (1 por día) para licencias APROBADAS que
+  // intersectan [fechaDesde, fechaHasta]. El backend ya no genera registro
+  // AUSENTE para esos días — esto rellena el hueco en la tabla con un chip
+  // "En Licencia".
+  const empleadosById = new Map<number, Empleado>();
+  empleados.forEach((e) => empleadosById.set(e.id, e));
+  const desde = dayjs(fechaDesde);
+  const hasta = dayjs(fechaHasta);
+  const licenciaRows = (Array.isArray(licencias) ? licencias : [])
+    .filter((l) => l.estado === 'APROBADA')
+    .flatMap((l) => {
+      const li = dayjs(l.fechaInicio).isAfter(desde) ? dayjs(l.fechaInicio) : desde;
+      const lf = dayjs(l.fechaFin).isBefore(hasta) ? dayjs(l.fechaFin) : hasta;
+      const out: { id: string; licencia: Licencia; fecha: string; empleado?: Empleado }[] = [];
+      let cur = li;
+      while (!cur.isAfter(lf)) {
+        const empId = (l as any).empleadoId ?? l.empleado?.id;
+        out.push({
+          id: `lic-${l.id}-${cur.format('YYYY-MM-DD')}`,
+          licencia: l,
+          fecha: cur.format('YYYY-MM-DD'),
+          empleado: empId ? empleadosById.get(empId) ?? l.empleado : l.empleado,
+        });
+        cur = cur.add(1, 'day');
+      }
+      return out;
+    });
 
   const findExcepcion = (a: RegistroAsistencia) =>
     excepcionesArr.find(
@@ -85,6 +134,8 @@ const ResumenDiarioTab: React.FC<Props> = ({
         dayjs(ex.fecha).isBetween(dayjs(fechaDesde), dayjs(fechaHasta), null, '[]')
     )
     .reduce((sum, ex) => sum + (ex.horasExtras || 0), 0);
+
+  const enLicenciaCount = licenciaRows.length;
 
   return (
     <>
@@ -213,6 +264,37 @@ const ResumenDiarioTab: React.FC<Props> = ({
             </CardContent>
           </Card>
         </Grid>
+
+        <Grid item xs={6} sm={6} md={3}>
+          <Card sx={{ bgcolor: 'primary.50', borderLeft: '4px solid', borderColor: 'primary.main' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                spacing={{ xs: 1, sm: 2 }}
+              >
+                <BeachAccessIcon sx={{ fontSize: { xs: 28, sm: 40 }, color: 'primary.main' }} />
+                <Box>
+                  <Typography
+                    variant="h4"
+                    fontWeight="bold"
+                    color="primary.main"
+                    sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}
+                  >
+                    {enLicenciaCount}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                  >
+                    Días en Licencia
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
       <Card>
@@ -273,7 +355,45 @@ const ResumenDiarioTab: React.FC<Props> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {asistencias.length === 0 ? (
+                {/* Filas sintéticas para licencias APROBADAS: el backend no
+                    genera registro AUSENTE para esos días, así que rellenamos
+                    visualmente con un chip "En Licencia". */}
+                {licenciaRows.map((row) => (
+                  <TableRow key={row.id} hover sx={{ bgcolor: 'primary.50' }}>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="600">
+                        {row.empleado ? getEmpleadoNombre(row.empleado) : 'N/A'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{dayjs(row.fecha).format('DD/MM/YYYY')}</TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        icon={<BeachAccessIcon />}
+                        label={`En Licencia (${row.licencia.tipo})`}
+                        size="small"
+                        color={colorLicencia(row.licencia.tipo)}
+                      />
+                    </TableCell>
+                    <TableCell align="center">-</TableCell>
+                    <TableCell align="center">-</TableCell>
+                    <TableCell align="center">-</TableCell>
+                    <TableCell align="center">
+                      <Tooltip title={`Licencia #${row.licencia.id} · ${dayjs(row.licencia.fechaInicio).format('DD/MM')}–${dayjs(row.licencia.fechaFin).format('DD/MM')}`}>
+                        <Chip
+                          icon={<BeachAccessIcon />}
+                          label="Licencia"
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" noWrap>{row.licencia.motivo || '-'}</Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {asistencias.length === 0 && licenciaRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography variant="body2" color="textSecondary" py={3}>

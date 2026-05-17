@@ -23,7 +23,8 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { configuracionAsistenciaApi } from '../../api/services/configuracionAsistenciaApi';
 import { excepcionAsistenciaApi } from '../../api/services/excepcionAsistenciaApi';
 import { asistenciaAutomaticaApi } from '../../api/services/asistenciaAutomaticaApi';
-import type { RegistroAsistencia, Empleado } from '../../types';
+import { licenciaApi } from '../../api/services/licenciaApi';
+import type { Licencia, RegistroAsistencia, Empleado } from '../../types';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -60,6 +61,9 @@ const AsistenciasPage: React.FC = () => {
   // Configuraciones y excepciones
   const [configuraciones, setConfiguraciones] = useState<any[]>([]);
   const [excepciones, setExcepciones] = useState<any[]>([]);
+  // Licencias del período visible (cualquier estado). Las APROBADAS se
+  // pintan como chip "En Licencia" en el Resumen Diario y suman al KPI propio.
+  const [licencias, setLicencias] = useState<Licencia[]>([]);
   const [openConfigDialog, setOpenConfigDialog] = useState(false);
   const [openExcepcionDialog, setOpenExcepcionDialog] = useState(false);
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
@@ -117,21 +121,24 @@ const AsistenciasPage: React.FC = () => {
       const empleadosArray = Array.isArray(empleadosData) ? empleadosData : [];
       setEmpleados(empleadosArray);
       
-      // Luego cargar configuraciones y excepciones en paralelo
-      const [configsData, excepcionesData] = await Promise.all([
+      // Luego cargar configuraciones, excepciones y licencias en paralelo
+      const [configsData, excepcionesData, licenciasData] = await Promise.all([
         configuracionAsistenciaApi.getAll().catch(() => []),
         excepcionAsistenciaApi.getByPeriodo(
           dayjs().subtract(30, 'days').format('YYYY-MM-DD'),
           dayjs().format('YYYY-MM-DD')
-        ).catch(() => [])
+        ).catch(() => []),
+        licenciaApi.getByPeriodo(fechaDesde, fechaHasta).catch(() => [])
       ]);
-      
+
       console.log('Configuraciones data:', configsData);
       console.log('Excepciones data:', excepcionesData);
-      
+      console.log('Licencias data:', licenciasData);
+
       setConfiguraciones(Array.isArray(configsData) ? configsData : []);
       setExcepciones(Array.isArray(excepcionesData) ? excepcionesData : []);
-      
+      setLicencias(Array.isArray(licenciasData) ? licenciasData : []);
+
       // Finalmente cargar asistencias con empleados ya disponibles
       await loadAsistenciasByPeriodoWithEmpleados(empleadosArray);
     } catch (err) {
@@ -141,6 +148,7 @@ const AsistenciasPage: React.FC = () => {
       setAsistencias([]);
       setConfiguraciones([]);
       setExcepciones([]);
+      setLicencias([]);
     } finally {
       setLoading(false);
     }
@@ -182,6 +190,14 @@ const AsistenciasPage: React.FC = () => {
 
   const loadAsistenciasByPeriodo = async () => {
     await loadAsistenciasByPeriodoWithEmpleados(empleados);
+    // Recargar licencias para el nuevo rango así el chip "En Licencia" sigue al día.
+    try {
+      const data = await licenciaApi.getByPeriodo(fechaDesde, fechaHasta);
+      setLicencias(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading licencias:', err);
+      setLicencias([]);
+    }
   };
 
   const filteredAsistencias = asistencias.filter(a => {
@@ -391,6 +407,8 @@ const AsistenciasPage: React.FC = () => {
         <ResumenDiarioTab
           asistencias={filteredAsistencias}
           excepciones={excepciones}
+          licencias={licencias}
+          empleados={empleados}
           fechaDesde={fechaDesde}
           fechaHasta={fechaHasta}
           onChangeFechaDesde={setFechaDesde}

@@ -16,6 +16,8 @@ import {
   Button,
   Dialog,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Alert,
   IconButton,
@@ -46,13 +48,19 @@ import {
   LocalHospital as SickIcon,
   Person as PersonIcon,
   CalendarToday as CalendarIcon,
-  AttachMoney as MoneyIcon
+  AttachMoney as MoneyIcon,
+  EventBusy as EventBusyIcon,
+  MedicalServices as MedicalIcon
 } from '@mui/icons-material';
 import { licenciaApi } from '../../api/services/licenciaApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { Licencia, Empleado, TipoLicencia, EstadoLicencia } from '../../types';
 import dayjs from 'dayjs';
 import LoadingOverlay from '../common/LoadingOverlay';
+import ExcepcionesTab from './Asistencias/tabs/ExcepcionesTab';
+import ExcepcionDialog from './Asistencias/dialogs/ExcepcionDialog';
+import { useExcepciones } from './Asistencias/hooks/useExcepciones';
+import AusenciaCombinadaDialog from './Licencias/AusenciaCombinadaDialog';
 
 const LicenciasPage: React.FC = () => {
   const theme = useTheme();
@@ -68,7 +76,13 @@ const LicenciasPage: React.FC = () => {
   const [openApproval, setOpenApproval] = useState(false);
   const [approvalAction, setApprovalAction] = useState<'APROBADA' | 'RECHAZADA'>('APROBADA');
   const [editingLicencia, setEditingLicencia] = useState<Licencia | null>(null);
-  
+  const [tabValue, setTabValue] = useState(0);
+  const [openCombinada, setOpenCombinada] = useState(false);
+
+  // Hook compartido de excepciones (tab "Excepciones de asistencia"). El mismo
+  // hook lo consume AsistenciasPage, así no hay duplicación de lógica.
+  const excepcionesHook = useExcepciones();
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [empleadoFilter, setEmpleadoFilter] = useState<Empleado | null>(null);
@@ -387,6 +401,15 @@ const LicenciasPage: React.FC = () => {
             </IconButton>
           </Tooltip>
           <Button
+            variant="outlined"
+            startIcon={<MedicalIcon />}
+            onClick={() => setOpenCombinada(true)}
+            fullWidth={isMobile}
+            color="warning"
+          >
+            Ausencia combinada
+          </Button>
+          <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenForm()}
@@ -397,12 +420,26 @@ const LicenciasPage: React.FC = () => {
         </Stack>
       </Box>
 
+      {/* Tabs principales */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, overflowX: 'auto' }}>
+        <Tabs
+          value={tabValue}
+          onChange={(_, v) => setTabValue(v)}
+          variant={isMobile ? 'scrollable' : 'standard'}
+          scrollButtons={isMobile ? 'auto' : false}
+        >
+          <Tab icon={<CalendarIcon />} label="Licencias" iconPosition="start" />
+          <Tab icon={<EventBusyIcon />} label="Excepciones de Asistencia" iconPosition="start" />
+        </Tabs>
+      </Box>
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
+      {tabValue === 0 && (<>
       {/* Estadísticas Rápidas */}
       <Grid container spacing={{ xs: 2, sm: 2 }} mb={3}>
         <Grid item xs={6} sm={6} md={3}>
@@ -669,6 +706,36 @@ const LicenciasPage: React.FC = () => {
           </TableContainer>
         </CardContent>
       </Card>
+
+      </>)}
+
+      {tabValue === 1 && (
+        <>
+          <ExcepcionesTab
+            empleados={empleados}
+            excepciones={excepcionesHook.excepciones}
+            onOpenExcepcionDialog={excepcionesHook.openCreateDialog}
+            onDeleteExcepcion={excepcionesHook.deleteExcepcion}
+          />
+          <ExcepcionDialog
+            open={excepcionesHook.openDialog}
+            onClose={excepcionesHook.closeDialog}
+            onSave={excepcionesHook.saveExcepcion}
+            fullScreen={isMobile}
+            empleados={empleados}
+            form={excepcionesHook.form}
+            setForm={excepcionesHook.setForm}
+          />
+        </>
+      )}
+
+      <AusenciaCombinadaDialog
+        open={openCombinada}
+        onClose={() => setOpenCombinada(false)}
+        onSaved={() => { loadData(); excepcionesHook.reload(); }}
+        empleados={empleados}
+        fullScreen={isMobile}
+      />
 
       {/* Dialog de Formulario */}
       <Dialog open={openForm} onClose={handleCloseForm} maxWidth="sm" fullWidth fullScreen={isMobile}>

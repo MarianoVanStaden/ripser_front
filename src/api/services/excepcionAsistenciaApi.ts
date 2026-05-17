@@ -16,11 +16,14 @@ export interface ExcepcionAsistenciaDTO {
   horaEntradaReal?: string | null; // Formato "HH:mm:ss"
   horaSalidaReal?: string | null; // Formato "HH:mm:ss"
   horasExtras?: number | null;
+  minutosTardanza?: number | null;
   motivo?: string;
   observaciones?: string;
   justificado?: boolean;
   empleadoNombre?: string; // Read-only
   empleadoApellido?: string; // Read-only
+  /** Link a la licencia continuada cuando se creó vía flujo "ausencia combinada". */
+  licenciaId?: number | null;
 }
 
 export const excepcionAsistenciaApi = {

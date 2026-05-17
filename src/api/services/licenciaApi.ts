@@ -40,6 +40,14 @@ export const licenciaApi = {
     return response.data;
   },
 
+  // Obtener licencias cuyo rango intersecta [fechaInicio, fechaFin]
+  getByPeriodo: async (fechaInicio: string, fechaFin: string): Promise<Licencia[]> => {
+    const response = await api.get('/api/licencias/periodo', {
+      params: { fechaInicio, fechaFin }
+    });
+    return response.data;
+  },
+
   // Crear licencia
   create: async (licencia: Partial<Licencia>): Promise<Licencia> => {
     const response = await api.post('/api/licencias', licencia);

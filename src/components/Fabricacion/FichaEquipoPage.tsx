@@ -39,65 +39,6 @@ const resolveQrBase = (): string => {
 const buildQrUrl = (numeroHeladera: string): string =>
   `${resolveQrBase()}/fabricacion/equipos/${numeroHeladera}/ficha`;
 
-/**
- * Contenido del QR — híbrido URL + texto plano:
- *
- *   1ra línea: URL absoluta a la ficha online (lo que detectan los scanners
- *              de cámara de iPhone/Android para auto-ofrecer "abrir").
- *   resto:     resumen legible de la ficha (cliente, fechas, motor, gas...)
- *              para que un técnico en campo SIN internet pueda leer la
- *              info directamente del QR como texto.
- *
- * Trade-off: el QR se vuelve más denso (~600-900 chars vs. los 50 de sólo
- * la URL), pero entra holgado en QR versión ~17-20 con corrección M y los
- * módulos siguen siendo legibles a 56mm de lado desde 30cm.
- */
-const buildQrContent = (
-  data: FichaTecnicaEquipoDTO,
-  cliente: Cliente | null,
-  fabricacion: Dayjs | null,
-  entrega: Dayjs | null,
-): string => {
-  const url = buildQrUrl(data.equipo.numeroHeladera);
-  const e = data.equipo;
-  const s = data.especificacion;
-
-  const lines: string[] = [url, ''];
-  lines.push(`N° ${e.numeroHeladera}`);
-  lines.push(`${e.tipo} ${e.modelo}`);
-  if (e.medida?.nombre) lines.push(`Medida: ${e.medida.nombre}`);
-  if (e.color?.nombre) lines.push(`Color: ${e.color.nombre}`);
-  if (e.clienteNombre) lines.push(`Cliente: ${e.clienteNombre}`);
-  if (cliente?.provincia) lines.push(`Provincia: ${cliente.provincia}`);
-  if (cliente?.ciudad) lines.push(`Localidad: ${cliente.ciudad}`);
-  if (fabricacion) lines.push(`Fabricación: ${fabricacion.format('DD/MM/YYYY')}`);
-  if (entrega) lines.push(`Entrega: ${entrega.format('DD/MM/YYYY')}`);
-
-  if (s) {
-    lines.push('');
-    if (s.motor) lines.push(`Motor: ${s.motor}`);
-    if (s.gas) lines.push(`Gas: ${s.gas}`);
-    if (s.humedad) lines.push(`Humedad: ${s.humedad}`);
-    if (s.sistema) lines.push(`Sistema: ${s.sistema}`);
-    if (s.estructura) lines.push(`Estructura: ${s.estructura}`);
-    if (s.gabinete) lines.push(`Gabinete: ${s.gabinete}`);
-    if (s.iluminacion) lines.push(`Iluminación: ${s.iluminacion}`);
-    if (s.transformador) lines.push(`Transf.: ${s.transformador}`);
-    if (s.leds) lines.push(`Leds: ${s.leds}`);
-    if (s.vidrios) lines.push(`Vidrios: ${s.vidrios}`);
-    if (s.paneles) lines.push(`Paneles: ${s.paneles}`);
-    if (s.puertas) lines.push(`Puertas: ${s.puertas}`);
-    if (s.revestimiento) lines.push(`Revest.: ${s.revestimiento}`);
-    if (s.estanteriasCantidad != null) lines.push(`Estant.: ${s.estanteriasCantidad}`);
-    if (s.estanteriasFormato) lines.push(`Formato: ${s.estanteriasFormato}`);
-    if (s.alto != null) lines.push(`Alto: ${s.alto}`);
-    if (s.profundidad != null) lines.push(`Prof.: ${s.profundidad}`);
-    if (s.ancho != null) lines.push(`Ancho: ${s.ancho}`);
-  }
-
-  return lines.join('\n');
-};
-
 // Paleta corporativa (espejo de la usada en pdfService).
 const COLORS = {
   darkBlue: '#144272',
@@ -219,16 +160,12 @@ const FichaEquipoPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramNumero]);
 
-  // URL "limpia" para mostrar en el toolbar/preview (escaneable a ojo).
+  // URL absoluta a la ficha online — único contenido del QR.
+  // Mantenerlo limpio (sin texto extra) evita que iOS Camera incluya
+  // el resumen en la URL al abrirla en Safari.
   const qrUrl = useMemo(
     () => (data ? buildQrUrl(data.equipo.numeroHeladera) : ''),
     [data],
-  );
-
-  // Contenido completo del QR: URL primera línea + resumen legible offline.
-  const qrContent = useMemo(
-    () => (data ? buildQrContent(data, cliente, fechaFabricacion, fechaEntrega) : ''),
-    [data, cliente, fechaFabricacion, fechaEntrega],
   );
 
   const handleSearch = (e: React.FormEvent) => {
@@ -430,7 +367,7 @@ const FichaEquipoPage: React.FC = () => {
                 </Button>
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Las fechas se incluyen en el QR (junto al resto de la ficha). No modifican el equipo.
+                Las fechas se imprimen en la ficha y el PDF. No modifican el equipo.
               </Typography>
             </Paper>
           )}
@@ -626,7 +563,7 @@ const FichaEquipoPage: React.FC = () => {
               }}
             >
               <QRCodeCanvas
-                value={qrContent}
+                value={qrUrl}
                 size={600}
                 level="M"
                 includeMargin={false}
@@ -659,15 +596,10 @@ const FichaEquipoPage: React.FC = () => {
               <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                 Sticker 6×8cm para pegar al equipo
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                <strong>Online</strong> — el celular detecta la URL de la primera
-                línea y al tocarla abre la misma ficha que ves arriba.
-              </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                <strong>Offline</strong> — debajo de la URL, el QR contiene un
-                resumen en texto plano (cliente, fechas, motor, gas, sistema...)
-                que cualquier scanner muestra como notas. Sirve cuando el técnico
-                de garantía no tiene internet en el lugar.
+                Al escanear el QR, el celular abre directamente la ficha técnica
+                online (la misma que ves arriba). Funciona igual en iPhone y
+                Android — la cámara detecta la URL y ofrece abrirla.
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2, fontFamily: 'monospace', wordBreak: 'break-all' }}>
                 URL: {qrUrl}
