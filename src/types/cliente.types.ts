@@ -41,6 +41,12 @@ export interface Cliente {
   leadId?: number;
   fechaConversion?: string;
   productoComprado?: ProductoSimple;
+  productoCompradoId?: number;
+  productoCompradoNombre?: string;
+  cantidadProductoComprado?: number;
+  recetaCompradaId?: number;
+  recetaCompradaNombre?: string;
+  cantidadRecetaComprada?: number;
   montoConversion?: number;
   canalAdquisicion?: string;
   aceptaMarketing?: boolean;

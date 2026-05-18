@@ -44,6 +44,9 @@ import {
   ExpandMore as ExpandMoreIcon,
   Folder as FolderIcon,
   Assignment as AssignmentIcon,
+  SwapHoriz as SwapHorizIcon,
+  Build as BuildIcon,
+  Inventory2 as Inventory2Icon,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
@@ -525,6 +528,90 @@ const CarpetaClientePage: React.FC = () => {
                         {cliente.ciudad}
                       </Typography>
                     )}
+                  </CardContent>
+                </Card>
+              </Box>
+            )}
+
+            {(cliente.leadId ||
+              cliente.productoCompradoId ||
+              cliente.recetaCompradaId ||
+              cliente.montoConversion != null) && (
+              <Box sx={{ flex: '1 1 100%' }}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom display="flex" alignItems="center">
+                      <SwapHorizIcon sx={{ mr: 1 }} />
+                      Conversión desde Lead
+                    </Typography>
+                    <List dense>
+                      {cliente.recetaCompradaId && (
+                        <ListItem>
+                          <ListItemIcon><BuildIcon /></ListItemIcon>
+                          <ListItemText
+                            primary="Equipo de interés"
+                            secondary={
+                              <>
+                                {cliente.recetaCompradaNombre || `Receta #${cliente.recetaCompradaId}`}
+                                {cliente.cantidadRecetaComprada
+                                  ? ` · Cantidad: ${cliente.cantidadRecetaComprada}`
+                                  : ''}
+                              </>
+                            }
+                          />
+                        </ListItem>
+                      )}
+                      {cliente.productoCompradoId && (
+                        <ListItem>
+                          <ListItemIcon><Inventory2Icon /></ListItemIcon>
+                          <ListItemText
+                            primary="Producto de interés"
+                            secondary={
+                              <>
+                                {cliente.productoCompradoNombre || `Producto #${cliente.productoCompradoId}`}
+                                {cliente.cantidadProductoComprado
+                                  ? ` · Cantidad: ${cliente.cantidadProductoComprado}`
+                                  : ''}
+                              </>
+                            }
+                          />
+                        </ListItem>
+                      )}
+                      {cliente.montoConversion != null && (
+                        <ListItem>
+                          <ListItemText
+                            primary="Monto de conversión"
+                            secondary={`$${cliente.montoConversion.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`}
+                          />
+                        </ListItem>
+                      )}
+                      {cliente.fechaConversion && (
+                        <ListItem>
+                          <ListItemText
+                            primary="Fecha de conversión"
+                            secondary={new Date(cliente.fechaConversion).toLocaleDateString()}
+                          />
+                        </ListItem>
+                      )}
+                      {cliente.leadId && (
+                        <ListItem>
+                          <ListItemText
+                            primary="Lead origen"
+                            secondary={`#${cliente.leadId}`}
+                          />
+                        </ListItem>
+                      )}
+                    </List>
+                    <Box sx={{ mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<EditIcon />}
+                        onClick={() => navigate(`/clientes/editar/${cliente.id}`)}
+                      >
+                        Editar item comprado
+                      </Button>
+                    </Box>
                   </CardContent>
                 </Card>
               </Box>

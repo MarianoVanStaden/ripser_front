@@ -53,6 +53,9 @@ import {
   AccountCircle as AccountCircleIcon,
   LinkOff as LinkOffIcon,
   Link as LinkIcon,
+  CalendarMonth as CalendarMonthIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { employeeApi } from '../../api/services/employeeApi';
 import { puestoApi } from '../../api/services/puestoApi';
@@ -64,6 +67,29 @@ import { sucursalService } from '../../services/sucursalService';
 import { useTenant } from '../../context/TenantContext';
 import DocumentManager from '../shared/DocumentManager';
 import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal, CategoriaSalarial } from '../../types';
+
+// Estado de los campos de legajo dentro del form. El legajo es 1:1 con el
+// empleado y se crea/edita en la misma pantalla. Todos los campos son
+// opcionales: si se dejan vacíos, el backend autogenera lo que falte.
+interface LegajoFormState {
+  numeroLegajo: string;
+  fechaAlta: string;
+  fechaBaja: string;
+  motivoBaja: string;
+  observaciones: string;
+  documentacion: string;
+  activo: boolean;
+}
+
+const emptyLegajoFormState = (fechaAlta = ''): LegajoFormState => ({
+  numeroLegajo: '',
+  fechaAlta,
+  fechaBaja: '',
+  motivoBaja: '',
+  observaciones: '',
+  documentacion: '',
+  activo: true,
+});
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 
@@ -140,6 +166,9 @@ const EmpleadosPage: React.FC = () => {
     confirmPassword: '',
   });
 
+  // Estado del legajo en el form (separado para no contaminar el DTO de empleado)
+  const [legajoData, setLegajoData] = useState<LegajoFormState>(emptyLegajoFormState());
+
   useEffect(() => {
     loadData();
   }, []);
@@ -200,8 +229,18 @@ const EmpleadosPage: React.FC = () => {
         usuarioPassword: '',
         confirmPassword: '',
       });
+      setLegajoData({
+        numeroLegajo: empleado.numeroLegajo || '',
+        fechaAlta: empleado.legajoFechaAlta || empleado.fechaIngreso || '',
+        fechaBaja: empleado.legajoFechaBaja || '',
+        motivoBaja: empleado.legajoMotivoBaja || '',
+        observaciones: empleado.legajoObservaciones || '',
+        documentacion: empleado.legajoDocumentacion || '',
+        activo: empleado.legajoActivo ?? true,
+      });
     } else {
       setEditingEmpleado(null);
+      const hoy = new Date().toISOString().split('T')[0];
       setFormData({
         nombre: '',
         apellido: '',
@@ -210,7 +249,7 @@ const EmpleadosPage: React.FC = () => {
         telefono: '',
         direccion: '',
         fechaNacimiento: '',
-        fechaIngreso: new Date().toISOString().split('T')[0],
+        fechaIngreso: hoy,
         puestoId: 0,
         categoriaSalarialId: null,
         salario: 0,
@@ -220,6 +259,7 @@ const EmpleadosPage: React.FC = () => {
         usuarioPassword: '',
         confirmPassword: '',
       });
+      setLegajoData(emptyLegajoFormState(hoy));
     }
     setFormDialogOpen(true);
   };
@@ -265,13 +305,34 @@ const EmpleadosPage: React.FC = () => {
       }
 
       if (editingEmpleado) {
-        await employeeApi.update(editingEmpleado.id, payload);
+        // Update: mandamos todos los campos del legajo, incluyendo motivo/fecha
+        // de baja. Los strings vacíos quedan así para no “pisar accidentalmente”
+        // valores existentes: el backend solo aplica los campos != null, así
+        // que pasamos undefined cuando no hay nada que cambiar.
+        const updatePayload: any = {
+          ...payload,
+          numeroLegajo: legajoData.numeroLegajo || undefined,
+          legajoFechaAlta: legajoData.fechaAlta || undefined,
+          legajoFechaBaja: legajoData.fechaBaja || null,
+          legajoMotivoBaja: legajoData.motivoBaja || null,
+          legajoDocumentacion: legajoData.documentacion || null,
+          legajoObservaciones: legajoData.observaciones || null,
+          legajoActivo: legajoData.activo,
+        };
+        await employeeApi.update(editingEmpleado.id, updatePayload);
         setSuccess('Empleado actualizado exitosamente');
       } else {
-        await employeeApi.create(payload);
+        const createPayload: EmpleadoCreateDTO = {
+          ...payload,
+          numeroLegajo: legajoData.numeroLegajo || undefined,
+          legajoFechaAlta: legajoData.fechaAlta || undefined,
+          legajoObservaciones: legajoData.observaciones || undefined,
+          legajoDocumentacion: legajoData.documentacion || undefined,
+        };
+        await employeeApi.create(createPayload);
         setSuccess(
-          payload.crearUsuario
-            ? `Empleado creado exitosamente. Se creó la cuenta de acceso con usuario emp_${payload.dni}`
+          createPayload.crearUsuario
+            ? `Empleado creado exitosamente. Se creó la cuenta de acceso con usuario emp_${createPayload.dni}`
             : 'Empleado creado exitosamente'
         );
       }
@@ -371,10 +432,12 @@ const EmpleadosPage: React.FC = () => {
   const filteredEmpleados = empleados.filter(emp => {
     const matchesEstado = estadoFilter === 'TODOS' || emp.estado === estadoFilter;
     const matchesPuesto = puestoFilter === null || emp.puesto?.id === puestoFilter;
+    const q = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm ||
-      emp.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.dni.includes(searchTerm);
+      emp.nombre.toLowerCase().includes(q) ||
+      emp.apellido.toLowerCase().includes(q) ||
+      emp.dni.includes(searchTerm) ||
+      (emp.numeroLegajo ?? '').toLowerCase().includes(q);
     return matchesEstado && matchesPuesto && matchesSearch;
   });
 
@@ -435,7 +498,7 @@ const EmpleadosPage: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Buscar"
-                  placeholder="Nombre, Apellido o DNI..."
+                  placeholder="Nombre, Apellido, DNI o Nº legajo..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   size="small"
@@ -489,6 +552,7 @@ const EmpleadosPage: React.FC = () => {
                 <TableRow>
                   <TableCell sx={{ minWidth: 180 }}>Empleado</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>DNI</TableCell>
+                  <TableCell sx={{ minWidth: 110 }}>Legajo</TableCell>
                   <TableCell sx={{ minWidth: 130 }}>Puesto</TableCell>
                   <TableCell sx={{ minWidth: 180 }}>Email</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>Teléfono</TableCell>
@@ -500,7 +564,7 @@ const EmpleadosPage: React.FC = () => {
               <TableBody>
                 {filteredEmpleados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       <Typography variant="body2" color="textSecondary">
                         No hay empleados disponibles
                       </Typography>
@@ -522,6 +586,19 @@ const EmpleadosPage: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell>{empleado.dni}</TableCell>
+                      <TableCell>
+                        {empleado.numeroLegajo ? (
+                          <Chip
+                            icon={<BadgeIcon />}
+                            label={empleado.numeroLegajo}
+                            size="small"
+                            variant="outlined"
+                            color={empleado.legajoActivo === false ? 'default' : 'primary'}
+                          />
+                        ) : (
+                          <Typography variant="caption" color="textSecondary">—</Typography>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Chip
                           icon={<WorkIcon />}
@@ -623,8 +700,11 @@ const EmpleadosPage: React.FC = () => {
               value={detailTabValue}
               onChange={(_, newValue) => setDetailTabValue(newValue)}
               sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
+              variant="scrollable"
+              scrollButtons="auto"
             >
               <Tab label="Información" />
+              <Tab label="Legajo" />
               <Tab label="Acceso al sistema" />
               <Tab label="Documentos" />
               <Tab label="Disciplina" />
@@ -704,6 +784,91 @@ const EmpleadosPage: React.FC = () => {
               )}
 
               {detailTabValue === 1 && (
+                <Stack spacing={2.5}>
+                  {!selectedEmpleado.numeroLegajo ? (
+                    <Alert severity="info">
+                      Este empleado todavía no tiene legajo. Editalo para generar uno.
+                    </Alert>
+                  ) : (
+                    <>
+                      <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                        <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+                          <Chip
+                            icon={<BadgeIcon />}
+                            label={selectedEmpleado.numeroLegajo}
+                            color="primary"
+                          />
+                          {selectedEmpleado.legajoActivo === false ? (
+                            <Chip icon={<CancelIcon />} label="Inactivo" color="error" size="small" />
+                          ) : (
+                            <Chip icon={<CheckCircleIcon />} label="Activo" color="success" size="small" />
+                          )}
+                          {selectedEmpleado.legajoFechaAlta && (() => {
+                            const inicio = new Date(selectedEmpleado.legajoFechaAlta);
+                            const fin = selectedEmpleado.legajoFechaBaja
+                              ? new Date(selectedEmpleado.legajoFechaBaja)
+                              : new Date();
+                            const meses = (fin.getFullYear() - inicio.getFullYear()) * 12
+                              + (fin.getMonth() - inicio.getMonth());
+                            const anios = Math.floor(meses / 12);
+                            const mesesRestantes = meses % 12;
+                            return (
+                              <Chip
+                                icon={<CalendarMonthIcon />}
+                                label={`Antigüedad: ${anios}a ${mesesRestantes}m`}
+                                size="small"
+                                color="info"
+                                variant="outlined"
+                              />
+                            );
+                          })()}
+                        </Box>
+                      </Paper>
+
+                      <Box>
+                        <Typography variant="caption" color="textSecondary" fontWeight="600" display="block" mb={1}>
+                          FECHAS
+                        </Typography>
+                        <Stack spacing={1.5}>
+                          <Typography><strong>Fecha de Alta:</strong> {selectedEmpleado.legajoFechaAlta || '-'}</Typography>
+                          <Typography><strong>Fecha de Baja:</strong> {selectedEmpleado.legajoFechaBaja || '—'}</Typography>
+                          {selectedEmpleado.legajoMotivoBaja && (
+                            <Typography><strong>Motivo de baja:</strong> {selectedEmpleado.legajoMotivoBaja}</Typography>
+                          )}
+                        </Stack>
+                      </Box>
+
+                      {(selectedEmpleado.legajoDocumentacion || selectedEmpleado.legajoObservaciones) && (
+                        <Divider />
+                      )}
+
+                      {selectedEmpleado.legajoDocumentacion && (
+                        <Box>
+                          <Typography variant="caption" color="textSecondary" fontWeight="600" display="block" mb={1}>
+                            DOCUMENTACIÓN
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {selectedEmpleado.legajoDocumentacion}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {selectedEmpleado.legajoObservaciones && (
+                        <Box>
+                          <Typography variant="caption" color="textSecondary" fontWeight="600" display="block" mb={1}>
+                            OBSERVACIONES
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                            {selectedEmpleado.legajoObservaciones}
+                          </Typography>
+                        </Box>
+                      )}
+                    </>
+                  )}
+                </Stack>
+              )}
+
+              {detailTabValue === 2 && (
                 <Stack spacing={2}>
                   {selectedEmpleado.usuarioId !== null ? (
                     <Box>
@@ -752,11 +917,11 @@ const EmpleadosPage: React.FC = () => {
                 </Stack>
               )}
 
-              {detailTabValue === 3 && (
+              {detailTabValue === 4 && (
                 <EmpleadoDisciplinaTab empleado={selectedEmpleado} />
               )}
 
-              {detailTabValue === 2 && (
+              {detailTabValue === 3 && (
                 <DocumentManager
                   entityId={selectedEmpleado.id}
                   categorias={CATEGORIAS_EMPLEADO}
@@ -1019,6 +1184,102 @@ const EmpleadosPage: React.FC = () => {
                     </TextField>
                   </Grid>
                 )}
+              </Grid>
+            </Paper>
+
+            {/* Legajo */}
+            <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
+              <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
+                LEGAJO
+              </Typography>
+              <Typography variant="caption" color="textSecondary" display="block" mb={2}>
+                Todos los datos son opcionales. Si dejás el número de legajo vacío, se autogenera al crear el empleado.
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Número de Legajo"
+                    value={legajoData.numeroLegajo}
+                    onChange={(e) => setLegajoData({ ...legajoData, numeroLegajo: e.target.value })}
+                    placeholder={editingEmpleado ? '' : 'Se autogenera (ej. LEG-00012)'}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <BadgeIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Fecha de Alta"
+                    type="date"
+                    value={legajoData.fechaAlta}
+                    onChange={(e) => setLegajoData({ ...legajoData, fechaAlta: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                    helperText={editingEmpleado ? undefined : 'Por defecto, igual a la fecha de ingreso'}
+                  />
+                </Grid>
+                {editingEmpleado && (
+                  <>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Fecha de Baja"
+                        type="date"
+                        value={legajoData.fechaBaja}
+                        onChange={(e) => setLegajoData({ ...legajoData, fechaBaja: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={legajoData.activo}
+                            onChange={(e) => setLegajoData({ ...legajoData, activo: e.target.checked })}
+                          />
+                        }
+                        label="Legajo activo"
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Motivo de Baja"
+                        value={legajoData.motivoBaja}
+                        onChange={(e) => setLegajoData({ ...legajoData, motivoBaja: e.target.value })}
+                        multiline
+                        rows={2}
+                        disabled={!legajoData.fechaBaja && legajoData.activo}
+                      />
+                    </Grid>
+                  </>
+                )}
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Documentación"
+                    value={legajoData.documentacion}
+                    onChange={(e) => setLegajoData({ ...legajoData, documentacion: e.target.value })}
+                    multiline
+                    rows={2}
+                    placeholder="Referencias a documentos físicos / archivos / carpetas"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Observaciones"
+                    value={legajoData.observaciones}
+                    onChange={(e) => setLegajoData({ ...legajoData, observaciones: e.target.value })}
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
               </Grid>
             </Paper>
 

@@ -55,6 +55,8 @@ export const ConvertLeadPage = () => {
 
   const [conversionData, setConversionData] = useState<ConversionLeadRequest>({
     productoCompradoId: undefined,
+    tipoItemComprado: undefined,
+    cantidadComprada: undefined,
     montoConversion: undefined,
     emailCliente: '',
     direccionCliente: '',
@@ -114,15 +116,17 @@ export const ConvertLeadPage = () => {
           const selected = { type: 'receta' as const, id: recetaCompleta.id, nombre: recetaCompleta.nombre, precio: precio };
           setSelectedProduct(selected);
           setCantidadActual(cantidad);
-          
+
           // Agregar al array de items seleccionados
           setSelectedItems([{ ...selected, cantidad }]);
-          
+
           // Calcular monto automáticamente
           const monto = precio * cantidad;
           setConversionData((prev) => ({
             ...prev,
             productoCompradoId: recetaCompleta.id,
+            tipoItemComprado: 'RECETA',
+            cantidadComprada: cantidad,
             montoConversion: monto
           }));
         } catch (err) {
@@ -136,15 +140,17 @@ export const ConvertLeadPage = () => {
           const selected = { type: 'producto' as const, id: producto.id, nombre: producto.nombre, precio: precio };
           setSelectedProduct(selected);
           setCantidadActual(cantidad);
-          
+
           // Agregar al array de items seleccionados
           setSelectedItems([{ ...selected, cantidad }]);
-          
+
           // Calcular monto automáticamente
           const monto = precio * cantidad;
           setConversionData((prev) => ({
             ...prev,
             productoCompradoId: producto.id,
+            tipoItemComprado: 'PRODUCTO',
+            cantidadComprada: cantidad,
             montoConversion: monto
           }));
         }
@@ -189,10 +195,18 @@ export const ConvertLeadPage = () => {
       setConverting(true);
       setError(null);
 
-      // Si productoCompradoId es undefined o null, eliminarlo del payload
-      const payload = {
+      // El backend persiste un solo item (producto o receta) en el cliente.
+      // Si el usuario agregó múltiples en la UI, mandamos el PRIMERO con su
+      // tipo discriminado para que el dato no se pierda. El monto total ya
+      // contempla todos los items.
+      const primerItem = selectedItems[0];
+      const payload: ConversionLeadRequest = {
         ...conversionData,
-        productoCompradoId: conversionData.productoCompradoId || undefined
+        productoCompradoId: primerItem ? primerItem.id : undefined,
+        tipoItemComprado: primerItem
+          ? (primerItem.type === 'receta' ? 'RECETA' : 'PRODUCTO')
+          : undefined,
+        cantidadComprada: primerItem ? primerItem.cantidad : undefined,
       };
 
       const result = await leadApi.convertir(parseInt(id), payload);

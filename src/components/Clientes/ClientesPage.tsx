@@ -296,7 +296,7 @@ const ClientesPage: React.FC = () => {
                   <Box display="flex" alignItems="center" gap={1}>
                     {getTipoIcon(cliente.tipo)}
                     <Typography variant="h6" component="div">
-                      {cliente.nombre}
+                      {cliente.nombre}{cliente.apellido ? ` ${cliente.apellido}` : ''}
                     </Typography>
                   </Box>
                   <Chip
@@ -412,6 +412,9 @@ const ClientesPage: React.FC = () => {
                     Información General
                   </Typography>
                   <Typography><strong>Nombre:</strong> {selectedCliente.nombre}</Typography>
+                  {selectedCliente.apellido && (
+                    <Typography><strong>Apellido:</strong> {selectedCliente.apellido}</Typography>
+                  )}
                   <Typography><strong>Tipo:</strong> {selectedCliente.tipo}</Typography>
                   <Typography><strong>CUIT:</strong> {selectedCliente.cuit || 'N/A'}</Typography>
                   <Typography><strong>Estado:</strong> {selectedCliente.estado}</Typography>

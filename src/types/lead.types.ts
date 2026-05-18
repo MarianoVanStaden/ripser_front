@@ -149,6 +149,13 @@ export interface LeadDTO {
 
 export interface ConversionLeadRequest {
   productoCompradoId?: number;
+  /**
+   * Discrimina si productoCompradoId apunta a `productos` o a
+   * `recetas_fabricacion`. Antes el backend asumía producto y perdía el
+   * dato cuando se convertía con un equipo de fabricación.
+   */
+  tipoItemComprado?: 'PRODUCTO' | 'RECETA';
+  cantidadComprada?: number;
   montoConversion?: number;
   emailCliente?: string;
   direccionCliente?: string;

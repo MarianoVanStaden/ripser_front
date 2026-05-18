@@ -80,6 +80,9 @@ export interface BonoVentasTablaCreateDTO {
 /**
  * Adelanto individual entregado a un empleado dentro de un período.
  * El total de adelantos del período se descuenta del sueldo neto.
+ *
+ * fechaPago = null → adelanto cargado pero pendiente de pago al empleado.
+ * fechaPago != null → ya se descontó de caja vía MovimientoExtra.
  */
 export interface Adelanto {
   id: number;
@@ -90,6 +93,8 @@ export interface Adelanto {
   fecha: string;         // YYYY-MM-DD
   monto: number;
   observaciones?: string | null;
+  fechaPago?: string | null;          // YYYY-MM-DD; null = pendiente
+  observacionesPago?: string | null;
 }
 
 export interface AdelantoCreateDTO {
@@ -98,4 +103,28 @@ export interface AdelantoCreateDTO {
   fecha: string;
   monto: number;
   observaciones?: string | null;
+}
+
+/** Renglón del pago de un adelanto: una caja + monto + método. */
+export interface PagoAdelantoItemDTO {
+  cajaPesosId: number;
+  monto: number;
+  metodoPago?: string;
+  observaciones?: string;
+}
+
+/** Pago de UN adelanto distribuido entre N cajas. */
+export interface PagoAdelantoRequestDTO {
+  fecha: string;
+  items: PagoAdelantoItemDTO[];
+  observaciones?: string;
+}
+
+/** Pago masivo: N adelantos desde una sola caja. */
+export interface PagoAdelantoMasivoRequestDTO {
+  adelantoIds: number[];
+  fecha: string;
+  cajaPesosId: number;
+  metodoPago?: string;
+  observaciones?: string;
 }

@@ -15,6 +15,7 @@ import {
   useMediaQuery,
   useTheme,
   Stack,
+  Autocomplete,
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -22,11 +23,19 @@ import {
   Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { TipoCliente, EstadoCliente, ProvinciaEnum } from '../../types';
+import type { TipoCliente, EstadoCliente, ProvinciaEnum, Producto } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { RUBRO_OPTIONS, type RubroEnum } from '../../types/rubro.types';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
+import { productApi } from '../../api/services';
+import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
 import LoadingOverlay from '../common/LoadingOverlay';
+
+type ItemCompradoOption = {
+  type: 'producto' | 'receta';
+  id: number;
+  nombre: string;
+};
 
 const ClienteFormPage: React.FC = () => {
   const navigate = useNavigate();
@@ -59,6 +68,31 @@ const ClienteFormPage: React.FC = () => {
     calificacion: 0,
   });
 
+  const [itemOptions, setItemOptions] = useState<ItemCompradoOption[]>([]);
+  const [selectedItem, setSelectedItem] = useState<ItemCompradoOption | null>(null);
+  const [cantidadComprada, setCantidadComprada] = useState<number | ''>('');
+  const [montoConversion, setMontoConversion] = useState<number | ''>('');
+  const [conversionTouched, setConversionTouched] = useState(false);
+
+  useEffect(() => {
+    const cargarOpciones = async () => {
+      try {
+        const [productosData, recetasData] = await Promise.all([
+          productApi.getAll({ page: 0, size: 10000 }).then((r) => r.content).catch(() => [] as Producto[]),
+          recetaFabricacionApi.findDisponiblesParaVenta().catch(() => [] as any[]),
+        ]);
+        const opts: ItemCompradoOption[] = [
+          ...recetasData.map((r: any) => ({ type: 'receta' as const, id: r.id, nombre: `🔧 ${r.nombre}` })),
+          ...productosData.map((p: Producto) => ({ type: 'producto' as const, id: p.id, nombre: `📦 ${p.nombre}` })),
+        ];
+        setItemOptions(opts);
+      } catch (err) {
+        console.error('Error cargando productos/recetas', err);
+      }
+    };
+    cargarOpciones();
+  }, []);
+
   useEffect(() => {
     if (isEdit && id) {
       loadCliente(Number(id));
@@ -88,6 +122,27 @@ const ClienteFormPage: React.FC = () => {
         limiteCredito: cliente.limiteCredito ?? 0,
         calificacion: cliente.calificacion ?? 0,
       });
+
+      if (cliente.recetaCompradaId) {
+        setSelectedItem({
+          type: 'receta',
+          id: cliente.recetaCompradaId,
+          nombre: `🔧 ${cliente.recetaCompradaNombre ?? `Receta #${cliente.recetaCompradaId}`}`,
+        });
+        setCantidadComprada(cliente.cantidadRecetaComprada ?? '');
+      } else if (cliente.productoCompradoId) {
+        setSelectedItem({
+          type: 'producto',
+          id: cliente.productoCompradoId,
+          nombre: `📦 ${cliente.productoCompradoNombre ?? `Producto #${cliente.productoCompradoId}`}`,
+        });
+        setCantidadComprada(cliente.cantidadProductoComprado ?? '');
+      } else {
+        setSelectedItem(null);
+        setCantidadComprada('');
+      }
+      setMontoConversion(cliente.montoConversion ?? '');
+      setConversionTouched(false);
     } catch {
       setError('Error al cargar el cliente');
     } finally {
@@ -137,11 +192,31 @@ const ClienteFormPage: React.FC = () => {
       setLoading(true);
 
       // Prepare data for submission
-      const submitData = { ...formData };
+      const submitData: any = { ...formData };
 
       // For PERSONA_JURIDICA, ensure apellido is empty or set a default if needed
       if (submitData.tipo === 'PERSONA_JURIDICA' && !submitData.apellido) {
         submitData.apellido = '';
+      }
+
+      // Item comprado: solo lo mandamos si el usuario tocó algo (selección
+      // distinta o cantidad/monto cambiados). El backend solo aplica cuando
+      // alguno de los IDs llega; null mantiene el estado actual.
+      if (conversionTouched) {
+        if (selectedItem?.type === 'producto') {
+          submitData.productoCompradoId = selectedItem.id;
+          submitData.cantidadProductoComprado = cantidadComprada === '' ? null : Number(cantidadComprada);
+          submitData.recetaCompradaId = null;
+          submitData.cantidadRecetaComprada = null;
+        } else if (selectedItem?.type === 'receta') {
+          submitData.recetaCompradaId = selectedItem.id;
+          submitData.cantidadRecetaComprada = cantidadComprada === '' ? null : Number(cantidadComprada);
+          submitData.productoCompradoId = null;
+          submitData.cantidadProductoComprado = null;
+        }
+        if (montoConversion !== '') {
+          submitData.montoConversion = Number(montoConversion);
+        }
       }
 
       if (isEdit && id) {
@@ -447,6 +522,69 @@ const ClienteFormPage: React.FC = () => {
                 value={formData.calificacion}
                 onChange={handleRatingChange}
                 precision={0.5}
+              />
+            </Grid>
+
+            <Divider flexItem sx={{ my: 2, width: '100%' }} />
+
+            {/* Item comprado / conversión desde lead */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Item comprado (conversión)
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                Producto o equipo que originó la conversión desde el lead. Editá si la conversión se hizo con un item incorrecto.
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={9}>
+              <Autocomplete
+                options={itemOptions}
+                getOptionLabel={(opt) => opt.nombre}
+                isOptionEqualToValue={(a, b) => a.id === b.id && a.type === b.type}
+                value={selectedItem}
+                onChange={(_, value) => {
+                  setSelectedItem(value);
+                  setConversionTouched(true);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    label="Producto / Equipo"
+                    helperText="🔧 Equipos · 📦 Productos"
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Cantidad"
+                value={cantidadComprada}
+                onChange={(e) => {
+                  setCantidadComprada(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)));
+                  setConversionTouched(true);
+                }}
+                inputProps={{ min: 1 }}
+                disabled={!selectedItem}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Monto de conversión"
+                value={montoConversion}
+                onChange={(e) => {
+                  setMontoConversion(e.target.value === '' ? '' : Number(e.target.value));
+                  setConversionTouched(true);
+                }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                }}
               />
             </Grid>
           </Grid>

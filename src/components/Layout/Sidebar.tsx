@@ -210,7 +210,6 @@ const navigation: NavigationSection[] = [
     items: [
       { text: 'Dashboard RRHH', icon: <DashboardIcon />, path: '/rrhh/dashboard' },
       { text: 'Empleados', icon: <WorkIcon />, path: '/rrhh/empleados' },
-      { text: 'Legajos', icon: <AssignmentIcon />, path: '/rrhh/legajos' },
       { text: 'Sueldos', icon: <AssignmentIcon />, path: '/rrhh/sueldos' },
       { text: 'Adelantos', icon: <PaymentsIcon />, path: '/rrhh/adelantos' },
       { text: 'Config. Sueldos', icon: <TuneIcon />, path: '/rrhh/config-sueldos' },

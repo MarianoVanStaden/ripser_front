@@ -155,7 +155,6 @@ const AsistenciasPage = lazy(() => import('./components/RRHH/AsistenciasPage'));
 const LicenciasPage = lazy(() => import('./components/RRHH/LicenciasPage'));
 const CapacitacionesPage = lazy(() => import('./components/RRHH/CapacitacionesPage'));
 const SueldosPage = lazy(() => import('./components/RRHH/SueldosPage'));
-const LegajosPage = lazy(() => import('./components/RRHH/LegajosPage'));
 const DashboardRRHH = lazy(() => import('./components/RRHH/DashboardRRHH'));
 const DisciplinaPage = lazy(() => import('./components/RRHH/Disciplina/DisciplinaPage'));
 const AdelantosPage = lazy(() => import('./components/RRHH/Adelantos/AdelantosPage'));
@@ -341,8 +340,10 @@ function App() {
                   <Route path="rrhh/sueldos/liquidacion-masiva" element={priv(<LiquidacionMasivaPage />)} />
                   <Route path="rrhh/sueldos/pago-masivo" element={priv(<PagoMasivoSueldosPage />)} />
                   <Route path="rrhh/adelantos" element={priv(<AdelantosPage />)} />
+                  <Route path="rrhh/adelantos/pago-masivo" element={priv(<AdelantosPage />)} />
                   <Route path="rrhh/config-sueldos" element={priv(<ConfigSueldosPage />)} />
-                  <Route path="rrhh/legajos" element={priv(<LegajosPage />)} />
+                  {/* Legajos: unificado con Empleados — redirige a /rrhh/empleados */}
+                  <Route path="rrhh/legajos" element={<Navigate to="/rrhh/empleados" replace />} />
                   <Route path="rrhh/disciplina" element={priv(<DisciplinaPage />)} />
 
                   {/* LOGÍSTICA */}

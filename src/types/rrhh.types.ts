@@ -416,6 +416,15 @@ export interface Empleado {
   categoriaSalarialNombre?: string | null;
   salario: number;
   usuarioId: number | null;
+  // Datos del legajo embebidos (1:1). Se autocrea al crear el empleado.
+  legajoId?: number | null;
+  numeroLegajo?: string | null;
+  legajoFechaAlta?: string | null;
+  legajoFechaBaja?: string | null;
+  legajoMotivoBaja?: string | null;
+  legajoDocumentacion?: string | null;
+  legajoObservaciones?: string | null;
+  legajoActivo?: boolean | null;
   asistencias?: RegistroAsistencia[];
   licencias?: Licencia[];
   capacitaciones?: Capacitacion[];
@@ -596,6 +605,11 @@ export interface EmpleadoCreateDTO {
   sucursalId?: number;
   crearUsuario?: boolean;
   usuarioPassword?: string;
+  // Datos de legajo (todos opcionales — el backend autogenera lo que falte).
+  numeroLegajo?: string;
+  legajoFechaAlta?: string;
+  legajoObservaciones?: string;
+  legajoDocumentacion?: string;
 }
 
 export interface EmpleadoUpdateDTO {
@@ -610,4 +624,12 @@ export interface EmpleadoUpdateDTO {
   categoriaSalarialId?: number | null;
   salario?: number;
   estado?: EstadoEmpleado;
+  // Datos de legajo editables desde la misma pantalla del empleado.
+  numeroLegajo?: string;
+  legajoFechaAlta?: string;
+  legajoFechaBaja?: string | null;
+  legajoMotivoBaja?: string | null;
+  legajoDocumentacion?: string | null;
+  legajoObservaciones?: string | null;
+  legajoActivo?: boolean;
 }
