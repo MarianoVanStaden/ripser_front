@@ -266,7 +266,14 @@ const CajaPesosMovimientosPage: React.FC = () => {
                 return (
                   <TableRow key={mov.id} hover>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {formatFecha(mov.fecha)}
+                      <Typography variant="body2">{formatFecha(mov.fecha)}</Typography>
+                      {mov.fechaCreacion && (
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(mov.fechaCreacion).toLocaleTimeString('es-AR', {
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Chip
