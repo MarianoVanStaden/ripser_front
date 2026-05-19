@@ -27,7 +27,6 @@ import {
   Alert,
   AlertTitle,
   CircularProgress,
-  Avatar,
   Divider,
   useMediaQuery,
   useTheme,
@@ -78,7 +77,7 @@ import {
 } from './EmpleadoRelaciones';
 import CatalogoAutocomplete from '../common/CatalogoAutocomplete';
 import { bancosApi, obrasSocialesApi, artsApi } from '../../api/services/catalogosGlobalesApi';
-import EmpleadoFotoAvatar, { clearEmpleadoFotoCache } from './EmpleadoFotoAvatar';
+import EmpleadoFotoAvatar from './EmpleadoFotoAvatar';
 import EmpleadoFotoUploader from './EmpleadoFotoUploader';
 import usuarioAdminApi, { type UsuarioDTO } from '../../api/services/usuarioAdminApi';
 import { sucursalService } from '../../services/sucursalService';

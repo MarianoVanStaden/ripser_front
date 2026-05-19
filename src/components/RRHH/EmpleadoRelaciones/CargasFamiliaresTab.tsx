@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Button, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  MenuItem, Grid, Typography, Alert, Chip, Tooltip,
+  MenuItem, Grid, Typography, Alert, Chip, Tooltip, CircularProgress,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, FamilyRestroom as FamilyIcon } from '@mui/icons-material';
 import { cargasFamiliaresApi } from '../../../api/services/empleadoRelacionesApi';
@@ -104,8 +104,9 @@ const CargasFamiliaresTab: React.FC<Props> = ({ empleadoId }) => {
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="subtitle1" fontWeight={700}>
+        <Typography variant="subtitle1" fontWeight={700} display="flex" alignItems="center" gap={1}>
           Cargas de Familia ({items.length})
+          {loading && <CircularProgress size={16} />}
         </Typography>
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={handleOpenNew}>
           Agregar

@@ -30,7 +30,6 @@ import {
   Description as FileIcon,
   Add as AddIcon,
   Gavel as GavelIcon,
-  Error as ErrorIcon,
 } from '@mui/icons-material';
 import { AlertTitle } from '@mui/material';
 import dayjs from 'dayjs';
