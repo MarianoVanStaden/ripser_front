@@ -13,7 +13,7 @@ interface Props {
 // del rol (no a la pantalla de "acceso denegado") — es UX más suave para
 // usuarios que vienen de un bookmark viejo o un link compartido.
 type RestrictedRole = {
-  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER';
+  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER' | 'SUPERVISOR';
   home: string;
   // Prefijos permitidos. Se chequea con startsWith para cubrir sub-rutas
   // (ej. /rrhh/empleados/123/editar).
@@ -25,6 +25,31 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
     rol: 'RECURSOS_HUMANOS',
     home: '/rrhh/dashboard',
     allowedPrefixes: ['/rrhh'],
+  },
+  {
+    // SUPERVISOR: combina accesos de VENDEDOR + COBRANZAS + TRANSPORTE, su
+    // pantalla de inicio es la Métrica de Leads. Si entra a cualquier ruta
+    // fuera de su scope (ej. /dashboard genérico) lo tiramos al landing.
+    // Los prefijos cubren las rutas listadas en supervisorAllowedPaths de
+    // Sidebar.tsx (mantener ambos en sync si se amplía el scope).
+    rol: 'SUPERVISOR',
+    home: '/leads/metricas',
+    allowedPrefixes: [
+      '/leads',
+      '/ventas',
+      '/clientes',
+      '/prestamos',
+      '/cobranzas',
+      '/garantias',
+      '/logistica/distribucion',
+      '/logistica/vehiculos',
+      '/fabricacion/equipos',
+      '/fabricacion/ficha-equipo',
+      '/taller/ordenes',
+      '/taller/materiales',
+      '/taller/tareas',
+      '/taller/trabajos',
+    ],
   },
 ];
 

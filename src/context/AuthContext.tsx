@@ -7,6 +7,17 @@ import type { TipoRol } from "../types";
 
 export type { TipoRol } from "../types";
 
+// Defensiva: el backend puede devolver roles con espacios/casing inconsistente
+// según el camino (login response vs select-tenant vs JWT custom claims).
+// Normalizamos siempre que recibamos un user para que `roles.includes('SUPERVISOR')`
+// y los lookups en PERMISOS_POR_ROL no fallen por un '\n' o un 'Supervisor'.
+const normalizeRoles = (raw: unknown): TipoRol[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((r) => (r == null ? '' : String(r).trim().toUpperCase()))
+    .filter((r): r is string => r.length > 0) as TipoRol[];
+};
+
 export interface AuthUser {
   id: number;
   username: string;
@@ -86,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const userParsed = JSON.parse(u);
+        userParsed.roles = normalizeRoles(userParsed.roles);
         const isSuperAdmin = superAdmin === 'true';
 
         console.log('✅ Token válido - Usuario:', {
@@ -126,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: res.id || 0,
         username: res.username || usernameOrEmail,
         email: res.email || "",
-        roles: res.roles || [],
+        roles: normalizeRoles(res.roles),
         esSuperAdmin: isSuperAdmin,
       };
       const access = res.accessToken || (res as any).token; // support alternate field name
