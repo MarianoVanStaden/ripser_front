@@ -27,21 +27,10 @@ describe('roleMapper', () => {
       expect(values).toContain('RECURSOS_HUMANOS');
     });
 
-    it('roles that require sucursal are marked correctly', () => {
+    it('only USUARIO_SUCURSAL requires sucursal assignment', () => {
       const sucursalRoles = ROLES_EMPRESA_OPTIONS.filter(r => r.requiresSucursal);
       const values = sucursalRoles.map(r => r.value);
-      expect(values).toContain('GERENTE_SUCURSAL');
-      expect(values).toContain('SUPERVISOR');
-      expect(values).toContain('TALLER');
-      expect(values).toContain('OFICINA');
-      expect(values).toContain('USUARIO_SUCURSAL');
-      // COBRANZAS opera a nivel empresa (cartera morosa de todas las sucursales),
-      // no requiere asignación a una sucursal específica.
-      // TRANSPORTE arma viajes que cruzan sucursales, tampoco se ata a una.
-      expect(values).not.toContain('COBRANZAS');
-      expect(values).not.toContain('TRANSPORTE');
-      expect(values).not.toContain('SUPER_ADMIN');
-      expect(values).not.toContain('ADMIN_EMPRESA');
+      expect(values).toEqual(['USUARIO_SUCURSAL']);
     });
 
     it('each option has required fields', () => {
@@ -69,8 +58,8 @@ describe('roleMapper', () => {
       expect(mapRolEmpresaToSystemRole('GERENTE_SUCURSAL')).toBe('VENDEDOR');
     });
 
-    it('maps SUPERVISOR to VENDEDOR', () => {
-      expect(mapRolEmpresaToSystemRole('SUPERVISOR')).toBe('VENDEDOR');
+    it('maps SUPERVISOR to SUPERVISOR', () => {
+      expect(mapRolEmpresaToSystemRole('SUPERVISOR')).toBe('SUPERVISOR');
     });
 
     it('maps USUARIO_SUCURSAL to USUARIO', () => {

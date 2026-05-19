@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { ArrowBack, Download, Print, Search } from '@mui/icons-material';
+import { ArrowBack, Download, Print, Search, VerifiedUser } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -21,7 +21,7 @@ import {
   type FichaTecnicaEquipoDTO,
 } from '../../api/services/especificacionTecnicaApi';
 import { clienteApi } from '../../api/services/clienteApi';
-import { generarFichaTecnicaPDF } from '../../services/pdfService';
+import { generarCertificadoGarantiaPDF, generarFichaTecnicaPDF } from '../../services/pdfService';
 import type { Cliente } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 
@@ -108,6 +108,10 @@ const FichaEquipoPage: React.FC = () => {
   // editadas en la página antes de imprimir. No se persisten desde acá.
   const [fechaFabricacion, setFechaFabricacion] = useState<Dayjs | null>(null);
   const [fechaEntrega, setFechaEntrega] = useState<Dayjs | null>(null);
+
+  // Capacidad en litros — no la tenemos en el equipo ni en la spec, así que
+  // se tipea manualmente acá antes de descargar el certificado de garantía.
+  const [litros, setLitros] = useState('');
 
   const loadFicha = async (numero: string) => {
     if (!numero.trim()) return;
@@ -201,6 +205,23 @@ const FichaEquipoPage: React.FC = () => {
     const doc = buildFichaPdf();
     if (!doc || !data) return;
     doc.save(`Ficha_${data.equipo.numeroHeladera}.pdf`);
+  };
+
+  /**
+   * Descarga el Certificado de Garantía en formato corporativo Ripser.
+   * Replica la planilla que la empresa entregaba al cliente: identifica el
+   * equipo (EQUIPO / MODELO / Litros / Fecha) y enumera las condiciones que
+   * invalidan la garantía. La fecha que dispara el periodo es la del día
+   * de descarga; "Litros" se tipea manualmente porque no lo trackeamos.
+   */
+  const handleDownloadCertificado = () => {
+    if (!data) return;
+    const doc = generarCertificadoGarantiaPDF({
+      ficha: data,
+      litros: litros.trim() || null,
+      fecha: new Date().toISOString(),
+    });
+    doc.save(`Certificado_Garantia_${data.equipo.numeroHeladera}.pdf`);
   };
 
   /**
@@ -368,6 +389,39 @@ const FichaEquipoPage: React.FC = () => {
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                 Las fechas se imprimen en la ficha y el PDF. No modifican el equipo.
+              </Typography>
+            </Paper>
+          )}
+
+          {data && (
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                Certificado de Garantía
+              </Typography>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                spacing={2}
+                alignItems={{ md: 'center' }}
+              >
+                <TextField
+                  label="Litros (capacidad)"
+                  size="small"
+                  value={litros}
+                  onChange={(e) => setLitros(e.target.value)}
+                  placeholder="ej: 420"
+                  sx={{ maxWidth: 200 }}
+                />
+                <Box sx={{ flexGrow: 1 }} />
+                <Button
+                  variant="outlined"
+                  startIcon={<VerifiedUser />}
+                  onClick={handleDownloadCertificado}
+                >
+                  Descargar Certificado de Garantía
+                </Button>
+              </Stack>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Usa la fecha del día como inicio del periodo de garantía (1 año gabinete, 6 meses componentes eléctricos). Dejá Litros vacío si no aplica.
               </Typography>
             </Paper>
           )}

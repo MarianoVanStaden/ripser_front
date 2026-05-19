@@ -203,6 +203,7 @@ const DashboardEntry: React.FC = () => {
   const isAdminLike = esSuperAdmin || roles.includes('ADMIN');
   if (!isAdminLike) {
     if (roles.includes('RECURSOS_HUMANOS')) return <Navigate to="/rrhh/dashboard" replace />;
+    if (roles.includes('SUPERVISOR')) return <Navigate to="/leads/metricas" replace />;
     if (roles.includes('COBRANZAS')) return <Navigate to="/cobranzas/resumen" replace />;
     if (roles.includes('TRANSPORTE')) return <TransporteDashboard />;
   }

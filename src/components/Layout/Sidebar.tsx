@@ -363,6 +363,50 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/taller/configuracion',
   ];
 
+  // Rutas permitidas para el rol SUPERVISOR (allowlist):
+  // Unión de lo que ven VENDEDOR + COBRANZAS + TRANSPORTE, más Métrica de
+  // Leads (que para VENDEDOR está denegada). Métrica de Leads es además su
+  // pantalla de inicio (ver DashboardEntry en App.tsx).
+  const supervisorAllowedPaths = [
+    '/',
+    // VENTAS (lo que VENDEDOR ve, sin las pantallas denegadas) + Registro Ventas (de TRANSPORTE)
+    '/ventas/dashboard',
+    '/ventas/presupuestos',
+    '/ventas/notas-pedido',
+    '/ventas/registro',
+    // CLIENTES
+    '/clientes/gestion',
+    '/clientes/carpeta',
+    '/clientes/agenda',
+    '/clientes/cuenta-corriente',
+    // LEADS — VENDEDOR los ve; SUPERVISOR además ve Métricas
+    '/leads',
+    '/leads/recordatorios',
+    '/leads/metricas',
+    // CRÉDITOS / COBRANZAS (de COBRANZAS)
+    '/prestamos/resumen',
+    '/prestamos/lista',
+    '/cobranzas/resumen',
+    '/cobranzas/lista',
+    // GARANTÍAS (de COBRANZAS + TRANSPORTE)
+    '/garantias/registro',
+    '/garantias/reclamos',
+    '/garantias/reporte',
+    // TRANSPORTE
+    '/logistica/distribucion/viajes',
+    '/logistica/distribucion/entregas-productos',
+    '/logistica/distribucion/entregas-equipos',
+    '/logistica/vehiculos/incidencias',
+    // PRODUCCIÓN (acotado, igual que TRANSPORTE)
+    '/fabricacion/equipos',
+    '/fabricacion/ficha-equipo',
+    // TALLER (todo menos Configuración, igual que TRANSPORTE)
+    '/taller/ordenes',
+    '/taller/materiales',
+    '/taller/tareas',
+    '/taller/trabajos',
+  ];
+
   // Rutas permitidas para el rol TRANSPORTE (allowlist):
   // - VENTAS: solo Registro Ventas.
   // - CLIENTES: Gestión + Carpeta.
@@ -414,6 +458,13 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isCobranzasOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('COBRANZAS');
       if (isCobranzasOnly) {
         filteredItems = filteredItems.filter(item => cobranzasAllowedPaths.includes(item.path));
+      }
+
+      // Si el rol es puramente SUPERVISOR (y no Admin), aplicar allowlist estricta.
+      // Su menú es la unión de VENDEDOR + COBRANZAS + TRANSPORTE + Métricas de Leads.
+      const isSupervisorOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('SUPERVISOR');
+      if (isSupervisorOnly) {
+        filteredItems = filteredItems.filter(item => supervisorAllowedPaths.includes(item.path));
       }
 
       // Si el rol es puramente TRANSPORTE (y no Admin), aplicar allowlist estricta.

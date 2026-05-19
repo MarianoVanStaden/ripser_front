@@ -39,23 +39,26 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     label: 'Gerente de Sucursal',
     description: 'Gestiona una sucursal específica',
     color: '#1976d2',
-    requiresSucursal: true,
+    requiresSucursal: false,
     systemRole: 'VENDEDOR'
   },
   {
+    // SUPERVISOR es su propio rol de sistema: combina los accesos de
+    // VENDEDOR + COBRANZAS + TRANSPORTE y además ve la Métrica de Leads,
+    // que es su pantalla de inicio.
     value: 'SUPERVISOR',
     label: 'Supervisor',
-    description: 'Supervisa operaciones en una sucursal',
+    description: 'Supervisa operaciones: acceso de Vendedor, Cobranzas y Transporte + Métrica de Leads',
     color: '#388e3c',
-    requiresSucursal: true,
-    systemRole: 'VENDEDOR'
+    requiresSucursal: false,
+    systemRole: 'SUPERVISOR'
   },
   {
     value: 'TALLER',
     label: 'Técnico de Taller',
     description: 'Acceso a módulo de taller, garantías y logística',
     color: '#5d4037',
-    requiresSucursal: true,
+    requiresSucursal: false,
     systemRole: 'TALLER'
   },
   {
@@ -63,7 +66,7 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     label: 'Personal de Oficina',
     description: 'Acceso a ventas, clientes, proveedores y logística',
     color: '#0288d1',
-    requiresSucursal: true,
+    requiresSucursal: false,
     systemRole: 'OFICINA'
   },
   {
@@ -95,7 +98,7 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     label: 'Recursos Humanos',
     description: 'Acceso exclusivo al módulo RRHH: empleados, legajos, sueldos, asistencias, licencias, capacitaciones y puestos',
     color: '#2e7d32',
-    requiresSucursal: true,
+    requiresSucursal: false,
     systemRole: 'RECURSOS_HUMANOS'
   }
 ];

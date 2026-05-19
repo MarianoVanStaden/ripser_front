@@ -14,6 +14,12 @@ const PERMISOS_POR_ROL: PermisosMap = {
 
   VENDEDOR: ['VENTAS', 'CLIENTES'], // Se removió GARANTIAS
 
+  // SUPERVISOR: unión de los accesos de VENDEDOR + COBRANZAS + TRANSPORTE.
+  // Además ve Métrica de Leads (que VENDEDOR tiene denegado) y aterriza
+  // ahí al iniciar sesión (ver DashboardEntry en App.tsx).
+  // Filtrado fino por path: supervisorAllowedPaths en Sidebar.tsx.
+  SUPERVISOR: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PRESTAMOS', 'ADMINISTRACION', 'GARANTIAS', 'TRANSPORTE', 'PRODUCCION', 'TALLER'],
+
   // El rol TALLER ve: Proveedores (sólo gestión y compras — filtrado fino en Sidebar),
   // Logística completa, Taller completo, Producción completa, Garantías completa.
   // El detalle por path se controla en tallerAllowedPaths en Sidebar.tsx.

@@ -1385,6 +1385,146 @@ export const generarFichaTecnicaPDF = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CERTIFICADO DE GARANTÍA (módulo Fabricación / Ficha + QR)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface CertificadoGarantiaInput {
+  ficha: FichaTecnicaEquipoDTO;
+  /** Capacidad en litros — manual desde la página. Si está vacío se omite la fila. */
+  litros?: string | null;
+  /** Fecha que dispara el periodo de garantía (ISO). Default: hoy. */
+  fecha?: string | null;
+}
+
+const MESES_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+const formatFechaLarga = (raw?: string | null): string => {
+  const d = raw ? new Date(raw) : new Date();
+  if (isNaN(d.getTime())) return '';
+  return `${d.getDate()} de ${MESES_ES[d.getMonth()]} de ${d.getFullYear()}`;
+};
+
+export const generarCertificadoGarantiaPDF = ({
+  ficha,
+  litros,
+  fecha,
+}: CertificadoGarantiaInput): jsPDF => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+
+  let y = addCorporateHeader(doc, 'CERTIFICADO DE GARANTÍA');
+  y += 4;
+
+  const e = ficha.equipo;
+  const equipoLabel = [e.tipo, e.modelo, e.medida?.nombre]
+    .filter((v) => v && String(v).trim() !== '')
+    .join(' ')
+    .toUpperCase();
+
+  // ── Bloque de identificación (EQUIPO / MODELO / Litros / Fecha) ──
+  doc.setTextColor(...COLORS.black);
+  const labelX = margin + 5;
+  const valueX = margin + 28;
+  doc.setFontSize(10);
+
+  const row = (label: string, value: string, italicLabel = false) => {
+    doc.setFont('helvetica', italicLabel ? 'bolditalic' : 'bold');
+    doc.text(label, labelX, y);
+    doc.setFont('helvetica', italicLabel ? 'italic' : 'normal');
+    doc.text(value, valueX, y);
+    y += 6;
+  };
+
+  row('EQUIPO:', equipoLabel);
+  row('MODELO:', e.numeroHeladera ?? '', true);
+  if (litros && litros.trim()) row('Litros:', litros.trim(), true);
+  row('Fecha:', formatFechaLarga(fecha), true);
+
+  y += 4;
+
+  // ── Cuerpo del certificado ──
+  const textWidth = pageWidth - (margin * 2) - 10;
+  const writeJustified = (text: string, x: number, width: number) => {
+    const lines = doc.splitTextToSize(text, width) as string[];
+    doc.text(lines, x, y);
+    y += lines.length * 5;
+  };
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  writeJustified(
+    'RIPSER Instalaciones OTORGA EL PRESENTE CERTIFICADO DE GARANTIA PARA TODO EL GABINETE POR EL LAPSO DE UN AÑO (1 año) CONTRA DEFECTOS DE FABRICACIÓN Y POR UN PERIODO DE SEIS MESES (6 meses) PARA COMPONENTES ELÉCTRICOS:',
+    labelX,
+    textWidth,
+  );
+  y += 3;
+
+  writeJustified(
+    'Respaldamos nuestro "CERTIFICADO DE GARANTÍA" a partir de la fecha de facturación o nota de pedido firmada por responsable de la firma. El comprador o el usuario pierden el derecho a esta garantía en los siguientes casos:',
+    labelX,
+    textWidth,
+  );
+  y += 3;
+
+  const condiciones = [
+    'Si cualquier reclamo no es comunicado durante el periodo de garantía.',
+    'Si inmediatamente que se presente el posible daño o defecto no se solicita la asistencia de nuestros técnicos, pues solo ellos realizarán la inspección de la máquina para verificar la causa del desperfecto.',
+    'Si se comprueba la intervención de personas no autorizadas por nuestro Departamento Técnico y Servicio.',
+    'Si los equipos, máquinas, herramientas o alguna de sus partes han operado en condiciones diferentes o adversas a las que recomienda el fabricante.',
+    'Si los equipos, máquinas o herramientas han sufrido daño ocasionado por falta de mantenimiento adecuado o por haber sido manejado por personal no capacitado.',
+  ];
+  const listIndent = labelX + 6;
+  condiciones.forEach((item, i) => {
+    doc.text(`${i + 1}.`, labelX + 2, y);
+    const lines = doc.splitTextToSize(item, textWidth - 6) as string[];
+    doc.text(lines, listIndent, y);
+    y += lines.length * 5 + 1;
+  });
+  y += 2;
+
+  writeJustified(
+    'Esta garantía queda sin efecto automáticamente en el momento en que los equipos, máquinas o herramientas hayan sufrido: accidentes; mal uso; voltaje inadecuado; manejo inadecuado de las herramientas, partes desgastadas por un uso normal, exceso de peso, caídas, golpes, exposición a lluvia o humedad, utilización de accesorios indebidos para estas herramientas o reparaciones por talleres no autorizados por RIPSER INSTALACIONES COMERCIALES.',
+    labelX,
+    textWidth,
+  );
+
+  // ── Firma centrada (GERENTE DE PRODUCCIÓN / RIPSER Instalaciones) ──
+  const firmaY = Math.max(y + 12, pageHeight - 45);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('GERENTE DE PRODUCCIÓN', pageWidth / 2, firmaY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('RIPSER Instalaciones.', pageWidth / 2, firmaY + 5, { align: 'center' });
+
+  // ── Garantías + footer azul corporativo ──
+  const garantiasY = pageHeight - 18;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.black);
+  doc.text('Garantías: (223) 624 - 9353', margin + 2, garantiasY);
+
+  const footerY = pageHeight - 12;
+  doc.setFillColor(...COLORS.darkBlue);
+  doc.rect(margin, footerY, pageWidth - (margin * 2), 8, 'F');
+  doc.setTextColor(...COLORS.white);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    `Certificado generado el ${formatDate(new Date().toISOString())} — Ripser Instalaciones Comerciales`,
+    pageWidth / 2,
+    footerY + 5,
+    { align: 'center' },
+  );
+
+  return doc;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RECIBO DE HABERES (módulo Sueldos / Remuneraciones)
 // ─────────────────────────────────────────────────────────────────────────────
 
