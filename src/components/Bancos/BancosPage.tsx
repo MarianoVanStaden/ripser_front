@@ -66,8 +66,14 @@ const BancosPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const bancosData = await bancoApi.getAll();
-      setBancos(Array.isArray(bancosData) ? bancosData : []);
+      // bancoApi.getAll devuelve PageResponse<Banco>, no un array plano —
+      // hay que extraer .content. Pedimos un size alto porque esta pantalla
+      // no pagina (filtrado y stats se hacen en cliente).
+      const bancosData = await bancoApi.getAll({ page: 0, size: 1000 });
+      const bancos = Array.isArray(bancosData)
+        ? bancosData
+        : (bancosData?.content ?? []);
+      setBancos(bancos);
       setError(null);
     } catch (err: any) {
       console.error('Error loading data:', err);

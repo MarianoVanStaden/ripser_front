@@ -1,15 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box, Typography, Card, CardContent, Stack, Chip, CircularProgress, Alert,
-  TextField, MenuItem, InputAdornment, IconButton, Tooltip, Paper,
+  TextField, MenuItem, InputAdornment, IconButton, Tooltip, Paper, Button,
+  ToggleButtonGroup, ToggleButton, AlertTitle, Divider,
 } from '@mui/material';
 import {
   AccountTree as AccountTreeIcon, Search as SearchIcon, Refresh as RefreshIcon,
   ExpandMore as ExpandMoreIcon, ChevronRight as ChevronRightIcon,
+  Group as GroupIcon, Apartment as ApartmentIcon, SupervisorAccount as SupervisorIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { employeeApi } from '../../../api/services/employeeApi';
 import type { Empleado } from '../../../types';
 import EmpleadoFotoAvatar from '../EmpleadoFotoAvatar';
+
+type Vista = 'jerarquica' | 'area';
 
 interface NodeData {
   empleado: Empleado;
@@ -36,7 +41,6 @@ function buildForest(empleados: Empleado[]): NodeData[] {
     }
   });
 
-  // Ordeno por apellido, nombre para una vista estable
   const sorter = (a: NodeData, b: NodeData) =>
     (a.empleado.apellido || '').localeCompare(b.empleado.apellido || '') ||
     (a.empleado.nombre || '').localeCompare(b.empleado.nombre || '');
@@ -45,6 +49,36 @@ function buildForest(empleados: Empleado[]): NodeData[] {
   raices.forEach(sort);
 
   return raices;
+}
+
+const SIN_AREA = 'Sin área asignada';
+
+/**
+ * Agrupa empleados por `areaNombre`. Cuando un empleado no tiene area, va
+ * al grupo SIN_AREA. Los grupos se ordenan alfabéticamente; SIN_AREA queda
+ * último para no robarle protagonismo al resto.
+ */
+function buildByArea(empleados: Empleado[]): Array<{ area: string; empleados: Empleado[] }> {
+  const map = new Map<string, Empleado[]>();
+  empleados.forEach(e => {
+    const area = (e.areaNombre && e.areaNombre.trim()) || SIN_AREA;
+    if (!map.has(area)) map.set(area, []);
+    map.get(area)!.push(e);
+  });
+  const result = Array.from(map.entries())
+    .map(([area, empleados]) => ({
+      area,
+      empleados: empleados.sort((a, b) =>
+        (a.apellido || '').localeCompare(b.apellido || '') ||
+        (a.nombre || '').localeCompare(b.nombre || '')
+      ),
+    }))
+    .sort((a, b) => {
+      if (a.area === SIN_AREA) return 1;
+      if (b.area === SIN_AREA) return -1;
+      return a.area.localeCompare(b.area);
+    });
+  return result;
 }
 
 interface NodoProps {
@@ -114,13 +148,44 @@ const NodoEmpleado: React.FC<NodoProps> = ({ node, depth, expandedIds, toggleExp
   );
 };
 
+interface EmpleadoCardProps { e: Empleado; }
+const EmpleadoCard: React.FC<EmpleadoCardProps> = ({ e }) => (
+  <Paper
+    variant="outlined"
+    sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, mb: 0.75 }}
+  >
+    <EmpleadoFotoAvatar empleadoId={e.id} nombre={e.nombre} apellido={e.apellido} size={36} />
+    <Box flex={1} minWidth={0}>
+      <Typography variant="body2" fontWeight={700} noWrap>
+        {e.apellido}, {e.nombre}
+      </Typography>
+      <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={0.5}>
+        <Typography variant="caption" color="text.secondary">
+          {e.puesto?.nombre || e.puestoNombre || '— sin puesto —'}
+        </Typography>
+        {e.numeroLegajo && (
+          <Chip size="small" variant="outlined" label={e.numeroLegajo} sx={{ height: 18, fontSize: '0.65rem' }} />
+        )}
+        <Chip size="small" label={e.estado}
+          color={e.estado === 'ACTIVO' ? 'success' : e.estado === 'LICENCIA' ? 'warning' : 'error'}
+          sx={{ height: 18, fontSize: '0.65rem' }} />
+      </Stack>
+    </Box>
+  </Paper>
+);
+
 const OrganigramaPage: React.FC = () => {
+  const navigate = useNavigate();
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<'TODOS' | 'ACTIVO' | 'INACTIVO' | 'LICENCIA'>('ACTIVO');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const [vista, setVista] = useState<Vista>('jerarquica');
+  // Si la jerarquía está vacía al cargar, switcheamos automáticamente a "Por área"
+  // — así la página muestra contenido útil aunque nadie tenga supervisor asignado.
+  const [autoSwitched, setAutoSwitched] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -128,6 +193,7 @@ const OrganigramaPage: React.FC = () => {
     try {
       const data = await employeeApi.getAllList();
       setEmpleados(data);
+      setAutoSwitched(false);
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Error cargando empleados');
     } finally {
@@ -137,18 +203,49 @@ const OrganigramaPage: React.FC = () => {
 
   useEffect(() => { load(); }, []);
 
-  const forest = useMemo(() => {
-    const filtrados = empleados.filter(e =>
+  const empleadosFiltrados = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return empleados.filter(e =>
       (estadoFilter === 'TODOS' || e.estado === estadoFilter) &&
-      (!search ||
-        e.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        e.apellido.toLowerCase().includes(search.toLowerCase()) ||
-        (e.puestoNombre ?? e.puesto?.nombre ?? '').toLowerCase().includes(search.toLowerCase()) ||
-        (e.areaNombre ?? '').toLowerCase().includes(search.toLowerCase())
+      (!term ||
+        e.nombre.toLowerCase().includes(term) ||
+        e.apellido.toLowerCase().includes(term) ||
+        (e.puestoNombre ?? e.puesto?.nombre ?? '').toLowerCase().includes(term) ||
+        (e.areaNombre ?? '').toLowerCase().includes(term)
       )
     );
-    return buildForest(filtrados);
   }, [empleados, search, estadoFilter]);
+
+  const forest = useMemo(() => buildForest(empleadosFiltrados), [empleadosFiltrados]);
+  const grupos = useMemo(() => buildByArea(empleadosFiltrados), [empleadosFiltrados]);
+
+  // Stats sobre el set filtrado vigente
+  const stats = useMemo(() => {
+    const total = empleadosFiltrados.length;
+    const conSupervisor = empleadosFiltrados.filter(e => e.supervisorDirectoId).length;
+    const sinSupervisor = total - conSupervisor;
+    const idsSet = new Set(empleadosFiltrados.map(e => e.id));
+    const lideres = new Set<number>();
+    empleadosFiltrados.forEach(e => { if (e.supervisorDirectoId && idsSet.has(e.supervisorDirectoId)) lideres.add(e.supervisorDirectoId); });
+    const areas = new Set(empleadosFiltrados.map(e => (e.areaNombre && e.areaNombre.trim()) || SIN_AREA));
+    return {
+      total,
+      conSupervisor,
+      sinSupervisor,
+      lideres: lideres.size,
+      areas: areas.size,
+      jerarquiaVacia: total > 0 && conSupervisor === 0,
+    };
+  }, [empleadosFiltrados]);
+
+  // Cuando termina de cargar y detectamos que no hay jerarquía, switch a 'area'
+  // (sólo la primera vez para no pisar al usuario si decide volver a "Jerárquica").
+  useEffect(() => {
+    if (!loading && !autoSwitched && stats.jerarquiaVacia) {
+      setVista('area');
+      setAutoSwitched(true);
+    }
+  }, [loading, autoSwitched, stats.jerarquiaVacia]);
 
   const expandAll = () => {
     const ids = new Set<number>();
@@ -156,9 +253,7 @@ const OrganigramaPage: React.FC = () => {
     forest.forEach(walk);
     setExpandedIds(ids);
   };
-
   const collapseAll = () => setExpandedIds(new Set());
-
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
@@ -166,9 +261,6 @@ const OrganigramaPage: React.FC = () => {
       return next;
     });
   };
-
-  const sinSupervisor = forest.length;
-  const totalEmpleados = empleados.filter(e => estadoFilter === 'TODOS' || e.estado === estadoFilter).length;
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
@@ -178,18 +270,22 @@ const OrganigramaPage: React.FC = () => {
           <Box>
             <Typography variant="h4">Organigrama</Typography>
             <Typography variant="body2" color="text.secondary">
-              Jerarquía basada en supervisor directo de cada empleado
+              Estructura organizacional de la empresa. La vista <strong>Jerárquica</strong> dibuja el árbol a partir
+              del supervisor directo de cada empleado; la vista <strong>Por área</strong> agrupa al personal por
+              su área asignada.
             </Typography>
           </Box>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Tooltip title="Recargar"><IconButton onClick={load}><RefreshIcon /></IconButton></Tooltip>
+          <Tooltip title="Recargar">
+            <IconButton onClick={load}><RefreshIcon /></IconButton>
+          </Tooltip>
         </Stack>
       </Box>
 
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
             <TextField size="small" placeholder="Buscar nombre, puesto, área…" value={search}
               onChange={(e) => setSearch(e.target.value)}
               InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
@@ -201,32 +297,101 @@ const OrganigramaPage: React.FC = () => {
               <MenuItem value="LICENCIA">Licencia</MenuItem>
               <MenuItem value="INACTIVO">Baja</MenuItem>
             </TextField>
-            <IconButton onClick={expandAll} size="small" title="Expandir todo"><ExpandMoreIcon /></IconButton>
-            <IconButton onClick={collapseAll} size="small" title="Colapsar todo"><ChevronRightIcon /></IconButton>
+            <ToggleButtonGroup
+              value={vista}
+              exclusive
+              size="small"
+              onChange={(_, v) => v && setVista(v as Vista)}
+              aria-label="Vista del organigrama"
+            >
+              <ToggleButton value="jerarquica" aria-label="Jerárquica">
+                <AccountTreeIcon fontSize="small" sx={{ mr: 0.5 }} /> Jerárquica
+              </ToggleButton>
+              <ToggleButton value="area" aria-label="Por área">
+                <ApartmentIcon fontSize="small" sx={{ mr: 0.5 }} /> Por área
+              </ToggleButton>
+            </ToggleButtonGroup>
+            {vista === 'jerarquica' && (
+              <Stack direction="row" spacing={0.5}>
+                <Tooltip title="Expandir todo">
+                  <IconButton onClick={expandAll} size="small"><ExpandMoreIcon /></IconButton>
+                </Tooltip>
+                <Tooltip title="Colapsar todo">
+                  <IconButton onClick={collapseAll} size="small"><ChevronRightIcon /></IconButton>
+                </Tooltip>
+              </Stack>
+            )}
           </Stack>
-          <Stack direction="row" spacing={2} mt={2}>
-            <Chip label={`Total: ${totalEmpleados}`} size="small" />
-            <Chip label={`Sin supervisor (raíz): ${sinSupervisor}`} size="small" color="primary" />
+
+          <Divider sx={{ my: 2 }} />
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
+            <Chip icon={<GroupIcon />} label={`Total: ${stats.total}`} size="small" />
+            <Chip icon={<SupervisorIcon />} label={`Líderes con equipo: ${stats.lideres}`} size="small" color="primary" variant="outlined" />
+            <Chip
+              label={`Con supervisor: ${stats.conSupervisor}`}
+              size="small"
+              color={stats.conSupervisor > 0 ? 'success' : 'default'}
+              variant="outlined"
+            />
+            <Chip
+              label={`Sin supervisor: ${stats.sinSupervisor}`}
+              size="small"
+              color={stats.sinSupervisor > 0 && stats.conSupervisor === 0 ? 'warning' : 'default'}
+              variant="outlined"
+            />
+            <Chip icon={<ApartmentIcon />} label={`Áreas: ${stats.areas}`} size="small" variant="outlined" />
           </Stack>
         </CardContent>
       </Card>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
+      {stats.jerarquiaVacia && !loading && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <AlertTitle>Aún no se cargó la jerarquía</AlertTitle>
+          Ningún empleado tiene un supervisor directo asignado, así que el árbol jerárquico no tiene forma todavía.
+          Mientras tanto te mostramos la vista <strong>Por área</strong>. Para que la vista jerárquica funcione,
+          asigná el <em>supervisor directo</em> a cada empleado desde su legajo.
+          <Box mt={1.5}>
+            <Button size="small" variant="outlined" onClick={() => navigate('/rrhh/legajos')}>
+              Ir a Legajos
+            </Button>
+          </Box>
+        </Alert>
+      )}
+
       {loading ? (
         <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
-      ) : forest.length === 0 ? (
+      ) : empleadosFiltrados.length === 0 ? (
         <Alert severity="info">
           No hay empleados para mostrar con los filtros aplicados.
           {estadoFilter !== 'TODOS' && ' Probá cambiando el filtro de estado.'}
         </Alert>
-      ) : (
+      ) : vista === 'jerarquica' ? (
         <Box>
           {forest.map(n => (
             <NodoEmpleado key={n.empleado.id} node={n} depth={0}
               expandedIds={expandedIds} toggleExpand={toggleExpand} />
           ))}
         </Box>
+      ) : (
+        <Stack spacing={2}>
+          {grupos.map(({ area, empleados }) => (
+            <Card key={area} variant="outlined">
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                  <ApartmentIcon color={area === SIN_AREA ? 'disabled' : 'primary'} />
+                  <Typography variant="h6" sx={{ fontSize: '1.05rem' }}>
+                    {area}
+                  </Typography>
+                  <Chip size="small" label={`${empleados.length} ${empleados.length === 1 ? 'persona' : 'personas'}`} />
+                </Box>
+                {empleados.map(e => <EmpleadoCard key={e.id} e={e} />)}
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
       )}
     </Box>
   );

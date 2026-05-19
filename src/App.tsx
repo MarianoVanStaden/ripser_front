@@ -40,7 +40,6 @@ const TransporteDashboard = lazy(() => import('./pages/transporte/TransporteDash
 
 // Admin
 const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
-const RolesPage = lazy(() => import('./components/Admin/RolesPage'));
 const ColoresPage = lazy(() => import('./components/Admin/ColoresPage'));
 const CatalogosRRHHPage = lazy(() => import('./components/Admin/CatalogosRRHH/CatalogosRRHHPage'));
 const CatalogosGlobalesPage = lazy(() => import('./components/Admin/CatalogosGlobales/CatalogosGlobalesPage'));
@@ -248,7 +247,6 @@ function App() {
 
                   {/* ADMIN */}
                   <Route path="admin/users" element={priv(<UsersPage />)} />
-                  <Route path="admin/roles" element={priv(<RolesPage />)} />
                   <Route path="admin/colores" element={priv(<ColoresPage />)} />
                   <Route path="admin/catalogos-rrhh" element={priv(<CatalogosRRHHPage />)} />
                   <Route path="admin/catalogos-globales" element={priv(<CatalogosGlobalesPage />)} />

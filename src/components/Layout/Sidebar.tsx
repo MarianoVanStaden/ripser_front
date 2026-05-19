@@ -248,7 +248,6 @@ const navigation: NavigationSection[] = [
       { text: 'Sucursales', icon: <AccountBalanceIcon />, path: '/admin/sucursales' },
       { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
-      { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
       { text: 'Catálogos RRHH', icon: <SettingsIcon />, path: '/admin/catalogos-rrhh' },
       { text: 'Catálogos Globales', icon: <SettingsIcon />, path: '/admin/catalogos-globales' },
       // Unifica Fichas técnicas + Medidas + Colores en una sola pantalla con tabs.

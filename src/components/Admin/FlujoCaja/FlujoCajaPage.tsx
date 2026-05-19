@@ -62,10 +62,10 @@ const FlujoCajaPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Fechas y filtros
-  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(3, 'month'));
-  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
-  const [activeFilter, setActiveFilter] = useState<string>('last3months');
+  // Fechas y filtros — defaultea al mes en curso (idéntico al botón "Este Mes").
+  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().startOf('month'));
+  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs().endOf('month'));
+  const [activeFilter, setActiveFilter] = useState<string>('thismonth');
   const [_selectedMetodoPago, setSelectedMetodoPago] = useState<MetodoPago | 'ALL'>('ALL');
   const [localError, setLocalError] = useState<string | null>(null);
 
