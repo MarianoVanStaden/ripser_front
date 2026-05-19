@@ -50,6 +50,10 @@ const EspecificacionesTecnicasPage = lazy(() => import('./components/Admin/Espec
 const SettingsPage = lazy(() => import('./components/Admin/SettingsPage'));
 const ImportadorPreciosPage = lazy(() => import('./pages/admin/ImportadorPreciosPage'));
 const OfertasPrecioPage = lazy(() => import('./pages/admin/OfertasPrecioPage'));
+// Páginas unificadas (tabs): consolidan entradas del sidebar sin romper
+// las rutas viejas, que quedan vivas por compat (links externos y bookmarks).
+const CatalogosEquiposPage = lazy(() => import('./pages/admin/CatalogosEquiposPage'));
+const PreciosOfertasPage = lazy(() => import('./pages/admin/PreciosOfertasPage'));
 const FlujoCajaPage = lazy(() => import('./components/Admin/FlujoCaja/FlujoCajaPage'));
 const EmpresasPage = lazyNamed(() => import('./components/Admin/EmpresasPage'), 'EmpresasPage');
 const SucursalesPage = lazyNamed(() => import('./components/Admin/SucursalesPage'), 'SucursalesPage');
@@ -253,6 +257,9 @@ function App() {
                   <Route path="admin/settings" element={priv(<SettingsPage />)} />
                   <Route path="admin/importador-precios" element={priv(<ImportadorPreciosPage />)} />
                   <Route path="admin/ofertas" element={priv(<OfertasPrecioPage />)} />
+                  {/* Páginas unificadas con tabs */}
+                  <Route path="admin/catalogos-equipos" element={priv(<CatalogosEquiposPage />)} />
+                  <Route path="admin/precios-ofertas" element={priv(<PreciosOfertasPage />)} />
                   <Route path="admin/flujo-caja" element={priv(<FlujoCajaPage />)} />
                   <Route path="admin/bancos" element={priv(<BancosPage />)} />
                   <Route path="admin/cuentas-bancarias" element={priv(<CuentasBancariasPage />)} />

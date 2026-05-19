@@ -78,6 +78,10 @@ const ADMIN_EMPRESA_LIMITADO_DENIED_PREFIXES = [
   '/admin/empresas',
   '/admin/sucursales',
   '/admin/patrimonio',
+  // Cambiar contexto (sólo SuperAdmin): ya bloqueado por SuperAdminRoute en
+  // App.tsx, lo replicamos acá para mantener la denylist de Sidebar y guard
+  // sincronizadas (UX coherente y defensa en profundidad).
+  '/admin/tenant-selector',
 ];
 
 const RoleScopeGuard: React.FC<Props> = ({ children }) => {

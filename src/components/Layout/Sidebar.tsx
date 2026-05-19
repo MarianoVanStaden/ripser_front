@@ -249,13 +249,13 @@ const navigation: NavigationSection[] = [
       { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
-      { text: 'Colores', icon: <SettingsIcon />, path: '/admin/colores' },
       { text: 'Catálogos RRHH', icon: <SettingsIcon />, path: '/admin/catalogos-rrhh' },
       { text: 'Catálogos Globales', icon: <SettingsIcon />, path: '/admin/catalogos-globales' },
-      { text: 'Medidas', icon: <SettingsIcon />, path: '/admin/medidas' },
-      { text: 'Fichas técnicas', icon: <SettingsIcon />, path: '/admin/especificaciones-tecnicas' },
-      { text: 'Importador de Precios', icon: <SettingsIcon />, path: '/admin/importador-precios' },
-      { text: 'Ofertas Mensuales', icon: <SettingsIcon />, path: '/admin/ofertas' },
+      // Unifica Fichas técnicas + Medidas + Colores en una sola pantalla con tabs.
+      // Las rutas viejas siguen vivas (compat con links externos y bookmarks).
+      { text: 'Catálogos de Equipos', icon: <SettingsIcon />, path: '/admin/catalogos-equipos' },
+      // Unifica Ofertas Mensuales + Importador de Precios.
+      { text: 'Precios y Ofertas', icon: <SettingsIcon />, path: '/admin/precios-ofertas' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
       { text: 'Actividad del sistema', icon: <HistoryIcon />, path: '/admin/actividad' },
     ],
@@ -388,6 +388,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/admin/empresas',
     '/admin/sucursales',
     '/admin/patrimonio',
+    '/admin/tenant-selector',
   ];
 
   // Rutas permitidas para el rol SUPERVISOR (allowlist):
