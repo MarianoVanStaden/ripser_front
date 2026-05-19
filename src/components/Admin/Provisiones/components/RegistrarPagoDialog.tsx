@@ -146,7 +146,15 @@ export default function RegistrarPagoDialog({ open, tipoId, tipoNombre, anio, me
                   onChange={(e) => setMetodoPago(e.target.value as MetodoPagoType)}
                 >
                   {Object.values(MetodoPago)
-                    .filter((m) => m !== 'CUENTA_CORRIENTE' && m !== 'FINANCIACION_PROPIA')
+                    .filter((m) =>
+                      m !== 'CUENTA_CORRIENTE' &&
+                      m !== 'FINANCIACION_PROPIA' &&
+                      // 'TRANSFERENCIA' y 'FINANCIAMIENTO' son aliases legacy:
+                      // el backend sólo acepta TRANSFERENCIA_BANCARIA y FINANCIACION_PROPIA
+                      // (ver com.ripser_back.enums.MetodoPago). Mostrarlos rompe el POST.
+                      m !== 'TRANSFERENCIA' &&
+                      m !== 'FINANCIAMIENTO'
+                    )
                     .map((m) => (
                       <MenuItem key={m} value={m}>
                         {METODO_PAGO_LABELS[m]}
