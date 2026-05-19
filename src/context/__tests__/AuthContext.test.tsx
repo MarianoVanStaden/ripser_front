@@ -151,7 +151,7 @@ describe('AuthContext', () => {
     it('trusts client-side validation when backend returns non-401 error', async () => {
       const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
       const token = `h.${payload}.s`;
-      const user = { id: 1, username: 'u' };
+      const user = { id: 1, username: 'u', roles: [] };
 
       localStorage.setItem('auth_token', token);
       localStorage.setItem('auth_user', JSON.stringify(user));
