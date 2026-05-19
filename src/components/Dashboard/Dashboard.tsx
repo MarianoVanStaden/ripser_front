@@ -584,7 +584,7 @@ const Dashboard: React.FC = () => {
                 />
                 {user.roles && user.roles.length > 0 && (
                   <Chip
-                    label={user.roles[0]}
+                    label={user.roles[0] === 'ADMIN_EMPRESA_LIMITADO' ? 'ADMIN_EMPRESA_OFICINA' : user.roles[0]}
                     size="small"
                     color="primary"
                     variant="outlined"

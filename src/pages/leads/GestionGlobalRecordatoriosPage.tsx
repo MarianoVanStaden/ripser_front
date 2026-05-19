@@ -132,6 +132,17 @@ const getMonthEndStr = () => {
   return d.toISOString().split('T')[0];
 };
 
+// "Vencidos + X" se interpreta como "items que se vencieron/se vencerán durante
+// X", i.e. con fechaRecordatorio dentro de X shifteado un día atrás. Este helper
+// devuelve la cadena tal cual si es un sentinel ('0000-00-00' / '9999-99-99'),
+// así no se rompe el manejo de rangos abiertos.
+const shiftDateStrBack = (dateStr: string): string => {
+  if (!dateStr || dateStr === '9999-99-99' || dateStr === '0000-00-00') return dateStr;
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+};
+
 const formatDateDisplay = (dateStr: string) => {
   if (!dateStr) return '-';
   const [year, month, day] = dateStr.split('-');
@@ -987,14 +998,24 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     if (sucursalFiltro) f.sucursalId = sucursalFiltro;
 
     if (!datePresets.includes('todos')) {
+      const isVencidoSelected = datePresets.includes('vencidos');
       let hasDateBuckets = false;
       let minDesde = '9999-99-99';
       let maxHasta = '0000-00-00';
 
+      // Si Vencidos está combinado con un bucket, "Vencidos durante X" = items con
+      // fechaRecordatorio dentro de X shifteado 1 día atrás (los que vencieron / van a
+      // vencer durante el período X). updateRange aplica ese shift acá.
       const updateRange = (rStart?: string, rEnd?: string) => {
         hasDateBuckets = true;
-        if (rStart && rStart < minDesde) minDesde = rStart;
-        if (rEnd && rEnd > maxHasta) maxHasta = rEnd;
+        let s = rStart;
+        let e = rEnd;
+        if (isVencidoSelected) {
+          if (s) s = shiftDateStrBack(s);
+          if (e) e = shiftDateStrBack(e);
+        }
+        if (s && s < minDesde) minDesde = s;
+        if (e && e > maxHasta) maxHasta = e;
       };
 
       const today = getTodayStr();
@@ -1017,8 +1038,8 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
             updateRange(getMonthStartStr(), getMonthEndStr());
             break;
           case 'vencidos':
-            // "vencidos" no aporta al rango principal (porque abriría infinitamente hacia atrás)
-            // Solo lo marcamos para que limite el limite superior luego
+            // No aporta rango propio: si está solo cae al else de abajo; si está con
+            // buckets, ya alteró el shift dentro de updateRange.
             break;
           case 'personalizado':
             hasDateBuckets = true;
@@ -1031,22 +1052,10 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
       if (hasDateBuckets) {
         if (minDesde !== '9999-99-99') f.fechaDesde = minDesde;
         if (maxHasta !== '0000-00-00' && maxHasta !== '9999-99-99') f.fechaHasta = maxHasta;
-      } else if (datePresets.includes('vencidos')) {
-        // Si SOLO seleccionó "vencidos", permitimos que busque infinitamente hacia atrás
+      } else if (isVencidoSelected) {
+        // Si SOLO eligió "vencidos", permitimos que busque infinitamente hacia atrás
         // limitando el hasta al día de ayer.
         f.fechaHasta = getDateStr(-1);
-      }
-
-      // Si seleccionó vencidos + otra cosa, extendemos el límite superior para abarcar
-      // la fecha "ayer" si la base lo requiere (minDesde se respeta porque Vencidos filtra
-      // lo del pasado). Y si el límite inferior estaba por encima de ayer, hay que abrirlo.
-      if (datePresets.includes('vencidos') && hasDateBuckets) {
-         if (!f.fechaDesde || f.fechaDesde > '0000-00-00') {
-             f.fechaDesde = undefined; // Dejar abierto hacia el pasado para traer todos los vencidos
-         }
-         // Si la "otra cosa" (ej. semana) llega hasta el viernes, no tocamos fechaHasta,
-         // para que el backend traiga tanto los nuevos (ej. viernes) como los viejos.
-         // El recordatoriosFiltrados se encargará de recortar el centro (si hubiera)
       }
     }
 
@@ -1095,43 +1104,36 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
       const todayStr = getTodayStr();
       const isVencidoSelected = datePresets.includes('vencidos');
       const dateBuckets = datePresets.filter((p) => p !== 'vencidos' && p !== 'todos');
+      // Vencidos + bucket(s): cada bucket se shiftea 1 día atrás. Vencidos solo:
+      // todo el pasado. Solo buckets: rango natural del bucket.
+      const shiftIfVencido = (s: string) => (isVencidoSelected ? shiftDateStrBack(s) : s);
 
       list = list.filter((r) => {
         const fDate = r.fechaRecordatorio;
-        let isVencido = fDate < todayStr;
-        let matchesBucket = false;
 
-        // Si se combinan periodos explícitos, probamos si entra en alguno
         if (dateBuckets.length > 0) {
-          matchesBucket = dateBuckets.some((preset) => {
+          return dateBuckets.some((preset) => {
             switch (preset) {
-              case 'ayer': return fDate === getDateStr(-1);
-              case 'hoy': return fDate === todayStr;
-              case 'mañana': return fDate === getDateStr(1);
-              case 'semana': return fDate >= getWeekStartStr() && fDate <= getWeekEndStr();
-              case 'mes': return fDate >= getMonthStartStr() && fDate <= getMonthEndStr();
+              case 'ayer': return fDate === shiftIfVencido(getDateStr(-1));
+              case 'hoy': return fDate === shiftIfVencido(todayStr);
+              case 'mañana': return fDate === shiftIfVencido(getDateStr(1));
+              case 'semana':
+                return fDate >= shiftIfVencido(getWeekStartStr())
+                  && fDate <= shiftIfVencido(getWeekEndStr());
+              case 'mes':
+                return fDate >= shiftIfVencido(getMonthStartStr())
+                  && fDate <= shiftIfVencido(getMonthEndStr());
               case 'personalizado':
-                if (customFechaDesde && fDate < customFechaDesde) return false;
-                if (customFechaHasta && fDate > customFechaHasta) return false;
+                if (customFechaDesde && fDate < shiftIfVencido(customFechaDesde)) return false;
+                if (customFechaHasta && fDate > shiftIfVencido(customFechaHasta)) return false;
                 return true;
               default: return false;
             }
           });
         }
 
-        // Si eligió vencidos y buckets (ej. Vencidos + Hoy) -> Se muestra la suma (OR lógic o)
-        if (isVencidoSelected && dateBuckets.length > 0) {
-             return isVencido || matchesBucket;
-        }
-
-        // Si solo eligió vencidos -> Estricto
         if (isVencidoSelected) {
-             return isVencido;
-        }
-
-        // Si solo eligió buckets -> Estricto
-        if (dateBuckets.length > 0) {
-             return matchesBucket;
+          return fDate < todayStr;
         }
 
         return true;
@@ -1178,7 +1180,16 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     }
 
     return list;
-  }, [recordatorios, selectedEstados, orderBy, order, usuarios]);
+  }, [
+    recordatorios,
+    selectedEstados,
+    orderBy,
+    order,
+    usuarios,
+    datePresets,
+    customFechaDesde,
+    customFechaHasta,
+  ]);
 
   // ── Stable today string for row coloring ──
   const today = getTodayStr();

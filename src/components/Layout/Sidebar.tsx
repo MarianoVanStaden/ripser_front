@@ -223,8 +223,15 @@ const navigation: NavigationSection[] = [
     ],
   },
   {
+    // Sección gateada por módulo 'ADMINISTRACION' (no 'ADMIN'): así
+    // ADMIN_EMPRESA_LIMITADO la ve (tiene 'ADMINISTRACION' en su lista
+    // de módulos pero no 'ADMIN'). ADMIN / ADMIN_EMPRESA siguen pasando
+    // por el bypass de roles.includes('ADMIN') en usePermisos. SUPERVISOR
+    // y COBRANZAS también tienen 'ADMINISTRACION', pero sus allowlists
+    // no contienen rutas /admin/*, así que el filtro de items deja la
+    // sección vacía y se elimina más abajo.
     title: 'ADMINISTRACIÓN',
-    modulo: 'ADMIN',
+    modulo: 'ADMINISTRACION',
     items: [
       { text: 'Flujo de Caja', icon: <BarChartIcon />, path: '/admin/flujo-caja' },
       { text: 'Balance Anual', icon: <AssessmentIcon />, path: '/admin/balance' },
