@@ -15,6 +15,8 @@ export const EmbudoVentasChart = ({ data }: EmbudoVentasChartProps) => {
   // Mapeo de estados a nombres legibles
   const estadoLabels: Record<string, string> = {
     'PRIMER_CONTACTO': 'Primer Contacto',
+    'SEGUNDO_CONTACTO': 'Segundo Contacto',
+    'TERCER_CONTACTO': 'Tercer Contacto',
     'MOSTRO_INTERES': 'Mostró Interés',
     'CLIENTE_POTENCIAL': 'Cliente Potencial',
     'CLIENTE_POTENCIAL_CALIFICADO': 'Cliente Calificado',
@@ -27,6 +29,8 @@ export const EmbudoVentasChart = ({ data }: EmbudoVentasChartProps) => {
   const getColor = (estado: string) => {
     const colors: Record<string, string> = {
       'PRIMER_CONTACTO': '#2196f3',
+      'SEGUNDO_CONTACTO': '#1976d2',
+      'TERCER_CONTACTO': '#1565c0',
       'MOSTRO_INTERES': '#03a9f4',
       'CLIENTE_POTENCIAL': '#00bcd4',
       'CLIENTE_POTENCIAL_CALIFICADO': '#009688',

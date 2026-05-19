@@ -171,6 +171,8 @@ const TIPO_RECORDATORIO_ICONS: Record<string, React.ReactNode> = {
 
 const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
   EstadoLeadEnum.PRIMER_CONTACTO,
+  EstadoLeadEnum.SEGUNDO_CONTACTO,
+  EstadoLeadEnum.TERCER_CONTACTO,
   EstadoLeadEnum.MOSTRO_INTERES,
   EstadoLeadEnum.CLIENTE_POTENCIAL,
   EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
@@ -185,6 +187,8 @@ const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
 
 const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
   EstadoLeadEnum.PRIMER_CONTACTO,
+  EstadoLeadEnum.SEGUNDO_CONTACTO,
+  EstadoLeadEnum.TERCER_CONTACTO,
   EstadoLeadEnum.MOSTRO_INTERES,
   EstadoLeadEnum.CLIENTE_POTENCIAL,
   EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,

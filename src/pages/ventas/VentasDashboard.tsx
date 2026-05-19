@@ -85,6 +85,8 @@ const PRIORITY_CONFIG = {
 
 const ESTADO_LABELS: Record<string, string> = {
   PRIMER_CONTACTO: 'Primer Contacto',
+  SEGUNDO_CONTACTO: 'Segundo Contacto',
+  TERCER_CONTACTO: 'Tercer Contacto',
   MOSTRO_INTERES: 'Mostró Interés',
   CLIENTE_POTENCIAL: 'Cliente Potencial',
   CLIENTE_POTENCIAL_CALIFICADO: 'CP Calificado',

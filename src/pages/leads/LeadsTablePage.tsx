@@ -152,6 +152,8 @@ const resolveDatePreset = (preset: DatePreset): { fechaDesde?: string; fechaHast
 
 const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
   EstadoLeadEnum.PRIMER_CONTACTO,
+  EstadoLeadEnum.SEGUNDO_CONTACTO,
+  EstadoLeadEnum.TERCER_CONTACTO,
   EstadoLeadEnum.MOSTRO_INTERES,
   EstadoLeadEnum.CLIENTE_POTENCIAL,
   EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,
@@ -170,6 +172,8 @@ const ESTADOS_DISPONIBLES: EstadoLeadEnum[] = [
 // extra (monto, producto, dirección) y no se puede cubrir con un simple PATCH.
 const ESTADOS_QUICK_EDIT: EstadoLeadEnum[] = [
   EstadoLeadEnum.PRIMER_CONTACTO,
+  EstadoLeadEnum.SEGUNDO_CONTACTO,
+  EstadoLeadEnum.TERCER_CONTACTO,
   EstadoLeadEnum.MOSTRO_INTERES,
   EstadoLeadEnum.CLIENTE_POTENCIAL,
   EstadoLeadEnum.CLIENTE_POTENCIAL_CALIFICADO,

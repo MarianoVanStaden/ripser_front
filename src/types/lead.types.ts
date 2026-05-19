@@ -19,6 +19,8 @@ export type CanalEnum = typeof CanalEnum[keyof typeof CanalEnum];
 
 export const EstadoLeadEnum = {
   PRIMER_CONTACTO: 'PRIMER_CONTACTO',
+  SEGUNDO_CONTACTO: 'SEGUNDO_CONTACTO',
+  TERCER_CONTACTO: 'TERCER_CONTACTO',
   MOSTRO_INTERES: 'MOSTRO_INTERES',
   CLIENTE_POTENCIAL: 'CLIENTE_POTENCIAL',
   CLIENTE_POTENCIAL_CALIFICADO: 'CLIENTE_POTENCIAL_CALIFICADO',
@@ -271,6 +273,8 @@ export interface ValidationErrors {
 // Constantes
 export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: '#3B82F6',
+  SEGUNDO_CONTACTO: '#2563EB',
+  TERCER_CONTACTO: '#1D4ED8',
   MOSTRO_INTERES: '#8B5CF6',
   CLIENTE_POTENCIAL: '#F59E0B',
   CLIENTE_POTENCIAL_CALIFICADO: '#10B981',
@@ -286,6 +290,8 @@ export const ESTADO_COLORS: Record<EstadoLeadEnum, string> = {
 
 export const ESTADO_LABELS: Record<EstadoLeadEnum, string> = {
   PRIMER_CONTACTO: 'Primer Contacto',
+  SEGUNDO_CONTACTO: 'Segundo Contacto',
+  TERCER_CONTACTO: 'Tercer Contacto',
   MOSTRO_INTERES: 'Mostró Interés',
   CLIENTE_POTENCIAL: 'Cliente Potencial',
   CLIENTE_POTENCIAL_CALIFICADO: 'Cliente Potencial Calificado',

@@ -587,7 +587,22 @@ export const LeadDetailPage = () => {
                   {lead.estadoLead === EstadoLeadEnum.PRIMER_CONTACTO && (
                     <Typography variant="body2">
                       • Contactar al lead para conocer sus necesidades<br />
+                      • Si no respondió, reintentar y pasar a "Segundo Contacto"<br />
                       • Actualizar estado a "Mostró Interés" si responde positivamente
+                    </Typography>
+                  )}
+                  {lead.estadoLead === EstadoLeadEnum.SEGUNDO_CONTACTO && (
+                    <Typography variant="body2">
+                      • Segundo intento de contacto: probar otro canal u horario<br />
+                      • Si responde, pasar a "Mostró Interés"<br />
+                      • Si sigue sin respuesta, agendar un "Tercer Contacto"
+                    </Typography>
+                  )}
+                  {lead.estadoLead === EstadoLeadEnum.TERCER_CONTACTO && (
+                    <Typography variant="body2">
+                      • Último intento antes de descartar: reforzar valor de la propuesta<br />
+                      • Si responde, avanzar a "Mostró Interés"<br />
+                      • Si no hay respuesta, evaluar pasar a "Perdido" o "Descartado"
                     </Typography>
                   )}
                   {lead.estadoLead === EstadoLeadEnum.MOSTRO_INTERES && (
