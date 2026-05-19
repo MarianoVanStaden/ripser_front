@@ -7,15 +7,15 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-  Search as SearchIcon, Public as PublicIcon, AccountBalance as BancoIcon,
+  Search as SearchIcon, Public as PublicIcon,
   MedicalServices as ObraSocialIcon, HealthAndSafety as ArtIcon,
   LocationCity as ProvinciaIcon,
 } from '@mui/icons-material';
 import {
-  paisesApi, provinciasApi, bancosApi, obrasSocialesApi, artsApi,
+  paisesApi, provinciasApi, obrasSocialesApi, artsApi,
 } from '../../../api/services/catalogosGlobalesApi';
 import type {
-  Pais, Provincia, Banco, ObraSocial, Art,
+  Pais, Provincia, ObraSocial, Art,
 } from '../../../types/catalogosGlobales.types';
 import ConfirmDialog from '../../common/ConfirmDialog';
 
@@ -416,7 +416,6 @@ function ProvinciasTab() {
 const TAB_DEFS = [
   { label: 'Países', icon: <PublicIcon /> },
   { label: 'Provincias', icon: <ProvinciaIcon /> },
-  { label: 'Bancos', icon: <BancoIcon /> },
   { label: 'Obras Sociales', icon: <ObraSocialIcon /> },
   { label: 'ART', icon: <ArtIcon /> },
 ];
@@ -428,8 +427,9 @@ export default function CatalogosGlobalesPage() {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Catálogos Globales</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Tablas de referencia compartidas entre todas las empresas: países, provincias, bancos, obras sociales y ART.
+        Tablas de referencia compartidas entre todas las empresas: países, provincias, obras sociales y ART.
         Se usan en el legajo del empleado y se administran solo por super-admin.
+        (Bancos se administra desde el módulo de cuentas bancarias.)
       </Typography>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto"
@@ -439,9 +439,8 @@ export default function CatalogosGlobalesPage() {
 
       {tab === 0 && <PaisesTab />}
       {tab === 1 && <ProvinciasTab />}
-      {tab === 2 && <CatalogoFlatCRUD<Banco> titulo="Banco" api={bancosApi} codigoLabel="Cód. BCRA" />}
-      {tab === 3 && <CatalogoFlatCRUD<ObraSocial> titulo="Obra Social" api={obrasSocialesApi} codigoLabel="Cód. RNOS" />}
-      {tab === 4 && <CatalogoFlatCRUD<Art> titulo="ART" api={artsApi} hideCodigo />}
+      {tab === 2 && <CatalogoFlatCRUD<ObraSocial> titulo="Obra Social" api={obrasSocialesApi} codigoLabel="Cód. RNOS" />}
+      {tab === 3 && <CatalogoFlatCRUD<Art> titulo="ART" api={artsApi} hideCodigo />}
     </Box>
   );
 }

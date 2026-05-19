@@ -18,11 +18,17 @@ export interface Provincia {
   activo: boolean;
 }
 
+// Banco vive en su propio módulo (cheques/cuentas bancarias) — no en
+// /api/catalogos. Mapea contra el BancoDTO existente del backend, que tiene
+// nombre_corto + timestamps además de los campos básicos del catálogo.
 export interface Banco {
   id: number;
   codigo?: string | null;
   nombre: string;
+  nombreCorto?: string | null;
   activo: boolean;
+  fechaAlta?: string | null;
+  fechaActualizacion?: string | null;
 }
 
 export interface ObraSocial {

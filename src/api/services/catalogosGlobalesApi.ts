@@ -28,12 +28,16 @@ export const provinciasApi = {
   delete: async (id: number): Promise<void> => { await api.delete(`/api/catalogos/provincias/${id}`); },
 };
 
+// Bancos: usa los endpoints existentes de /api/bancos (el catálogo lo
+// administra otro módulo del sistema, no se duplica acá). El `list` apunta
+// a /activos (no paginado, ya filtra activos) — es el caso de uso del
+// Autocomplete del legajo del empleado.
 export const bancosApi = {
-  list: async (): Promise<Banco[]> => (await api.get('/api/catalogos/bancos')).data,
-  create: async (dto: BancoPayload): Promise<Banco> => (await api.post('/api/catalogos/bancos', dto)).data,
+  list: async (): Promise<Banco[]> => (await api.get('/api/bancos/activos')).data,
+  create: async (dto: BancoPayload): Promise<Banco> => (await api.post('/api/bancos', dto)).data,
   update: async (id: number, dto: BancoPayload): Promise<Banco> =>
-    (await api.put(`/api/catalogos/bancos/${id}`, dto)).data,
-  delete: async (id: number): Promise<void> => { await api.delete(`/api/catalogos/bancos/${id}`); },
+    (await api.put(`/api/bancos/${id}`, dto)).data,
+  delete: async (id: number): Promise<void> => { await api.delete(`/api/bancos/${id}`); },
 };
 
 export const obrasSocialesApi = {
