@@ -29,7 +29,10 @@ import {
   Delete as DeleteIcon,
   Description as FileIcon,
   Add as AddIcon,
+  Gavel as GavelIcon,
+  Error as ErrorIcon,
 } from '@mui/icons-material';
+import { AlertTitle } from '@mui/material';
 import dayjs from 'dayjs';
 import type { DocumentoLegajo, DocumentoCliente } from '../../types';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -48,6 +51,12 @@ type Documento = DocumentoLegajo | DocumentoCliente | {
 interface DocumentManagerProps {
   entityId: number;
   categorias: string[];
+  /**
+   * Categorías marcadas como obligatorias por ley/regla del negocio.
+   * Se muestran con badge "OBLIGATORIO" y, si no hay documentos de esa
+   * categoría, dispara un banner "Documentación legal faltante".
+   */
+  categoriasObligatorias?: string[];
   onUpload: (file: File, categoria: string, descripcion?: string) => Promise<void>;
   onDownload: (id: number, fileName: string) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
@@ -57,6 +66,7 @@ interface DocumentManagerProps {
 const DocumentManager: React.FC<DocumentManagerProps> = ({
   entityId,
   categorias,
+  categoriasObligatorias = [],
   onUpload,
   onDownload,
   onDelete,
@@ -155,6 +165,11 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
     setDescripcion('');
   };
 
+  // Categorías obligatorias que todavía no tienen ningún documento subido.
+  const obligatoriasFaltantes = categoriasObligatorias.filter(cat =>
+    !documentos.some(d => d.categoria === cat)
+  );
+
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
@@ -190,6 +205,16 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
           </Alert>
         )}
 
+        {obligatoriasFaltantes.length > 0 && (
+          <Alert severity="warning" icon={<GavelIcon />} sx={{ mb: 2 }}>
+            <AlertTitle>Documentación legal faltante</AlertTitle>
+            Falta(n) {obligatoriasFaltantes.length} documento(s) obligatorio(s) por ley:
+            <Box component="ul" sx={{ mt: 1, mb: 0, pl: 3 }}>
+              {obligatoriasFaltantes.map(c => <li key={c}>{c}</li>)}
+            </Box>
+          </Alert>
+        )}
+
         {loading && !uploading ? (
           <Box display="flex" justifyContent="center" p={3}>
             <CircularProgress />
@@ -220,7 +245,12 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
                     <TableRow key={doc.id}>
                       <TableCell>{doc.nombreArchivo}</TableCell>
                       <TableCell>
-                        <Chip label={doc.categoria} size="small" color="primary" variant="outlined" />
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Chip label={doc.categoria} size="small" color="primary" variant="outlined" />
+                          {categoriasObligatorias.includes(doc.categoria) && (
+                            <Chip label="LEY" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
+                          )}
+                        </Stack>
                       </TableCell>
                       <TableCell>{doc.descripcion || '-'}</TableCell>
                       <TableCell>{formatFileSize(doc.tamanioBytes)}</TableCell>
@@ -278,7 +308,13 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({
             >
               {categorias.map((cat) => (
                 <MenuItem key={cat} value={cat}>
-                  {cat}
+                  <Box display="flex" alignItems="center" gap={1} width="100%">
+                    {cat}
+                    {categoriasObligatorias.includes(cat) && (
+                      <Chip label="OBLIGATORIO" size="small" color="warning"
+                        sx={{ ml: 'auto', height: 18, fontSize: '0.65rem' }} />
+                    )}
+                  </Box>
                 </MenuItem>
               ))}
             </TextField>

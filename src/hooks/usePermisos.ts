@@ -31,11 +31,12 @@ const PERMISOS_POR_ROL: PermisosMap = {
 
   ADMIN_EMPRESA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'ADMINISTRACION', 'PRESTAMOS'],
 
-  // Administrador "empleado": ve lo mismo que ADMIN_EMPRESA salvo RRHH. El
-  // filtrado fino por pantalla (ej. /taller/configuracion) se maneja en Sidebar
-  // via adminEmpresaLimitadoDeniedPaths. NO incluye 'ADMIN' como systemRole para
+  // Administrador "empleado": ve casi todo el sistema. Dentro de RRHH sólo
+  // accede a Sueldos, Adelantos y Config. Sueldos; el resto del módulo se
+  // esconde por denylist en Sidebar (adminEmpresaLimitadoDeniedPaths) y se
+  // bloquea por URL en RoleScopeGuard. NO incluye 'ADMIN' como systemRole para
   // no bypassear los guards de scope.
-  ADMIN_EMPRESA_LIMITADO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'ADMINISTRACION', 'PRESTAMOS'],
+  ADMIN_EMPRESA_LIMITADO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'ADMINISTRACION', 'PRESTAMOS'],
 
   GERENTE_SUCURSAL: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
 

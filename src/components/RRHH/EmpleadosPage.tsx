@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -25,6 +25,7 @@ import {
   Grid,
   InputAdornment,
   Alert,
+  AlertTitle,
   CircularProgress,
   Avatar,
   Divider,
@@ -35,6 +36,9 @@ import {
   FormControlLabel,
   Checkbox,
   Autocomplete,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -56,17 +60,42 @@ import {
   CalendarMonth as CalendarMonthIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
+  ExpandMore as ExpandMoreIcon,
+  AccountBalance as AccountBalanceIcon,
+  MedicalServices as MedicalServicesIcon,
+  School as SchoolIcon,
+  ContactMail as ContactMailIcon,
 } from '@mui/icons-material';
 import { employeeApi } from '../../api/services/employeeApi';
 import { puestoApi } from '../../api/services/puestoApi';
 import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
 import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
 import EmpleadoDisciplinaTab from './Disciplina/EmpleadoDisciplinaTab';
+import {
+  CargasFamiliaresTab,
+  ContactosEmergenciaTab,
+  IdiomasEmpleadoTab,
+} from './EmpleadoRelaciones';
+import CatalogoAutocomplete from '../common/CatalogoAutocomplete';
+import { bancosApi, obrasSocialesApi, artsApi } from '../../api/services/catalogosGlobalesApi';
+import EmpleadoFotoAvatar, { clearEmpleadoFotoCache } from './EmpleadoFotoAvatar';
+import EmpleadoFotoUploader from './EmpleadoFotoUploader';
 import usuarioAdminApi, { type UsuarioDTO } from '../../api/services/usuarioAdminApi';
 import { sucursalService } from '../../services/sucursalService';
 import { useTenant } from '../../context/TenantContext';
 import DocumentManager from '../shared/DocumentManager';
 import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal, CategoriaSalarial } from '../../types';
+import {
+  GENEROS, GENERO_LABEL,
+  ESTADOS_CIVILES, ESTADO_CIVIL_LABEL,
+  TIPOS_MANO_OBRA, TIPO_MANO_OBRA_LABEL,
+  TIPOS_CONTRATO, TIPO_CONTRATO_LABEL,
+  MOTIVOS_EGRESO, MOTIVO_EGRESO_LABEL,
+  TIPOS_CUENTA, TIPO_CUENTA_LABEL,
+  MONEDAS, MONEDA_LABEL,
+  GRUPOS_SANGUINEOS,
+  NIVELES_ESTUDIOS, NIVEL_ESTUDIOS_LABEL,
+} from '../../types/rrhh.types';
 
 // Estado de los campos de legajo dentro del form. El legajo es 1:1 con el
 // empleado y se crea/edita en la misma pantalla. Todos los campos son
@@ -90,6 +119,144 @@ const emptyLegajoFormState = (fechaAlta = ''): LegajoFormState => ({
   documentacion: '',
   activo: true,
 });
+
+// Estado de los ~50 campos planos de Fase 1 dentro del form. Todos los
+// strings se inicializan a '' para que MUI no marque los TextField como
+// uncontrolled→controlled cuando entran al edit. Los selects con valor fijo
+// también van como '' (== "sin asignar").
+const emptyFase1Fields = () => ({
+  cuil: '', nombre2: '', apellido2: '',
+  paisNacimiento: '', provinciaNacimiento: '', ciudadNacimiento: '',
+  nacionalidad1: '', nacionalidad2: '', docNacionalidad2: '',
+  genero: '' as '' | (typeof GENEROS)[number],
+  estadoCivil: '' as '' | (typeof ESTADOS_CIVILES)[number],
+  estadoCivilDesde: '',
+  telCodigoPais: '', telArea: '', telNumero: '', emailContacto: '',
+  domCalle: '', domAltura: '', domPiso: '', domDepto: '',
+  domBarrio: '', domCp: '', domLocalidad: '', domProvincia: '', domPais: '',
+  fechaIngresoLegal: '', locacion: '',
+  areaNombre: '', departamentoNombre: '', sectorNombre: '',
+  supervisorDirectoId: '' as '' | number,
+  tipoManoObra: '' as '' | (typeof TIPOS_MANO_OBRA)[number],
+  tipoContrato: '' as '' | (typeof TIPOS_CONTRATO)[number],
+  motivoEgreso: '' as '' | (typeof MOTIVOS_EGRESO)[number],
+  telLaboralArea: '', telLaboralNumero: '', emailLaboral: '',
+  cbu: '', bancoNombre: '',
+  tipoCuenta: '' as '' | (typeof TIPOS_CUENTA)[number],
+  numeroCuenta: '', convenioColectivo: '', categoriaLaboral: '',
+  moneda: '' as '' | (typeof MONEDAS)[number],
+  sindicato: '',
+  afiliadoSindicato: false,
+  obraSocialCodigo: '', obraSocialDetalle: '',
+  grupoSanguineo: '' as '' | (typeof GRUPOS_SANGUINEOS)[number],
+  alergiasCondiciones: '', artNombre: '', fechaExamenPreocupacional: '',
+  nivelEstudios: '' as '' | (typeof NIVELES_ESTUDIOS)[number],
+  tituloCarrera: '',
+});
+
+type Fase1State = ReturnType<typeof emptyFase1Fields>;
+
+// Toma un Empleado existente y devuelve los Fase 1 fields como strings
+// editables (null/undefined → ''). Se usa al abrir el form en modo edición.
+const fase1FromEmpleado = (e: Empleado): Fase1State => ({
+  cuil: e.cuil ?? '', nombre2: e.nombre2 ?? '', apellido2: e.apellido2 ?? '',
+  paisNacimiento: e.paisNacimiento ?? '',
+  provinciaNacimiento: e.provinciaNacimiento ?? '',
+  ciudadNacimiento: e.ciudadNacimiento ?? '',
+  nacionalidad1: e.nacionalidad1 ?? '', nacionalidad2: e.nacionalidad2 ?? '',
+  docNacionalidad2: e.docNacionalidad2 ?? '',
+  genero: (e.genero ?? '') as Fase1State['genero'],
+  estadoCivil: (e.estadoCivil ?? '') as Fase1State['estadoCivil'],
+  estadoCivilDesde: e.estadoCivilDesde ?? '',
+  telCodigoPais: e.telCodigoPais ?? '', telArea: e.telArea ?? '',
+  telNumero: e.telNumero ?? '', emailContacto: e.emailContacto ?? '',
+  domCalle: e.domCalle ?? '', domAltura: e.domAltura ?? '',
+  domPiso: e.domPiso ?? '', domDepto: e.domDepto ?? '',
+  domBarrio: e.domBarrio ?? '', domCp: e.domCp ?? '',
+  domLocalidad: e.domLocalidad ?? '', domProvincia: e.domProvincia ?? '',
+  domPais: e.domPais ?? '',
+  fechaIngresoLegal: e.fechaIngresoLegal ?? '', locacion: e.locacion ?? '',
+  areaNombre: e.areaNombre ?? '', departamentoNombre: e.departamentoNombre ?? '',
+  sectorNombre: e.sectorNombre ?? '',
+  supervisorDirectoId: (e.supervisorDirectoId ?? '') as Fase1State['supervisorDirectoId'],
+  tipoManoObra: (e.tipoManoObra ?? '') as Fase1State['tipoManoObra'],
+  tipoContrato: (e.tipoContrato ?? '') as Fase1State['tipoContrato'],
+  motivoEgreso: (e.motivoEgreso ?? '') as Fase1State['motivoEgreso'],
+  telLaboralArea: e.telLaboralArea ?? '', telLaboralNumero: e.telLaboralNumero ?? '',
+  emailLaboral: e.emailLaboral ?? '',
+  cbu: e.cbu ?? '', bancoNombre: e.bancoNombre ?? '',
+  tipoCuenta: (e.tipoCuenta ?? '') as Fase1State['tipoCuenta'],
+  numeroCuenta: e.numeroCuenta ?? '',
+  convenioColectivo: e.convenioColectivo ?? '',
+  categoriaLaboral: e.categoriaLaboral ?? '',
+  moneda: (e.moneda ?? '') as Fase1State['moneda'],
+  sindicato: e.sindicato ?? '',
+  afiliadoSindicato: e.afiliadoSindicato ?? false,
+  obraSocialCodigo: e.obraSocialCodigo ?? '',
+  obraSocialDetalle: e.obraSocialDetalle ?? '',
+  grupoSanguineo: (e.grupoSanguineo ?? '') as Fase1State['grupoSanguineo'],
+  alergiasCondiciones: e.alergiasCondiciones ?? '',
+  artNombre: e.artNombre ?? '',
+  fechaExamenPreocupacional: e.fechaExamenPreocupacional ?? '',
+  nivelEstudios: (e.nivelEstudios ?? '') as Fase1State['nivelEstudios'],
+  tituloCarrera: e.tituloCarrera ?? '',
+});
+
+// Serializa los Fase 1 fields al payload de API: '' → null, valores válidos
+// → tal cual. Lo manda como `Partial<EmpleadoCreateDTO>` parcial — el backend
+// usa NullValuePropertyMappingStrategy.IGNORE así que no pisa valores existentes
+// al actualizar.
+const fase1ToPayload = (s: Fase1State) => {
+  const out: Record<string, unknown> = {};
+  (Object.keys(s) as Array<keyof Fase1State>).forEach(k => {
+    const v = s[k];
+    if (typeof v === 'string') out[k] = v.trim() === '' ? null : v;
+    else if (typeof v === 'number') out[k] = v;
+    else if (typeof v === 'boolean') out[k] = v;
+    else out[k] = v;
+  });
+  return out;
+};
+
+// Lista de campos legalmente obligatorios para el legajo (banner amarillo).
+// El doc los marca en rojo: si faltan, NO bloquea el save (decisión del usuario),
+// pero se muestra una alerta para que RRHH sepa qué completar.
+const CAMPOS_LEGALMENTE_OBLIGATORIOS: Array<{
+  label: string;
+  check: (f: { formData: any; fase1: Fase1State; legajo: LegajoFormState }) => boolean;
+}> = [
+  { label: 'CUIL', check: ({ fase1 }) => !fase1.cuil },
+  { label: 'Nombre 1', check: ({ formData }) => !formData.nombre },
+  { label: 'Apellido 1', check: ({ formData }) => !formData.apellido },
+  { label: 'DNI', check: ({ formData }) => !formData.dni },
+  { label: 'Fecha de nacimiento', check: ({ formData }) => !formData.fechaNacimiento },
+  { label: 'Género', check: ({ fase1 }) => !fase1.genero },
+  { label: 'Estado civil', check: ({ fase1 }) => !fase1.estadoCivil },
+  { label: 'Teléfono (área + número)', check: ({ fase1 }) => !fase1.telArea || !fase1.telNumero },
+  { label: 'Email de contacto', check: ({ fase1 }) => !fase1.emailContacto },
+  { label: 'Domicilio: calle y altura', check: ({ fase1 }) => !fase1.domCalle || !fase1.domAltura },
+  { label: 'Domicilio: CP, localidad, provincia, país', check: ({ fase1 }) =>
+      !fase1.domCp || !fase1.domLocalidad || !fase1.domProvincia || !fase1.domPais },
+  { label: 'Fecha de ingreso', check: ({ formData }) => !formData.fechaIngreso },
+  { label: 'Fecha de ingreso legal (AFIP)', check: ({ fase1 }) => !fase1.fechaIngresoLegal },
+  { label: 'Sucursal / Sede', check: ({ formData }) => !formData.sucursalId },
+  { label: 'Locación', check: ({ fase1 }) => !fase1.locacion },
+  { label: 'Área', check: ({ fase1 }) => !fase1.areaNombre },
+  { label: 'Puesto', check: ({ formData }) => !formData.puestoId },
+  { label: 'Tipo de mano de obra', check: ({ fase1 }) => !fase1.tipoManoObra },
+  { label: 'Situación de revista (estado)', check: ({ formData }) => !formData.estado },
+  { label: 'Tipo de contrato', check: ({ fase1 }) => !fase1.tipoContrato },
+  { label: 'CBU', check: ({ fase1 }) => !fase1.cbu },
+  { label: 'Banco', check: ({ fase1 }) => !fase1.bancoNombre },
+  { label: 'Tipo de cuenta y Nº de cuenta', check: ({ fase1 }) => !fase1.tipoCuenta || !fase1.numeroCuenta },
+  { label: 'Convenio colectivo', check: ({ fase1 }) => !fase1.convenioColectivo },
+  { label: 'Categoría laboral (convenio)', check: ({ fase1 }) => !fase1.categoriaLaboral },
+  { label: 'Moneda', check: ({ fase1 }) => !fase1.moneda },
+  { label: 'Obra social: código y detalle', check: ({ fase1 }) =>
+      !fase1.obraSocialCodigo || !fase1.obraSocialDetalle },
+  { label: 'ART', check: ({ fase1 }) => !fase1.artNombre },
+  { label: 'Fecha de examen preocupacional', check: ({ fase1 }) => !fase1.fechaExamenPreocupacional },
+];
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 
@@ -102,11 +269,24 @@ const CATEGORIAS_EMPLEADO = [
   'RECIBO_SUELDO',
   'LICENCIA_CONDUCIR',
   'CERTIFICADO_MEDICO',
+  'EXAMEN_PREOCUPACIONAL',
   'ALTA_AFIP',
+  'ALTA_ARCA',
+  'CERT_SERVICIOS_REMUNERACIONES',
   'CONTRATO',
   'CERTIFICADO',
   'FOTO',
   'OTROS',
+];
+
+// Categorías obligatorias por ley (banner amarillo "Documentación legal
+// faltante" y chip "OBLIGATORIO" en el selector de upload). Vienen del
+// pedido de RRHH: Examen Preocupacional, Alta ARCA, Certificado de Servicios
+// y Remuneraciones.
+const CATEGORIAS_EMPLEADO_OBLIGATORIAS = [
+  'EXAMEN_PREOCUPACIONAL',
+  'ALTA_ARCA',
+  'CERT_SERVICIOS_REMUNERACIONES',
 ];
 
 const EmpleadosPage: React.FC = () => {
@@ -168,6 +348,19 @@ const EmpleadosPage: React.FC = () => {
 
   // Estado del legajo en el form (separado para no contaminar el DTO de empleado)
   const [legajoData, setLegajoData] = useState<LegajoFormState>(emptyLegajoFormState());
+
+  // Estado de los ~50 campos planos de la Fase 1 (Datos Personales, Contacto,
+  // Laborales, Bancarios, Salud, Formación). Separado para no inflar el
+  // EmpleadoCreateDTO state que ya es complejo (crearUsuario + password).
+  const [fase1Data, setFase1Data] = useState<Fase1State>(emptyFase1Fields());
+
+  // Campos legalmente obligatorios que faltan en el form actual — alimenta
+  // el banner amarillo "Legajo incompleto". NO bloquea el save.
+  const camposFaltantes = useMemo(() => {
+    return CAMPOS_LEGALMENTE_OBLIGATORIOS
+      .filter(c => c.check({ formData, fase1: fase1Data, legajo: legajoData }))
+      .map(c => c.label);
+  }, [formData, fase1Data, legajoData]);
 
   useEffect(() => {
     loadData();
@@ -238,6 +431,7 @@ const EmpleadosPage: React.FC = () => {
         documentacion: empleado.legajoDocumentacion || '',
         activo: empleado.legajoActivo ?? true,
       });
+      setFase1Data(fase1FromEmpleado(empleado));
     } else {
       setEditingEmpleado(null);
       const hoy = new Date().toISOString().split('T')[0];
@@ -260,6 +454,7 @@ const EmpleadosPage: React.FC = () => {
         confirmPassword: '',
       });
       setLegajoData(emptyLegajoFormState(hoy));
+      setFase1Data(emptyFase1Fields());
     }
     setFormDialogOpen(true);
   };
@@ -304,6 +499,12 @@ const EmpleadosPage: React.FC = () => {
         delete payload.usuarioPassword;
       }
 
+      // Campos planos de Fase 1: '' → null. El backend tiene
+      // NullValuePropertyMappingStrategy.IGNORE, así que en update los nulls
+      // se ignoran y no pisan valores existentes; en create, null = "sin dato"
+      // (los campos son todos NULLABLE en la migración V81).
+      const fase1Payload = fase1ToPayload(fase1Data);
+
       if (editingEmpleado) {
         // Update: mandamos todos los campos del legajo, incluyendo motivo/fecha
         // de baja. Los strings vacíos quedan así para no “pisar accidentalmente”
@@ -311,6 +512,7 @@ const EmpleadosPage: React.FC = () => {
         // que pasamos undefined cuando no hay nada que cambiar.
         const updatePayload: any = {
           ...payload,
+          ...fase1Payload,
           numeroLegajo: legajoData.numeroLegajo || undefined,
           legajoFechaAlta: legajoData.fechaAlta || undefined,
           legajoFechaBaja: legajoData.fechaBaja || null,
@@ -324,11 +526,12 @@ const EmpleadosPage: React.FC = () => {
       } else {
         const createPayload: EmpleadoCreateDTO = {
           ...payload,
+          ...fase1Payload,
           numeroLegajo: legajoData.numeroLegajo || undefined,
           legajoFechaAlta: legajoData.fechaAlta || undefined,
           legajoObservaciones: legajoData.observaciones || undefined,
           legajoDocumentacion: legajoData.documentacion || undefined,
-        };
+        } as EmpleadoCreateDTO;
         await employeeApi.create(createPayload);
         setSuccess(
           createPayload.crearUsuario
@@ -575,9 +778,12 @@ const EmpleadosPage: React.FC = () => {
                     <TableRow key={empleado.id} hover>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
-                          <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
-                            {empleado.nombre[0]}{empleado.apellido[0]}
-                          </Avatar>
+                          <EmpleadoFotoAvatar
+                            empleadoId={empleado.id}
+                            nombre={empleado.nombre}
+                            apellido={empleado.apellido}
+                            size={36}
+                          />
                           <Box>
                             <Typography variant="body2" fontWeight="600">
                               {empleado.nombre} {empleado.apellido}
@@ -681,9 +887,13 @@ const EmpleadosPage: React.FC = () => {
           <>
             <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', pb: 2 }}>
               <Box display="flex" alignItems="center" gap={2}>
-                <Avatar sx={{ bgcolor: 'white', color: 'primary.main', width: 56, height: 56 }}>
-                  {selectedEmpleado.nombre[0]}{selectedEmpleado.apellido[0]}
-                </Avatar>
+                <EmpleadoFotoAvatar
+                  empleadoId={selectedEmpleado.id}
+                  nombre={selectedEmpleado.nombre}
+                  apellido={selectedEmpleado.apellido}
+                  size={56}
+                  sx={{ bgcolor: 'white', color: 'primary.main' }}
+                />
                 <Box>
                   <Typography variant="h5" fontWeight="700">
                     {selectedEmpleado.nombre} {selectedEmpleado.apellido}
@@ -708,6 +918,9 @@ const EmpleadosPage: React.FC = () => {
               <Tab label="Acceso al sistema" />
               <Tab label="Documentos" />
               <Tab label="Disciplina" />
+              <Tab label="Cargas de Familia" />
+              <Tab label="Contactos Emergencia" />
+              <Tab label="Idiomas" />
             </Tabs>
             <DialogContent sx={{ pt: 3, minHeight: 400 }}>
               {detailTabValue === 0 && (
@@ -921,10 +1134,15 @@ const EmpleadosPage: React.FC = () => {
                 <EmpleadoDisciplinaTab empleado={selectedEmpleado} />
               )}
 
+              {detailTabValue === 5 && <CargasFamiliaresTab empleadoId={selectedEmpleado.id} />}
+              {detailTabValue === 6 && <ContactosEmergenciaTab empleadoId={selectedEmpleado.id} />}
+              {detailTabValue === 7 && <IdiomasEmpleadoTab empleadoId={selectedEmpleado.id} />}
+
               {detailTabValue === 3 && (
                 <DocumentManager
                   entityId={selectedEmpleado.id}
                   categorias={CATEGORIAS_EMPLEADO}
+                  categoriasObligatorias={CATEGORIAS_EMPLEADO_OBLIGATORIAS}
                   onUpload={async (file, categoria, descripcion) => {
                     await documentoEmpleadoApi.upload(selectedEmpleado.id, file, categoria, descripcion);
                   }}
@@ -983,356 +1201,620 @@ const EmpleadosPage: React.FC = () => {
             {editingEmpleado ? 'Editar Empleado' : 'Nuevo Empleado'}
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Stack spacing={3}>
-            {/* Información Personal */}
-            <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-              <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                INFORMACIÓN PERSONAL
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Nombre *"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Apellido *"
-                    value={formData.apellido}
-                    onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="DNI *"
-                    value={formData.dni}
-                    onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Nacimiento"
-                    type="date"
-                    value={formData.fechaNacimiento}
-                    onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-              </Grid>
-            </Paper>
+        <DialogContent sx={{ pt: 3, bgcolor: 'grey.50' }}>
+          {/* Banner amarillo: campos legalmente obligatorios faltantes.
+              No bloquea el save — sirve a RRHH para ver qué falta completar. */}
+          {camposFaltantes.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <AlertTitle>Legajo incompleto</AlertTitle>
+              Faltan <strong>{camposFaltantes.length}</strong> dato(s) requerido(s) por ley.
+              Podés guardar igual, pero conviene completarlos cuanto antes:
+              <Box component="ul" sx={{ mt: 1, mb: 0, pl: 3 }}>
+                {camposFaltantes.map(c => <li key={c}>{c}</li>)}
+              </Box>
+            </Alert>
+          )}
 
-            {/* Información de Contacto */}
-            <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-              <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                CONTACTO
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label={formData.crearUsuario ? 'Email *' : 'Email'}
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
+          <Stack spacing={1.5}>
+            {/* ─── 1. Datos Personales (identificación) ─────────────────── */}
+            <Accordion defaultExpanded disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <PersonIcon color="primary" />
+                  <Typography fontWeight={700}>Datos Personales (identificación)</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                {editingEmpleado && (
+                  <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                    <EmpleadoFotoUploader
+                      empleadoId={editingEmpleado.id}
+                      nombre={editingEmpleado.nombre}
+                      apellido={editingEmpleado.apellido}
+                    />
+                  </Box>
+                )}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="CUIL (11 dígitos)" value={fase1Data.cuil}
+                      onChange={(e) => setFase1Data({ ...fase1Data, cuil: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                      inputProps={{ inputMode: 'numeric', maxLength: 11 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="DNI *" value={formData.dni}
+                      onChange={(e) => setFormData({ ...formData, dni: e.target.value })} required />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Fecha de Nacimiento" type="date"
+                      value={formData.fechaNacimiento}
+                      onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
+                      InputLabelProps={{ shrink: true }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Apellido 1 *" value={formData.apellido}
+                      onChange={(e) => setFormData({ ...formData, apellido: e.target.value })} required />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Apellido 2" value={fase1Data.apellido2}
+                      onChange={(e) => setFase1Data({ ...fase1Data, apellido2: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Nombre 1 *" value={formData.nombre}
+                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Nombre 2" value={fase1Data.nombre2}
+                      onChange={(e) => setFase1Data({ ...fase1Data, nombre2: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="País de Nacimiento" value={fase1Data.paisNacimiento}
+                      onChange={(e) => setFase1Data({ ...fase1Data, paisNacimiento: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Provincia de Nacimiento" value={fase1Data.provinciaNacimiento}
+                      onChange={(e) => setFase1Data({ ...fase1Data, provinciaNacimiento: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Ciudad de Nacimiento" value={fase1Data.ciudadNacimiento}
+                      onChange={(e) => setFase1Data({ ...fase1Data, ciudadNacimiento: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Nacionalidad 1" value={fase1Data.nacionalidad1}
+                      onChange={(e) => setFase1Data({ ...fase1Data, nacionalidad1: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Nacionalidad 2" value={fase1Data.nacionalidad2}
+                      onChange={(e) => setFase1Data({ ...fase1Data, nacionalidad2: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Documento Nacionalidad 2" value={fase1Data.docNacionalidad2}
+                      onChange={(e) => setFase1Data({ ...fase1Data, docNacionalidad2: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth select label="Género" value={fase1Data.genero}
+                      onChange={(e) => setFase1Data({ ...fase1Data, genero: e.target.value as Fase1State['genero'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {GENEROS.map(g => <MenuItem key={g} value={g}>{GENERO_LABEL[g]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth select label="Estado Civil" value={fase1Data.estadoCivil}
+                      onChange={(e) => setFase1Data({ ...fase1Data, estadoCivil: e.target.value as Fase1State['estadoCivil'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {ESTADOS_CIVILES.map(ec => <MenuItem key={ec} value={ec}>{ESTADO_CIVIL_LABEL[ec]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Estado Civil — Desde" type="date"
+                      value={fase1Data.estadoCivilDesde}
+                      onChange={(e) => setFase1Data({ ...fase1Data, estadoCivilDesde: e.target.value })}
+                      InputLabelProps={{ shrink: true }} disabled={!fase1Data.estadoCivil} />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Teléfono"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Dirección"
-                    value={formData.direccion}
-                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                  />
-                </Grid>
-              </Grid>
-            </Paper>
+              </AccordionDetails>
+            </Accordion>
 
-            {/* Información Laboral */}
-            <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-              <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                INFORMACIÓN LABORAL
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Puesto *"
-                    value={formData.puestoId}
-                    onChange={(e) => setFormData({ ...formData, puestoId: Number(e.target.value) })}
-                    required
-                  >
-                    <MenuItem value={0}>Seleccione un puesto</MenuItem>
-                    {puestos.map(puesto => (
-                      <MenuItem key={puesto.id} value={puesto.id}>
-                        {puesto.nombre}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+            {/* ─── 2. Contacto y Ubicación ─────────────────────────────── */}
+            <Accordion disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <ContactMailIcon color="primary" />
+                  <Typography fontWeight={700}>Datos de Contacto y Ubicación</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography variant="caption" color="textSecondary" display="block" mb={1.5}>
+                  Teléfono particular
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={4} sm={2}>
+                    <TextField fullWidth label="Cód. País" placeholder="54"
+                      value={fase1Data.telCodigoPais}
+                      onChange={(e) => setFase1Data({ ...fase1Data, telCodigoPais: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={4} sm={3}>
+                    <TextField fullWidth label="Área (sin 0)" placeholder="11"
+                      value={fase1Data.telArea}
+                      onChange={(e) => setFase1Data({ ...fase1Data, telArea: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={4} sm={4}>
+                    <TextField fullWidth label="Número (sin 15)" value={fase1Data.telNumero}
+                      onChange={(e) => setFase1Data({ ...fase1Data, telNumero: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <TextField fullWidth label="Email de Contacto" type="email"
+                      value={fase1Data.emailContacto}
+                      onChange={(e) => setFase1Data({ ...fase1Data, emailContacto: e.target.value })} />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Categoría Salarial"
-                    value={formData.categoriaSalarialId ?? ''}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      categoriaSalarialId: e.target.value === '' ? null : Number(e.target.value),
-                    })}
-                    helperText={
-                      categoriasSalariales.length === 0
-                        ? 'Sin categorías — configurarlas en RRHH → Config. Sueldos'
-                        : 'Default de la calculadora de Sueldos (editable al liquidar)'
-                    }
-                  >
-                    <MenuItem value="">— Sin asignar —</MenuItem>
-                    {categoriasSalariales
-                      .filter(c => c.activo !== false)
-                      .map(c => (
+
+                <Typography variant="caption" color="textSecondary" display="block" mt={2} mb={1.5}>
+                  Domicilio real
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Calle" value={fase1Data.domCalle}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domCalle: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={2}>
+                    <TextField fullWidth label="Altura" value={fase1Data.domAltura}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domAltura: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={2}>
+                    <TextField fullWidth label="Piso" value={fase1Data.domPiso}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domPiso: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={2}>
+                    <TextField fullWidth label="Depto" value={fase1Data.domDepto}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domDepto: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Barrio / Otra info" value={fase1Data.domBarrio}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domBarrio: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={2}>
+                    <TextField fullWidth label="CP (CPA)" inputProps={{ maxLength: 8 }}
+                      value={fase1Data.domCp}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domCp: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={4}>
+                    <TextField fullWidth label="Localidad" value={fase1Data.domLocalidad}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domLocalidad: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={6}>
+                    <TextField fullWidth label="Provincia" value={fase1Data.domProvincia}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domProvincia: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={6}>
+                    <TextField fullWidth label="País" value={fase1Data.domPais}
+                      onChange={(e) => setFase1Data({ ...fase1Data, domPais: e.target.value })} />
+                  </Grid>
+                </Grid>
+
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  El contacto de emergencia se carga en el detalle del empleado (Fase 2).
+                </Alert>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* ─── 3. Datos Laborales y Contractuales ───────────────────── */}
+            <Accordion disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <WorkIcon color="primary" />
+                  <Typography fontWeight={700}>Datos Laborales y Contractuales</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Fecha de Ingreso" type="date"
+                      value={formData.fechaIngreso}
+                      onChange={(e) => setFormData({ ...formData, fechaIngreso: e.target.value })}
+                      InputLabelProps={{ shrink: true }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Fecha de Ingreso Legal (AFIP)" type="date"
+                      value={fase1Data.fechaIngresoLegal}
+                      onChange={(e) => setFase1Data({ ...fase1Data, fechaIngresoLegal: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      helperText='Alta temprana AFIP — puede diferir de la fecha real de inicio.' />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Sucursal / Sede"
+                      value={formData.sucursalId || ''}
+                      onChange={(e) => setFormData({ ...formData, sucursalId: e.target.value ? Number(e.target.value) : undefined })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {sucursales.map(s => <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Locación" value={fase1Data.locacion}
+                      onChange={(e) => setFase1Data({ ...fase1Data, locacion: e.target.value })}
+                      helperText='Oficinas, Taller, otro' />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Área" value={fase1Data.areaNombre}
+                      onChange={(e) => setFase1Data({ ...fase1Data, areaNombre: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Departamento" value={fase1Data.departamentoNombre}
+                      onChange={(e) => setFase1Data({ ...fase1Data, departamentoNombre: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Sector" value={fase1Data.sectorNombre}
+                      onChange={(e) => setFase1Data({ ...fase1Data, sectorNombre: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Puesto *" value={formData.puestoId}
+                      onChange={(e) => setFormData({ ...formData, puestoId: Number(e.target.value) })} required>
+                      <MenuItem value={0}>— Seleccione un puesto —</MenuItem>
+                      {puestos.map(p => <MenuItem key={p.id} value={p.id}>{p.nombre}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Supervisor Directo"
+                      value={fase1Data.supervisorDirectoId === '' ? '' : fase1Data.supervisorDirectoId}
+                      onChange={(e) => setFase1Data({
+                        ...fase1Data,
+                        supervisorDirectoId: e.target.value === '' ? '' : Number(e.target.value),
+                      })}
+                      helperText="Jefe inmediato — base para el organigrama">
+                      <MenuItem value="">— Sin supervisor —</MenuItem>
+                      {empleados
+                        .filter(e => !editingEmpleado || e.id !== editingEmpleado.id)
+                        .map(e => (
+                          <MenuItem key={e.id} value={e.id}>
+                            {e.apellido}, {e.nombre} {e.numeroLegajo ? `(${e.numeroLegajo})` : ''}
+                          </MenuItem>
+                        ))}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Tipo de Mano de Obra" value={fase1Data.tipoManoObra}
+                      onChange={(e) => setFase1Data({ ...fase1Data, tipoManoObra: e.target.value as Fase1State['tipoManoObra'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {TIPOS_MANO_OBRA.map(t => <MenuItem key={t} value={t}>{TIPO_MANO_OBRA_LABEL[t]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Situación de Revista (Estado) *"
+                      value={formData.estado}
+                      onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })} required>
+                      <MenuItem value="ACTIVO">Activo</MenuItem>
+                      <MenuItem value="INACTIVO">Baja</MenuItem>
+                      <MenuItem value="LICENCIA">Licencia</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Tipo de Contrato" value={fase1Data.tipoContrato}
+                      onChange={(e) => setFase1Data({ ...fase1Data, tipoContrato: e.target.value as Fase1State['tipoContrato'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {TIPOS_CONTRATO.map(t => <MenuItem key={t} value={t}>{TIPO_CONTRATO_LABEL[t]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Motivo de Egreso"
+                      value={fase1Data.motivoEgreso}
+                      onChange={(e) => setFase1Data({ ...fase1Data, motivoEgreso: e.target.value as Fase1State['motivoEgreso'] })}
+                      disabled={formData.estado !== 'INACTIVO'}
+                      helperText={formData.estado !== 'INACTIVO' ? 'Solo aplica si el estado es Baja' : undefined}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {MOTIVOS_EGRESO.map(m => <MenuItem key={m} value={m}>{MOTIVO_EGRESO_LABEL[m]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Contacto laboral</Typography></Divider>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <TextField fullWidth label="Tel. Lab. Área" value={fase1Data.telLaboralArea}
+                      onChange={(e) => setFase1Data({ ...fase1Data, telLaboralArea: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <TextField fullWidth label="Tel. Lab. Número" value={fase1Data.telLaboralNumero}
+                      onChange={(e) => setFase1Data({ ...fase1Data, telLaboralNumero: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Email Laboral" type="email"
+                      value={fase1Data.emailLaboral}
+                      onChange={(e) => setFase1Data({ ...fase1Data, emailLaboral: e.target.value })} />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* ─── 4. Compensaciones y Datos Bancarios ──────────────────── */}
+            <Accordion disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <AccountBalanceIcon color="primary" />
+                  <Typography fontWeight={700}>Compensaciones y Datos Bancarios</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="CBU (22 dígitos)" value={fase1Data.cbu}
+                      onChange={(e) => setFase1Data({ ...fase1Data, cbu: e.target.value.replace(/\D/g, '').slice(0, 22) })}
+                      inputProps={{ inputMode: 'numeric', maxLength: 22 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <CatalogoAutocomplete label="Banco" value={fase1Data.bancoNombre}
+                      onChange={(v) => setFase1Data({ ...fase1Data, bancoNombre: v })}
+                      fetcher={bancosApi.list}
+                      helperText="Sugiere desde el catálogo global; podés escribir libre si falta uno" />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth select label="Tipo de Cuenta" value={fase1Data.tipoCuenta}
+                      onChange={(e) => setFase1Data({ ...fase1Data, tipoCuenta: e.target.value as Fase1State['tipoCuenta'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {TIPOS_CUENTA.map(t => <MenuItem key={t} value={t}>{TIPO_CUENTA_LABEL[t]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={8}>
+                    <TextField fullWidth label="Nº de Cuenta" value={fase1Data.numeroCuenta}
+                      onChange={(e) => setFase1Data({ ...fase1Data, numeroCuenta: e.target.value })} />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Convenio y salario</Typography></Divider>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Convenio Colectivo" value={fase1Data.convenioColectivo}
+                      onChange={(e) => setFase1Data({ ...fase1Data, convenioColectivo: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Categoría Laboral (convenio)" value={fase1Data.categoriaLaboral}
+                      onChange={(e) => setFase1Data({ ...fase1Data, categoriaLaboral: e.target.value })}
+                      helperText="Denominación del convenio — distinta de la categoría salarial interna" />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Categoría Salarial (interna)"
+                      value={formData.categoriaSalarialId ?? ''}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        categoriaSalarialId: e.target.value === '' ? null : Number(e.target.value),
+                      })}
+                      helperText={
+                        categoriasSalariales.length === 0
+                          ? 'Sin categorías — configurarlas en RRHH → Config. Sueldos'
+                          : 'Default de la calculadora de Sueldos'
+                      }>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {categoriasSalariales.filter(c => c.activo !== false).map(c => (
                         <MenuItem key={c.id} value={c.id}>
                           {c.nombre} (${Number(c.sueldoFijo).toLocaleString('es-AR')})
-                        </MenuItem>
-                      ))
-                    }
-                  </TextField>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  {(() => {
-                    // El sueldo ya no se edita acá: se deriva de la categoría salarial
-                    // asignada. Si todavía no hay categoría, mostramos un fallback al
-                    // campo legacy 'salario' (que sigue persistiéndose para no romper
-                    // empleados anteriores al cutover).
-                    const cat = categoriasSalariales.find(c => c.id === formData.categoriaSalarialId);
-                    const valor = cat ? Number(cat.sueldoFijo) : Number(formData.salario || 0);
-                    return (
-                      <TextField
-                        fullWidth
-                        label="Salario (derivado)"
-                        type="number"
-                        value={valor}
-                        disabled
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        }}
-                        helperText={
-                          cat
-                            ? `Tomado de la categoría "${cat.nombre}". Para cambiarlo, editá la categoría en RRHH → Config. Sueldos.`
-                            : 'Asigná una categoría salarial arriba para definir el salario.'
-                        }
-                      />
-                    );
-                  })()}
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Ingreso"
-                    type="date"
-                    value={formData.fechaIngreso}
-                    onChange={(e) => setFormData({ ...formData, fechaIngreso: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Estado *"
-                    value={formData.estado}
-                    onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
-                    required
-                  >
-                    <MenuItem value="ACTIVO">Activo</MenuItem>
-                    <MenuItem value="INACTIVO">Inactivo</MenuItem>
-                    <MenuItem value="LICENCIA">Licencia</MenuItem>
-                  </TextField>
-                </Grid>
-                {sucursales.length > 0 && (
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      select
-                      label="Sucursal"
-                      value={formData.sucursalId || ''}
-                      onChange={(e) => setFormData({ ...formData, sucursalId: e.target.value ? Number(e.target.value) : undefined })}
-                    >
-                      <MenuItem value="">Sin sucursal asignada</MenuItem>
-                      {sucursales.map(s => (
-                        <MenuItem key={s.id} value={s.id}>
-                          {s.nombre}
                         </MenuItem>
                       ))}
                     </TextField>
                   </Grid>
-                )}
-              </Grid>
-            </Paper>
+                  <Grid item xs={12} sm={6}>
+                    {(() => {
+                      const cat = categoriasSalariales.find(c => c.id === formData.categoriaSalarialId);
+                      const valor = cat ? Number(cat.sueldoFijo) : Number(formData.salario || 0);
+                      return (
+                        <TextField fullWidth label="Salario básico (derivado)" type="number" value={valor} disabled
+                          InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                          helperText={cat
+                            ? `Tomado de la categoría "${cat.nombre}". Editable en RRHH → Config. Sueldos.`
+                            : 'Asigná una categoría salarial para definir el salario.'} />
+                      );
+                    })()}
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Moneda" value={fase1Data.moneda}
+                      onChange={(e) => setFase1Data({ ...fase1Data, moneda: e.target.value as Fase1State['moneda'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {MONEDAS.map(m => <MenuItem key={m} value={m}>{MONEDA_LABEL[m]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
 
-            {/* Legajo */}
-            <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-              <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                LEGAJO
-              </Typography>
-              <Typography variant="caption" color="textSecondary" display="block" mb={2}>
-                Todos los datos son opcionales. Si dejás el número de legajo vacío, se autogenera al crear el empleado.
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Número de Legajo"
-                    value={legajoData.numeroLegajo}
-                    onChange={(e) => setLegajoData({ ...legajoData, numeroLegajo: e.target.value })}
-                    placeholder={editingEmpleado ? '' : 'Se autogenera (ej. LEG-00012)'}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <BadgeIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Alta"
-                    type="date"
-                    value={legajoData.fechaAlta}
-                    onChange={(e) => setLegajoData({ ...legajoData, fechaAlta: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                    helperText={editingEmpleado ? undefined : 'Por defecto, igual a la fecha de ingreso'}
-                  />
-                </Grid>
-                {editingEmpleado && (
-                  <>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="Fecha de Baja"
-                        type="date"
-                        value={legajoData.fechaBaja}
-                        onChange={(e) => setLegajoData({ ...legajoData, fechaBaja: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={legajoData.activo}
-                            onChange={(e) => setLegajoData({ ...legajoData, activo: e.target.checked })}
-                          />
-                        }
-                        label="Legajo activo"
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Motivo de Baja"
-                        value={legajoData.motivoBaja}
-                        onChange={(e) => setLegajoData({ ...legajoData, motivoBaja: e.target.value })}
-                        multiline
-                        rows={2}
-                        disabled={!legajoData.fechaBaja && legajoData.activo}
-                      />
-                    </Grid>
-                  </>
-                )}
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Documentación"
-                    value={legajoData.documentacion}
-                    onChange={(e) => setLegajoData({ ...legajoData, documentacion: e.target.value })}
-                    multiline
-                    rows={2}
-                    placeholder="Referencias a documentos físicos / archivos / carpetas"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Observaciones"
-                    value={legajoData.observaciones}
-                    onChange={(e) => setLegajoData({ ...legajoData, observaciones: e.target.value })}
-                    multiline
-                    rows={3}
-                  />
-                </Grid>
-              </Grid>
-            </Paper>
-
-            {/* Cuenta de acceso — solo en creación */}
-            {!editingEmpleado && (
-              <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'grey.50', borderRadius: 2 }}>
-                <Typography variant="subtitle2" fontWeight="700" color="primary" gutterBottom mb={2}>
-                  ACCESO AL SISTEMA
-                </Typography>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!!formData.crearUsuario}
-                      onChange={(e) => setFormData({ ...formData, crearUsuario: e.target.checked })}
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Sindicato</Typography></Divider>
+                  </Grid>
+                  <Grid item xs={12} sm={8}>
+                    <TextField fullWidth label="Sindicato" value={fase1Data.sindicato}
+                      onChange={(e) => setFase1Data({ ...fase1Data, sindicato: e.target.value })} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel
+                      control={<Checkbox checked={fase1Data.afiliadoSindicato}
+                        onChange={(e) => setFase1Data({ ...fase1Data, afiliadoSindicato: e.target.checked })} />}
+                      label="Afiliado/a al sindicato"
                     />
-                  }
-                  label="Crear cuenta de acceso al sistema"
-                />
-                {formData.crearUsuario && (
-                  <Stack spacing={2} mt={2}>
-                    <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
-                      Se creará el usuario <strong>emp_{formData.dni || '{DNI}'}</strong> con roles derivados del puesto seleccionado.
-                    </Alert>
-                    <Grid container spacing={2}>
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* ─── 5. Salud y Seguridad Social ──────────────────────────── */}
+            <Accordion disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <MedicalServicesIcon color="primary" />
+                  <Typography fontWeight={700}>Salud y Seguridad Social</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth label="Código Obra Social / Prepaga"
+                      value={fase1Data.obraSocialCodigo}
+                      onChange={(e) => setFase1Data({ ...fase1Data, obraSocialCodigo: e.target.value })}
+                      placeholder="#-####-#" />
+                  </Grid>
+                  <Grid item xs={12} sm={8}>
+                    <CatalogoAutocomplete label="Detalle Obra Social / Prepaga"
+                      value={fase1Data.obraSocialDetalle}
+                      onChange={(v) => setFase1Data({ ...fase1Data, obraSocialDetalle: v })}
+                      fetcher={obrasSocialesApi.list}
+                      helperText="Sugiere desde el catálogo de obras sociales" />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField fullWidth select label="Grupo Sanguíneo" value={fase1Data.grupoSanguineo}
+                      onChange={(e) => setFase1Data({ ...fase1Data, grupoSanguineo: e.target.value as Fase1State['grupoSanguineo'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {GRUPOS_SANGUINEOS.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={8}>
+                    <CatalogoAutocomplete label="ART" value={fase1Data.artNombre}
+                      onChange={(v) => setFase1Data({ ...fase1Data, artNombre: v })}
+                      fetcher={artsApi.list} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField fullWidth label="Alergias / Condiciones de salud relevantes (discapacidad)"
+                      value={fase1Data.alergiasCondiciones}
+                      onChange={(e) => setFase1Data({ ...fase1Data, alergiasCondiciones: e.target.value })}
+                      multiline rows={2} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Fecha de Examen Preocupacional" type="date"
+                      value={fase1Data.fechaExamenPreocupacional}
+                      onChange={(e) => setFase1Data({ ...fase1Data, fechaExamenPreocupacional: e.target.value })}
+                      InputLabelProps={{ shrink: true }} />
+                  </Grid>
+                </Grid>
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Las cargas de familia (cónyuge / hijos / hijos con discapacidad) se cargan en el detalle del empleado (Fase 2).
+                </Alert>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* ─── 6. Formación y Perfil Profesional ────────────────────── */}
+            <Accordion disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <SchoolIcon color="primary" />
+                  <Typography fontWeight={700}>Formación y Perfil Profesional</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth select label="Nivel de Estudios" value={fase1Data.nivelEstudios}
+                      onChange={(e) => setFase1Data({ ...fase1Data, nivelEstudios: e.target.value as Fase1State['nivelEstudios'] })}>
+                      <MenuItem value="">— Sin asignar —</MenuItem>
+                      {NIVELES_ESTUDIOS.map(n => <MenuItem key={n} value={n}>{NIVEL_ESTUDIOS_LABEL[n]}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Título / Carrera (profesión o especialidad)"
+                      value={fase1Data.tituloCarrera}
+                      onChange={(e) => setFase1Data({ ...fase1Data, tituloCarrera: e.target.value })} />
+                  </Grid>
+                </Grid>
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Los idiomas y su nivel de dominio se cargan en el detalle del empleado (Fase 2).
+                </Alert>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* ─── 7. Legajo (administrativo) ───────────────────────────── */}
+            <Accordion disableGutters>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <BadgeIcon color="primary" />
+                  <Typography fontWeight={700}>Legajo</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography variant="caption" color="textSecondary" display="block" mb={2}>
+                  Si dejás el número vacío, se autogenera (ej. LEG-00012).
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Número de Legajo" value={legajoData.numeroLegajo}
+                      onChange={(e) => setLegajoData({ ...legajoData, numeroLegajo: e.target.value })}
+                      placeholder={editingEmpleado ? '' : 'Se autogenera'}
+                      InputProps={{ startAdornment: (<InputAdornment position="start"><BadgeIcon fontSize="small" /></InputAdornment>) }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField fullWidth label="Fecha de Alta" type="date" value={legajoData.fechaAlta}
+                      onChange={(e) => setLegajoData({ ...legajoData, fechaAlta: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      helperText={editingEmpleado ? undefined : 'Por defecto, igual a la fecha de ingreso'} />
+                  </Grid>
+                  {editingEmpleado && (
+                    <>
                       <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Contraseña *"
-                          type="password"
-                          value={formData.usuarioPassword}
-                          onChange={(e) => setFormData({ ...formData, usuarioPassword: e.target.value })}
-                          helperText="Mínimo 8 caracteres"
-                        />
+                        <TextField fullWidth label="Fecha de Baja" type="date" value={legajoData.fechaBaja}
+                          onChange={(e) => setLegajoData({ ...legajoData, fechaBaja: e.target.value })}
+                          InputLabelProps={{ shrink: true }} />
                       </Grid>
                       <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Confirmar contraseña *"
-                          type="password"
-                          value={formData.confirmPassword}
-                          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                          error={!!formData.confirmPassword && formData.confirmPassword !== formData.usuarioPassword}
-                          helperText={
-                            formData.confirmPassword && formData.confirmPassword !== formData.usuarioPassword
-                              ? 'Las contraseñas no coinciden'
-                              : ''
-                          }
-                        />
+                        <FormControlLabel
+                          control={<Checkbox checked={legajoData.activo}
+                            onChange={(e) => setLegajoData({ ...legajoData, activo: e.target.checked })} />}
+                          label="Legajo activo" />
                       </Grid>
-                    </Grid>
-                  </Stack>
-                )}
-              </Paper>
+                      <Grid item xs={12}>
+                        <TextField fullWidth label="Motivo de Baja (texto)" value={legajoData.motivoBaja}
+                          onChange={(e) => setLegajoData({ ...legajoData, motivoBaja: e.target.value })}
+                          multiline rows={2} disabled={!legajoData.fechaBaja && legajoData.activo} />
+                      </Grid>
+                    </>
+                  )}
+                  <Grid item xs={12}>
+                    <TextField fullWidth label="Documentación" value={legajoData.documentacion}
+                      onChange={(e) => setLegajoData({ ...legajoData, documentacion: e.target.value })}
+                      multiline rows={2} placeholder="Referencias a documentos físicos / archivos / carpetas" />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField fullWidth label="Observaciones" value={legajoData.observaciones}
+                      onChange={(e) => setLegajoData({ ...legajoData, observaciones: e.target.value })}
+                      multiline rows={3} />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+
+            {/* ─── 8. Cuenta de acceso — solo en creación ───────────────── */}
+            {!editingEmpleado && (
+              <Accordion disableGutters>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <AccountCircleIcon color="primary" />
+                    <Typography fontWeight={700}>Acceso al Sistema</Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <FormControlLabel
+                    control={<Checkbox checked={!!formData.crearUsuario}
+                      onChange={(e) => setFormData({ ...formData, crearUsuario: e.target.checked })} />}
+                    label="Crear cuenta de acceso al sistema" />
+                  {formData.crearUsuario && (
+                    <Stack spacing={2} mt={2}>
+                      <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
+                        Se creará el usuario <strong>emp_{formData.dni || '{DNI}'}</strong> con roles derivados del puesto seleccionado.
+                      </Alert>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <TextField fullWidth label={formData.crearUsuario ? 'Email *' : 'Email'} type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                        </Grid>
+                        <Grid item xs={12} sm={6} />
+                        <Grid item xs={12} sm={6}>
+                          <TextField fullWidth label="Contraseña *" type="password"
+                            value={formData.usuarioPassword}
+                            onChange={(e) => setFormData({ ...formData, usuarioPassword: e.target.value })}
+                            helperText="Mínimo 8 caracteres" />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField fullWidth label="Confirmar contraseña *" type="password"
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            error={!!formData.confirmPassword && formData.confirmPassword !== formData.usuarioPassword}
+                            helperText={formData.confirmPassword && formData.confirmPassword !== formData.usuarioPassword
+                              ? 'Las contraseñas no coinciden' : ''} />
+                        </Grid>
+                      </Grid>
+                    </Stack>
+                  )}
+                </AccordionDetails>
+              </Accordion>
             )}
           </Stack>
         </DialogContent>

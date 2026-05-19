@@ -216,6 +216,7 @@ const navigation: NavigationSection[] = [
       { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },
       { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
       { text: 'Puestos', icon: <AssignmentIcon />, path: '/rrhh/puestos' },
+      { text: 'Organigrama', icon: <AssignmentIcon />, path: '/rrhh/organigrama' },
       { text: 'Licencias', icon: <AssignmentIcon />, path: '/rrhh/licencias' },
       { text: 'Disciplina', icon: <AssignmentIcon />, path: '/rrhh/disciplina' },
       { text: 'Catálogos RRHH', icon: <SettingsIcon />, path: '/admin/catalogos-rrhh', modulo: 'RRHH' },
@@ -243,6 +244,7 @@ const navigation: NavigationSection[] = [
       { text: 'Roles', icon: <SettingsIcon />, path: '/admin/roles' },
       { text: 'Colores', icon: <SettingsIcon />, path: '/admin/colores' },
       { text: 'Catálogos RRHH', icon: <SettingsIcon />, path: '/admin/catalogos-rrhh' },
+      { text: 'Catálogos Globales', icon: <SettingsIcon />, path: '/admin/catalogos-globales' },
       { text: 'Medidas', icon: <SettingsIcon />, path: '/admin/medidas' },
       { text: 'Fichas técnicas', icon: <SettingsIcon />, path: '/admin/especificaciones-tecnicas' },
       { text: 'Importador de Precios', icon: <SettingsIcon />, path: '/admin/importador-precios' },
@@ -356,11 +358,29 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
 
   // Rutas denegadas para el rol ADMIN_EMPRESA_LIMITADO (denylist):
   // Tiene acceso casi total como un ADMIN_EMPRESA, pero se le ocultan pantallas
-  // sensibles que sólo debería tocar el dueño (configuración de costos, etc.).
-  // El módulo RRHH ya queda fuera por PERMISOS_POR_ROL — no hace falta listarlo
-  // acá. Agregar pantallas nuevas a esta lista a medida que se restrinjan.
+  // sensibles que sólo debería tocar el dueño (configuración de costos,
+  // gestión de usuarios/empresas, posición patrimonial, etc.) y todo RRHH
+  // excepto Sueldos / Adelantos / Config. Sueldos. Mantener en sync con
+  // ADMIN_EMPRESA_LIMITADO_DENIED_PREFIXES en RoleScopeGuard.tsx.
   const adminEmpresaLimitadoDeniedPaths = [
     '/taller/configuracion',
+    // RRHH: ve sólo Sueldos, Adelantos y Config. Sueldos.
+    '/rrhh/dashboard',
+    '/rrhh/empleados',
+    '/rrhh/legajos',
+    '/rrhh/asistencia',
+    '/rrhh/capacitaciones',
+    '/rrhh/puestos',
+    '/rrhh/licencias',
+    '/rrhh/disciplina',
+    '/admin/catalogos-rrhh',
+    // ADMIN: pantallas reservadas al dueño.
+    '/admin/actividad',
+    '/admin/settings',
+    '/admin/users',
+    '/admin/empresas',
+    '/admin/sucursales',
+    '/admin/patrimonio',
   ];
 
   // Rutas permitidas para el rol SUPERVISOR (allowlist):

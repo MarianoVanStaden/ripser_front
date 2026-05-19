@@ -54,12 +54,30 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
 ];
 
 // ADMIN_EMPRESA_LIMITADO: admin "empleado" que ve casi todo el sistema pero
-// no debe entrar a RRHH ni a configuraciones reservadas al dueño. Usamos
-// denylist (no allowlist) porque su scope es prácticamente todo el sistema.
-// Acceso por URL directa a estos prefijos → redirect al dashboard genérico.
+// no debe entrar a pantallas reservadas al dueño (configs, usuarios, etc.) ni
+// al resto de RRHH (sólo accede a Sueldos / Adelantos / Config. Sueldos).
+// Usamos denylist (no allowlist) porque su scope es prácticamente todo el
+// sistema. Acceso por URL directa a estos prefijos → redirect al dashboard.
+// Mantener en sync con adminEmpresaLimitadoDeniedPaths en Sidebar.tsx.
 const ADMIN_EMPRESA_LIMITADO_DENIED_PREFIXES = [
-  '/rrhh',
   '/taller/configuracion',
+  // RRHH: sólo Sueldos, Adelantos y Config. Sueldos quedan accesibles.
+  '/rrhh/dashboard',
+  '/rrhh/empleados',
+  '/rrhh/legajos',
+  '/rrhh/asistencia',
+  '/rrhh/capacitaciones',
+  '/rrhh/puestos',
+  '/rrhh/licencias',
+  '/rrhh/disciplina',
+  '/admin/catalogos-rrhh',
+  // ADMIN: pantallas reservadas al dueño.
+  '/admin/actividad',
+  '/admin/settings',
+  '/admin/users',
+  '/admin/empresas',
+  '/admin/sucursales',
+  '/admin/patrimonio',
 ];
 
 const RoleScopeGuard: React.FC<Props> = ({ children }) => {

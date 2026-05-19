@@ -2,10 +2,15 @@ import api from '../config';
 import type { Usuario } from '../../types';
 
 export const usuarioApi = {
-  // Get all usuarios
+  // Get all usuarios. El backend devuelve Page<UsuarioDTO>; pedimos un size
+  // grande para que los callers que esperan la lista completa (selectores,
+  // autocompletes) la reciban sin paginar a mano.
   getAll: async (): Promise<Usuario[]> => {
-    const response = await api.get('/api/admin/usuarios');
-    return response.data;
+    const response = await api.get('/api/admin/usuarios', {
+      params: { page: 0, size: 1000 },
+    });
+    const data = response.data;
+    return Array.isArray(data) ? data : (data?.content ?? []);
   },
 
   // Get usuarios activos

@@ -395,6 +395,136 @@ export interface UpdateSubtareaPuestoDTO {
 // Backward compat alias for Empleado.puesto
 export type Puesto = PuestoListDTO;
 
+// ── Catálogos cerrados de la Fase 1 (RRHH) ────────────────────────────────────
+// Valores fijos (no requieren tabla). Se persisten como VARCHAR en backend y
+// se valida por TS union en frontend.
+export type Genero = 'MASCULINO' | 'FEMENINO' | 'OTRO';
+export const GENERO_LABEL: Record<Genero, string> = {
+  MASCULINO: 'Masculino',
+  FEMENINO: 'Femenino',
+  OTRO: 'Otro',
+};
+export const GENEROS: readonly Genero[] = ['MASCULINO', 'FEMENINO', 'OTRO'] as const;
+
+export type EstadoCivil = 'SOLTERO' | 'CASADO' | 'VIUDO' | 'SEPARADO' | 'CONCUBINATO' | 'OTRO';
+export const ESTADO_CIVIL_LABEL: Record<EstadoCivil, string> = {
+  SOLTERO: 'Soltero/a',
+  CASADO: 'Casado/a',
+  VIUDO: 'Viudo/a',
+  SEPARADO: 'Separado/a',
+  CONCUBINATO: 'Concubinato',
+  OTRO: 'Otro',
+};
+export const ESTADOS_CIVILES: readonly EstadoCivil[] =
+  ['SOLTERO', 'CASADO', 'VIUDO', 'SEPARADO', 'CONCUBINATO', 'OTRO'] as const;
+
+export type TipoManoObra = 'MOD' | 'MOI' | 'NO_APLICA';
+export const TIPO_MANO_OBRA_LABEL: Record<TipoManoObra, string> = {
+  MOD: 'MOD — Mano de Obra Directa',
+  MOI: 'MOI — Mano de Obra Indirecta',
+  NO_APLICA: 'No aplica',
+};
+export const TIPOS_MANO_OBRA: readonly TipoManoObra[] = ['MOD', 'MOI', 'NO_APLICA'] as const;
+
+export type TipoContrato = 'EFECTIVO' | 'TEMPORAL' | 'PASANTIA' | 'TIEMPO_DETERMINADO' | 'OTRO';
+export const TIPO_CONTRATO_LABEL: Record<TipoContrato, string> = {
+  EFECTIVO: 'Efectivo',
+  TEMPORAL: 'Temporal',
+  PASANTIA: 'Pasantía',
+  TIEMPO_DETERMINADO: 'Tiempo determinado',
+  OTRO: 'Otro',
+};
+export const TIPOS_CONTRATO: readonly TipoContrato[] =
+  ['EFECTIVO', 'TEMPORAL', 'PASANTIA', 'TIEMPO_DETERMINADO', 'OTRO'] as const;
+
+export type MotivoEgreso = 'RENUNCIA' | 'DESPIDO' | 'JUBILACION' | 'FIN_CONTRATO' | 'OTRO';
+export const MOTIVO_EGRESO_LABEL: Record<MotivoEgreso, string> = {
+  RENUNCIA: 'Renuncia',
+  DESPIDO: 'Despido',
+  JUBILACION: 'Jubilación',
+  FIN_CONTRATO: 'Fin de contrato',
+  OTRO: 'Otro',
+};
+export const MOTIVOS_EGRESO: readonly MotivoEgreso[] =
+  ['RENUNCIA', 'DESPIDO', 'JUBILACION', 'FIN_CONTRATO', 'OTRO'] as const;
+
+export type TipoCuentaBancaria = 'CA' | 'CC';
+export const TIPO_CUENTA_LABEL: Record<TipoCuentaBancaria, string> = {
+  CA: 'Caja de Ahorro',
+  CC: 'Cuenta Corriente',
+};
+export const TIPOS_CUENTA: readonly TipoCuentaBancaria[] = ['CA', 'CC'] as const;
+
+export type MonedaSalario = 'ARS' | 'USD';
+export const MONEDA_LABEL: Record<MonedaSalario, string> = {
+  ARS: 'Pesos (ARS)',
+  USD: 'Dólares (USD)',
+};
+export const MONEDAS: readonly MonedaSalario[] = ['ARS', 'USD'] as const;
+
+export type GrupoSanguineo = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+export const GRUPOS_SANGUINEOS: readonly GrupoSanguineo[] =
+  ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+
+export type NivelEstudios = 'PRIMARIO' | 'SECUNDARIO' | 'UNIVERSITARIO' | 'POSGRADO';
+export const NIVEL_ESTUDIOS_LABEL: Record<NivelEstudios, string> = {
+  PRIMARIO: 'Primario',
+  SECUNDARIO: 'Secundario',
+  UNIVERSITARIO: 'Universitario',
+  POSGRADO: 'Posgrado',
+};
+export const NIVELES_ESTUDIOS: readonly NivelEstudios[] =
+  ['PRIMARIO', 'SECUNDARIO', 'UNIVERSITARIO', 'POSGRADO'] as const;
+
+// ── Fase 2 — entidades relacionales del empleado (RRHH) ───────────────────────
+export type VinculoCargaFamiliar = 'HIJO' | 'CONYUGE' | 'CONCUBINO' | 'HIJO_DISCAPACIDAD';
+export const VINCULO_CARGA_LABEL: Record<VinculoCargaFamiliar, string> = {
+  HIJO: 'Hijo/a',
+  CONYUGE: 'Cónyuge',
+  CONCUBINO: 'Concubino/a',
+  HIJO_DISCAPACIDAD: 'Hijo/a con discapacidad',
+};
+export const VINCULOS_CARGA: readonly VinculoCargaFamiliar[] =
+  ['HIJO', 'CONYUGE', 'CONCUBINO', 'HIJO_DISCAPACIDAD'] as const;
+
+export type NivelIdioma = 'ALTO' | 'MEDIO' | 'BAJO';
+export const NIVEL_IDIOMA_LABEL: Record<NivelIdioma, string> = {
+  ALTO: 'Alto',
+  MEDIO: 'Medio',
+  BAJO: 'Bajo',
+};
+export const NIVELES_IDIOMA: readonly NivelIdioma[] = ['ALTO', 'MEDIO', 'BAJO'] as const;
+
+export interface ContactoEmergencia {
+  id: number;
+  empleadoId: number;
+  nombreCompleto: string;
+  relacion?: string | null;
+  telCodigoPais?: string | null;
+  telArea?: string | null;
+  telNumero?: string | null;
+  email?: string | null;
+  esPrincipal: boolean;
+}
+
+export interface CargaFamiliar {
+  id: number;
+  empleadoId: number;
+  vinculo: VinculoCargaFamiliar;
+  nombreCompleto: string;
+  dni?: string | null;
+  cuil?: string | null;
+  fechaNacimiento?: string | null;
+  observaciones?: string | null;
+}
+
+export interface IdiomaEmpleadoItem {
+  id: number;
+  empleadoId: number;
+  idioma: string;
+  nivel: NivelIdioma;
+}
+
 export interface Empleado {
   id: number;
   empresaId: number;         // Multi-tenant: empresa ID
@@ -425,6 +555,67 @@ export interface Empleado {
   legajoDocumentacion?: string | null;
   legajoObservaciones?: string | null;
   legajoActivo?: boolean | null;
+  // ── Fase 1: identificación ─────────────────────────────────────────────────
+  cuil?: string | null;
+  nombre2?: string | null;
+  apellido2?: string | null;
+  paisNacimiento?: string | null;
+  provinciaNacimiento?: string | null;
+  ciudadNacimiento?: string | null;
+  nacionalidad1?: string | null;
+  nacionalidad2?: string | null;
+  docNacionalidad2?: string | null;
+  genero?: Genero | null;
+  estadoCivil?: EstadoCivil | null;
+  estadoCivilDesde?: string | null;
+  // ── Fase 1: contacto y ubicación estructurados ────────────────────────────
+  telCodigoPais?: string | null;
+  telArea?: string | null;
+  telNumero?: string | null;
+  emailContacto?: string | null;
+  domCalle?: string | null;
+  domAltura?: string | null;
+  domPiso?: string | null;
+  domDepto?: string | null;
+  domBarrio?: string | null;
+  domCp?: string | null;
+  domLocalidad?: string | null;
+  domProvincia?: string | null;
+  domPais?: string | null;
+  // ── Fase 1: laborales y contractuales ─────────────────────────────────────
+  fechaIngresoLegal?: string | null;
+  locacion?: string | null;
+  areaNombre?: string | null;
+  departamentoNombre?: string | null;
+  sectorNombre?: string | null;
+  supervisorDirectoId?: number | null;
+  supervisorDirectoNombre?: string | null;
+  tipoManoObra?: TipoManoObra | null;
+  tipoContrato?: TipoContrato | null;
+  motivoEgreso?: MotivoEgreso | null;
+  telLaboralArea?: string | null;
+  telLaboralNumero?: string | null;
+  emailLaboral?: string | null;
+  // ── Fase 1: bancarios ─────────────────────────────────────────────────────
+  cbu?: string | null;
+  bancoNombre?: string | null;
+  tipoCuenta?: TipoCuentaBancaria | null;
+  numeroCuenta?: string | null;
+  convenioColectivo?: string | null;
+  categoriaLaboral?: string | null;
+  moneda?: MonedaSalario | null;
+  sindicato?: string | null;
+  afiliadoSindicato?: boolean | null;
+  // ── Fase 1: salud y seguridad social ──────────────────────────────────────
+  obraSocialCodigo?: string | null;
+  obraSocialDetalle?: string | null;
+  grupoSanguineo?: GrupoSanguineo | null;
+  alergiasCondiciones?: string | null;
+  artNombre?: string | null;
+  fechaExamenPreocupacional?: string | null;
+  // ── Fase 1: formación ─────────────────────────────────────────────────────
+  nivelEstudios?: NivelEstudios | null;
+  tituloCarrera?: string | null;
   asistencias?: RegistroAsistencia[];
   licencias?: Licencia[];
   capacitaciones?: Capacitacion[];
@@ -589,7 +780,67 @@ export interface UploadResponse {
   fileName: string | null;
   documentoId: number | null;
 }
-export interface EmpleadoCreateDTO {
+// Subset común de los campos planos de Fase 1 (RRHH), reutilizado por
+// EmpleadoCreateDTO y EmpleadoUpdateDTO. Todos opcionales: nada bloquea el
+// save, los faltantes se reportan como warning amarillo en el front.
+export interface EmpleadoFase1Fields {
+  cuil?: string | null;
+  nombre2?: string | null;
+  apellido2?: string | null;
+  paisNacimiento?: string | null;
+  provinciaNacimiento?: string | null;
+  ciudadNacimiento?: string | null;
+  nacionalidad1?: string | null;
+  nacionalidad2?: string | null;
+  docNacionalidad2?: string | null;
+  genero?: Genero | null;
+  estadoCivil?: EstadoCivil | null;
+  estadoCivilDesde?: string | null;
+  telCodigoPais?: string | null;
+  telArea?: string | null;
+  telNumero?: string | null;
+  emailContacto?: string | null;
+  domCalle?: string | null;
+  domAltura?: string | null;
+  domPiso?: string | null;
+  domDepto?: string | null;
+  domBarrio?: string | null;
+  domCp?: string | null;
+  domLocalidad?: string | null;
+  domProvincia?: string | null;
+  domPais?: string | null;
+  fechaIngresoLegal?: string | null;
+  locacion?: string | null;
+  areaNombre?: string | null;
+  departamentoNombre?: string | null;
+  sectorNombre?: string | null;
+  supervisorDirectoId?: number | null;
+  tipoManoObra?: TipoManoObra | null;
+  tipoContrato?: TipoContrato | null;
+  motivoEgreso?: MotivoEgreso | null;
+  telLaboralArea?: string | null;
+  telLaboralNumero?: string | null;
+  emailLaboral?: string | null;
+  cbu?: string | null;
+  bancoNombre?: string | null;
+  tipoCuenta?: TipoCuentaBancaria | null;
+  numeroCuenta?: string | null;
+  convenioColectivo?: string | null;
+  categoriaLaboral?: string | null;
+  moneda?: MonedaSalario | null;
+  sindicato?: string | null;
+  afiliadoSindicato?: boolean | null;
+  obraSocialCodigo?: string | null;
+  obraSocialDetalle?: string | null;
+  grupoSanguineo?: GrupoSanguineo | null;
+  alergiasCondiciones?: string | null;
+  artNombre?: string | null;
+  fechaExamenPreocupacional?: string | null;
+  nivelEstudios?: NivelEstudios | null;
+  tituloCarrera?: string | null;
+}
+
+export interface EmpleadoCreateDTO extends EmpleadoFase1Fields {
   nombre: string;
   apellido: string;
   dni: string;
@@ -612,7 +863,7 @@ export interface EmpleadoCreateDTO {
   legajoDocumentacion?: string;
 }
 
-export interface EmpleadoUpdateDTO {
+export interface EmpleadoUpdateDTO extends EmpleadoFase1Fields {
   nombre?: string;
   apellido?: string;
   email?: string;

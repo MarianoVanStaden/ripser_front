@@ -43,6 +43,8 @@ const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
 const RolesPage = lazy(() => import('./components/Admin/RolesPage'));
 const ColoresPage = lazy(() => import('./components/Admin/ColoresPage'));
 const CatalogosRRHHPage = lazy(() => import('./components/Admin/CatalogosRRHH/CatalogosRRHHPage'));
+const CatalogosGlobalesPage = lazy(() => import('./components/Admin/CatalogosGlobales/CatalogosGlobalesPage'));
+const OrganigramaPage = lazy(() => import('./components/RRHH/Organigrama/OrganigramaPage'));
 const MedidasPage = lazy(() => import('./components/Admin/MedidasPage'));
 const EspecificacionesTecnicasPage = lazy(() => import('./components/Admin/EspecificacionesTecnicasPage'));
 const SettingsPage = lazy(() => import('./components/Admin/SettingsPage'));
@@ -245,6 +247,7 @@ function App() {
                   <Route path="admin/roles" element={priv(<RolesPage />)} />
                   <Route path="admin/colores" element={priv(<ColoresPage />)} />
                   <Route path="admin/catalogos-rrhh" element={priv(<CatalogosRRHHPage />)} />
+                  <Route path="admin/catalogos-globales" element={priv(<CatalogosGlobalesPage />)} />
                   <Route path="admin/medidas" element={priv(<MedidasPage />)} />
                   <Route path="admin/especificaciones-tecnicas" element={priv(<EspecificacionesTecnicasPage />)} />
                   <Route path="admin/settings" element={priv(<SettingsPage />)} />
@@ -332,6 +335,7 @@ function App() {
                   {/* RRHH */}
                   <Route path="rrhh/dashboard" element={priv(<DashboardRRHH />)} />
                   <Route path="rrhh/empleados" element={priv(<EmpleadosPage />)} />
+                  <Route path="rrhh/organigrama" element={priv(<OrganigramaPage />)} />
                   <Route path="rrhh/puestos" element={priv(<PuestosPage />)} />
                   <Route path="rrhh/puestos/:id" element={priv(<PuestoDetailPage />)} />
                   <Route path="rrhh/asistencia" element={priv(<AsistenciasPage />)} />
