@@ -890,7 +890,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   const { sucursalFiltro } = useTenant();
 
   // ── Filter state ──
-  const [datePreset, setDatePreset] = useState<DatePreset>('todos');
+  const [datePresets, setDatePresets] = useState<DatePreset[]>(['todos']);
   const [customFechaDesde, setCustomFechaDesde] = useState('');
   const [customFechaHasta, setCustomFechaHasta] = useState('');
   const [filterPrioridad, setFilterPrioridad] = useState<PrioridadType | ''>('');
@@ -903,6 +903,25 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
   // Al clickear un header se cicla asc → desc → default.
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<OrderByRec | null>(null);
+
+  const toggleDatePreset = (preset: DatePreset) => {
+    if (preset === 'todos') {
+      setDatePresets(['todos']);
+      return;
+    }
+    setDatePresets((prev) => {
+      let next = prev.filter((p) => p !== 'todos');
+      if (next.includes(preset)) {
+        next = next.filter((p) => p !== preset);
+      } else {
+        next = [...next, preset];
+      }
+      if (next.length === 0) {
+        return ['todos'];
+      }
+      return next;
+    });
+  };
 
   const toggleEstado = (estado: EstadoLeadEnum) => {
     setSelectedEstados((prev) =>
@@ -959,43 +978,57 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
     else if (filterUsuarioId) f.usuarioId = filterUsuarioId;
     if (sucursalFiltro) f.sucursalId = sucursalFiltro;
 
-    const today = getTodayStr();
-    switch (datePreset) {
-      case 'ayer': {
-        const ayer = getDateStr(-1);
-        f.fechaDesde = ayer;
-        f.fechaHasta = ayer;
-        break;
+    if (!datePresets.includes('todos')) {
+      let isUnboundedStart = false;
+      let minDesde = '9999-99-99';
+      let maxHasta = '0000-00-00';
+
+      const updateRange = (rStart?: string, rEnd?: string) => {
+        if (!rStart) isUnboundedStart = true;
+        else if (rStart < minDesde) minDesde = rStart;
+        if (rEnd && rEnd > maxHasta) maxHasta = rEnd;
+      };
+
+      const today = getTodayStr();
+
+      datePresets.forEach((preset) => {
+        switch (preset) {
+          case 'ayer':
+            updateRange(getDateStr(-1), getDateStr(-1));
+            break;
+          case 'hoy':
+            updateRange(today, today);
+            break;
+          case 'mañana':
+            updateRange(getDateStr(1), getDateStr(1));
+            break;
+          case 'semana':
+            updateRange(today, getWeekEndStr());
+            break;
+          case 'mes':
+            updateRange(getMonthStartStr(), getMonthEndStr());
+            break;
+          case 'vencidos':
+            updateRange(undefined, getDateStr(-1));
+            break;
+          case 'personalizado':
+            if (customFechaDesde) updateRange(customFechaDesde, customFechaHasta || '9999-99-99');
+            if (customFechaHasta) updateRange(customFechaDesde || '0000-00-00', customFechaHasta);
+            break;
+        }
+      });
+
+      if (!isUnboundedStart && minDesde !== '9999-99-99') {
+        f.fechaDesde = minDesde;
       }
-      case 'hoy':
-        f.fechaDesde = today;
-        f.fechaHasta = today;
-        break;
-      case 'mañana':
-        f.fechaDesde = getDateStr(1);
-        f.fechaHasta = getDateStr(1);
-        break;
-      case 'semana':
-        f.fechaDesde = today;
-        f.fechaHasta = getWeekEndStr();
-        break;
-      case 'mes':
-        f.fechaDesde = getMonthStartStr();
-        f.fechaHasta = getMonthEndStr();
-        break;
-      case 'vencidos':
-        f.fechaHasta = getDateStr(-1);
-        break;
-      case 'personalizado':
-        if (customFechaDesde) f.fechaDesde = customFechaDesde;
-        if (customFechaHasta) f.fechaHasta = customFechaHasta;
-        break;
-      default:
-        break;
+      if (maxHasta !== '0000-00-00' && maxHasta !== '9999-99-99') {
+        f.fechaHasta = maxHasta;
+      }
     }
+
     return f;
   }, [
-    datePreset,
+    datePresets,
     customFechaDesde,
     customFechaHasta,
     filterPrioridad,
@@ -1316,16 +1349,16 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
               <Chip
                 key={preset.value}
                 label={preset.label}
-                onClick={() => setDatePreset(preset.value)}
-                variant={datePreset === preset.value ? 'filled' : 'outlined'}
-                color={datePreset === preset.value ? 'primary' : 'default'}
+                onClick={() => toggleDatePreset(preset.value)}
+                variant={datePresets.includes(preset.value) ? 'filled' : 'outlined'}
+                color={datePresets.includes(preset.value) ? 'primary' : 'default'}
                 size="small"
               />
             ))}
           </Box>
 
           {/* Custom date range */}
-          {datePreset === 'personalizado' && (
+          {datePresets.includes('personalizado') && (
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
                 label="Desde"
@@ -1434,14 +1467,14 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
               filterTipo ||
               filterUsuarioId ||
               soloMios ||
-              datePreset !== 'todos' ||
+              !datePresets.includes('todos') ||
               selectedEstados.length > 0) && (
               <Button
                 size="small"
                 variant="text"
                 color="inherit"
                 onClick={() => {
-                  setDatePreset('todos');
+                  setDatePresets(['todos']);
                   setFilterPrioridad('');
                   setFilterTipo('');
                   setFilterUsuarioId('');
@@ -1470,7 +1503,7 @@ export const GestionGlobalRecordatoriosPage: React.FC = () => {
             No hay recordatorios pendientes
           </Typography>
           <Typography variant="body2" color="text.disabled" mt={0.5}>
-            {datePreset !== 'todos' ||
+            {!datePresets.includes('todos') ||
             filterPrioridad ||
             filterTipo ||
             filterUsuarioId ||
