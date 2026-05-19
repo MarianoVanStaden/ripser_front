@@ -1418,7 +1418,7 @@ export const generarCertificadoGarantiaPDF = ({
   const margin = 10;
 
   let y = addCorporateHeader(doc, 'CERTIFICADO DE GARANTÍA');
-  y += 4;
+  y += 6;
 
   const e = ficha.equipo;
   const equipoLabel = [e.tipo, e.modelo, e.medida?.nombre]
@@ -1427,46 +1427,81 @@ export const generarCertificadoGarantiaPDF = ({
     .toUpperCase();
 
   // ── Bloque de identificación (EQUIPO / MODELO / Litros / Fecha) ──
+  // Fondo celeste corporativo suave para destacar el bloque y mejorar lectura.
+  const idBlockX = margin;
+  const idBlockW = pageWidth - margin * 2;
+  const idRows: Array<[string, string, boolean]> = [
+    ['EQUIPO:', equipoLabel, false],
+    ['MODELO:', e.numeroHeladera ?? '', true],
+    ...((litros && litros.trim())
+      ? [['Litros:', litros.trim(), true] as [string, string, boolean]]
+      : []),
+    ['Fecha:', formatFechaLarga(fecha), true],
+  ];
+  const idBlockH = idRows.length * 6 + 6;
+
+  doc.setFillColor(...COLORS.lightBlue);
+  doc.setDrawColor(...COLORS.darkBlue);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(idBlockX, y, idBlockW, idBlockH, 1.5, 1.5, 'FD');
+
   doc.setTextColor(...COLORS.black);
-  const labelX = margin + 5;
-  const valueX = margin + 28;
+  const labelX = margin + 6;
+  const valueX = margin + 32;
   doc.setFontSize(10);
 
-  const row = (label: string, value: string, italicLabel = false) => {
+  let rowY = y + 6;
+  idRows.forEach(([label, value, italicLabel]) => {
     doc.setFont('helvetica', italicLabel ? 'bolditalic' : 'bold');
-    doc.text(label, labelX, y);
+    doc.setTextColor(...COLORS.darkBlue);
+    doc.text(label, labelX, rowY);
     doc.setFont('helvetica', italicLabel ? 'italic' : 'normal');
-    doc.text(value, valueX, y);
-    y += 6;
-  };
+    doc.setTextColor(...COLORS.black);
+    doc.text(value, valueX, rowY);
+    rowY += 6;
+  });
 
-  row('EQUIPO:', equipoLabel);
-  row('MODELO:', e.numeroHeladera ?? '', true);
-  if (litros && litros.trim()) row('Litros:', litros.trim(), true);
-  row('Fecha:', formatFechaLarga(fecha), true);
-
-  y += 4;
+  y += idBlockH + 8;
 
   // ── Cuerpo del certificado ──
-  const textWidth = pageWidth - (margin * 2) - 10;
+  // Justificado real con jsPDF: todas las líneas salvo la última se renderizan
+  // con `align: 'justify' + maxWidth` para distribuir el espacio entre palabras.
+  // La última línea se renderiza al ras izquierdo para evitar el típico
+  // "stretch feo" de la línea final.
+  const textWidth = pageWidth - margin * 2 - 10;
+  const bodyX = margin + 5;
+  const lineHeight = 5;
+
   const writeJustified = (text: string, x: number, width: number) => {
     const lines = doc.splitTextToSize(text, width) as string[];
-    doc.text(lines, x, y);
-    y += lines.length * 5;
+    if (lines.length === 0) return;
+    if (lines.length === 1) {
+      doc.text(lines[0], x, y);
+      y += lineHeight;
+      return;
+    }
+    const allButLast = lines.slice(0, -1);
+    const lastLine = lines[lines.length - 1];
+    doc.text(allButLast, x, y, { align: 'justify', maxWidth: width });
+    y += allButLast.length * lineHeight;
+    doc.text(lastLine, x, y);
+    y += lineHeight;
   };
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...COLORS.black);
+
   writeJustified(
     'RIPSER Instalaciones OTORGA EL PRESENTE CERTIFICADO DE GARANTIA PARA TODO EL GABINETE POR EL LAPSO DE UN AÑO (1 año) CONTRA DEFECTOS DE FABRICACIÓN Y POR UN PERIODO DE SEIS MESES (6 meses) PARA COMPONENTES ELÉCTRICOS:',
-    labelX,
+    bodyX,
     textWidth,
   );
   y += 3;
 
   writeJustified(
     'Respaldamos nuestro "CERTIFICADO DE GARANTÍA" a partir de la fecha de facturación o nota de pedido firmada por responsable de la firma. El comprador o el usuario pierden el derecho a esta garantía en los siguientes casos:',
-    labelX,
+    bodyX,
     textWidth,
   );
   y += 3;
@@ -1478,18 +1513,32 @@ export const generarCertificadoGarantiaPDF = ({
     'Si los equipos, máquinas, herramientas o alguna de sus partes han operado en condiciones diferentes o adversas a las que recomienda el fabricante.',
     'Si los equipos, máquinas o herramientas han sufrido daño ocasionado por falta de mantenimiento adecuado o por haber sido manejado por personal no capacitado.',
   ];
-  const listIndent = labelX + 6;
+  const listIndent = bodyX + 6;
+  const listWidth = textWidth - 6;
   condiciones.forEach((item, i) => {
-    doc.text(`${i + 1}.`, labelX + 2, y);
-    const lines = doc.splitTextToSize(item, textWidth - 6) as string[];
-    doc.text(lines, listIndent, y);
-    y += lines.length * 5 + 1;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...COLORS.darkBlue);
+    doc.text(`${i + 1}.`, bodyX + 2, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...COLORS.black);
+    const lines = doc.splitTextToSize(item, listWidth) as string[];
+    if (lines.length === 1) {
+      doc.text(lines[0], listIndent, y);
+      y += lineHeight + 1;
+    } else {
+      const allButLast = lines.slice(0, -1);
+      const lastLine = lines[lines.length - 1];
+      doc.text(allButLast, listIndent, y, { align: 'justify', maxWidth: listWidth });
+      y += allButLast.length * lineHeight;
+      doc.text(lastLine, listIndent, y);
+      y += lineHeight + 1;
+    }
   });
   y += 2;
 
   writeJustified(
     'Esta garantía queda sin efecto automáticamente en el momento en que los equipos, máquinas o herramientas hayan sufrido: accidentes; mal uso; voltaje inadecuado; manejo inadecuado de las herramientas, partes desgastadas por un uso normal, exceso de peso, caídas, golpes, exposición a lluvia o humedad, utilización de accesorios indebidos para estas herramientas o reparaciones por talleres no autorizados por RIPSER INSTALACIONES COMERCIALES.',
-    labelX,
+    bodyX,
     textWidth,
   );
 
