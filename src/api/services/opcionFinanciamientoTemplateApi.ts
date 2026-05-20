@@ -107,6 +107,16 @@ const opcionFinanciamientoTemplateApi = {
   },
 
   /**
+   * Replace ALL templates with the standard Ripser catalog
+   * (contado, transferencia, cheques 2/3/4, cuotas semanales/quincenales/mensuales).
+   * WARNING: this deletes all existing templates for the current empresa.
+   */
+  cargarPlantillasRipser: async (): Promise<OpcionFinanciamientoTemplateDTO[]> => {
+    const response = await api.post<OpcionFinanciamientoTemplateDTO[]>(`${BASE_URL}/cargar-ripser`);
+    return response.data;
+  },
+
+  /**
    * Count active templates
    */
   contarActivas: async (): Promise<number> => {

@@ -4,6 +4,14 @@ import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box,
   Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  MenuItem,
+  TextField,
   Typography,
   Alert,
   Tab,
@@ -64,6 +72,8 @@ import FabricacionConfirmDialog from './Facturacion/dialogs/FabricacionConfirmDi
 import ConvertToFacturaDialog from './Facturacion/dialogs/ConvertToFacturaDialog';
 import DesdeNotaPedidoTab from './Facturacion/tabs/DesdeNotaPedidoTab';
 import FacturarManualTab from './Facturacion/tabs/FacturarManualTab';
+import { costoEnvioApi } from '../../api/services/costoEnvioApi';
+import type { CostoEnvioDTO } from '../../types/costoEnvio.types';
 
 const FacturacionPage = () => {
   const navigate = useNavigate();
@@ -96,6 +106,14 @@ const FacturacionPage = () => {
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('EXENTO');
+
+  // Envío dialog state
+  const [costosEnvioFact, setCostosEnvioFact] = useState<CostoEnvioDTO[]>([]);
+  const [envioDialogOpenFact, setEnvioDialogOpenFact] = useState(false);
+  const [envioProvinciaFact, setEnvioProvinciaFact] = useState('');
+  const [envioPrecioFact, setEnvioPrecioFact] = useState(0);
+  const [envioCantidadFact, setEnvioCantidadFact] = useState(1);
+  const [envioBonificadoFact, setEnvioBonificadoFact] = useState(false);
   const [descuentoTipo, setDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
   const [descuentoValor, setDescuentoValor] = useState<number>(0);
   const [notaDescuentoTipo, setNotaDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
@@ -402,22 +420,32 @@ const FacturacionPage = () => {
   const subtotalVenta = useMemo(() => {
     return cart.reduce((sum, item) => {
       const itemSubtotal = item.cantidad * item.precioUnitario;
-      const discountAmount = itemSubtotal * (item.descuento / 100);
+      // ENVIO items are never discounted at line level
+      const discountAmount = item.tipoItem === 'ENVIO' ? 0 : itemSubtotal * (item.descuento / 100);
       return sum + (itemSubtotal - discountAmount);
     }, 0);
   }, [cart]);
 
+  const subtotalVentaEnvio = useMemo(
+    () => cart.filter((i) => i.tipoItem === 'ENVIO').reduce((s, i) => s + i.cantidad * i.precioUnitario, 0),
+    [cart]
+  );
+  const subtotalVentaBase = useMemo(() => subtotalVenta - subtotalVentaEnvio, [subtotalVenta, subtotalVentaEnvio]);
+
   const descuentoAmount = useMemo(() => {
     if (descuentoTipo === 'PORCENTAJE') {
-      return subtotalVenta * (Math.min(100, Math.max(0, descuentoValor || 0)) / 100);
+      return subtotalVentaBase * (Math.min(100, Math.max(0, descuentoValor || 0)) / 100);
     }
     if (descuentoTipo === 'MONTO_FIJO') {
-      return Math.min(subtotalVenta, Math.max(0, descuentoValor || 0));
+      return Math.min(subtotalVentaBase, Math.max(0, descuentoValor || 0));
     }
     return 0;
-  }, [subtotalVenta, descuentoTipo, descuentoValor]);
+  }, [subtotalVentaBase, descuentoTipo, descuentoValor]);
 
-  const subtotalVentaNeto = useMemo(() => Math.max(0, subtotalVenta - descuentoAmount), [subtotalVenta, descuentoAmount]);
+  const subtotalVentaNeto = useMemo(
+    () => Math.max(0, subtotalVentaBase - descuentoAmount) + subtotalVentaEnvio,
+    [subtotalVentaBase, subtotalVentaEnvio, descuentoAmount]
+  );
 
   const ivaAmount = useMemo(() => {
     const ivaRate = IVA_OPTIONS.find((option) => option.value === selectedIva)?.rate || 0;
@@ -570,6 +598,45 @@ const FacturacionPage = () => {
         },
       ]);
     }
+  };
+
+  const handleOpenEnvioDialogFact = async () => {
+    if (costosEnvioFact.length === 0) {
+      try {
+        await costoEnvioApi.seed().catch(() => {});
+        const data = await costoEnvioApi.getAll();
+        setCostosEnvioFact(data);
+      } catch {
+        // silent
+      }
+    }
+    // Auto-detect cantidad: sum of EQUIPO items in the current cart
+    const cantEquipos = cart
+      .filter((c) => c.tipoItem === 'EQUIPO')
+      .reduce((sum, c) => sum + (c.cantidad || 0), 0);
+    setEnvioProvinciaFact('');
+    setEnvioPrecioFact(0);
+    setEnvioCantidadFact(cantEquipos > 0 ? cantEquipos : 1);
+    setEnvioBonificadoFact(false);
+    setEnvioDialogOpenFact(true);
+  };
+
+  const handleConfirmEnvioFact = () => {
+    if (!envioProvinciaFact) return;
+    const label = costosEnvioFact.find((c) => c.provincia === envioProvinciaFact)?.provinciaNombre ?? envioProvinciaFact;
+    const precioUnit = envioBonificadoFact ? 0 : envioPrecioFact;
+    const cantidad = Math.max(1, envioCantidadFact);
+    setCart((prev) => [
+      ...prev,
+      {
+        tipoItem: 'ENVIO' as const,
+        descripcion: envioBonificadoFact ? `Envío a ${label} (Bonificado)` : `Envío a ${label}`,
+        cantidad,
+        precioUnitario: precioUnit,
+        descuento: 0,
+      },
+    ]);
+    setEnvioDialogOpenFact(false);
   };
 
   // Función para verificar stock disponible de un equipo
@@ -809,12 +876,14 @@ const FacturacionPage = () => {
       : (selectedOpcionId != null ? (plantillasFinanciamiento[selectedOpcionId]?.tasaInteres ?? 0) : 0);
 
     const detalles = cart.map((item) => {
-      const subtotal = Number((item.cantidad * item.precioUnitario) * (1 - (item.descuento || 0) / 100));
+      // ENVIO items are never discounted
+      const efectiveDescuento = item.tipoItem === 'ENVIO' ? 0 : (item.descuento || 0);
+      const subtotal = Number((item.cantidad * item.precioUnitario) * (1 - efectiveDescuento / 100));
       const detalle: any = {
         tipoItem: item.tipoItem || 'PRODUCTO',
         cantidad: Number(item.cantidad),
         precioUnitario: Number(item.precioUnitario),
-        descuento: Number(item.descuento) || 0,
+        descuento: efectiveDescuento,
         subtotal,
       };
       if (item.tipoItem === 'EQUIPO') {
@@ -825,6 +894,8 @@ const FacturacionPage = () => {
         detalle.descripcionEquipo = equipoDesc;
         detalle.descripcion = equipoDesc;
         if (item.colorId != null) detalle.colorId = item.colorId;
+      } else if (item.tipoItem === 'ENVIO') {
+        detalle.descripcion = item.descripcion || 'Envío';
       } else {
         detalle.productoId = Number(item.productoId);
         detalle.descripcion = item.productoNombre || undefined;
@@ -1645,6 +1716,7 @@ const FacturacionPage = () => {
           onChangeNotes={setNotes}
           cart={cart}
           onAddItem={addItemToCart}
+          onAddEnvio={handleOpenEnvioDialogFact}
           onUpdateCartItem={updateCartItem}
           onRemoveCartItem={removeItemFromCart}
           products={products}
@@ -1811,6 +1883,81 @@ const FacturacionPage = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
+
+      {/* Province / envío selector dialog — Factura Manual */}
+      <Dialog open={envioDialogOpenFact} onClose={() => setEnvioDialogOpenFact(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Agregar costo de envío</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField
+            select
+            label="Provincia"
+            value={envioProvinciaFact}
+            onChange={(e) => {
+              const prov = e.target.value;
+              setEnvioProvinciaFact(prov);
+              const costo = costosEnvioFact.find((c) => c.provincia === prov);
+              setEnvioPrecioFact(costo ? costo.precio : 0);
+            }}
+            size="small"
+            fullWidth
+          >
+            <MenuItem value="">Seleccionar provincia</MenuItem>
+            {costosEnvioFact.map((c) => (
+              <MenuItem key={c.provincia} value={c.provincia}>
+                {c.provinciaNombre}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="Precio por equipo"
+            type="number"
+            value={envioPrecioFact}
+            onChange={(e) => setEnvioPrecioFact(parseFloat(e.target.value) || 0)}
+            size="small"
+            fullWidth
+            disabled={envioBonificadoFact}
+            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
+            helperText="Tomado de la tabla de costos de envío. Puede ajustarlo."
+          />
+          <TextField
+            label="Cantidad de equipos"
+            type="number"
+            value={envioCantidadFact}
+            onChange={(e) => setEnvioCantidadFact(Math.max(1, parseInt(e.target.value) || 1))}
+            size="small"
+            fullWidth
+            inputProps={{ min: 1 }}
+            helperText="Auto-detectado desde los equipos del documento. Editable."
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={envioBonificadoFact}
+                onChange={(e) => setEnvioBonificadoFact(e.target.checked)}
+              />
+            }
+            label="Bonificar envío (no cobrar)"
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+            <Typography variant="body1" fontWeight={600} color={envioBonificadoFact ? 'success.main' : 'text.primary'}>
+              {envioBonificadoFact
+                ? 'BONIFICADO ($0)'
+                : `$${(envioPrecioFact * envioCantidadFact).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEnvioDialogOpenFact(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmEnvioFact}
+            disabled={!envioProvinciaFact || (!envioBonificadoFact && envioPrecioFact <= 0) || envioCantidadFact <= 0}
+          >
+            Agregar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

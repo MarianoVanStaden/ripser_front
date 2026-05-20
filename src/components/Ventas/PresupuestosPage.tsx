@@ -36,6 +36,8 @@ import {
   InputAdornment,
   ToggleButton,
   ToggleButtonGroup,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -54,6 +56,8 @@ import { useOfertasVigentes } from "../../hooks/useOfertasVigentes";
 import opcionFinanciamientoApi from "../../api/services/opcionFinanciamientoApi";
 import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
+import { costoEnvioApi } from "../../api/services/costoEnvioApi";
+import type { CostoEnvioDTO } from "../../types/costoEnvio.types";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, RecetaFabricacionDTO, TipoItemDocumento, Lead, DeudaClienteError } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import ColorPicker from "../common/ColorPicker";
@@ -173,6 +177,14 @@ const PresupuestosPage: React.FC = () => {
   const [presupuestosFinanciamiento, setPresupuestosFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdPresupuesto, setCreatedPresupuesto] = useState<DocumentoComercial | null>(null);
+
+  // Envío state
+  const [costosEnvio, setCostosEnvio] = useState<CostoEnvioDTO[]>([]);
+  const [envioDialogOpen, setEnvioDialogOpen] = useState(false);
+  const [envioProvincia, setEnvioProvincia] = useState('');
+  const [envioPrecio, setEnvioPrecio] = useState(0);
+  const [envioCantidad, setEnvioCantidad] = useState(1);
+  const [envioBonificado, setEnvioBonificado] = useState(false);
 
   // View dialog (read-only) state — espejo del de NotasPedidoPage.
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -382,17 +394,26 @@ const PresupuestosPage: React.FC = () => {
   }, [presupuestosFinanciamiento]);
 
   const subtotal = useMemo(() => detalles.reduce((sum, detalle) => sum + detalle.subtotal, 0), [detalles]);
+  // ENVIO items are never discounted — separate them before computing descuentoAmount.
+  const subtotalEnvioForm = useMemo(
+    () => detalles.filter((d) => d.tipoItem === 'ENVIO').reduce((s, d) => s + d.subtotal, 0),
+    [detalles]
+  );
+  const subtotalBase = useMemo(() => subtotal - subtotalEnvioForm, [subtotal, subtotalEnvioForm]);
   const descuentoAmount = useMemo(() => {
     if (formData.descuentoTipo === 'PORCENTAJE') {
       const pct = Math.min(100, Math.max(0, formData.descuentoValor || 0));
-      return subtotal * (pct / 100);
+      return subtotalBase * (pct / 100);
     }
     if (formData.descuentoTipo === 'MONTO_FIJO') {
-      return Math.min(subtotal, Math.max(0, formData.descuentoValor || 0));
+      return Math.min(subtotalBase, Math.max(0, formData.descuentoValor || 0));
     }
     return 0;
-  }, [subtotal, formData.descuentoTipo, formData.descuentoValor]);
-  const subtotalNeto = useMemo(() => Math.max(0, subtotal - descuentoAmount), [subtotal, descuentoAmount]);
+  }, [subtotalBase, formData.descuentoTipo, formData.descuentoValor]);
+  const subtotalNeto = useMemo(
+    () => Math.max(0, subtotalBase - descuentoAmount) + subtotalEnvioForm,
+    [subtotalBase, subtotalEnvioForm, descuentoAmount]
+  );
   const ivaAmount = useMemo(() => subtotalNeto * getIvaPercentage(formData.tipoIva), [subtotalNeto, formData.tipoIva, getIvaPercentage]);
   const total = useMemo(() => subtotalNeto + ivaAmount, [subtotalNeto, ivaAmount]);
 
@@ -404,6 +425,44 @@ const PresupuestosPage: React.FC = () => {
     setDetalles((prev) => [...prev, { ...initialDetalle }]);
     setHasUnsavedChanges(true);
   }, [readOnly]);
+
+  const handleOpenEnvioDialog = useCallback(async () => {
+    if (costosEnvio.length === 0) {
+      try {
+        await costoEnvioApi.seed().catch(() => {});
+        const data = await costoEnvioApi.getAll();
+        setCostosEnvio(data);
+      } catch {
+        // silent — user can still type the price
+      }
+    }
+    // Auto-detect cantidad: sum of EQUIPO items' cantidad in the current detalles
+    const cantEquipos = detalles
+      .filter((d) => d.tipoItem === 'EQUIPO')
+      .reduce((sum, d) => sum + (d.cantidad || 0), 0);
+    setEnvioProvincia('');
+    setEnvioPrecio(0);
+    setEnvioCantidad(cantEquipos > 0 ? cantEquipos : 1);
+    setEnvioBonificado(false);
+    setEnvioDialogOpen(true);
+  }, [costosEnvio.length, detalles]);
+
+  const handleConfirmEnvio = useCallback(() => {
+    if (!envioProvincia) return;
+    const label = costosEnvio.find((c) => c.provincia === envioProvincia)?.provinciaNombre ?? envioProvincia;
+    const precioUnit = envioBonificado ? 0 : envioPrecio;
+    const cantidad = Math.max(1, envioCantidad);
+    const detalleEnvio: DetalleForm = {
+      tipoItem: 'ENVIO',
+      descripcion: envioBonificado ? `Envío a ${label} (Bonificado)` : `Envío a ${label}`,
+      cantidad,
+      precioUnitario: precioUnit,
+      subtotal: precioUnit * cantidad,
+    };
+    setDetalles((prev) => [...prev, detalleEnvio]);
+    setHasUnsavedChanges(true);
+    setEnvioDialogOpen(false);
+  }, [envioProvincia, envioPrecio, envioCantidad, envioBonificado, costosEnvio]);
 
   const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number) => {
     if (readOnly) return;
@@ -630,6 +689,7 @@ const PresupuestosPage: React.FC = () => {
           baseDetalle.colorId = d.colorId ?? undefined;
           // medida no se envía: el backend la deriva de la receta.
         }
+        // ENVIO: no productoId/recetaId — descripcion ya está en baseDetalle.
 
         return baseDetalle;
       }),
@@ -656,6 +716,7 @@ const PresupuestosPage: React.FC = () => {
             return;
           }
         }
+        // ENVIO items only need descripcion (precio puede ser 0 si está bonificado).
         if (!detalle.descripcion.trim()) {
           setError("Todos los detalles deben tener una descripción");
           return;
@@ -664,7 +725,7 @@ const PresupuestosPage: React.FC = () => {
           setError("La cantidad debe ser mayor a 0");
           return;
         }
-        if (detalle.precioUnitario <= 0) {
+        if (detalle.tipoItem !== 'ENVIO' && detalle.precioUnitario <= 0) {
           setError("El precio unitario debe ser mayor a 0");
           return;
         }
@@ -1481,9 +1542,12 @@ const PresupuestosPage: React.FC = () => {
                 <TableBody>
                   {detalles.length > 0 ? (
                     detalles.map((detalle, index) => {
+                      const isEnvio = detalle.tipoItem === 'ENVIO';
                       const refId = detalle.tipoItem === 'PRODUCTO'
                         ? (detalle.productoId ? Number(detalle.productoId) : null)
-                        : (detalle.recetaId ? Number(detalle.recetaId) : null);
+                        : detalle.tipoItem === 'EQUIPO'
+                          ? (detalle.recetaId ? Number(detalle.recetaId) : null)
+                          : null;
                       const ofertaDelDetalle = refId
                         ? getOferta(detalle.tipoItem === 'PRODUCTO' ? 'PRODUCTO' : 'RECETA', refId)
                         : undefined;
@@ -1491,21 +1555,29 @@ const PresupuestosPage: React.FC = () => {
                       <TableRow key={index}>
                         {!readOnly && !editingPresupuesto && (
                           <TableCell>
-                            <TextField
-                              select
-                              size="small"
-                              fullWidth
-                              value={detalle.tipoItem}
-                              onChange={(e) => updateDetalle(index, "tipoItem", e.target.value)}
-                              disabled={readOnly || !!editingPresupuesto}
-                            >
-                              <MenuItem value="PRODUCTO">Producto</MenuItem>
-                              <MenuItem value="EQUIPO">Equipo</MenuItem>
-                            </TextField>
+                            {isEnvio ? (
+                              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                Envío
+                              </Typography>
+                            ) : (
+                              <TextField
+                                select
+                                size="small"
+                                fullWidth
+                                value={detalle.tipoItem}
+                                onChange={(e) => updateDetalle(index, "tipoItem", e.target.value)}
+                                disabled={readOnly || !!editingPresupuesto}
+                              >
+                                <MenuItem value="PRODUCTO">Producto</MenuItem>
+                                <MenuItem value="EQUIPO">Equipo</MenuItem>
+                              </TextField>
+                            )}
                           </TableCell>
                         )}
                         <TableCell>
-                          {detalle.tipoItem === 'PRODUCTO' ? (
+                          {isEnvio ? (
+                            <Typography variant="body2">{detalle.descripcion}</Typography>
+                          ) : detalle.tipoItem === 'PRODUCTO' ? (
                             <TextField
                               select
                               size="small"
@@ -1562,7 +1634,9 @@ const PresupuestosPage: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {readOnly || editingPresupuesto ? (
+                          {isEnvio ? (
+                            <Typography variant="body2" color="text.secondary">—</Typography>
+                          ) : readOnly || editingPresupuesto ? (
                             <Typography variant="body2">
                               {detalle.colorNombre || '-'}
                             </Typography>
@@ -1577,40 +1651,52 @@ const PresupuestosPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {detalle.medidaNombre || '-'}
+                            {isEnvio ? '—' : (detalle.medidaNombre || '-')}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <TextField
-                            size="small"
-                            type="number"
-                            fullWidth
-                            value={detalle.cantidad}
-                            onChange={(e) => updateDetalle(index, "cantidad", parseInt(e.target.value) || 0)}
-                            inputProps={{ min: 1 }}
-                            disabled={readOnly || !!editingPresupuesto}
-                            error={detalle.cantidad <= 0 && hasUnsavedChanges}
-                          />
+                          {isEnvio ? (
+                            <Typography variant="body2">{detalle.cantidad}</Typography>
+                          ) : (
+                            <TextField
+                              size="small"
+                              type="number"
+                              fullWidth
+                              value={detalle.cantidad}
+                              onChange={(e) => updateDetalle(index, "cantidad", parseInt(e.target.value) || 0)}
+                              inputProps={{ min: 1 }}
+                              disabled={readOnly || !!editingPresupuesto}
+                              error={detalle.cantidad <= 0 && hasUnsavedChanges}
+                            />
+                          )}
                         </TableCell>
                         <TableCell>
-                          {ofertaDelDetalle && Number(ofertaDelDetalle.precioOriginal) > Number(detalle.precioUnitario) && (
-                            <Typography
-                              variant="caption"
-                              sx={{ textDecoration: 'line-through', color: 'text.disabled', display: 'block' }}
-                            >
-                              ${Number(ofertaDelDetalle.precioOriginal).toLocaleString('es-AR')}
+                          {isEnvio ? (
+                            <Typography variant="body2">
+                              ${detalle.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
                             </Typography>
+                          ) : (
+                            <>
+                              {ofertaDelDetalle && Number(ofertaDelDetalle.precioOriginal) > Number(detalle.precioUnitario) && (
+                                <Typography
+                                  variant="caption"
+                                  sx={{ textDecoration: 'line-through', color: 'text.disabled', display: 'block' }}
+                                >
+                                  ${Number(ofertaDelDetalle.precioOriginal).toLocaleString('es-AR')}
+                                </Typography>
+                              )}
+                              <TextField
+                                size="small"
+                                type="number"
+                                fullWidth
+                                value={detalle.precioUnitario}
+                                onChange={(e) => updateDetalle(index, "precioUnitario", parseFloat(e.target.value) || 0)}
+                                inputProps={{ min: 0, step: 0.01 }}
+                                disabled={readOnly || !!editingPresupuesto}
+                                error={detalle.precioUnitario <= 0 && hasUnsavedChanges}
+                              />
+                            </>
                           )}
-                          <TextField
-                            size="small"
-                            type="number"
-                            fullWidth
-                            value={detalle.precioUnitario}
-                            onChange={(e) => updateDetalle(index, "precioUnitario", parseFloat(e.target.value) || 0)}
-                            inputProps={{ min: 0, step: 0.01 }}
-                            disabled={readOnly || !!editingPresupuesto}
-                            error={detalle.precioUnitario <= 0 && hasUnsavedChanges}
-                          />
                         </TableCell>
                         <TableCell>
                           ${detalle.subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
@@ -1639,7 +1725,7 @@ const PresupuestosPage: React.FC = () => {
             </TableContainer>
 
             {!readOnly && !editingPresupuesto && (
-              <Box sx={{ mb: 2 }}>
+              <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon />}
@@ -1648,8 +1734,16 @@ const PresupuestosPage: React.FC = () => {
                 >
                   Agregar Detalle
                 </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenEnvioDialog}
+                >
+                  Agregar Envío
+                </Button>
                 {productos.length === 0 && recetas.length === 0 && (
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: 'center' }}>
                     No hay productos ni equipos disponibles
                   </Typography>
                 )}
@@ -1838,6 +1932,81 @@ const PresupuestosPage: React.FC = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
+
+      {/* Province / envío selector dialog */}
+      <Dialog open={envioDialogOpen} onClose={() => setEnvioDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Agregar costo de envío</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField
+            select
+            label="Provincia"
+            value={envioProvincia}
+            onChange={(e) => {
+              const prov = e.target.value;
+              setEnvioProvincia(prov);
+              const costo = costosEnvio.find((c) => c.provincia === prov);
+              setEnvioPrecio(costo ? costo.precio : 0);
+            }}
+            size="small"
+            fullWidth
+          >
+            <MenuItem value="">Seleccionar provincia</MenuItem>
+            {costosEnvio.map((c) => (
+              <MenuItem key={c.provincia} value={c.provincia}>
+                {c.provinciaNombre}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="Precio por equipo"
+            type="number"
+            value={envioPrecio}
+            onChange={(e) => setEnvioPrecio(parseFloat(e.target.value) || 0)}
+            size="small"
+            fullWidth
+            disabled={envioBonificado}
+            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
+            helperText="Tomado de la tabla de costos de envío. Puede ajustarlo."
+          />
+          <TextField
+            label="Cantidad de equipos"
+            type="number"
+            value={envioCantidad}
+            onChange={(e) => setEnvioCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+            size="small"
+            fullWidth
+            inputProps={{ min: 1 }}
+            helperText="Auto-detectado desde los equipos del documento. Editable."
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={envioBonificado}
+                onChange={(e) => setEnvioBonificado(e.target.checked)}
+              />
+            }
+            label="Bonificar envío (no cobrar)"
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+            <Typography variant="body1" fontWeight={600} color={envioBonificado ? 'success.main' : 'text.primary'}>
+              {envioBonificado
+                ? 'BONIFICADO ($0)'
+                : `$${(envioPrecio * envioCantidad).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEnvioDialogOpen(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmEnvio}
+            disabled={!envioProvincia || (!envioBonificado && envioPrecio <= 0) || envioCantidad <= 0}
+          >
+            Agregar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

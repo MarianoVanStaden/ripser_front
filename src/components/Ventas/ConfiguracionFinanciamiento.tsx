@@ -210,6 +210,24 @@ const ConfiguracionFinanciamiento: React.FC = () => {
     }
   };
 
+  const [ripserConfirmOpen, setRipserConfirmOpen] = useState(false);
+
+  const handleCargarRipser = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const nuevas = await opcionFinanciamientoTemplateApi.cargarPlantillasRipser();
+      setTemplates(nuevas);
+      setSuccess(`Se cargaron ${nuevas.length} plantillas estándar Ripser correctamente.`);
+      setRipserConfirmOpen(false);
+    } catch (err) {
+      console.error('Error cargando plantillas Ripser:', err);
+      setError('Error al cargar las plantillas Ripser.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getPaymentMethodLabel = (method: MetodoPago): string => {
     const methods: Record<string, string> = {
       EFECTIVO: 'Efectivo',
@@ -259,6 +277,16 @@ const ConfiguracionFinanciamiento: React.FC = () => {
               Crear Plantillas por Defecto
             </Button>
           )}
+          <Button
+            variant="outlined"
+            color="warning"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={() => setRipserConfirmOpen(true)}
+            fullWidth
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Cargar plantillas Ripser
+          </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -557,6 +585,34 @@ const ConfiguracionFinanciamiento: React.FC = () => {
           <Button onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained">
             Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation dialog — Cargar plantillas Ripser */}
+      <Dialog open={ripserConfirmOpen} onClose={() => setRipserConfirmOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Cargar plantillas Ripser</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Esta acción <strong>borrará todas</strong> las plantillas existentes y las reemplazará por el catálogo estándar Ripser.
+          </Alert>
+          <Typography variant="body2" sx={{ mb: 1 }}>Se crearán 18 plantillas:</Typography>
+          <Typography variant="body2" component="ul" sx={{ pl: 2, m: 0, color: 'text.secondary' }}>
+            <li>Contado (Efectivo) y Transferencia bancaria — 0%</li>
+            <li>2 / 3 / 4 cheques diferidos — 4% / 6% / 8%</li>
+            <li>1 a 6 cuotas mensuales — 10% a 60%</li>
+            <li>6 cuotas quincenales — 30%</li>
+            <li>6, 8, 12, 16, 20 y 24 cuotas semanales — 12% a 48%</li>
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Las cuotas semanales/quincenales/mensuales se cargan como FINANCIACION_PROPIA; los cheques como CHEQUE.
+            Los presupuestos existentes no se ven afectados.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRipserConfirmOpen(false)} disabled={loading}>Cancelar</Button>
+          <Button onClick={handleCargarRipser} color="warning" variant="contained" disabled={loading}>
+            Reemplazar y cargar
           </Button>
         </DialogActions>
       </Dialog>

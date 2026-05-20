@@ -65,6 +65,7 @@ interface Props {
   // cart
   cart: CartItem[];
   onAddItem: () => void;
+  onAddEnvio: () => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateCartItem: (index: number, field: any, value: any) => void;
   onRemoveCartItem: (index: number) => void;
@@ -87,7 +88,7 @@ const FacturarManualTab: React.FC<Props> = ({
   selectedIva, onChangeIva, dueDate, onChangeDueDate,
   descuentoTipo, onChangeDescuentoTipo, descuentoValor, onChangeDescuentoValor,
   notes, onChangeNotes,
-  cart, onAddItem, onUpdateCartItem, onRemoveCartItem, products, recetas,
+  cart, onAddItem, onAddEnvio, onUpdateCartItem, onRemoveCartItem, products, recetas,
   totals, loading, selectedClientId, onClear, onOpenFinanciamiento, onSubmit,
 }) => {
   const showDescuentoCol = descuentoTipo !== 'NONE' && totals.descuento > 0;
@@ -237,14 +238,24 @@ const FacturarManualTab: React.FC<Props> = ({
           <Box mt={3} sx={{ width: '100%' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6">Items</Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={onAddItem}
-                disabled={products.length === 0}
-              >
-                Agregar Item
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={onAddItem}
+                  disabled={products.length === 0}
+                >
+                  Agregar Item
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<AddIcon />}
+                  onClick={onAddEnvio}
+                >
+                  Agregar Envío
+                </Button>
+              </Box>
             </Box>
             {cart.length > 0 ? (
               <ProductsTable

@@ -6,6 +6,7 @@ export type CartItem = {
   descuento: number;
   precioManualmenteModificado?: boolean;
   tipoItem: TipoItemDocumento;
+  descripcion?: string; // used for ENVIO items
   // PRODUCTO fields (optional when tipoItem is EQUIPO)
   productoId?: number;
   productoNombre?: string;
@@ -28,7 +29,7 @@ export type NotaCartItem = {
   cantidad: number;
   precioUnitario: number;
   descuento: number;
-  tipoItem?: 'PRODUCTO' | 'EQUIPO';
+  tipoItem?: TipoItemDocumento;
   // PRODUCTO fields (optional when tipoItem is EQUIPO)
   productoId?: number;
   productoNombre?: string;

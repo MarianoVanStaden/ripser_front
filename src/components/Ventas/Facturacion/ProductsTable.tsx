@@ -116,12 +116,15 @@ export const ProductsTable = React.memo(
             </TableHead>
             <TableBody>
               {items.map((item, index) => {
-                const subtotal = item.cantidad * item.precioUnitario * (1 - item.descuento / 100);
+                const isEnvio = (item as any).tipoItem === 'ENVIO';
+                const subtotal = item.cantidad * item.precioUnitario * (isEnvio ? 1 : (1 - item.descuento / 100));
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemAny = item as any;
                 const refId = itemAny.tipoItem === 'EQUIPO'
                   ? (itemAny.recetaId ? Number(itemAny.recetaId) : null)
-                  : (itemAny.productoId ? Number(itemAny.productoId) : null);
+                  : itemAny.tipoItem === 'PRODUCTO'
+                    ? (itemAny.productoId ? Number(itemAny.productoId) : null)
+                    : null;
                 const ofertaRow = refId
                   ? getOferta(itemAny.tipoItem === 'EQUIPO' ? 'RECETA' : 'PRODUCTO', refId)
                   : undefined;
@@ -129,19 +132,27 @@ export const ProductsTable = React.memo(
                   <TableRow key={index} hover>
                     {editable && (
                       <TableCell>
-                        <Select
-                          fullWidth
-                          size="small"
-                          value={itemAny.tipoItem || 'PRODUCTO'}
-                          onChange={(e) => onUpdate(index, 'tipoItem', e.target.value)}
-                        >
-                          <MenuItem value="PRODUCTO">Producto</MenuItem>
-                          <MenuItem value="EQUIPO">Equipo</MenuItem>
-                        </Select>
+                        {isEnvio ? (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            Envío
+                          </Typography>
+                        ) : (
+                          <Select
+                            fullWidth
+                            size="small"
+                            value={itemAny.tipoItem || 'PRODUCTO'}
+                            onChange={(e) => onUpdate(index, 'tipoItem', e.target.value)}
+                          >
+                            <MenuItem value="PRODUCTO">Producto</MenuItem>
+                            <MenuItem value="EQUIPO">Equipo</MenuItem>
+                          </Select>
+                        )}
                       </TableCell>
                     )}
                     <TableCell>
-                      {editable ? (
+                      {isEnvio ? (
+                        <Typography noWrap maxWidth={360}>{itemAny.descripcion || 'Envío'}</Typography>
+                      ) : editable ? (
                         itemAny.tipoItem === 'EQUIPO' ? (
                           <Select
                             fullWidth
@@ -198,7 +209,9 @@ export const ProductsTable = React.memo(
                       )}
                     </TableCell>
                     <TableCell>
-                      {editable && itemAny.tipoItem === 'EQUIPO' ? (
+                      {isEnvio ? (
+                        <Typography color="text.secondary">—</Typography>
+                      ) : editable && itemAny.tipoItem === 'EQUIPO' ? (
                         <ColorPicker
                           value={itemAny.colorId ?? undefined}
                           onChange={(id) => onUpdate(index, 'colorId', id ?? '')}
@@ -209,11 +222,13 @@ export const ProductsTable = React.memo(
                       )}
                     </TableCell>
                     <TableCell>
-                      <Typography>{itemAny.medidaNombre || '-'}</Typography>
+                      <Typography>{isEnvio ? '—' : (itemAny.medidaNombre || '-')}</Typography>
                     </TableCell>
                     <TableCell align="center">
                       <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
-                        {editable ? (
+                        {isEnvio ? (
+                          <Typography align="center">{item.cantidad}</Typography>
+                        ) : editable ? (
                           <TextField
                             type="number"
                             size="small"
@@ -245,7 +260,7 @@ export const ProductsTable = React.memo(
                       </Box>
                     </TableCell>
                     <TableCell align="right">
-                      {ofertaRow && Number(ofertaRow.precioOriginal) > Number(item.precioUnitario) && (
+                      {!isEnvio && ofertaRow && Number(ofertaRow.precioOriginal) > Number(item.precioUnitario) && (
                         <Typography
                           variant="caption"
                           sx={{ textDecoration: 'line-through', color: 'text.disabled', display: 'block' }}
@@ -253,7 +268,9 @@ export const ProductsTable = React.memo(
                           ${Number(ofertaRow.precioOriginal).toLocaleString('es-AR')}
                         </Typography>
                       )}
-                      {editable ? (
+                      {isEnvio ? (
+                        <Typography align="right">${item.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 0 })}</Typography>
+                      ) : editable ? (
                         <TextField
                           type="number"
                           size="small"
@@ -267,7 +284,9 @@ export const ProductsTable = React.memo(
                       )}
                     </TableCell>
                     <TableCell align="right">
-                      {editable ? (
+                      {isEnvio ? (
+                        <Typography align="right" color="text.secondary">—</Typography>
+                      ) : editable ? (
                         <TextField
                           type="number"
                           size="small"

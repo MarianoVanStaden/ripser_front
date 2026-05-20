@@ -6,12 +6,14 @@ import { Box, CircularProgress, Tab, Tabs, Typography } from '@mui/material';
 // entradas en el sidebar.
 const OfertasPrecioPage = lazy(() => import('./OfertasPrecioPage'));
 const ImportadorPreciosPage = lazy(() => import('./ImportadorPreciosPage'));
+const CostosEnvioPage = lazy(() => import('./CostosEnvioPage'));
 
-type TabKey = 'ofertas' | 'importador';
+type TabKey = 'ofertas' | 'importador' | 'costos-envio';
 
 const TAB_DEFS: Array<{ key: TabKey; label: string }> = [
   { key: 'ofertas', label: 'Ofertas Mensuales' },
   { key: 'importador', label: 'Importador de Precios' },
+  { key: 'costos-envio', label: 'Costos de Envío' },
 ];
 
 export default function PreciosOfertasPage() {
@@ -38,6 +40,7 @@ export default function PreciosOfertasPage() {
       <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>}>
         {tab === 'ofertas' && <OfertasPrecioPage />}
         {tab === 'importador' && <ImportadorPreciosPage />}
+        {tab === 'costos-envio' && <CostosEnvioPage />}
       </Suspense>
     </Box>
   );
