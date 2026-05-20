@@ -1,7 +1,7 @@
 import api from '../config';
 import type { PageResponse } from '../../types/pagination.types';
 
-export type TipoRol = 'SUPER_ADMIN' | 'ADMIN' | 'ADMIN_EMPRESA_LIMITADO' | 'GERENTE_SUCURSAL' | 'SUPERVISOR' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USER' | 'USUARIO' | 'COBRANZAS' | 'TRANSPORTE' | 'RECURSOS_HUMANOS';
+export type TipoRol = 'SUPER_ADMIN' | 'ADMIN' | 'ADMIN_EMPRESA_LIMITADO' | 'GERENTE_SUCURSAL' | 'SUPERVISOR' | 'VENDEDOR' | 'TALLER' | 'OFICINA' | 'USER' | 'USUARIO' | 'COBRANZAS' | 'TRANSPORTE' | 'RECURSOS_HUMANOS' | 'COORDINADORA_COMPRAS' | 'COORDINADORA_LOGISTICA' | 'LOGISTICO';
 
 export interface UsuarioDTO {
   id: number;

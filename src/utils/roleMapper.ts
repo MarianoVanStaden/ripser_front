@@ -100,6 +100,30 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     color: '#2e7d32',
     requiresSucursal: false,
     systemRole: 'RECURSOS_HUMANOS'
+  },
+  {
+    value: 'COORDINADORA_COMPRAS',
+    label: 'Coordinadora de Compras',
+    description: 'Producción, Logística y Proveedores completos. En Administración ve flujo de caja, balance, bancos, cajas y catálogos',
+    color: '#e65100',
+    requiresSucursal: false,
+    systemRole: 'COORDINADORA_COMPRAS'
+  },
+  {
+    value: 'COORDINADORA_LOGISTICA',
+    label: 'Coordinadora de Logística',
+    description: 'Todo lo de Transporte + RRHH parcial (Sueldos, Adelantos, Config, Organigrama) + Administración financiera básica',
+    color: '#4527a0',
+    requiresSucursal: false,
+    systemRole: 'COORDINADORA_LOGISTICA'
+  },
+  {
+    value: 'LOGISTICO',
+    label: 'Logístico',
+    description: 'Todo lo de Transporte + Proveedores parcial (sin Cuenta Corriente) + Gestión Stock, Stock Equipos y Ubicación Equipos',
+    color: '#00695c',
+    requiresSucursal: false,
+    systemRole: 'LOGISTICO'
   }
 ];
 
