@@ -23,8 +23,10 @@ export const entregaViajeDocumentoApi = {
     formData.append('file', file);
     if (descripcion) formData.append('descripcion', descripcion);
 
+    // No setear Content-Type: axios arma el header con el boundary correcto.
+    // Timeout extendido: fotos de cámara (2-5 MB) sobre 4G pueden tardar bastante.
     const response = await api.post<DocumentoEntrega>(BASE_PATH(entregaId), formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
     });
     return response.data;
   },

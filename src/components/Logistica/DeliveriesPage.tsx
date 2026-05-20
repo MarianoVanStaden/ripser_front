@@ -57,7 +57,7 @@ import { documentoApi } from '../../api/services/documentoApi';
 import { viajeApi } from '../../api/services/viajeApi';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import { useResponsive } from './Deliveries/useResponsive';
-import { getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
+import { compressImageFile, getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
 import BottomSheet from './Deliveries/components/BottomSheet';
 import LightboxDialog from './Deliveries/dialogs/LightboxDialog';
 import RejectDeliveryDialog from './Deliveries/dialogs/RejectDeliveryDialog';
@@ -104,6 +104,7 @@ const DeliveriesPage2: React.FC = () => {
   const [contratoFotos, setContratoFotos] = useState<File[]>([]);
   const [contratoPreviews, setContratoPreviews] = useState<(string | null)[]>([]);
   const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estado para documentos de entrega en detalles
@@ -297,14 +298,24 @@ const DeliveriesPage2: React.FC = () => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length || !selectedDelivery) return;
     setAddingDocumentos(true);
+    const failed: string[] = [];
     for (const file of files) {
       try {
+        const toUpload = await compressImageFile(file);
         await entregaViajeDocumentoApi.upload(
           selectedDelivery.id,
-          file,
-          file.type.startsWith('image/') ? 'Foto de entrega' : 'Documento de entrega'
+          toUpload,
+          toUpload.type.startsWith('image/') ? 'Foto de entrega' : 'Documento de entrega'
         );
-      } catch { /* continúa con el siguiente */ }
+      } catch (uploadErr) {
+        console.error('Error al subir archivo:', file.name, uploadErr);
+        failed.push(file.name);
+      }
+    }
+    if (failed.length > 0) {
+      setUploadWarning(
+        `No se pudieron subir ${failed.length} archivo(s): ${failed.join(', ')}. Reintentá desde "Agregar fotos".`
+      );
     }
     try {
       const entregaId = selectedDelivery.id;
@@ -452,20 +463,30 @@ const DeliveriesPage2: React.FC = () => {
       );
 
       // Subir archivos adjuntos si fueron seleccionados
+      const failedUploads: string[] = [];
       if (contratoFotos.length > 0) {
         setUploadingFoto(true);
         for (const file of contratoFotos) {
           try {
+            const toUpload = await compressImageFile(file);
             await entregaViajeDocumentoApi.upload(
               confirmDeliveryId,
-              file,
-              file.type.startsWith('image/') ? 'Foto de entrega' : 'Documento de entrega'
+              toUpload,
+              toUpload.type.startsWith('image/') ? 'Foto de entrega' : 'Documento de entrega'
             );
           } catch (uploadErr) {
-            console.error('Error al subir archivo:', uploadErr);
+            console.error('Error al subir archivo:', file.name, uploadErr);
+            failedUploads.push(file.name);
           }
         }
         setUploadingFoto(false);
+      }
+      if (failedUploads.length > 0) {
+        setUploadWarning(
+          `Entrega confirmada, pero ${failedUploads.length} foto(s) no se subieron: ${failedUploads.join(', ')}. Reintentá desde Detalles → "Agregar fotos".`
+        );
+      } else {
+        setUploadWarning(null);
       }
 
       setConfirmDialogOpen(false);
@@ -747,6 +768,17 @@ const DeliveriesPage2: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
+        </Alert>
+      )}
+
+      {/* Upload Warning — entrega confirmada pero fallaron fotos */}
+      {uploadWarning && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          onClose={() => setUploadWarning(null)}
+        >
+          {uploadWarning}
         </Alert>
       )}
 
