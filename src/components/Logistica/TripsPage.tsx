@@ -414,16 +414,20 @@ const TripsPage2: React.FC = () => {
     setPage(0);
   };
 
+  // El tipo Viaje declara vehiculoId/conductorId como `number`, pero en
+  // producción aparecen viajes con esos campos en null (data migrada o legacy).
+  // Guardamos defensivamente con `?.toString()` para no crashear en helpers
+  // que iteran todos los viajes.
   const isVehicleInUse = (vehicleId: string): boolean => {
     return trips.some(trip =>
-      trip.vehiculoId.toString() === vehicleId &&
+      trip.vehiculoId?.toString() === vehicleId &&
       trip.estado === 'EN_CURSO'
     );
   };
 
   const getTripUsingVehicle = (vehicleId: string): Viaje | undefined => {
     return trips.find(trip =>
-      trip.vehiculoId.toString() === vehicleId &&
+      trip.vehiculoId?.toString() === vehicleId &&
       trip.estado === 'EN_CURSO'
     );
   };
@@ -545,8 +549,11 @@ const TripsPage2: React.FC = () => {
     setFormData({
       fechaViaje: trip.fechaViaje.slice(0, 16),
       destino: trip.destino,
-      conductorId: trip.conductorId.toString(),
-      vehiculoId: trip.vehiculoId.toString(),
+      // conductorId/vehiculoId vienen como null en viajes legacy (a pesar del
+      // tipo). Sin el guard, el botón Editar crashea con
+      // "Cannot read properties of null (reading 'toString')". Ver Sentry 3e4bac…
+      conductorId: trip.conductorId?.toString() ?? '',
+      vehiculoId: trip.vehiculoId?.toString() ?? '',
       facturaId: '',
       estado: trip.estado,
       observaciones: trip.observaciones || '',
