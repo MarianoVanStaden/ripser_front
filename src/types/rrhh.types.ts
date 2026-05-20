@@ -539,7 +539,13 @@ export interface Empleado {
   fechaIngreso?: string;
   fechaEgreso?: string;
   estado: EstadoEmpleado;
+  // El backend (EmpleadoDTO) devuelve sólo `puestoId` + `puestoNombre` flat,
+  // no el objeto anidado `puesto`. Lo dejamos opcional por compat con código
+  // que lo lee como fallback (ej. `e.puesto?.nombre ?? puestoNombre`), pero
+  // en respuestas reales viene undefined — siempre privilegiar `puestoId` /
+  // `puestoNombre` flat al popular formularios o filtros.
   puesto?: Puesto;
+  puestoId?: number | null;
   puestoNombre?: string;
   /** Categoría salarial (módulo Remuneraciones) — default que usa la calculadora de Sueldos */
   categoriaSalarialId?: number | null;

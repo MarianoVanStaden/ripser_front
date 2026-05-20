@@ -412,7 +412,9 @@ const EmpleadosPage: React.FC = () => {
         direccion: empleado.direccion || '',
         fechaNacimiento: empleado.fechaNacimiento || '',
         fechaIngreso: empleado.fechaIngreso || '',
-        puestoId: empleado.puesto?.id || 0,
+        // El backend devuelve `puestoId` flat, no `puesto.id` anidado —
+        // priorizamos el flat y dejamos el nested como fallback defensivo.
+        puestoId: empleado.puestoId ?? empleado.puesto?.id ?? 0,
         categoriaSalarialId: empleado.categoriaSalarialId ?? null,
         salario: empleado.salario || 0,
         estado: empleado.estado || 'ACTIVO',
@@ -468,12 +470,16 @@ const EmpleadosPage: React.FC = () => {
     try {
       setError(null);
 
-      if (!formData.nombre || !formData.apellido || !formData.dni) {
+      // Validaciones de campos mínimos: SÓLO en creación. En edición las
+      // saltamos a propósito para poder corregir empleados migrados con huecos
+      // (ver comentario en el botón "Guardar Cambios"). Si en algún momento
+      // querés volver al check estricto, sacá los `!editingEmpleado &&`.
+      if (!editingEmpleado && (!formData.nombre || !formData.apellido || !formData.dni)) {
         setError('Nombre, Apellido y DNI son requeridos');
         return;
       }
 
-      if (!formData.puestoId || formData.puestoId === 0) {
+      if (!editingEmpleado && (!formData.puestoId || formData.puestoId === 0)) {
         setError('Debe seleccionar un puesto');
         return;
       }
@@ -633,7 +639,10 @@ const EmpleadosPage: React.FC = () => {
 
   const filteredEmpleados = empleados.filter(emp => {
     const matchesEstado = estadoFilter === 'TODOS' || emp.estado === estadoFilter;
-    const matchesPuesto = puestoFilter === null || emp.puesto?.id === puestoFilter;
+    // Backend devuelve puestoId flat; emp.puesto?.id queda como fallback defensivo.
+    const matchesPuesto = puestoFilter === null
+      || emp.puestoId === puestoFilter
+      || emp.puesto?.id === puestoFilter;
     const q = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm ||
       emp.nombre.toLowerCase().includes(q) ||
@@ -1206,7 +1215,7 @@ const EmpleadosPage: React.FC = () => {
           {camposFaltantes.length > 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
               <AlertTitle>Legajo incompleto</AlertTitle>
-              Faltan <strong>{camposFaltantes.length}</strong> dato(s) requerido(s) por ley.
+              Faltan <strong>{camposFaltantes.length}</strong> dato(s) requerido(s).
               Podés guardar igual, pero conviene completarlos cuanto antes:
               <Box component="ul" sx={{ mt: 1, mb: 0, pl: 3 }}>
                 {camposFaltantes.map(c => <li key={c}>{c}</li>)}
@@ -1824,7 +1833,15 @@ const EmpleadosPage: React.FC = () => {
           <Button
             onClick={handleSaveEmpleado}
             variant="contained"
-            disabled={!formData.nombre || !formData.apellido || !formData.dni || !formData.puestoId}
+            // Restricción de campos mínimos sólo en CREACIÓN. En edición permitimos
+            // guardar aunque falten datos: estamos migrando empleados y hay legajos
+            // con huecos (típicamente `puestoId`) que se completan de a poco. Si en
+            // algún momento querés volver al check estricto, sumá `|| !!editingEmpleado`
+            // dentro del paréntesis o restablecé la condición original.
+            disabled={
+              !editingEmpleado &&
+              (!formData.nombre || !formData.apellido || !formData.dni || !formData.puestoId)
+            }
             sx={{ minWidth: 160 }}
           >
             {editingEmpleado ? 'Guardar Cambios' : 'Crear Empleado'}
