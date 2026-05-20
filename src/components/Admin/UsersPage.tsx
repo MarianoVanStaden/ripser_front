@@ -91,6 +91,9 @@ const systemRoleOptions: { value: TipoRol; label: string; description: string; c
   { value: 'COBRANZAS', label: 'Cobranzas', description: 'Acceso a Registro de Ventas, Gestión y Carpeta de Clientes, y módulo Cobranzas', color: '#00897b' },
   { value: 'TRANSPORTE', label: 'Transporte', description: 'Arma viajes y gestiona entregas. Acceso a Registro Ventas, Clientes, Transporte, Equipos Fabricados, Garantías y Taller', color: '#6a1b9a' },
   { value: 'RECURSOS_HUMANOS', label: 'Recursos Humanos', description: 'Acceso exclusivo al módulo RRHH: empleados, legajos, sueldos, asistencias, licencias, capacitaciones y puestos', color: '#2e7d32' },
+  { value: 'COORDINADORA_COMPRAS', label: 'Coordinadora de Compras', description: 'Producción, Logística y Proveedores completos. En Administración ve flujo de caja, balance, bancos, cajas y catálogos', color: '#e65100' },
+  { value: 'COORDINADORA_LOGISTICA', label: 'Coordinadora de Logística', description: 'Todo lo de Transporte + RRHH parcial (Sueldos, Adelantos, Config, Organigrama) + Administración financiera básica', color: '#4527a0' },
+  { value: 'LOGISTICO', label: 'Logístico', description: 'Todo lo de Transporte + Proveedores parcial (sin Cuenta Corriente) + Gestión Stock, Stock Equipos y Ubicación Equipos', color: '#00695c' },
   { value: 'USUARIO', label: 'Usuario', description: 'Solo acceso al dashboard', color: '#7b1fa2' },
 ];
 
