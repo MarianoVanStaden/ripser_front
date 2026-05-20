@@ -81,6 +81,7 @@ import EmpleadoFotoAvatar from './EmpleadoFotoAvatar';
 import EmpleadoFotoUploader from './EmpleadoFotoUploader';
 import usuarioAdminApi, { type UsuarioDTO } from '../../api/services/usuarioAdminApi';
 import { sucursalService } from '../../services/sucursalService';
+import { getNombreCompleto } from '../../utils/userDisplay';
 import { useTenant } from '../../context/TenantContext';
 import DocumentManager from '../shared/DocumentManager';
 import type { Empleado, Puesto, EmpleadoCreateDTO, Sucursal, CategoriaSalarial } from '../../types';
@@ -794,7 +795,7 @@ const EmpleadosPage: React.FC = () => {
                           />
                           <Box>
                             <Typography variant="body2" fontWeight="600">
-                              {empleado.nombre} {empleado.apellido}
+                              {getNombreCompleto(empleado)}
                             </Typography>
                           </Box>
                         </Box>
@@ -904,7 +905,7 @@ const EmpleadosPage: React.FC = () => {
                 />
                 <Box>
                   <Typography variant="h5" fontWeight="700">
-                    {selectedEmpleado.nombre} {selectedEmpleado.apellido}
+                    {getNombreCompleto(selectedEmpleado)}
                   </Typography>
                   <Chip
                     label={selectedEmpleado.estado}
@@ -1473,7 +1474,7 @@ const EmpleadosPage: React.FC = () => {
                         .filter(e => !editingEmpleado || e.id !== editingEmpleado.id)
                         .map(e => (
                           <MenuItem key={e.id} value={e.id}>
-                            {e.apellido}, {e.nombre} {e.numeroLegajo ? `(${e.numeroLegajo})` : ''}
+                            {[e.apellido, e.apellido2].filter(Boolean).join(' ')}, {[e.nombre, e.nombre2].filter(Boolean).join(' ')} {e.numeroLegajo ? `(${e.numeroLegajo})` : ''}
                           </MenuItem>
                         ))}
                     </TextField>
@@ -1865,7 +1866,7 @@ const EmpleadosPage: React.FC = () => {
           ) : (
             <Stack spacing={2}>
               <Typography variant="body2" color="textSecondary">
-                Seleccione el usuario a vincular con <strong>{vincularEmpleadoTarget?.nombre} {vincularEmpleadoTarget?.apellido}</strong>
+                Seleccione el usuario a vincular con <strong>{vincularEmpleadoTarget && getNombreCompleto(vincularEmpleadoTarget)}</strong>
               </Typography>
               <Autocomplete
                 options={usuarios}
@@ -1905,7 +1906,7 @@ const EmpleadosPage: React.FC = () => {
           empleadoToDelete && (
             <>
               <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                {empleadoToDelete.nombre} {empleadoToDelete.apellido}
+                {getNombreCompleto(empleadoToDelete)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 DNI: {empleadoToDelete.dni}
@@ -1929,7 +1930,7 @@ const EmpleadosPage: React.FC = () => {
         itemDetails={
           desvincularTarget && (
             <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              {desvincularTarget.nombre} {desvincularTarget.apellido}
+              {getNombreCompleto(desvincularTarget)}
             </Typography>
           )
         }

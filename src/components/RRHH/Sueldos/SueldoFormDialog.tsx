@@ -16,6 +16,7 @@ import type {
 } from '../../../types';
 import { CONCEPTO_SUELDO_LABELS, CONCEPTOS_SUELDO } from '../../../types/remuneraciones.types';
 import { calcularRemuneracion } from '../../../utils/remuneracionesCalc';
+import { getNombreCompleto } from '../../../utils/userDisplay';
 import { adelantoApi } from '../../../api/services/adelantoApi';
 
 interface Props {
@@ -273,7 +274,7 @@ const SueldoFormDialog: React.FC<Props> = ({
                   categoriaSalarialId: nuevaCategoria,
                 });
               }}
-              getOptionLabel={(e) => `${e.nombre} ${e.apellido}`}
+              getOptionLabel={(e) => getNombreCompleto(e)}
               renderInput={(p) => (
                 <TextField {...p} label="Empleado *"
                   helperText={

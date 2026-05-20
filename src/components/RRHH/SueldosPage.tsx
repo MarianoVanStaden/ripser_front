@@ -26,6 +26,7 @@ import dayjs from 'dayjs';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { sueldoApi } from '../../api/services/sueldoApi';
 import { employeeApi } from '../../api/services/employeeApi';
+import { getNombreCompleto } from '../../utils/userDisplay';
 import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
 import { bonoProduccionApi } from '../../api/services/bonoProduccionApi';
 import { bonoVentasApi } from '../../api/services/bonoVentasApi';
@@ -337,7 +338,7 @@ const SueldosPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <Autocomplete
                 options={empleados}
-                getOptionLabel={(e) => `${e.nombre} ${e.apellido}`}
+                getOptionLabel={(e) => getNombreCompleto(e)}
                 value={empleadoFilter}
                 onChange={(_, v) => setEmpleadoFilter(v)}
                 renderInput={(p) => <TextField {...p} label="Empleado" size="small" />}

@@ -54,6 +54,7 @@ import {
 } from '@mui/icons-material';
 import { licenciaApi } from '../../api/services/licenciaApi';
 import { employeeApi } from '../../api/services/employeeApi';
+import { getNombreCompleto } from '../../utils/userDisplay';
 import type { Licencia, Empleado, TipoLicencia, EstadoLicencia } from '../../types';
 import dayjs from 'dayjs';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -145,7 +146,7 @@ const LicenciasPage: React.FC = () => {
 
   const getEmpleadoNombre = (empleado: Empleado | undefined) => {
     if (!empleado) return 'Desconocido';
-    return `${empleado.nombre} ${empleado.apellido}`;
+    return getNombreCompleto(empleado);
   };
 
   const getTipoIcon = (tipo: TipoLicencia) => {

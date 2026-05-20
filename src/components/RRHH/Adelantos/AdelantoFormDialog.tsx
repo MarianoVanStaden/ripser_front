@@ -10,6 +10,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import dayjs from 'dayjs';
 import type { Adelanto, AdelantoCreateDTO, Empleado } from '../../../types';
+import { getNombreCompleto } from '../../../utils/userDisplay';
 
 interface Props {
   open: boolean;
@@ -104,7 +105,7 @@ const AdelantoFormDialog: React.FC<Props> = ({ open, empleados, editing, onClose
                   options={empleados}
                   value={empleados.find(e => e.id === field.value) ?? null}
                   onChange={(_, v) => field.onChange(v?.id ?? null)}
-                  getOptionLabel={(e) => `${e.nombre} ${e.apellido}`}
+                  getOptionLabel={(e) => getNombreCompleto(e)}
                   renderInput={(params) => (
                     <TextField
                       {...params}

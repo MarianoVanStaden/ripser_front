@@ -2,11 +2,11 @@
 // page and its dialogs.
 import dayjs from 'dayjs';
 import type { Empleado, Licencia, RegistroAsistencia } from '../../../types';
+import { getNombreCompleto } from '../../../utils/userDisplay';
 
 /** "Nombre Apellido" for an empleado.  Used in autocompletes and tables. */
-export const getEmpleadoNombre = (empleado: Empleado): string => {
-  return `${empleado.nombre} ${empleado.apellido}`;
-};
+export const getEmpleadoNombre = (empleado: Empleado): string =>
+  getNombreCompleto(empleado);
 
 /** Fila sintética que representa un día de licencia para mostrar en tablas
  * de asistencia (Resumen Diario / Reportes). */

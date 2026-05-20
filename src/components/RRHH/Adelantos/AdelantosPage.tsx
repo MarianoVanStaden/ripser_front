@@ -21,6 +21,7 @@ import dayjs from 'dayjs';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { adelantoApi } from '../../../api/services/adelantoApi';
 import { employeeApi } from '../../../api/services/employeeApi';
+import { getNombreCompleto } from '../../../utils/userDisplay';
 import type { Adelanto, AdelantoCreateDTO, Empleado } from '../../../types';
 import LoadingOverlay from '../../common/LoadingOverlay';
 import AdelantoFormDialog from './AdelantoFormDialog';
@@ -248,7 +249,7 @@ const AdelantosPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <Autocomplete
                 options={empleados}
-                getOptionLabel={(e) => `${e.nombre} ${e.apellido}`}
+                getOptionLabel={(e) => getNombreCompleto(e)}
                 value={empleadoFilter}
                 onChange={(_, v) => setEmpleadoFilter(v)}
                 renderInput={(p) => <TextField {...p} label="Empleado" size="small" />}
