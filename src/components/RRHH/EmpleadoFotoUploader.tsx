@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Box, Button, IconButton, Stack, Typography, CircularProgress, Alert } from '@mui/material';
 import { PhotoCamera as PhotoCameraIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { documentoEmpleadoApi } from '../../api/services/documentoEmpleadoApi';
-import EmpleadoFotoAvatar, { clearEmpleadoFotoCache } from './EmpleadoFotoAvatar';
+import EmpleadoFotoAvatar from './EmpleadoFotoAvatar';
+import { clearEmpleadoFotoCache } from './empleadoFotoCache';
 
 interface Props {
   empleadoId: number;

@@ -13,7 +13,7 @@ interface Props {
 // del rol (no a la pantalla de "acceso denegado") — es UX más suave para
 // usuarios que vienen de un bookmark viejo o un link compartido.
 type RestrictedRole = {
-  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER' | 'SUPERVISOR';
+  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER' | 'SUPERVISOR' | 'COORDINADORA_COMPRAS' | 'COORDINADORA_LOGISTICA' | 'LOGISTICO';
   home: string;
   // Prefijos permitidos. Se chequea con startsWith para cubrir sub-rutas
   // (ej. /rrhh/empleados/123/editar).
@@ -49,6 +49,97 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/taller/materiales',
       '/taller/tareas',
       '/taller/trabajos',
+    ],
+  },
+  {
+    rol: 'COORDINADORA_COMPRAS',
+    home: '/',
+    allowedPrefixes: [
+      '/',
+      '/fabricacion',
+      '/logistica',
+      '/proveedores',
+      // ADMINISTRACION (subconjunto ADMIN_EMPRESA_LIMITADO)
+      '/admin/flujo-caja',
+      '/admin/balance',
+      '/admin/amortizaciones',
+      '/admin/provisiones',
+      '/admin/tipos-provision',
+      '/admin/cajas-ahorro',
+      '/admin/cajas-pesos',
+      '/admin/liquidaciones-tarjeta',
+      '/admin/bancos',
+      '/admin/cuentas-bancarias',
+      '/admin/catalogos-globales',
+      '/admin/catalogos-equipos',
+      '/admin/precios-ofertas',
+    ],
+  },
+  {
+    rol: 'COORDINADORA_LOGISTICA',
+    home: '/',
+    allowedPrefixes: [
+      '/',
+      '/ventas/registro',
+      '/clientes/gestion',
+      '/clientes/carpeta',
+      '/logistica/distribucion',
+      '/logistica/vehiculos',
+      '/fabricacion/equipos',
+      '/fabricacion/ficha-equipo',
+      '/garantias',
+      '/taller/ordenes',
+      '/taller/materiales',
+      '/taller/tareas',
+      '/taller/trabajos',
+      // RRHH (subconjunto ADMIN_EMPRESA_LIMITADO)
+      '/rrhh/sueldos',
+      '/rrhh/adelantos',
+      '/rrhh/config-sueldos',
+      '/rrhh/organigrama',
+      // ADMINISTRACION (subconjunto ADMIN_EMPRESA_LIMITADO)
+      '/admin/flujo-caja',
+      '/admin/balance',
+      '/admin/amortizaciones',
+      '/admin/provisiones',
+      '/admin/tipos-provision',
+      '/admin/cajas-ahorro',
+      '/admin/cajas-pesos',
+      '/admin/liquidaciones-tarjeta',
+      '/admin/bancos',
+      '/admin/cuentas-bancarias',
+      '/admin/catalogos-globales',
+      '/admin/catalogos-equipos',
+      '/admin/precios-ofertas',
+    ],
+  },
+  {
+    rol: 'LOGISTICO',
+    home: '/',
+    allowedPrefixes: [
+      '/',
+      '/ventas/registro',
+      '/clientes/gestion',
+      '/clientes/carpeta',
+      '/logistica/distribucion',
+      '/logistica/vehiculos',
+      '/fabricacion/equipos',
+      '/fabricacion/ficha-equipo',
+      '/garantias',
+      '/taller/ordenes',
+      '/taller/materiales',
+      '/taller/tareas',
+      '/taller/trabajos',
+      // PROVEEDORES (sin Cuenta Corriente)
+      '/proveedores/gestion',
+      '/proveedores/compras',
+      '/proveedores/contactos',
+      '/proveedores/evaluacion',
+      '/proveedores/historial',
+      // LOGISTICA (parcial)
+      '/logistica/stock',
+      '/logistica/inventario/stock-equipos',
+      '/logistica/inventario/ubicaciones',
     ],
   },
 ];

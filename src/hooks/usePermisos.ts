@@ -52,6 +52,20 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // (/) redirige a /rrhh/dashboard via DashboardEntry. Todo el resto queda
   // bloqueado por usePermisos + allowlist de Sidebar (rrhhAllowedPaths).
   RECURSOS_HUMANOS: ['RRHH'],
+
+  // Producción + Logística + Proveedores completos, más el subconjunto de
+  // Administración visible para ADMIN_EMPRESA_LIMITADO. Filtrado fino por
+  // allowlist en Sidebar (coordinadoraComprasAllowedPaths).
+  COORDINADORA_COMPRAS: ['DASHBOARD', 'PRODUCCION', 'LOGISTICA', 'PROVEEDORES', 'ADMINISTRACION'],
+
+  // Todo lo de TRANSPORTE, más el subconjunto de RRHH y Administración
+  // visible para ADMIN_EMPRESA_LIMITADO. Filtrado fino por allowlist en
+  // Sidebar (coordinadoraLogisticaAllowedPaths).
+  COORDINADORA_LOGISTICA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER', 'RRHH', 'ADMINISTRACION'],
+
+  // Todo lo de TRANSPORTE + Proveedores parcial + Logística parcial.
+  // Filtrado fino por allowlist en Sidebar (logisticoAllowedPaths).
+  LOGISTICO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER', 'PROVEEDORES', 'LOGISTICA'],
 };
 
 export const usePermisos = () => {

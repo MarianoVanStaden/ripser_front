@@ -362,6 +362,125 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/admin/catalogos-rrhh',
   ];
 
+  // Rutas permitidas para COORDINADORA_COMPRAS (allowlist):
+  // Producción + Logística + Proveedores completos, más el subconjunto de
+  // Administración visible para ADMIN_EMPRESA_LIMITADO.
+  const coordinadoraComprasAllowedPaths = [
+    '/',
+    // PRODUCCION (todo)
+    '/fabricacion/dashboard',
+    '/fabricacion/recetas',
+    '/fabricacion/equipos',
+    '/fabricacion/ficha-equipo',
+    '/fabricacion/reportes-estados',
+    '/fabricacion/stock-planificacion',
+    // LOGISTICA (todo)
+    '/logistica/stock',
+    '/logistica/inventario/stock-equipos',
+    '/logistica/inventario/ubicaciones',
+    '/logistica/inventario',
+    '/logistica/inventario/recuentos',
+    '/logistica/inventario/reconciliacion',
+    '/logistica/movimientos/auditoria',
+    // PROVEEDORES (todo)
+    '/proveedores/gestion',
+    '/proveedores/compras',
+    '/proveedores/cuenta-corriente',
+    '/proveedores/contactos',
+    '/proveedores/historial',
+    '/proveedores/evaluacion',
+    // ADMINISTRACION (subconjunto ADMIN_EMPRESA_LIMITADO)
+    '/admin/flujo-caja',
+    '/admin/balance',
+    '/admin/amortizaciones',
+    '/admin/provisiones',
+    '/admin/tipos-provision',
+    '/admin/cajas-ahorro',
+    '/admin/cajas-pesos',
+    '/admin/liquidaciones-tarjeta',
+    '/admin/bancos',
+    '/admin/cuentas-bancarias',
+    '/admin/catalogos-globales',
+    '/admin/catalogos-equipos',
+    '/admin/precios-ofertas',
+  ];
+
+  // Rutas permitidas para COORDINADORA_LOGISTICA (allowlist):
+  // Todo lo de TRANSPORTE + subconjunto de RRHH y Administración de ADMIN_EMPRESA_LIMITADO.
+  const coordinadoraLogisticaAllowedPaths = [
+    '/',
+    // TRANSPORTE (igual que transporteAllowedPaths)
+    '/ventas/registro',
+    '/clientes/gestion',
+    '/clientes/carpeta',
+    '/logistica/distribucion/viajes',
+    '/logistica/distribucion/entregas-productos',
+    '/logistica/distribucion/entregas-equipos',
+    '/logistica/vehiculos/incidencias',
+    '/fabricacion/equipos',
+    '/fabricacion/ficha-equipo',
+    '/garantias/registro',
+    '/garantias/reclamos',
+    '/garantias/reporte',
+    '/taller/ordenes',
+    '/taller/materiales',
+    '/taller/tareas',
+    '/taller/trabajos',
+    // RRHH (subconjunto ADMIN_EMPRESA_LIMITADO: Sueldos, Adelantos, Config, Organigrama)
+    '/rrhh/sueldos',
+    '/rrhh/adelantos',
+    '/rrhh/config-sueldos',
+    '/rrhh/organigrama',
+    // ADMINISTRACION (subconjunto ADMIN_EMPRESA_LIMITADO)
+    '/admin/flujo-caja',
+    '/admin/balance',
+    '/admin/amortizaciones',
+    '/admin/provisiones',
+    '/admin/tipos-provision',
+    '/admin/cajas-ahorro',
+    '/admin/cajas-pesos',
+    '/admin/liquidaciones-tarjeta',
+    '/admin/bancos',
+    '/admin/cuentas-bancarias',
+    '/admin/catalogos-globales',
+    '/admin/catalogos-equipos',
+    '/admin/precios-ofertas',
+  ];
+
+  // Rutas permitidas para LOGISTICO (allowlist):
+  // Todo lo de TRANSPORTE + Proveedores parcial (sin Cuenta Corriente) +
+  // Logística parcial (Gestión Stock, Stock Equipos, Ubicación Equipos).
+  const logisticoAllowedPaths = [
+    '/',
+    // TRANSPORTE (igual que transporteAllowedPaths)
+    '/ventas/registro',
+    '/clientes/gestion',
+    '/clientes/carpeta',
+    '/logistica/distribucion/viajes',
+    '/logistica/distribucion/entregas-productos',
+    '/logistica/distribucion/entregas-equipos',
+    '/logistica/vehiculos/incidencias',
+    '/fabricacion/equipos',
+    '/fabricacion/ficha-equipo',
+    '/garantias/registro',
+    '/garantias/reclamos',
+    '/garantias/reporte',
+    '/taller/ordenes',
+    '/taller/materiales',
+    '/taller/tareas',
+    '/taller/trabajos',
+    // PROVEEDORES (sin Cuenta Corriente)
+    '/proveedores/gestion',
+    '/proveedores/compras',
+    '/proveedores/contactos',
+    '/proveedores/evaluacion',
+    '/proveedores/historial',
+    // LOGISTICA (parcial)
+    '/logistica/stock',
+    '/logistica/inventario/stock-equipos',
+    '/logistica/inventario/ubicaciones',
+  ];
+
   // Rutas denegadas para el rol ADMIN_EMPRESA_LIMITADO (denylist):
   // Tiene acceso casi total como un ADMIN_EMPRESA, pero se le ocultan pantallas
   // sensibles que sólo debería tocar el dueño (configuración de costos,
@@ -517,6 +636,21 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isAdminEmpresaLimitado = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('ADMIN_EMPRESA_LIMITADO');
       if (isAdminEmpresaLimitado) {
         filteredItems = filteredItems.filter(item => !adminEmpresaLimitadoDeniedPaths.includes(item.path));
+      }
+
+      const isCoordinadoraCompras = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('COORDINADORA_COMPRAS');
+      if (isCoordinadoraCompras) {
+        filteredItems = filteredItems.filter(item => coordinadoraComprasAllowedPaths.includes(item.path));
+      }
+
+      const isCoordinadoraLogistica = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('COORDINADORA_LOGISTICA');
+      if (isCoordinadoraLogistica) {
+        filteredItems = filteredItems.filter(item => coordinadoraLogisticaAllowedPaths.includes(item.path));
+      }
+
+      const isLogistico = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('LOGISTICO');
+      if (isLogistico) {
+        filteredItems = filteredItems.filter(item => logisticoAllowedPaths.includes(item.path));
       }
 
       return {
