@@ -364,10 +364,12 @@ const UsersPage: React.FC = () => {
         loadData();
       } else {
         setError(result.error || 'Error al crear el usuario');
+        loadData();
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al crear el usuario');
       console.error('Error creating user:', err);
+      loadData();
     }
   };
 

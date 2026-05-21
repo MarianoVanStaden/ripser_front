@@ -64,8 +64,28 @@ export const usuarioEmpresaIntegrationService = {
     } catch (error: any) {
       console.error('Error in createUsuarioWithEmpresa:', error);
 
-      // Rollback: Delete created user if empresa assignment failed
+      // Backend may return 500 (e.g. Jackson serialization of lazy proxies) AFTER
+      // the data was committed. Before rolling back, verify whether the empresa
+      // assignment actually exists in DB.
       if (createdUsuario) {
+        try {
+          const existentes = await usuarioEmpresaService.getByUsuario(createdUsuario.id);
+          const yaAsignado = existentes.some(
+            ue => ue.empresaId === data.empresaId && ue.esActivo
+          );
+          if (yaAsignado) {
+            console.warn(`Asignación creada pese al error de respuesta (usuario ${createdUsuario.id}). Tratando como éxito.`);
+            return {
+              usuario: createdUsuario,
+              usuarioEmpresa: existentes.find(ue => ue.empresaId === data.empresaId)!,
+              success: true
+            };
+          }
+        } catch (verifyError) {
+          console.error('No se pudo verificar el estado de la asignación tras el error:', verifyError);
+        }
+
+        // Rollback: Delete created user if empresa assignment really failed
         try {
           await usuarioAdminApi.delete(createdUsuario.id);
           console.warn(`Rolled back user creation (ID: ${createdUsuario.id}) after empresa assignment failure`);
