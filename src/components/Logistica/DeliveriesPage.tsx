@@ -1344,7 +1344,7 @@ const DeliveriesPage2: React.FC = () => {
                               </Typography>
                               {equipo.color && (
                                 <Typography variant="caption" display="block" color="text.secondary">
-                                  Color: {equipo.color}
+                                  Color: {typeof equipo.color === 'string' ? equipo.color : equipo.color?.nombre}
                                 </Typography>
                               )}
                             </Box>
@@ -1446,7 +1446,12 @@ const DeliveriesPage2: React.FC = () => {
                               <ListItem key={equipo.id} divider>
                                 <ListItemText
                                   primary={`#${equipo.numeroHeladera || equipo.id} - ${equipo.modelo || 'N/A'}`}
-                                  secondary={`${equipo.tipo || ''} ${equipo.color ? `| ${equipo.color}` : ''}`}
+                                  secondary={(() => {
+                                    const colorLabel = typeof equipo.color === 'string'
+                                      ? equipo.color
+                                      : equipo.color?.nombre;
+                                    return `${equipo.tipo || ''} ${colorLabel ? `| ${colorLabel}` : ''}`;
+                                  })()}
                                 />
                                 <Chip
                                   label={getEstadoAsignacionLabel(estadoAsignacion)}
