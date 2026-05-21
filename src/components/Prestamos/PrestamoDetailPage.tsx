@@ -378,7 +378,18 @@ export const PrestamoDetailPage: React.FC = () => {
             {prestamo.observaciones && (
               <Grid item xs={12}>
                 <Typography variant="caption" color="text.secondary">Observaciones</Typography>
-                <Typography variant="body2">{prestamo.observaciones}</Typography>
+                {prestamo.observaciones.includes('>>> COBRAR CON CHEQUE <<<') ? (
+                  <>
+                    <Alert severity="warning" sx={{ mt: 0.5, mb: 1 }}>
+                      <strong>Plan con cheques:</strong> las cuotas deben cobrarse exclusivamente con cheques diferidos según lo acordado.
+                    </Alert>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {prestamo.observaciones.replace(/\s*\|\s*>>>[^<]*<<<[^|]*/, '')}
+                    </Typography>
+                  </>
+                ) : (
+                  <Typography variant="body2">{prestamo.observaciones}</Typography>
+                )}
               </Grid>
             )}
           </Grid>
@@ -418,7 +429,22 @@ export const PrestamoDetailPage: React.FC = () => {
             <TableBody>
               {cuotas.map(c => (
                 <TableRow key={c.id} sx={highlightedCuotaIds.has(c.id) ? { bgcolor: 'success.50', transition: 'background-color 0.5s' } : {}}>
-                  <TableCell>{c.numeroCuota}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {c.numeroCuota}
+                      {c.metodoPagoSugerido && (
+                        <Tooltip title={`Plan: cobrar con ${c.metodoPagoSugerido}`}>
+                          <Chip
+                            label={c.metodoPagoSugerido === 'CHEQUE' ? 'Cheque' : c.metodoPagoSugerido}
+                            size="small"
+                            color="info"
+                            variant="outlined"
+                            sx={{ height: 18, fontSize: '0.65rem' }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell align="right">{formatPrice(c.montoCuota)}</TableCell>
                   <TableCell align="right">{formatPrice(c.montoPagado)}</TableCell>
                   <TableCell>

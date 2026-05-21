@@ -209,6 +209,12 @@ export interface CuotaPrestamoDTO {
   fechaPago?: string | null;
   estado: EstadoCuota;
   diasMora?: number;
+  /**
+   * Método de pago sugerido por el plan original del préstamo. Se setea cuando
+   * el plan define el medio (ej. "3 Cheques a 30/60/90 días" → CHEQUE). La UI
+   * de cobranza lo usa como default del dropdown. Nullable = sin preferencia.
+   */
+  metodoPagoSugerido?: string | null;
 }
 
 // Préstamo's local MetodoPago is a *narrower* set than the global one in

@@ -1556,16 +1556,21 @@ const FacturacionPage = () => {
   );
 
   // Detecta el tipo de financiación a partir del nombre de la opción
-  // ("6 cuotas semanales" → SEMANAL, "1 cuota mensual" → MENSUAL, etc.).
+  // ("6 cuotas semanales" → SEMANAL, "6 cuotas quincenales" → QUINCENAL,
+  //  "2 Cheques a 30/60 días" → MENSUAL, "1 cuota mensual" → MENSUAL).
   // El backend no expone tipoFinanciacion en OpcionFinanciamientoDTO, así que
-  // el nombre es la fuente de verdad de la frecuencia.
-  const deriveTipoFinanciacion = useCallback((nombre: string | undefined, metodoPago: MetodoPago | undefined): string => {
-    if (metodoPago === 'CHEQUE') return 'CHEQUES';
+  // el nombre es la fuente de verdad de la frecuencia. Las plantillas Ripser
+  // guardan los cheques como FINANCIACION_PROPIA en metodoPago, no como CHEQUE,
+  // por eso el parámetro metodoPago no se usa para el mapeo de tipo.
+  //
+  // Regla: los cheques se tratan como MENSUAL porque su espaciado típico
+  // (30/60/90 días) coincide con la frecuencia mensual del préstamo personal.
+  const deriveTipoFinanciacion = useCallback((nombre: string | undefined, _metodoPago: MetodoPago | undefined): string => {
     if (!nombre) return 'MENSUAL';
     const lower = nombre.toLowerCase();
     if (lower.includes('semanal')) return 'SEMANAL';
     if (lower.includes('quincenal')) return 'QUINCENAL';
-    if (lower.includes('cheque')) return 'CHEQUES';
+    // Cheques, mensuales y resto → MENSUAL
     return 'MENSUAL';
   }, []);
 

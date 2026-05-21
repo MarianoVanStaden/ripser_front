@@ -69,7 +69,14 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       const saldoRestante = cuota.montoCuota - cuota.montoPagado;
       setMontoPagado(saldoRestante > 0 ? saldoRestante : cuota.montoCuota);
       setFechaPago(dayjs().format('YYYY-MM-DD'));
-      setMetodoPago('EFECTIVO');
+      // Si el plan original definió un medio de pago para esta cuota (ej. CHEQUE
+      // para planes "X Cheques a 30/60/..."), lo usamos como default. Cae a
+      // EFECTIVO si el sugerido no está en el set permitido para cobranza.
+      const sugerido = cuota.metodoPagoSugerido as MetodoPago | null | undefined;
+      const defaultMetodo: MetodoPago = sugerido && METODOS_PAGO_CUOTA.includes(sugerido)
+        ? sugerido
+        : 'EFECTIVO';
+      setMetodoPago(defaultMetodo);
       setCajaRef(null);
       setChequeData(blankCheque());
       setError(null);
@@ -228,6 +235,16 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
               />
             </Grid>
             <Grid item xs={12}>
+              {cuota?.metodoPagoSugerido && (
+                <Alert
+                  severity={metodoPago === cuota.metodoPagoSugerido ? 'success' : 'warning'}
+                  sx={{ mb: 1 }}
+                >
+                  El plan de financiación sugiere cobrar esta cuota con{' '}
+                  <strong>{METODO_PAGO_LABELS[cuota.metodoPagoSugerido as MetodoPago] || cuota.metodoPagoSugerido}</strong>
+                  {metodoPago !== cuota.metodoPagoSugerido && ' — está modificando el medio de pago acordado.'}
+                </Alert>
+              )}
               <FormControl fullWidth required>
                 <InputLabel>Método de Pago</InputLabel>
                 <Select
