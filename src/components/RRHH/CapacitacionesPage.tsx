@@ -160,7 +160,7 @@ const CapacitacionesPage: React.FC = () => {
       if (!inText) return false;
     }
     return true;
-  });
+  }).sort((a, b) => (b.fechaInicio ?? '').localeCompare(a.fechaInicio ?? ''));
 
   const openCreate = () => {
     setEditing(null);
