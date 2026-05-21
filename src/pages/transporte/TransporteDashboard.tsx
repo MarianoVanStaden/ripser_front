@@ -50,12 +50,22 @@ interface DocumentoLite {
   id: number;
   numeroDocumento?: string;
   clienteNombre?: string;
-  total?: number;
   fechaEmision?: string;
   fecha?: string;
   estado?: string;
   tipoDocumento?: string;
+  // Sólo necesitamos contar líneas tipo EQUIPO; total monetario no se usa.
+  detalles?: Array<{ tipoItem?: string; cantidad?: number }>;
 }
+
+// Suma de equipos (líneas EQUIPO) para un documento.
+const countEquiposEnDoc = (d: DocumentoLite): number =>
+  (d.detalles ?? [])
+    .filter((det) => det.tipoItem === 'EQUIPO')
+    .reduce((acc, det) => acc + Number(det.cantidad || 0), 0);
+
+const sumEquiposEnDocs = (docs: DocumentoLite[]): number =>
+  docs.reduce((acc, d) => acc + countEquiposEnDoc(d), 0);
 
 interface ProductoLite {
   id: number;
@@ -114,9 +124,6 @@ const estadoChip = (estado: string) => {
       return <Chip label={estado} size="small" />;
   }
 };
-
-const fmtMoney = (n: number) =>
-  `$${n.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
 
 const TransporteDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -267,8 +274,13 @@ const TransporteDashboard: React.FC = () => {
     return acc + Math.max(0, total - completadas);
   }, 0);
 
-  const montoNotasMes = notasPedidoMes.reduce((s, d) => s + Number(d.total || 0), 0);
-  const montoFacturasMes = facturasMes.reduce((s, d) => s + Number(d.total || 0), 0);
+  // Cantidades de equipos (sin montos): el rol logístico/transporte sólo ve
+  // volumen físico, no facturación en pesos.
+  const equiposEnNotasMes = sumEquiposEnDocs(notasPedidoMes);
+  const equiposEnFacturasMes = sumEquiposEnDocs(facturasMes);
+  const promedioEquiposPorFactura = facturasMes.length > 0
+    ? Math.round((equiposEnFacturasMes / facturasMes.length) * 10) / 10
+    : 0;
 
   const pctEnProceso = fabMetrics.total > 0
     ? Math.round((fabMetrics.enProceso / fabMetrics.total) * 100)
@@ -302,9 +314,9 @@ const TransporteDashboard: React.FC = () => {
         </Alert>
       )}
 
-      {/* Ventas del mes */}
+      {/* Ventas del mes — sólo cantidades de equipos, sin montos */}
       <Typography variant="h6" fontWeight={600} gutterBottom>
-        Ventas del mes
+        Ventas del mes (equipos)
       </Typography>
       <Grid container spacing={2} mb={4}>
         <MetricCard
@@ -312,7 +324,7 @@ const TransporteDashboard: React.FC = () => {
           value={notasPedidoMes.length}
           color="#1976d2"
           icon={<ShoppingCartIcon />}
-          subtitle={fmtMoney(montoNotasMes)}
+          subtitle={`${equiposEnNotasMes} equipos pedidos`}
           onClick={() => navigate('/ventas/registro')}
         />
         <MetricCard
@@ -320,16 +332,15 @@ const TransporteDashboard: React.FC = () => {
           value={facturasMes.length}
           color="#2e7d32"
           icon={<ReceiptIcon />}
-          subtitle={fmtMoney(montoFacturasMes)}
+          subtitle={`${equiposEnFacturasMes} equipos facturados`}
           onClick={() => navigate('/ventas/registro')}
         />
         <MetricCard
-          title="Ticket promedio"
-          value={facturasMes.length > 0 ? Math.round(montoFacturasMes / facturasMes.length) : 0}
+          title="Promedio equipos / factura"
+          value={promedioEquiposPorFactura}
           color="#ed6c02"
           icon={<TrendingUpIcon />}
-          subtitle="Promedio facturado del mes"
-          isMoney
+          subtitle="Equipos por factura del mes"
         />
         <MetricCard
           title="Equipos fabricados (mes)"
@@ -640,10 +651,9 @@ interface MetricCardProps {
   icon: React.ReactNode;
   subtitle?: string;
   onClick?: () => void;
-  isMoney?: boolean;
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, color, icon, subtitle, onClick, isMoney }) => (
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, color, icon, subtitle, onClick }) => (
   <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }}>
     <Card
       onClick={onClick}
@@ -666,7 +676,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, color, icon, subt
               fontWeight={700}
               sx={{ color, fontSize: { xs: '1.5rem', md: '1.75rem' }, lineHeight: 1.2 }}
             >
-              {isMoney ? fmtMoney(value) : value}
+              {value}
             </Typography>
           </Box>
           <Box sx={{ color, fontSize: 32, flexShrink: 0 }}>{icon}</Box>
