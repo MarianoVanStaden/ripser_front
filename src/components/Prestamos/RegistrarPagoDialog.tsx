@@ -17,8 +17,10 @@ import { CajaSelector } from '../common/CajaSelector';
 import { formatPrice } from '../../utils/priceCalculations';
 import dayjs from 'dayjs';
 
-// Exclude FINANCIACION_PROPIA from cuota payment selector
-const METODOS_PAGO_CUOTA = (Object.keys(METODO_PAGO_LABELS) as MetodoPago[]).filter(
+// Exclude FINANCIACION_PROPIA from cuota payment selector.
+// Anotación explícita: si no, TS 5.5+ infiere el array como
+// `Exclude<MetodoPago, 'FINANCIACION_PROPIA'>[]` y rompe `.includes(sugerido)`.
+const METODOS_PAGO_CUOTA: MetodoPago[] = (Object.keys(METODO_PAGO_LABELS) as MetodoPago[]).filter(
   k => k !== 'FINANCIACION_PROPIA'
 );
 

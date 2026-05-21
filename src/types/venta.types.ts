@@ -234,6 +234,9 @@ export interface DetalleVenta {
   precioUnitario: number;
   descuento?: number;
   subtotal: number;
+
+  // For ENVIO items - free-form description
+  descripcion?: string;
 }
 
 export interface Venta {
