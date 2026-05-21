@@ -198,14 +198,22 @@ const RegistroVentasPage: React.FC = () => {
         const usuarioFromMap = usuariosMap.get(sale.usuarioId);
         if (usuarioFromMap) usuario = usuarioFromMap;
       }
-      const detalleVentas = (sale.detalles || []).map((detalle: any) => ({
-        ...detalle,
-        producto: {
-          id: detalle.productoId,
-          nombre: detalle.productoNombre || detalle.descripcion || 'Producto desconocido',
-          descripcion: detalle.descripcion || '',
-        },
-      }));
+      const detalleVentas = (sale.detalles || []).map((detalle: any) => {
+        // Solo los ítems PRODUCTO necesitan el wrapper `producto`. Para EQUIPO
+        // y ENVIO los campos relevantes ya vienen del DTO (recetaNombre,
+        // descripcionEquipo, descripcion para envío).
+        if (detalle.tipoItem === 'PRODUCTO') {
+          return {
+            ...detalle,
+            producto: {
+              id: detalle.productoId,
+              nombre: detalle.productoNombre || detalle.descripcion || 'Producto desconocido',
+              descripcion: detalle.descripcion || '',
+            },
+          };
+        }
+        return detalle;
+      });
       return {
         ...sale,
         cliente,
@@ -980,29 +988,37 @@ const RegistroVentasPage: React.FC = () => {
                                     {item.recetaNombre || item.descripcionEquipo || 'Equipo'}
                                   </Typography>
                                   {item.equiposNumerosHeladera && item.equiposNumerosHeladera.length > 0 && (
-                                    <Box sx={{ mt: 0.5 }}>
-                                      <Typography variant="caption" color="primary" sx={{ display: 'block' }}>
-                                        <strong>N° Equipos:</strong> {item.equiposNumerosHeladera.join(', ')}
-                                      </Typography>
-                                      {item.descripcionEquipo && (
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                          {item.descripcionEquipo}
-                                        </Typography>
-                                      )}
-                                      {(item.recetaModelo || item.color || item.medida) && (
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.3 }}>
-                                          {[item.recetaModelo, item.medida, item.color].filter(Boolean).join(' - ')}
-                                        </Typography>
-                                      )}
-                                    </Box>
+                                    <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
+                                      <strong>N° Equipos:</strong> {item.equiposNumerosHeladera.join(', ')}
+                                    </Typography>
                                   )}
+                                  {(() => {
+                                    // color y medida pueden venir como string o como objeto {id, nombre, ...}
+                                    const colorLabel = typeof item.color === 'string'
+                                      ? item.color
+                                      : (item.color as any)?.nombre;
+                                    const medidaLabel = typeof item.medida === 'string'
+                                      ? item.medida
+                                      : (item.medida as any)?.nombre;
+                                    const partes = [item.recetaModelo, medidaLabel, colorLabel].filter(Boolean);
+                                    return partes.length > 0 ? (
+                                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.3 }}>
+                                        {partes.join(' - ')}
+                                      </Typography>
+                                    ) : null;
+                                  })()}
                                 </>
+                              ) : item.tipoItem === 'ENVIO' ? (
+                                <Typography variant="body2">
+                                  {item.descripcion || 'Envío'}
+                                </Typography>
                               ) : (
                                 <>
                                   <Typography variant="body2">
                                     {item.producto?.nombre || item.productoNombre || 'Item no disponible'}
                                   </Typography>
-                                  {item.producto?.descripcion && (
+                                  {item.producto?.descripcion
+                                    && item.producto.descripcion !== item.producto.nombre && (
                                     <Typography variant="caption" color="text.secondary">
                                       {item.producto.descripcion}
                                     </Typography>

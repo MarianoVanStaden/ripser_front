@@ -19,7 +19,7 @@ import {
   Clear as ClearIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
-import type { Cliente, MetodoPago, Producto, RecetaFabricacionDTO, Usuario } from '../../../../types';
+import type { Cliente, MetodoPago, OpcionFinanciamientoDTO, Producto, RecetaFabricacionDTO, Usuario } from '../../../../types';
 import { metodoPagoRequiereCaja, type CajaRef } from '../../../../types/caja.types';
 import ClienteAutocomplete from '../../../common/ClienteAutocomplete';
 import { CajaSelector } from '../../../common/CajaSelector';
@@ -79,6 +79,8 @@ interface Props {
   onClear: () => void;
   onOpenFinanciamiento: () => void;
   onSubmit: () => void;
+  /** Opción de financiamiento ya seleccionada por el usuario (de la dialog de opciones). */
+  selectedOpcionFinanciamiento?: OpcionFinanciamientoDTO | null;
 }
 
 const FacturarManualTab: React.FC<Props> = ({
@@ -90,6 +92,7 @@ const FacturarManualTab: React.FC<Props> = ({
   notes, onChangeNotes,
   cart, onAddItem, onAddEnvio, onUpdateCartItem, onRemoveCartItem, products, recetas,
   totals, loading, selectedClientId, onClear, onOpenFinanciamiento, onSubmit,
+  selectedOpcionFinanciamiento,
 }) => {
   const showDescuentoCol = descuentoTipo !== 'NONE' && totals.descuento > 0;
   return (
@@ -208,9 +211,36 @@ const FacturarManualTab: React.FC<Props> = ({
 
             {isFinanciamiento(paymentMethod) && (
               <Grid item xs={12}>
-                <Alert severity="info">
-                  Los datos de financiación (cuotas, tasa, entrega inicial) se configuran al confirmar la factura.
-                </Alert>
+                {selectedOpcionFinanciamiento ? (
+                  <Alert severity="success" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={700}>
+                          Opción seleccionada: {selectedOpcionFinanciamiento.nombre}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {selectedOpcionFinanciamiento.cantidadCuotas} cuota(s) · Tasa {selectedOpcionFinanciamiento.tasaInteres}% ·{' '}
+                          Total ${Number(selectedOpcionFinanciamiento.montoTotal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })} ·{' '}
+                          ${Number(selectedOpcionFinanciamiento.montoCuota || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })} por cuota
+                        </Typography>
+                      </Box>
+                      <Button size="small" variant="text" onClick={onOpenFinanciamiento}>
+                        Cambiar opción
+                      </Button>
+                    </Box>
+                  </Alert>
+                ) : (
+                  <Alert
+                    severity="info"
+                    action={
+                      <Button color="inherit" size="small" onClick={onOpenFinanciamiento}>
+                        Elegir opción
+                      </Button>
+                    }
+                  >
+                    Seleccione una opción de financiamiento — los datos (cuotas, tasa, entrega inicial) se completan automáticamente.
+                  </Alert>
+                )}
               </Grid>
             )}
 

@@ -282,6 +282,8 @@ const UsersPage: React.FC = () => {
 
   const handleAdd = async () => {
     setEditingUser(null);
+    setValidationErrors({ username: '', email: '', password: '', roles: '' });
+    setError(null);
     const defaultRolOption = getRolEmpresaOption('USUARIO_SUCURSAL');
     setFormData({
       username: '',
@@ -310,6 +312,8 @@ const UsersPage: React.FC = () => {
 
   const handleEdit = async (user: UsuarioWithEmpresa) => {
     setEditingUser(user);
+    setValidationErrors({ username: '', email: '', password: '', roles: '' });
+    setError(null);
 
     // Get the first empresa assignment if available
     const firstAssignment = user.usuarioEmpresas && user.usuarioEmpresas.length > 0

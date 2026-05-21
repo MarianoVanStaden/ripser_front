@@ -1057,16 +1057,24 @@ const FacturacionPage = () => {
     // if the user picked financiamiento and hasn't confirmed the billing form yet,
     // open the modal so they set entrega inicial + diferencia financiada + tasa de interés.
     if (isFinanciamiento(paymentMethod) && !billingConfirmedRef.current) {
+      // Si hay una opción seleccionada, sus valores tienen prioridad sobre los defaults.
+      // handleSelectOpcionFinanciamiento ya sincroniza el state, pero hacemos doble
+      // chequeo acá para cubrir el caso de re-apertura tras un cambio externo.
+      const opcionSeleccionada = selectedOpcionId !== null
+        ? (opcionesFinanciamiento[selectedOpcionId] ?? opcionesFinanciamiento.find((o) => o.id === selectedOpcionId))
+        : null;
       setBillingMode('manual');
       setBillingForm({
-        cantidadCuotas: cantidadCuotas ?? 1,
-        tipoFinanciacion: tipoFinanciacion || 'MENSUAL',
+        cantidadCuotas: opcionSeleccionada?.cantidadCuotas ?? cantidadCuotas ?? 1,
+        tipoFinanciacion: opcionSeleccionada
+          ? deriveTipoFinanciacion(opcionSeleccionada.nombre, opcionSeleccionada.metodoPago)
+          : (tipoFinanciacion || 'MENSUAL'),
         primerVencimiento: primerVencimiento || '',
         entregarInicial: true,
         usePorcentaje: usePorcentaje,
         porcentajeEntregaInicial: porcentajeEntrega ?? 40,
         montoEntregaInicial: montoFijoEntrega ?? 0,
-        tasaInteres: manualTasaInteres || 0,
+        tasaInteres: opcionSeleccionada?.tasaInteres ?? manualTasaInteres ?? 0,
       });
       setBillingDialogOpen(true);
       return;
@@ -1547,12 +1555,35 @@ const FacturacionPage = () => {
     [opcionesFinanciamiento]
   );
 
-  // Selecting a financing option is just a setState; the effect below syncs paymentMethod.
-  // This keeps the Opciones dialog as the single source of truth for financing method:
-  // whichever path writes selectedOpcionId (card click, radio, external logic) is picked up.
+  // Detecta el tipo de financiación a partir del nombre de la opción
+  // ("6 cuotas semanales" → SEMANAL, "1 cuota mensual" → MENSUAL, etc.).
+  // El backend no expone tipoFinanciacion en OpcionFinanciamientoDTO, así que
+  // el nombre es la fuente de verdad de la frecuencia.
+  const deriveTipoFinanciacion = useCallback((nombre: string | undefined, metodoPago: MetodoPago | undefined): string => {
+    if (metodoPago === 'CHEQUE') return 'CHEQUES';
+    if (!nombre) return 'MENSUAL';
+    const lower = nombre.toLowerCase();
+    if (lower.includes('semanal')) return 'SEMANAL';
+    if (lower.includes('quincenal')) return 'QUINCENAL';
+    if (lower.includes('cheque')) return 'CHEQUES';
+    return 'MENSUAL';
+  }, []);
+
+  // Selecting a financing option syncs the financing state slice (cuotas, tasa,
+  // tipoFinanciación) so the BillingDialog opens with the right defaults and the
+  // form shows the selection without forcing the user to re-open the Opciones modal.
   const handleSelectOpcionFinanciamiento = useCallback((optionValue: number) => {
     setSelectedOpcionId(optionValue);
-  }, []);
+    const opcion = opcionesFinanciamiento[optionValue] ?? opcionesFinanciamiento.find((o) => o.id === optionValue);
+    if (opcion) {
+      setCantidadCuotas(opcion.cantidadCuotas ?? 1);
+      setTipoFinanciacion(deriveTipoFinanciacion(opcion.nombre, opcion.metodoPago));
+      setManualTasaInteres(opcion.tasaInteres ?? 0);
+      // El usuario ya confirmó la opción → reseteo el flag para que se vuelva
+      // a abrir el BillingDialog con los nuevos defaults al facturar.
+      billingConfirmedRef.current = false;
+    }
+  }, [opcionesFinanciamiento, deriveTipoFinanciacion]);
 
   // Effect-based sync: whenever the selected option changes, mirror its metodoPago into
   // paymentMethod so Gate 1 (billing modal), payload construction and UI all agree.
@@ -1727,6 +1758,11 @@ const FacturacionPage = () => {
           onClear={clearForm}
           onOpenFinanciamiento={handleOpenFinanciamiento}
           onSubmit={handleSubmitManualInvoice}
+          selectedOpcionFinanciamiento={
+            selectedOpcionId !== null
+              ? (opcionesFinanciamiento[selectedOpcionId] ?? opcionesFinanciamiento.find((o) => o.id === selectedOpcionId) ?? null)
+              : null
+          }
         />
       )}
 
