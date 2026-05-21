@@ -638,6 +638,16 @@ const EmpleadosPage: React.FC = () => {
     }
   };
 
+  // Orden por número de legajo descendente. Maneja tres casos:
+  //  - "52", "3"        → 52, 3      (post-migración, consecutivos)
+  //  - "LEG-00021"      → 21         (legados de la generación vieja)
+  //  - null/'' / texto  → -Infinity  (van al fondo)
+  const getLegajoNumeric = (s: string | null | undefined) => {
+    if (!s) return -Infinity;
+    const onlyDigits = s.replace(/\D/g, '');
+    return onlyDigits ? parseInt(onlyDigits, 10) : -Infinity;
+  };
+
   const filteredEmpleados = empleados.filter(emp => {
     const matchesEstado = estadoFilter === 'TODOS' || emp.estado === estadoFilter;
     // Backend devuelve puestoId flat; emp.puesto?.id queda como fallback defensivo.
@@ -651,7 +661,7 @@ const EmpleadosPage: React.FC = () => {
       emp.dni.includes(searchTerm) ||
       (emp.numeroLegajo ?? '').toLowerCase().includes(q);
     return matchesEstado && matchesPuesto && matchesSearch;
-  });
+  }).sort((a, b) => getLegajoNumeric(b.numeroLegajo) - getLegajoNumeric(a.numeroLegajo));
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
