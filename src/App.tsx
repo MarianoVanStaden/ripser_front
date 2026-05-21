@@ -210,7 +210,11 @@ const DashboardEntry: React.FC = () => {
     if (roles.includes('RECURSOS_HUMANOS')) return <Navigate to="/rrhh/dashboard" replace />;
     if (roles.includes('SUPERVISOR')) return <Navigate to="/leads/metricas" replace />;
     if (roles.includes('COBRANZAS')) return <Navigate to="/cobranzas/resumen" replace />;
-    if (roles.includes('TRANSPORTE')) return <TransporteDashboard />;
+    if (
+      roles.includes('TRANSPORTE') ||
+      roles.includes('LOGISTICO') ||
+      roles.includes('COORDINADORA_LOGISTICA')
+    ) return <TransporteDashboard />;
   }
   return <Dashboard />;
 };
