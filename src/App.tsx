@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy as reactLazy, Suspense } from 'react';
 import type { ComponentType } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -17,6 +17,47 @@ import SentryErrorBoundary from './components/SentryErrorBoundary';
 // ---------------------------------------------------------------------------
 // Lazy route helpers
 // ---------------------------------------------------------------------------
+// Tras un deploy nuevo, los chunks viejos referenciados por el index.html
+// cacheado en el navegador dejan de existir. Cuando React.lazy intenta
+// importarlos, falla con "error loading dynamically imported module" o
+// "Failed to fetch dynamically imported module". El wrapper detecta ese caso
+// concreto y fuerza un reload del HTML (que trae los hashes nuevos). Usa un
+// flag en sessionStorage para no entrar en loop si la falla persiste.
+const CHUNK_RELOAD_FLAG = '__chunk_reloaded__';
+
+const isChunkLoadError = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message || '';
+  return (
+    /Failed to fetch dynamically imported module/i.test(msg) ||
+    /error loading dynamically imported module/i.test(msg) ||
+    /Importing a module script failed/i.test(msg) ||
+    err.name === 'ChunkLoadError'
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const lazyWithReload = <T extends ComponentType<any>>(
+  loader: () => Promise<{ default: T }>,
+) =>
+  reactLazy(() =>
+    loader().catch((err) => {
+      if (isChunkLoadError(err) && typeof window !== 'undefined') {
+        const alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_FLAG);
+        if (!alreadyReloaded) {
+          sessionStorage.setItem(CHUNK_RELOAD_FLAG, '1');
+          window.location.reload();
+          // Devolvemos una promesa nunca resuelta — el reload toma el control.
+          return new Promise<{ default: T }>(() => {});
+        }
+      }
+      throw err;
+    }),
+  );
+
+// Compat: mantengo el nombre `lazy` para no tocar el resto del archivo.
+const lazy = lazyWithReload;
+
 // React.lazy needs a module with a `default` export. Many pages in this repo
 // are named exports re-exported through barrel files. `lazyNamed` pulls the
 // right export and adapts it to lazy()'s shape without eagerly evaluating the
@@ -26,10 +67,13 @@ const lazyNamed = <T extends ComponentType<any>>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   loader: () => Promise<Record<string, any>>,
   name: string,
-) => lazy(async () => {
+) => lazyWithReload<T>(async () => {
   const mod = await loader();
   return { default: mod[name] as T };
 });
+
+// El flag vive en sessionStorage: se limpia solo al cerrar la pestaña, por lo
+// que cada sesión nueva puede volver a intentar el reload sin riesgo de loop.
 
 // ---------------------------------------------------------------------------
 // Pages (code-split per route)
@@ -37,6 +81,7 @@ const lazyNamed = <T extends ComponentType<any>>(
 // Dashboard / dev
 const DevKPIs = lazy(() => import('./components/Dashboard/DevKPIs'));
 const TransporteDashboard = lazy(() => import('./pages/transporte/TransporteDashboard'));
+const ComprasDashboard = lazy(() => import('./pages/compras/ComprasDashboard'));
 
 // Admin
 const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
@@ -215,6 +260,7 @@ const DashboardEntry: React.FC = () => {
       roles.includes('LOGISTICO') ||
       roles.includes('COORDINADORA_LOGISTICA')
     ) return <TransporteDashboard />;
+    if (roles.includes('COORDINADORA_COMPRAS')) return <ComprasDashboard />;
   }
   return <Dashboard />;
 };
