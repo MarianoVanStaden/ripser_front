@@ -199,7 +199,8 @@ const EquiposList: React.FC = () => {
     etapas: EtapaFabricacionDTO[];
     loading: boolean;
     error: string | null;
-  }>({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null });
+    modoRechazo: boolean;
+  }>({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null, modoRechazo: false });
 
   const [aprobarQCDialog, setAprobarQCDialog] = useState<{
     open: boolean;
@@ -220,6 +221,7 @@ const EquiposList: React.FC = () => {
       etapas: [],
       loading: true,
       error: null,
+      modoRechazo: false,
     });
     try {
       const data = await equipoFabricadoApi.getEtapasProduccion(equipo.id);
@@ -239,7 +241,7 @@ const EquiposList: React.FC = () => {
   };
 
   const closeChecklistDialog = () => {
-    setChecklistDialog({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null });
+    setChecklistDialog({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null, modoRechazo: false });
   };
 
   const handleChecklistEtapaActualizada = (etapa: EtapaFabricacionDTO) => {
@@ -2381,13 +2383,57 @@ const EquiposList: React.FC = () => {
                     }
                   : undefined
               }
-              readOnly={checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD'}
+              modoRechazo={checklistDialog.modoRechazo}
+              onRechazarEtapas={
+                checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD'
+                  ? async (etapasRechazadas) => {
+                      if (!checklistDialog.equipo) return;
+                      try {
+                        await equipoFabricadoApi.rechazarEtapasEnControlCalidadPorNumero(
+                          checklistDialog.equipo.numeroHeladera,
+                          etapasRechazadas
+                        );
+                        setSnackbar({
+                          open: true,
+                          message: 'Etapas rechazadas correctamente',
+                          severity: 'success'
+                        });
+                        closeChecklistDialog();
+                        loadEquipos();
+                      } catch (error) {
+                        const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+                          (error as Error).message ||
+                          'Error al rechazar etapas';
+                        setSnackbar({
+                          open: true,
+                          message: msg,
+                          severity: 'error'
+                        });
+                      }
+                    }
+                  : undefined
+              }
+              readOnly={checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD' && !checklistDialog.modoRechazo}
             />
           ) : (
             <Alert severity="info">No hay etapas de producción registradas.</Alert>
           )}
         </DialogContent>
         <DialogActions>
+          {checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD' && esControlCalidad && (
+            <Button
+              variant={checklistDialog.modoRechazo ? 'contained' : 'outlined'}
+              color={checklistDialog.modoRechazo ? 'error' : 'primary'}
+              onClick={() => {
+                setChecklistDialog({
+                  ...checklistDialog,
+                  modoRechazo: !checklistDialog.modoRechazo
+                });
+              }}
+            >
+              {checklistDialog.modoRechazo ? 'Cancelar Rechazo' : 'Rechazar Etapas'}
+            </Button>
+          )}
           <Button
             onClick={() => {
               closeChecklistDialog();

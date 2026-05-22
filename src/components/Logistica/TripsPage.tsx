@@ -73,6 +73,7 @@ import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { documentoApi } from '../../api/services/documentoApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
+import type { OrdenServicio } from '../../types';
 import type { EquipoFabricadoDTO } from '../../types';
 
 // Custom hook for responsive breakpoints
@@ -626,22 +627,31 @@ const TripsPage2: React.FC = () => {
 
       const entregaErrors: string[] = [];
       for (const delivery of tripDeliveries) {
-        if (delivery.id || !delivery.facturaId) continue;
+        if (delivery.id) continue; // Skip already persisted deliveries
 
         try {
           const deliveryPayload: any = {
             viajeId: savedTrip.id,
-            documentoComercialId: delivery.facturaId,
             direccionEntrega: delivery.direccionEntrega || '',
             fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
             observaciones: delivery.observaciones || '',
             estado: 'PENDIENTE' as EstadoEntrega,
           };
+
+          // Handle both FACTURA and ORDEN_SERVICIO
+          if (delivery.facturaId) {
+            deliveryPayload.documentoComercialId = delivery.facturaId;
+          } else if (delivery.ordenServicioId) {
+            deliveryPayload.ordenServicioId = delivery.ordenServicioId;
+          } else {
+            continue; // Skip if neither factura nor orden is set
+          }
+
           await entregaViajeApi.create(deliveryPayload);
         } catch (deliveryError: any) {
           const msg = deliveryError?.response?.data?.message || deliveryError?.message || 'Error desconocido';
-          const facturaLabel = delivery.factura?.numeroDocumento ?? `ID ${delivery.facturaId}`;
-          entregaErrors.push(`Factura ${facturaLabel}: ${msg}`);
+          const label = delivery.factura?.numeroDocumento ?? `OS-${delivery.ordenServicioId}` ?? 'Entrega sin ref';
+          entregaErrors.push(`${label}: ${msg}`);
         }
       }
 

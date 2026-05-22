@@ -55,6 +55,7 @@ import type { DocumentoEntrega } from '../../api/services/entregaViajeDocumentoA
 import { clienteApi } from '../../api/services/clienteApi';
 import { documentoApi } from '../../api/services/documentoApi';
 import { viajeApi } from '../../api/services/viajeApi';
+import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import { useResponsive } from './Deliveries/useResponsive';
 import { compressImageFile, getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
@@ -70,6 +71,7 @@ const DeliveriesPage2: React.FC = () => {
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
+  const [ordenes, setOrdenes] = useState<any[]>([]);
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +151,7 @@ const DeliveriesPage2: React.FC = () => {
       let deliveriesData: EntregaViaje[] = [];
       let clientsData: Cliente[] = [];
       let facturasData: DocumentoComercial[] = [];
+      let ordenesData: any[] = [];
       let tripsData: Viaje[] = [];
       const errors: string[] = [];
 
@@ -175,6 +178,13 @@ const DeliveriesPage2: React.FC = () => {
       }
 
       try {
+        ordenesData = await ordenServicioApi.getByEstado('FINALIZADA');
+      } catch (err) {
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`Órdenes de Servicio: ${errorMsg}`);
+      }
+
+      try {
         const tripsResponse = await viajeApi.getAll();
         tripsData = tripsResponse.content || [];
       } catch (err) {
@@ -189,6 +199,7 @@ const DeliveriesPage2: React.FC = () => {
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setFacturas(Array.isArray(facturasData) ? facturasData : []);
+      setOrdenes(Array.isArray(ordenesData) ? ordenesData : []);
       setTrips(Array.isArray(tripsData) ? tripsData : []);
 
     } catch (err) {
@@ -1122,6 +1133,7 @@ const DeliveriesPage2: React.FC = () => {
         facturas={facturas}
         trips={trips}
         clients={clients}
+        ordenes={ordenes}
       />
 
       {/* Details Bottom Sheet / Drawer */}
