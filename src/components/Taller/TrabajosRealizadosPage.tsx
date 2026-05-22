@@ -68,17 +68,11 @@ const TrabajosRealizadosPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await ordenServicioApi.getAll();
-      
-      const ordenesList = Array.isArray(data) 
-        ? data 
-        : (data as any).content || [];
-        
-      // Filtrar solo órdenes finalizadas o canceladas
-      const ordenesCompletadas = ordenesList.filter(
-        (o: OrdenServicio) => o.estado === 'FINALIZADA' || o.estado === 'CANCELADA'
-      );
-      setOrdenes(ordenesCompletadas);
+      const [finalizadas, canceladas] = await Promise.all([
+        ordenServicioApi.getByEstado('FINALIZADA'),
+        ordenServicioApi.getByEstado('CANCELADA')
+      ]);
+      setOrdenes([...finalizadas, ...canceladas]);
     } catch (err) {
       setError('Error al cargar los trabajos realizados');
       console.error('Error loading ordenes:', err);
