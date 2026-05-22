@@ -66,8 +66,10 @@ const OrdenesServicioPage: React.FC = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [saving, setSaving] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Estados del formulario
   const [formData, setFormData] = useState<{
@@ -268,16 +270,25 @@ const OrdenesServicioPage: React.FC = () => {
         }
       }
 
+      const isCreating = !editingOrden;
       if (editingOrden) {
         await ordenServicioApi.update(editingOrden.id, ordenData);
+        setSuccessMessage('Orden de servicio actualizada correctamente');
       } else {
         await ordenServicioApi.create(ordenData);
+        setSuccessMessage('Orden de servicio creada correctamente');
       }
 
-      // Close the form immediately so the user has clear feedback,
-      // then refresh the list in the background.
+      // Close the form and show success dialog
       handleCloseForm();
-      loadOrdenes(); // intentionally not awaited — runs in background
+      setSuccessDialogOpen(true);
+
+      // Reload ordenes in background to ensure new orders appear in autocompletes
+      try {
+        await loadOrdenes();
+      } catch (err) {
+        console.error('Error reloading ordenes:', err);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al guardar la orden de servicio');
       console.error('Error saving orden:', err);
@@ -1240,6 +1251,57 @@ const OrdenesServicioPage: React.FC = () => {
             startIcon={saving ? <CircularProgress size={18} color="inherit" /> : undefined}
           >
             {saving ? 'Guardando...' : (editingOrden ? '💾 Guardar Cambios' : '➕ Crear Orden')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog
+        open={successDialogOpen}
+        onClose={() => setSuccessDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          },
+        }}
+      >
+        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+          <Box sx={{ mb: 2 }}>
+            <CheckCircleIcon
+              sx={{
+                fontSize: 80,
+                color: 'success.main',
+                animation: 'pulse 0.6s ease-in-out',
+                '@keyframes pulse': {
+                  '0%': { transform: 'scale(0.8)', opacity: 0 },
+                  '50%': { opacity: 1 },
+                  '100%': { transform: 'scale(1)', opacity: 1 },
+                },
+              }}
+            />
+          </Box>
+          <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: 'success.main' }}>
+            ¡Éxito!
+          </Typography>
+          <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
+            {successMessage}
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            La orden está lista para agregar materiales y tareas en los módulos correspondientes.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button
+            onClick={() => setSuccessDialogOpen(false)}
+            variant="contained"
+            size="large"
+            sx={{ minWidth: 150 }}
+            autoFocus
+          >
+            Entendido
           </Button>
         </DialogActions>
       </Dialog>

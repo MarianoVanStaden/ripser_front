@@ -97,7 +97,8 @@ const ControlMaterialesPage: React.FC = () => {
     try {
       const data = await ordenServicioApi.getAll();
       // Filtrar solo órdenes que no estén finalizadas o canceladas
-      const ordenesActivas = (Array.isArray(data) ? data : []).filter(
+      const ordenesArray = Array.isArray(data) ? data : (data?.content || []);
+      const ordenesActivas = ordenesArray.filter(
         (o: OrdenServicio) => o.estado === 'PENDIENTE' || o.estado === 'EN_PROCESO'
       );
       setOrdenes(ordenesActivas);
@@ -208,7 +209,8 @@ const ControlMaterialesPage: React.FC = () => {
     try {
       await materialUtilizadoApi.create(materialData);
 
-      await loadMateriales();
+      // Recargar materiales y órdenes para asegurar que aparezcan en autocompletes
+      await Promise.all([loadMateriales(), loadOrdenes()]);
       handleCloseForm();
       setError(null);
     } catch (err: any) {

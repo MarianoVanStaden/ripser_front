@@ -211,7 +211,7 @@ const AsignacionTareasPage: React.FC = () => {
         await tareaServicioApi.create(tareaData);
       }
 
-      await loadTareas();
+      await Promise.all([loadTareas(), loadOrdenes()]);
       handleCloseForm();
       setError(null);
     } catch (err: any) {
