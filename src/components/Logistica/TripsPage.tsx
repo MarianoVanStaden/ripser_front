@@ -493,7 +493,7 @@ const TripsPage2: React.FC = () => {
     setSelectedDeliveryFactura(factura);
 
     if (!factura) {
-      setNewDelivery(prev => ({ ...prev, facturaId: '', direccionEntrega: '' }));
+      setNewDelivery(prev => ({ ...prev, facturaId: '', direccionEntrega: '', tipoEntrega: 'FACTURA', ordenServicioId: '' }));
       return;
     }
 
@@ -555,7 +555,7 @@ const TripsPage2: React.FC = () => {
       observaciones: '',
     });
     setTripDeliveries([]);
-    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '' });
+    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '' });
     setActiveStep(0);
     setDialogOpen(true);
   };
@@ -581,7 +581,7 @@ const TripsPage2: React.FC = () => {
     } catch (err) {
       setTripDeliveries([]);
     }
-    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '' });
+    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '' });
     setActiveStep(0);
     setDialogOpen(true);
   };

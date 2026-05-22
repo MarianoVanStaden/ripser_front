@@ -1,7 +1,7 @@
 // FRONT-003: extracted from DeliveriesPage.tsx — par mobile (BottomSheet)
 // + desktop (SwipeableDrawer) para crear/editar una entrega.  El padre
 // maneja persistencia y mantiene el form state.
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Autocomplete,
   Box,
