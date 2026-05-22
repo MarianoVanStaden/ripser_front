@@ -46,6 +46,12 @@ export const ordenServicioApi = {
     return response.data;
   },
 
+  // Get ordenes by cliente and estado
+  getByClienteYEstado: async (clienteId: number, estado: string): Promise<OrdenServicio[]> => {
+    const response = await api.get(`/api/ordenes-servicio/cliente/${clienteId}/estado/${estado}`);
+    return response.data;
+  },
+
   // Get ordenes by responsable
   getByResponsable: async (responsableId: number): Promise<OrdenServicio[]> => {
     const response = await api.get(`/api/ordenes-servicio/responsable/${responsableId}`);

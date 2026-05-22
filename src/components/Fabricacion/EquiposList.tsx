@@ -24,6 +24,7 @@ import {
 } from '../../api/services/equipoFabricadoApi';
 import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO } from '../../types';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
+import { usePermisos } from '../../hooks/usePermisos';
 import api from '../../api/config';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -120,11 +121,14 @@ const EquiposList: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { tieneRol } = usePermisos();
   const { value: duracionEstimadaDias } = useParametroSistema<number>(
     FABRICACION_DURACION_ESTIMADA_CLAVE,
     FABRICACION_DURACION_ESTIMADA_DIAS_DEFAULT,
     parseIntOr(FABRICACION_DURACION_ESTIMADA_DIAS_DEFAULT),
   );
+
+  const esControlCalidad = tieneRol('LOGISTICO', 'ADMIN', 'ADMIN_EMPRESA_LIMITADO');
 
   const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,6 +200,17 @@ const EquiposList: React.FC = () => {
     loading: boolean;
     error: string | null;
   }>({ open: false, equipoId: null, equipo: null, etapas: [], loading: false, error: null });
+
+  const [aprobarQCDialog, setAprobarQCDialog] = useState<{
+    open: boolean;
+    equipo: EquipoFabricadoListDTO | null;
+  }>({ open: false, equipo: null });
+
+  const [rechazarQCDialog, setRechazarQCDialog] = useState<{
+    open: boolean;
+    equipo: EquipoFabricadoListDTO | null;
+    motivo: string;
+  }>({ open: false, equipo: null, motivo: '' });
 
   const openChecklistDialog = async (equipo: EquipoFabricadoListDTO) => {
     setChecklistDialog({
@@ -634,6 +649,7 @@ const EquiposList: React.FC = () => {
         const colorMap: Record<EstadoFabricacion, 'warning' | 'info' | 'success' | 'error' | 'secondary'> = {
           PENDIENTE: 'warning',
           EN_PROCESO: 'info',
+          PENDIENTE_CONTROL_CALIDAD: 'warning',
           COMPLETADO: 'success',
           CANCELADO: 'error',
           FABRICADO_SIN_TERMINACION: 'secondary',
@@ -641,6 +657,7 @@ const EquiposList: React.FC = () => {
         const labelMap: Record<EstadoFabricacion, string> = {
           PENDIENTE: 'Pendiente',
           EN_PROCESO: 'En Proceso',
+          PENDIENTE_CONTROL_CALIDAD: 'Control de Calidad',
           COMPLETADO: 'Completado',
           CANCELADO: 'Cancelado',
           FABRICADO_SIN_TERMINACION: 'Sin Terminación',
@@ -897,24 +914,48 @@ const EquiposList: React.FC = () => {
                 </IconButton>
               </Tooltip>
             )}
-            {params.row.estado === 'EN_PROCESO' && (
-              <Tooltip title="Completar">
+            {params.row.estado === 'PENDIENTE_CONTROL_CALIDAD' && esControlCalidad && (
+              <Tooltip title="Aprobar Control de Calidad">
                 <IconButton
                   size="small"
                   color="success"
                   onClick={() => {
-                    console.log('🔵 Abriendo diálogo de completar');
-                    console.log('📊 params.row:', params.row);
-                    console.log('🆔 params.row.id:', params.row.id);
-
-                    setCompletarDialog({
+                    setAprobarQCDialog({
                       open: true,
-                      equipoId: params.row.id,
                       equipo: params.row
                     });
                   }}
                 >
                   <CheckCircle fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {params.row.estado === 'PENDIENTE_CONTROL_CALIDAD' && esControlCalidad && (
+              <Tooltip title="Rechazar Control de Calidad">
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => {
+                    setRechazarQCDialog({
+                      open: true,
+                      equipo: params.row,
+                      motivo: ''
+                    });
+                  }}
+                >
+                  <Cancel fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {params.row.estado === 'PENDIENTE_CONTROL_CALIDAD' && !esControlCalidad && (
+              <Tooltip title="Ver checklist de producción (lectura)" enterDelay={300}>
+                <IconButton
+                  size="small"
+                  color="info"
+                  aria-label="Ver checklist de producción"
+                  onClick={() => openChecklistDialog(params.row)}
+                >
+                  <AssignmentTurnedIn fontSize="small" />
                 </IconButton>
               </Tooltip>
             )}
@@ -1761,6 +1802,201 @@ const EquiposList: React.FC = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Aprobar Control de Calidad Dialog */}
+      <Dialog
+        open={aprobarQCDialog.open}
+        onClose={() => setAprobarQCDialog({ open: false, equipo: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent sx={{ pt: 4, pb: 3 }}>
+          <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: (theme) => theme.palette.success.main + '20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 2,
+              }}
+            >
+              <CheckCircle sx={{ fontSize: 50, color: 'success.main' }} />
+            </Box>
+            <Typography variant="h5" fontWeight="600" gutterBottom>
+              Aprobar Control de Calidad
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              ¿Está seguro de que desea aprobar este equipo?
+            </Typography>
+            {aprobarQCDialog.equipo && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  width: '100%',
+                  p: 2,
+                  bgcolor: (theme) => theme.palette.primary.main + '08',
+                  borderColor: (theme) => theme.palette.primary.main + '30',
+                }}
+              >
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Número:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {aprobarQCDialog.equipo.numeroHeladera}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Tipo:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {aprobarQCDialog.equipo.tipo}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box display="flex" justifyContent="space-between" alignItems="center" py={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    Modelo:
+                  </Typography>
+                  <Typography variant="body1" fontWeight="600">
+                    {aprobarQCDialog.equipo.modelo}
+                  </Typography>
+                </Box>
+              </Paper>
+            )}
+            <Alert severity="success" sx={{ mt: 3, width: '100%' }}>
+              <Typography variant="caption">
+                {aprobarQCDialog.equipo?.color
+                  ? 'El equipo estará disponible para asignación o venta.'
+                  : 'El equipo quedará como base genérica (Sin Terminación), lista para aplicar terminación a demanda.'}
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+          <Button onClick={() => setAprobarQCDialog({ open: false, equipo: null })} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!aprobarQCDialog.equipo) return;
+              try {
+                await equipoFabricadoApi.completarFabricacionPorNumero(
+                  aprobarQCDialog.equipo.numeroHeladera
+                );
+                setSnackbar({
+                  open: true,
+                  message: 'Equipo aprobado en control de calidad',
+                  severity: 'success'
+                });
+                setAprobarQCDialog({ open: false, equipo: null });
+                loadEquipos();
+              } catch (error) {
+                const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+                  (error as Error).message ||
+                  'Error al aprobar control de calidad';
+                setSnackbar({
+                  open: true,
+                  message: msg,
+                  severity: 'error'
+                });
+              }
+            }}
+            color="success"
+            variant="contained"
+            startIcon={<CheckCircle />}
+          >
+            Aprobar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rechazar Control de Calidad Dialog */}
+      <Dialog
+        open={rechazarQCDialog.open}
+        onClose={() => setRechazarQCDialog({ open: false, equipo: null, motivo: '' })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Rechazar Control de Calidad</DialogTitle>
+        <DialogContent>
+          {rechazarQCDialog.equipo && (
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Número:</strong> {rechazarQCDialog.equipo.numeroHeladera}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Tipo:</strong> {rechazarQCDialog.equipo.tipo}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Modelo:</strong> {rechazarQCDialog.equipo.modelo}
+                </Typography>
+              </Box>
+              <TextField
+                label="Motivo del rechazo"
+                multiline
+                rows={3}
+                value={rechazarQCDialog.motivo}
+                onChange={(e) =>
+                  setRechazarQCDialog({ ...rechazarQCDialog, motivo: e.target.value })
+                }
+                placeholder="Describa las razones por las cuales se rechaza este equipo..."
+                fullWidth
+              />
+              <Alert severity="warning">
+                El equipo volverá al estado EN_PROCESO para que el encargado de taller pueda hacer correcciones.
+              </Alert>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setRechazarQCDialog({ open: false, equipo: null, motivo: '' })}
+            color="inherit"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!rechazarQCDialog.equipo) return;
+              try {
+                await equipoFabricadoApi.rechazarControlCalidadPorNumero(
+                  rechazarQCDialog.equipo.numeroHeladera,
+                  rechazarQCDialog.motivo
+                );
+                setSnackbar({
+                  open: true,
+                  message: 'Equipo rechazado en control de calidad',
+                  severity: 'success'
+                });
+                setRechazarQCDialog({ open: false, equipo: null, motivo: '' });
+                loadEquipos();
+              } catch (error) {
+                const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+                  (error as Error).message ||
+                  'Error al rechazar control de calidad';
+                setSnackbar({
+                  open: true,
+                  message: msg,
+                  severity: 'error'
+                });
+              }
+            }}
+            color="error"
+            variant="contained"
+            startIcon={<Cancel />}
+          >
+            Rechazar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Iniciar Fabricación Dialog */}
       <Dialog
         open={iniciarDialog.open}
@@ -2117,6 +2353,35 @@ const EquiposList: React.FC = () => {
                   (checklistDialog.etapas.length || 1)) * 100
               )}
               onEtapaActualizada={handleChecklistEtapaActualizada}
+              onEnviarControlCalidad={
+                checklistDialog.equipo?.estado === 'EN_PROCESO'
+                  ? async () => {
+                      if (!checklistDialog.equipo) return;
+                      try {
+                        await equipoFabricadoApi.enviarAControlCalidadPorNumero(
+                          checklistDialog.equipo.numeroHeladera
+                        );
+                        setSnackbar({
+                          open: true,
+                          message: 'Equipo enviado a control de calidad',
+                          severity: 'success'
+                        });
+                        closeChecklistDialog();
+                        loadEquipos();
+                      } catch (error) {
+                        const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+                          (error as Error).message ||
+                          'Error al enviar a control de calidad';
+                        setSnackbar({
+                          open: true,
+                          message: msg,
+                          severity: 'error'
+                        });
+                      }
+                    }
+                  : undefined
+              }
+              readOnly={checklistDialog.equipo?.estado === 'PENDIENTE_CONTROL_CALIDAD'}
             />
           ) : (
             <Alert severity="info">No hay etapas de producción registradas.</Alert>

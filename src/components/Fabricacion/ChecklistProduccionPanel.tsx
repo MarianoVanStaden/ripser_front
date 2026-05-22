@@ -38,6 +38,7 @@ interface Props {
   etapas: EtapaFabricacionDTO[];
   progreso: number;
   onEtapaActualizada: (etapa: EtapaFabricacionDTO) => void;
+  onEnviarControlCalidad?: () => Promise<void>;
   readOnly?: boolean;
 }
 
@@ -64,6 +65,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
   etapas,
   progreso,
   onEtapaActualizada,
+  onEnviarControlCalidad,
   readOnly = false,
 }) => {
   const [completarDialog, setCompletarDialog] = useState<{
@@ -81,6 +83,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
 
   const [loadingTipo, setLoadingTipo] = useState<TipoEtapaFabricacion | null>(null);
   const [confirmUndoTipo, setConfirmUndoTipo] = useState<TipoEtapaFabricacion | null>(null);
+  const [enviarQCLoading, setEnviarQCLoading] = useState(false);
   const undoTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -337,9 +340,28 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
         </Stack>
 
         {todasCompletas && (
-          <Alert icon={<TaskAlt fontSize="inherit" />} severity="success">
-            ¡Listo para completar fabricación!
-          </Alert>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Alert icon={<TaskAlt fontSize="inherit" />} severity="success">
+              ¡Listo para control de calidad!
+            </Alert>
+            {onEnviarControlCalidad && !readOnly && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={async () => {
+                  setEnviarQCLoading(true);
+                  try {
+                    await onEnviarControlCalidad();
+                  } finally {
+                    setEnviarQCLoading(false);
+                  }
+                }}
+                disabled={enviarQCLoading}
+              >
+                {enviarQCLoading ? <CircularProgress size={24} /> : 'Enviar a Control de Calidad'}
+              </Button>
+            )}
+          </Box>
         )}
       </Stack>
 

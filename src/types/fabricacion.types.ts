@@ -210,7 +210,7 @@ export interface EquipoFabricadoUpdateDTO {
   responsableId?: number;
   clienteId?: number;
 }
-export type EstadoFabricacion = 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO' | 'CANCELADO' | 'FABRICADO_SIN_TERMINACION';
+export type EstadoFabricacion = 'PENDIENTE' | 'EN_PROCESO' | 'PENDIENTE_CONTROL_CALIDAD' | 'COMPLETADO' | 'CANCELADO' | 'FABRICADO_SIN_TERMINACION';
 
 // Response for batch equipment creation
 export interface EquipoCreationResponseDTO {
@@ -311,6 +311,8 @@ export interface EquipoEnOrdenDTO {
   tipo: string;
   descripcionFalla?: string;
   fechaIngresoServicio: string;
+  recetaId?: number;
+  recetaNombre?: string;
 }
 export interface CosteoRecetaDTO {
   recetaId: number;

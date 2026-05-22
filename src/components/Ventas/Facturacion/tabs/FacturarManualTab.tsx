@@ -65,6 +65,7 @@ interface Props {
   // cart
   cart: CartItem[];
   onAddItem: () => void;
+  onAddDesdeOS?: () => void;
   onAddEnvio: () => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateCartItem: (index: number, field: any, value: any) => void;
@@ -90,7 +91,7 @@ const FacturarManualTab: React.FC<Props> = ({
   selectedIva, onChangeIva, dueDate, onChangeDueDate,
   descuentoTipo, onChangeDescuentoTipo, descuentoValor, onChangeDescuentoValor,
   notes, onChangeNotes,
-  cart, onAddItem, onAddEnvio, onUpdateCartItem, onRemoveCartItem, products, recetas,
+  cart, onAddItem, onAddDesdeOS, onAddEnvio, onUpdateCartItem, onRemoveCartItem, products, recetas,
   totals, loading, selectedClientId, onClear, onOpenFinanciamiento, onSubmit,
   selectedOpcionFinanciamiento,
 }) => {
@@ -276,6 +277,14 @@ const FacturarManualTab: React.FC<Props> = ({
                   disabled={products.length === 0}
                 >
                   Agregar Item
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={onAddDesdeOS}
+                  disabled={!selectedClientId}
+                >
+                  Desde OS
                 </Button>
                 <Button
                   variant="outlined"

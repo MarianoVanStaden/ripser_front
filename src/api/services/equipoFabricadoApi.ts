@@ -210,6 +210,50 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  enviarAControlCalidad: async (equipoId: number) => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/enviar-control-calidad`
+    );
+    return response.data;
+  },
+
+  enviarAControlCalidadPorNumero: async (numeroHeladera: string) => {
+    const equipoResponse = await api.get<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/numero/${numeroHeladera}`
+    );
+    const equipoId = equipoResponse.data.id;
+    if (!equipoId) {
+      throw new Error(`Equipo ${numeroHeladera} no tiene ID en la respuesta del backend`);
+    }
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/enviar-control-calidad`
+    );
+    return response.data;
+  },
+
+  rechazarControlCalidad: async (equipoId: number, motivo?: string) => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/rechazar-control-calidad`,
+      { motivo }
+    );
+    return response.data;
+  },
+
+  rechazarControlCalidadPorNumero: async (numeroHeladera: string, motivo?: string) => {
+    const equipoResponse = await api.get<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/numero/${numeroHeladera}`
+    );
+    const equipoId = equipoResponse.data.id;
+    if (!equipoId) {
+      throw new Error(`Equipo ${numeroHeladera} no tiene ID en la respuesta del backend`);
+    }
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/rechazar-control-calidad`,
+      { motivo }
+    );
+    return response.data;
+  },
+
   // Validación de stock
   validarStock: async (equipo: EquipoFabricadoCreateDTO): Promise<ValidacionStockDTO> => {
     const response = await api.post<ValidacionStockDTO>(

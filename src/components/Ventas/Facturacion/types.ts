@@ -23,6 +23,9 @@ export type CartItem = {
   stockDisponible?: number;
   stockVerificado?: boolean;
   requiereFabricacion?: boolean;
+  // Pre-assigned equipment from OrdenServicio
+  preAsignadoEquipoId?: number;
+  ordenServicioNumero?: string;
 };
 
 export type NotaCartItem = {

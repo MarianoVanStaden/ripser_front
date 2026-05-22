@@ -199,14 +199,24 @@ export const ProductsTable = React.memo(
                             : item.productoNombre}
                         </Typography>
                       )}
-                      {ofertaRow && (
-                        <Chip
-                          size="small"
-                          color="warning"
-                          label={`OFERTA${ofertaRow.descuentoPct ? ` -${ofertaRow.descuentoPct}%` : ''}`}
-                          sx={{ mt: 0.5, fontWeight: 700, height: 20 }}
-                        />
-                      )}
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                        {ofertaRow && (
+                          <Chip
+                            size="small"
+                            color="warning"
+                            label={`OFERTA${ofertaRow.descuentoPct ? ` -${ofertaRow.descuentoPct}%` : ''}`}
+                            sx={{ fontWeight: 700, height: 20 }}
+                          />
+                        )}
+                        {itemAny.ordenServicioNumero && (
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`OS: ${itemAny.ordenServicioNumero}`}
+                            sx={{ height: 20 }}
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       {isEnvio ? (

@@ -344,6 +344,7 @@ const loadClientes = async () => {
   const estadoColor = {
     PENDIENTE: 'warning',
     EN_PROCESO: 'info',
+    PENDIENTE_CONTROL_CALIDAD: 'warning',
     COMPLETADO: 'success',
     CANCELADO: 'error',
     FABRICADO_SIN_TERMINACION: 'info',

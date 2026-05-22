@@ -65,6 +65,7 @@ const ESTADO_FABRICACION_LABEL: Record<string, string> = {
 const ESTADO_FABRICACION_COLOR: Record<string, EstadoEquipoChipColor> = {
   PENDIENTE: 'default',
   EN_PROCESO: 'primary',
+  PENDIENTE_CONTROL_CALIDAD: 'warning',
   FABRICADO_SIN_TERMINACION: 'warning',
   COMPLETADO: 'success',
   CANCELADO: 'error',
@@ -73,6 +74,7 @@ const ESTADO_FABRICACION_COLOR: Record<string, EstadoEquipoChipColor> = {
 const ESTADO_FABRICACION_ICON: Record<string, React.ReactElement> = {
   PENDIENTE: <HourglassEmpty fontSize="small" />,
   EN_PROCESO: <Build fontSize="small" />,
+  PENDIENTE_CONTROL_CALIDAD: <Build fontSize="small" />,
   FABRICADO_SIN_TERMINACION: <ColorLens fontSize="small" />,
   COMPLETADO: <CheckCircle fontSize="small" />,
 };

@@ -72,6 +72,7 @@ import FabricacionConfirmDialog from './Facturacion/dialogs/FabricacionConfirmDi
 import ConvertToFacturaDialog from './Facturacion/dialogs/ConvertToFacturaDialog';
 import DesdeNotaPedidoTab from './Facturacion/tabs/DesdeNotaPedidoTab';
 import FacturarManualTab from './Facturacion/tabs/FacturarManualTab';
+import AgregarEquiposDesdeOSDialog from './Facturacion/dialogs/AgregarEquiposDesdeOSDialog';
 import { costoEnvioApi } from '../../api/services/costoEnvioApi';
 import type { CostoEnvioDTO } from '../../types/costoEnvio.types';
 
@@ -223,6 +224,10 @@ const FacturacionPage = () => {
     medidaNombre?: string;
     stockDisponible: number;
   } | null>(null);
+
+  // Dialog para agregar equipos desde orden de servicio
+  const [openDesdeOS, setOpenDesdeOS] = useState(false);
+  const [preAsignadas, setPreAsignadas] = useState<{ [cartIndex: number]: number }>({});
 
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
@@ -598,6 +603,23 @@ const FacturacionPage = () => {
         },
       ]);
     }
+  };
+
+  const handleConfirmDesdeOS = (items: CartItem[]) => {
+    setCart((prev) => {
+      const newCart = [...prev, ...items];
+      // Guardar las pre-asignaciones para los nuevos items
+      const newPreAsignadas = { ...preAsignadas };
+      items.forEach((item, idx) => {
+        if (item.preAsignadoEquipoId) {
+          const cartIndex = newCart.length - items.length + idx;
+          newPreAsignadas[cartIndex] = item.preAsignadoEquipoId;
+        }
+      });
+      setPreAsignadas(newPreAsignadas);
+      return newCart;
+    });
+    setOpenDesdeOS(false);
   };
 
   const handleOpenEnvioDialogFact = async () => {
@@ -1119,10 +1141,34 @@ const FacturacionPage = () => {
 
     const payload = buildFacturaDirectaPayload();
 
-    // Si hay equipos, abrir AsignarEquiposDialog: la factura se crea recién
-    // cuando el usuario confirma la asignación. Snapshot del payload para que
-    // los cambios al carrito durante el modal no afecten la factura final.
+    // Check if there are equipment items in the cart
     if (equiposEnCarrito.length > 0) {
+      // Build map of pre-assigned equipment: if an item has preAsignadoEquipoId,
+      // it's already assigned (came from AgregarEquiposDesdeOSDialog)
+      const preAsignadosMap: { [cartIndex: number]: number[] } = {};
+      const equiposSinAsignar: number[] = [];
+
+      equiposEnCarrito.forEach((item) => {
+        const cartIndex = cart.findIndex((ci) => ci === item);
+        if (cartIndex >= 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const itemAny = item as any;
+          if (itemAny.preAsignadoEquipoId) {
+            preAsignadosMap[cartIndex] = [itemAny.preAsignadoEquipoId];
+          } else {
+            equiposSinAsignar.push(cartIndex);
+          }
+        }
+      });
+
+      // Si todos los equipos están pre-asignados: submit directo sin dialog
+      if (equiposSinAsignar.length === 0 && Object.keys(preAsignadosMap).length > 0) {
+        await submitFacturaDirecta(payload, preAsignadosMap);
+        return;
+      }
+
+      // Si hay equipos sin asignar (o es mezcla): abrir AsignarEquiposDialog
+      // para que el usuario asigne los faltantes
       setManualFacturaDraft({
         payload,
         virtualDetallesEquipo: buildVirtualDetallesEquipo(),
@@ -1146,7 +1192,19 @@ const FacturacionPage = () => {
         setError('Estado inconsistente: borrador de factura manual perdido. Volvé a intentar.');
         return;
       }
-      await submitFacturaDirecta(manualFacturaDraft.payload, asignaciones);
+
+      // Merge pre-assigned equipment with user-selected equipment
+      const mergedAsignaciones: { [detalleId: number]: number[] } = { ...asignaciones };
+      cart.forEach((item, index) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const itemAny = item as any;
+        if (itemAny.tipoItem === 'EQUIPO' && itemAny.preAsignadoEquipoId) {
+          // Pre-assigned equipment: include it in the map
+          mergedAsignaciones[index] = [itemAny.preAsignadoEquipoId];
+        }
+      });
+
+      await submitFacturaDirecta(manualFacturaDraft.payload, mergedAsignaciones);
       return;
     }
 
@@ -1752,6 +1810,7 @@ const FacturacionPage = () => {
           onChangeNotes={setNotes}
           cart={cart}
           onAddItem={addItemToCart}
+          onAddDesdeOS={() => setOpenDesdeOS(true)}
           onAddEnvio={handleOpenEnvioDialogFact}
           onUpdateCartItem={updateCartItem}
           onRemoveCartItem={removeItemFromCart}
@@ -1923,6 +1982,14 @@ const FacturacionPage = () => {
         error={deudaError}
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
+      />
+
+      {/* Agregar equipos desde orden de servicio */}
+      <AgregarEquiposDesdeOSDialog
+        open={openDesdeOS}
+        onClose={() => setOpenDesdeOS(false)}
+        onConfirm={handleConfirmDesdeOS}
+        clienteId={selectedClientId ? Number(selectedClientId) : undefined}
       />
 
       {/* Province / envío selector dialog — Factura Manual */}
