@@ -142,7 +142,7 @@ const AsignacionTareasPage: React.FC = () => {
     }
   };
 
-  const handleOpenForm = (tarea?: TareaServicio) => {
+  const handleOpenForm = async (tarea?: TareaServicio) => {
     if (tarea) {
       setEditingTarea(tarea);
       setFormData({
@@ -165,6 +165,8 @@ const AsignacionTareasPage: React.FC = () => {
         observaciones: '',
         estado: 'PENDIENTE'
       });
+      // Reload ordenes when opening create form to ensure fresh data
+      await loadOrdenes();
     }
     setFormOpen(true);
   };

@@ -118,7 +118,7 @@ const ControlMaterialesPage: React.FC = () => {
     }
   };
 
-  const handleOpenForm = (material?: MaterialUtilizado) => {
+  const handleOpenForm = async (material?: MaterialUtilizado) => {
     if (material) {
       console.log('Opening form for material:', material);
       console.log('productoId:', material.productoId);
@@ -137,6 +137,8 @@ const ControlMaterialesPage: React.FC = () => {
         cantidad: '1',
         precioUnitario: '0'
       });
+      // Reload ordenes when opening create form to ensure fresh data
+      await loadOrdenes();
     }
     setFormOpen(true);
   };
