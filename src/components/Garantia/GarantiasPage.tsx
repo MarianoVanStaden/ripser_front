@@ -173,6 +173,12 @@ const GarantiasPage: React.FC = () => {
     }
   };
 
+  // Parse tipos garantia from string
+  const getTiposGarantia = (tiposGarantiaStr?: string) => {
+    if (!tiposGarantiaStr) return [];
+    return tiposGarantiaStr.split(',').map(t => t.trim());
+  };
+
   // Calculate statistics
   const stats = {
     total: garantias.length,
@@ -441,9 +447,17 @@ const GarantiasPage: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <Typography variant="body2">
-                      {garantia.tipoGarantia ? tipoGarantiaLabel[garantia.tipoGarantia] : '-'}
-                    </Typography>
+                    <Stack spacing={0.5}>
+                      {getTiposGarantia(garantia.tiposGarantia).map((tipo: any) => (
+                        <Chip
+                          key={tipo}
+                          label={tipoGarantiaLabel[tipo] || tipo}
+                          size="small"
+                          variant="outlined"
+                          sx={{ height: 24, fontSize: '0.75rem' }}
+                        />
+                      ))}
+                    </Stack>
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">

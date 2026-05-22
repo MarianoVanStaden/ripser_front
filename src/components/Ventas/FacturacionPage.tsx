@@ -72,8 +72,6 @@ import FabricacionConfirmDialog from './Facturacion/dialogs/FabricacionConfirmDi
 import ConvertToFacturaDialog from './Facturacion/dialogs/ConvertToFacturaDialog';
 import DesdeNotaPedidoTab from './Facturacion/tabs/DesdeNotaPedidoTab';
 import FacturarManualTab from './Facturacion/tabs/FacturarManualTab';
-import { lazy, Suspense } from 'react';
-const AgregarEquiposDesdeOSDialog = lazy(() => import('./Facturacion/dialogs/AgregarEquiposDesdeOSDialog'));
 import { costoEnvioApi } from '../../api/services/costoEnvioApi';
 import type { CostoEnvioDTO } from '../../types/costoEnvio.types';
 
@@ -227,7 +225,6 @@ const FacturacionPage = () => {
   } | null>(null);
 
   // Dialog para agregar equipos desde orden de servicio
-  const [openDesdeOS, setOpenDesdeOS] = useState(false);
   const [preAsignadas, setPreAsignadas] = useState<{ [cartIndex: number]: number }>({});
 
   // Deuda cliente confirmation
@@ -604,23 +601,6 @@ const FacturacionPage = () => {
         },
       ]);
     }
-  };
-
-  const handleConfirmDesdeOS = (items: CartItem[]) => {
-    setCart((prev) => {
-      const newCart = [...prev, ...items];
-      // Guardar las pre-asignaciones para los nuevos items
-      const newPreAsignadas = { ...preAsignadas };
-      items.forEach((item, idx) => {
-        if (item.preAsignadoEquipoId) {
-          const cartIndex = newCart.length - items.length + idx;
-          newPreAsignadas[cartIndex] = item.preAsignadoEquipoId;
-        }
-      });
-      setPreAsignadas(newPreAsignadas);
-      return newCart;
-    });
-    setOpenDesdeOS(false);
   };
 
   const handleOpenEnvioDialogFact = async () => {
@@ -1145,7 +1125,7 @@ const FacturacionPage = () => {
     // Check if there are equipment items in the cart
     if (equiposEnCarrito.length > 0) {
       // Build map of pre-assigned equipment: if an item has preAsignadoEquipoId,
-      // it's already assigned (came from AgregarEquiposDesdeOSDialog)
+      // it's already assigned
       const preAsignadosMap: { [cartIndex: number]: number[] } = {};
       const equiposSinAsignar: number[] = [];
 
@@ -1811,7 +1791,6 @@ const FacturacionPage = () => {
           onChangeNotes={setNotes}
           cart={cart}
           onAddItem={addItemToCart}
-          onAddDesdeOS={() => setOpenDesdeOS(true)}
           onAddEnvio={handleOpenEnvioDialogFact}
           onUpdateCartItem={updateCartItem}
           onRemoveCartItem={removeItemFromCart}
@@ -1984,16 +1963,6 @@ const FacturacionPage = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
-
-      {/* Agregar equipos desde orden de servicio */}
-      <Suspense fallback={null}>
-        <AgregarEquiposDesdeOSDialog
-          open={openDesdeOS}
-          onClose={() => setOpenDesdeOS(false)}
-          onConfirm={handleConfirmDesdeOS}
-          clienteId={selectedClientId ? Number(selectedClientId) : undefined}
-        />
-      </Suspense>
 
       {/* Province / envío selector dialog — Factura Manual */}
       <Dialog open={envioDialogOpenFact} onClose={() => setEnvioDialogOpenFact(false)} maxWidth="xs" fullWidth>

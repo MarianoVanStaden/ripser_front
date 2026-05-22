@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, 
-  MenuItem, Stack, Autocomplete, Alert, CircularProgress, FormControl, InputLabel, Select 
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+  Stack, Autocomplete, Alert, CircularProgress, FormControl, InputLabel, Select, MenuItem,
+  Box, Typography, FormControlLabel, Checkbox, Divider
 } from '@mui/material';
 import dayjs from 'dayjs';
 import { garantiaApi, type GarantiaCreateDTO } from '../../api/services/garantiaApi';
@@ -26,30 +27,35 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
     ventaId: 0,
     numeroSerie: '',
     fechaCompra: dayjs().format('YYYY-MM-DD'),
-    fechaVencimiento: dayjs().add(1, 'year').format('YYYY-MM-DD'),
+    fechaVencimientoFabrica: dayjs().add(1, 'year').format('YYYY-MM-DD'),
+    fechaVencimientoElectrico: dayjs().add(6, 'months').format('YYYY-MM-DD'),
     estado: 'VIGENTE',
     observaciones: '',
   });
 
   const [selectedEquipo, setSelectedEquipo] = useState<any>(null);
   const [selectedVenta, setSelectedVenta] = useState<any>(null);
+  const [incluyeFabrica, setIncluyeFabrica] = useState(true);
+  const [incluyeElectrico, setIncluyeElectrico] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
-      // Reset form when dialog closes
       setForm({
         equipoFabricadoId: 0,
         ventaId: 0,
         numeroSerie: '',
         fechaCompra: dayjs().format('YYYY-MM-DD'),
-        fechaVencimiento: dayjs().add(1, 'year').format('YYYY-MM-DD'),
+        fechaVencimientoFabrica: dayjs().add(1, 'year').format('YYYY-MM-DD'),
+        fechaVencimientoElectrico: dayjs().add(6, 'months').format('YYYY-MM-DD'),
         estado: 'VIGENTE',
         observaciones: '',
       });
       setSelectedEquipo(null);
       setSelectedVenta(null);
+      setIncluyeFabrica(true);
+      setIncluyeElectrico(true);
       setError(null);
     }
   }, [open]);
@@ -76,8 +82,16 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
       setError('Debe ingresar la fecha de compra');
       return;
     }
-    if (!form.fechaVencimiento) {
-      setError('Debe ingresar la fecha de vencimiento');
+    if (!incluyeFabrica && !incluyeElectrico) {
+      setError('Debe seleccionar al menos un tipo de garantía (Fábrica o Eléctrico)');
+      return;
+    }
+    if (incluyeFabrica && !form.fechaVencimientoFabrica) {
+      setError('Debe ingresar la fecha de vencimiento para Desperfecto de Fábrica');
+      return;
+    }
+    if (incluyeElectrico && !form.fechaVencimientoElectrico) {
+      setError('Debe ingresar la fecha de vencimiento para Desperfecto Eléctrico');
       return;
     }
     if (!form.estado) {
@@ -85,8 +99,12 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
       return;
     }
 
-    if (dayjs(form.fechaVencimiento).isBefore(dayjs(form.fechaCompra))) {
-      setError('La fecha de vencimiento debe ser posterior a la fecha de compra');
+    if (incluyeFabrica && dayjs(form.fechaVencimientoFabrica).isBefore(dayjs(form.fechaCompra))) {
+      setError('La fecha de vencimiento de Fábrica debe ser posterior a la fecha de compra');
+      return;
+    }
+    if (incluyeElectrico && dayjs(form.fechaVencimientoElectrico).isBefore(dayjs(form.fechaCompra))) {
+      setError('La fecha de vencimiento Eléctrico debe ser posterior a la fecha de compra');
       return;
     }
 
@@ -95,9 +113,14 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
       setError(null);
 
       const dataToSend: GarantiaCreateDTO = {
-        ...form,
         equipoFabricadoId: selectedEquipo.id,
         ventaId: selectedVenta.id,
+        numeroSerie: form.numeroSerie,
+        fechaCompra: form.fechaCompra,
+        fechaVencimientoFabrica: incluyeFabrica ? form.fechaVencimientoFabrica : undefined,
+        fechaVencimientoElectrico: incluyeElectrico ? form.fechaVencimientoElectrico : undefined,
+        estado: form.estado,
+        observaciones: form.observaciones,
       };
 
       await garantiaApi.create(dataToSend);
@@ -119,7 +142,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             {error}
           </Alert>
         )}
-        
+
         <Stack spacing={2} mt={1}>
           <Autocomplete
             options={Array.isArray(equipos) ? equipos : []}
@@ -130,7 +153,6 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             value={selectedEquipo}
             onChange={(_, newValue) => {
               setSelectedEquipo(newValue);
-              // Auto-fill numero de serie with numeroHeladera
               if (newValue && newValue.numeroHeladera) {
                 setForm(prev => ({
                   ...prev,
@@ -143,12 +165,11 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             )}
             isOptionEqualToValue={(option, value) => option?.id === value?.id}
           />
-          
+
           <Autocomplete
             options={Array.isArray(ventas) ? ventas : []}
             getOptionLabel={(option) => {
               if (!option) return '';
-              // Para DocumentoComercial (Factura)
               const numero = option.numeroComprobante || `#${option.id}`;
               const fecha = option.fechaEmision ? dayjs(option.fechaEmision).format('DD/MM/YYYY') : '';
               const cliente = option.cliente?.nombre || '';
@@ -158,13 +179,13 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             onChange={(_, newValue) => {
               setSelectedVenta(newValue);
               if (newValue) {
-                // Usar fechaEmision para DocumentoComercial
                 const fecha = newValue.fechaEmision || newValue.fecha;
                 if (fecha) {
                   setForm(prev => ({
                     ...prev,
                     fechaCompra: dayjs(fecha).format('YYYY-MM-DD'),
-                    fechaVencimiento: dayjs(fecha).add(1, 'year').format('YYYY-MM-DD'),
+                    fechaVencimientoFabrica: dayjs(fecha).add(1, 'year').format('YYYY-MM-DD'),
+                    fechaVencimientoElectrico: dayjs(fecha).add(6, 'months').format('YYYY-MM-DD'),
                   }));
                 }
               }
@@ -174,7 +195,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             )}
             isOptionEqualToValue={(option, value) => option?.id === value?.id}
           />
-          
+
           <TextField
             label="Número de Serie *"
             name="numeroSerie"
@@ -184,7 +205,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             required
             placeholder="Ej: SN-2024-001"
           />
-          
+
           <TextField
             label="Fecha de Compra *"
             name="fechaCompra"
@@ -195,18 +216,49 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
             fullWidth
             required
           />
-          
-          <TextField
-            label="Fecha de Vencimiento *"
-            name="fechaVencimiento"
-            type="date"
-            value={form.fechaVencimiento}
-            onChange={handleChange}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-            required
-          />
-          
+
+          <Divider sx={{ my: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary">Tipos de Garantía</Typography>
+          </Divider>
+
+          <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+            <FormControlLabel
+              control={<Checkbox checked={incluyeFabrica} onChange={(e) => setIncluyeFabrica(e.target.checked)} />}
+              label="Desperfecto de Fábrica (1 año)"
+            />
+            {incluyeFabrica && (
+              <TextField
+                label="Fecha de Vencimiento - Fábrica"
+                name="fechaVencimientoFabrica"
+                type="date"
+                value={form.fechaVencimientoFabrica}
+                onChange={(e) => setForm({ ...form, fechaVencimientoFabrica: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                sx={{ mt: 1 }}
+              />
+            )}
+          </Box>
+
+          <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+            <FormControlLabel
+              control={<Checkbox checked={incluyeElectrico} onChange={(e) => setIncluyeElectrico(e.target.checked)} />}
+              label="Desperfecto Eléctrico (6 meses)"
+            />
+            {incluyeElectrico && (
+              <TextField
+                label="Fecha de Vencimiento - Eléctrico"
+                name="fechaVencimientoElectrico"
+                type="date"
+                value={form.fechaVencimientoElectrico}
+                onChange={(e) => setForm({ ...form, fechaVencimientoElectrico: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                sx={{ mt: 1 }}
+              />
+            )}
+          </Box>
+
           <FormControl fullWidth required>
             <InputLabel>Estado *</InputLabel>
             <Select
@@ -220,7 +272,7 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
               <MenuItem value="ANULADA">Anulada</MenuItem>
             </Select>
           </FormControl>
-          
+
           <TextField
             label="Observaciones"
             name="observaciones"
@@ -237,8 +289,8 @@ const GarantiaFormDialog: React.FC<GarantiaFormDialogProps> = ({
         <Button onClick={onClose} disabled={loading}>
           Cancelar
         </Button>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={handleSave}
           disabled={loading}
         >

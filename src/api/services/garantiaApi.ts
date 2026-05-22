@@ -11,9 +11,11 @@ export interface GarantiaDTO {
   ventaId: number;
   numeroSerie: string;
   fechaCompra: string; // LocalDate
-  fechaVencimiento: string; // LocalDate
+  fechaVencimiento: string; // LocalDate (la más lejana)
+  fechaVencimientoFabrica?: string; // LocalDate
+  fechaVencimientoElectrico?: string; // LocalDate
   estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
-  tipoGarantia?: TipoGarantia;
+  tiposGarantia?: string; // "DESPERFECTO_FABRICA,DESPERFECTO_ELECTRICO"
   observaciones?: string;
   reclamos?: any[];
 }
@@ -34,7 +36,8 @@ export interface GarantiaCreateDTO {
   ventaId: number;
   numeroSerie: string;
   fechaCompra: string;
-  fechaVencimiento: string;
+  fechaVencimientoFabrica?: string;
+  fechaVencimientoElectrico?: string;
   estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
   observaciones?: string;
 }

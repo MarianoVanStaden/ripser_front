@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, Typography, Card, CardContent, Divider, Chip, Stack, Button, 
-  Grid, Table, TableBody, TableCell, TableContainer, TableHead, 
+import {
+  Box, Typography, Card, CardContent, Divider, Chip, Stack, Button,
+  Grid, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, IconButton, Alert, CircularProgress
 } from '@mui/material';
-import { 
+import {
   ArrowBack as ArrowBackIcon,
   Block as BlockIcon,
   Add as AddIcon,
@@ -24,10 +24,10 @@ interface GarantiaDetailPageProps {
   onAnular: () => void;
 }
 
-const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({ 
-  garantia, 
-  onBack, 
-  onAnular 
+const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
+  garantia,
+  onBack,
+  onAnular
 }) => {
   const [reclamos, setReclamos] = useState<ReclamoGarantiaDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,10 +78,88 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
     }
   };
 
-  const diasRestantes = dayjs(garantia.fechaVencimiento).diff(dayjs(), 'day');
-  const diasTranscurridos = dayjs().diff(dayjs(garantia.fechaCompra), 'day');
-  const diasTotales = (tipoGarantiaMonths[garantia.tipoGarantia ?? 'DESPERFECTO_FABRICA'] ?? 12) * 30;
-  const porcentajeUsado = Math.min(100, Math.max(0, (diasTranscurridos / diasTotales) * 100));
+  // Parse tipos de garantía
+  const tiposGarantia = garantia.tiposGarantia
+    ? garantia.tiposGarantia.split(',').map(t => t.trim())
+    : [];
+
+  // Componente para mostrar vigencia de un tipo específico
+  const VigilanceBlock = ({
+    tipo,
+    fechaVencimiento,
+    label
+  }: {
+    tipo: string;
+    fechaVencimiento?: string;
+    label: string;
+  }) => {
+    if (!fechaVencimiento) return null;
+
+    const diasRestantes = dayjs(fechaVencimiento).diff(dayjs(), 'day');
+    const diasTranscurridos = dayjs().diff(dayjs(garantia.fechaCompra), 'day');
+    const meses = tipoGarantiaMonths[tipo as keyof typeof tipoGarantiaMonths] || 12;
+    const diasTotales = meses * 30;
+    const porcentajeUsado = Math.min(100, Math.max(0, (diasTranscurridos / diasTotales) * 100));
+
+    return (
+      <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+        <Typography variant="subtitle2" fontWeight="600" mb={1}>
+          {label}
+        </Typography>
+        <Stack spacing={1}>
+          <Box>
+            <Typography variant="caption" color="textSecondary">
+              Fecha de Vencimiento
+            </Typography>
+            <Typography
+              variant="body2"
+              fontWeight="500"
+              color={
+                garantia.estado === 'VENCIDA'
+                  ? 'error.main'
+                  : diasRestantes < 30
+                    ? 'warning.main'
+                    : 'textPrimary'
+              }
+            >
+              {dayjs(fechaVencimiento).format('DD/MM/YYYY')}
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="caption" color="textSecondary" mb={0.5} display="block">
+              Tiempo Transcurrido
+            </Typography>
+            <Box
+              sx={{
+                height: 12,
+                bgcolor: 'grey.200',
+                borderRadius: 1,
+                overflow: 'hidden',
+                mb: 1
+              }}
+            >
+              <Box
+                sx={{
+                  height: '100%',
+                  width: `${porcentajeUsado}%`,
+                  bgcolor:
+                    porcentajeUsado >= 90 ? 'error.main' :
+                      porcentajeUsado >= 70 ? 'warning.main' :
+                        'success.main',
+                  transition: 'width 0.3s'
+                }}
+              />
+            </Box>
+            <Typography variant="caption" color="textSecondary">
+              {Math.max(0, diasTranscurridos)} de {diasTotales} días ({porcentajeUsado.toFixed(0)}%)•{' '}
+              {Math.max(0, diasRestantes)} días restantes
+            </Typography>
+          </Box>
+        </Stack>
+      </Box>
+    );
+  };
 
   return (
     <Box>
@@ -101,7 +179,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
               </Typography>
             </Box>
           </Stack>
-          
+
           {garantia.estado === 'VIGENTE' && (
             <Button
               variant="outlined"
@@ -126,7 +204,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                   Información General
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                
+
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="caption" color="textSecondary">
@@ -142,16 +220,20 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                   </Box>
 
                   <Box>
-                    <Typography variant="caption" color="textSecondary">
-                      Tipo
+                    <Typography variant="caption" color="textSecondary" display="block" mb={0.5}>
+                      Tipos de Garantía
                     </Typography>
-                    <Box mt={0.5}>
-                      <Chip
-                        label={garantia.tipoGarantia ? tipoGarantiaLabel[garantia.tipoGarantia] : '-'}
-                        variant="outlined"
-                        sx={{ fontWeight: 500 }}
-                      />
-                    </Box>
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      {tiposGarantia.map((tipo) => (
+                        <Chip
+                          key={tipo}
+                          label={tipoGarantiaLabel[tipo as keyof typeof tipoGarantiaLabel] || tipo}
+                          variant="outlined"
+                          size="small"
+                          sx={{ fontWeight: 500 }}
+                        />
+                      ))}
+                    </Stack>
                   </Box>
 
                   <Box>
@@ -171,7 +253,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                       {garantia.ventaId ? `#${garantia.ventaId}` : '-'}
                     </Typography>
                   </Box>
-                  
+
                   <Box>
                     <Typography variant="caption" color="textSecondary">
                       Número de Serie
@@ -180,12 +262,23 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                       {garantia.numeroSerie}
                     </Typography>
                   </Box>
+
+                  {garantia.observaciones && (
+                    <Box>
+                      <Typography variant="caption" color="textSecondary">
+                        Observaciones
+                      </Typography>
+                      <Typography variant="body2">
+                        {garantia.observaciones}
+                      </Typography>
+                    </Box>
+                  )}
                 </Stack>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Fechas y Vigencia */}
+          {/* Vigencia por Tipo */}
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
@@ -193,7 +286,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                   Vigencia
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                
+
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="caption" color="textSecondary">
@@ -203,83 +296,28 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                       {dayjs(garantia.fechaCompra).format('DD/MM/YYYY')}
                     </Typography>
                   </Box>
-                  
-                  <Box>
-                    <Typography variant="caption" color="textSecondary">
-                      Fecha de Vencimiento
-                    </Typography>
-                    <Typography 
-                      variant="body1" 
-                      fontWeight="500"
-                      color={
-                        garantia.estado === 'VENCIDA' 
-                          ? 'error.main' 
-                          : diasRestantes < 30 
-                            ? 'warning.main' 
-                            : 'textPrimary'
-                      }
-                    >
-                      {dayjs(garantia.fechaVencimiento).format('DD/MM/YYYY')}
-                    </Typography>
-                  </Box>
-                  
-                  <Box>
-                    <Typography variant="caption" color="textSecondary" mb={1} display="block">
-                      Tiempo Transcurrido
-                    </Typography>
-                    <Box 
-                      sx={{ 
-                        height: 12, 
-                        bgcolor: 'grey.200', 
-                        borderRadius: 1,
-                        overflow: 'hidden',
-                        mb: 1
-                      }}
-                    >
-                      <Box 
-                        sx={{ 
-                          height: '100%', 
-                          width: `${porcentajeUsado}%`,
-                          bgcolor: 
-                            porcentajeUsado >= 90 ? 'error.main' :
-                            porcentajeUsado >= 70 ? 'warning.main' :
-                            'success.main',
-                          transition: 'width 0.3s'
-                        }} 
-                      />
-                    </Box>
-                    <Typography variant="caption" color="textSecondary">
-                      {diasTranscurridos} de {diasTotales} días ({porcentajeUsado.toFixed(0)}%)
-                      {garantia.estado === 'VIGENTE' && diasRestantes > 0 && (
-                        <Typography component="span" variant="caption" ml={1}
-                          color={diasRestantes < 30 ? 'warning.main' : 'textSecondary'}
-                        >
-                          • {diasRestantes} días restantes
-                        </Typography>
-                      )}
-                    </Typography>
-                  </Box>
+
+                  {/* Vigencia para Desperfecto de Fábrica */}
+                  {garantia.fechaVencimientoFabrica && (
+                    <VigilanceBlock
+                      tipo="DESPERFECTO_FABRICA"
+                      fechaVencimiento={garantia.fechaVencimientoFabrica}
+                      label="Desperfecto de Fábrica (1 año)"
+                    />
+                  )}
+
+                  {/* Vigencia para Desperfecto Eléctrico */}
+                  {garantia.fechaVencimientoElectrico && (
+                    <VigilanceBlock
+                      tipo="DESPERFECTO_ELECTRICO"
+                      fechaVencimiento={garantia.fechaVencimientoElectrico}
+                      label="Desperfecto Eléctrico (6 meses)"
+                    />
+                  )}
                 </Stack>
               </CardContent>
             </Card>
           </Grid>
-
-          {/* Observaciones */}
-          {garantia.observaciones && (
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" mb={2} fontWeight="bold">
-                    Observaciones
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Typography variant="body2">
-                    {garantia.observaciones}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          )}
 
           {/* Reclamos */}
           <Grid item xs={12}>
@@ -287,77 +325,52 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
               <CardContent>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
                   <Typography variant="h6" fontWeight="bold">
-                    Reclamos de Garantía ({reclamos.length})
+                    Reclamos
                   </Typography>
-                  {garantia.estado === 'VIGENTE' && (
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={() => {
-                        setSelectedReclamo(null);
-                        setReclamoFormOpen(true);
-                      }}
-                    >
-                      Nuevo Reclamo
-                    </Button>
-                  )}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => {
+                      setSelectedReclamo(null);
+                      setReclamoFormOpen(true);
+                    }}
+                  >
+                    Nuevo Reclamo
+                  </Button>
                 </Stack>
                 <Divider sx={{ mb: 2 }} />
 
                 {loading ? (
-                  <Box display="flex" justifyContent="center" py={4}>
-                    <CircularProgress />
-                  </Box>
+                  <CircularProgress />
                 ) : reclamos.length === 0 ? (
-                  <Alert severity="info">
-                    No hay reclamos registrados para esta garantía
-                  </Alert>
+                  <Typography variant="body2" color="textSecondary">
+                    No hay reclamos registrados
+                  </Typography>
                 ) : (
                   <TableContainer>
-                    <Table>
+                    <Table size="small">
                       <TableHead>
                         <TableRow>
                           <TableCell><strong>N° Reclamo</strong></TableCell>
                           <TableCell><strong>Fecha</strong></TableCell>
-                          <TableCell><strong>Problema</strong></TableCell>
-                          <TableCell><strong>Tipo Solución</strong></TableCell>
-                          <TableCell align="center"><strong>Estado</strong></TableCell>
-                          <TableCell><strong>Técnico</strong></TableCell>
+                          <TableCell><strong>Descripción</strong></TableCell>
+                          <TableCell><strong>Estado</strong></TableCell>
                           <TableCell align="center"><strong>Acciones</strong></TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {reclamos.map((reclamo) => (
-                          <TableRow key={reclamo.id} hover>
+                          <TableRow key={reclamo.id}>
+                            <TableCell>{reclamo.numeroReclamo}</TableCell>
+                            <TableCell>{dayjs(reclamo.fechaReclamo).format('DD/MM/YYYY')}</TableCell>
+                            <TableCell>{reclamo.descripcionProblema}</TableCell>
                             <TableCell>
-                              <Typography variant="body2" fontWeight="500">
-                                {reclamo.numeroReclamo}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              {dayjs(reclamo.fechaReclamo).format('DD/MM/YYYY HH:mm')}
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
-                                {reclamo.descripcionProblema}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>
-                              {reclamo.tipoSolucion?.replace('_', ' ') || '-'}
-                            </TableCell>
-                            <TableCell align="center">
                               <Chip
-                                label={reclamo.estado?.replace('_', ' ') || 'SIN ESTADO'}
+                                label={reclamo.estado}
                                 color={getReclamoEstadoColor(reclamo.estado)}
                                 size="small"
-                                sx={{ fontWeight: 600 }}
                               />
-                            </TableCell>
-                            <TableCell>
-                              {reclamo.tecnicoApellido 
-                                ? `${reclamo.tecnicoNombre} ${reclamo.tecnicoApellido}` 
-                                : '-'}
                             </TableCell>
                             <TableCell align="center">
                               <IconButton
@@ -367,7 +380,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                                   setReclamoFormOpen(true);
                                 }}
                               >
-                                <EditIcon fontSize="small" />
+                                <EditIcon />
                               </IconButton>
                             </TableCell>
                           </TableRow>
@@ -382,21 +395,19 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
         </Grid>
       </Box>
 
-      {/* Reclamo Dialog */}
+      {/* Reclamo Form Dialog */}
       <ReclamoFormDialog
         open={reclamoFormOpen}
-        garantiaId={garantia.id}
-        reclamo={selectedReclamo}
-        garantias={[garantia]}
         onClose={() => {
           setReclamoFormOpen(false);
           setSelectedReclamo(null);
         }}
+        garantiaId={garantia.id}
         onSave={() => {
-          setReclamoFormOpen(false);
-          setSelectedReclamo(null);
           loadReclamos();
+          setReclamoFormOpen(false);
         }}
+        editingReclamo={selectedReclamo}
       />
     </Box>
   );
