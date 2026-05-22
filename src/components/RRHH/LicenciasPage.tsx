@@ -150,32 +150,33 @@ const LicenciasPage: React.FC = () => {
   };
 
   const getTipoIcon = (tipo: TipoLicencia) => {
-    switch (tipo) {
-      case 'VACACIONES':
-        return <VacationIcon />;
-      case 'ENFERMEDAD':
-        return <SickIcon />;
-      case 'MATERNIDAD':
-      case 'PERSONAL':
-        return <PersonIcon />;
-      default:
-        return <CalendarIcon />;
+    if (tipo.includes('VACACIONES') || tipo.includes('MUDANZA') || tipo.includes('NACIMIENTO') || tipo.includes('MATRIMONIO')) {
+      return <VacationIcon />;
     }
+    if (tipo.includes('ENFERMEDAD') || tipo.includes('SANGRE') || tipo.includes('ACCIDENTE')) {
+      return <SickIcon />;
+    }
+    if (tipo.includes('MATERNIDAD') || tipo.includes('FAMILIAR') || tipo.includes('EXAMEN')) {
+      return <PersonIcon />;
+    }
+    return <CalendarIcon />;
   };
 
   const getTipoColor = (tipo: TipoLicencia): "primary" | "error" | "warning" | "info" => {
-    switch (tipo) {
-      case 'VACACIONES':
-        return 'primary';
-      case 'ENFERMEDAD':
-        return 'error';
-      case 'MATERNIDAD':
-        return 'warning';
-      case 'PERSONAL':
-        return 'info';
-      default:
-        return 'primary';
+    // Rojo para ausencias sin aviso y sin justificación
+    if (tipo.includes('AUSENTE_SIN_AVISO') || tipo.includes('INJUSTIFICADO') || tipo.includes('SUSPENSION')) {
+      return 'error';
     }
+    // Naranja para enfermedad y licencias por salud
+    if (tipo.includes('ENFERMEDAD') || tipo.includes('SANGRE') || tipo.includes('ACCIDENTE')) {
+      return 'error';
+    }
+    // Amarillo para maternidad y eventos personales importantes
+    if (tipo.includes('MATERNIDAD') || tipo.includes('MATRIMONIO') || tipo.includes('FALLECIMIENTO') || tipo.includes('NACIMIENTO')) {
+      return 'warning';
+    }
+    // Azul por defecto para vacaciones y otras licencias
+    return 'primary';
   };
 
   const getEstadoColor = (estado: EstadoLicencia): "warning" | "success" | "error" => {
@@ -564,10 +565,27 @@ const LicenciasPage: React.FC = () => {
                   size="small"
                 >
                   <MenuItem value="TODOS">Todos</MenuItem>
-                  <MenuItem value="VACACIONES">Vacaciones</MenuItem>
-                  <MenuItem value="ENFERMEDAD">Enfermedad</MenuItem>
-                  <MenuItem value="PERSONAL">Personal</MenuItem>
-                  <MenuItem value="MATERNIDAD">Maternidad</MenuItem>
+                  <MenuItem value="AUS_P_TRAMITES_PERSONAL">Aus. p/Tramites Personal</MenuItem>
+                  <MenuItem value="LLEGADA_TARDE">Llegada Tarde</MenuItem>
+                  <MenuItem value="SALIDA_ANTICIPADA">Salida Anticipada</MenuItem>
+                  <MenuItem value="AUSENTE_SIN_AVISO">Ausente Sin aviso</MenuItem>
+                  <MenuItem value="DIAS_AUSENTE_INJUSTIFICADO">Dias Ausente Injustificado</MenuItem>
+                  <MenuItem value="DIAS_ENFERMEDAD">Dias Enfermedad</MenuItem>
+                  <MenuItem value="DIAS_EXT_SANGRE">Dias Ext. Sangre</MenuItem>
+                  <MenuItem value="DIAS_FAM_ENFERMO">Dias Fam. Enfermo</MenuItem>
+                  <MenuItem value="DIAS_SUSPENSION">Dias Suspensión</MenuItem>
+                  <MenuItem value="FALTA_JUSTIFICADA">Falta Justificada</MenuItem>
+                  <MenuItem value="LIC_ACCIDENTE">Lic. Accidente</MenuItem>
+                  <MenuItem value="LIC_EXAMEN">Lic. Examen</MenuItem>
+                  <MenuItem value="LIC_FALLECIMIENTO_FAMILIAR">Lic. Fallecimiento de Familiar</MenuItem>
+                  <MenuItem value="LIC_MATERNIDAD">Lic. Maternidad</MenuItem>
+                  <MenuItem value="LIC_MATRIMONIO">Lic. Matrimonio</MenuItem>
+                  <MenuItem value="LIC_MATRIMONIO_HIJO">Lic. Matrimonio Hijo</MenuItem>
+                  <MenuItem value="LIC_MUDANZA">Lic. Mudanza</MenuItem>
+                  <MenuItem value="LIC_NACIMIENTO_HIJO">Lic. Nacimiento Hijo</MenuItem>
+                  <MenuItem value="LIC_SIN_GOCE_SUELDO">Lic. Sin Goce Sueldo</MenuItem>
+                  <MenuItem value="LIC_VACACIONES">Lic. Vacaciones</MenuItem>
+                  <MenuItem value="RESERVA_DE_PUESTO">Reserva de Puesto</MenuItem>
                 </TextField>
               </Grid>
 
@@ -769,10 +787,27 @@ const LicenciasPage: React.FC = () => {
               required
               fullWidth
             >
-              <MenuItem value="VACACIONES">Vacaciones</MenuItem>
-              <MenuItem value="ENFERMEDAD">Enfermedad</MenuItem>
-              <MenuItem value="PERSONAL">Personal</MenuItem>
-              <MenuItem value="MATERNIDAD">Maternidad</MenuItem>
+              <MenuItem value="AUS_P_TRAMITES_PERSONAL">Aus. p/Tramites Personal</MenuItem>
+              <MenuItem value="LLEGADA_TARDE">Llegada Tarde</MenuItem>
+              <MenuItem value="SALIDA_ANTICIPADA">Salida Anticipada</MenuItem>
+              <MenuItem value="AUSENTE_SIN_AVISO">Ausente Sin aviso</MenuItem>
+              <MenuItem value="DIAS_AUSENTE_INJUSTIFICADO">Dias Ausente Injustificado</MenuItem>
+              <MenuItem value="DIAS_ENFERMEDAD">Dias Enfermedad</MenuItem>
+              <MenuItem value="DIAS_EXT_SANGRE">Dias Ext. Sangre</MenuItem>
+              <MenuItem value="DIAS_FAM_ENFERMO">Dias Fam. Enfermo</MenuItem>
+              <MenuItem value="DIAS_SUSPENSION">Dias Suspensión</MenuItem>
+              <MenuItem value="FALTA_JUSTIFICADA">Falta Justificada</MenuItem>
+              <MenuItem value="LIC_ACCIDENTE">Lic. Accidente</MenuItem>
+              <MenuItem value="LIC_EXAMEN">Lic. Examen</MenuItem>
+              <MenuItem value="LIC_FALLECIMIENTO_FAMILIAR">Lic. Fallecimiento de Familiar</MenuItem>
+              <MenuItem value="LIC_MATERNIDAD">Lic. Maternidad</MenuItem>
+              <MenuItem value="LIC_MATRIMONIO">Lic. Matrimonio</MenuItem>
+              <MenuItem value="LIC_MATRIMONIO_HIJO">Lic. Matrimonio Hijo</MenuItem>
+              <MenuItem value="LIC_MUDANZA">Lic. Mudanza</MenuItem>
+              <MenuItem value="LIC_NACIMIENTO_HIJO">Lic. Nacimiento Hijo</MenuItem>
+              <MenuItem value="LIC_SIN_GOCE_SUELDO">Lic. Sin Goce Sueldo</MenuItem>
+              <MenuItem value="LIC_VACACIONES">Lic. Vacaciones</MenuItem>
+              <MenuItem value="RESERVA_DE_PUESTO">Reserva de Puesto</MenuItem>
             </TextField>
             <Grid container spacing={2}>
               <Grid item xs={6}>

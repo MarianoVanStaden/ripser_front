@@ -83,7 +83,53 @@ export interface CreateEmployeeRequest {
 }
 // --- RRHH (Human Resources) Entities ---
 export type EstadoEmpleado = 'ACTIVO' | 'INACTIVO' | 'LICENCIA';
-export type TipoLicencia = 'VACACIONES' | 'ENFERMEDAD' | 'PERSONAL' | 'MATERNIDAD';
+export type TipoLicencia =
+  | 'AUS_P_TRAMITES_PERSONAL'
+  | 'LLEGADA_TARDE'
+  | 'SALIDA_ANTICIPADA'
+  | 'AUSENTE_SIN_AVISO'
+  | 'DIAS_AUSENTE_INJUSTIFICADO'
+  | 'DIAS_ENFERMEDAD'
+  | 'DIAS_EXT_SANGRE'
+  | 'DIAS_FAM_ENFERMO'
+  | 'DIAS_SUSPENSION'
+  | 'FALTA_JUSTIFICADA'
+  | 'LIC_ACCIDENTE'
+  | 'LIC_EXAMEN'
+  | 'LIC_FALLECIMIENTO_FAMILIAR'
+  | 'LIC_MATERNIDAD'
+  | 'LIC_MATRIMONIO'
+  | 'LIC_MATRIMONIO_HIJO'
+  | 'LIC_MUDANZA'
+  | 'LIC_NACIMIENTO_HIJO'
+  | 'LIC_SIN_GOCE_SUELDO'
+  | 'LIC_VACACIONES'
+  | 'RESERVA_DE_PUESTO';
+
+export const TIPO_LICENCIA_LABEL: Record<TipoLicencia, string> = {
+  AUS_P_TRAMITES_PERSONAL: 'Aus. p/Tramites Personal',
+  LLEGADA_TARDE: 'Llegada Tarde',
+  SALIDA_ANTICIPADA: 'Salida Anticipada',
+  AUSENTE_SIN_AVISO: 'Ausente Sin aviso',
+  DIAS_AUSENTE_INJUSTIFICADO: 'Dias Ausente Injustificado',
+  DIAS_ENFERMEDAD: 'Dias Enfermedad',
+  DIAS_EXT_SANGRE: 'Dias Ext. Sangre',
+  DIAS_FAM_ENFERMO: 'Dias Fam. Enfermo',
+  DIAS_SUSPENSION: 'Dias Suspensión',
+  FALTA_JUSTIFICADA: 'Falta Justificada',
+  LIC_ACCIDENTE: 'Lic. Accidente',
+  LIC_EXAMEN: 'Lic. Examen',
+  LIC_FALLECIMIENTO_FAMILIAR: 'Lic. Fallecimiento de Familiar',
+  LIC_MATERNIDAD: 'Lic. Maternidad',
+  LIC_MATRIMONIO: 'Lic. Matrimonio',
+  LIC_MATRIMONIO_HIJO: 'Lic. Matrimonio Hijo',
+  LIC_MUDANZA: 'Lic. Mudanza',
+  LIC_NACIMIENTO_HIJO: 'Lic. Nacimiento Hijo',
+  LIC_SIN_GOCE_SUELDO: 'Lic. Sin Goce Sueldo',
+  LIC_VACACIONES: 'Lic. Vacaciones',
+  RESERVA_DE_PUESTO: 'Reserva de Puesto',
+};
+
 export type EstadoLicencia = 'SOLICITADA' | 'APROBADA' | 'RECHAZADA';
 
 // Puestos de Trabajo - RRHH API

@@ -110,13 +110,21 @@ const TIPO_REGISTRO_OPTIONS: { value: string; label: string }[] = [
 
 /** Color por tipo de licencia para el chip "En Licencia". */
 const colorLicencia = (tipo?: string): 'primary' | 'error' | 'warning' | 'info' => {
-  switch (tipo) {
-    case 'VACACIONES': return 'primary';
-    case 'ENFERMEDAD': return 'error';
-    case 'MATERNIDAD': return 'warning';
-    case 'PERSONAL':   return 'info';
-    default:           return 'info';
+  if (!tipo) return 'info';
+  // Rojo para ausencias sin aviso y sin justificación
+  if (tipo.includes('AUSENTE_SIN_AVISO') || tipo.includes('INJUSTIFICADO') || tipo.includes('SUSPENSION')) {
+    return 'error';
   }
+  // Rojo para enfermedad y licencias por salud
+  if (tipo.includes('ENFERMEDAD') || tipo.includes('SANGRE') || tipo.includes('ACCIDENTE')) {
+    return 'error';
+  }
+  // Naranja para maternidad y eventos personales importantes
+  if (tipo.includes('MATERNIDAD') || tipo.includes('MATRIMONIO') || tipo.includes('FALLECIMIENTO') || tipo.includes('NACIMIENTO')) {
+    return 'warning';
+  }
+  // Azul por defecto para vacaciones y otras licencias
+  return 'primary';
 };
 
 const DIAS_SEMANA_LABEL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];

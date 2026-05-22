@@ -889,7 +889,7 @@ export const mockLicencias = [
   {
     id: 1,
     empleado: { ...mockEmpleados[1] },
-    tipo: "VACACIONES",
+    tipo: "LIC_VACACIONES",
     fechaInicio: "2025-07-10",
     fechaFin: "2025-07-20",
     dias: 10,
