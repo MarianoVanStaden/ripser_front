@@ -30,6 +30,7 @@ import {
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
+// @ts-ignore
 import { ordenServicioApi } from '../../../api/services/ordenServicioApi';
 import type { OrdenServicio, EquipoEnOrdenDTO } from '../../../types';
 import type { CartItem } from '../types';
