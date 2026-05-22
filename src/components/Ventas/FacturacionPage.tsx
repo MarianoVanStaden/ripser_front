@@ -72,7 +72,8 @@ import FabricacionConfirmDialog from './Facturacion/dialogs/FabricacionConfirmDi
 import ConvertToFacturaDialog from './Facturacion/dialogs/ConvertToFacturaDialog';
 import DesdeNotaPedidoTab from './Facturacion/tabs/DesdeNotaPedidoTab';
 import FacturarManualTab from './Facturacion/tabs/FacturarManualTab';
-import AgregarEquiposDesdeOSDialog from './Facturacion/dialogs/AgregarEquiposDesdeOSDialog';
+import { lazy, Suspense } from 'react';
+const AgregarEquiposDesdeOSDialog = lazy(() => import('./Facturacion/dialogs/AgregarEquiposDesdeOSDialog'));
 import { costoEnvioApi } from '../../api/services/costoEnvioApi';
 import type { CostoEnvioDTO } from '../../types/costoEnvio.types';
 
@@ -1985,12 +1986,14 @@ const FacturacionPage = () => {
       />
 
       {/* Agregar equipos desde orden de servicio */}
-      <AgregarEquiposDesdeOSDialog
-        open={openDesdeOS}
-        onClose={() => setOpenDesdeOS(false)}
-        onConfirm={handleConfirmDesdeOS}
-        clienteId={selectedClientId ? Number(selectedClientId) : undefined}
-      />
+      <Suspense fallback={null}>
+        <AgregarEquiposDesdeOSDialog
+          open={openDesdeOS}
+          onClose={() => setOpenDesdeOS(false)}
+          onConfirm={handleConfirmDesdeOS}
+          clienteId={selectedClientId ? Number(selectedClientId) : undefined}
+        />
+      </Suspense>
 
       {/* Province / envío selector dialog — Factura Manual */}
       <Dialog open={envioDialogOpenFact} onClose={() => setEnvioDialogOpenFact(false)} maxWidth="xs" fullWidth>

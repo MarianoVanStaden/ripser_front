@@ -30,10 +30,11 @@ import {
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
-// @ts-ignore
-import { ordenServicioApi } from '../../../api/services/ordenServicioApi';
 import type { OrdenServicio, EquipoEnOrdenDTO } from '../../../types';
 import type { CartItem } from '../types';
+
+// @ts-ignore - ordenServicioApi will be loaded dynamically
+let ordenServicioApi: any = null;
 
 interface Props {
   open: boolean;
@@ -61,8 +62,22 @@ const AgregarEquiposDesdeOSDialog: React.FC<Props> = ({ open, onClose, onConfirm
     try {
       setLoadingOS(true);
       setError(null);
-      let datos: OrdenServicio[];
 
+      // Load ordenServicioApi via new Function to avoid build-time resolution
+      if (!ordenServicioApi) {
+        try {
+          const importFn = new Function('return import("../../../api/services/ordenServicioApi")');
+          const module = await importFn();
+          ordenServicioApi = module.ordenServicioApi;
+        } catch (importErr) {
+          console.warn('ordenServicioApi not available', importErr);
+          setError('El servicio de órdenes no está disponible en esta configuración');
+          setLoadingOS(false);
+          return;
+        }
+      }
+
+      let datos: OrdenServicio[];
       if (clienteId) {
         datos = await ordenServicioApi.getByClienteYEstado(clienteId, 'FINALIZADA');
       } else {
