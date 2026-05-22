@@ -4,6 +4,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -40,6 +41,8 @@ interface Props {
   onEtapaActualizada: (etapa: EtapaFabricacionDTO) => void;
   onEnviarControlCalidad?: () => Promise<void>;
   readOnly?: boolean;
+  onRechazarEtapas?: (rechazadas: Array<{ tipoEtapa: TipoEtapaFabricacion; motivo?: string }>) => Promise<void>;
+  modoRechazo?: boolean;
 }
 
 const dateFormatter = new Intl.DateTimeFormat('es-AR', {
@@ -67,6 +70,8 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
   onEtapaActualizada,
   onEnviarControlCalidad,
   readOnly = false,
+  onRechazarEtapas,
+  modoRechazo = false,
 }) => {
   const [completarDialog, setCompletarDialog] = useState<{
     open: boolean;
@@ -86,6 +91,10 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
   const [enviarQCLoading, setEnviarQCLoading] = useState(false);
   const undoTimerRef = useRef<number | null>(null);
 
+  // QC rejection mode
+  const [etapasRechazadas, setEtapasRechazadas] = useState<Map<string, string>>(new Map());
+  const [rechazandoQC, setRechazandoQC] = useState(false);
+
   useEffect(() => {
     return () => {
       if (undoTimerRef.current !== null) {
@@ -95,10 +104,10 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
   }, []);
 
   const completadas = useMemo(
-    () => etapas.filter((e) => e.completado).length,
+    () => etapas.filter((e) => e.estado === 'COMPLETADO' || (e.completado && !e.estado)).length,
     [etapas],
   );
-  const todasCompletas = etapas.length > 0 && completadas === etapas.length;
+  const todasCompletas = etapas.length > 0 && completadas === etapas.length && !etapas.some((e) => e.estado === 'RECHAZADO');
 
   const ensureEmpleadosLoaded = async () => {
     if (empleadosLoadedRef.current) return;
@@ -173,6 +182,52 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
     setConfirmUndoTipo(null);
   };
 
+  const toggleEtapaRechazada = (tipo: TipoEtapaFabricacion) => {
+    setEtapasRechazadas((prev) => {
+      const next = new Map(prev);
+      if (next.has(tipo)) {
+        next.delete(tipo);
+      } else {
+        next.set(tipo, '');
+      }
+      return next;
+    });
+  };
+
+  const setMotivoRechazada = (tipo: TipoEtapaFabricacion, motivo: string) => {
+    setEtapasRechazadas((prev) => {
+      const next = new Map(prev);
+      next.set(tipo, motivo);
+      return next;
+    });
+  };
+
+  const handleSubmitRechazo = async () => {
+    if (etapasRechazadas.size === 0 || !onRechazarEtapas) {
+      setDialogError('Selecciona al menos una etapa para rechazar');
+      return;
+    }
+
+    setRechazandoQC(true);
+    setDialogError(null);
+    try {
+      const rechazadas = Array.from(etapasRechazadas.entries()).map(([tipoEtapa, motivo]) => ({
+        tipoEtapa: tipoEtapa as TipoEtapaFabricacion,
+        motivo: motivo.trim() || undefined,
+      }));
+      await onRechazarEtapas(rechazadas);
+      setEtapasRechazadas(new Map());
+    } catch (error) {
+      setDialogError(extractErrorMessage(error));
+    } finally {
+      setRechazandoQC(false);
+    }
+  };
+
+  const handleCancelRechazo = () => {
+    setEtapasRechazadas(new Map());
+  };
+
   const handleConfirmUndo = async (etapa: EtapaFabricacionDTO) => {
     clearUndoTimer();
     setConfirmUndoTipo(null);
@@ -226,14 +281,16 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 2,
-                  bgcolor: etapa.completado ? 'success.lighter' : 'background.default',
-                  borderColor: etapa.completado ? 'success.light' : 'divider',
+                  bgcolor: etapa.estado === 'COMPLETADO' ? 'success.lighter' : etapa.estado === 'RECHAZADO' ? 'error.lighter' : 'background.default',
+                  borderColor: etapa.estado === 'COMPLETADO' ? 'success.light' : etapa.estado === 'RECHAZADO' ? 'error.light' : 'divider',
                   transition: 'background-color 200ms ease, border-color 200ms ease',
                 }}
               >
-                <Fade in key={etapa.completado ? 'done' : 'pending'} timeout={300}>
-                  {etapa.completado ? (
-                    <CheckCircle sx={{ color: 'success.main', fontSize: 28, mt: 0.25 }} />
+                <Fade in key={etapa.estado || (etapa.completado ? 'done' : 'pending')} timeout={300}>
+                  {etapa.estado === 'COMPLETADO' || etapa.completado ? (
+                    <CheckCircle sx={{ color: etapa.estado === 'RECHAZADO' ? 'error.main' : 'success.main', fontSize: 28, mt: 0.25 }} />
+                  ) : etapa.estado === 'RECHAZADO' ? (
+                    <CheckCircle sx={{ color: 'error.main', fontSize: 28, mt: 0.25 }} />
                   ) : (
                     <RadioButtonUnchecked sx={{ color: 'text.disabled', fontSize: 28, mt: 0.25 }} />
                   )}
@@ -242,15 +299,20 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                 <Box flex={1} minWidth={0}>
                   <Typography variant="body1" fontWeight={600}>
                     {etapa.tipoEtapaLabel}
+                    {etapa.estado === 'RECHAZADO' && (
+                      <Typography component="span" variant="caption" color="error.main" sx={{ ml: 1 }}>
+                        — Rechazada
+                      </Typography>
+                    )}
                   </Typography>
-                  {etapa.completado && (etapa.responsableNombre || etapa.fechaCompletado) && (
+                  {(etapa.estado === 'COMPLETADO' || etapa.completado) && (etapa.responsableNombre || etapa.fechaCompletado) && (
                     <Stack direction="row" spacing={0.75} mt={0.5} flexWrap="wrap" useFlexGap>
                       {etapa.responsableNombre && (
                         <Chip
                           size="small"
                           label={etapa.responsableNombre}
                           variant="outlined"
-                          color="success"
+                          color={etapa.estado === 'RECHAZADO' ? 'error' : 'success'}
                         />
                       )}
                       {etapa.fechaCompletado && (
@@ -258,11 +320,29 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                           size="small"
                           label={formatFecha(etapa.fechaCompletado)}
                           variant="outlined"
+                          color={etapa.estado === 'RECHAZADO' ? 'error' : undefined}
                         />
                       )}
                     </Stack>
                   )}
-                  {etapa.observaciones && (
+                  {etapa.motivoRechazo && (
+                    <Typography
+                      variant="body2"
+                      color="error.main"
+                      sx={{
+                        mt: 0.75,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        borderLeft: 3,
+                        borderColor: 'error.main',
+                        pl: 1,
+                        fontWeight: 500,
+                      }}
+                    >
+                      <strong>Motivo del rechazo:</strong> {etapa.motivoRechazo}
+                    </Typography>
+                  )}
+                  {etapa.observaciones && !etapa.motivoRechazo && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -271,7 +351,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         borderLeft: 2,
-                        borderColor: etapa.completado ? 'success.light' : 'divider',
+                        borderColor: etapa.estado === 'COMPLETADO' || etapa.completado ? 'success.light' : 'divider',
                         pl: 1,
                       }}
                     >
@@ -280,18 +360,42 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                   )}
                 </Box>
 
-                {!readOnly && (
+                {modoRechazo && (etapa.estado === 'COMPLETADO' || etapa.completado) ? (
+                  <Box display="flex" alignItems="flex-start" gap={1} sx={{ minWidth: 250 }}>
+                    <Checkbox
+                      checked={etapasRechazadas.has(etapa.tipoEtapa)}
+                      onChange={() => toggleEtapaRechazada(etapa.tipoEtapa)}
+                      disabled={rechazandoQC}
+                      size="small"
+                    />
+                    {etapasRechazadas.has(etapa.tipoEtapa) && (
+                      <TextField
+                        size="small"
+                        placeholder="Motivo del rechazo"
+                        value={etapasRechazadas.get(etapa.tipoEtapa) || ''}
+                        onChange={(e) => setMotivoRechazada(etapa.tipoEtapa, e.target.value)}
+                        multiline
+                        minRows={1}
+                        maxRows={2}
+                        disabled={rechazandoQC}
+                        fullWidth
+                        sx={{ maxWidth: 300 }}
+                      />
+                    )}
+                  </Box>
+                ) : !readOnly ? (
                   <Box display="flex" alignItems="center" gap={0.5}>
                     {isLoading ? (
                       <CircularProgress size={20} />
-                    ) : !etapa.completado ? (
+                    ) : !etapa.completado || etapa.estado === 'RECHAZADO' ? (
                       <Button
-                        variant="outlined"
+                        variant={etapa.estado === 'RECHAZADO' ? 'contained' : 'outlined'}
+                        color={etapa.estado === 'RECHAZADO' ? 'error' : 'primary'}
                         size="small"
                         disabled={anyLoading}
                         onClick={() => openCompletarDialog(etapa)}
                       >
-                        Completar
+                        {etapa.estado === 'RECHAZADO' ? 'Rehacer' : 'Completar'}
                       </Button>
                     ) : isUndoConfirm ? (
                       <Stack direction="row" spacing={0.5} alignItems="center">
@@ -333,13 +437,38 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                       </Tooltip>
                     )}
                   </Box>
-                )}
+                ) : null}
               </Paper>
             );
           })}
         </Stack>
 
-        {todasCompletas && (
+        {modoRechazo && etapasRechazadas.size > 0 ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Alert severity="warning">
+              {etapasRechazadas.size} etapa{etapasRechazadas.size > 1 ? 's' : ''} seleccionada{etapasRechazadas.size > 1 ? 's' : ''} para rechazar
+            </Alert>
+            {dialogError && <Alert severity="error">{dialogError}</Alert>}
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="outlined"
+                onClick={handleCancelRechazo}
+                disabled={rechazandoQC}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleSubmitRechazo}
+                disabled={rechazandoQC}
+                startIcon={rechazandoQC ? <CircularProgress size={16} color="inherit" /> : undefined}
+              >
+                Confirmar Rechazo
+              </Button>
+            </Stack>
+          </Box>
+        ) : todasCompletas && !modoRechazo ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Alert icon={<TaskAlt fontSize="inherit" />} severity="success">
               ¡Listo para control de calidad!
@@ -362,7 +491,7 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
               </Button>
             )}
           </Box>
-        )}
+        ) : null}
       </Stack>
 
       <Dialog

@@ -140,15 +140,18 @@ export interface EquipoFabricadoDTO {
 }
 
 export type TipoEtapaFabricacion = 'AISLACION' | 'CHAPA' | 'MOTOR' | 'VIDRIOS';
+export type EtapaFabricacionEstado = 'PENDIENTE' | 'COMPLETADO' | 'RECHAZADO';
 
 export interface EtapaFabricacionDTO {
   id: number;
   tipoEtapa: TipoEtapaFabricacion;
   tipoEtapaLabel: string;
   completado: boolean;
+  estado?: EtapaFabricacionEstado;
   responsableId?: number;
   responsableNombre?: string;
   observaciones?: string;
+  motivoRechazo?: string;
   fechaCompletado?: string;
 }
 

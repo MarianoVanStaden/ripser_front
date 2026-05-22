@@ -22,6 +22,10 @@ import type {
   PaginationParams,
 } from '../../types';
 
+export interface RechazarEtapasDTO {
+  etapas: Array<{ tipoEtapa: TipoEtapaFabricacion; motivo?: string }>;
+}
+
 
 export const equipoFabricadoApi = {
   // CRUD básico (paginated)
@@ -250,6 +254,29 @@ export const equipoFabricadoApi = {
     const response = await api.patch<EquipoFabricadoDTO>(
       `/api/equipos-fabricados/${equipoId}/rechazar-control-calidad`,
       { motivo }
+    );
+    return response.data;
+  },
+
+  rechazarEtapasEnControlCalidad: async (equipoId: number, etapas: Array<{ tipoEtapa: TipoEtapaFabricacion; motivo?: string }>) => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/rechazar-etapas-control-calidad`,
+      { etapas }
+    );
+    return response.data;
+  },
+
+  rechazarEtapasEnControlCalidadPorNumero: async (numeroHeladera: string, etapas: Array<{ tipoEtapa: TipoEtapaFabricacion; motivo?: string }>) => {
+    const equipoResponse = await api.get<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/numero/${numeroHeladera}`
+    );
+    const equipoId = equipoResponse.data.id;
+    if (!equipoId) {
+      throw new Error(`Equipo ${numeroHeladera} no tiene ID en la respuesta del backend`);
+    }
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/rechazar-etapas-control-calidad`,
+      { etapas }
     );
     return response.data;
   },
