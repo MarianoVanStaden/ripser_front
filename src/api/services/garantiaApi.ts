@@ -2,6 +2,8 @@ import api from '../api';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 // ==================== TYPES ====================
+export type TipoGarantia = 'DESPERFECTO_FABRICA' | 'DESPERFECTO_ELECTRICO';
+
 export interface GarantiaDTO {
   id: number;
   equipoFabricadoId: number;
@@ -11,9 +13,21 @@ export interface GarantiaDTO {
   fechaCompra: string; // LocalDate
   fechaVencimiento: string; // LocalDate
   estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
+  tipoGarantia?: TipoGarantia;
   observaciones?: string;
   reclamos?: any[];
 }
+
+// ==================== LABELS & CONSTANTS ====================
+export const tipoGarantiaLabel: Record<TipoGarantia, string> = {
+  DESPERFECTO_FABRICA: 'Desperfecto de Fábrica (1 año)',
+  DESPERFECTO_ELECTRICO: 'Desperfecto Eléctrico (6 meses)',
+};
+
+export const tipoGarantiaMonths: Record<TipoGarantia, number> = {
+  DESPERFECTO_FABRICA: 12,
+  DESPERFECTO_ELECTRICO: 6,
+};
 
 export interface GarantiaCreateDTO {
   equipoFabricadoId: number;

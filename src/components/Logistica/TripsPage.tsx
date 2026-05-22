@@ -70,6 +70,7 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { documentoApi } from '../../api/services/documentoApi';
 import { clienteApi } from '../../api/services/clienteApi';
+import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { EquipoFabricadoDTO } from '../../types';
 
 // Custom hook for responsive breakpoints
@@ -184,6 +185,7 @@ const TripsPage2: React.FC = () => {
   const [drivers, setDrivers] = useState<Empleado[]>([]);
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
+  const [ordenes, setOrdenes] = useState<any[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -250,12 +252,15 @@ const TripsPage2: React.FC = () => {
   };
   const [tripDeliveries, setTripDeliveries] = useState<DeliveryFormState[]>([]);
   const [newDelivery, setNewDelivery] = useState({
+    tipoEntrega: 'FACTURA' as 'FACTURA' | 'ORDEN_SERVICIO',
     direccionEntrega: '',
     fechaProgramada: '',
     observaciones: '',
     facturaId: '',
+    ordenServicioId: '',
   });
   const [selectedDeliveryFactura, setSelectedDeliveryFactura] = useState<DocumentoComercial | null>(null);
+  const [selectedDeliveryOrden, setSelectedDeliveryOrden] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -352,10 +357,18 @@ const TripsPage2: React.FC = () => {
         errors.push(`Facturas: ${errorMsg}`);
       }
 
+      let ordenesData: any[] = [];
+      try {
+        ordenesData = await ordenServicioApi.getByEstado('FINALIZADA');
+      } catch (err) {
+        const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
+        errors.push(`Órdenes de Servicio: ${errorMsg}`);
+      }
+
       try {
         const clientesResponse = await clienteApi.getAll({ page: 0, size: 1000 });
-        clientesData = Array.isArray(clientesResponse) 
-          ? clientesResponse 
+        clientesData = Array.isArray(clientesResponse)
+          ? clientesResponse
           : (clientesResponse as any).content || [];
       } catch (err) {
         const errorMsg = (err as Error & { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error)?.message || 'Error desconocido';
@@ -371,6 +384,7 @@ const TripsPage2: React.FC = () => {
       setDrivers(Array.isArray(employeesData) ? employeesData : []);
       setDeliveries(Array.isArray(deliveriesData) ? deliveriesData : []);
       setFacturas(Array.isArray(facturasData) ? facturasData : []);
+      setOrdenes(Array.isArray(ordenesData) ? ordenesData : []);
       setClientes(Array.isArray(clientesData) ? clientesData : []);
 
     } catch (err) {
@@ -658,17 +672,43 @@ const TripsPage2: React.FC = () => {
       return;
     }
 
-    setTripDeliveries([...tripDeliveries, {
+    if (newDelivery.tipoEntrega === 'FACTURA' && !newDelivery.facturaId) {
+      setError('Debe seleccionar una factura');
+      return;
+    }
+
+    if (newDelivery.tipoEntrega === 'ORDEN_SERVICIO' && !newDelivery.ordenServicioId) {
+      setError('Debe seleccionar una orden de servicio');
+      return;
+    }
+
+    const delivery: any = {
       direccionEntrega: newDelivery.direccionEntrega,
       fechaProgramada: newDelivery.fechaProgramada || formData.fechaViaje,
       observaciones: newDelivery.observaciones,
       estado: 'PENDIENTE',
-      facturaId: newDelivery.facturaId ? parseInt(newDelivery.facturaId) : undefined,
-      factura: selectedDeliveryFactura || undefined,
-    }]);
+    };
 
-    setNewDelivery({ direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '' });
+    if (newDelivery.tipoEntrega === 'FACTURA') {
+      delivery.facturaId = newDelivery.facturaId ? parseInt(newDelivery.facturaId) : undefined;
+      delivery.factura = selectedDeliveryFactura || undefined;
+    } else {
+      delivery.ordenServicioId = newDelivery.ordenServicioId ? parseInt(newDelivery.ordenServicioId) : undefined;
+      delivery.ordenServicio = selectedDeliveryOrden || undefined;
+    }
+
+    setTripDeliveries([...tripDeliveries, delivery]);
+
+    setNewDelivery({
+      tipoEntrega: 'FACTURA',
+      direccionEntrega: '',
+      fechaProgramada: '',
+      observaciones: '',
+      facturaId: '',
+      ordenServicioId: '',
+    });
     setSelectedDeliveryFactura(null);
+    setSelectedDeliveryOrden(null);
   };
 
   const handleRemoveDelivery = (index: number) => {
@@ -953,32 +993,99 @@ const TripsPage2: React.FC = () => {
 
             <Typography variant="subtitle2">Agregar nueva entrega</Typography>
 
-            <Autocomplete
-              options={facturasDisponibles}
-              getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
-              value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
-              onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Factura"
-                  size="medium"
-                  placeholder="Buscar factura..."
-                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
-                />
-              )}
-              noOptionsText="No hay facturas"
-            />
+            <ToggleButtonGroup
+              value={newDelivery.tipoEntrega}
+              exclusive
+              onChange={(_, value) => {
+                if (value) {
+                  setNewDelivery({
+                    ...newDelivery,
+                    tipoEntrega: value,
+                    facturaId: '',
+                    ordenServicioId: '',
+                  });
+                  setSelectedDeliveryFactura(null);
+                  setSelectedDeliveryOrden(null);
+                }
+              }}
+              fullWidth
+            >
+              <ToggleButton value="FACTURA" sx={{ flex: 1 }}>
+                Factura
+              </ToggleButton>
+              <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
+                Orden de Servicio
+              </ToggleButton>
+            </ToggleButtonGroup>
 
-            {selectedDeliveryFactura && (
-              <Alert severity="info" sx={{ py: 1 }}>
-                <Typography variant="caption" fontWeight="bold">
-                  {selectedDeliveryFactura.clienteNombre}
-                </Typography>
-                <Typography variant="caption" display="block">
-                  Total: ${selectedDeliveryFactura.total.toLocaleString()} | {selectedDeliveryFactura.detalles.length} items
-                </Typography>
-              </Alert>
+            {newDelivery.tipoEntrega === 'FACTURA' ? (
+              <>
+                <Autocomplete
+                  options={facturasDisponibles}
+                  getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
+                  value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
+                  onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Factura"
+                      size="medium"
+                      placeholder="Buscar factura..."
+                      InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                    />
+                  )}
+                  noOptionsText="No hay facturas"
+                />
+
+                {selectedDeliveryFactura && (
+                  <Alert severity="info" sx={{ py: 1 }}>
+                    <Typography variant="caption" fontWeight="bold">
+                      {selectedDeliveryFactura.clienteNombre}
+                    </Typography>
+                    <Typography variant="caption" display="block">
+                      Total: ${selectedDeliveryFactura.total.toLocaleString()} | {selectedDeliveryFactura.detalles.length} items
+                    </Typography>
+                  </Alert>
+                )}
+              </>
+            ) : (
+              <>
+                <Autocomplete
+                  options={ordenes.filter(o => !deliveries.some(d => (d as any).ordenServicioId === o.id))}
+                  getOptionLabel={(orden) => `${orden.numeroOrden} - ${orden.clienteNombre || 'Sin cliente'}`}
+                  value={ordenes.find(o => o.id.toString() === newDelivery.ordenServicioId) || null}
+                  onChange={(_, value) => {
+                    if (value) {
+                      setNewDelivery({
+                        ...newDelivery,
+                        ordenServicioId: value.id.toString(),
+                      });
+                      setSelectedDeliveryOrden(value);
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Orden de Servicio"
+                      size="medium"
+                      placeholder="Buscar orden..."
+                      InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                    />
+                  )}
+                  noOptionsText="No hay órdenes FINALIZADA disponibles"
+                />
+
+                {selectedDeliveryOrden && (
+                  <Alert severity="info" sx={{ py: 1 }}>
+                    <Typography variant="caption" fontWeight="bold">
+                      {selectedDeliveryOrden.clienteNombre}
+                    </Typography>
+                    <Typography variant="caption" display="block">
+                      {selectedDeliveryOrden.numeroOrden}
+                    </Typography>
+                  </Alert>
+                )}
+              </>
             )}
 
             <TextField

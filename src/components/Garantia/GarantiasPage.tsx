@@ -14,7 +14,7 @@ import {
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import { garantiaApi, type GarantiaDTO } from '../../api/services/garantiaApi';
+import { garantiaApi, type GarantiaDTO, tipoGarantiaLabel } from '../../api/services/garantiaApi';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import { documentoApi } from '../../api/documentoApi';
 import GarantiaFormDialog from './GarantiaFormDialog';
@@ -389,13 +389,14 @@ const GarantiasPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 120 }} align="center"><strong>Fecha Compra</strong></TableCell>
                   <TableCell sx={{ minWidth: 140 }} align="center"><strong>Fecha Vencimiento</strong></TableCell>
                   <TableCell sx={{ minWidth: 100 }} align="center"><strong>Estado</strong></TableCell>
+                  <TableCell sx={{ minWidth: 150 }} align="center"><strong>Tipo</strong></TableCell>
                   <TableCell sx={{ minWidth: 120 }} align="center"><strong>Acciones</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredGarantias.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={8} align="center">
                       <Typography variant="body2" color="textSecondary" py={4}>
                         No se encontraron garantías
                       </Typography>
@@ -432,12 +433,17 @@ const GarantiasPage: React.FC = () => {
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Chip 
-                      label={garantia.estado} 
+                    <Chip
+                      label={garantia.estado}
                       color={getStatusColor(garantia.estado)}
                       size="small"
                       sx={{ fontWeight: 600, minWidth: 90 }}
                     />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Typography variant="body2">
+                      {garantia.tipoGarantia ? tipoGarantiaLabel[garantia.tipoGarantia] : '-'}
+                    </Typography>
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">

@@ -13,6 +13,8 @@ export interface ReceptorData {
 export interface DeliveryFormData {
   viajeId: string;
   ventaId: string;
+  tipoEntrega?: 'FACTURA' | 'ORDEN_SERVICIO';
+  ordenServicioId?: string;
   direccionEntrega: string;
   fechaEntrega: string;
   estado: EstadoEntrega;

@@ -1,7 +1,7 @@
 // FRONT-003: extracted from DeliveriesPage.tsx — par mobile (BottomSheet)
 // + desktop (SwipeableDrawer) para crear/editar una entrega.  El padre
 // maneja persistencia y mantiene el form state.
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Autocomplete,
   Box,
@@ -15,6 +15,8 @@ import {
   Stack,
   SwipeableDrawer,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
@@ -29,6 +31,13 @@ import type {
 } from '../../../../types';
 import type { DeliveryFormData } from '../types';
 
+interface OrdenServicio {
+  id: number;
+  numeroOrden: string;
+  clienteNombre?: string;
+  estado?: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -38,6 +47,7 @@ interface Props {
   setFormData: (data: DeliveryFormData) => void;
   facturas: DocumentoComercial[];
   trips: Viaje[];
+  ordenes?: OrdenServicio[];
   /** Currently unused in the form but kept in the props bag for future
    *  features (the orchestrator already loads clients for other views). */
   clients?: Cliente[];
@@ -52,10 +62,12 @@ const DeliveryFormDialog: React.FC<Props> = ({
   setFormData,
   facturas,
   trips,
+  ordenes = [],
 }) => {
   const { isMobile, isTablet } = useResponsive();
   const title = editing ? 'Editar Entrega' : 'Nueva Entrega';
   const submitLabel = editing ? 'Actualizar' : 'Crear';
+  const tipoEntrega = formData.tipoEntrega || 'FACTURA';
 
   if (isMobile) {
     return (
@@ -75,24 +87,68 @@ const DeliveryFormDialog: React.FC<Props> = ({
         }
       >
         <Stack spacing={2.5}>
-          <Autocomplete
-            options={facturas}
-            getOptionLabel={(f) =>
-              `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`
-            }
-            value={facturas.find((f) => f.id.toString() === formData.ventaId) || null}
-            onChange={(_, value) =>
-              setFormData({ ...formData, ventaId: value?.id.toString() || '' })
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Factura"
-                size="medium"
-                InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
-              />
-            )}
-          />
+          <ToggleButtonGroup
+            value={tipoEntrega}
+            exclusive
+            onChange={(_, value) => {
+              if (value) {
+                setFormData({
+                  ...formData,
+                  tipoEntrega: value,
+                  ventaId: '',
+                  ordenServicioId: '',
+                });
+              }
+            }}
+            fullWidth
+          >
+            <ToggleButton value="FACTURA" sx={{ flex: 1 }}>
+              Factura
+            </ToggleButton>
+            <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
+              Orden de Servicio
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          {tipoEntrega === 'FACTURA' ? (
+            <Autocomplete
+              options={facturas}
+              getOptionLabel={(f) =>
+                `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`
+              }
+              value={facturas.find((f) => f.id.toString() === formData.ventaId) || null}
+              onChange={(_, value) =>
+                setFormData({ ...formData, ventaId: value?.id.toString() || '' })
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Factura"
+                  size="medium"
+                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                />
+              )}
+            />
+          ) : (
+            <Autocomplete
+              options={ordenes}
+              getOptionLabel={(o) =>
+                `${o.numeroOrden} - ${o.clienteNombre || 'Sin cliente'}`
+              }
+              value={ordenes.find((o) => o.id.toString() === formData.ordenServicioId) || null}
+              onChange={(_, value) =>
+                setFormData({ ...formData, ordenServicioId: value?.id.toString() || '' })
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Orden de Servicio"
+                  size="medium"
+                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                />
+              )}
+            />
+          )}
 
           <Autocomplete
             options={trips}
@@ -163,17 +219,54 @@ const DeliveryFormDialog: React.FC<Props> = ({
         </Box>
 
         <Stack spacing={2.5}>
-          <Autocomplete
-            options={facturas}
-            getOptionLabel={(f) =>
-              `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`
-            }
-            value={facturas.find((f) => f.id.toString() === formData.ventaId) || null}
-            onChange={(_, value) =>
-              setFormData({ ...formData, ventaId: value?.id.toString() || '' })
-            }
-            renderInput={(params) => <TextField {...params} label="Factura" />}
-          />
+          <ToggleButtonGroup
+            value={tipoEntrega}
+            exclusive
+            onChange={(_, value) => {
+              if (value) {
+                setFormData({
+                  ...formData,
+                  tipoEntrega: value,
+                  ventaId: '',
+                  ordenServicioId: '',
+                });
+              }
+            }}
+            fullWidth
+          >
+            <ToggleButton value="FACTURA" sx={{ flex: 1 }}>
+              Factura
+            </ToggleButton>
+            <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
+              Orden de Servicio
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          {tipoEntrega === 'FACTURA' ? (
+            <Autocomplete
+              options={facturas}
+              getOptionLabel={(f) =>
+                `${f.numeroDocumento || `FAC-${f.id}`} - ${f.clienteNombre || 'Sin cliente'}`
+              }
+              value={facturas.find((f) => f.id.toString() === formData.ventaId) || null}
+              onChange={(_, value) =>
+                setFormData({ ...formData, ventaId: value?.id.toString() || '' })
+              }
+              renderInput={(params) => <TextField {...params} label="Factura" />}
+            />
+          ) : (
+            <Autocomplete
+              options={ordenes}
+              getOptionLabel={(o) =>
+                `${o.numeroOrden} - ${o.clienteNombre || 'Sin cliente'}`
+              }
+              value={ordenes.find((o) => o.id.toString() === formData.ordenServicioId) || null}
+              onChange={(_, value) =>
+                setFormData({ ...formData, ordenServicioId: value?.id.toString() || '' })
+              }
+              renderInput={(params) => <TextField {...params} label="Orden de Servicio" />}
+            />
+          )}
 
           <Autocomplete
             options={trips}

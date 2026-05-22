@@ -11,10 +11,10 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import { type GarantiaDTO } from '../../api/services/garantiaApi';
-import { 
-  reclamoGarantiaApi, 
-  type ReclamoGarantiaDTO 
+import { type GarantiaDTO, tipoGarantiaLabel, tipoGarantiaMonths } from '../../api/services/garantiaApi';
+import {
+  reclamoGarantiaApi,
+  type ReclamoGarantiaDTO
 } from '../../api/services/reclamoGarantiaApi';
 import ReclamoFormDialog from './ReclamoFormDialog';
 
@@ -80,7 +80,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
 
   const diasRestantes = dayjs(garantia.fechaVencimiento).diff(dayjs(), 'day');
   const diasTranscurridos = dayjs().diff(dayjs(garantia.fechaCompra), 'day');
-  const diasTotales = dayjs(garantia.fechaVencimiento).diff(dayjs(garantia.fechaCompra), 'day');
+  const diasTotales = (tipoGarantiaMonths[garantia.tipoGarantia ?? 'DESPERFECTO_FABRICA'] ?? 12) * 30;
   const porcentajeUsado = Math.min(100, Math.max(0, (diasTranscurridos / diasTotales) * 100));
 
   return (
@@ -133,14 +133,27 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
                       Estado
                     </Typography>
                     <Box mt={0.5}>
-                      <Chip 
-                        label={garantia.estado} 
+                      <Chip
+                        label={garantia.estado}
                         color={getEstadoColor(garantia.estado)}
                         sx={{ fontWeight: 600 }}
                       />
                     </Box>
                   </Box>
-                  
+
+                  <Box>
+                    <Typography variant="caption" color="textSecondary">
+                      Tipo
+                    </Typography>
+                    <Box mt={0.5}>
+                      <Chip
+                        label={garantia.tipoGarantia ? tipoGarantiaLabel[garantia.tipoGarantia] : '-'}
+                        variant="outlined"
+                        sx={{ fontWeight: 500 }}
+                      />
+                    </Box>
+                  </Box>
+
                   <Box>
                     <Typography variant="caption" color="textSecondary">
                       Modelo de Equipo
