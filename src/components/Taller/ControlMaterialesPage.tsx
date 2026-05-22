@@ -95,13 +95,11 @@ const ControlMaterialesPage: React.FC = () => {
 
   const loadOrdenes = async () => {
     try {
-      const data = await ordenServicioApi.getAll();
-      // Filtrar solo órdenes que no estén finalizadas o canceladas
-      const ordenesArray = Array.isArray(data) ? data : (data?.content || []);
-      const ordenesActivas = ordenesArray.filter(
-        (o: OrdenServicio) => o.estado === 'PENDIENTE' || o.estado === 'EN_PROCESO'
-      );
-      setOrdenes(ordenesActivas);
+      const [pendientes, enProceso] = await Promise.all([
+        ordenServicioApi.getByEstado('PENDIENTE'),
+        ordenServicioApi.getByEstado('EN_PROCESO')
+      ]);
+      setOrdenes([...pendientes, ...enProceso]);
     } catch (err) {
       console.error('Error loading ordenes:', err);
       setOrdenes([]);
