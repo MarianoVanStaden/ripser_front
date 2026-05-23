@@ -448,10 +448,10 @@ const GarantiasPage: React.FC = () => {
                   </TableCell>
                   <TableCell align="center">
                     <Stack spacing={0.5}>
-                      {getTiposGarantia(garantia.tiposGarantia).map((tipo: any) => (
+                      {getTiposGarantia(garantia.tiposGarantia).map((tipo) => (
                         <Chip
                           key={tipo}
-                          label={tipoGarantiaLabel[tipo] || tipo}
+                          label={tipoGarantiaLabel[tipo as keyof typeof tipoGarantiaLabel] || tipo}
                           size="small"
                           variant="outlined"
                           sx={{ height: 24, fontSize: '0.75rem' }}

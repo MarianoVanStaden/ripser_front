@@ -224,9 +224,6 @@ const FacturacionPage = () => {
     stockDisponible: number;
   } | null>(null);
 
-  // Dialog para agregar equipos desde orden de servicio
-  const [preAsignadas, setPreAsignadas] = useState<{ [cartIndex: number]: number }>({});
-
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
   const pendingDeudaRef = useRef<(() => void) | null>(null);

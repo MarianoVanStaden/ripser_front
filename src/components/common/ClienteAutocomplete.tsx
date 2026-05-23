@@ -48,9 +48,30 @@ const secondaryParts = (cliente: Cliente): string[] => {
     if (nombre) parts.push(nombre);
   }
   if (cliente.cuit) parts.push(`CUIT ${cliente.cuit}`);
+  if (cliente.telefono) parts.push(`Tel: ${cliente.telefono}`);
   if (cliente.email) parts.push(cliente.email);
-  if (cliente.telefono) parts.push(cliente.telefono);
   return parts;
+};
+
+// Filtro local para mejorar precisión de búsqueda por nombre y teléfono
+const matchesSearchTerm = (cliente: Cliente, term: string): boolean => {
+  if (!term) return true;
+  const lowerTerm = term.toLowerCase();
+
+  // Búsqueda en nombre
+  if (cliente.nombre?.toLowerCase().includes(lowerTerm)) return true;
+  // Búsqueda en apellido
+  if (cliente.apellido?.toLowerCase().includes(lowerTerm)) return true;
+  // Búsqueda en razón social
+  if (cliente.razonSocial?.toLowerCase().includes(lowerTerm)) return true;
+  // Búsqueda en CUIT
+  if (cliente.cuit?.toLowerCase().includes(lowerTerm)) return true;
+  // Búsqueda en teléfono (acepta dígitos sueltos)
+  if (cliente.telefono?.replace(/\D/g, '').includes(lowerTerm.replace(/\D/g, ''))) return true;
+  // Búsqueda en email
+  if (cliente.email?.toLowerCase().includes(lowerTerm)) return true;
+
+  return false;
 };
 
 export interface ClienteAutocompleteProps {
@@ -125,6 +146,10 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
         if (reqId !== requestIdRef.current) return;
         let list = Array.isArray(res?.content) ? res.content : [];
         if (onlyActivos) list = list.filter(c => c.estado === 'ACTIVO');
+        // Aplicar filtro local adicional para mejorar precisión de búsqueda
+        if (term.length > 0) {
+          list = list.filter(c => matchesSearchTerm(c, term));
+        }
         setOptions(list);
       } catch (err) {
         const e = err as { name?: string; code?: string };

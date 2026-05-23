@@ -1268,7 +1268,7 @@ const PresupuestosPage: React.FC = () => {
                     }}
                     disabled={readOnly || !!editingPresupuesto}
                     label="Cliente"
-                    placeholder="Escribí nombre, razón social o CUIT…"
+                    placeholder="Escribí nombre, razón social, teléfono o CUIT…"
                     required
                     error={!formData.clienteId && hasUnsavedChanges}
                     helperText={!formData.clienteId && hasUnsavedChanges ? 'Seleccioná un cliente' : ' '}
@@ -1299,20 +1299,30 @@ const PresupuestosPage: React.FC = () => {
                     }}
                     disabled={readOnly || !!editingPresupuesto}
                     renderOption={({ key, ...props }, option) => (
-                      <Box component="li" key={key as React.Key} {...props}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                          <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                      <Box component="li" key={key as React.Key} {...props} sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, width: '100%' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 500 }}>
                             {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
                           </Typography>
                           <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
                         </Box>
+                        {option.telefono && (
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 0 }}>
+                            Tel: {option.telefono}
+                          </Typography>
+                        )}
+                        {option.email && (
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 0 }}>
+                            {option.email}
+                          </Typography>
+                        )}
                       </Box>
                     )}
                     renderInput={(params) => (
                       <TextField
                         {...params}
                         label="Lead"
-                        placeholder="Escribí nombre o apellido…"
+                        placeholder="Escribí nombre, teléfono o email…"
                         required
                         error={!formData.leadId && hasUnsavedChanges}
                         helperText={!formData.leadId && hasUnsavedChanges ? 'Seleccioná un lead' : ' '}

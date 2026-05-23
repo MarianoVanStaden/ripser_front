@@ -17,6 +17,23 @@ export interface UseLeadSearchResult {
   setInputValue: (value: string) => void;
 }
 
+// Filtro local para mejorar precisión de búsqueda por nombre y teléfono
+const matchesSearchTerm = (lead: LeadDTO, term: string): boolean => {
+  if (!term) return true;
+  const lowerTerm = term.toLowerCase();
+
+  // Búsqueda en nombre
+  if (lead.nombre?.toLowerCase().includes(lowerTerm)) return true;
+  // Búsqueda en apellido
+  if (lead.apellido?.toLowerCase().includes(lowerTerm)) return true;
+  // Búsqueda en teléfono (acepta dígitos sueltos)
+  if (lead.telefono?.replace(/\D/g, '').includes(lowerTerm.replace(/\D/g, ''))) return true;
+  // Búsqueda en email
+  if (lead.email?.toLowerCase().includes(lowerTerm)) return true;
+
+  return false;
+};
+
 /**
  * Typeahead server-side de leads. Espejo de useClienteSearch.
  *
@@ -24,6 +41,7 @@ export interface UseLeadSearchResult {
  * - Al montar (input vacío) trae los `size` leads más recientes para que el
  *   dropdown tenga contenido aunque el usuario no haya tipeado.
  * - A partir de 2 caracteres dispara búsqueda server-side (LIKE en nombre/teléfono).
+ * - Aplica filtrado local adicional para mejorar precisión.
  * - Cancela requests anteriores con AbortController para evitar respuestas
  *   fuera de orden.
  */
@@ -49,6 +67,11 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
         let content = res.content;
         if (excludeEstados?.length) {
           content = content.filter((l) => !excludeEstados.includes(l.estadoLead));
+        }
+        // Aplicar filtro local adicional para mejorar precisión de búsqueda
+        const term = debouncedInput.trim();
+        if (term.length >= 2) {
+          content = content.filter((l) => matchesSearchTerm(l, term));
         }
         setItems(content);
       })

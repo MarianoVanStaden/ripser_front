@@ -73,7 +73,6 @@ import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { documentoApi } from '../../api/services/documentoApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
-import type { OrdenServicio } from '../../types';
 import type { EquipoFabricadoDTO } from '../../types';
 
 // Custom hook for responsive breakpoints

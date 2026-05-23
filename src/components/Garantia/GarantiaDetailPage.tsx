@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Divider, Chip, Stack, Button,
   Grid, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, IconButton, Alert, CircularProgress
+  TableRow, IconButton, CircularProgress
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -407,7 +407,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
           loadReclamos();
           setReclamoFormOpen(false);
         }}
-        editingReclamo={selectedReclamo}
+        reclamo={selectedReclamo}
       />
     </Box>
   );
