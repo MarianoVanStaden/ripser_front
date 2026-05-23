@@ -197,7 +197,7 @@ const TripsPage2: React.FC = () => {
   const [tripToDelete, setTripToDelete] = useState<Viaje | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
-  const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, EquipoFabricadoDTO>>({});
+  const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, { equipos: EquipoFabricadoDTO[] }>>({});
 
   // Wizard state for mobile
   const [activeStep, setActiveStep] = useState(0);
