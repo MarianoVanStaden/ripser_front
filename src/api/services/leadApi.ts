@@ -60,9 +60,10 @@ export const leadApi = {
   // Listar leads con filtros opcionales (paginated). El backend devuelve
   // LeadListItemDTO (proyección reducida con próximo recordatorio embebido).
   // Para el detalle completo, usar getById.
-  getAll: async (pagination: PaginationParams = {}, params?: LeadFilterParams): Promise<PageResponse<LeadListItemDTO>> => {
+  getAll: async (pagination: PaginationParams = {}, params?: LeadFilterParams, options?: { signal?: AbortSignal }): Promise<PageResponse<LeadListItemDTO>> => {
     const response = await api.get<PageResponse<LeadListItemDTO>>(BASE_PATH, {
       params: buildParams(pagination, params),
+      signal: options?.signal,
     });
     return response.data;
   },

@@ -59,11 +59,14 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
     abortRef.current = new AbortController();
     setLoading(true);
 
-    leadApi.getAll(
-      { page: 0, size, sort: 'fechaPrimerContacto,desc' },
-      debouncedInput.trim().length >= 2 ? { busqueda: debouncedInput.trim() } : {}
-    )
-      .then((res) => {
+    const loadLeads = async () => {
+      try {
+        const res = await leadApi.getAll(
+          { page: 0, size, sort: 'fechaPrimerContacto,desc' },
+          debouncedInput.trim().length >= 2 ? { busqueda: debouncedInput.trim() } : {},
+          { signal: abortRef.current!.signal }
+        );
+
         let content = res.content;
         if (excludeEstados?.length) {
           content = content.filter((l) => !excludeEstados.includes(l.estadoLead));
@@ -74,15 +77,20 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
           content = content.filter((l) => matchesSearchTerm(l, term));
         }
         setItems(content);
-      })
-      .catch((err) => {
+      } catch (err) {
         const code = (err as { code?: string }).code;
         if (code === 'ERR_CANCELED') return;
         console.error('useLeadSearch error:', err);
-      })
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedInput, size]);
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLeads();
+
+    return () => abortRef.current?.abort();
+  }, [debouncedInput, size, excludeEstados]);
 
   return { options: items, loading, inputValue, setInputValue };
 }

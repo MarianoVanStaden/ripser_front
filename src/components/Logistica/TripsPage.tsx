@@ -63,7 +63,7 @@ import {
   InfoOutlined as InfoOutlinedIcon,
   WarningAmber as WarningAmberIcon,
 } from '@mui/icons-material';
-import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente } from '../../types';
+import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente, OrdenServicio } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { viajeApi } from '../../api/services/viajeApi';
@@ -187,7 +187,7 @@ const TripsPage2: React.FC = () => {
   const [drivers, setDrivers] = useState<Empleado[]>([]);
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [facturas, setFacturas] = useState<DocumentoComercial[]>([]);
-  const [ordenes, setOrdenes] = useState<any[]>([]);
+  const [ordenes, setOrdenes] = useState<OrdenServicio[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +197,7 @@ const TripsPage2: React.FC = () => {
   const [tripToDelete, setTripToDelete] = useState<Viaje | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
-  const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, any>>({});
+  const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, EquipoFabricadoDTO>>({});
 
   // Wizard state for mobile
   const [activeStep, setActiveStep] = useState(0);
@@ -647,9 +647,9 @@ const TripsPage2: React.FC = () => {
           }
 
           await entregaViajeApi.create(deliveryPayload);
-        } catch (deliveryError: any) {
-          const msg = deliveryError?.response?.data?.message || deliveryError?.message || 'Error desconocido';
-          const label = delivery.factura?.numeroDocumento ?? `OS-${delivery.ordenServicioId}` ?? 'Entrega sin ref';
+        } catch (deliveryError: unknown) {
+          const msg = (deliveryError as any)?.response?.data?.message || (deliveryError as any)?.message || 'Error desconocido';
+          const label = delivery.factura?.numeroDocumento || `OS-${delivery.ordenServicioId || 'sin-ref'}`;
           entregaErrors.push(`${label}: ${msg}`);
         }
       }
