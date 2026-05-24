@@ -976,7 +976,6 @@ const NotasPedidoPage: React.FC = () => {
   const [billingForm, setBillingForm] = useState<BillingForm>({
     cantidadCuotas: 1,
     tipoFinanciacion: 'MENSUAL',
-    primerVencimiento: '',
     entregarInicial: false,
     usePorcentaje: true,
     porcentajeEntregaInicial: 0,
@@ -996,7 +995,6 @@ const NotasPedidoPage: React.FC = () => {
       setBillingForm({
         cantidadCuotas: cuotas,
         tipoFinanciacion: 'MENSUAL',
-        primerVencimiento: '',
         entregarInicial: true,
         usePorcentaje: true,
         porcentajeEntregaInicial: 40,
@@ -1045,7 +1043,6 @@ const NotasPedidoPage: React.FC = () => {
       baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
       baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
       baseFacturaPayload.tasaInteres = extraData.tasaInteres ?? 0;
-      if (extraData.primerVencimiento) baseFacturaPayload.primerVencimiento = extraData.primerVencimiento;
       if (extraData.entregarInicial) {
         if (extraData.usePorcentaje) {
           baseFacturaPayload.porcentajeEntregaInicial = extraData.porcentajeEntregaInicial;

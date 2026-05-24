@@ -41,7 +41,6 @@ export interface EditNotaForm {
 export interface BillingForm {
   cantidadCuotas: number;
   tipoFinanciacion: string;
-  primerVencimiento: string;
   entregarInicial: boolean;
   usePorcentaje: boolean;
   porcentajeEntregaInicial: number;

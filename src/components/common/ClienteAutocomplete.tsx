@@ -135,9 +135,9 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
     const run = async () => {
       try {
         const res = term.length > 0
-          ? await clienteApi.searchByQuery(term, pageSize, controller.signal)
+          ? await clienteApi.searchByQuery(term, Math.max(pageSize, 100), controller.signal)
           : await clienteApi.getAll(
-              { page: 0, size: pageSize, sort: 'fechaActualizacion,desc' },
+              { page: 0, size: Math.max(pageSize, 100), sort: 'fechaActualizacion,desc' },
               {
                 ...(sucursalId != null ? { sucursalId } : {}),
                 ...(onlyActivos ? { estado: 'ACTIVO' as EstadoCliente } : {}),
@@ -146,10 +146,8 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
         if (reqId !== requestIdRef.current) return;
         let list = Array.isArray(res?.content) ? res.content : [];
         if (onlyActivos) list = list.filter(c => c.estado === 'ACTIVO');
-        // Aplicar filtro local adicional para mejorar precisión de búsqueda
-        if (term.length > 0) {
-          list = list.filter(c => matchesSearchTerm(c, term));
-        }
+        // Aplicar filtro local siempre para mejorar precisión de búsqueda (nombre, apellido, razón social, CUIT, teléfono, email)
+        list = list.filter(c => matchesSearchTerm(c, term));
         setOptions(list);
       } catch (err) {
         const e = err as { name?: string; code?: string };

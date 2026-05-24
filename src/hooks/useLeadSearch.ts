@@ -61,9 +61,10 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
 
     const loadLeads = async () => {
       try {
+        const term = debouncedInput.trim();
         const res = await leadApi.getAll(
           { page: 0, size, sort: 'fechaPrimerContacto,desc' },
-          debouncedInput.trim().length >= 2 ? { busqueda: debouncedInput.trim() } : {},
+          term.length > 0 ? { busqueda: term } : {},
           { signal: abortRef.current!.signal }
         );
 
@@ -71,11 +72,8 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
         if (excludeEstados?.length) {
           content = content.filter((l) => !excludeEstados.includes(l.estadoLead));
         }
-        // Aplicar filtro local adicional para mejorar precisión de búsqueda
-        const term = debouncedInput.trim();
-        if (term.length >= 2) {
-          content = content.filter((l) => matchesSearchTerm(l, term));
-        }
+        // Aplicar filtro local siempre para mejorar precisión de búsqueda
+        content = content.filter((l) => matchesSearchTerm(l, term));
         setItems(content);
       } catch (err) {
         const code = (err as { code?: string }).code;

@@ -101,7 +101,6 @@ const FacturacionPage = () => {
   const [cajaContadoRef, setCajaContadoRef] = useState<CajaRef | null>(null);
   const [cantidadCuotas, setCantidadCuotas] = useState<number | null>(null);
   const [tipoFinanciacion, setTipoFinanciacion] = useState<string>('MENSUAL');
-  const [primerVencimiento, setPrimerVencimiento] = useState<string>('');
   const [dueDate, setDueDate] = useState(dayjs().add(30, 'days').format('YYYY-MM-DD'));
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -126,7 +125,6 @@ const FacturacionPage = () => {
   const [notaCart, setNotaCart] = useState<NotaCartItem[]>([]);
   const [notaCantidadCuotas, setNotaCantidadCuotas] = useState<number | null>(null);
   const [notaTipoFinanciacion, setNotaTipoFinanciacion] = useState<string>('MENSUAL');
-  const [notaPrimerVencimiento, setNotaPrimerVencimiento] = useState<string>('');
 
   // Financiación propia (manual invoice)
   const [manualTasaInteres, setManualTasaInteres] = useState<number>(0);
@@ -286,7 +284,6 @@ const FacturacionPage = () => {
   const [billingForm, setBillingForm] = useState({
     cantidadCuotas: 1,
     tipoFinanciacion: 'MENSUAL',
-    primerVencimiento: '',
     entregarInicial: true,
     usePorcentaje: true,
     porcentajeEntregaInicial: 40,
@@ -540,7 +537,6 @@ const FacturacionPage = () => {
     setPaymentMethod('EFECTIVO');
     setCantidadCuotas(null);
     setTipoFinanciacion('MENSUAL');
-    setPrimerVencimiento('');
     setManualTasaInteres(0);
     setEntregarInicial(false);
     setUsePorcentaje(true);
@@ -916,7 +912,6 @@ const FacturacionPage = () => {
         cantidadCuotas: fin.cantidadCuotas,
         tipoFinanciacion: fin.tipoFinanciacion,
         tasaInteres: tasaInteresManual,
-        ...(fin.primerVencimiento && { primerVencimiento: fin.primerVencimiento }),
         ...resolveEntregaFields(paymentMethod, fin.entregarInicial, fin.usePorcentaje, finPorcentajeEntrega, finMontoFijoEntrega),
       }),
       ...buildCajaPayload(paymentMethod, cajaContadoRef),
@@ -1069,7 +1064,6 @@ const FacturacionPage = () => {
         tipoFinanciacion: opcionSeleccionada
           ? deriveTipoFinanciacion(opcionSeleccionada.nombre, opcionSeleccionada.metodoPago)
           : (tipoFinanciacion || 'MENSUAL'),
-        primerVencimiento: primerVencimiento || '',
         entregarInicial: true,
         usePorcentaje: usePorcentaje,
         porcentajeEntregaInicial: porcentajeEntrega ?? 40,
@@ -1212,7 +1206,6 @@ const FacturacionPage = () => {
         ...(cuotasParaEnviar != null && { cantidadCuotas: cuotasParaEnviar }),
         tipoFinanciacion: notaTipoFinanciacion,
         tasaInteres: tasaInteresParaEnviar,
-        ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
         ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
         ...buildCajaPayload(selectedNotaPedido?.metodoPago ?? '', cajaContadoRef),
       });
@@ -1242,7 +1235,6 @@ const FacturacionPage = () => {
         const capturedMetodoPago = selectedNotaPedido?.metodoPago ?? '';
         const capturedCuotas = cuotasParaEnviar;
         const capturedTipoFin = notaTipoFinanciacion;
-        const capturedVencimiento = notaPrimerVencimiento;
         const capturedEntregaInicial = notaEntregaInicial;
         const capturedUsePorcentaje = notaUsePorcentaje;
         const capturedPorcentajeEntrega = notaPorcentajeEntrega;
@@ -1260,7 +1252,6 @@ const FacturacionPage = () => {
               ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
               tipoFinanciacion: capturedTipoFin,
               tasaInteres: capturedTasaInteres,
-              ...(capturedVencimiento && { primerVencimiento: capturedVencimiento }),
               ...resolveEntregaFields(capturedMetodoPago, capturedEntregaInicial, capturedUsePorcentaje, capturedPorcentajeEntrega, capturedMontoFijoEntrega),
               ...buildCajaPayload(capturedMetodoPago, cajaContadoRef),
             });
@@ -1339,7 +1330,6 @@ const FacturacionPage = () => {
     if (billingMode === 'manual') {
       setCantidadCuotas(values.cantidadCuotas);
       setTipoFinanciacion(values.tipoFinanciacion);
-      setPrimerVencimiento(values.primerVencimiento);
       setEntregarInicial(values.entregarInicial);
       setUsePorcentaje(values.usePorcentaje);
       setPorcentajeEntrega(values.usePorcentaje ? values.porcentajeEntregaInicial : null);
@@ -1350,7 +1340,6 @@ const FacturacionPage = () => {
     } else {
       setNotaCantidadCuotas(values.cantidadCuotas);
       setNotaTipoFinanciacion(values.tipoFinanciacion);
-      setNotaPrimerVencimiento(values.primerVencimiento);
       setNotaEntregaInicial(values.entregarInicial);
       setNotaUsePorcentaje(values.usePorcentaje);
       setNotaPorcentajeEntrega(values.usePorcentaje ? values.porcentajeEntregaInicial : null);
@@ -1436,7 +1425,6 @@ const FacturacionPage = () => {
     setOpcionesFinanciamiento([]);
     setNotaCantidadCuotas(null);
     setNotaTipoFinanciacion('MENSUAL');
-    setNotaPrimerVencimiento('');
     setNotaEntregaInicial(false);
     setNotaUsePorcentaje(true);
     setNotaPorcentajeEntrega(null);
@@ -1472,7 +1460,6 @@ const FacturacionPage = () => {
       setBillingForm({
         cantidadCuotas: cuotasPrefill,
         tipoFinanciacion: notaTipoFinanciacion || 'MENSUAL',
-        primerVencimiento: notaPrimerVencimiento || '',
         entregarInicial: true,
         usePorcentaje: notaUsePorcentaje,
         porcentajeEntregaInicial: notaPorcentajeEntrega ?? 40,
@@ -1534,7 +1521,6 @@ const FacturacionPage = () => {
           ...(notaCantidadCuotas != null && { cantidadCuotas: notaCantidadCuotas }),
           tipoFinanciacion: notaTipoFinanciacion,
           tasaInteres: notaTasaInteres,
-          ...(notaPrimerVencimiento && { primerVencimiento: notaPrimerVencimiento }),
           ...resolveEntregaFields(selectedNotaPedido?.metodoPago ?? '', notaEntregaInicial, notaUsePorcentaje, notaPorcentajeEntrega, notaMontoFijoEntrega),
           ...buildCajaPayload(selectedNotaPedido?.metodoPago ?? '', cajaContadoRef),
         });

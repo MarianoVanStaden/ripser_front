@@ -1284,7 +1284,6 @@ const PresupuestosPage: React.FC = () => {
                     value={leads.find(l => l.id != null && l.id.toString() === formData.leadId) || null}
                     inputValue={leadSearch.inputValue}
                     onInputChange={(_, value) => leadSearch.setInputValue(value)}
-                    // Backend ya filtra por busqueda; deshabilitamos filtrado client-side de MUI.
                     filterOptions={(opts) => opts}
                     loading={leadSearch.loading}
                     onChange={(_, newValue) => {
@@ -1333,10 +1332,23 @@ const PresupuestosPage: React.FC = () => {
                               <SearchIcon color="action" fontSize="small" />
                             </InputAdornment>
                           ),
+                          endAdornment: (
+                            <>
+                              {leadSearch.loading ? <CircularProgress color="inherit" size={16} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
                         }}
                       />
                     )}
-                    noOptionsText="No se encontraron leads"
+                    noOptionsText={
+                      leadSearch.inputValue.trim().length === 0
+                        ? 'Empezá a escribir para buscar leads…'
+                        : leadSearch.loading
+                          ? 'Buscando…'
+                          : 'Sin resultados'
+                    }
+                    loadingText="Buscando leads…"
                   />
                 )}
               </Box>

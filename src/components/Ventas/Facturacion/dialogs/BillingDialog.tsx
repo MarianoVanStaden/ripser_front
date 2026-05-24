@@ -22,7 +22,6 @@ import {
 export interface BillingFormValues {
   cantidadCuotas: number;
   tipoFinanciacion: string;
-  primerVencimiento: string;
   entregarInicial: boolean;
   usePorcentaje: boolean;
   porcentajeEntregaInicial: number;
@@ -85,14 +84,6 @@ const BillingDialog: React.FC<Props> = ({ open, baseTotal, defaultValues, onClos
               ))}
             </Select>
           </FormControl>
-          <TextField
-            label="Primer Vencimiento"
-            type="date"
-            fullWidth
-            value={form.primerVencimiento}
-            onChange={(e) => setForm((p) => ({ ...p, primerVencimiento: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
           <FormControlLabel
             control={<Checkbox checked={form.entregarInicial} onChange={(e) => setForm((p) => ({ ...p, entregarInicial: e.target.checked }))} />}
             label="Entrega inicial"

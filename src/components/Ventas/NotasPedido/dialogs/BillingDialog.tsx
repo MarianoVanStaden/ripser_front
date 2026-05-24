@@ -87,14 +87,6 @@ const BillingDialog: React.FC<Props> = ({ open, onClose, onSubmit, nota, form, s
               ))}
             </Select>
           </FormControl>
-          <TextField
-            label="Primer Vencimiento"
-            type="date"
-            fullWidth
-            value={form.primerVencimiento}
-            onChange={(e) => setForm((prev) => ({ ...prev, primerVencimiento: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
           <FormControlLabel
             control={
               <Checkbox
