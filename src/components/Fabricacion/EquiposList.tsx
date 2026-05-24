@@ -5,7 +5,7 @@ import {
   Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
   DialogContentText, DialogActions, Stack, Autocomplete, Card, CardContent,
   Grid, Tabs, Tab, Divider, Accordion, AccordionSummary, AccordionDetails,
-  LinearProgress, CircularProgress,
+  LinearProgress, CircularProgress, Checkbox,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from '@mui/x-data-grid';
@@ -211,7 +211,11 @@ const EquiposList: React.FC = () => {
     open: boolean;
     equipo: EquipoFabricadoListDTO | null;
     motivo: string;
-  }>({ open: false, equipo: null, motivo: '' });
+    etapas: EtapaFabricacionDTO[];
+    etapasRechazadas: Map<string, string>;
+    loading: boolean;
+    error: string | null;
+  }>({ open: false, equipo: null, motivo: '', etapas: [], etapasRechazadas: new Map(), loading: false, error: null });
 
   const openChecklistDialog = async (equipo: EquipoFabricadoListDTO) => {
     setChecklistDialog({
@@ -249,6 +253,65 @@ const EquiposList: React.FC = () => {
       ...prev,
       etapas: prev.etapas.map((e) => (e.id === etapa.id ? etapa : e)),
     }));
+  };
+
+  const openRechazarQCDialog = async (equipo: EquipoFabricadoListDTO) => {
+    setRechazarQCDialog({
+      open: true,
+      equipo,
+      motivo: '',
+      etapas: [],
+      etapasRechazadas: new Map(),
+      loading: true,
+      error: null,
+    });
+    try {
+      const data = await equipoFabricadoApi.getEtapasProduccion(equipo.id);
+      setRechazarQCDialog((prev) =>
+        prev.equipo?.id === equipo.id
+          ? { ...prev, etapas: data, loading: false }
+          : prev
+      );
+    } catch (error: any) {
+      const message = error.response?.data?.message ?? error.message ?? 'Error al cargar las etapas';
+      setRechazarQCDialog((prev) =>
+        prev.equipo?.id === equipo.id
+          ? { ...prev, loading: false, error: message }
+          : prev
+      );
+    }
+  };
+
+  const closeRechazarQCDialog = () => {
+    setRechazarQCDialog({
+      open: false,
+      equipo: null,
+      motivo: '',
+      etapas: [],
+      etapasRechazadas: new Map(),
+      loading: false,
+      error: null,
+    });
+  };
+
+  const toggleEtapaRechazada = (tipoEtapa: string) => {
+    setRechazarQCDialog((prev) => {
+      const newMap = new Map(prev.etapasRechazadas);
+      if (newMap.has(tipoEtapa)) {
+        newMap.delete(tipoEtapa);
+      } else {
+        newMap.set(tipoEtapa, '');
+      }
+      return { ...prev, etapasRechazadas: newMap };
+    });
+  };
+
+  const setMotivoRechazada = (tipoEtapa: string, motivo: string) => {
+    setRechazarQCDialog((prev) => {
+      const newMap = new Map(prev.etapasRechazadas);
+      newMap.set(tipoEtapa, motivo);
+      return { ...prev, etapasRechazadas: newMap };
+    });
   };
 
   const [clientes, setClientes] = useState<any[]>([]);
@@ -750,7 +813,7 @@ const EquiposList: React.FC = () => {
         const progresoRaw = params.row.progresoFabricacion as number | undefined;
 
         let completadas: number;
-        if (estado === 'COMPLETADO' || estado === 'FABRICADO_SIN_TERMINACION') {
+        if (estado === 'COMPLETADO' || estado === 'FABRICADO_SIN_TERMINACION' || estado === 'PENDIENTE_CONTROL_CALIDAD') {
           completadas = TOTAL_ETAPAS;
         } else if (estado === 'PENDIENTE') {
           completadas = 0;
@@ -937,13 +1000,7 @@ const EquiposList: React.FC = () => {
                 <IconButton
                   size="small"
                   color="error"
-                  onClick={() => {
-                    setRechazarQCDialog({
-                      open: true,
-                      equipo: params.row,
-                      motivo: ''
-                    });
-                  }}
+                  onClick={() => openRechazarQCDialog(params.row)}
                 >
                   <Cancel fontSize="small" />
                 </IconButton>
@@ -1921,7 +1978,7 @@ const EquiposList: React.FC = () => {
       {/* Rechazar Control de Calidad Dialog */}
       <Dialog
         open={rechazarQCDialog.open}
-        onClose={() => setRechazarQCDialog({ open: false, equipo: null, motivo: '' })}
+        onClose={closeRechazarQCDialog}
         maxWidth="sm"
         fullWidth
       >
@@ -1940,61 +1997,108 @@ const EquiposList: React.FC = () => {
                   <strong>Modelo:</strong> {rechazarQCDialog.equipo.modelo}
                 </Typography>
               </Box>
-              <TextField
-                label="Motivo del rechazo"
-                multiline
-                rows={3}
-                value={rechazarQCDialog.motivo}
-                onChange={(e) =>
-                  setRechazarQCDialog({ ...rechazarQCDialog, motivo: e.target.value })
-                }
-                placeholder="Describa las razones por las cuales se rechaza este equipo..."
-                fullWidth
-              />
+
+              {rechazarQCDialog.loading && (
+                <Box display="flex" justifyContent="center" py={2}>
+                  <CircularProgress size={32} />
+                </Box>
+              )}
+
+              {rechazarQCDialog.error && (
+                <Alert severity="error">{rechazarQCDialog.error}</Alert>
+              )}
+
+              {!rechazarQCDialog.loading && rechazarQCDialog.etapas.length > 0 && (
+                <>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Selecciona las etapas a rechazar
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    {rechazarQCDialog.etapas
+                      .filter((e) => e.estado === 'COMPLETADO' || e.completado)
+                      .map((etapa) => (
+                        <Box key={etapa.id} display="flex" alignItems="flex-start" gap={1}>
+                          <Checkbox
+                            checked={rechazarQCDialog.etapasRechazadas.has(etapa.tipoEtapa)}
+                            onChange={() => toggleEtapaRechazada(etapa.tipoEtapa)}
+                            size="small"
+                          />
+                          <Box flex={1} minWidth={0}>
+                            <Typography variant="body2" fontWeight={500}>
+                              {etapa.tipoEtapaLabel}
+                            </Typography>
+                            {rechazarQCDialog.etapasRechazadas.has(etapa.tipoEtapa) && (
+                              <TextField
+                                size="small"
+                                placeholder="Motivo del rechazo"
+                                value={rechazarQCDialog.etapasRechazadas.get(etapa.tipoEtapa) || ''}
+                                onChange={(e) =>
+                                  setMotivoRechazada(etapa.tipoEtapa, e.target.value)
+                                }
+                                multiline
+                                minRows={1}
+                                maxRows={2}
+                                fullWidth
+                                sx={{ mt: 0.5 }}
+                              />
+                            )}
+                          </Box>
+                        </Box>
+                      ))}
+                  </Stack>
+                </>
+              )}
+
               <Alert severity="warning">
-                El equipo volverá al estado EN_PROCESO para que el encargado de taller pueda hacer correcciones.
+                Las etapas seleccionadas volverán a PENDIENTE para que el encargado de taller pueda corregirlas.
               </Alert>
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setRechazarQCDialog({ open: false, equipo: null, motivo: '' })}
-            color="inherit"
-          >
+          <Button onClick={closeRechazarQCDialog} color="inherit">
             Cancelar
           </Button>
           <Button
             onClick={async () => {
-              if (!rechazarQCDialog.equipo) return;
+              if (!rechazarQCDialog.equipo || rechazarQCDialog.etapasRechazadas.size === 0) return;
               try {
-                await equipoFabricadoApi.rechazarControlCalidadPorNumero(
+                const etapasArray = Array.from(rechazarQCDialog.etapasRechazadas.entries()).map(
+                  ([tipoEtapa, motivo]) => ({
+                    tipoEtapa: tipoEtapa as any,
+                    motivo: motivo.trim() || undefined,
+                  })
+                );
+                await equipoFabricadoApi.rechazarEtapasEnControlCalidadPorNumero(
                   rechazarQCDialog.equipo.numeroHeladera,
-                  rechazarQCDialog.motivo
+                  etapasArray
                 );
                 setSnackbar({
                   open: true,
-                  message: 'Equipo rechazado en control de calidad',
-                  severity: 'success'
+                  message: 'Etapas rechazadas correctamente',
+                  severity: 'success',
                 });
-                setRechazarQCDialog({ open: false, equipo: null, motivo: '' });
+                closeRechazarQCDialog();
                 loadEquipos();
               } catch (error) {
-                const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+                const msg =
+                  (error as { response?: { data?: { message?: string } }; message?: string })
+                    ?.response?.data?.message ||
                   (error as Error).message ||
-                  'Error al rechazar control de calidad';
+                  'Error al rechazar etapas';
                 setSnackbar({
                   open: true,
                   message: msg,
-                  severity: 'error'
+                  severity: 'error',
                 });
               }
             }}
             color="error"
             variant="contained"
+            disabled={rechazarQCDialog.etapasRechazadas.size === 0 || rechazarQCDialog.loading}
             startIcon={<Cancel />}
           >
-            Rechazar
+            Rechazar Seleccionadas
           </Button>
         </DialogActions>
       </Dialog>

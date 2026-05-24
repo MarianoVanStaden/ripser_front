@@ -267,6 +267,12 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
           sx={{ height: 8, borderRadius: 4 }}
         />
 
+        {etapas.some((e) => e.estado === 'RECHAZADO') && !modoRechazo && (
+          <Alert severity="warning">
+            Este equipo tiene etapas rechazadas en control de calidad. Corregí las etapas marcadas antes de volver a enviar.
+          </Alert>
+        )}
+
         <Stack spacing={1.25}>
           {etapas.map((etapa) => {
             const isLoading = loadingTipo === etapa.tipoEtapa;
@@ -323,23 +329,33 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                           color={etapa.estado === 'RECHAZADO' ? 'error' : undefined}
                         />
                       )}
+                      {etapa.estado === 'COMPLETADO' && etapa.motivoRechazo && (
+                        <Chip
+                          size="small"
+                          label="Corregida"
+                          variant="outlined"
+                          color="default"
+                          sx={{ opacity: 0.7 }}
+                        />
+                      )}
                     </Stack>
                   )}
                   {etapa.motivoRechazo && (
                     <Typography
                       variant="body2"
-                      color="error.main"
+                      color={etapa.estado === 'RECHAZADO' ? 'error.main' : 'text.secondary'}
                       sx={{
                         mt: 0.75,
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         borderLeft: 3,
-                        borderColor: 'error.main',
+                        borderColor: etapa.estado === 'RECHAZADO' ? 'error.main' : 'divider',
                         pl: 1,
-                        fontWeight: 500,
+                        fontWeight: etapa.estado === 'RECHAZADO' ? 500 : 400,
+                        ...(etapa.estado === 'COMPLETADO' && { textDecoration: 'line-through', opacity: 0.7 }),
                       }}
                     >
-                      <strong>Motivo del rechazo:</strong> {etapa.motivoRechazo}
+                      <strong>{etapa.estado === 'RECHAZADO' ? 'Motivo del rechazo:' : 'Motivo anterior:'}</strong> {etapa.motivoRechazo}
                     </Typography>
                   )}
                   {etapa.observaciones && !etapa.motivoRechazo && (
