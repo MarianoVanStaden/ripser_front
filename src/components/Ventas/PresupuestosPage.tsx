@@ -917,6 +917,19 @@ const PresupuestosPage: React.FC = () => {
     [recetas, tipoEquipoFiltro]
   );
 
+  const leadSearchOptionsWithSelected = useMemo(() => {
+    const filtered = leadSearch.options.filter(l => l.estadoLead !== 'CONVERTIDO');
+    const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
+    const selectedLead = selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) : null;
+    if (!selectedLead) return filtered;
+    return filtered.some(l => l.id === selectedLead.id) ? filtered : [selectedLead, ...filtered];
+  }, [leadSearch.options, formData.leadId]);
+
+  const selectedLeadValue = useMemo(() => {
+    const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
+    return selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) || null : null;
+  }, [leadSearch.options, formData.leadId]);
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <LoadingOverlay
@@ -1266,19 +1279,10 @@ const PresupuestosPage: React.FC = () => {
                 ) : (
                   <Autocomplete
                     fullWidth
-                    options={useMemo(() => {
-                      const filtered = leadSearch.options.filter(l => l.estadoLead !== 'CONVERTIDO');
-                      const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
-                      const selectedLead = selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) : null;
-                      if (!selectedLead) return filtered;
-                      return filtered.some(l => l.id === selectedLead.id) ? filtered : [selectedLead, ...filtered];
-                    }, [leadSearch.options, formData.leadId])}
+                    options={leadSearchOptionsWithSelected}
                     getOptionLabel={(l) => (l.apellido ? `${l.nombre} ${l.apellido}` : l.nombre || '')}
                     isOptionEqualToValue={(option, val) => option.id === val.id}
-                    value={useMemo(() => {
-                      const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
-                      return selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) || null : null;
-                    }, [leadSearch.options, formData.leadId])}
+                    value={selectedLeadValue}
                     inputValue={leadSearch.inputValue}
                     onInputChange={(_, value) => leadSearch.setInputValue(value)}
                     filterOptions={(opts) => opts}
