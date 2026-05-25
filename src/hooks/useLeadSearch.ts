@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { leadApi } from '../api/services';
 import { useDebounce } from './useDebounce';
-import type { LeadDTO } from '../types/lead.types';
+import type { LeadListItemDTO } from '../types/lead.types';
 
 export interface UseLeadSearchOptions {
   /** Si se setea, solo trae leads en esos estados (ej: excluir CONVERTIDO). */
@@ -11,14 +11,14 @@ export interface UseLeadSearchOptions {
 }
 
 export interface UseLeadSearchResult {
-  options: LeadDTO[];
+  options: LeadListItemDTO[];
   loading: boolean;
   inputValue: string;
   setInputValue: (value: string) => void;
 }
 
 // Filtro local para mejorar precisión de búsqueda por nombre y teléfono
-const matchesSearchTerm = (lead: LeadDTO, term: string): boolean => {
+const matchesSearchTerm = (lead: LeadListItemDTO, term: string): boolean => {
   if (!term) return true;
   const lowerTerm = term.toLowerCase();
 
@@ -28,8 +28,6 @@ const matchesSearchTerm = (lead: LeadDTO, term: string): boolean => {
   if (lead.apellido?.toLowerCase().includes(lowerTerm)) return true;
   // Búsqueda en teléfono (acepta dígitos sueltos)
   if (lead.telefono?.replace(/\D/g, '').includes(lowerTerm.replace(/\D/g, ''))) return true;
-  // Búsqueda en email
-  if (lead.email?.toLowerCase().includes(lowerTerm)) return true;
 
   return false;
 };
@@ -48,7 +46,7 @@ const matchesSearchTerm = (lead: LeadDTO, term: string): boolean => {
 export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearchResult {
   const { excludeEstados, size = 20 } = options;
   const [inputValue, setInputValue] = useState('');
-  const [items, setItems] = useState<LeadDTO[]>([]);
+  const [items, setItems] = useState<LeadListItemDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
   const debouncedInput = useDebounce(inputValue, 300);

@@ -58,7 +58,7 @@ import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
 import { costoEnvioApi } from "../../api/services/costoEnvioApi";
 import type { CostoEnvioDTO } from "../../types/costoEnvio.types";
-import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, RecetaFabricacionDTO, TipoItemDocumento, Lead, DeudaClienteError } from "../../types";
+import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, RecetaFabricacionDTO, TipoItemDocumento, DeudaClienteError } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import ColorPicker from "../common/ColorPicker";
 import LoadingOverlay from "../common/LoadingOverlay";
@@ -145,7 +145,6 @@ const PresupuestosPage: React.FC = () => {
     [queryClient]
   );
 
-  const [leads, setLeads] = useState<Lead[]>([]);
   // Cliente seleccionado en el formulario (typeahead). Se carga on-demand.
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [destinatarioMode, setDestinatarioMode] = useState<'CLIENTE' | 'LEAD'>('CLIENTE');
@@ -332,17 +331,6 @@ const PresupuestosPage: React.FC = () => {
   // Antes esto cargaba 500 leads no convertidos al abrir el dialog (limitación
   // documentada en TECHNICAL_DEBT.md). Ahora busca en el server con debounce.
   const leadSearch = useLeadSearch({ excludeEstados: ['CONVERTIDO'], size: 20 });
-  // Mantenemos el state `leads` como union de:
-  //   - opciones del typeahead (lo que el usuario está buscando ahora)
-  //   - el lead seleccionado actualmente (para que value={...} no sea null si
-  //     viene de un presupuesto en edición que no figura en la búsqueda actual)
-  useEffect(() => {
-    setLeads((prev) => {
-      const map = new Map(prev.map((l) => [l.id, l]));
-      for (const l of leadSearch.options) if (l.id != null) map.set(l.id, l);
-      return Array.from(map.values());
-    });
-  }, [leadSearch.options]);
 
   useEffect(() => {
     fetchData();
@@ -1278,10 +1266,19 @@ const PresupuestosPage: React.FC = () => {
                 ) : (
                   <Autocomplete
                     fullWidth
-                    options={leads.filter(l => l.estadoLead !== 'CONVERTIDO')}
+                    options={useMemo(() => {
+                      const filtered = leadSearch.options.filter(l => l.estadoLead !== 'CONVERTIDO');
+                      const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
+                      const selectedLead = selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) : null;
+                      if (!selectedLead) return filtered;
+                      return filtered.some(l => l.id === selectedLead.id) ? filtered : [selectedLead, ...filtered];
+                    }, [leadSearch.options, formData.leadId])}
                     getOptionLabel={(l) => (l.apellido ? `${l.nombre} ${l.apellido}` : l.nombre || '')}
                     isOptionEqualToValue={(option, val) => option.id === val.id}
-                    value={leads.find(l => l.id != null && l.id.toString() === formData.leadId) || null}
+                    value={useMemo(() => {
+                      const selectedLeadId = formData.leadId ? Number(formData.leadId) : null;
+                      return selectedLeadId ? leadSearch.options.find(l => l.id === selectedLeadId) || null : null;
+                    }, [leadSearch.options, formData.leadId])}
                     inputValue={leadSearch.inputValue}
                     onInputChange={(_, value) => leadSearch.setInputValue(value)}
                     filterOptions={(opts) => opts}
@@ -1308,11 +1305,6 @@ const PresupuestosPage: React.FC = () => {
                         {option.telefono && (
                           <Typography variant="caption" color="text.secondary" sx={{ ml: 0 }}>
                             Tel: {option.telefono}
-                          </Typography>
-                        )}
-                        {option.email && (
-                          <Typography variant="caption" color="text.secondary" sx={{ ml: 0 }}>
-                            {option.email}
                           </Typography>
                         )}
                       </Box>
@@ -1881,7 +1873,7 @@ const PresupuestosPage: React.FC = () => {
         ivaAmount={ivaAmount}
         descuentoAmount={descuentoAmount}
         selectedCliente={selectedCliente}
-        leads={leads}
+        leads={leadSearch.options}
         formData={formData}
         detallesCount={detalles.length}
       />

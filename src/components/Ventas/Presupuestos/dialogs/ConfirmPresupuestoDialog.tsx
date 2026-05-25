@@ -11,7 +11,8 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material';
-import type { Cliente, Lead } from '../../../../types';
+import type { Cliente } from '../../../../types';
+import type { LeadListItemDTO } from '../../../../types/lead.types';
 import type { FormData } from '../types';
 
 interface Props {
@@ -26,7 +27,7 @@ interface Props {
   ivaAmount: number;
   descuentoAmount: number;
   selectedCliente: Cliente | null;
-  leads: Lead[];
+  leads: LeadListItemDTO[];
   formData: FormData;
   detallesCount: number;
 }
