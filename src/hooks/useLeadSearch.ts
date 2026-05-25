@@ -21,13 +21,14 @@ export interface UseLeadSearchResult {
 const matchesSearchTerm = (lead: LeadListItemDTO, term: string): boolean => {
   if (!term) return true;
   const lowerTerm = term.toLowerCase();
+  const normalizedTerm = term.replace(/\D/g, ''); // Solo dígitos
 
   // Búsqueda en nombre
   if (lead.nombre?.toLowerCase().includes(lowerTerm)) return true;
   // Búsqueda en apellido
   if (lead.apellido?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en teléfono (acepta dígitos sueltos)
-  if (lead.telefono?.replace(/\D/g, '').includes(lowerTerm.replace(/\D/g, ''))) return true;
+  // Búsqueda en teléfono (acepta dígitos sueltos, ignora guiones y espacios)
+  if (normalizedTerm && lead.telefono?.replace(/\D/g, '').includes(normalizedTerm)) return true;
 
   return false;
 };

@@ -1298,21 +1298,79 @@ const PresupuestosPage: React.FC = () => {
                       setHasUnsavedChanges(true);
                     }}
                     disabled={readOnly || !!editingPresupuesto}
-                    renderOption={({ key, ...props }, option) => (
-                      <Box component="li" key={key as React.Key} {...props} sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, width: '100%' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 500 }}>
-                            {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
+                    renderOption={({ key, ...props }, option) => {
+                      const getInitials = (): string => {
+                        const nombre = option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre;
+                        const parts = nombre.split(/\s+/).slice(0, 2);
+                        return parts.map(p => p.charAt(0).toUpperCase()).join('') || '?';
+                      };
+
+                      return (
+                        <Box
+                          component="li"
+                          key={key as React.Key}
+                          {...props}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 1.5,
+                            py: 1,
+                            '&[aria-selected="true"]': { backgroundColor: 'action.selected' },
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              minWidth: 32,
+                              borderRadius: '50%',
+                              bgcolor: 'warning.light',
+                              color: 'warning.contrastText',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {getInitials()}
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600, lineHeight: 1.2, wordBreak: 'break-word' }}
+                              >
+                                {option.apellido ? `${option.nombre} ${option.apellido}` : option.nombre}
+                              </Typography>
+                              <Chip
+                                label="Lead"
+                                size="small"
+                                color="warning"
+                                sx={{ height: 18, fontSize: '0.65rem' }}
+                              />
+                            </Box>
+                            {option.telefono && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{
+                                  display: 'block',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                Tel: {option.telefono}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                            #{option.id}
                           </Typography>
-                          <Chip label="Lead" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem' }} />
                         </Box>
-                        {option.telefono && (
-                          <Typography variant="caption" color="text.secondary" sx={{ ml: 0 }}>
-                            Tel: {option.telefono}
-                          </Typography>
-                        )}
-                      </Box>
-                    )}
+                      );
+                    }}
                     renderInput={(params) => (
                       <TextField
                         {...params}

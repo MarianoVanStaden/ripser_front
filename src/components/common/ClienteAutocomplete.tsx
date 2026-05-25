@@ -57,6 +57,7 @@ const secondaryParts = (cliente: Cliente): string[] => {
 const matchesSearchTerm = (cliente: Cliente, term: string): boolean => {
   if (!term) return true;
   const lowerTerm = term.toLowerCase();
+  const normalizedTerm = term.replace(/\D/g, ''); // Solo dígitos
 
   // Búsqueda en nombre
   if (cliente.nombre?.toLowerCase().includes(lowerTerm)) return true;
@@ -66,10 +67,10 @@ const matchesSearchTerm = (cliente: Cliente, term: string): boolean => {
   if (cliente.razonSocial?.toLowerCase().includes(lowerTerm)) return true;
   // Búsqueda en CUIT
   if (cliente.cuit?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en teléfono (acepta dígitos sueltos)
-  if (cliente.telefono?.replace(/\D/g, '').includes(lowerTerm.replace(/\D/g, ''))) return true;
   // Búsqueda en email
   if (cliente.email?.toLowerCase().includes(lowerTerm)) return true;
+  // Búsqueda en teléfono (acepta dígitos sueltos, ignora guiones y espacios)
+  if (normalizedTerm && cliente.telefono?.replace(/\D/g, '').includes(normalizedTerm)) return true;
 
   return false;
 };
