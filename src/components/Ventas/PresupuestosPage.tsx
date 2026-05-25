@@ -58,6 +58,7 @@ import { prestamoPersonalApi } from "../../api/services/prestamoPersonalApi";
 import { cuentaCorrienteApi } from "../../api/services/cuentaCorrienteApi";
 import { costoEnvioApi } from "../../api/services/costoEnvioApi";
 import type { CostoEnvioDTO } from "../../types/costoEnvio.types";
+import { ESTADO_LABELS, PRIORIDAD_LABELS } from "../../types/lead.types";
 import type { DocumentoComercial, Cliente, Usuario, Producto, EstadoDocumento, DetalleDocumento, OpcionFinanciamientoDTO, RecetaFabricacionDTO, TipoItemDocumento, DeudaClienteError } from "../../types";
 import { EstadoDocumento as EstadoDocumentoEnum } from "../../types";
 import ColorPicker from "../common/ColorPicker";
@@ -1305,6 +1306,40 @@ const PresupuestosPage: React.FC = () => {
                         return parts.map(p => p.charAt(0).toUpperCase()).join('') || '?';
                       };
 
+                      const getStateColor = (estado?: string): 'error' | 'warning' | 'success' | 'info' | 'default' => {
+                        switch (estado) {
+                          case 'CONVERTIDO':
+                          case 'VENTA':
+                            return 'success';
+                          case 'DESCARTADO':
+                          case 'PERDIDO':
+                          case 'LEAD_DUPLICADO':
+                            return 'error';
+                          case 'MOSTRO_INTERES':
+                          case 'CLIENTE_POTENCIAL':
+                            return 'warning';
+                          default:
+                            return 'default';
+                        }
+                      };
+
+                      const getPrioridadColor = (prioridad?: string): 'error' | 'warning' | 'info' | 'default' => {
+                        switch (prioridad) {
+                          case 'HOT':
+                            return 'error';
+                          case 'WARM':
+                            return 'warning';
+                          case 'COLD':
+                            return 'info';
+                          default:
+                            return 'default';
+                        }
+                      };
+
+                      const secondaryInfo: string[] = [];
+                      if (option.telefono) secondaryInfo.push(`Tel: ${option.telefono}`);
+                      if (option.email) secondaryInfo.push(option.email);
+
                       return (
                         <Box
                           component="li"
@@ -1349,8 +1384,24 @@ const PresupuestosPage: React.FC = () => {
                                 color="warning"
                                 sx={{ height: 18, fontSize: '0.65rem' }}
                               />
+                              {option.estadoLead && (
+                                <Chip
+                                  label={ESTADO_LABELS[option.estadoLead] || option.estadoLead}
+                                  size="small"
+                                  color={getStateColor(option.estadoLead)}
+                                  sx={{ height: 18, fontSize: '0.65rem' }}
+                                />
+                              )}
+                              {option.prioridad && (
+                                <Chip
+                                  label={PRIORIDAD_LABELS[option.prioridad] || option.prioridad}
+                                  size="small"
+                                  color={getPrioridadColor(option.prioridad)}
+                                  sx={{ height: 18, fontSize: '0.65rem' }}
+                                />
+                              )}
                             </Box>
-                            {option.telefono && (
+                            {secondaryInfo.length > 0 && (
                               <Typography
                                 variant="caption"
                                 color="text.secondary"
@@ -1361,11 +1412,11 @@ const PresupuestosPage: React.FC = () => {
                                   whiteSpace: 'nowrap',
                                 }}
                               >
-                                Tel: {option.telefono}
+                                {secondaryInfo.join(' · ')}
                               </Typography>
                             )}
                           </Box>
-                          <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                          <Typography variant="caption" color="text.disabled" sx={{ ml: 1, mt: 0.5 }}>
                             #{option.id}
                           </Typography>
                         </Box>

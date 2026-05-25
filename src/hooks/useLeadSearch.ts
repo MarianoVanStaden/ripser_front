@@ -17,21 +17,8 @@ export interface UseLeadSearchResult {
   setInputValue: (value: string) => void;
 }
 
-// Filtro local para mejorar precisión de búsqueda por nombre y teléfono
-const matchesSearchTerm = (lead: LeadListItemDTO, term: string): boolean => {
-  if (!term) return true;
-  const lowerTerm = term.toLowerCase();
-  const normalizedTerm = term.replace(/\D/g, ''); // Solo dígitos
-
-  // Búsqueda en nombre
-  if (lead.nombre?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en apellido
-  if (lead.apellido?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en teléfono (acepta dígitos sueltos, ignora guiones y espacios)
-  if (normalizedTerm && lead.telefono?.replace(/\D/g, '').includes(normalizedTerm)) return true;
-
-  return false;
-};
+// NOTA: El backend ahora maneja toda la búsqueda (nombre, apellido, teléfono, email)
+// El filtrado local se ha removido ya que el servidor devuelve resultados precisos
 
 /**
  * Typeahead server-side de leads. Espejo de useClienteSearch.
@@ -71,8 +58,8 @@ export function useLeadSearch(options: UseLeadSearchOptions = {}): UseLeadSearch
         if (excludeEstados?.length) {
           content = content.filter((l) => !excludeEstados.includes(l.estadoLead));
         }
-        // Aplicar filtro local siempre para mejorar precisión de búsqueda
-        content = content.filter((l) => matchesSearchTerm(l, term));
+        // Backend ahora maneja búsqueda completa (nombre, apellido, teléfono, email)
+        // No aplicamos filtrado local adicional
         setItems(content);
       } catch (err) {
         const code = (err as { code?: string }).code;

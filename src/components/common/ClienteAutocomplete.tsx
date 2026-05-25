@@ -53,27 +53,8 @@ const secondaryParts = (cliente: Cliente): string[] => {
   return parts;
 };
 
-// Filtro local para mejorar precisión de búsqueda por nombre y teléfono
-const matchesSearchTerm = (cliente: Cliente, term: string): boolean => {
-  if (!term) return true;
-  const lowerTerm = term.toLowerCase();
-  const normalizedTerm = term.replace(/\D/g, ''); // Solo dígitos
-
-  // Búsqueda en nombre
-  if (cliente.nombre?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en apellido
-  if (cliente.apellido?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en razón social
-  if (cliente.razonSocial?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en CUIT
-  if (cliente.cuit?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en email
-  if (cliente.email?.toLowerCase().includes(lowerTerm)) return true;
-  // Búsqueda en teléfono (acepta dígitos sueltos, ignora guiones y espacios)
-  if (normalizedTerm && cliente.telefono?.replace(/\D/g, '').includes(normalizedTerm)) return true;
-
-  return false;
-};
+// NOTA: El backend ahora maneja toda la búsqueda (nombre, apellido, razón social, CUIT, teléfono, email)
+// El filtrado local se ha removido ya que el servidor devuelve resultados precisos
 
 export interface ClienteAutocompleteProps {
   value: Cliente | null;
@@ -136,9 +117,9 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
     const run = async () => {
       try {
         const res = term.length > 0
-          ? await clienteApi.searchByQuery(term, Math.max(pageSize, 100), controller.signal)
+          ? await clienteApi.searchByQuery(term, pageSize, controller.signal)
           : await clienteApi.getAll(
-              { page: 0, size: Math.max(pageSize, 100), sort: 'fechaActualizacion,desc' },
+              { page: 0, size: pageSize, sort: 'fechaActualizacion,desc' },
               {
                 ...(sucursalId != null ? { sucursalId } : {}),
                 ...(onlyActivos ? { estado: 'ACTIVO' as EstadoCliente } : {}),
@@ -147,8 +128,8 @@ const ClienteAutocomplete: React.FC<ClienteAutocompleteProps> = ({
         if (reqId !== requestIdRef.current) return;
         let list = Array.isArray(res?.content) ? res.content : [];
         if (onlyActivos) list = list.filter(c => c.estado === 'ACTIVO');
-        // Aplicar filtro local siempre para mejorar precisión de búsqueda (nombre, apellido, razón social, CUIT, teléfono, email)
-        list = list.filter(c => matchesSearchTerm(c, term));
+        // Backend ahora maneja búsqueda completa (nombre, apellido, razón social, CUIT, teléfono, email)
+        // No aplicamos filtrado local adicional
         setOptions(list);
       } catch (err) {
         const e = err as { name?: string; code?: string };

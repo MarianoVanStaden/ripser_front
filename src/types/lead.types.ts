@@ -60,6 +60,7 @@ export interface LeadListItemDTO {
   nombre: string;
   apellido?: string;
   telefono: string;
+  email?: string;
   rubro?: RubroEnum;
   provincia?: ProvinciaEnum;
   canal: CanalEnum;
