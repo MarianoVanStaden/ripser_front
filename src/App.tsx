@@ -224,6 +224,9 @@ const DashboardFabricacion = lazy(() => import('./components/Fabricacion/Dashboa
 const ReportesEstadosPage = lazy(() => import('./components/Fabricacion/ReportesEstadosPage'));
 const StockPlanificacionPage = lazyNamed(() => import('./components/Fabricacion/StockPlanificacion'), 'StockPlanificacionPage');
 
+// Public pages (no auth required)
+const PublicFichaEquipoPage = lazy(() => import('./components/Public/PublicFichaEquipoPage'));
+
 // ---------------------------------------------------------------------------
 // Guards and Suspense fallback
 // ---------------------------------------------------------------------------
@@ -290,6 +293,7 @@ function App() {
             <Suspense fallback={<CenteredFallback />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/public/equipos/:numeroHeladera/ficha" element={<PublicFichaEquipoPage />} />
                 <Route path="/" element={priv(<Layout />)}>
                   <Route index element={priv(<DashboardEntry />)} />
                   <Route path="dashboard" element={priv(<DashboardEntry />)} />

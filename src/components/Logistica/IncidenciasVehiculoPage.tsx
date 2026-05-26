@@ -77,7 +77,10 @@ const getDaysUntil = (dateStr: string): number => {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-const getVehiculoLabel = (v: Vehiculo) => `${v.patente} — ${v.marca} ${v.modelo} (${v.año})`;
+const getVehiculoLabel = (v: Vehiculo) => {
+  const año = v.año ? ` (${v.año})` : '';
+  return `${v.patente} — ${v.marca} ${v.modelo}${año}`;
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -652,12 +655,19 @@ const IncidenciasTable: React.FC<IncidenciasTableProps> = ({
                 </TableCell>
                 {showVehiculo && (
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                    <Typography variant="body2" fontWeight={600}>
-                      {inc.vehiculo?.patente ?? `#${inc.vehiculoId}`}
-                    </Typography>
-                    {inc.vehiculo && (
-                      <Typography variant="caption" color="text.secondary">
-                        {inc.vehiculo.marca} {inc.vehiculo.modelo}
+                    {inc.vehiculo ? (
+                      <>
+                        <Typography variant="body2" fontWeight={600}>
+                          {inc.vehiculo.patente}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {inc.vehiculo.marca} {inc.vehiculo.modelo}
+                          {inc.vehiculo.año ? ` (${inc.vehiculo.año})` : ''}
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography variant="body2" color="text.disabled">
+                        Vehículo no encontrado (ID: {inc.vehiculoId})
                       </Typography>
                     )}
                   </TableCell>
@@ -839,7 +849,8 @@ const TabLegajo: React.FC<TabLegajoProps> = ({ vehiculos, onMutation }) => {
               <Box>
                 <Typography variant="body2" fontWeight={600}>{option.patente}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {option.marca} {option.modelo} ({option.año})
+                  {option.marca} {option.modelo}
+                  {option.año ? ` (${option.año})` : ''}
                   {option.incidenciasAbiertas != null && option.incidenciasAbiertas > 0 && (
                     <Chip
                       label={`${option.incidenciasAbiertas} abiertas`}
@@ -1195,12 +1206,19 @@ const TabVencimientos: React.FC = () => {
                 return (
                   <TableRow key={inc.id} hover sx={{ bgcolor: bgColor, '&:hover': { filter: 'brightness(0.97)' } }}>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {inc.vehiculo?.patente ?? `#${inc.vehiculoId}`}
-                      </Typography>
-                      {inc.vehiculo && (
-                        <Typography variant="caption" color="text.secondary">
-                          {inc.vehiculo.marca} {inc.vehiculo.modelo}
+                      {inc.vehiculo ? (
+                        <>
+                          <Typography variant="body2" fontWeight={600}>
+                            {inc.vehiculo.patente}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {inc.vehiculo.marca} {inc.vehiculo.modelo}
+                            {inc.vehiculo.año ? ` (${inc.vehiculo.año})` : ''}
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography variant="body2" color="text.disabled">
+                          Vehículo no encontrado (ID: {inc.vehiculoId})
                         </Typography>
                       )}
                     </TableCell>
