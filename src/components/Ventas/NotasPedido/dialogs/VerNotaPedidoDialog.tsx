@@ -243,12 +243,67 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
                   </Typography>
                 </Box>
                 <Divider sx={{ my: 1 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="h6" sx={{ mr: 4 }}>Total:</Typography>
-                  <Typography variant="h6">
-                    ${nota.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
+                {/* Calcular el total correcto del documento */}
+                {(() => {
+                  const subtotal = nota.subtotal ?? 0;
+                  const descuento = Number(nota.descuentoMonto) ?? 0;
+                  const iva = nota.iva ?? 0;
+                  const totalCalculado = subtotal - descuento + iva;
+                  const totalEnBD = nota.total ?? 0;
+                  const hayInconsistencia = Math.abs(totalCalculado - totalEnBD) > 0.01;
+
+                  return (
+                    <>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="h6" sx={{ mr: 4 }}>
+                          Total del documento:
+                        </Typography>
+                        <Typography variant="h6" color={hayInconsistencia ? 'warning.main' : 'primary'}>
+                          ${totalCalculado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+
+                      {/* Mostrar advertencia si hay inconsistencia con BD */}
+                      {hayInconsistencia && (
+                        <Typography
+                          variant="caption"
+                          color="warning.main"
+                          sx={{ mb: 2, display: 'block', fontStyle: 'italic' }}
+                        >
+                          ⚠️ Nota: El valor en la base de datos (${totalEnBD.toLocaleString('es-AR', { minimumFractionDigits: 2 })}) no coincide con el cálculo correcto.
+                        </Typography>
+                      )}
+
+                      {/* Si hay opción de financiamiento, mostrar desglose */}
+                      {nota.opcionFinanciamientoSeleccionadaId && (nota as any).opcionesFinanciamiento && (nota as any).opcionesFinanciamiento.length > 0 && (() => {
+                        const opcionSeleccionada = (nota as any).opcionesFinanciamiento.find(
+                          (o: any) => o.id === nota.opcionFinanciamientoSeleccionadaId
+                        );
+                        return opcionSeleccionada ? (
+                          <>
+                            <Divider sx={{ my: 1 }} />
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                              Resumen del financiamiento seleccionado:
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                              <Typography variant="body2">
+                                {opcionSeleccionada.nombre || `${opcionSeleccionada.cantidadCuotas} cuota(s)`}:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={600} color="primary.main">
+                                ${opcionSeleccionada.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                            {opcionSeleccionada.tasaInteres > 0 && (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                (Incluye {opcionSeleccionada.tasaInteres}% de interés)
+                              </Typography>
+                            )}
+                          </>
+                        ) : null;
+                      })()}
+                    </>
+                  );
+                })()}
               </Box>
             </Box>
             <Divider sx={{ my: 2 }} />
