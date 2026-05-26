@@ -217,6 +217,25 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
                     ${nota.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                   </Typography>
                 </Box>
+                {nota.descuentoTipo &&
+                  nota.descuentoTipo !== 'NONE' &&
+                  Number(nota.descuentoValor) > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography sx={{ mr: 4 }}>
+                        Descuento{' '}
+                        {nota.descuentoTipo === 'PORCENTAJE'
+                          ? `(${nota.descuentoValor}%)`
+                          : '(monto fijo)'}
+                        :
+                      </Typography>
+                      <Typography color="error.main">
+                        -$
+                        {Number(nota.descuentoMonto ?? 0).toLocaleString('es-AR', {
+                          minimumFractionDigits: 2,
+                        })}
+                      </Typography>
+                    </Box>
+                  )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography sx={{ mr: 4 }}>IVA:</Typography>
                   <Typography>

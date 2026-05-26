@@ -1046,22 +1046,59 @@ const RegistroVentasPage: React.FC = () => {
                 </Alert>
               )}
 
-              <Box mt={3} display="flex" justifyContent="space-between" alignItems="center">
-                <Box>
+              <Box mt={3} display="flex" justifyContent="flex-end">
+                <Box sx={{ minWidth: 300 }}>
                   {(viewingSale.notas || viewingSale.observaciones) && (
                     <>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
                         Notas
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ mb: 3 }}>
                         {viewingSale.notas || viewingSale.observaciones}
                       </Typography>
                     </>
                   )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                    <Typography>
+                      ${(viewingSale.subtotal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  {(viewingSale as any).descuentoTipo &&
+                    (viewingSale as any).descuentoTipo !== 'NONE' &&
+                    Number((viewingSale as any).descuentoValor) > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography sx={{ mr: 4 }}>
+                          Descuento{' '}
+                          {(viewingSale as any).descuentoTipo === 'PORCENTAJE'
+                            ? `(${(viewingSale as any).descuentoValor}%)`
+                            : '(monto fijo)'}
+                          :
+                        </Typography>
+                        <Typography color="error.main">
+                          -$
+                          {Number((viewingSale as any).descuentoMonto ?? 0).toLocaleString('es-AR', {
+                            minimumFractionDigits: 2,
+                          })}
+                        </Typography>
+                      </Box>
+                    )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography sx={{ mr: 4 }}>IVA:</Typography>
+                    <Typography>
+                      ${(viewingSale.impuesto || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="h6" sx={{ mr: 4 }}>
+                      Total:
+                    </Typography>
+                    <Typography variant="h6">
+                      ${(viewingSale.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
                 </Box>
-                <Typography variant="h5" color="primary" fontWeight="bold">
-                  Total: ${(viewingSale.total || 0).toLocaleString()}
-                </Typography>
               </Box>
             </Box>
           )}
