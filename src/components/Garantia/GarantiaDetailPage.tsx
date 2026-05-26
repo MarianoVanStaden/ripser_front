@@ -403,6 +403,7 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
           setSelectedReclamo(null);
         }}
         garantiaId={garantia.id}
+        garantias={[garantia]}
         onSave={() => {
           loadReclamos();
           setReclamoFormOpen(false);

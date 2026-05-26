@@ -37,7 +37,7 @@ const resolveQrBase = (): string => {
 };
 
 const buildQrUrl = (numeroHeladera: string): string =>
-  `${resolveQrBase()}/fabricacion/equipos/${numeroHeladera}/ficha`;
+  `${resolveQrBase()}/public/equipos/${numeroHeladera}/ficha`;
 
 // Paleta corporativa (espejo de la usada en pdfService).
 const COLORS = {
