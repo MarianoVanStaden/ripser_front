@@ -1016,13 +1016,17 @@ const TabAbiertas: React.FC<TabAbiertasProps> = ({ vehiculos, onMutation }) => {
     setError(null);
     try {
       const data = await incidenciaVehiculoApi.getAbiertas();
-      setIncidencias(data);
+      const withVehiculos = data.map((inc) => ({
+        ...inc,
+        vehiculo: inc.vehiculo || vehiculos.find((v) => v.id === inc.vehiculoId),
+      }));
+      setIncidencias(withVehiculos);
     } catch {
       setError('Error al cargar las incidencias abiertas.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [vehiculos]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -1119,7 +1123,11 @@ const TabAbiertas: React.FC<TabAbiertasProps> = ({ vehiculos, onMutation }) => {
 
 // ─── Tab: Alertas de Vencimientos ─────────────────────────────────────────────
 
-const TabVencimientos: React.FC = () => {
+interface TabVencimientosProps {
+  vehiculos: Vehiculo[];
+}
+
+const TabVencimientos: React.FC<TabVencimientosProps> = ({ vehiculos }) => {
   const [dias, setDias] = useState(30);
   const [incidencias, setIncidencias] = useState<IncidenciaVehiculoDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1130,13 +1138,17 @@ const TabVencimientos: React.FC = () => {
     setError(null);
     try {
       const data = await incidenciaVehiculoApi.getVencimientos(d);
-      setIncidencias(data);
+      const withVehiculos = data.map((inc) => ({
+        ...inc,
+        vehiculo: inc.vehiculo || vehiculos.find((v) => v.id === inc.vehiculoId),
+      }));
+      setIncidencias(withVehiculos);
     } catch {
       setError('Error al cargar alertas de vencimientos.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [vehiculos]);
 
   useEffect(() => { load(dias); }, [load, dias]);
 
@@ -1348,7 +1360,7 @@ export const IncidenciasVehiculoPage: React.FC = () => {
               <TabAbiertas vehiculos={vehiculos} onMutation={refreshStats} />
             )}
             {tab === 2 && (
-              <TabVencimientos />
+              <TabVencimientos vehiculos={vehiculos} />
             )}
           </Box>
         </>
