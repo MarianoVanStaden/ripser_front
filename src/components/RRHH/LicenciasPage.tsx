@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
 // @ts-nocheck - Temporary: MUI v7 Grid compatibility issue - see MUI_V7_GRID_FIX.md
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useDebounce } from '../../hooks/useDebounce';
 import {
   Box,
   Typography,
@@ -32,6 +34,7 @@ import {
   MenuItem,
   FormControlLabel,
   Switch,
+  TablePagination,
   useMediaQuery,
   useTheme
 } from '@mui/material';
@@ -54,7 +57,9 @@ import {
 } from '@mui/icons-material';
 import { licenciaApi } from '../../api/services/licenciaApi';
 import { employeeApi } from '../../api/services/employeeApi';
+import { capacitacionApi } from '../../api/services/capacitacionApi';
 import { getNombreCompleto } from '../../utils/userDisplay';
+import { useTenant } from '../../context/TenantContext';
 import type { Licencia, Empleado, TipoLicencia, EstadoLicencia } from '../../types';
 import dayjs from 'dayjs';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -66,9 +71,15 @@ import AusenciaCombinadaDialog from './Licencias/AusenciaCombinadaDialog';
 const LicenciasPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [licencias, setLicencias] = useState<Licencia[]>([]);
+  const { empresaId } = useTenant();
+
+  // Pagination states
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [capacitacionPage, setCapacitacionPage] = useState(0);
+  const [capacitacionRowsPerPage, setCapacitacionRowsPerPage] = useState(10);
+
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Licencia | null>(null);
   const [openDetail, setOpenDetail] = useState(false);
@@ -89,6 +100,7 @@ const LicenciasPage: React.FC = () => {
   const [empleadoFilter, setEmpleadoFilter] = useState<Empleado | null>(null);
   const [tipoFilter, setTipoFilter] = useState<string>('TODOS');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -102,51 +114,137 @@ const LicenciasPage: React.FC = () => {
     estado: 'SOLICITADA' as EstadoLicencia
   });
 
+  // Reset page cuando cambian filtros
   useEffect(() => {
-    loadData();
+    setPage(0);
+    setCapacitacionPage(0);
+  }, [debouncedSearch, tipoFilter, estadoFilter, empleadoFilter?.id]);
+
+  // Cargar empleados
+  useEffect(() => {
+    const loadEmpleados = async () => {
+      try {
+        const data = await employeeApi.getAllList();
+        setEmpleados(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error loading empleados:', err);
+        setEmpleados([]);
+      }
+    };
+    loadEmpleados();
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [licenciasData, empleadosData] = await Promise.all([
-        licenciaApi.getAll(),
-        employeeApi.getAllList()
-      ]);
-      
-      console.log('Licencias raw data:', licenciasData);
-      console.log('Empleados data:', empleadosData);
-      
-      // Mapear empleadoId a objeto empleado completo
+  // Query para licencias paginadas
+  const licenciasQuery = useQuery({
+    queryKey: ['licencias', { page, size: rowsPerPage, debouncedSearch, tipoFilter, estadoFilter, empleadoFilter }],
+    queryFn: async () => {
+      // Para ahora, usamos getAll() y filtramos en client
+      // En el futuro, el backend debería soportar paginación
+      const data = await licenciaApi.getAll();
+      const licenciasArray = Array.isArray(data) ? data : [];
+
+      // Mapear empleado
       const empleadoFallback = { id: 0, nombre: 'Desconocido', apellido: '', puesto: '', email: '' };
-      const licenciasConEmpleado = Array.isArray(licenciasData)
-        ? licenciasData.map((licencia: any) => {
-            const empleado = empleadosData.find((e: any) => e.id === licencia.empleadoId);
-            return {
-              ...licencia,
-              empleado: empleado || licencia.empleado || empleadoFallback
-            };
-          })
-        : [];
-      
-      console.log('Licencias with empleado:', licenciasConEmpleado);
-      
-      setLicencias(licenciasConEmpleado);
-      setEmpleados(Array.isArray(empleadosData) ? empleadosData : []);
-    } catch (err) {
-      setError('Error al cargar los datos');
-      console.error('Error loading data:', err);
-      setLicencias([]);
-      setEmpleados([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const licenciasConEmpleado = licenciasArray.map((licencia: any) => {
+        const empleado = empleados.find((e: any) => e.id === licencia.empleadoId);
+        return {
+          ...licencia,
+          empleado: empleado || licencia.empleado || empleadoFallback
+        };
+      });
+
+      // Filtrar
+      let filtered = licenciasConEmpleado.filter(l => {
+        if (!l.empleado) return false;
+
+        const matchesEmpleado = !empleadoFilter || l.empleado.id === empleadoFilter.id;
+        const matchesTipo = tipoFilter === 'TODOS' || l.tipo === tipoFilter;
+        const matchesEstado = estadoFilter === 'TODOS' || l.estado === estadoFilter;
+        const matchesSearch = !debouncedSearch ||
+          getNombreCompleto(l.empleado).toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          l.motivo?.toLowerCase().includes(debouncedSearch.toLowerCase());
+
+        return matchesEmpleado && matchesTipo && matchesEstado && matchesSearch;
+      });
+
+      // Ordenar por fecha más reciente (DESC)
+      filtered = filtered.sort((a, b) => {
+        return new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime();
+      });
+
+      // Paginar
+      const totalElements = filtered.length;
+      const start = page * rowsPerPage;
+      const end = start + rowsPerPage;
+      const content = filtered.slice(start, end);
+
+      return { content, totalElements };
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+
+  const licencias = useMemo(() => licenciasQuery.data?.content ?? [], [licenciasQuery.data]);
+  const totalLicencias = useMemo(() => licenciasQuery.data?.totalElements ?? 0, [licenciasQuery.data]);
+
+  // Query para capacitaciones paginadas
+  const capacitacionesQuery = useQuery({
+    queryKey: ['capacitaciones', { page: capacitacionPage, size: capacitacionRowsPerPage }],
+    queryFn: async () => {
+      const data = await capacitacionApi.getAll();
+      const capacitacionesArray = Array.isArray(data) ? data : [];
+
+      // Mapear empleado
+      const empleadoFallback = { id: 0, nombre: 'Desconocido', apellido: '', puesto: '', email: '' };
+      const capacitacionesConEmpleado = capacitacionesArray.map((cap: any) => {
+        const empleado = empleados.find((e: any) => e.id === cap.empleadoId);
+        return {
+          ...cap,
+          empleado: empleado || cap.empleado || empleadoFallback
+        };
+      });
+
+      // Ordenar por fecha más reciente
+      const sorted = capacitacionesConEmpleado.sort((a, b) => {
+        return new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime();
+      });
+
+      // Paginar
+      const totalElements = sorted.length;
+      const start = capacitacionPage * capacitacionRowsPerPage;
+      const end = start + capacitacionRowsPerPage;
+      const content = sorted.slice(start, end);
+
+      return { content, totalElements };
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+
+  const capacitaciones = useMemo(() => capacitacionesQuery.data?.content ?? [], [capacitacionesQuery.data]);
+  const totalCapacitaciones = useMemo(() => capacitacionesQuery.data?.totalElements ?? 0, [capacitacionesQuery.data]);
 
   const getEmpleadoNombre = (empleado: Empleado | undefined) => {
     if (!empleado) return 'Desconocido';
     return getNombreCompleto(empleado);
+  };
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleChangeCapacitacionPage = (_event: unknown, newPage: number) => {
+    setCapacitacionPage(newPage);
+  };
+
+  const handleChangeCapacitacionRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCapacitacionRowsPerPage(parseInt(event.target.value, 10));
+    setCapacitacionPage(0);
   };
 
   const getTipoIcon = (tipo: TipoLicencia) => {
@@ -198,19 +296,6 @@ const LicenciasPage: React.FC = () => {
     return fin.diff(inicio, 'day') + 1;
   };
 
-  const filteredLicencias = licencias.filter(l => {
-    if (!l.empleado) return false; // Safety check
-    
-    const matchesEmpleado = !empleadoFilter || l.empleado.id === empleadoFilter.id;
-    const matchesTipo = tipoFilter === 'TODOS' || l.tipo === tipoFilter;
-    const matchesEstado = estadoFilter === 'TODOS' || l.estado === estadoFilter;
-    
-    const matchesSearch = !searchTerm ||
-      getEmpleadoNombre(l.empleado).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.motivo?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchesEmpleado && matchesTipo && matchesEstado && matchesSearch;
-  });
 
   const handleOpenForm = (licencia?: Licencia) => {
     if (licencia) {
@@ -324,7 +409,7 @@ const LicenciasPage: React.FC = () => {
         await licenciaApi.create(licenciaData);
       }
 
-      await loadData();
+      licenciasQuery.refetch();
       handleCloseForm();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al guardar la licencia');
@@ -334,11 +419,11 @@ const LicenciasPage: React.FC = () => {
 
   const handleDeleteLicencia = async () => {
     if (!selected) return;
-    
+
     try {
       setError(null);
       await licenciaApi.delete(selected.id);
-      await loadData();
+      licenciasQuery.refetch();
       setOpenDelete(false);
       setSelected(null);
     } catch (err: any) {
@@ -356,14 +441,14 @@ const LicenciasPage: React.FC = () => {
 
   const handleApprovalAction = async () => {
     if (!selected) return;
-    
+
     try {
       setError(null);
       await licenciaApi.update(selected.id, {
         ...selected,
         estado: approvalAction
       });
-      await loadData();
+      licenciasQuery.refetch();
       setOpenApproval(false);
       setSelected(null);
     } catch (err: any) {
@@ -387,18 +472,18 @@ const LicenciasPage: React.FC = () => {
   const totalSolicitadas = licencias.filter(l => l.estado === 'SOLICITADA').length;
   const totalAprobadas = licencias.filter(l => l.estado === 'APROBADA').length;
   const totalRechazadas = licencias.filter(l => l.estado === 'RECHAZADA').length;
-  const totalDiasLicencia = filteredLicencias.reduce((sum, l) => sum + l.dias, 0);
+  const totalDiasLicencia = licencias.reduce((sum, l) => sum + l.dias, 0);
 
   return (
     <Box p={{ xs: 2, sm: 3 }}>
-      <LoadingOverlay open={loading} message="Cargando licencias..." />
+      <LoadingOverlay open={licenciasQuery.isLoading && page === 0} message="Cargando licencias..." />
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
         <Typography variant="h4" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
           Gestión de Licencias
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           <Tooltip title="Recargar">
-            <IconButton onClick={loadData} color="primary">
+            <IconButton onClick={() => licenciasQuery.refetch()} color="primary">
               <RefreshIcon />
             </IconButton>
           </Tooltip>
@@ -431,6 +516,7 @@ const LicenciasPage: React.FC = () => {
           scrollButtons={isMobile ? 'auto' : false}
         >
           <Tab icon={<CalendarIcon />} label="Licencias" iconPosition="start" />
+          <Tab icon={<MedicalIcon />} label="Capacitaciones" iconPosition="start" />
           <Tab icon={<EventBusyIcon />} label="Excepciones de Asistencia" iconPosition="start" />
         </Tabs>
       </Box>
@@ -622,7 +708,7 @@ const LicenciasPage: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredLicencias.length === 0 ? (
+                {licencias.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} align="center">
                       <Typography variant="body2" color="textSecondary">
@@ -631,7 +717,7 @@ const LicenciasPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLicencias.map(licencia => (
+                  licencias.map(licencia => (
                     <TableRow key={licencia.id} hover>
                       <TableCell>
                         <Typography variant="body2" fontWeight="600">
@@ -723,12 +809,125 @@ const LicenciasPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={totalLicencias}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </CardContent>
       </Card>
 
       </>)}
 
       {tabValue === 1 && (
+        <>
+          <Card>
+            <CardContent>
+              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: { xs: 850, md: 'auto' } }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ minWidth: 150 }}>Empleado</TableCell>
+                      <TableCell sx={{ minWidth: 200 }}>Tema</TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>Período</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 100 }}>Horas</TableCell>
+                      <TableCell align="center" sx={{ minWidth: 130 }}>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {capacitaciones.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">
+                          <Typography variant="body2" color="textSecondary">
+                            No hay capacitaciones registradas
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      capacitaciones.map(cap => (
+                        <TableRow key={cap.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="600">
+                              {getEmpleadoNombre(cap.empleado)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {cap.tema || '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {cap.fechaInicio && cap.fechaFin
+                                ? `${dayjs(cap.fechaInicio).format('DD/MM/YYYY')} - ${dayjs(cap.fechaFin).format('DD/MM/YYYY')}`
+                                : '-'
+                              }
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={`${cap.horas || 0}h`}
+                              size="small"
+                              color="primary"
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                              <Tooltip title="Editar">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  disabled
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Eliminar">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  disabled
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <TablePagination
+                component="div"
+                count={totalCapacitaciones}
+                page={capacitacionPage}
+                onPageChange={handleChangeCapacitacionPage}
+                rowsPerPage={capacitacionRowsPerPage}
+                onRowsPerPageChange={handleChangeCapacitacionRowsPerPage}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) =>
+                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {tabValue === 2 && (
         <>
           <ExcepcionesTab
             empleados={empleados}
@@ -751,7 +950,7 @@ const LicenciasPage: React.FC = () => {
       <AusenciaCombinadaDialog
         open={openCombinada}
         onClose={() => setOpenCombinada(false)}
-        onSaved={() => { loadData(); excepcionesHook.reload(); }}
+        onSaved={() => { licenciasQuery.refetch(); excepcionesHook.reload(); }}
         empleados={empleados}
         fullScreen={isMobile}
       />
