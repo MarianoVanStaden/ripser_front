@@ -57,7 +57,6 @@ import {
 } from '@mui/icons-material';
 import { licenciaApi } from '../../api/services/licenciaApi';
 import { employeeApi } from '../../api/services/employeeApi';
-import { capacitacionApi } from '../../api/services/capacitacionApi';
 import { getNombreCompleto } from '../../utils/userDisplay';
 import { useTenant } from '../../context/TenantContext';
 import type { Licencia, Empleado, TipoLicencia, EstadoLicencia } from '../../types';
@@ -76,8 +75,6 @@ const LicenciasPage: React.FC = () => {
   // Pagination states
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [capacitacionPage, setCapacitacionPage] = useState(0);
-  const [capacitacionRowsPerPage, setCapacitacionRowsPerPage] = useState(10);
 
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +114,6 @@ const LicenciasPage: React.FC = () => {
   // Reset page cuando cambian filtros
   useEffect(() => {
     setPage(0);
-    setCapacitacionPage(0);
   }, [debouncedSearch, tipoFilter, estadoFilter, empleadoFilter?.id]);
 
   // Cargar empleados
@@ -143,13 +139,20 @@ const LicenciasPage: React.FC = () => {
       const data = await licenciaApi.getAll();
       const licenciasArray = Array.isArray(data) ? data : [];
 
-      // Mapear empleado
-      const empleadoFallback = { id: 0, nombre: 'Desconocido', apellido: '', puesto: '', email: '' };
+      // Mapear empleado — construir desde empleadoNombre/empleadoApellido si vienen del backend
       const licenciasConEmpleado = licenciasArray.map((licencia: any) => {
-        const empleado = empleados.find((e: any) => e.id === licencia.empleadoId);
+        const empleado = licencia.empleado ||
+          (licencia.empleadoId && licencia.empleadoNombre ? {
+            id: licencia.empleadoId,
+            nombre: licencia.empleadoNombre,
+            apellido: licencia.empleadoApellido || '',
+            puesto: '',
+            email: ''
+          } : null);
+
         return {
           ...licencia,
-          empleado: empleado || licencia.empleado || empleadoFallback
+          empleado: empleado || { id: 0, nombre: 'Desconocido', apellido: '', puesto: '', email: '' }
         };
       });
 
@@ -187,43 +190,6 @@ const LicenciasPage: React.FC = () => {
   const licencias = useMemo(() => licenciasQuery.data?.content ?? [], [licenciasQuery.data]);
   const totalLicencias = useMemo(() => licenciasQuery.data?.totalElements ?? 0, [licenciasQuery.data]);
 
-  // Query para capacitaciones paginadas
-  const capacitacionesQuery = useQuery({
-    queryKey: ['capacitaciones', { page: capacitacionPage, size: capacitacionRowsPerPage }],
-    queryFn: async () => {
-      const data = await capacitacionApi.getAll();
-      const capacitacionesArray = Array.isArray(data) ? data : [];
-
-      // Mapear empleado
-      const empleadoFallback = { id: 0, nombre: 'Desconocido', apellido: '', puesto: '', email: '' };
-      const capacitacionesConEmpleado = capacitacionesArray.map((cap: any) => {
-        const empleado = empleados.find((e: any) => e.id === cap.empleadoId);
-        return {
-          ...cap,
-          empleado: empleado || cap.empleado || empleadoFallback
-        };
-      });
-
-      // Ordenar por fecha más reciente
-      const sorted = capacitacionesConEmpleado.sort((a, b) => {
-        return new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime();
-      });
-
-      // Paginar
-      const totalElements = sorted.length;
-      const start = capacitacionPage * capacitacionRowsPerPage;
-      const end = start + capacitacionRowsPerPage;
-      const content = sorted.slice(start, end);
-
-      return { content, totalElements };
-    },
-    placeholderData: keepPreviousData,
-    staleTime: 30_000,
-  });
-
-  const capacitaciones = useMemo(() => capacitacionesQuery.data?.content ?? [], [capacitacionesQuery.data]);
-  const totalCapacitaciones = useMemo(() => capacitacionesQuery.data?.totalElements ?? 0, [capacitacionesQuery.data]);
-
   const getEmpleadoNombre = (empleado: Empleado | undefined) => {
     if (!empleado) return 'Desconocido';
     return getNombreCompleto(empleado);
@@ -236,15 +202,6 @@ const LicenciasPage: React.FC = () => {
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-  };
-
-  const handleChangeCapacitacionPage = (_event: unknown, newPage: number) => {
-    setCapacitacionPage(newPage);
-  };
-
-  const handleChangeCapacitacionRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCapacitacionRowsPerPage(parseInt(event.target.value, 10));
-    setCapacitacionPage(0);
   };
 
   const getTipoIcon = (tipo: TipoLicencia) => {
@@ -516,7 +473,6 @@ const LicenciasPage: React.FC = () => {
           scrollButtons={isMobile ? 'auto' : false}
         >
           <Tab icon={<CalendarIcon />} label="Licencias" iconPosition="start" />
-          <Tab icon={<MedicalIcon />} label="Capacitaciones" iconPosition="start" />
           <Tab icon={<EventBusyIcon />} label="Excepciones de Asistencia" iconPosition="start" />
         </Tabs>
       </Box>
@@ -829,105 +785,6 @@ const LicenciasPage: React.FC = () => {
       </>)}
 
       {tabValue === 1 && (
-        <>
-          <Card>
-            <CardContent>
-              <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                <Table sx={{ minWidth: { xs: 850, md: 'auto' } }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ minWidth: 150 }}>Empleado</TableCell>
-                      <TableCell sx={{ minWidth: 200 }}>Tema</TableCell>
-                      <TableCell sx={{ minWidth: 150 }}>Período</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 100 }}>Horas</TableCell>
-                      <TableCell align="center" sx={{ minWidth: 130 }}>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {capacitaciones.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} align="center">
-                          <Typography variant="body2" color="textSecondary">
-                            No hay capacitaciones registradas
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      capacitaciones.map(cap => (
-                        <TableRow key={cap.id} hover>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="600">
-                              {getEmpleadoNombre(cap.empleado)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {cap.tema || '-'}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2">
-                              {cap.fechaInicio && cap.fechaFin
-                                ? `${dayjs(cap.fechaInicio).format('DD/MM/YYYY')} - ${dayjs(cap.fechaFin).format('DD/MM/YYYY')}`
-                                : '-'
-                              }
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={`${cap.horas || 0}h`}
-                              size="small"
-                              color="primary"
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            <Stack direction="row" spacing={0.5} justifyContent="center">
-                              <Tooltip title="Editar">
-                                <IconButton
-                                  size="small"
-                                  color="primary"
-                                  disabled
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Eliminar">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  disabled
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <TablePagination
-                component="div"
-                count={totalCapacitaciones}
-                page={capacitacionPage}
-                onPageChange={handleChangeCapacitacionPage}
-                rowsPerPage={capacitacionRowsPerPage}
-                onRowsPerPageChange={handleChangeCapacitacionRowsPerPage}
-                rowsPerPageOptions={[5, 10, 25, 50]}
-                labelRowsPerPage="Filas por página:"
-                labelDisplayedRows={({ from, to, count }) =>
-                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-                }
-              />
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {tabValue === 2 && (
         <>
           <ExcepcionesTab
             empleados={empleados}

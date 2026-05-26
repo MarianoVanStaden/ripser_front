@@ -686,7 +686,10 @@ export interface RegistroAsistencia {
 
 export interface Licencia {
   id: number;
-  empleado: Empleado;
+  empleadoId: number;
+  empleadoNombre: string;
+  empleadoApellido: string;
+  empleado?: Empleado; // Optional for backwards compat / client-side mapping
   tipo: TipoLicencia;
   fechaInicio: string;
   fechaFin: string;
