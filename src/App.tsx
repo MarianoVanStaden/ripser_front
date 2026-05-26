@@ -183,7 +183,7 @@ const InventoryPage = lazy(() => import('./components/Logistica/InventoryPage'))
 const RecountTasksPage = lazy(() => import('./components/Logistica/RecountTasksPage'));
 const TripsPage = lazy(() => import('./components/Logistica/TripsPage'));
 const DeliveriesPage = lazy(() => import('./components/Logistica/DeliveriesPage'));
-const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
+// const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
 const IncidenciasVehiculoPage = lazy(() => import('./components/Logistica/IncidenciasVehiculoPage'));
 const DepositosPage = lazy(() => import('./components/Logistica/Depositos/DepositosPage'));
 const UbicacionEquiposPage = lazy(() => import('./components/Logistica/Depositos/UbicacionEquiposPage'));
@@ -419,7 +419,7 @@ function App() {
                   <Route path="logistica/inventario/stock-productos" element={priv(<StockPage />)} />
                   <Route path="logistica/distribucion/viajes" element={priv(<TripsPage />)} />
                   <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
-                  <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} />
+                  {/* <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} /> */}
                   <Route path="logistica/vehiculos/incidencias" element={priv(<IncidenciasVehiculoPage />)} />
                   <Route path="logistica/movimientos/auditoria" element={priv(<AuditoriaPage />)} />
                   <Route path="logistica/configuracion/depositos" element={priv(<DepositosPage />)} />
@@ -430,7 +430,7 @@ function App() {
                   <Route path="logistica/recuentos" element={<Navigate to="/logistica/inventario/recuentos" replace />} />
                   <Route path="logistica/viajes" element={<Navigate to="/logistica/distribucion/viajes" replace />} />
                   <Route path="logistica/entregas" element={<Navigate to="/logistica/distribucion/entregas-productos" replace />} />
-                  <Route path="logistica/entregas-equipos" element={<Navigate to="/logistica/distribucion/entregas-equipos" replace />} />
+                  {/* <Route path="logistica/entregas-equipos" element={<Navigate to="/logistica/distribucion/entregas-equipos" replace />} /> */}
                   <Route path="logistica/depositos" element={<Navigate to="/logistica/configuracion/depositos" replace />} />
                   <Route path="logistica/ubicacion-equipos" element={<Navigate to="/logistica/inventario/ubicaciones" replace />} />
                   <Route path="logistica/auditoria" element={<Navigate to="/logistica/movimientos/auditoria" replace />} />
