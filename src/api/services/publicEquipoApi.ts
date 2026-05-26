@@ -15,6 +15,18 @@ export interface FichaEquipoPublicDTO {
   motor: string;
   gas: string;
   sistema: string;
+  humedad?: string;
+  estructura?: string;
+  gabinete?: string;
+  iluminacion?: string;
+  transformador?: string;
+  leds?: string;
+  vidrios?: string;
+  paneles?: string;
+  puertas?: string;
+  revestimiento?: string;
+  estanteriasCantidad?: number;
+  estanteriasFormato?: string;
   alto: number;
   ancho: number;
   profundidad: number;

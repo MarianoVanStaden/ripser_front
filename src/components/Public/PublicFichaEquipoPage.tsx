@@ -343,39 +343,148 @@ const PublicFichaEquipoPage: React.FC = () => {
 
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="overline" color="text.secondary" display="block">
-                Motor
-              </Typography>
-              <Typography variant="body1">{ficha.motor}</Typography>
-            </Box>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Motor
+                </Typography>
+                <Typography variant="body2">{ficha.motor || '-'}</Typography>
+              </Box>
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="overline" color="text.secondary" display="block">
-                Gas Refrigerante
-              </Typography>
-              <Typography variant="body1">{ficha.gas}</Typography>
-            </Box>
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Gas Refrigerante
+                </Typography>
+                <Typography variant="body2">{ficha.gas || '-'}</Typography>
+              </Box>
 
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="overline" color="text.secondary" display="block">
-                Sistema
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Sistema
+                </Typography>
+                <Typography variant="body2">{ficha.sistema || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Humedad
+                </Typography>
+                <Typography variant="body2">{ficha.humedad || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Estructura
+                </Typography>
+                <Typography variant="body2">{ficha.estructura || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Gabinete
+                </Typography>
+                <Typography variant="body2">{ficha.gabinete || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Iluminación
+                </Typography>
+                <Typography variant="body2">{ficha.iluminacion || '-'}</Typography>
+              </Box>
+            </Stack>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Transformador
+                </Typography>
+                <Typography variant="body2">{ficha.transformador || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  LEDs
+                </Typography>
+                <Typography variant="body2">{ficha.leds || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Vidrios
+                </Typography>
+                <Typography variant="body2">{ficha.vidrios || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Paneles
+                </Typography>
+                <Typography variant="body2">{ficha.paneles || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Puertas
+                </Typography>
+                <Typography variant="body2">{ficha.puertas || '-'}</Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="overline" color="text.secondary" display="block">
+                  Revestimiento
+                </Typography>
+                <Typography variant="body2">{ficha.revestimiento || '-'}</Typography>
+              </Box>
+            </Stack>
+          </Grid>
+        </Grid>
+
+        <Divider sx={{ my: 3 }} />
+
+        {/* DIMENSIONES Y ESTANTERÍAS */}
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                Dimensiones (mm)
               </Typography>
-              <Typography variant="body1">{ficha.sistema}</Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  <strong>Alto:</strong> {ficha.alto || '-'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Ancho:</strong> {ficha.ancho || '-'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Profundidad:</strong> {ficha.profundidad || '-'}
+                </Typography>
+              </Stack>
             </Box>
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="overline" color="text.secondary" display="block">
-                Dimensiones (mm)
-              </Typography>
-              <Stack spacing={0.5}>
-                <Typography variant="body2">Alto: {ficha.alto}</Typography>
-                <Typography variant="body2">Ancho: {ficha.ancho}</Typography>
-                <Typography variant="body2">Profundidad: {ficha.profundidad}</Typography>
-              </Stack>
-            </Box>
+            {(ficha.estanteriasCantidad || ficha.estanteriasFormato) && (
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                  Estanterías
+                </Typography>
+                <Stack spacing={1}>
+                  {ficha.estanteriasCantidad && (
+                    <Typography variant="body2">
+                      <strong>Cantidad:</strong> {ficha.estanteriasCantidad}
+                    </Typography>
+                  )}
+                  {ficha.estanteriasFormato && (
+                    <Typography variant="body2">
+                      <strong>Formato:</strong> {ficha.estanteriasFormato}
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+            )}
           </Grid>
         </Grid>
       </Paper>
