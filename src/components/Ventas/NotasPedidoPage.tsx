@@ -1016,7 +1016,10 @@ const NotasPedidoPage: React.FC = () => {
   const submitBillingDialog = () => {
     if (!notaToBill) return;
     // Compute the real total with interest so the success dialog shows the correct value
-    const montoBase = notaToBill.subtotal ?? 0;
+    // Usar el total correcto: subtotal - descuento + iva
+    const descuentoMonto = Number(notaToBill.descuentoMonto) ?? 0;
+    const ivaAmount = notaToBill.iva ?? 0;
+    const montoBase = (notaToBill.subtotal ?? 0) - descuentoMonto + ivaAmount;
     const entregaInicial = billingForm.entregarInicial
       ? (billingForm.usePorcentaje
           ? montoBase * (billingForm.porcentajeEntregaInicial / 100)
