@@ -94,6 +94,14 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     systemRole: 'TRANSPORTE'
   },
   {
+    value: 'POST_VENTA',
+    label: 'Post-Venta',
+    description: 'Gestión post-venta: Registro de Ventas, Clientes completos, Viajes y Control de Entregas. Opera en todas las sucursales con dashboard de KPIs operativos',
+    color: '#ff6f00',
+    requiresSucursal: false,
+    systemRole: 'POST_VENTA'
+  },
+  {
     value: 'RECURSOS_HUMANOS',
     label: 'Recursos Humanos',
     description: 'Acceso exclusivo al módulo RRHH: empleados, legajos, sueldos, asistencias, licencias, capacitaciones y puestos',
