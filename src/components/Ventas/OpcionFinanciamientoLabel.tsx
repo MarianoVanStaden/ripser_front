@@ -6,8 +6,9 @@ import {
   AccountBalance as BankIcon,
   Receipt as ReceiptIcon,
 } from '@mui/icons-material';
-import type { MetodoPago, OpcionFinanciamientoDTO } from '../../types';
+import type { MetodoPago, OpcionFinanciamientoDTO, DetalleDocumento } from '../../types';
 import {
+  calculateCostoEnvio,
   calcularFinanciamientoPropio,
   debeDesglosarFinanciamientoPropio,
   formatCurrencyARS,
@@ -57,8 +58,10 @@ const DataPoint: React.FC<DataPointProps> = ({ label, value, highlight }) => (
 
 interface OpcionFinanciamientoLabelProps {
   opcion: OpcionFinanciamientoDTO;
-  /** Importe base del documento (subtotal). Necesario para calcular entrega 40% en financiamiento propio. */
+  /** Importe base del documento (subtotal sin envío). Necesario para calcular entrega 40% en financiamiento propio. */
   baseImporte: number;
+  /** Detalles del documento para calcular costo de envío. */
+  detalles?: DetalleDocumento[];
 }
 
 /**
@@ -69,11 +72,12 @@ interface OpcionFinanciamientoLabelProps {
  * Pensado para usarse dentro de un FormControlLabel (con Radio externo) o
  * en cualquier lista. No incluye el control de selección — eso queda fuera.
  */
-const OpcionFinanciamientoLabel: React.FC<OpcionFinanciamientoLabelProps> = ({ opcion, baseImporte }) => {
+const OpcionFinanciamientoLabel: React.FC<OpcionFinanciamientoLabelProps> = ({ opcion, baseImporte, detalles = [] }) => {
   const theme = useTheme();
+  const costoEnvio = calculateCostoEnvio(detalles);
   const propio = debeDesglosarFinanciamientoPropio(opcion);
   const calc = propio
-    ? calcularFinanciamientoPropio(baseImporte, opcion.tasaInteres, opcion.cantidadCuotas)
+    ? calcularFinanciamientoPropio(baseImporte, opcion.tasaInteres, opcion.cantidadCuotas, 0.4, costoEnvio)
     : null;
 
   const tasaPositiva = opcion.tasaInteres > 0;

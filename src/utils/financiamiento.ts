@@ -1,4 +1,4 @@
-import type { MetodoPago, OpcionFinanciamientoDTO } from '../types';
+import type { MetodoPago, OpcionFinanciamientoDTO, DetalleDocumento } from '../types';
 
 export const PORCENTAJE_ENTREGA_PROPIO = 0.4;
 
@@ -38,10 +38,13 @@ export const calcularFinanciamientoPropio = (
   base: number,
   tasaInteres: number,
   cuotas: number,
-  porcentajeEntrega: number = PORCENTAJE_ENTREGA_PROPIO
+  porcentajeEntrega: number = PORCENTAJE_ENTREGA_PROPIO,
+  costoEnvio: number = 0
 ): FinanciamientoPropioCalc => {
-  const entrega = Math.round(base * porcentajeEntrega);
-  const saldo = base - entrega;
+  const equipoBase = base; // Equipment/product cost
+  const entregaEquipo = Math.round(equipoBase * porcentajeEntrega);
+  const entrega = entregaEquipo + costoEnvio; // Initial payment includes shipping
+  const saldo = equipoBase - entregaEquipo; // Financing only covers equipment (60%)
   const saldoConInteres = Math.round(saldo * (1 + (tasaInteres || 0) / 100));
   const cuotaEstimada = cuotas > 0 ? Math.round(saldoConInteres / cuotas) : 0;
   const totalEstimado = entrega + saldoConInteres;
@@ -63,6 +66,12 @@ export const calcularFinanciamientoPropio = (
  */
 export const debeDesglosarFinanciamientoPropio = (opcion: OpcionFinanciamientoDTO): boolean =>
   isFinanciamientoPropio(opcion.metodoPago) && opcion.cantidadCuotas > 1;
+
+export const calculateCostoEnvio = (detalles: DetalleDocumento[]): number => {
+  return detalles
+    .filter((d) => d.tipoItem === 'ENVIO')
+    .reduce((sum, d) => sum + (d.subtotal ?? 0), 0);
+};
 
 export const formatCurrencyARS = (value: number | null | undefined, decimals = 0): string => {
   return `$${Number(value ?? 0).toLocaleString('es-AR', {

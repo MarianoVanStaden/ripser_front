@@ -19,6 +19,7 @@ import {
 import { addCorporateHeader, addCorporateFooter } from '../utils/pdfExportUtils';
 import {
   PORCENTAJE_ENTREGA_PROPIO,
+  calculateCostoEnvio,
   calcularFinanciamientoPropio,
   getMetodoPagoLabel,
   isFinanciamientoPropio,
@@ -158,6 +159,7 @@ interface RenderOpcionParams {
   yPosition: number;
   margin: number;
   baseImporte: number;
+  costoEnvio?: number;
   showOpcionTag?: string;
 }
 
@@ -172,11 +174,12 @@ const renderOpcionFinanciamiento = ({
   yPosition,
   margin,
   baseImporte,
+  costoEnvio = 0,
   showOpcionTag,
 }: RenderOpcionParams): number => {
   const propio = isFinanciamientoPropio(opcion.metodoPago) && opcion.cantidadCuotas > 1;
   const calc = propio
-    ? calcularFinanciamientoPropio(baseImporte, opcion.tasaInteres, opcion.cantidadCuotas)
+    ? calcularFinanciamientoPropio(baseImporte, opcion.tasaInteres, opcion.cantidadCuotas, 0.4, costoEnvio)
     : null;
 
   const tableWidth = doc.internal.pageSize.getWidth() - (margin + 1) * 2;
@@ -558,12 +561,15 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
     );
 
     opcionesOrdenadas.forEach((opcion, index) => {
+      const costoEnvio = calculateCostoEnvio(presupuesto.detalles ?? []);
+      const equipoBase = Math.max(0, Number(presupuesto.subtotal ?? 0) - Number(presupuesto.descuentoMonto ?? 0) - costoEnvio);
       yPosition = renderOpcionFinanciamiento({
         doc,
         opcion,
         yPosition,
         margin,
-        baseImporte: Math.max(0, Number(presupuesto.subtotal ?? 0) - Number(presupuesto.descuentoMonto ?? 0)),
+        baseImporte: equipoBase,
+        costoEnvio,
         showOpcionTag: `Opción ${index + 1}:`,
       });
     });
@@ -873,12 +879,15 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
     yPosition = (doc as any).lastAutoTable.finalY + 1;
 
+    const costoEnvio = calculateCostoEnvio(documento.detalles ?? []);
+    const equipoBase = Math.max(0, Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0) - costoEnvio);
     yPosition = renderOpcionFinanciamiento({
       doc,
       opcion: opcionSeleccionada,
       yPosition,
       margin,
-      baseImporte: Math.max(0, Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0)),
+      baseImporte: equipoBase,
+      costoEnvio,
     });
 
     if (isFinanciamientoPropio(opcionSeleccionada.metodoPago) && opcionSeleccionada.cantidadCuotas > 1) {

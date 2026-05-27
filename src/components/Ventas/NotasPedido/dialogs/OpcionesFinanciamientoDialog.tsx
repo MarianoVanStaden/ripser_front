@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { DocumentoComercial, OpcionFinanciamientoDTO } from '../../../../types';
+import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 import OpcionFinanciamientoLabel from '../../OpcionFinanciamientoLabel';
 
 interface Props {
@@ -92,6 +93,8 @@ const OpcionesFinanciamientoDialog: React.FC<Props> = ({
           >
             {opciones.map((opcion) => {
               const isSelected = selectedOpcionId === opcion.id;
+              const costoEnvio = nota ? calculateCostoEnvio(nota.detalles ?? []) : 0;
+              const equipoBase = Math.max(0, (nota?.subtotal ?? 0) - (nota?.descuentoMonto ?? 0) - costoEnvio);
               return (
                 <Box
                   key={opcion.id}
@@ -120,7 +123,8 @@ const OpcionesFinanciamientoDialog: React.FC<Props> = ({
                     label={
                       <OpcionFinanciamientoLabel
                         opcion={opcion}
-                        baseImporte={nota?.subtotal ?? 0}
+                        baseImporte={equipoBase}
+                        detalles={nota?.detalles}
                       />
                     }
                   />
