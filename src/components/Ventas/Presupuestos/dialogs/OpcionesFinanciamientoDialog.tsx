@@ -96,7 +96,7 @@ const OpcionesFinanciamientoDialog: React.FC<Props> = ({
           {opciones.map((opcion) => {
             const isSelected = selectedOpcionId === opcion.id;
             const costoEnvio = presupuesto ? calculateCostoEnvio(presupuesto.detalles ?? []) : 0;
-            const equipoBase = Math.max(0, (presupuesto?.subtotal ?? 0) - (presupuesto?.descuentoMonto ?? 0) - costoEnvio);
+            const equipoBase = Math.max(0, (presupuesto?.total ?? 0) - costoEnvio);
             return (
               <Box
                 key={opcion.id}

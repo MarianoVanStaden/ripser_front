@@ -562,7 +562,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
 
     opcionesOrdenadas.forEach((opcion, index) => {
       const costoEnvio = calculateCostoEnvio(presupuesto.detalles ?? []);
-      const equipoBase = Math.max(0, Number(presupuesto.subtotal ?? 0) - Number(presupuesto.descuentoMonto ?? 0) - costoEnvio);
+      const equipoBase = Math.max(0, Number(presupuesto.total ?? 0) - costoEnvio);
       yPosition = renderOpcionFinanciamiento({
         doc,
         opcion,
@@ -880,7 +880,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     yPosition = (doc as any).lastAutoTable.finalY + 1;
 
     const costoEnvio = calculateCostoEnvio(documento.detalles ?? []);
-    const equipoBase = Math.max(0, Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0) - costoEnvio);
+    const equipoBase = Math.max(0, Number(documento.total ?? 0) - costoEnvio);
     yPosition = renderOpcionFinanciamiento({
       doc,
       opcion: opcionSeleccionada,
