@@ -127,8 +127,9 @@ const PostVentaDashboard: React.FC = () => {
       // Viajes del día
       const viajesReq = viajeApi
         .getAll({ page: 0, size: 500 })
-        .then((r: ViajeResponse[]) => {
-          return r.filter(
+        .then((r) => {
+          const data = Array.isArray(r) ? r : (r as any).content ?? [];
+          return (data as ViajeResponse[]).filter(
             (v) => v.fechaViaje && v.fechaViaje.startsWith(today)
           );
         })
@@ -190,7 +191,6 @@ const PostVentaDashboard: React.FC = () => {
       }
       setEntregaMetrics(nextMetrics);
 
-      setEntregas(entregasData);
       setViajes(viajesData);
       setVentas(ventasData);
       setReclamos(reclamosData);
