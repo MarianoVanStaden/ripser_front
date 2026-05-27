@@ -75,6 +75,7 @@ const availableRoles = [
   { value: 'TALLER' as TipoRol, label: 'Técnico de Taller', color: '#5d4037' },
   { value: 'OFICINA' as TipoRol, label: 'Personal de Oficina', color: '#0288d1' },
   { value: 'RECURSOS_HUMANOS' as TipoRol, label: 'Recursos Humanos', color: '#2e7d32' },
+  { value: 'POST_VENTA' as TipoRol, label: 'Post-Venta', color: '#ff6f00' },
   { value: 'USUARIO' as TipoRol, label: 'Usuario', color: '#7b1fa2' },
   { value: 'USER' as TipoRol, label: 'Usuario (básico)', color: '#6a1b9a' },
 ];
@@ -90,6 +91,7 @@ const systemRoleOptions: { value: TipoRol; label: string; description: string; c
   { value: 'OFICINA', label: 'Personal de Oficina', description: 'Acceso a ventas, clientes, proveedores y logística', color: '#0288d1' },
   { value: 'COBRANZAS', label: 'Cobranzas', description: 'Acceso a Registro de Ventas, Gestión y Carpeta de Clientes, y módulo Cobranzas', color: '#00897b' },
   { value: 'TRANSPORTE', label: 'Transporte', description: 'Arma viajes y gestiona entregas. Acceso a Registro Ventas, Clientes, Transporte, Equipos Fabricados, Garantías y Taller', color: '#6a1b9a' },
+  { value: 'POST_VENTA', label: 'Post-Venta', description: 'Gestión post-venta: Acceso a Registro de Ventas, Clientes completos, Viajes y Control de Entregas, con dashboard de KPIs operativos', color: '#ff6f00' },
   { value: 'RECURSOS_HUMANOS', label: 'Recursos Humanos', description: 'Acceso exclusivo al módulo RRHH: empleados, legajos, sueldos, asistencias, licencias, capacitaciones y puestos', color: '#2e7d32' },
   { value: 'COORDINADORA_COMPRAS', label: 'Coordinadora de Compras', description: 'Producción, Logística y Proveedores completos. En Administración ve flujo de caja, balance, bancos, cajas y catálogos', color: '#e65100' },
   { value: 'COORDINADORA_LOGISTICA', label: 'Coordinadora de Logística', description: 'Todo lo de Transporte + RRHH parcial (Sueldos, Adelantos, Config, Organigrama) + Administración financiera básica', color: '#4527a0' },

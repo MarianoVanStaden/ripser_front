@@ -306,29 +306,49 @@ const FacturarManualTab: React.FC<Props> = ({
             <Box mt={3} sx={{ width: '100%' }}>
               <Paper sx={{ p: 2, bgcolor: 'grey.50', width: '100%' }}>
                 <Grid container spacing={2} sx={{ width: '100%' }}>
-                  <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
-                    <Typography variant="subtitle2" color="text.secondary">Subtotal:</Typography>
-                    <Typography variant="h6">${totals.subtotal.toFixed(2)}</Typography>
-                  </Grid>
-                  {showDescuentoCol && (
-                    <Grid item xs={12} sm={4}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Descuento {descuentoTipo === 'PORCENTAJE' ? `(${descuentoValor}%)` : '(monto fijo)'}:
-                      </Typography>
-                      <Typography variant="h6" color="error.main">-${totals.descuento.toFixed(2)}</Typography>
-                    </Grid>
-                  )}
-                  <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      IVA ({IVA_OPTIONS.find((o) => o.value === selectedIva)?.label}):
-                    </Typography>
-                    <Typography variant="h6">${totals.iva.toFixed(2)}</Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="subtitle2" color="text.secondary">Total:</Typography>
-                    <Typography variant="h5" color="primary">${totals.total.toFixed(2)}</Typography>
-                  </Grid>
+                  {(() => {
+                    const costoEnvio = cart
+                      .filter((item) => item.tipoItem === 'ENVIO')
+                      .reduce((sum, item) => sum + (item.cantidad * item.precioUnitario), 0);
+                    const equipoBase = totals.subtotal - costoEnvio;
+                    return (
+                      <>
+                        <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                          <Typography variant="body2" color="text.secondary">Equipo:</Typography>
+                          <Typography variant="body2">${equipoBase.toFixed(2)}</Typography>
+                        </Grid>
+                        {showDescuentoCol && (
+                          <Grid item xs={12} sm={4}>
+                            <Typography variant="subtitle2" color="text.secondary">
+                              Descuento {descuentoTipo === 'PORCENTAJE' ? `(${descuentoValor}%)` : '(monto fijo)'}:
+                            </Typography>
+                            <Typography variant="h6" color="error.main">-${totals.descuento.toFixed(2)}</Typography>
+                          </Grid>
+                        )}
+                        {costoEnvio > 0 && (
+                          <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                            <Typography variant="body2" color="text.secondary">Envío:</Typography>
+                            <Typography variant="body2">${costoEnvio.toFixed(2)}</Typography>
+                          </Grid>
+                        )}
+                        <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                          <Typography variant="subtitle2" color="text.secondary">Subtotal:</Typography>
+                          <Typography variant="h6">${totals.subtotal.toFixed(2)}</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            IVA ({IVA_OPTIONS.find((o) => o.value === selectedIva)?.label}):
+                          </Typography>
+                          <Typography variant="h6">${totals.iva.toFixed(2)}</Typography>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Divider sx={{ my: 1 }} />
+                          <Typography variant="subtitle2" color="text.secondary">Total:</Typography>
+                          <Typography variant="h5" color="primary">${totals.total.toFixed(2)}</Typography>
+                        </Grid>
+                      </>
+                    );
+                  })()}
                 </Grid>
               </Paper>
             </Box>

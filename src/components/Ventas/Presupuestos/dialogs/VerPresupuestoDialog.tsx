@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import { Edit as EditIcon } from '@mui/icons-material';
 import type { DetalleDocumento, DocumentoComercial } from '../../../../types';
+import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 import AuditoriaFlujo from '../../../common/AuditoriaFlujo';
 import { getStatusColor, getStatusLabel } from '../utils';
 
@@ -237,47 +238,71 @@ const VerPresupuestoDialog: React.FC<Props> = ({
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
               <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
-                  <Typography>
-                    $
-                    {presupuesto.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-                {presupuesto.descuentoTipo &&
-                  presupuesto.descuentoTipo !== 'NONE' &&
-                  Number(presupuesto.descuentoValor) > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography sx={{ mr: 4 }}>
-                        Descuento{' '}
-                        {presupuesto.descuentoTipo === 'PORCENTAJE'
-                          ? `(${presupuesto.descuentoValor}%)`
-                          : '(monto fijo)'}
-                        :
-                      </Typography>
-                      <Typography color="error.main">
-                        -$
-                        {Number(presupuesto.descuentoMonto ?? 0).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </Typography>
-                    </Box>
-                  )}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography sx={{ mr: 4 }}>IVA:</Typography>
-                  <Typography>
-                    ${presupuesto.iva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-                <Divider sx={{ my: 1 }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="h6" sx={{ mr: 4 }}>
-                    Total:
-                  </Typography>
-                  <Typography variant="h6">
-                    ${presupuesto.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
+                {(() => {
+                  const costoEnvio = calculateCostoEnvio(presupuesto.detalles ?? []);
+                  const equipoBase = presupuesto.subtotal - costoEnvio;
+                  return (
+                    <>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ mr: 4, color: 'text.secondary' }}>Equipo:</Typography>
+                        <Typography variant="body2">
+                          $
+                          {equipoBase.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                      {presupuesto.descuentoTipo &&
+                        presupuesto.descuentoTipo !== 'NONE' &&
+                        Number(presupuesto.descuentoValor) > 0 && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography sx={{ mr: 4 }}>
+                              Descuento{' '}
+                              {presupuesto.descuentoTipo === 'PORCENTAJE'
+                                ? `(${presupuesto.descuentoValor}%)`
+                                : '(monto fijo)'}
+                              :
+                            </Typography>
+                            <Typography color="error.main">
+                              -$
+                              {Number(presupuesto.descuentoMonto ?? 0).toLocaleString('es-AR', {
+                                minimumFractionDigits: 2,
+                              })}
+                            </Typography>
+                          </Box>
+                        )}
+                      {costoEnvio > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" sx={{ mr: 4, color: 'text.secondary' }}>Envío:</Typography>
+                          <Typography variant="body2">
+                            ${costoEnvio.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                      )}
+                      <Divider sx={{ my: 1 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                        <Typography>
+                          $
+                          {presupuesto.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography sx={{ mr: 4 }}>IVA:</Typography>
+                        <Typography>
+                          ${presupuesto.iva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                      <Divider sx={{ my: 1 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="h6" sx={{ mr: 4 }}>
+                          Total:
+                        </Typography>
+                        <Typography variant="h6">
+                          ${presupuesto.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                    </>
+                  );
+                })()}
               </Box>
             </Box>
             <Divider sx={{ my: 2 }} />

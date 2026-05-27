@@ -1880,8 +1880,8 @@ const PresupuestosPage: React.FC = () => {
 {/* Totals section with IVA and Financing */}
             <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "flex-end" }}>
-                <Typography variant="body1">
-                  Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                <Typography variant="body2" color="text.secondary">
+                  Equipo: ${subtotalBase.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
                 {formData.descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
                   <Typography variant="body1" color="error.main">
@@ -1889,13 +1889,22 @@ const PresupuestosPage: React.FC = () => {
                     -${descuentoAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                   </Typography>
                 )}
+                {subtotalEnvioForm > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    Envío: ${subtotalEnvioForm.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  </Typography>
+                )}
+                <Divider sx={{ width: '200px', my: 1 }} />
+                <Typography variant="body1">
+                  Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </Typography>
                 <Typography variant="body1">
                   IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}):
                   ${ivaAmount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
                 <Divider sx={{ width: '200px', my: 1 }} />
                 <Typography variant="body1" fontWeight="medium">
-                  Subtotal con IVA: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  Total: ${total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
                 
                 {/* Show financing option if viewing an existing presupuesto */}

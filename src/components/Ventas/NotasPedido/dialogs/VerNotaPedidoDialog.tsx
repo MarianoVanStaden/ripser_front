@@ -28,6 +28,7 @@ import type {
   DocumentoComercial,
   EstadoDocumento,
 } from '../../../../types';
+import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 import AuditoriaFlujo from '../../../common/AuditoriaFlujo';
 import { getMetodoPagoLabel } from '../paymentMethodIcons';
 import { getTipoIvaLabel } from '../utils';
@@ -211,38 +212,62 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
               <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
-                  <Typography>
-                    ${nota.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-                {nota.descuentoTipo &&
-                  nota.descuentoTipo !== 'NONE' &&
-                  Number(nota.descuentoValor) > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography sx={{ mr: 4 }}>
-                        Descuento{' '}
-                        {nota.descuentoTipo === 'PORCENTAJE'
-                          ? `(${nota.descuentoValor}%)`
-                          : '(monto fijo)'}
-                        :
-                      </Typography>
-                      <Typography color="error.main">
-                        -$
-                        {Number(nota.descuentoMonto ?? 0).toLocaleString('es-AR', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </Typography>
-                    </Box>
-                  )}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography sx={{ mr: 4 }}>IVA:</Typography>
-                  <Typography>
-                    ${nota.iva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </Typography>
-                </Box>
-                <Divider sx={{ my: 1 }} />
+                {(() => {
+                  const costoEnvio = calculateCostoEnvio(nota.detalles ?? []);
+                  const equipoBase = nota.subtotal - costoEnvio;
+                  return (
+                    <>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ mr: 4, color: 'text.secondary' }}>Equipo:</Typography>
+                        <Typography variant="body2">
+                          ${equipoBase.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                      {nota.descuentoTipo &&
+                        nota.descuentoTipo !== 'NONE' &&
+                        Number(nota.descuentoValor) > 0 && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography sx={{ mr: 4 }}>
+                              Descuento{' '}
+                              {nota.descuentoTipo === 'PORCENTAJE'
+                                ? `(${nota.descuentoValor}%)`
+                                : '(monto fijo)'}
+                              :
+                            </Typography>
+                            <Typography color="error.main">
+                              -$
+                              {Number(nota.descuentoMonto ?? 0).toLocaleString('es-AR', {
+                                minimumFractionDigits: 2,
+                              })}
+                            </Typography>
+                          </Box>
+                        )}
+                      {costoEnvio > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2" sx={{ mr: 4, color: 'text.secondary' }}>Envío:</Typography>
+                          <Typography variant="body2">
+                            ${costoEnvio.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                      )}
+                      <Divider sx={{ my: 1 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                        <Typography>
+                          ${nota.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography sx={{ mr: 4 }}>IVA:</Typography>
+                        <Typography>
+                          ${nota.iva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                      </Box>
+                      <Divider sx={{ my: 1 }} />
+                    </>
+                  );
+                })()}
+
                 {/* Calcular el total correcto del documento */}
                 {(() => {
                   const subtotal = nota.subtotal ?? 0;
