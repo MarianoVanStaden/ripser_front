@@ -131,6 +131,8 @@ const DeliveriesPage2: React.FC = () => {
   const [formData, setFormData] = useState({
     viajeId: '',
     ventaId: '',
+    tipoEntrega: 'FACTURA' as 'FACTURA' | 'ORDEN_SERVICIO',
+    ordenServicioId: '',
     direccionEntrega: '',
     fechaEntrega: '',
     estado: 'PENDIENTE' as EstadoEntrega,
@@ -242,6 +244,8 @@ const DeliveriesPage2: React.FC = () => {
     setFormData({
       viajeId: '',
       ventaId: '',
+      tipoEntrega: 'FACTURA',
+      ordenServicioId: '',
       direccionEntrega: '',
       fechaEntrega: '',
       estado: 'PENDIENTE',
@@ -254,9 +258,13 @@ const DeliveriesPage2: React.FC = () => {
 
   const handleEdit = (delivery: EntregaViaje) => {
     setEditingDelivery(delivery);
+    const ordenId = (delivery as any).ordenServicioId;
+    const facturaId = delivery.documentoComercialId || delivery.ventaId;
     setFormData({
       viajeId: delivery.viajeId?.toString() || '',
-      ventaId: delivery.ventaId?.toString() || '',
+      ventaId: facturaId?.toString() || '',
+      tipoEntrega: ordenId ? 'ORDEN_SERVICIO' : 'FACTURA',
+      ordenServicioId: ordenId?.toString() || '',
       direccionEntrega: delivery.direccionEntrega,
       fechaEntrega: delivery.fechaEntrega.slice(0, 16),
       estado: delivery.estado,
@@ -384,9 +392,8 @@ const DeliveriesPage2: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      const entregaData: Partial<EntregaViaje> = {
+      const entregaData: any = {
         viajeId: formData.viajeId ? parseInt(formData.viajeId) : undefined,
-        ventaId: formData.ventaId ? parseInt(formData.ventaId) : undefined,
         direccionEntrega: formData.direccionEntrega,
         fechaEntrega: new Date(formData.fechaEntrega).toISOString(),
         estado: formData.estado,
@@ -394,6 +401,13 @@ const DeliveriesPage2: React.FC = () => {
         receptorNombre: formData.receptorNombre || undefined,
         receptorDni: formData.receptorDni || undefined,
       };
+
+      // Handle both FACTURA and ORDEN_SERVICIO
+      if (formData.tipoEntrega === 'ORDEN_SERVICIO') {
+        entregaData.ordenServicioId = formData.ordenServicioId ? parseInt(formData.ordenServicioId) : undefined;
+      } else {
+        entregaData.documentoComercialId = formData.ventaId ? parseInt(formData.ventaId) : undefined;
+      }
 
       if (editingDelivery) {
         await entregaViajeApi.update(editingDelivery.id, entregaData);
@@ -569,25 +583,41 @@ const DeliveriesPage2: React.FC = () => {
     return facturas.find(f => f.id === facturaId);
   };
 
+  const getOrdenByDelivery = (delivery: EntregaViaje): any | undefined => {
+    const ordenId = (delivery as any).ordenServicioId;
+    if (!ordenId) return undefined;
+    return ordenes.find(o => o.id === ordenId);
+  };
+
   const getClientName = (delivery: EntregaViaje): string => {
     const factura = getFacturaByDelivery(delivery);
-    if (!factura) return 'Sin Factura';
-
-    if (factura.clienteNombre?.trim()) return factura.clienteNombre;
-
-    const cliente = clients.find(c => c.id === factura.clienteId);
-    if (cliente) {
-      if (cliente.razonSocial?.trim()) return cliente.razonSocial;
-      const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
-      return parts.length > 0 ? parts.join(' ') : 'Sin nombre';
+    if (factura) {
+      if (factura.clienteNombre?.trim()) return factura.clienteNombre;
+      const cliente = clients.find(c => c.id === factura.clienteId);
+      if (cliente) {
+        if (cliente.razonSocial?.trim()) return cliente.razonSocial;
+        const parts = [cliente.nombre, cliente.apellido].filter(Boolean);
+        return parts.length > 0 ? parts.join(' ') : 'Sin nombre';
+      }
+      return 'Cliente no disponible';
     }
 
-    return 'Cliente no disponible';
+    const orden = getOrdenByDelivery(delivery);
+    if (orden) {
+      return orden.clienteNombre || 'Sin cliente (OS)';
+    }
+
+    return 'Sin Factura';
   };
 
   const getVentaNumero = (delivery: EntregaViaje): string => {
     const factura = getFacturaByDelivery(delivery);
-    return factura ? (factura.numeroDocumento || `FAC-${factura.id}`) : 'Sin Factura';
+    if (factura) return factura.numeroDocumento || `FAC-${factura.id}`;
+
+    const orden = getOrdenByDelivery(delivery);
+    if (orden) return orden.numeroOrden || `OS-${orden.id}`;
+
+    return 'Sin Factura';
   };
 
   const getTripNumber = (viajeId: number | null | undefined) => {
@@ -1128,8 +1158,8 @@ const DeliveriesPage2: React.FC = () => {
         onClose={() => setDialogOpen(false)}
         onSave={handleSave}
         editing={editingDelivery}
-        formData={formData}
-        setFormData={setFormData}
+        formData={formData as any}
+        setFormData={setFormData as any}
         facturas={facturas}
         trips={trips}
         clients={clients}

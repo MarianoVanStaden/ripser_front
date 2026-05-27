@@ -66,6 +66,11 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // Todo lo de TRANSPORTE + Proveedores parcial + Logística parcial.
   // Filtrado fino por allowlist en Sidebar (logisticoAllowedPaths).
   LOGISTICO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER', 'PROVEEDORES', 'LOGISTICA'],
+
+  // Personal post-venta: ve Registro de Ventas, Clientes/Leads completo,
+  // Viajes y Control de Entregas. Dashboard propio con KPIs operativos.
+  // Filtrado fino por allowlist en Sidebar (postVentaAllowedPaths).
+  POST_VENTA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE'],
 };
 
 export const usePermisos = () => {

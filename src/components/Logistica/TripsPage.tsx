@@ -821,11 +821,33 @@ const TripsPage2: React.FC = () => {
     return foundFacturas;
   };
 
+  const getOrdenesByTrip = (tripId: number): any[] => {
+    const tripDeliveries = getTripDeliveries(tripId);
+
+    const ordenIds = tripDeliveries
+      .map(d => (d as any).ordenServicioId)
+      .filter((id): id is number => id !== undefined && id !== null);
+
+    const uniqueOrdenIds = [...new Set(ordenIds)];
+    const foundOrdenes = uniqueOrdenIds
+      .map(id => ordenes.find(o => o.id === id))
+      .filter((o): o is any => o !== undefined);
+
+    return foundOrdenes;
+  };
+
   const getClientesByTrip = (tripId: number): string[] => {
     const tripFacturas = getFacturasByTrip(tripId);
-    const clienteNombres = tripFacturas
-      .map(f => f.clienteNombre)
-      .filter((nombre): nombre is string => nombre !== undefined && nombre !== null && nombre.trim() !== '');
+    const tripOrdenes = getOrdenesByTrip(tripId);
+
+    const clienteNombres = [
+      ...tripFacturas
+        .map(f => f.clienteNombre)
+        .filter((nombre): nombre is string => nombre !== undefined && nombre !== null && nombre.trim() !== ''),
+      ...tripOrdenes
+        .map(o => o.clienteNombre)
+        .filter((nombre): nombre is string => nombre !== undefined && nombre !== null && nombre.trim() !== ''),
+    ];
 
     return [...new Set(clienteNombres)];
   };
@@ -1205,6 +1227,7 @@ const TripsPage2: React.FC = () => {
   const MobileTripCard = ({ trip }: { trip: Viaje }) => {
     const tripDeliveriesData = getTripDeliveries(trip.id);
     const tripFacturas = getFacturasByTrip(trip.id);
+    const tripOrdenes = getOrdenesByTrip(trip.id);
     const tripClientes = getClientesByTrip(trip.id);
     const isExpanded = expandedCard === trip.id;
 
@@ -1293,11 +1316,11 @@ const TripsPage2: React.FC = () => {
                 </Box>
               )}
 
-              {/* Invoices */}
-              {tripFacturas.length > 0 && (
+              {/* Documentos (Facturas y Órdenes) */}
+              {(tripFacturas.length > 0 || tripOrdenes.length > 0) && (
                 <Box>
                   <Typography variant="caption" color="text.secondary" gutterBottom>
-                    Facturas:
+                    Documentos:
                   </Typography>
                   <Box display="flex" flexWrap="wrap" gap={0.5} mt={0.5}>
                     {tripFacturas.map((factura) => (
@@ -1306,6 +1329,15 @@ const TripsPage2: React.FC = () => {
                         label={factura.numeroDocumento}
                         size="small"
                         color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                    {tripOrdenes.map((orden) => (
+                      <Chip
+                        key={orden.id}
+                        label={orden.numeroOrden}
+                        size="small"
+                        color="secondary"
                         variant="outlined"
                       />
                     ))}
@@ -1572,6 +1604,7 @@ const TripsPage2: React.FC = () => {
                   <Box component="tbody">
                     {paginatedTrips.map((trip) => {
                       const tripFacturas = getFacturasByTrip(trip.id);
+                      const tripOrdenes = getOrdenesByTrip(trip.id);
                       const tripClientes = getClientesByTrip(trip.id);
 
                       return (
@@ -1603,17 +1636,35 @@ const TripsPage2: React.FC = () => {
                           </Box>
                           {!isTablet && (
                             <Box component="td" sx={{ p: 1.5 }}>
-                              {tripFacturas.length > 0 ? (
-                                <Box>
-                                  <Typography variant="body2" color="primary.main" noWrap>
-                                    {tripFacturas[0]?.numeroDocumento}
-                                  </Typography>
-                                  {tripFacturas.length > 1 && (
-                                    <Chip label={`+${tripFacturas.length - 1}`} size="small" color="primary" />
+                              {tripFacturas.length > 0 || tripOrdenes.length > 0 ? (
+                                <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                  {tripFacturas.slice(0, 2).map((factura) => (
+                                    <Chip
+                                      key={factura.id}
+                                      label={factura.numeroDocumento}
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                    />
+                                  ))}
+                                  {tripOrdenes.slice(0, 2).map((orden) => (
+                                    <Chip
+                                      key={orden.id}
+                                      label={orden.numeroOrden}
+                                      size="small"
+                                      color="secondary"
+                                      variant="outlined"
+                                    />
+                                  ))}
+                                  {(tripFacturas.length > 2 || tripOrdenes.length > 2) && (
+                                    <Chip
+                                      label={`+${tripFacturas.length + tripOrdenes.length - 2}`}
+                                      size="small"
+                                    />
                                   )}
                                 </Box>
                               ) : (
-                                <Typography variant="caption" color="text.secondary">Sin facturas</Typography>
+                                <Typography variant="caption" color="text.secondary">Sin documentos</Typography>
                               )}
                             </Box>
                           )}
@@ -1906,7 +1957,27 @@ const TripsPage2: React.FC = () => {
                 <Card key={index} variant="outlined">
                   <CardContent sx={{ py: 1, px: 2 }}>
                     <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="body2">{delivery.direccionEntrega}</Typography>
+                      <Box flex={1}>
+                        <Typography variant="body2">{delivery.direccionEntrega}</Typography>
+                        {delivery.factura && (
+                          <Chip
+                            label={delivery.factura.numeroDocumento}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ mt: 0.5 }}
+                          />
+                        )}
+                        {(delivery as any).ordenServicio && (
+                          <Chip
+                            label={(delivery as any).ordenServicio.numeroOrden}
+                            size="small"
+                            color="secondary"
+                            variant="outlined"
+                            sx={{ mt: 0.5 }}
+                          />
+                        )}
+                      </Box>
                       {!delivery.id && (
                         <IconButton size="small" onClick={() => handleRemoveDelivery(index)}>
                           <DeleteIcon fontSize="small" />
@@ -1917,15 +1988,65 @@ const TripsPage2: React.FC = () => {
                 </Card>
               ))}
 
-              <Autocomplete
-                options={facturasDisponibles}
-                getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
-                value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
-                onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Factura" size="small" />
-                )}
-              />
+              <ToggleButtonGroup
+                value={newDelivery.tipoEntrega}
+                exclusive
+                onChange={(_, value) => {
+                  if (value) {
+                    setNewDelivery({
+                      ...newDelivery,
+                      tipoEntrega: value,
+                      facturaId: '',
+                      ordenServicioId: '',
+                    });
+                  }
+                }}
+                fullWidth
+                size="small"
+              >
+                <ToggleButton value="FACTURA" sx={{ flex: 1 }}>
+                  Factura
+                </ToggleButton>
+                <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
+                  Orden de Servicio
+                </ToggleButton>
+              </ToggleButtonGroup>
+
+              {newDelivery.tipoEntrega === 'FACTURA' ? (
+                <Autocomplete
+                  options={facturasDisponibles}
+                  getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
+                  value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
+                  onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Factura" size="small" />
+                  )}
+                />
+              ) : (
+                <Autocomplete
+                  options={ordenes.filter(o => !deliveries.some(d => (d as any).ordenServicioId === o.id) && !tripDeliveries.some(d => (d as any).ordenServicioId === o.id))}
+                  getOptionLabel={(orden) => `${orden.numeroOrden} - ${orden.clienteNombre || 'Sin cliente'}`}
+                  value={ordenes.find(o => o.id.toString() === newDelivery.ordenServicioId) || null}
+                  onChange={(_, value) => {
+                    if (value) {
+                      setNewDelivery({
+                        ...newDelivery,
+                        ordenServicioId: value.id.toString(),
+                      });
+                      setSelectedDeliveryOrden(value);
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Orden de Servicio"
+                      size="small"
+                      placeholder="Buscar orden..."
+                    />
+                  )}
+                  noOptionsText="No hay órdenes FINALIZADA disponibles"
+                />
+              )}
 
               <TextField
                 label="Dirección de Entrega"

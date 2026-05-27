@@ -13,7 +13,7 @@ interface Props {
 // del rol (no a la pantalla de "acceso denegado") — es UX más suave para
 // usuarios que vienen de un bookmark viejo o un link compartido.
 type RestrictedRole = {
-  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER' | 'SUPERVISOR' | 'COORDINADORA_COMPRAS' | 'COORDINADORA_LOGISTICA' | 'LOGISTICO';
+  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER' | 'SUPERVISOR' | 'COORDINADORA_COMPRAS' | 'COORDINADORA_LOGISTICA' | 'LOGISTICO' | 'POST_VENTA';
   home: string;
   // Prefijos permitidos. Se chequea con startsWith para cubrir sub-rutas
   // (ej. /rrhh/empleados/123/editar).
@@ -140,6 +140,27 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/logistica/stock',
       '/logistica/inventario/stock-equipos',
       '/logistica/inventario/ubicaciones',
+    ],
+  },
+  {
+    // POST_VENTA: personal de post-venta que ve Registro de Ventas, Clientes
+    // completos (menos Cuenta Corriente y Agenda de Visitas), Viajes y
+    // Control de Entregas, más su dashboard propio.
+    rol: 'POST_VENTA',
+    home: '/',
+    allowedPrefixes: [
+      '/',
+      '/ventas/registro',
+      '/clientes/gestion',
+      '/clientes/carpeta',
+      '/clientes/nuevo',
+      '/clientes/editar',
+      '/clientes/detalle',
+      '/leads',
+      '/leads/recordatorios',
+      '/leads/metricas',
+      '/logistica/distribucion/viajes',
+      '/logistica/distribucion/entregas-productos',
     ],
   },
 ];

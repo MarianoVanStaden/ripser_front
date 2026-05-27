@@ -481,6 +481,25 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/inventario/ubicaciones',
   ];
 
+  // Rutas permitidas para POST_VENTA (allowlist):
+  // - VENTAS: solo Registro Ventas.
+  // - CLIENTES: Gestión + Carpeta + Leads (todo el módulo CLIENTES excepto Cuenta Corriente y Agenda).
+  // - TRANSPORTE: Viajes y Entregas-Productos solo (no Entregas-Equipos).
+  const postVentaAllowedPaths = [
+    '/',
+    '/ventas/registro',
+    '/clientes/gestion',
+    '/clientes/carpeta',
+    '/clientes/nuevo',
+    '/clientes/editar',
+    '/clientes/detalle',
+    '/leads',
+    '/leads/recordatorios',
+    '/leads/metricas',
+    '/logistica/distribucion/viajes',
+    '/logistica/distribucion/entregas-productos',
+  ];
+
   // Rutas denegadas para el rol ADMIN_EMPRESA_LIMITADO (denylist):
   // Tiene acceso casi total como un ADMIN_EMPRESA, pero se le ocultan pantallas
   // sensibles que sólo debería tocar el dueño (configuración de costos,
@@ -651,6 +670,11 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isLogistico = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('LOGISTICO');
       if (isLogistico) {
         filteredItems = filteredItems.filter(item => logisticoAllowedPaths.includes(item.path));
+      }
+
+      const isPostVenta = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('POST_VENTA');
+      if (isPostVenta) {
+        filteredItems = filteredItems.filter(item => postVentaAllowedPaths.includes(item.path));
       }
 
       return {

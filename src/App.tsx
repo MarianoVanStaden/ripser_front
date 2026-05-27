@@ -82,6 +82,7 @@ const lazyNamed = <T extends ComponentType<any>>(
 const DevKPIs = lazy(() => import('./components/Dashboard/DevKPIs'));
 const TransporteDashboard = lazy(() => import('./pages/transporte/TransporteDashboard'));
 const ComprasDashboard = lazy(() => import('./pages/compras/ComprasDashboard'));
+const PostVentaDashboard = lazy(() => import('./pages/post-venta/PostVentaDashboard'));
 
 // Admin
 const UsersPage = lazy(() => import('./components/Admin/UsersPage'));
@@ -258,6 +259,7 @@ const DashboardEntry: React.FC = () => {
     if (roles.includes('RECURSOS_HUMANOS')) return <Navigate to="/rrhh/dashboard" replace />;
     if (roles.includes('SUPERVISOR')) return <Navigate to="/leads/metricas" replace />;
     if (roles.includes('COBRANZAS')) return <Navigate to="/cobranzas/resumen" replace />;
+    if (roles.includes('POST_VENTA')) return <PostVentaDashboard />;
     if (
       roles.includes('TRANSPORTE') ||
       roles.includes('LOGISTICO') ||
