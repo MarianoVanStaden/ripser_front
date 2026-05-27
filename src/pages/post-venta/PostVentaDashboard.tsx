@@ -10,12 +10,9 @@ import {
   CheckCircle as CheckCircleIcon,
   Pending as PendingIcon,
   Error as ErrorIcon,
-  Receipt as ReceiptIcon,
-  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import api from '../../api/config';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { viajeApi } from '../../api/services/viajeApi';
 import { reclamoGarantiaApi } from '../../api/services/reclamoGarantiaApi';
@@ -79,35 +76,6 @@ const initialEntregaMetrics: EntregaMetrics = {
   rechazadas: 0,
 };
 
-const estadoEntregaChip = (estado: string) => {
-  switch (estado) {
-    case 'ENTREGADA':
-      return <Chip label="Entregada" color="success" size="small" />;
-    case 'PENDIENTE':
-      return <Chip label="Pendiente" color="warning" size="small" />;
-    case 'RECHAZADA':
-    case 'NO_ENTREGADA':
-      return <Chip label="Rechazada" color="error" size="small" />;
-    default:
-      return <Chip label={estado} size="small" />;
-  }
-};
-
-const estadoViajeChip = (estado: string) => {
-  switch (estado) {
-    case 'EN_CURSO':
-      return <Chip label="En curso" color="warning" size="small" />;
-    case 'PLANIFICADO':
-      return <Chip label="Planificado" color="info" size="small" />;
-    case 'COMPLETADO':
-      return <Chip label="Completado" color="success" size="small" />;
-    case 'CANCELADO':
-      return <Chip label="Cancelado" color="default" size="small" />;
-    default:
-      return <Chip label={estado} size="small" />;
-  }
-};
-
 const estadoReclamoChip = (estado: string) => {
   switch (estado) {
     case 'ABIERTO':
@@ -130,7 +98,6 @@ const PostVentaDashboard: React.FC = () => {
 
   const [entregaMetrics, setEntregaMetrics] = useState<EntregaMetrics>(initialEntregaMetrics);
   const [viajes, setViajes] = useState<ViajeResponse[]>([]);
-  const [entregas, setEntregas] = useState<EntregaResponse[]>([]);
   const [ventas, setVentas] = useState<SaleResponse[]>([]);
   const [reclamos, setReclamos] = useState<ReclamoResponse[]>([]);
 
@@ -145,14 +112,13 @@ const PostVentaDashboard: React.FC = () => {
 
       // Entregas del día
       const entregasReq = entregaViajeApi
-        .getAll({ page: 0, size: 1000 })
-        .then((r) => {
-          const data = Array.isArray(r) ? r : (r as { content?: EntregaResponse[] }).content ?? [];
-          return (data as EntregaResponse[]).filter(
+        .getAll()
+        .then((r: EntregaResponse[]) => {
+          return r.filter(
             (e) => e.fechaEntrega && e.fechaEntrega.startsWith(today)
           );
         })
-        .catch((e) => {
+        .catch((e: Error) => {
           console.warn('No se pudieron cargar entregas del día', e);
           errs.push('entregas');
           return [] as EntregaResponse[];
@@ -161,13 +127,12 @@ const PostVentaDashboard: React.FC = () => {
       // Viajes del día
       const viajesReq = viajeApi
         .getAll({ page: 0, size: 500 })
-        .then((r) => {
-          const data = Array.isArray(r) ? r : (r as { content?: ViajeResponse[] }).content ?? [];
-          return (data as ViajeResponse[]).filter(
+        .then((r: ViajeResponse[]) => {
+          return r.filter(
             (v) => v.fechaViaje && v.fechaViaje.startsWith(today)
           );
         })
-        .catch((e) => {
+        .catch((e: Error) => {
           console.warn('No se pudieron cargar viajes del día', e);
           errs.push('viajes');
           return [] as ViajeResponse[];
@@ -179,7 +144,7 @@ const PostVentaDashboard: React.FC = () => {
         .then((r) => {
           return (r.content ?? []) as SaleResponse[];
         })
-        .catch((e) => {
+        .catch((e: Error) => {
           console.warn('No se pudieron cargar ventas', e);
           errs.push('ventas');
           return [] as SaleResponse[];
@@ -187,16 +152,16 @@ const PostVentaDashboard: React.FC = () => {
 
       // Reclamos recientes
       const reclamosReq = reclamoGarantiaApi
-        .getAll({ page: 0, size: 10 })
+        .findAll({ page: 0, size: 10 })
         .then((r) => {
-          const data = Array.isArray(r) ? r : (r as { content?: ReclamoResponse[] }).content ?? [];
+          const data = r.content ?? [];
           return (data as ReclamoResponse[]).sort((a, b) => {
             const dateA = dayjs(a.fechaReclamo || a.fecha);
             const dateB = dayjs(b.fechaReclamo || b.fecha);
             return dateB.diff(dateA);
           });
         })
-        .catch((e) => {
+        .catch((e: Error) => {
           console.warn('No se pudieron cargar reclamos', e);
           errs.push('reclamos');
           return [] as ReclamoResponse[];
