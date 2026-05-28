@@ -142,7 +142,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (systemRole === 'VENDEDOR') return true;
 
     if (!rolActual) return false;
-    return rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR';
+    return rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR' || rolActual === 'POST_VENTA';
   }, [esSuperAdmin, rolActual, user]);
 
   // Cargar UsuarioEmpresa al iniciar (para obtener rol y sucursal defecto)
