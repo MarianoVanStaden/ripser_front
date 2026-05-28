@@ -132,6 +132,7 @@ const navigation: NavigationSection[] = [
       { text: 'Gestión Créditos Personales', icon: <AssignmentIcon />, path: '/prestamos/lista' },
       { text: 'Resumen Cobranzas', icon: <AssessmentIcon />, path: '/cobranzas/resumen', modulo: 'ADMINISTRACION' },
       { text: 'Gestiones Cobranzas', icon: <PhoneCallbackIcon />, path: '/cobranzas/lista', modulo: 'ADMINISTRACION' },
+      { text: 'Pagos Informados', icon: <ReceiptLongIcon />, path: '/prestamos/pagos-informados', modulo: 'ADMINISTRACION' },
     ],
   },
   {
@@ -603,6 +604,16 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/taller/trabajos',
   ];
 
+  // Rutas permitidas para el rol CONDUCTOR (allowlist: rol mínimo).
+  // SÓLO el módulo Transporte: Armado de Viajes, Control de Entregas y Legajo
+  // de Vehículos. Aterriza directo en /logistica/distribucion/viajes (RoleScopeGuard).
+  const conductorAllowedPaths = [
+    '/logistica/distribucion/viajes',
+    '/logistica/distribucion/entregas-productos',
+    '/logistica/distribucion/entregas-equipos',
+    '/logistica/vehiculos/incidencias',
+  ];
+
   // Filtrar las secciones según los permisos del usuario.
   // Un ítem puede declarar su propio `modulo` para sobreescribir el de la sección
   // (útil cuando una sección agrupa rutas gateadas por permisos distintos).
@@ -640,6 +651,13 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       const isTransporteOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('TRANSPORTE');
       if (isTransporteOnly) {
         filteredItems = filteredItems.filter(item => transporteAllowedPaths.includes(item.path));
+      }
+
+      // Si el rol es puramente CONDUCTOR (y no Admin), aplicar allowlist estricta:
+      // sólo el módulo Transporte.
+      const isConductorOnly = !esSuperAdmin && !tieneRol('ADMIN') && tieneRol('CONDUCTOR');
+      if (isConductorOnly) {
+        filteredItems = filteredItems.filter(item => conductorAllowedPaths.includes(item.path));
       }
 
       // Si el rol es puramente TALLER (y no Admin), aplicar allowlist estricta.

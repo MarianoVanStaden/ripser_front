@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { Payment } from '@mui/icons-material';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
+import { pagoInformadoApi } from '../../api/services/pagoInformadoApi';
 import { clientApi } from '../../api/services/clientApi';
 import { bancoApi } from '../../api/services/bancoApi';
 import type { Banco } from '../../types';
@@ -15,6 +16,7 @@ import { METODO_PAGO_LABELS } from '../../types/prestamo.types';
 import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
 import { CajaSelector } from '../common/CajaSelector';
 import { formatPrice } from '../../utils/priceCalculations';
+import { usePermisos } from '../../hooks/usePermisos';
 import dayjs from 'dayjs';
 
 // Exclude FINANCIACION_PROPIA from cuota payment selector.
@@ -44,10 +46,19 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
   const [fechaPago, setFechaPago] = useState<string>(dayjs().format('YYYY-MM-DD'));
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
+  const [numeroComprobante, setNumeroComprobante] = useState<string>('');
+  const [observaciones, setObservaciones] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saldoDisponible, setSaldoDisponible] = useState<number | null>(null);
   const [loadingSaldo, setLoadingSaldo] = useState(false);
+
+  // Modo "informar" (rol COBRANZAS sin permisos admin): la cuota queda en
+  // PAGO_INFORMADO esperando confirmación admin. No toca caja ni cheque.
+  const { tieneRol, esAdmin } = usePermisos();
+  const modoCobranzas = !esAdmin
+    && tieneRol('COBRANZAS')
+    && !tieneRol('ADMIN_EMPRESA', 'ADMIN_EMPRESA_LIMITADO', 'GERENTE_SUCURSAL');
 
   // Estado del formulario de cheque (solo visible cuando metodoPago === 'CHEQUE').
   const blankCheque = (): ChequeCobroData => ({
@@ -81,6 +92,8 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       setMetodoPago(defaultMetodo);
       setCajaRef(null);
       setChequeData(blankCheque());
+      setNumeroComprobante('');
+      setObservaciones('');
       setError(null);
       setSaldoDisponible(null);
     }
@@ -116,11 +129,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
     && saldoDisponible !== null
     && saldoDisponible < montoPagado;
 
-  const requiereCaja = metodoPagoRequiereCaja(metodoPago);
+  const requiereCaja = metodoPagoRequiereCaja(metodoPago) && !modoCobranzas;
   const cajaFaltante = requiereCaja && !cajaRef;
 
-  // Validación de los datos del cheque (solo cuando aplica).
-  const chequeInvalido = metodoPago === 'CHEQUE' && (
+  // En modo cobranzas no se cargan datos del cheque (admin los completa al confirmar).
+  const chequeInvalido = !modoCobranzas && metodoPago === 'CHEQUE' && (
     !chequeData.numeroCheque.trim() ||
     !chequeData.bancoId ||
     !chequeData.titular.trim() ||
@@ -128,6 +141,8 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
     !chequeData.fechaCobro ||
     dayjs(chequeData.fechaEmision).isAfter(dayjs(), 'day')
   );
+
+  const comprobanteRequeridoFaltante = modoCobranzas && !numeroComprobante.trim();
 
   const handleSave = async () => {
     if (!cuota) return;
@@ -144,33 +159,49 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       setError('Completá los datos obligatorios del cheque: número, banco, titular, fechas.');
       return;
     }
+    if (comprobanteRequeridoFaltante) {
+      setError('El número de comprobante es obligatorio para informar el pago.');
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
-      await cuotaPrestamoApi.registrarPago({
-        cuotaId: cuota.id,
-        montoPagado,
-        fechaPago,
-        metodoPago,
-        cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
-        cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
-        ...(metodoPago === 'CHEQUE' && {
-          cheque: {
-            numeroCheque: chequeData.numeroCheque.trim(),
-            bancoId: chequeData.bancoId,
-            titular: chequeData.titular.trim(),
-            cuitTitular: chequeData.cuitTitular?.trim() || undefined,
-            fechaEmision: chequeData.fechaEmision,
-            fechaCobro: chequeData.fechaCobro,
-            numeroCuenta: chequeData.numeroCuenta?.trim() || undefined,
-            cbu: chequeData.cbu?.trim() || undefined,
-            esEcheq: !!chequeData.esEcheq,
-            observaciones: chequeData.observaciones?.trim() || undefined,
-          },
-        }),
-      });
 
-      // Task 2: refetch cuotas to detect cascade changes
+      if (modoCobranzas) {
+        await pagoInformadoApi.informar({
+          cuotaId: cuota.id,
+          montoInformado: montoPagado,
+          numeroComprobante: numeroComprobante.trim(),
+          metodoPago,
+          fechaPagoInformada: fechaPago,
+          observaciones: observaciones.trim() || undefined,
+        });
+      } else {
+        await cuotaPrestamoApi.registrarPago({
+          cuotaId: cuota.id,
+          montoPagado,
+          fechaPago,
+          metodoPago,
+          cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
+          cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
+          numeroComprobante: numeroComprobante.trim() || undefined,
+          ...(metodoPago === 'CHEQUE' && {
+            cheque: {
+              numeroCheque: chequeData.numeroCheque.trim(),
+              bancoId: chequeData.bancoId,
+              titular: chequeData.titular.trim(),
+              cuitTitular: chequeData.cuitTitular?.trim() || undefined,
+              fechaEmision: chequeData.fechaEmision,
+              fechaCobro: chequeData.fechaCobro,
+              numeroCuenta: chequeData.numeroCuenta?.trim() || undefined,
+              cbu: chequeData.cbu?.trim() || undefined,
+              esEcheq: !!chequeData.esEcheq,
+              observaciones: chequeData.observaciones?.trim() || undefined,
+            },
+          }),
+        });
+      }
+
       const newCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
       const changed = newCuotas.filter(c => {
         const prev = allCuotas.find(p => p.id === c.id);
@@ -180,7 +211,8 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
       onSaved(changed);
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar el pago');
+      setError(err.response?.data?.message || err.response?.data?.error
+        || (modoCobranzas ? 'Error al informar el pago' : 'Error al registrar el pago'));
     } finally {
       setSaving(false);
     }
@@ -192,9 +224,17 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Registrar Pago - Cuota N.{cuota.numeroCuota}</DialogTitle>
+      <DialogTitle>
+        {modoCobranzas ? 'Informar Pago' : 'Registrar Pago'} - Cuota N.{cuota.numeroCuota}
+      </DialogTitle>
       <DialogContent>
         <Box sx={{ mt: 2 }}>
+          {modoCobranzas && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Estás informando un pago. La cuota quedará en estado <strong>Pago informado</strong> esperando
+              que administración confirme el ingreso a caja.
+            </Alert>
+          )}
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 3 }}>
             <Grid container spacing={2}>
@@ -270,6 +310,28 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
                 />
               </Grid>
             )}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label={modoCobranzas ? 'Número de comprobante *' : 'Número de comprobante'}
+                value={numeroComprobante}
+                onChange={(e) => setNumeroComprobante(e.target.value)}
+                placeholder="Recibo, voucher, transferencia, etc."
+                required={modoCobranzas}
+                inputProps={{ maxLength: 50 }}
+              />
+            </Grid>
+            {modoCobranzas && (
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth multiline rows={2}
+                  label="Observaciones"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  placeholder="Notas para administración (opcional)"
+                />
+              </Grid>
+            )}
             {METODOS_CON_VALIDACION_SALDO.includes(metodoPago) && (
               <Grid item xs={12}>
                 {loadingSaldo ? (
@@ -288,7 +350,7 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
               </Grid>
             )}
 
-            {metodoPago === 'CHEQUE' && (
+            {!modoCobranzas && metodoPago === 'CHEQUE' && (
               <Grid item xs={12}>
                 <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                   <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
@@ -409,10 +471,11 @@ export const RegistrarPagoDialog: React.FC<RegistrarPagoDialogProps> = ({
         <Button
           onClick={handleSave}
           variant="contained"
-          disabled={saving || saldoInsuficiente || loadingSaldo || cajaFaltante || chequeInvalido}
+          disabled={saving || saldoInsuficiente || loadingSaldo || cajaFaltante
+            || chequeInvalido || comprobanteRequeridoFaltante}
           startIcon={saving ? <CircularProgress size={20} /> : <Payment />}
         >
-          Registrar Pago
+          {modoCobranzas ? 'Informar Pago' : 'Registrar Pago'}
         </Button>
       </DialogActions>
     </Dialog>

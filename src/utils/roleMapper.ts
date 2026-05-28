@@ -132,6 +132,17 @@ export const ROLES_EMPRESA_OPTIONS: RolEmpresaOption[] = [
     color: '#00695c',
     requiresSucursal: false,
     systemRole: 'LOGISTICO'
+  },
+  {
+    // Conductor: rol operativo mínimo, acceso EXCLUSIVO al módulo Transporte
+    // (Armado de Viajes, Control de Entregas, Legajo de Vehículos). Aterriza
+    // directo en el armado de viajes.
+    value: 'CONDUCTOR',
+    label: 'Conductor',
+    description: 'Acceso exclusivo al módulo Transporte: Armado de Viajes, Control de Entregas y Legajo de Vehículos',
+    color: '#37474f',
+    requiresSucursal: false,
+    systemRole: 'CONDUCTOR'
   }
 ];
 

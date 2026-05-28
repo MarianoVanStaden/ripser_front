@@ -162,6 +162,7 @@ const RefinanciacionPage = lazyNamed(() => import('./components/Prestamos/Refina
 const CobranzasResumenPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/CobranzasResumenPage'), 'CobranzasResumenPage');
 const CobranzasListPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/CobranzasListPage'), 'CobranzasListPage');
 const GestionCobranzaDetailPage = lazyNamed(() => import('./components/Prestamos/Cobranzas/GestionCobranzaDetailPage'), 'GestionCobranzaDetailPage');
+const BandejaPagosInformadosPage = lazyNamed(() => import('./components/Prestamos/PagosInformados/BandejaPagosInformadosPage'), 'BandejaPagosInformadosPage');
 
 // Proveedores
 const SuppliersPage = lazy(() => import('./components/Proveedores/SuppliersPage'));
@@ -363,6 +364,7 @@ function App() {
                   <Route path="prestamos/lista" element={priv(<PrestamosListPage />)} />
                   <Route path="prestamos/:id" element={priv(<PrestamoDetailPage />)} />
                   <Route path="prestamos/:id/refinanciar" element={priv(<RefinanciacionPage />)} />
+                  <Route path="prestamos/pagos-informados" element={priv(<BandejaPagosInformadosPage />)} />
 
                   {/* COBRANZAS */}
                   <Route path="cobranzas/resumen" element={priv(<CobranzasResumenPage />)} />

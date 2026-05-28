@@ -36,8 +36,16 @@ export const EstadoCuota = {
   VENCIDA: 'VENCIDA',
   PARCIAL: 'PARCIAL',
   REFINANCIADA: 'REFINANCIADA',
+  PAGO_INFORMADO: 'PAGO_INFORMADO',
 } as const;
 export type EstadoCuota = typeof EstadoCuota[keyof typeof EstadoCuota];
+
+export const EstadoPagoInformado = {
+  PENDIENTE_CONFIRMACION: 'PENDIENTE_CONFIRMACION',
+  CONFIRMADO: 'CONFIRMADO',
+  RECHAZADO: 'RECHAZADO',
+} as const;
+export type EstadoPagoInformado = typeof EstadoPagoInformado[keyof typeof EstadoPagoInformado];
 
 // Prestamo-specific interaccion enum (adds VIDEOLLAMADA on top of lead's TipoInteraccionEnum)
 export const TipoInteraccionPrestamo = {
@@ -83,6 +91,13 @@ export const ESTADO_CUOTA_LABELS: Record<EstadoCuota, string> = {
   VENCIDA: 'Vencida',
   PARCIAL: 'Parcial',
   REFINANCIADA: 'Refinanciada',
+  PAGO_INFORMADO: 'Pago informado',
+};
+
+export const ESTADO_PAGO_INFORMADO_LABELS: Record<EstadoPagoInformado, string> = {
+  PENDIENTE_CONFIRMACION: 'Pendiente de confirmación',
+  CONFIRMADO: 'Confirmado',
+  RECHAZADO: 'Rechazado',
 };
 
 export const TIPO_INTERACCION_PRESTAMO_LABELS: Record<TipoInteraccionPrestamo, string> = {
@@ -118,6 +133,7 @@ export const ESTADO_CUOTA_COLORS: Record<EstadoCuota, string> = {
   VENCIDA: '#F44336',
   PARCIAL: '#FF9800',
   REFINANCIADA: '#9C27B0',
+  PAGO_INFORMADO: '#FFC107',
 };
 
 // ==================== DTOs ====================
@@ -215,6 +231,8 @@ export interface CuotaPrestamoDTO {
    * de cobranza lo usa como default del dropdown. Nullable = sin preferencia.
    */
   metodoPagoSugerido?: string | null;
+  /** Número de comprobante del último pago aplicado a esta cuota. */
+  numeroComprobante?: string | null;
 }
 
 // Préstamo's local MetodoPago is a *narrower* set than the global one in
@@ -247,6 +265,54 @@ export interface RegistrarPagoCuotaDTO {
   cajaAhorroId?: number | null;
   /** Obligatorio cuando metodoPago === 'CHEQUE'. */
   cheque?: ChequeCobroData;
+  /** Número de comprobante del pago (recibo/voucher/transferencia). Opcional para admin. */
+  numeroComprobante?: string;
+}
+
+// ==================== PAGO INFORMADO (workflow cobranzas → admin) ====================
+
+export interface PagoInformadoDTO {
+  id: number;
+  cuotaId: number;
+  prestamoId: number;
+  numeroCuota: number;
+  clienteId: number;
+  clienteNombre: string;
+  montoInformado: number;
+  numeroComprobante: string;
+  metodoPago: MetodoPago;
+  fechaPagoInformada: string;
+  usuarioCobranzasId: number;
+  usuarioCobranzasNombre: string;
+  estado: EstadoPagoInformado;
+  estadoCuotaPrevio: EstadoCuota;
+  usuarioConfirmadorId?: number | null;
+  usuarioConfirmadorNombre?: string | null;
+  fechaConfirmacion?: string | null;
+  pagoAplicacionId?: number | null;
+  motivoRechazo?: string | null;
+  observaciones?: string | null;
+  fechaCreacion: string;
+}
+
+export interface CrearPagoInformadoDTO {
+  cuotaId: number;
+  montoInformado: number;
+  numeroComprobante: string;
+  metodoPago: MetodoPago;
+  fechaPagoInformada: string;
+  observaciones?: string;
+}
+
+export interface ConfirmarPagoInformadoDTO {
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
+  cheque?: ChequeCobroData;
+  montoConfirmado?: number;
+}
+
+export interface RechazarPagoInformadoDTO {
+  motivoRechazo: string;
 }
 
 export interface RevertirPagoCuotaRequest {

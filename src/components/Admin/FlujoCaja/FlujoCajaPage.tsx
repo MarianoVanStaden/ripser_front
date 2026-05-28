@@ -48,6 +48,7 @@ import FlujoCajaKPICards from './components/FlujoCajaKPICards';
 import FlujoCajaCharts from './components/FlujoCajaCharts';
 import FlujoCajaPaymentBreakdown from './components/FlujoCajaPaymentBreakdown';
 import FlujoCajaMovimientosTable from './components/FlujoCajaMovimientosTable';
+import RecaudacionCobranzasCard from './components/RecaudacionCobranzasCard';
 import CajasAhorroUSDSection from './components/CajasAhorroUSDSection';
 import MovimientoExtraDialog from './dialogs/MovimientoExtraDialog';
 import TransferirPesosDialog from '../CajasPesos/dialogs/TransferirPesosDialog';
@@ -510,6 +511,16 @@ const FlujoCajaPage: React.FC = () => {
             chequeStatusData={chequeStatusData}
             totalGeneral={totalGeneral}
             loading={isFetching}
+          />
+        </Box>
+
+        <Divider sx={{ my: 4 }} />
+
+        {/* Cobrado por cobranzas (pendiente de ingreso) — inciso informativo */}
+        <Box mb={4}>
+          <RecaudacionCobranzasCard
+            fechaDesde={fechaDesde?.format('YYYY-MM-DD')}
+            fechaHasta={fechaHasta?.format('YYYY-MM-DD')}
           />
         </Box>
 

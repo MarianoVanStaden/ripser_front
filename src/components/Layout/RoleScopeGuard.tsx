@@ -13,7 +13,7 @@ interface Props {
 // del rol (no a la pantalla de "acceso denegado") — es UX más suave para
 // usuarios que vienen de un bookmark viejo o un link compartido.
 type RestrictedRole = {
-  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER' | 'SUPERVISOR' | 'COORDINADORA_COMPRAS' | 'COORDINADORA_LOGISTICA' | 'LOGISTICO' | 'POST_VENTA';
+  rol: 'RECURSOS_HUMANOS' | 'COBRANZAS' | 'TRANSPORTE' | 'TALLER' | 'SUPERVISOR' | 'COORDINADORA_COMPRAS' | 'COORDINADORA_LOGISTICA' | 'LOGISTICO' | 'POST_VENTA' | 'CONDUCTOR';
   home: string;
   // Prefijos permitidos. Se chequea con startsWith para cubrir sub-rutas
   // (ej. /rrhh/empleados/123/editar).
@@ -161,6 +161,17 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/leads/metricas',
       '/logistica/distribucion/viajes',
       '/logistica/distribucion/entregas-productos',
+    ],
+  },
+  {
+    // CONDUCTOR: rol operativo mínimo. Sólo el módulo Transporte (Armado de
+    // Viajes, Control de Entregas, Legajo de Vehículos). Aterriza directo en el
+    // armado de viajes. Mantener en sync con conductorAllowedPaths en Sidebar.tsx.
+    rol: 'CONDUCTOR',
+    home: '/logistica/distribucion/viajes',
+    allowedPrefixes: [
+      '/logistica/distribucion',
+      '/logistica/vehiculos',
     ],
   },
 ];

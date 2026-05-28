@@ -76,6 +76,7 @@ const availableRoles = [
   { value: 'OFICINA' as TipoRol, label: 'Personal de Oficina', color: '#0288d1' },
   { value: 'RECURSOS_HUMANOS' as TipoRol, label: 'Recursos Humanos', color: '#2e7d32' },
   { value: 'POST_VENTA' as TipoRol, label: 'Post-Venta', color: '#ff6f00' },
+  { value: 'CONDUCTOR' as TipoRol, label: 'Conductor', color: '#37474f' },
   { value: 'USUARIO' as TipoRol, label: 'Usuario', color: '#7b1fa2' },
   { value: 'USER' as TipoRol, label: 'Usuario (básico)', color: '#6a1b9a' },
 ];
@@ -96,6 +97,7 @@ const systemRoleOptions: { value: TipoRol; label: string; description: string; c
   { value: 'COORDINADORA_COMPRAS', label: 'Coordinadora de Compras', description: 'Producción, Logística y Proveedores completos. En Administración ve flujo de caja, balance, bancos, cajas y catálogos', color: '#e65100' },
   { value: 'COORDINADORA_LOGISTICA', label: 'Coordinadora de Logística', description: 'Todo lo de Transporte + RRHH parcial (Sueldos, Adelantos, Config, Organigrama) + Administración financiera básica', color: '#4527a0' },
   { value: 'LOGISTICO', label: 'Logístico', description: 'Todo lo de Transporte + Proveedores parcial (sin Cuenta Corriente) + Gestión Stock, Stock Equipos y Ubicación Equipos', color: '#00695c' },
+  { value: 'CONDUCTOR', label: 'Conductor', description: 'Acceso exclusivo al módulo Transporte: Armado de Viajes, Control de Entregas y Legajo de Vehículos', color: '#37474f' },
   { value: 'USUARIO', label: 'Usuario', description: 'Solo acceso al dashboard', color: '#7b1fa2' },
 ];
 

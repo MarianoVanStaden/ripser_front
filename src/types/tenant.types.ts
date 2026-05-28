@@ -63,7 +63,8 @@ export type RolEmpresa =
   | 'RECURSOS_HUMANOS'
   | 'COORDINADORA_COMPRAS'
   | 'COORDINADORA_LOGISTICA'
-  | 'LOGISTICO';
+  | 'LOGISTICO'
+  | 'CONDUCTOR';
 
 export interface CreateEmpresaDTO {
   nombre: string;

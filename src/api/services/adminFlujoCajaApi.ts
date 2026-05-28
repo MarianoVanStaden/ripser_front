@@ -17,12 +17,26 @@ export interface FlujoCajaMovimiento {
   numeroComprobante?: string;
 }
 
+export interface RecaudacionCobranzaItem {
+  usuarioId: number;
+  nombreUsuario: string;
+  totalInformado: number;
+  cantidadPagos: number;
+}
+
 export interface FlujoCajaResponse {
   totalIngresos: number;
   totalEgresos: number;
   flujoNeto: number;
   totalMovimientos: number;
   movimientos: FlujoCajaMovimiento[];
+  /**
+   * Total cobrado por cobranzas en el rango, pendiente de confirmación admin.
+   * NO suma a flujoNeto — es informativo: plata anunciada por cobranzas que
+   * todavía no ingresó formalmente a caja.
+   */
+  cobradoPorCobranzasPendiente?: number;
+  cobradoPorCobranzasDetalle?: RecaudacionCobranzaItem[];
 }
 
 export const adminFlujoCajaApi = {

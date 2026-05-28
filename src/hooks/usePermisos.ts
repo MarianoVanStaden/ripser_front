@@ -71,6 +71,12 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // Viajes y Control de Entregas, Garantías completas. Dashboard propio con KPIs operativos.
   // Filtrado fino por allowlist en Sidebar (postVentaAllowedPaths).
   POST_VENTA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'GARANTIAS'],
+
+  // Conductor: rol operativo mínimo. SÓLO el módulo Transporte (armado de
+  // viajes, control de entregas y legajo de vehículos). Aterriza directo en
+  // /logistica/distribucion/viajes (ver RoleScopeGuard). Filtrado fino por
+  // allowlist en Sidebar (conductorAllowedPaths).
+  CONDUCTOR: ['DASHBOARD', 'TRANSPORTE'],
 };
 
 export const usePermisos = () => {
