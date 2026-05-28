@@ -75,7 +75,7 @@ export const entregaViajeDocumentoApi = {
       }
 
       // Validar que no sea un error HTML/XML
-      const contentType = response.headers['content-type'] || '';
+      const contentType = (response.headers['content-type'] as string) || '';
       if (contentType.includes('text/html') || contentType.includes('text/xml')) {
         throw new Error('El servidor retornó un error. Por favor intenta de nuevo.');
       }
