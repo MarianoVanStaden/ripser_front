@@ -777,20 +777,26 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
 
       {/* Selector de Sucursal */}
-      {canSelectSucursal && sucursales.length > 0 && (
-        <>
-          <Box sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
-            <SucursalSelector
-              sucursales={sucursales}
-              sucursalActual={sucursalFiltro}
-              sucursalDefecto={usuarioEmpresa?.sucursalDefectoId ?? null}
-              onChange={setSucursalFiltro}
-              onChangeBackend={cambiarSucursal}
-            />
-          </Box>
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-        </>
-      )}
+      {(() => {
+        const show = canSelectSucursal && sucursales.length > 0;
+        if (!show) {
+          console.log('🔍 Selector de sucursales NO mostrado:', { canSelectSucursal, sucursalesLength: sucursales.length });
+        }
+        return show ? (
+          <>
+            <Box sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
+              <SucursalSelector
+                sucursales={sucursales}
+                sucursalActual={sucursalFiltro}
+                sucursalDefecto={usuarioEmpresa?.sucursalDefectoId ?? null}
+                onChange={setSucursalFiltro}
+                onChangeBackend={cambiarSucursal}
+              />
+            </Box>
+            <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+          </>
+        ) : null;
+      })()}
 
       {/* Scrollable menu section */}
       <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>

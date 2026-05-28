@@ -141,8 +141,13 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const systemRole = (user?.rol || user?.roles?.[0])?.toString().trim().toUpperCase();
     if (systemRole === 'VENDEDOR') return true;
 
-    if (!rolActual) return false;
-    return rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR' || rolActual === 'POST_VENTA';
+    if (!rolActual) {
+      console.log('⚠️ canSelectSucursal: rolActual es undefined/null');
+      return false;
+    }
+    const result = rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR' || rolActual === 'POST_VENTA';
+    console.log('🔍 canSelectSucursal evaluation:', { rolActual, result, esSuperAdmin, systemRole });
+    return result;
   }, [esSuperAdmin, rolActual, user]);
 
   // Cargar UsuarioEmpresa al iniciar (para obtener rol y sucursal defecto)
@@ -166,6 +171,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             console.log('✅ Relación actual encontrada:', relacionActual);
             setUsuarioEmpresa(relacionActual);
             setRolActual(relacionActual.rol);
+            console.log('🔑 ROL ACTUAL SETEADO A:', relacionActual.rol);
 
             // 🔥 FIX: Detectar automáticamente si es SuperAdmin basado en el rol
             if (relacionActual.rol === 'SUPER_ADMIN') {
