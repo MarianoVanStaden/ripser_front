@@ -371,8 +371,9 @@ const DeliveriesPage2: React.FC = () => {
       const blob = await entregaViajeDocumentoApi.download(selectedDelivery!.id, doc.id);
       const url = URL.createObjectURL(blob);
       setLightboxSrc(url);
-    } catch {
-      setError('Error al cargar la imagen.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al cargar la imagen';
+      setError(message);
     }
   };
 
@@ -385,8 +386,9 @@ const DeliveriesPage2: React.FC = () => {
       a.download = doc.originalName ?? doc.fileName;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      setError('Error al descargar el documento.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al descargar el documento';
+      setError(message);
     }
   };
 

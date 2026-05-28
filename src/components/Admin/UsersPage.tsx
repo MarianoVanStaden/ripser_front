@@ -190,8 +190,8 @@ const UsersPage: React.FC = () => {
     loadData();
   }, []);
 
-  // Debounced username validation
-   
+  // Debounced username validation (backend check)
+
   useEffect(() => {
     if (!formData.username || editingUser) return;
 
@@ -203,9 +203,11 @@ const UsersPage: React.FC = () => {
 
       setCheckingUsername(true);
       try {
-        // Check if username already exists in the users list
-        const existingUser = users.find(
-          u => u.username.toLowerCase() === formData.username.toLowerCase()
+        // Check if username already exists (backend verification)
+        const existingUser = await usuarioAdminApi.getAll(0, 1000).then(page =>
+          page.content.find(
+            u => u.username.toLowerCase() === formData.username.toLowerCase()
+          )
         );
 
         if (existingUser) {
@@ -224,7 +226,7 @@ const UsersPage: React.FC = () => {
     }, 500); // Wait 500ms after user stops typing
 
     return () => clearTimeout(timeoutId);
-  }, [formData.username, editingUser, users]);
+  }, [formData.username, editingUser]);
 
   const loadData = async () => {
     try {
@@ -373,7 +375,15 @@ const UsersPage: React.FC = () => {
         loadData();
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear el usuario');
+      const errorMsg = err.response?.data?.message || 'Error al crear el usuario';
+
+      // Handle specific username conflict error
+      if (errorMsg.includes('Username ya existe')) {
+        setError('El nombre de usuario ya existe. Otro administrador puede haberlo creado recientemente. Por favor intente con un nombre diferente.');
+      } else {
+        setError(errorMsg);
+      }
+
       console.error('Error creating user:', err);
       loadData();
     }
