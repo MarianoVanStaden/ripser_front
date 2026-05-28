@@ -62,7 +62,6 @@ export const LeadMetricasPage = () => {
   );
   const [fechaFin, setFechaFin] = useState<Dayjs | null>(dayjs());
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
-  const [usuarioAsignadoId, setUsuarioAsignadoId] = useState<number | undefined>();
 
   // Estado de datos
   const [metricas, setMetricas] = useState<LeadMetricasResponseDTO | null>(null);
