@@ -485,6 +485,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
   // - VENTAS: solo Registro Ventas.
   // - CLIENTES: Gestión + Carpeta + Leads (todo el módulo CLIENTES excepto Cuenta Corriente y Agenda).
   // - TRANSPORTE: Viajes y Entregas-Productos solo (no Entregas-Equipos).
+  // - GARANTÍAS: todo el módulo.
   const postVentaAllowedPaths = [
     '/',
     '/ventas/registro',
@@ -498,6 +499,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/leads/metricas',
     '/logistica/distribucion/viajes',
     '/logistica/distribucion/entregas-productos',
+    '/garantias/registro',
+    '/garantias/reclamos',
+    '/garantias/reporte',
   ];
 
   // Rutas denegadas para el rol ADMIN_EMPRESA_LIMITADO (denylist):

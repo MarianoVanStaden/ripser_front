@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.createBrowserContext();
+  const context = await browser.newContext();
   const page = await context.newPage();
 
   try {
@@ -15,8 +15,25 @@ const { chromium } = require('playwright');
     await page.goto('http://localhost:5178/login', { waitUntil: 'domcontentloaded' });
     console.log('✅ Login page loaded');
 
-    // Try to navigate to metrics (will be redirected if not logged in)
-    console.log('\nStep 2: Navigate to /leads/metricas...');
+    // Perform login
+    console.log('\nStep 2: Log in with test credentials...');
+
+    // Fill in credentials
+    await page.fill('[data-testid="login-username-input"]', 'adminempresa');
+    await page.fill('[data-testid="login-password-input"]', '000');
+
+    // Click login button
+    await page.click('button[type="submit"]');
+
+    // Wait for navigation after login
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null);
+    await page.waitForTimeout(5000);
+
+    console.log('✅ Login submitted');
+    console.log('Current URL after login:', page.url());
+
+    // Try to navigate to metrics
+    console.log('\nStep 3: Navigate to /leads/metricas...');
 
     const navigationPromise = page.goto('http://localhost:5178/leads/metricas', {
       waitUntil: 'domcontentloaded'
