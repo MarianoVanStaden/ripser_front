@@ -12,7 +12,8 @@ import {
   TextField,
   Button,
   Stack,
-  Chip
+  Chip,
+  Autocomplete
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -31,7 +32,8 @@ import type {
   LeadMetricasResponseDTO,
   LeadMetricasRequestParams
 } from '../../api/services/leadMetricasApi';
-import { parametroSistemaApi } from '../../api/services';
+import { parametroSistemaApi, usuarioApi } from '../../api/services';
+import type { Usuario } from '../../types';
 import { useTenant } from '../../context/TenantContext';
 import { EmbudoVentasChart } from '../../components/metricas/EmbudoVentasChart';
 import { MetricasCanalChart } from '../../components/metricas/MetricasCanalChart';
@@ -59,6 +61,7 @@ export const LeadMetricasPage = () => {
     dayjs().subtract(30, 'days')
   );
   const [fechaFin, setFechaFin] = useState<Dayjs | null>(dayjs());
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
   const [usuarioAsignadoId, setUsuarioAsignadoId] = useState<number | undefined>();
 
   // Estado de datos
@@ -67,12 +70,27 @@ export const LeadMetricasPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [metaMensualLeads, setMetaMensualLeads] = useState<number>(30); // Valor por defecto para empresa mediana
   const [metaPresupuestoMensual, setMetaPresupuestoMensual] = useState<number>(1000000); // Meta de facturación mensual
+  const [vendedores, setVendedores] = useState<Usuario[]>([]);
+  const [loadingVendedores, setLoadingVendedores] = useState(false);
 
-  // Cargar métricas al montar y cuando cambian los filtros
+  // Cargar vendedores y métricas al montar
   useEffect(() => {
+    loadVendedores();
     loadMetricas();
     loadParametrosMeta();
   }, [sucursalFiltro]);
+
+  const loadVendedores = async () => {
+    try {
+      setLoadingVendedores(true);
+      const vendedoresData = await usuarioApi.getVendedores();
+      setVendedores(vendedoresData);
+    } catch (err) {
+      console.error('Error al cargar vendedores:', err);
+    } finally {
+      setLoadingVendedores(false);
+    }
+  };
 
   // Auto-refresh cuando la página recibe el foco (usuario vuelve después de convertir un lead)
   useEffect(() => {
@@ -87,7 +105,7 @@ export const LeadMetricasPage = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, [fechaInicio, fechaFin, sucursalFiltro, usuarioAsignadoId]);
+  }, [fechaInicio, fechaFin, sucursalFiltro, usuarioSeleccionado]);
 
   const loadParametrosMeta = async () => {
     try {
@@ -130,8 +148,8 @@ export const LeadMetricasPage = () => {
         params.sucursalId = sucursalFiltro;
       }
 
-      if (usuarioAsignadoId !== undefined) {
-        params.usuarioAsignadoId = usuarioAsignadoId;
+      if (usuarioSeleccionado) {
+        params.usuarioAsignadoId = usuarioSeleccionado.id;
       }
 
       console.log('📤 PARÁMETROS ENVIADOS AL BACKEND:', params);
@@ -248,13 +266,25 @@ export const LeadMetricasPage = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                label="Vendedor ID (opcional)"
-                type="number"
+              <Autocomplete
+                options={vendedores}
+                getOptionLabel={(option) => option.username || ''}
+                value={usuarioSeleccionado}
+                onChange={(_, newValue) => setUsuarioSeleccionado(newValue)}
+                loading={loadingVendedores}
                 size="small"
                 fullWidth
-                value={usuarioAsignadoId || ''}
-                onChange={(e) => setUsuarioAsignadoId(e.target.value ? Number(e.target.value) : undefined)}
+                clearOnEscape
+                disableClearable={false}
+                noOptionsText="Sin vendedores disponibles"
+                loadingText="Cargando vendedores..."
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Vendedor (opcional)"
+                    placeholder="Buscar vendedor..."
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
