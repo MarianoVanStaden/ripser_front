@@ -487,7 +487,7 @@ export const PrestamoDetailPage: React.FC = () => {
                         size="small"
                         sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
                       />
-                      {rechazadoPorCuota.has(c.id) && (
+                      {rechazadoPorCuota.has(c.id) && c.estado !== 'PAGADA' && c.estado !== 'PAGO_INFORMADO' && (
                         <Tooltip
                           title={
                             <Box>
