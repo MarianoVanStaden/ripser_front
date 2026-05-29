@@ -46,8 +46,11 @@ import {
   Inventory as EquipmentIcon,
   PhotoCamera as PhotoCameraIcon,
   Download as DownloadIcon,
+  WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
+import { Tooltip } from '@mui/material';
 import type { EntregaViaje, Viaje, Cliente, EstadoEntrega, DocumentoComercial } from '../../types';
+import { openWhatsAppWeb } from '../../utils/whatsapp';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
 import { entregaViajeDocumentoApi } from '../../api/services/entregaViajeDocumentoApi';
@@ -612,6 +615,21 @@ const DeliveriesPage2: React.FC = () => {
     return 'Sin Factura';
   };
 
+  // Teléfono del cliente para abrir WhatsApp. Prioriza el campo whatsapp; cae al
+  // teléfono principal. Resuelve el cliente desde la factura o la orden de servicio.
+  const getClientPhone = (delivery: EntregaViaje): string | undefined => {
+    let cliente: Cliente | undefined;
+    const factura = getFacturaByDelivery(delivery);
+    if (factura?.clienteId) {
+      cliente = clients.find(c => c.id === factura.clienteId);
+    }
+    if (!cliente) {
+      const orden = getOrdenByDelivery(delivery);
+      if (orden?.clienteId) cliente = clients.find(c => c.id === orden.clienteId);
+    }
+    return cliente?.whatsapp || cliente?.telefono;
+  };
+
   const getVentaNumero = (delivery: EntregaViaje): string => {
     const factura = getFacturaByDelivery(delivery);
     if (factura) return factura.numeroDocumento || `FAC-${factura.id}`;
@@ -709,12 +727,21 @@ const DeliveriesPage2: React.FC = () => {
               borderTop="1px solid"
               borderColor="divider"
             >
-              <IconButton
-                onClick={(e) => { e.stopPropagation(); handleViewDetails(delivery); }}
-                sx={{ minWidth: 44, minHeight: 44 }}
-              >
-                <ViewIcon />
-              </IconButton>
+              <Box display="flex" gap={1}>
+                <IconButton
+                  onClick={(e) => { e.stopPropagation(); handleViewDetails(delivery); }}
+                  sx={{ minWidth: 44, minHeight: 44 }}
+                >
+                  <ViewIcon />
+                </IconButton>
+                <IconButton
+                  onClick={(e) => { e.stopPropagation(); openWhatsAppWeb(getClientPhone(delivery)); }}
+                  disabled={!getClientPhone(delivery)}
+                  sx={{ minWidth: 44, minHeight: 44, color: getClientPhone(delivery) ? '#25D366' : undefined }}
+                >
+                  <WhatsAppIcon />
+                </IconButton>
+              </Box>
 
               {delivery.estado === 'PENDIENTE' && (
                 <Box display="flex" gap={1}>
@@ -1017,6 +1044,18 @@ const DeliveriesPage2: React.FC = () => {
                               <IconButton onClick={() => handleViewDetails(delivery)} size="small">
                                 <ViewIcon fontSize="small" />
                               </IconButton>
+                              <Tooltip title={getClientPhone(delivery) ? 'Abrir WhatsApp del cliente' : 'Cliente sin teléfono'}>
+                                <span>
+                                  <IconButton
+                                    onClick={() => openWhatsAppWeb(getClientPhone(delivery))}
+                                    size="small"
+                                    disabled={!getClientPhone(delivery)}
+                                    sx={{ color: getClientPhone(delivery) ? '#25D366' : undefined }}
+                                  >
+                                    <WhatsAppIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
                               {delivery.estado === 'PENDIENTE' && (
                                 <>
                                   <IconButton onClick={() => openConfirmDialog(delivery.id)} size="small" color="success">
@@ -1253,6 +1292,16 @@ const DeliveriesPage2: React.FC = () => {
                             <Typography variant="body2">{selectedDelivery.receptorNombre}</Typography>
                           </Box>
                         )}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<WhatsAppIcon />}
+                          onClick={() => openWhatsAppWeb(getClientPhone(selectedDelivery))}
+                          disabled={!getClientPhone(selectedDelivery)}
+                          sx={{ alignSelf: 'flex-start', minHeight: 44, color: '#25D366', borderColor: '#25D366' }}
+                        >
+                          {getClientPhone(selectedDelivery) ? 'WhatsApp al cliente' : 'Sin teléfono'}
+                        </Button>
                       </Stack>
                     </CardContent>
                   </Card>
@@ -1447,6 +1496,16 @@ const DeliveriesPage2: React.FC = () => {
                         {selectedDelivery.receptorNombre && (
                           <Typography variant="body2"><strong>Receptor:</strong> {selectedDelivery.receptorNombre}</Typography>
                         )}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<WhatsAppIcon />}
+                          onClick={() => openWhatsAppWeb(getClientPhone(selectedDelivery))}
+                          disabled={!getClientPhone(selectedDelivery)}
+                          sx={{ alignSelf: 'flex-start', color: '#25D366', borderColor: '#25D366' }}
+                        >
+                          {getClientPhone(selectedDelivery) ? 'WhatsApp al cliente' : 'Sin teléfono'}
+                        </Button>
                       </Stack>
                     </CardContent>
                   </Card>

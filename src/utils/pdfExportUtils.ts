@@ -11,6 +11,7 @@ const COLORS = {
   mediumGray: [128, 128, 128] as [number, number, number],  // #808080
   red: [255, 0, 0] as [number, number, number],             // #FF0000
   green: [0, 128, 0] as [number, number, number],           // #008000
+  amber: [191, 142, 0] as [number, number, number],         // #BF8E00 - Pendiente/informado
 };
 
 /**
@@ -1749,6 +1750,14 @@ export const generateFlujoCajaPDF = async (
     pieChartImgData?: string | null;
     barChartImgData?: string | null;
     lineChartImgData?: string | null;
+  },
+  cobranzas?: {
+    pendienteTotal: number;
+    pendienteCantidad: number;
+    pendienteDetalle: { nombreUsuario: string; cantidadPagos: number; totalInformado: number }[];
+    confirmadoTotal: number;
+    confirmadoCantidad: number;
+    confirmadoDetalle: { nombreUsuario: string; cantidadPagos: number; totalInformado: number }[];
   }
 ) => {
   const pdf = new jsPDF('l', 'mm', 'a4'); // landscape orientation
@@ -1812,6 +1821,83 @@ export const generateFlujoCajaPDF = async (
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(...COLORS.black);
   yPosition += 10;
+
+  // Cobranza de préstamos personales: informado (pendiente) + informado y cobrado
+  if (cobranzas) {
+    const boxH = 14
+      + Math.max(cobranzas.pendienteDetalle.length, 0) * 4
+      + Math.max(cobranzas.confirmadoDetalle.length, 0) * 4
+      + 10;
+    if (yPosition + boxH > pageHeight - 20) {
+      pdf.addPage();
+      yPosition = 20;
+    }
+
+    pdf.setFillColor(...COLORS.white);
+    pdf.rect(15, yPosition, pageWidth - 30, 4, 'F');
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.darkBlue);
+    pdf.text('Cobranza de Préstamos Personales:', 17, yPosition + 3);
+    yPosition += 8;
+
+    const colA = 20;
+    const colB = pageWidth / 2;
+
+    // ---- Informado (pendiente de ingreso) ----
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(...COLORS.amber);
+    pdf.text(
+      `Informado (pendiente de ingreso): $${cobranzas.pendienteTotal.toLocaleString()} `
+        + `(${cobranzas.pendienteCantidad} pagos) - no suma al flujo neto`,
+      colA, yPosition);
+    yPosition += 5;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(...COLORS.black);
+    if (cobranzas.pendienteDetalle.length === 0) {
+      pdf.text('Sin pagos pendientes en el período.', colA + 3, yPosition);
+      yPosition += 4;
+    } else {
+      cobranzas.pendienteDetalle.forEach((d) => {
+        pdf.text(
+          `- ${d.nombreUsuario}: ${d.cantidadPagos} pago(s) - $${(d.totalInformado || 0).toLocaleString()}`,
+          colA + 3, yPosition);
+        yPosition += 4;
+      });
+    }
+    yPosition += 2;
+
+    // ---- Informado y cobrado (ingresado a caja) ----
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(...COLORS.green);
+    pdf.text(
+      `Informado y cobrado (ingresado a caja): $${cobranzas.confirmadoTotal.toLocaleString()} `
+        + `(${cobranzas.confirmadoCantidad} pagos) - incluido en el flujo neto`,
+      colA, yPosition);
+    yPosition += 5;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(...COLORS.black);
+    if (cobranzas.confirmadoDetalle.length === 0) {
+      pdf.text('Sin pagos confirmados en el período.', colA + 3, yPosition);
+      yPosition += 4;
+    } else {
+      cobranzas.confirmadoDetalle.forEach((d) => {
+        pdf.text(
+          `- ${d.nombreUsuario}: ${d.cantidadPagos} pago(s) - $${(d.totalInformado || 0).toLocaleString()}`,
+          colA + 3, yPosition);
+        yPosition += 4;
+      });
+    }
+    yPosition += 6;
+    // colB queda disponible para layout futuro de dos columnas
+    void colB;
+  }
 
   // Página de gráficos (si fueron capturados)
   if (chartImages?.pieChartImgData || chartImages?.barChartImgData || chartImages?.lineChartImgData) {

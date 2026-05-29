@@ -53,6 +53,7 @@ import CajasAhorroUSDSection from './components/CajasAhorroUSDSection';
 import MovimientoExtraDialog from './dialogs/MovimientoExtraDialog';
 import TransferirPesosDialog from '../CajasPesos/dialogs/TransferirPesosDialog';
 import { movimientoExtraApi } from '../../../api/services/movimientoExtraApi';
+import { pagoInformadoApi } from '../../../api/services/pagoInformadoApi';
 import LoadingOverlay from '../../common/LoadingOverlay';
 import ConfirmDialog from '../../common/ConfirmDialog';
 
@@ -166,11 +167,19 @@ const FlujoCajaPage: React.FC = () => {
   // Handlers
   const handleExportPDF = async () => {
     try {
-      const [pieImg, barImg, lineImg] = await Promise.all([
+      const desdeStr = fechaDesde?.format('YYYY-MM-DD');
+      const hastaStr = fechaHasta?.format('YYYY-MM-DD');
+      const [pieImg, barImg, lineImg, pendientes, confirmados] = await Promise.all([
         captureElementAsImage('flujo-pie-chart'),
         captureElementAsImage('flujo-bar-chart'),
         captureElementAsImage('flujo-line-chart'),
+        pagoInformadoApi.recaudacionPorCobranzas(desdeStr, hastaStr, 'PENDIENTE_CONFIRMACION').catch(() => []),
+        pagoInformadoApi.recaudacionPorCobranzas(desdeStr, hastaStr, 'CONFIRMADO').catch(() => []),
       ]);
+
+      const sumTotal = (arr: { totalInformado: number }[]) => arr.reduce((s, i) => s + (i.totalInformado || 0), 0);
+      const sumCant = (arr: { cantidadPagos: number }[]) => arr.reduce((s, i) => s + (i.cantidadPagos || 0), 0);
+
       await generateFlujoCajaPDF(
         movimientos,
         {
@@ -183,7 +192,15 @@ const FlujoCajaPage: React.FC = () => {
           flujoNeto,
           totalMovimientos,
         },
-        { pieChartImgData: pieImg, barChartImgData: barImg, lineChartImgData: lineImg }
+        { pieChartImgData: pieImg, barChartImgData: barImg, lineChartImgData: lineImg },
+        {
+          pendienteTotal: sumTotal(pendientes),
+          pendienteCantidad: sumCant(pendientes),
+          pendienteDetalle: pendientes,
+          confirmadoTotal: sumTotal(confirmados),
+          confirmadoCantidad: sumCant(confirmados),
+          confirmadoDetalle: confirmados,
+        }
       );
     } catch (err) {
       console.error('Error generating PDF:', err);

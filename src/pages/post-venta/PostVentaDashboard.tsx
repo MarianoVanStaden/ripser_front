@@ -139,9 +139,10 @@ const PostVentaDashboard: React.FC = () => {
           return [] as ViajeResponse[];
         });
 
-      // Últimas ventas registradas
+      // Últimas ventas registradas (las ventas se representan como FACTURA;
+      // 'REGISTRO_VENTA' no es un TipoDocumento válido y devolvía 500).
       const ventasReq = documentoApi
-        .getByTipoPaginated('REGISTRO_VENTA', { page: 0, size: 10 })
+        .getByTipoPaginated('FACTURA', { page: 0, size: 10 })
         .then((r) => {
           return (r.content ?? []) as SaleResponse[];
         })
