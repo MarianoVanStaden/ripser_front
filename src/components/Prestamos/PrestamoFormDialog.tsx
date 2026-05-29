@@ -30,6 +30,7 @@ const emptyForm: CreatePrestamoPersonalDTO = {
   categoria: undefined,
   observaciones: undefined,
   codigoClienteRojas: undefined,
+  numeroComprobante: undefined,
 };
 
 export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
@@ -55,6 +56,7 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
           categoria: prestamo.categoria,
           observaciones: prestamo.observaciones || undefined,
           codigoClienteRojas: prestamo.codigoClienteRojas || undefined,
+          numeroComprobante: prestamo.numeroComprobante || undefined,
         });
         setSelectedCliente({ id: prestamo.clienteId, nombre: prestamo.clienteNombre } as Cliente);
       } else {
@@ -220,6 +222,14 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
                 label="Código Cliente Rojas"
                 value={formData.codigoClienteRojas || ''}
                 onChange={(e) => handleChange('codigoClienteRojas', e.target.value || undefined)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Número de Comprobante"
+                value={formData.numeroComprobante || ''}
+                onChange={(e) => handleChange('numeroComprobante', e.target.value || undefined)}
               />
             </Grid>
             <Grid item xs={12}>

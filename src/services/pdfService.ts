@@ -1068,6 +1068,8 @@ export const generarCreditoPDF = (
   doc.text(`Préstamo #${prestamo.id}`, pageWidth - margin - 4, y + 11, { align: 'right' });
   if (prestamo.documentoId) {
     doc.text(`Factura: #${prestamo.documentoId}`, pageWidth - margin - 4, y + 16, { align: 'right' });
+  } else if (prestamo.numeroComprobante) {
+    doc.text(`Comprobante: ${prestamo.numeroComprobante}`, pageWidth - margin - 4, y + 16, { align: 'right' });
   }
   y += 24;
 
@@ -1118,12 +1120,13 @@ export const generarCreditoPDF = (
     formatCurrency(c.montoCuota),
     formatCurrency(c.montoPagado),
     formatCurrency(Math.max(0, Number(c.montoCuota) - Number(c.montoPagado))),
+    c.numeroComprobante || '-',
     ESTADO_CUOTA_LABELS[c.estado] || c.estado,
     c.diasMora && c.diasMora > 0 ? c.diasMora.toString() : '-',
   ]);
 
   autoTable(doc, {
-    head: [['#', 'Vencimiento', 'Monto', 'Pagado', 'Saldo', 'Estado', 'Días mora']],
+    head: [['#', 'Vencimiento', 'Monto', 'Pagado', 'Saldo', 'Comprobante', 'Estado', 'Días mora']],
     body: rows,
     startY: y,
     margin: { left: margin + 1, right: margin + 1, bottom: PAGE_MARGIN_BOTTOM },
@@ -1142,10 +1145,11 @@ export const generarCreditoPDF = (
       3: { halign: 'right' },
       4: { halign: 'right' },
       5: { halign: 'center' },
-      6: { halign: 'center', cellWidth: 18 },
+      6: { halign: 'center' },
+      7: { halign: 'center', cellWidth: 18 },
     },
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 5) {
+      if (data.section === 'body' && data.column.index === 6) {
         const estado = cuotasOrdenadas[data.row.index]?.estado;
         if (estado === 'PAGADA') {
           data.cell.styles.textColor = [0, 128, 0];

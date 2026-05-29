@@ -4,6 +4,7 @@ import type {
   CrearPagoInformadoDTO,
   ConfirmarPagoInformadoDTO,
   RechazarPagoInformadoDTO,
+  EstadoPagoInformado,
 } from '../../types/prestamo.types';
 import type { RecaudacionCobranzaItem } from './adminFlujoCajaApi';
 
@@ -28,6 +29,12 @@ export const pagoInformadoApi = {
     return response.data;
   },
 
+  /** Historial de informes de un préstamo (todos los estados). */
+  historialPorPrestamo: async (prestamoId: number): Promise<PagoInformadoDTO[]> => {
+    const response = await api.get<PagoInformadoDTO[]>(`${BASE_PATH}/prestamo/${prestamoId}`);
+    return response.data;
+  },
+
   /** Admin confirma → dispara el pago real (caja + CC + cheque + cascada). */
   confirmar: async (id: number, data: ConfirmarPagoInformadoDTO): Promise<PagoInformadoDTO> => {
     const response = await api.post<PagoInformadoDTO>(`${BASE_PATH}/${id}/confirmar`, data);
@@ -40,14 +47,20 @@ export const pagoInformadoApi = {
     return response.data;
   },
 
-  /** Agregado por agente: para inciso del flujo de caja. */
+  /**
+   * Agregado por agente para el inciso del flujo de caja. Sin `estado` devuelve
+   * lo informado pendiente de confirmación; con `estado='CONFIRMADO'` devuelve
+   * lo informado y cobrado (ya ingresado a caja).
+   */
   recaudacionPorCobranzas: async (
     desde?: string,
     hasta?: string,
+    estado?: EstadoPagoInformado,
   ): Promise<RecaudacionCobranzaItem[]> => {
     const params = new URLSearchParams();
     if (desde) params.append('desde', desde);
     if (hasta) params.append('hasta', hasta);
+    if (estado) params.append('estado', estado);
     const qs = params.toString();
     const url = `${BASE_PATH}/recaudacion-cobranzas${qs ? `?${qs}` : ''}`;
     const response = await api.get<RecaudacionCobranzaItem[]>(url);

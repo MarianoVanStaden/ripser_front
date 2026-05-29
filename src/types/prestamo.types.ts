@@ -164,6 +164,8 @@ export interface PrestamoPersonalDTO {
   montoPagado: number;
   saldoPendiente: number;
   documentoId?: number | null;
+  /** Número de comprobante del préstamo (recibo/factura de origen). */
+  numeroComprobante?: string | null;
   /** Optimistic locking — debe enviarse en PATCH para detectar ediciones concurrentes. */
   version?: number;
 }
@@ -196,6 +198,7 @@ export interface CreatePrestamoPersonalDTO {
   responsableSeguimientoId?: number;
   observaciones?: string;
   codigoClienteRojas?: string;
+  numeroComprobante?: string;
 }
 
 export interface ResumenPrestamosDTO {

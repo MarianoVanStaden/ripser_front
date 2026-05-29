@@ -17,10 +17,12 @@ import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
 import { seguimientoPrestamoApi } from '../../api/services/seguimientoPrestamoApi';
 import { recordatorioCuotaApi } from '../../api/services/recordatorioCuotaApi';
+import { pagoInformadoApi } from '../../api/services/pagoInformadoApi';
 import {
   ESTADO_PRESTAMO_LABELS, ESTADO_PRESTAMO_COLORS,
   CATEGORIA_PRESTAMO_LABELS, CATEGORIA_PRESTAMO_COLORS,
   ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
+  ESTADO_PAGO_INFORMADO_LABELS,
   TIPO_FINANCIACION_LABELS,
   TIPO_INTERACCION_PRESTAMO_LABELS,
   EstadoPrestamo, CategoriaPrestamo,
@@ -28,6 +30,7 @@ import {
 import type {
   PrestamoPersonalDTO, CuotaPrestamoDTO,
   SeguimientoPrestamoDTO, RecordatorioCuotaDTO,
+  PagoInformadoDTO,
 } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
@@ -71,6 +74,7 @@ export const PrestamoDetailPage: React.FC = () => {
   const [cuotas, setCuotas] = useState<CuotaPrestamoDTO[]>([]);
   const [seguimientos, setSeguimientos] = useState<SeguimientoPrestamoDTO[]>([]);
   const [recordatorios, setRecordatorios] = useState<RecordatorioCuotaDTO[]>([]);
+  const [pagosInformados, setPagosInformados] = useState<PagoInformadoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -113,14 +117,16 @@ export const PrestamoDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [prestamoData, cuotasData, seguimientosData] = await Promise.all([
+      const [prestamoData, cuotasData, seguimientosData, pagosInformadosData] = await Promise.all([
         prestamoPersonalApi.getById(prestamoId),
         cuotaPrestamoApi.getByPrestamo(prestamoId),
         seguimientoPrestamoApi.getByPrestamo(prestamoId),
+        pagoInformadoApi.historialPorPrestamo(prestamoId).catch(() => [] as PagoInformadoDTO[]),
       ]);
       setPrestamo(prestamoData);
       setCuotas(cuotasData);
       setSeguimientos(seguimientosData);
+      setPagosInformados(pagosInformadosData);
 
       // Load recordatorios for all cuotas
       const allRecordatorios: RecordatorioCuotaDTO[] = [];
@@ -255,6 +261,16 @@ export const PrestamoDetailPage: React.FC = () => {
     );
   }
 
+  // Último informe RECHAZADO por cuota (el historial viene ordenado DESC por fecha).
+  // Permite mostrar en la tabla de cuotas el motivo/estado de pagos rechazados
+  // por administración desde la bandeja "Pagos Informados por Cobranzas".
+  const rechazadoPorCuota = new Map<number, PagoInformadoDTO>();
+  for (const p of pagosInformados) {
+    if (p.estado === 'RECHAZADO' && p.cuotaId != null && !rechazadoPorCuota.has(p.cuotaId)) {
+      rechazadoPorCuota.set(p.cuotaId, p);
+    }
+  }
+
   return (
     <Box>
       <LoadingOverlay open={loading} message="Cargando crédito personal..." />
@@ -375,6 +391,15 @@ export const PrestamoDetailPage: React.FC = () => {
                 )}
               </Box>
             </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary">Comprobante</Typography>
+              <Typography
+                variant="body1"
+                sx={{ color: prestamo.numeroComprobante ? 'text.primary' : 'text.disabled', fontStyle: prestamo.numeroComprobante ? 'normal' : 'italic' }}
+              >
+                {prestamo.numeroComprobante || 'Sin comprobante'}
+              </Typography>
+            </Grid>
             {prestamo.observaciones && (
               <Grid item xs={12}>
                 <Typography variant="caption" color="text.secondary">Observaciones</Typography>
@@ -422,6 +447,7 @@ export const PrestamoDetailPage: React.FC = () => {
                 <TableCell align="right">Monto Pagado</TableCell>
                 <TableCell>Vencimiento</TableCell>
                 <TableCell>Fecha Pago</TableCell>
+                <TableCell>Comprobante</TableCell>
                 <TableCell align="center">Estado</TableCell>
                 <TableCell align="center">Acciones</TableCell>
               </TableRow>
@@ -453,12 +479,40 @@ export const PrestamoDetailPage: React.FC = () => {
                       : <Typography variant="caption" color="text.disabled" fontStyle="italic">Pendiente de anclaje</Typography>}
                   </TableCell>
                   <TableCell>{c.fechaPago ? dayjs(c.fechaPago).format('DD/MM/YYYY') : '-'}</TableCell>
+                  <TableCell>{c.numeroComprobante || '-'}</TableCell>
                   <TableCell align="center">
-                    <Chip
-                      label={ESTADO_CUOTA_LABELS[c.estado]}
-                      size="small"
-                      sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
-                    />
+                    <Stack direction="column" spacing={0.5} alignItems="center">
+                      <Chip
+                        label={ESTADO_CUOTA_LABELS[c.estado]}
+                        size="small"
+                        sx={{ bgcolor: ESTADO_CUOTA_COLORS[c.estado], color: 'white' }}
+                      />
+                      {rechazadoPorCuota.has(c.id) && (
+                        <Tooltip
+                          title={
+                            <Box>
+                              <Typography variant="caption" display="block">
+                                {ESTADO_PAGO_INFORMADO_LABELS[rechazadoPorCuota.get(c.id)!.estado]}
+                                {' · '}
+                                {formatPrice(rechazadoPorCuota.get(c.id)!.montoInformado)}
+                                {' · Comp. '}{rechazadoPorCuota.get(c.id)!.numeroComprobante}
+                              </Typography>
+                              <Typography variant="caption" display="block">
+                                Motivo: {rechazadoPorCuota.get(c.id)!.motivoRechazo || 'Sin especificar'}
+                              </Typography>
+                            </Box>
+                          }
+                        >
+                          <Chip
+                            label="Pago rechazado"
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            sx={{ height: 18, fontSize: '0.65rem' }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Stack>
                   </TableCell>
                   <TableCell align="center">
                     {prestamo?.estado === 'REFINANCIADO' ? (
