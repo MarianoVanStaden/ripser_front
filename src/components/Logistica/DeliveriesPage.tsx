@@ -594,6 +594,28 @@ const DeliveriesPage2: React.FC = () => {
     return ordenes.find(o => o.id === ordenId);
   };
 
+  /**
+   * Retorna el monto que debe cobrarse en esta entrega:
+   * - Si hay financiación propia: usa montoEntregaInicial de la opción seleccionada
+   *   (que ya incluye envío íntegro + % sobre el resto).
+   * - Para otros métodos: total del documento (se cobra completo al contado).
+   * - Sin factura: undefined.
+   */
+  const getMontoACobrar = (delivery: EntregaViaje): number | null | undefined => {
+    const factura = getFacturaByDelivery(delivery);
+    if (!factura) return undefined;
+
+    const opcionSeleccionada = factura.opcionesFinanciamiento?.find(
+      o => o.id === factura.opcionFinanciamientoSeleccionadaId
+    ) ?? factura.opcionesFinanciamiento?.find(o => o.esSeleccionada);
+
+    if (opcionSeleccionada?.montoEntregaInicial != null) {
+      return opcionSeleccionada.montoEntregaInicial;
+    }
+    // Para métodos de pago al contado se cobra el total completo en el acto
+    return factura.total ?? null;
+  };
+
   const getClientName = (delivery: EntregaViaje): string => {
     const factura = getFacturaByDelivery(delivery);
     if (factura) {
@@ -995,6 +1017,7 @@ const DeliveriesPage2: React.FC = () => {
                         {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Direccion</Box>}
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Fecha</Box>
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Viaje</Box>
+                        {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'right', fontWeight: 'bold' }}>A cobrar</Box>}
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Estado</Box>
                         <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Acciones</Box>
                       </Box>
@@ -1036,6 +1059,19 @@ const DeliveriesPage2: React.FC = () => {
                           <Box component="td" sx={{ p: 1.5 }}>
                             <Typography variant="body2">{getTripNumber(delivery.viajeId)}</Typography>
                           </Box>
+                          {!isTablet && (
+                            <Box component="td" sx={{ p: 1.5, textAlign: 'right' }}>
+                              {(() => {
+                                const monto = getMontoACobrar(delivery);
+                                if (monto == null) return <Typography variant="caption" color="text.disabled">—</Typography>;
+                                return (
+                                  <Typography variant="body2" fontWeight={700} color="success.dark" noWrap>
+                                    ${monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </Typography>
+                                );
+                              })()}
+                            </Box>
+                          )}
                           <Box component="td" sx={{ p: 1.5 }}>
                             {getStatusChip(delivery.estado)}
                           </Box>
@@ -1150,6 +1186,7 @@ const DeliveriesPage2: React.FC = () => {
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left' }}>Factura</Box>
                         {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left' }}>Direccion</Box>}
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left' }}>Fecha</Box>
+                        {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'right' }}>A cobrar</Box>}
                         <Box component="th" sx={{ p: 1.5, textAlign: 'center' }}>Acciones</Box>
                       </Box>
                     </Box>
@@ -1160,6 +1197,19 @@ const DeliveriesPage2: React.FC = () => {
                           <Box component="td" sx={{ p: 1.5 }}>{getVentaNumero(delivery)}</Box>
                           {!isTablet && <Box component="td" sx={{ p: 1.5 }}>{delivery.direccionEntrega}</Box>}
                           <Box component="td" sx={{ p: 1.5 }}>{new Date(delivery.fechaEntrega).toLocaleDateString()}</Box>
+                          {!isTablet && (
+                            <Box component="td" sx={{ p: 1.5, textAlign: 'right' }}>
+                              {(() => {
+                                const monto = getMontoACobrar(delivery);
+                                if (monto == null) return <Typography variant="caption" color="text.disabled">—</Typography>;
+                                return (
+                                  <Typography variant="body2" fontWeight={700} color="success.dark" noWrap>
+                                    ${monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </Typography>
+                                );
+                              })()}
+                            </Box>
+                          )}
                           <Box component="td" sx={{ p: 1.5, textAlign: 'center' }}>
                             <Button size="small" variant="outlined" onClick={() => handleEdit(delivery)}>
                               Asignar
@@ -1278,6 +1328,28 @@ const DeliveriesPage2: React.FC = () => {
                           <Typography variant="caption" color="text.secondary">Viaje</Typography>
                           <Typography variant="body2">{getTripNumber(selectedDelivery.viajeId)}</Typography>
                         </Box>
+                        {/* Monto a cobrar en esta entrega */}
+                        {(() => {
+                          const monto = getMontoACobrar(selectedDelivery);
+                          if (monto == null) return null;
+                          return (
+                            <Box
+                              sx={{
+                                bgcolor: 'success.50',
+                                border: '1px solid',
+                                borderColor: 'success.main',
+                                borderRadius: 1,
+                                px: 1.5,
+                                py: 1,
+                              }}
+                            >
+                              <Typography variant="caption" color="text.secondary">A cobrar en esta entrega</Typography>
+                              <Typography variant="h6" fontWeight={700} color="success.dark">
+                                ${monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
                         <Box display="flex" alignItems="center" gap={1}>
                           <Typography variant="caption" color="text.secondary">Estado:</Typography>
                           {getStatusChip(selectedDelivery.estado)}
@@ -1492,6 +1564,27 @@ const DeliveriesPage2: React.FC = () => {
                         <Typography variant="body2"><strong>Cliente:</strong> {getClientName(selectedDelivery)}</Typography>
                         <Typography variant="body2"><strong>Factura:</strong> {getVentaNumero(selectedDelivery)}</Typography>
                         <Typography variant="body2"><strong>Viaje:</strong> {getTripNumber(selectedDelivery.viajeId)}</Typography>
+                        {(() => {
+                          const monto = getMontoACobrar(selectedDelivery);
+                          if (monto == null) return null;
+                          return (
+                            <Box
+                              sx={{
+                                bgcolor: 'success.50',
+                                border: '1px solid',
+                                borderColor: 'success.main',
+                                borderRadius: 1,
+                                px: 1.5,
+                                py: 1,
+                              }}
+                            >
+                              <Typography variant="caption" color="text.secondary">A cobrar en esta entrega</Typography>
+                              <Typography variant="h6" fontWeight={700} color="success.dark">
+                                ${monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                          );
+                        })()}
                         <Typography variant="body2"><strong>Fecha:</strong> {new Date(selectedDelivery.fechaEntrega).toLocaleString()}</Typography>
                         {selectedDelivery.receptorNombre && (
                           <Typography variant="body2"><strong>Receptor:</strong> {selectedDelivery.receptorNombre}</Typography>

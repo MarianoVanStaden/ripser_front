@@ -62,8 +62,10 @@ import {
   ErrorOutline as ErrorOutlineIcon,
   InfoOutlined as InfoOutlinedIcon,
   WarningAmber as WarningAmberIcon,
+  AttachMoney as AttachMoneyIcon,
+  AccountBalanceWallet as WalletIcon,
 } from '@mui/icons-material';
-import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente, OrdenServicio } from '../../types';
+import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente, OrdenServicio, ResumenFinancieroViaje } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { viajeApi } from '../../api/services/viajeApi';
@@ -179,6 +181,249 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title,
 // Wizard steps for mobile trip creation
 const wizardSteps = ['Información', 'Entregas', 'Confirmar'];
 
+// ── Helper ────────────────────────────────────────────────────────────────────
+const fmt = (n?: number | null) =>
+  n != null ? `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
+
+// ── Componentes de Resumen de Cobros ─────────────────────────────────────────
+
+interface ResumenCobrosProps {
+  resumen: ResumenFinancieroViaje | null | undefined;
+}
+
+/** Versión mobile: lista compacta de tarjetas */
+const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen }) => {
+  if (resumen === undefined) {
+    return (
+      <Box textAlign="center" py={3}>
+        <Typography variant="body2" color="text.secondary">Cargando cobros…</Typography>
+      </Box>
+    );
+  }
+  if (resumen === null || resumen.cantidadEntregas === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary" textAlign="center" py={3}>
+        Sin entregas con información financiera
+      </Typography>
+    );
+  }
+
+  return (
+    <Stack spacing={1.5}>
+      {/* Total del viaje */}
+      <Card
+        variant="outlined"
+        sx={{ bgcolor: 'success.50', borderColor: 'success.main' }}
+      >
+        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+          <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+            <WalletIcon color="success" fontSize="small" />
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              TOTAL A RECAUDAR EN EL VIAJE
+            </Typography>
+          </Box>
+          <Typography variant="h5" fontWeight={700} color="success.dark">
+            {fmt(resumen.totalEntregasIniciales)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {resumen.cantidadEntregas} entregas · total docs: {fmt(resumen.totalDocumentos)}
+          </Typography>
+        </CardContent>
+      </Card>
+
+      {/* Detalle por entrega */}
+      {resumen.entregas.map((ef, i) => (
+        <Card key={ef.entregaId} variant="outlined">
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Typography variant="subtitle2">
+                  Entrega #{i + 1}
+                  {ef.clienteNombre ? ` — ${ef.clienteNombre}` : ''}
+                </Typography>
+                {ef.numeroDocumento && (
+                  <Typography variant="caption" color="text.secondary">
+                    {ef.numeroDocumento}
+                    {ef.tieneFinanciacion && (
+                      <Typography component="span" variant="caption" color="primary.main" sx={{ ml: 0.5 }}>
+                        · Financiado ({ef.cantidadCuotas} cuotas de {fmt(ef.montoCuota)})
+                      </Typography>
+                    )}
+                  </Typography>
+                )}
+                {ef.direccionEntrega && (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {ef.direccionEntrega}
+                  </Typography>
+                )}
+              </Box>
+              <Box textAlign="right">
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  color={ef.montoEntregaInicial != null ? 'success.dark' : 'text.disabled'}
+                >
+                  {fmt(ef.montoEntregaInicial)}
+                </Typography>
+                <Chip
+                  label={ef.estado}
+                  size="small"
+                  color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
+                  sx={{ mt: 0.5 }}
+                />
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      ))}
+    </Stack>
+  );
+};
+
+/** Versión desktop: tabla compacta dentro del drawer */
+const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen }) => {
+  if (resumen === undefined) {
+    return (
+      <Card variant="outlined">
+        <CardContent>
+          <Box display="flex" alignItems="center" gap={1} mb={1}>
+            <AttachMoneyIcon color="primary" fontSize="small" />
+            <Typography variant="subtitle2">Cobros del viaje</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">Cargando…</Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+  if (resumen === null || resumen.cantidadEntregas === 0) {
+    return (
+      <Card variant="outlined">
+        <CardContent>
+          <Box display="flex" alignItems="center" gap={1} mb={1}>
+            <AttachMoneyIcon color="primary" fontSize="small" />
+            <Typography variant="subtitle2">Cobros del viaje</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            Sin información financiera disponible
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card variant="outlined" sx={{ borderColor: 'success.main' }}>
+      <CardContent>
+        {/* Header con total */}
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <WalletIcon color="success" />
+            <Typography variant="subtitle1" fontWeight={700}>
+              Cobros del viaje
+            </Typography>
+          </Box>
+          <Box textAlign="right">
+            <Typography variant="caption" color="text.secondary" display="block">
+              Total a recaudar
+            </Typography>
+            <Typography variant="h5" fontWeight={700} color="success.dark">
+              {fmt(resumen.totalEntregasIniciales)}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider sx={{ mb: 1.5 }} />
+
+        {/* Tabla de entregas */}
+        <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+          <Box component="thead">
+            <Box component="tr">
+              {['#', 'Cliente', 'Documento', 'A cobrar', 'Estado'].map(h => (
+                <Box
+                  key={h}
+                  component="th"
+                  sx={{
+                    textAlign: h === 'A cobrar' ? 'right' : 'left',
+                    py: 0.5,
+                    px: 1,
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    color: 'text.secondary',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  {h}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+          <Box component="tbody">
+            {resumen.entregas.map((ef, i) => (
+              <Box
+                key={ef.entregaId}
+                component="tr"
+                sx={{
+                  '&:hover': { bgcolor: 'action.hover' },
+                  borderBottom: i < resumen.entregas.length - 1 ? '1px solid' : 'none',
+                  borderColor: 'divider',
+                }}
+              >
+                <Box component="td" sx={{ py: 1, px: 1, fontSize: '0.8rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                  #{i + 1}
+                </Box>
+                <Box component="td" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>
+                  {ef.clienteNombre ?? '—'}
+                </Box>
+                <Box component="td" sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>
+                  <Typography variant="caption" display="block">{ef.numeroDocumento ?? '—'}</Typography>
+                  {ef.tieneFinanciacion && ef.cantidadCuotas && (
+                    <Typography variant="caption" color="primary.main">
+                      {ef.cantidadCuotas} × {fmt(ef.montoCuota)}
+                    </Typography>
+                  )}
+                </Box>
+                <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <Typography
+                    variant="body2"
+                    fontWeight={700}
+                    color={ef.montoEntregaInicial != null ? 'success.dark' : 'text.disabled'}
+                  >
+                    {fmt(ef.montoEntregaInicial)}
+                  </Typography>
+                </Box>
+                <Box component="td" sx={{ py: 1, px: 1 }}>
+                  <Chip
+                    label={ef.estado === 'ENTREGADA' ? 'Entregada' : ef.estado === 'NO_ENTREGADA' ? 'No entregada' : 'Pendiente'}
+                    size="small"
+                    color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
+                  />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+          {/* Footer con totales */}
+          <Box component="tfoot">
+            <Box component="tr" sx={{ bgcolor: 'success.50' }}>
+              <Box component="td" colSpan={3} sx={{ py: 1, px: 1, fontSize: '0.85rem', fontWeight: 600 }}>
+                Total viaje ({resumen.cantidadEntregas} entregas)
+              </Box>
+              <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right' }}>
+                <Typography variant="body1" fontWeight={700} color="success.dark">
+                  {fmt(resumen.totalEntregasIniciales)}
+                </Typography>
+              </Box>
+              <Box component="td" />
+            </Box>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
 const TripsPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
 
@@ -198,6 +443,8 @@ const TripsPage2: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, { equipos: EquipoFabricadoDTO[] }>>({});
+  /** Resumen financiero cacheado por viajeId */
+  const [resumenFinancieroMap, setResumenFinancieroMap] = useState<Record<number, ResumenFinancieroViaje | null>>({});
 
   // Wizard state for mobile
   const [activeStep, setActiveStep] = useState(0);
@@ -604,6 +851,17 @@ const TripsPage2: React.FC = () => {
     }
 
     setDeliveryDetailsMap(detailsMap);
+
+    // Cargar resumen financiero del viaje (cobros a recibir por entrega)
+    if (!(trip.id in resumenFinancieroMap)) {
+      try {
+        const resumen = await entregaViajeApi.getResumenFinanciero(trip.id);
+        setResumenFinancieroMap(prev => ({ ...prev, [trip.id]: resumen }));
+      } catch (err) {
+        console.error(`Error cargando resumen financiero del viaje #${trip.id}:`, err);
+        setResumenFinancieroMap(prev => ({ ...prev, [trip.id]: null }));
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -2110,12 +2368,19 @@ const TripsPage2: React.FC = () => {
               <Tabs
                 value={detailsTab}
                 onChange={(_, v) => setDetailsTab(v)}
-                variant="fullWidth"
+                variant="scrollable"
+                scrollButtons="auto"
                 sx={{ mb: 2 }}
               >
                 <Tab label="Info" />
                 <Tab label={`Entregas (${getTripDeliveries(selectedTrip.id).length})`} />
                 <Tab label={`Facturas (${getFacturasByTrip(selectedTrip.id).length})`} />
+                <Tab
+                  label="Cobros"
+                  icon={<AttachMoneyIcon sx={{ fontSize: 16 }} />}
+                  iconPosition="start"
+                  sx={{ minHeight: 48 }}
+                />
               </Tabs>
 
               {detailsTab === 0 && (
@@ -2235,6 +2500,12 @@ const TripsPage2: React.FC = () => {
                   )}
                 </Stack>
               )}
+
+              {detailsTab === 3 && (
+                <ResumenCobrosMobile
+                  resumen={resumenFinancieroMap[selectedTrip.id]}
+                />
+              )}
             </Box>
           )}
         </BottomSheet>
@@ -2334,6 +2605,13 @@ const TripsPage2: React.FC = () => {
                     </Card>
                   </Grid>
                 )}
+
+                {/* Resumen financiero — siempre visible en desktop */}
+                <Grid item xs={12}>
+                  <ResumenCobrosDesktop
+                    resumen={resumenFinancieroMap[selectedTrip.id]}
+                  />
+                </Grid>
               </Grid>
 
               <Box mt={3}>

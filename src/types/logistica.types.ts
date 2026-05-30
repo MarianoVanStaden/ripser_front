@@ -397,3 +397,38 @@ export interface ConfirmarEntregaEquipoDTO {
   fotoEntregaUrl?: string;
   firmaDigitalUrl?: string;
 }
+
+// ── Resumen financiero de viaje ──────────────────────────────────────────────
+
+/** Detalle financiero de una sola entrega dentro del viaje. */
+export interface EntregaFinancieraResumen {
+  entregaId: number;
+  estado: EstadoEntrega;
+  direccionEntrega?: string;
+  clienteNombre?: string;
+  documentoComercialId?: number;
+  numeroDocumento?: string;
+  totalDocumento?: number;
+  metodoPago?: string;
+  tieneFinanciacion: boolean;
+  /**
+   * Monto a cobrar en esta entrega.
+   * Para FINANCIACION_PROPIA = envío íntegro + % sobre el resto.
+   * Para otros métodos = total del documento.
+   */
+  montoEntregaInicial?: number | null;
+  montoCuota?: number | null;
+  cantidadCuotas?: number | null;
+}
+
+/** Respuesta del endpoint GET /api/entregas-viaje/viaje/{id}/resumen-financiero */
+export interface ResumenFinancieroViaje {
+  viajeId: number;
+  numeroViaje?: string;
+  cantidadEntregas: number;
+  /** Suma del monto a cobrar en cada entrega del viaje. */
+  totalEntregasIniciales: number;
+  /** Suma del total de los documentos asociados. */
+  totalDocumentos: number;
+  entregas: EntregaFinancieraResumen[];
+}

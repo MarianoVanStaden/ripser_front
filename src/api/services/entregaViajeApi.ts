@@ -1,5 +1,5 @@
 import api from '../config';
-import type { EntregaViaje, EstadoEntrega } from '../../types';
+import type { EntregaViaje, EstadoEntrega, ResumenFinancieroViaje } from '../../types';
 
 export const entregaViajeApi = {
   // Get all entregas
@@ -131,5 +131,14 @@ export const entregaViajeApi = {
       observaciones
     });
     return response.data;
-  }
+  },
+
+  /**
+   * Resumen financiero del viaje: monto a cobrar en cada entrega y total acumulado.
+   * Endpoint: GET /api/entregas-viaje/viaje/{viajeId}/resumen-financiero
+   */
+  getResumenFinanciero: async (viajeId: number): Promise<ResumenFinancieroViaje> => {
+    const response = await api.get(`/api/entregas-viaje/viaje/${viajeId}/resumen-financiero`);
+    return response.data;
+  },
 };

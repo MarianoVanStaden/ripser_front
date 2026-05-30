@@ -97,6 +97,10 @@ export interface OpcionFinanciamiento {
   descripcion?: string;
   esSeleccionada?: boolean;
   ordenPresentacion?: number;
+  /** Monto a cobrar en la entrega inicial (envío íntegro + % sobre el resto). */
+  montoEntregaInicial?: number | null;
+  /** Porcentaje del total financiable que se cobra en la entrega inicial. */
+  porcentajeEntregaInicial?: number | null;
 }
 
 export interface PresupuestoSimple {
@@ -234,4 +238,8 @@ export interface OpcionFinanciamientoDTO {
   descripcion?: string;
   ordenPresentacion?: number;
   esSeleccionada?: boolean;
+  /** Monto a cobrar en la entrega inicial (envío íntegro + % sobre el resto). */
+  montoEntregaInicial?: number | null;
+  /** Porcentaje del total financiable que se cobra en la entrega inicial. */
+  porcentajeEntregaInicial?: number | null;
 }
