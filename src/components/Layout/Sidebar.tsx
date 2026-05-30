@@ -605,9 +605,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
   ];
 
   // Rutas permitidas para el rol CONDUCTOR (allowlist: rol mínimo).
-  // SÓLO el módulo Transporte: Armado de Viajes, Control de Entregas y Legajo
-  // de Vehículos. Aterriza directo en /logistica/distribucion/viajes (RoleScopeGuard).
+  // SÓLO el módulo Transporte: Dashboard Transporte, Armado de Viajes,
+  // Control de Entregas y Legajo de Vehículos.
   const conductorAllowedPaths = [
+    '/',
     '/logistica/distribucion/viajes',
     '/logistica/distribucion/entregas-productos',
     '/logistica/distribucion/entregas-equipos',

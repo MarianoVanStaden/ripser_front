@@ -27,10 +27,12 @@ import {
   List,
   ListItem,
   ListItemText,
+  InputAdornment,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
   Add as AddIcon,
+  AttachMoney as AttachMoneyIcon,
   Edit as EditIcon,
   LocalShipping as DeliveryIcon,
   LocationOn as LocationIcon,
@@ -61,12 +63,181 @@ import { viajeApi } from '../../api/services/viajeApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import { useResponsive } from './Deliveries/useResponsive';
+import type { CobroData } from './Deliveries/types';
 import { compressImageFile, getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
 import BottomSheet from './Deliveries/components/BottomSheet';
 import LightboxDialog from './Deliveries/dialogs/LightboxDialog';
 import RejectDeliveryDialog from './Deliveries/dialogs/RejectDeliveryDialog';
 import ConfirmDeliveryDialog from './Deliveries/dialogs/ConfirmDeliveryDialog';
 import DeliveryFormDialog from './Deliveries/dialogs/DeliveryFormDialog';
+
+const METODOS_PAGO_COBRO = [
+  { value: 'EFECTIVO', label: 'Efectivo' },
+  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia bancaria' },
+  { value: 'CHEQUE', label: 'Cheque' },
+  { value: 'TARJETA_DEBITO', label: 'Tarjeta de débito' },
+  { value: 'TARJETA_CREDITO', label: 'Tarjeta de crédito' },
+];
+
+const fmtMonto = (n?: number | null) =>
+  n != null
+    ? `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : null;
+
+interface CobroStandaloneDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  cobro: CobroData;
+  setCobro: (d: CobroData) => void;
+  montoEsperado?: number | null;
+}
+
+const CobroStandaloneDialog: React.FC<CobroStandaloneDialogProps> = ({
+  open, onClose, onConfirm, cobro, setCobro, montoEsperado,
+}) => {
+  const { isMobile } = useResponsive();
+
+  const diff = React.useMemo(() => {
+    const val = parseFloat(cobro.montoCobrado);
+    if (!cobro.montoCobrado || isNaN(val) || montoEsperado == null) return null;
+    return val - montoEsperado;
+  }, [cobro.montoCobrado, montoEsperado]);
+
+  const diffChip = diff == null ? null : diff === 0
+    ? { label: 'Cobro exacto ✓', color: 'success' as const }
+    : diff > 0
+    ? { label: `+${fmtMonto(diff)} de más`, color: 'warning' as const }
+    : { label: `${fmtMonto(diff)} de menos`, color: 'error' as const };
+
+  const body = (
+    <Stack spacing={2}>
+      {montoEsperado != null && (
+        <Box
+          sx={{
+            bgcolor: 'success.50',
+            border: '1px solid',
+            borderColor: 'success.main',
+            borderRadius: 1,
+            p: 1.5,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Typography variant="body2" color="success.dark" fontWeight={500}>
+            Monto esperado
+          </Typography>
+          <Typography variant="h6" color="success.dark" fontWeight={700}>
+            {fmtMonto(montoEsperado)}
+          </Typography>
+        </Box>
+      )}
+
+      <TextField
+        label="Monto cobrado *"
+        value={cobro.montoCobrado}
+        onChange={(e) => setCobro({ ...cobro, montoCobrado: e.target.value })}
+        fullWidth
+        type="number"
+        inputMode="decimal"
+        placeholder={montoEsperado != null ? String(montoEsperado) : '0.00'}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+          sx: { minHeight: 52 },
+        }}
+      />
+
+      {diffChip && (
+        <Chip
+          label={diffChip.label}
+          color={diffChip.color}
+          size="small"
+          sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
+        />
+      )}
+
+      <FormControl fullWidth>
+        <InputLabel>Método de pago</InputLabel>
+        <Select
+          value={cobro.metodoPago}
+          label="Método de pago"
+          onChange={(e) => setCobro({ ...cobro, metodoPago: e.target.value })}
+        >
+          {METODOS_PAGO_COBRO.map((mp) => (
+            <MenuItem key={mp.value} value={mp.value}>{mp.label}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <TextField
+        label="N.º de comprobante / transferencia (opcional)"
+        value={cobro.comprobante}
+        onChange={(e) => setCobro({ ...cobro, comprobante: e.target.value })}
+        fullWidth
+        size="small"
+        placeholder="Ej: CVU / número de recibo"
+      />
+    </Stack>
+  );
+
+  if (isMobile) {
+    return (
+      <BottomSheet
+        open={open}
+        onClose={onClose}
+        title="Registrar Cobro"
+        actions={
+          <Stack direction="row" spacing={1.5}>
+            <Button onClick={onClose} sx={{ flex: 1, minHeight: 48 }}>Cancelar</Button>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<AttachMoneyIcon />}
+              onClick={onConfirm}
+              disabled={!cobro.montoCobrado}
+              sx={{ flex: 1, minHeight: 48 }}
+            >
+              Guardar cobro
+            </Button>
+          </Stack>
+        }
+      >
+        {body}
+      </BottomSheet>
+    );
+  }
+
+  return (
+    <SwipeableDrawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      onOpen={() => {}}
+      PaperProps={{ sx: { width: 400 } }}
+    >
+      <Box sx={{ p: 3 }}>
+        <Box display="flex" alignItems="center" gap={1} mb={3}>
+          <AttachMoneyIcon color="success" />
+          <Typography variant="h6">Registrar Cobro</Typography>
+        </Box>
+        {body}
+        <Box display="flex" gap={2} mt={3}>
+          <Button onClick={onClose} sx={{ flex: 1 }}>Cancelar</Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={onConfirm}
+            disabled={!cobro.montoCobrado}
+            sx={{ flex: 1 }}
+          >
+            Guardar cobro
+          </Button>
+        </Box>
+      </Box>
+    </SwipeableDrawer>
+  );
+};
 
 const DeliveriesPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
@@ -99,11 +270,20 @@ const DeliveriesPage2: React.FC = () => {
     dni: '',
     observaciones: ''
   });
+  const [cobroData, setCobroData] = useState({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+  /** Monto esperado de la entrega que se está confirmando actualmente. */
+  const [cobroMontoEsperado, setCobroMontoEsperado] = useState<number | null>(null);
 
   // Estados para modal de rechazar entrega
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectDeliveryId, setRejectDeliveryId] = useState<number | null>(null);
   const [rejectMotivo, setRejectMotivo] = useState('');
+
+  // Estado para registrar cobro standalone (entregas ya ENTREGADAS sin cobro)
+  const [cobroStandaloneOpen, setCobroStandaloneOpen] = useState(false);
+  const [cobroStandaloneId, setCobroStandaloneId] = useState<number | null>(null);
+  const [cobroStandaloneData, setCobroStandaloneData] = useState({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+  const [cobroStandaloneMontoEsperado, setCobroStandaloneMontoEsperado] = useState<number | null>(null);
 
   // Estado para fotos/archivos en confirmación (múltiples)
   const [contratoFotos, setContratoFotos] = useState<File[]>([]);
@@ -471,6 +651,11 @@ const DeliveriesPage2: React.FC = () => {
   const openConfirmDialog = (id: number) => {
     setConfirmDeliveryId(id);
     setReceptorData({ nombre: '', dni: '', observaciones: '' });
+    setCobroData({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+    // Pre-cargar el monto esperado para mostrarlo en el diálogo
+    const delivery = deliveries.find(d => d.id === id);
+    const monto = delivery ? getMontoACobrar(delivery) : null;
+    setCobroMontoEsperado(monto ?? null);
     limpiarFotos();
     setConfirmDialogOpen(true);
   };
@@ -484,12 +669,19 @@ const DeliveriesPage2: React.FC = () => {
         return;
       }
 
+      const montoCobradoNum = cobroData.montoCobrado
+        ? parseFloat(cobroData.montoCobrado)
+        : undefined;
+
       await entregaViajeApi.confirmarEntrega(
         confirmDeliveryId,
         'ENTREGADA',
         receptorData.nombre,
         receptorData.dni,
-        receptorData.observaciones || undefined
+        receptorData.observaciones || undefined,
+        !isNaN(montoCobradoNum as number) ? montoCobradoNum : undefined,
+        cobroData.metodoPago || undefined,
+        cobroData.comprobante || undefined
       );
 
       // Subir archivos adjuntos si fueron seleccionados
@@ -522,6 +714,8 @@ const DeliveriesPage2: React.FC = () => {
       setConfirmDialogOpen(false);
       setConfirmDeliveryId(null);
       setReceptorData({ nombre: '', dni: '', observaciones: '' });
+      setCobroData({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+      setCobroMontoEsperado(null);
       limpiarFotos();
       setError(null);
       await loadData();
@@ -564,6 +758,41 @@ const DeliveriesPage2: React.FC = () => {
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al rechazar');
+    }
+  };
+
+  const openCobroStandalone = (id: number) => {
+    const delivery = deliveries.find(d => d.id === id);
+    const monto = delivery ? getMontoACobrar(delivery) : null;
+    setCobroStandaloneId(id);
+    setCobroStandaloneMontoEsperado(monto ?? null);
+    setCobroStandaloneData({
+      montoCobrado: monto != null ? String(monto) : '',
+      metodoPago: 'EFECTIVO',
+      comprobante: '',
+    });
+    setCobroStandaloneOpen(true);
+  };
+
+  const handleCobroStandalone = async () => {
+    if (!cobroStandaloneId || !cobroStandaloneData.montoCobrado) return;
+    const montoCobradoNum = parseFloat(cobroStandaloneData.montoCobrado);
+    if (isNaN(montoCobradoNum)) { setError('Monto inválido'); return; }
+    try {
+      await entregaViajeApi.registrarCobro(cobroStandaloneId, {
+        entregaId: cobroStandaloneId,
+        montoCobrado: montoCobradoNum,
+        metodoPagoEntrega: cobroStandaloneData.metodoPago,
+        comprobanteCobro: cobroStandaloneData.comprobante || undefined,
+      });
+      setCobroStandaloneOpen(false);
+      setCobroStandaloneId(null);
+      setCobroStandaloneData({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+      setError(null);
+      await loadData();
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error?.response?.data?.message || 'Error al registrar cobro');
     }
   };
 
@@ -790,7 +1019,35 @@ const DeliveriesPage2: React.FC = () => {
                 </Box>
               )}
 
-              {delivery.estado !== 'PENDIENTE' && (
+              {delivery.estado === 'ENTREGADA' && (
+                <Box display="flex" gap={0.5} alignItems="center">
+                  {delivery.estadoCobro && delivery.estadoCobro !== 'PENDIENTE' ? (
+                    <Chip
+                      label={delivery.estadoCobro === 'COBRADO' ? 'Cobrado' : delivery.estadoCobro === 'COBRADO_PARCIAL' ? 'Parcial' : delivery.estadoCobro === 'COBRO_EXCEDENTE' ? 'Excedente' : delivery.estadoCobro}
+                      size="small"
+                      color={delivery.estadoCobro === 'COBRADO' ? 'success' : delivery.estadoCobro === 'COBRADO_PARCIAL' ? 'error' : 'warning'}
+                      onClick={(e) => { e.stopPropagation(); openCobroStandalone(delivery.id); }}
+                    />
+                  ) : (
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); openCobroStandalone(delivery.id); }}
+                      color="success"
+                      size="small"
+                      sx={{ minWidth: 44, minHeight: 44 }}
+                      title="Registrar cobro"
+                    >
+                      <CheckIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                  <IconButton
+                    onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
+                    sx={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Box>
+              )}
+              {delivery.estado === 'NO_ENTREGADA' && (
                 <IconButton
                   onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
                   sx={{ minWidth: 44, minHeight: 44 }}
@@ -1285,6 +1542,28 @@ const DeliveriesPage2: React.FC = () => {
                   sx={{ minHeight: 48 }}
                 >
                   No Entregada
+                </Button>
+              </Stack>
+            ) : selectedDelivery?.estado === 'ENTREGADA' ? (
+              <Stack spacing={1.5}>
+                <Button
+                  variant="outlined"
+                  color="success"
+                  startIcon={<CheckIcon />}
+                  onClick={() => { setDetailsDialogOpen(false); openCobroStandalone(selectedDelivery.id); }}
+                  fullWidth
+                  sx={{ minHeight: 48 }}
+                >
+                  {selectedDelivery.estadoCobro && selectedDelivery.estadoCobro !== 'PENDIENTE'
+                    ? 'Corregir cobro'
+                    : 'Registrar cobro'}
+                </Button>
+                <Button
+                  onClick={() => { setDetailsDialogOpen(false); setSelectedDeliveryDetails(null); }}
+                  fullWidth
+                  sx={{ minHeight: 48 }}
+                >
+                  Cerrar
                 </Button>
               </Stack>
             ) : (
@@ -1798,6 +2077,9 @@ const DeliveriesPage2: React.FC = () => {
         onConfirm={handleConfirmDelivery}
         receptor={receptorData}
         setReceptor={setReceptorData}
+        cobro={cobroData}
+        setCobro={setCobroData}
+        montoEsperado={cobroMontoEsperado}
         fotos={contratoFotos}
         fotoPreviews={contratoPreviews}
         uploading={uploadingFoto}
@@ -1819,6 +2101,16 @@ const DeliveriesPage2: React.FC = () => {
           if (lightboxSrc) URL.revokeObjectURL(lightboxSrc);
           setLightboxSrc(null);
         }}
+      />
+
+      {/* ── Diálogo Standalone: Registrar/Corregir cobro ────────────────── */}
+      <CobroStandaloneDialog
+        open={cobroStandaloneOpen}
+        onClose={() => { setCobroStandaloneOpen(false); setCobroStandaloneId(null); }}
+        onConfirm={handleCobroStandalone}
+        cobro={cobroStandaloneData}
+        setCobro={setCobroStandaloneData}
+        montoEsperado={cobroStandaloneMontoEsperado}
       />
     </Box>
   );

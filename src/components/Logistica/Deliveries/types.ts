@@ -9,6 +9,14 @@ export interface ReceptorData {
   observaciones: string;
 }
 
+/** Form state for the cobro section inside "Confirmar Entrega". */
+export interface CobroData {
+  /** Monto efectivamente cobrado. Empty string = campo vacío (sin informar). */
+  montoCobrado: string;
+  metodoPago: string;
+  comprobante: string;
+}
+
 /** Form state for the "Crear/Editar Entrega" bottom-sheet/drawer. */
 export interface DeliveryFormData {
   viajeId: string;

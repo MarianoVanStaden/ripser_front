@@ -280,6 +280,21 @@ export interface UpdateIncidenciaVehiculoDTO {
   fechaResolucion?: string;
   observacionesResolucion?: string;
 }
+export type EstadoCobro =
+  | 'PENDIENTE'
+  | 'COBRADO'
+  | 'COBRADO_PARCIAL'
+  | 'COBRO_EXCEDENTE'
+  | 'SIN_COBRO';
+
+export const ESTADO_COBRO_LABELS: Record<EstadoCobro, string> = {
+  PENDIENTE: 'Pendiente',
+  COBRADO: 'Cobrado',
+  COBRADO_PARCIAL: 'Cobro parcial',
+  COBRO_EXCEDENTE: 'Cobro excedente',
+  SIN_COBRO: 'Sin cobro',
+};
+
 export interface EntregaViaje {
   id: number;
   viajeId?: number;
@@ -297,6 +312,13 @@ export interface EntregaViaje {
   receptorDni?: string;
   createdAt?: string;
   updatedAt?: string;
+  // ── Cobro del conductor ──────────────────────────────────────────────────
+  montoEsperado?: number | null;
+  montoCobrado?: number | null;
+  diferenciaCobro?: number | null;
+  metodoPagoEntrega?: string | null;
+  comprobanteCobro?: string | null;
+  estadoCobro?: EstadoCobro | null;
 }
 
 export type EstadoEntrega = 'PENDIENTE' | 'ENTREGADA' | 'NO_ENTREGADA';

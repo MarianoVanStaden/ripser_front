@@ -164,12 +164,14 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
     ],
   },
   {
-    // CONDUCTOR: rol operativo mínimo. Sólo el módulo Transporte (Armado de
-    // Viajes, Control de Entregas, Legajo de Vehículos). Aterriza directo en el
-    // armado de viajes. Mantener en sync con conductorAllowedPaths en Sidebar.tsx.
+    // CONDUCTOR: rol operativo mínimo. Sólo el módulo Transporte (Dashboard de
+    // Transporte, Armado de Viajes, Control de Entregas, Legajo de Vehículos).
+    // Aterriza en el dashboard de transporte (/).
+    // Mantener en sync con conductorAllowedPaths en Sidebar.tsx.
     rol: 'CONDUCTOR',
-    home: '/logistica/distribucion/viajes',
+    home: '/',
     allowedPrefixes: [
+      '/',
       '/logistica/distribucion',
       '/logistica/vehiculos',
     ],

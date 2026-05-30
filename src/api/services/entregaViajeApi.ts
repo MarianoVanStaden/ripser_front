@@ -1,6 +1,13 @@
 import api from '../config';
 import type { EntregaViaje, EstadoEntrega, ResumenFinancieroViaje } from '../../types';
 
+export interface RegistrarCobroPayload {
+  entregaId: number;
+  montoCobrado: number;
+  metodoPagoEntrega: string;
+  comprobanteCobro?: string;
+}
+
 export const entregaViajeApi = {
   // Get all entregas
   getAll: async (): Promise<EntregaViaje[]> => {
@@ -121,15 +128,30 @@ export const entregaViajeApi = {
     estado: 'ENTREGADA' | 'NO_ENTREGADA',
     receptorNombre: string,
     receptorDni: string,
-    observaciones?: string
+    observaciones?: string,
+    montoCobrado?: number,
+    metodoPagoEntrega?: string,
+    comprobanteCobro?: string
   ): Promise<EntregaViaje> => {
     const response = await api.post('/api/entregas-viaje/confirmar-entrega', {
       entregaId,
       estado,
       receptorNombre,
       receptorDni,
-      observaciones
+      observaciones,
+      ...(montoCobrado != null && { montoCobrado }),
+      ...(metodoPagoEntrega && { metodoPagoEntrega }),
+      ...(comprobanteCobro && { comprobanteCobro }),
     });
+    return response.data;
+  },
+
+  // Registrar cobro del conductor (standalone — para entregas ya confirmadas)
+  registrarCobro: async (
+    id: number,
+    payload: RegistrarCobroPayload
+  ): Promise<EntregaViaje> => {
+    const response = await api.patch(`/api/entregas-viaje/${id}/registrar-cobro`, payload);
     return response.data;
   },
 

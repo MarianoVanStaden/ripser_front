@@ -264,7 +264,8 @@ const DashboardEntry: React.FC = () => {
     if (
       roles.includes('TRANSPORTE') ||
       roles.includes('LOGISTICO') ||
-      roles.includes('COORDINADORA_LOGISTICA')
+      roles.includes('COORDINADORA_LOGISTICA') ||
+      roles.includes('CONDUCTOR')
     ) return <TransporteDashboard />;
     if (roles.includes('COORDINADORA_COMPRAS')) return <ComprasDashboard />;
   }
