@@ -39,6 +39,7 @@ import {
   Tooltip,
   ToggleButton,
   ToggleButtonGroup,
+  CircularProgress,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import {
@@ -68,6 +69,8 @@ import {
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente, OrdenServicio, ResumenFinancieroViaje } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
+import RendicionDialog from './RendicionDialog';
+import { usePermisos } from '../../hooks/usePermisos';
 import { viajeApi } from '../../api/services/viajeApi';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -426,6 +429,9 @@ const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen }) => {
 
 const TripsPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
+  const { tieneRol } = usePermisos();
+  const esConductor = tieneRol('CONDUCTOR');
+  const puedeRendir = !esConductor; // admin, transporte, coordinadora, etc.
 
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
@@ -445,6 +451,10 @@ const TripsPage2: React.FC = () => {
   const [deliveryDetailsMap, setDeliveryDetailsMap] = useState<Record<number, { equipos: EquipoFabricadoDTO[] }>>({});
   /** Resumen financiero cacheado por viajeId */
   const [resumenFinancieroMap, setResumenFinancieroMap] = useState<Record<number, ResumenFinancieroViaje | null>>({});
+
+  // Rendición de viaje
+  const [rendicionDialogViaje, setRendicionDialogViaje] = useState<Viaje | null>(null);
+  const [cerrandoViajeId, setCerrandoViajeId] = useState<number | null>(null);
 
   // Wizard state for mobile
   const [activeStep, setActiveStep] = useState(0);
@@ -1032,11 +1042,30 @@ const TripsPage2: React.FC = () => {
     }
   };
 
+  const handleCerrarViaje = async (trip: Viaje) => {
+    setCerrandoViajeId(trip.id);
+    try {
+      await viajeApi.cerrarViaje(trip.id);
+      await loadData();
+    } catch (err: any) {
+      const msg = err?.response?.data ?? err?.message ?? 'Error al cerrar el viaje';
+      setChangeEstadoErrorDialog({
+        open: true,
+        title: 'No se pudo cerrar el viaje',
+        message: typeof msg === 'string' ? msg : JSON.stringify(msg),
+      });
+    } finally {
+      setCerrandoViajeId(null);
+    }
+  };
+
   const getStatusChip = (status: EstadoViaje) => {
     const statusConfig: Record<string, { label: string; color: 'info' | 'warning' | 'success' | 'error' | 'default' }> = {
       PLANIFICADO: { label: 'Planificado', color: 'info' },
       EN_CURSO: { label: 'En Ruta', color: 'warning' },
       COMPLETADO: { label: 'Completado', color: 'success' },
+      PENDIENTE_RENDICION: { label: 'Pend. Rendición', color: 'warning' },
+      RENDIDO: { label: 'Rendido', color: 'success' },
       CANCELADO: { label: 'Cancelado', color: 'error' },
     };
 
@@ -1651,14 +1680,47 @@ const TripsPage2: React.FC = () => {
               )}
 
               {trip.estado === 'EN_CURSO' && (
-                <IconButton
-                  onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'COMPLETADO'); }}
-                  size="small"
-                  color="primary"
-                  sx={{ minWidth: 44, minHeight: 44 }}
-                >
-                  <StopIcon />
-                </IconButton>
+                <Tooltip title="Finalizar viaje" enterDelay={300}>
+                  <IconButton
+                    onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'COMPLETADO'); }}
+                    size="small"
+                    color="primary"
+                    sx={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <StopIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+
+              {/* Cerrar viaje (conductor informa que ya terminó las entregas) */}
+              {(trip.estado === 'COMPLETADO' || trip.estado === 'EN_CURSO') && (
+                <Tooltip title="Cerrar viaje y pasar a rendición" enterDelay={300}>
+                  <IconButton
+                    onClick={(e) => { e.stopPropagation(); handleCerrarViaje(trip); }}
+                    size="small"
+                    color="warning"
+                    disabled={cerrandoViajeId === trip.id}
+                    sx={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    {cerrandoViajeId === trip.id
+                      ? <CircularProgress size={18} color="inherit" />
+                      : <WalletIcon />}
+                  </IconButton>
+                </Tooltip>
+              )}
+
+              {/* Rendir viaje (admin recibe el dinero) */}
+              {puedeRendir && (trip.estado === 'COMPLETADO' || trip.estado === 'PENDIENTE_RENDICION') && (
+                <Tooltip title="Registrar rendición de efectivo" enterDelay={300}>
+                  <IconButton
+                    onClick={(e) => { e.stopPropagation(); setRendicionDialogViaje(trip); }}
+                    size="small"
+                    color="success"
+                    sx={{ minWidth: 44, minHeight: 44 }}
+                  >
+                    <AttachMoneyIcon />
+                  </IconButton>
+                </Tooltip>
               )}
 
               <IconButton
@@ -1767,13 +1829,18 @@ const TripsPage2: React.FC = () => {
                 <CheckIcon color="success" sx={{ fontSize: { xs: 24, sm: 28 } }} />
                 <Box>
                   <Typography variant={isMobile ? 'h5' : 'h4'}>
-                    {trips.filter(t => t.estado === 'COMPLETADO').length}
+                    {trips.filter(t => t.estado === 'COMPLETADO' || t.estado === 'PENDIENTE_RENDICION').length}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     Completados
                   </Typography>
                 </Box>
               </Box>
+              {trips.filter(t => t.estado === 'PENDIENTE_RENDICION').length > 0 && (
+                <Typography variant="caption" color="warning.main" fontWeight={600}>
+                  {trips.filter(t => t.estado === 'PENDIENTE_RENDICION').length} pend. rendición
+                </Typography>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -1804,6 +1871,8 @@ const TripsPage2: React.FC = () => {
                 { value: 'PLANIFICADO', label: 'Planificados' },
                 { value: 'EN_CURSO', label: 'En Ruta' },
                 { value: 'COMPLETADO', label: 'Completados' },
+                { value: 'PENDIENTE_RENDICION', label: 'Pend. Rendición' },
+                { value: 'RENDIDO', label: 'Rendidos' },
               ].map((option) => (
                 <Chip
                   key={option.value}
@@ -1827,6 +1896,8 @@ const TripsPage2: React.FC = () => {
                 <MenuItem value="PLANIFICADO">Planificados</MenuItem>
                 <MenuItem value="EN_CURSO">En Ruta</MenuItem>
                 <MenuItem value="COMPLETADO">Completados</MenuItem>
+                <MenuItem value="PENDIENTE_RENDICION">Pendiente de Rendición</MenuItem>
+                <MenuItem value="RENDIDO">Rendidos</MenuItem>
                 <MenuItem value="CANCELADO">Cancelados</MenuItem>
               </Select>
             </FormControl>
@@ -2775,6 +2846,17 @@ const TripsPage2: React.FC = () => {
         confirmLabel="Eliminar"
         loadingLabel="Eliminando…"
         loading={deleteLoading}
+      />
+
+      {/* Dialog de rendición de viaje */}
+      <RendicionDialog
+        open={rendicionDialogViaje !== null}
+        viaje={rendicionDialogViaje}
+        onClose={() => setRendicionDialogViaje(null)}
+        onSuccess={async () => {
+          await loadData();
+          setRendicionDialogViaje(null);
+        }}
       />
     </Box>
   );

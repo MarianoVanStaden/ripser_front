@@ -1,5 +1,6 @@
 import api from '../config';
 import type { Viaje, ViajeCreateDTO } from '../../types';
+import type { RendicionViajeDTO, RendicionRequest } from '../../types/logistica.types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const viajeApi = {
@@ -52,5 +53,35 @@ export const viajeApi = {
       params: { estado },
     });
     return response.data;
-  }
+  },
+
+  // ── Rendición de viaje ──────────────────────────────────────────────────────
+
+  /** Conductor cierra el viaje → PENDIENTE_RENDICION */
+  cerrarViaje: async (id: number): Promise<RendicionViajeDTO> => {
+    const response = await api.patch<RendicionViajeDTO>(`/api/viajes/${id}/cerrar`);
+    return response.data;
+  },
+
+  /** Resumen de cobros del viaje (totalDeclarado por entrega) para que admin verifique */
+  getResumenCobros: async (id: number): Promise<RendicionViajeDTO> => {
+    const response = await api.get<RendicionViajeDTO>(`/api/viajes/${id}/resumen-cobros`);
+    return response.data;
+  },
+
+  /** Admin registra la rendición: impacta caja y marca viaje como RENDIDO */
+  rendir: async (id: number, request: RendicionRequest): Promise<RendicionViajeDTO> => {
+    const response = await api.post<RendicionViajeDTO>(`/api/viajes/${id}/rendir`, request);
+    return response.data;
+  },
+
+  /** Devuelve la rendición ya creada, o null si aún no existe */
+  getRendicion: async (id: number): Promise<RendicionViajeDTO | null> => {
+    try {
+      const response = await api.get<RendicionViajeDTO>(`/api/viajes/${id}/rendicion`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
 };

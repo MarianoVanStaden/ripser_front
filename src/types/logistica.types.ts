@@ -332,7 +332,53 @@ export interface UnidadMedida {
 }
 export type EstadoEntregaEquipo = 'PENDIENTE' | 'EN_RUTA' | 'ENTREGADO' | 'RECHAZADO' | 'REPROGRAMADO';
 
-export type EstadoViaje = 'PLANIFICADO' | 'EN_CURSO' | 'COMPLETADO' | 'CANCELADO';
+export type EstadoViaje =
+  | 'PLANIFICADO'
+  | 'EN_CURSO'
+  | 'COMPLETADO'
+  | 'PENDIENTE_RENDICION'
+  | 'RENDIDO'
+  | 'CANCELADO';
+
+export type EstadoRendicion = 'CONFIRMADA' | 'CON_DIFERENCIA';
+
+export interface RendicionEntregaDTO {
+  entregaId: number;
+  clienteNombre?: string;
+  numeroDocumento?: string;
+  montoEsperado?: number | null;
+  montoCobrado?: number | null;
+  diferenciaCobro?: number | null;
+  estadoCobro?: EstadoCobro | null;
+  metodoPagoEntrega?: string | null;
+}
+
+export interface RendicionViajeDTO {
+  id?: number;
+  viajeId: number;
+  numeroViaje?: string;
+  fechaRendicion?: string;
+  totalDeclarado: number;
+  totalRecibido?: number | null;
+  diferencia?: number | null;
+  estadoRendicion?: EstadoRendicion | null;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
+  metodoPagoRendicion?: string | null;
+  comprobanteRendicion?: string | null;
+  observaciones?: string | null;
+  usuarioRecibeNombre?: string | null;
+  entregas: RendicionEntregaDTO[];
+}
+
+export interface RendicionRequest {
+  totalRecibido: number;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
+  metodoPagoRendicion: string;
+  comprobanteRendicion?: string;
+  observaciones?: string;
+}
 
 export interface EntregaViajeDetalle {
   id: number;
