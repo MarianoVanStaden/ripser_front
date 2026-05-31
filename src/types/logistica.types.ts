@@ -162,6 +162,7 @@ export interface Vehiculo {
 // Viaje (Trip)
 export interface Viaje {
   id: number;
+  numeroViaje?: string;
   fechaViaje: string;
   destino: string;
   conductorId: number;
