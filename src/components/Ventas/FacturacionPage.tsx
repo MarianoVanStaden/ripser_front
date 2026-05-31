@@ -1356,6 +1356,13 @@ const FacturacionPage = () => {
     ? subtotalVenta
     : (selectedNotaPedido?.subtotal ?? notaSubtotal);
 
+  // Shipping cost is always charged upfront and never financed.
+  const notaCostoEnvio = useMemo(
+    () => notaCart.filter((i) => i.tipoItem === 'ENVIO').reduce((s, i) => s + i.cantidad * i.precioUnitario, 0),
+    [notaCart]
+  );
+  const billingCostoEnvio = billingMode === 'manual' ? subtotalVentaEnvio : notaCostoEnvio;
+
   const handleOpenConvertDialog = async (nota: DocumentoComercial) => {
     setSelectedNotaPedido(nota);
     setNotaCart(
@@ -1934,6 +1941,7 @@ const FacturacionPage = () => {
       <BillingDialog
         open={billingDialogOpen}
         baseTotal={billingBaseTotal}
+        costoEnvio={billingCostoEnvio}
         defaultValues={billingForm}
         onClose={handleCloseBillingDialog}
         onConfirm={handleBillingConfirm}

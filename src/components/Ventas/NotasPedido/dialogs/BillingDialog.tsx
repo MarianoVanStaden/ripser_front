@@ -52,12 +52,19 @@ const BillingDialog: React.FC<Props> = ({ open, onClose, onSubmit, nota, form, s
   const descuentoMonto = Number(nota?.descuentoMonto) ?? 0;
   const ivaAmount = nota?.iva ?? 0;
   const montoTotal = (nota?.subtotal ?? 0) - descuentoMonto + ivaAmount;
-  const entregaInicial = form.entregarInicial
+
+  // Shipping cost is never financed: % or fixed amount applies only to equipment base.
+  const costoEnvio = (nota?.detalles ?? [])
+    .filter((d: any) => d.tipoItem === 'ENVIO')
+    .reduce((s: number, d: any) => s + (Number(d.subtotal) || 0), 0);
+  const baseEquipos = montoTotal - costoEnvio;
+  const entregaEquipos = form.entregarInicial
     ? form.usePorcentaje
-      ? montoTotal * (form.porcentajeEntregaInicial / 100)
+      ? baseEquipos * (form.porcentajeEntregaInicial / 100)
       : form.montoEntregaInicial
     : 0;
-  const saldoFinanciado = montoTotal - entregaInicial;
+  const entregaInicial = costoEnvio + entregaEquipos;
+  const saldoFinanciado = baseEquipos - entregaEquipos;
   const interesTotal = saldoFinanciado * (form.tasaInteres / 100);
   const montoConInteres = saldoFinanciado + interesTotal;
   const valorCuota = form.cantidadCuotas > 0 ? montoConInteres / form.cantidadCuotas : 0;
@@ -173,6 +180,14 @@ const BillingDialog: React.FC<Props> = ({ open, onClose, onSubmit, nota, form, s
               </Typography>
               <Typography variant="body2">Entrega inicial:</Typography>
               <Typography variant="body2">${fmtMoney(entregaInicial)}</Typography>
+              {costoEnvio > 0 && (
+                <>
+                  <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>— Envío (no se financia):</Typography>
+                  <Typography variant="caption" color="text.secondary">${fmtMoney(costoEnvio)}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>— {form.usePorcentaje ? `${form.porcentajeEntregaInicial}% sobre equipos` : 'Monto fijo equipos'}:</Typography>
+                  <Typography variant="caption" color="text.secondary">${fmtMoney(entregaEquipos)}</Typography>
+                </>
+              )}
               <Typography variant="body2">Saldo financiado:</Typography>
               <Typography variant="body2">${fmtMoney(saldoFinanciado)}</Typography>
               {form.tasaInteres > 0 && (

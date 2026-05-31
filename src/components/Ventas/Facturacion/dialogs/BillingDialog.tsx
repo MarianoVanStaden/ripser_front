@@ -34,12 +34,13 @@ const TIPO_FINANCIACION_OPTIONS = ['SEMANAL', 'QUINCENAL', 'MENSUAL', 'PLAN_PP',
 interface Props {
   open: boolean;
   baseTotal: number;
+  costoEnvio?: number;
   defaultValues: BillingFormValues;
   onClose: () => void;
   onConfirm: (values: BillingFormValues) => void;
 }
 
-const BillingDialog: React.FC<Props> = ({ open, baseTotal, defaultValues, onClose, onConfirm }) => {
+const BillingDialog: React.FC<Props> = ({ open, baseTotal, costoEnvio = 0, defaultValues, onClose, onConfirm }) => {
   const [form, setForm] = useState<BillingFormValues>(defaultValues);
 
   // Re-seed when the dialog opens (parent passes fresh defaults per opening).
@@ -48,12 +49,15 @@ const BillingDialog: React.FC<Props> = ({ open, baseTotal, defaultValues, onClos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const entregaInicial = form.entregarInicial
+  // Shipping cost is never financed: % or fixed amount applies only to equipment base.
+  const baseEquipos = baseTotal - costoEnvio;
+  const entregaEquipos = form.entregarInicial
     ? form.usePorcentaje
-      ? baseTotal * (form.porcentajeEntregaInicial / 100)
+      ? baseEquipos * (form.porcentajeEntregaInicial / 100)
       : form.montoEntregaInicial
     : 0;
-  const saldoFinanciado = baseTotal - entregaInicial;
+  const entregaInicial = costoEnvio + entregaEquipos;
+  const saldoFinanciado = baseEquipos - entregaEquipos;
   const interesTotal = saldoFinanciado * (form.tasaInteres / 100);
   const montoConInteres = saldoFinanciado + interesTotal;
   const valorCuota = form.cantidadCuotas > 0 ? montoConInteres / form.cantidadCuotas : 0;
@@ -134,6 +138,14 @@ const BillingDialog: React.FC<Props> = ({ open, baseTotal, defaultValues, onClos
               <Typography variant="body2" fontWeight={600}>${fmt(baseTotal)}</Typography>
               <Typography variant="body2">Entrega inicial:</Typography>
               <Typography variant="body2">${fmt(entregaInicial)}</Typography>
+              {costoEnvio > 0 && (
+                <>
+                  <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>— Envío (no se financia):</Typography>
+                  <Typography variant="caption" color="text.secondary">${fmt(costoEnvio)}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>— {form.usePorcentaje ? `${form.porcentajeEntregaInicial}% sobre equipos` : 'Monto fijo equipos'}:</Typography>
+                  <Typography variant="caption" color="text.secondary">${fmt(entregaEquipos)}</Typography>
+                </>
+              )}
               <Typography variant="body2">Saldo financiado:</Typography>
               <Typography variant="body2">${fmt(saldoFinanciado)}</Typography>
               {form.tasaInteres > 0 && (
