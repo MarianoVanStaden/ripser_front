@@ -488,6 +488,15 @@ export interface EntregaFinancieraResumen {
   montoEntregaInicial?: number | null;
   montoCuota?: number | null;
   cantidadCuotas?: number | null;
+  // ── Cobro real del conductor ─────────────────────────────────────────────
+  /** Monto efectivamente cobrado por el conductor. Null si aún no se registró cobro. */
+  montoCobrado?: number | null;
+  /** montoCobrado − montoEntregaInicial (positivo = cobró de más; negativo = cobró de menos). */
+  diferenciaCobro?: number | null;
+  estadoCobro?: EstadoCobro | null;
+  metodoPagoEntrega?: string | null;
+  /** TRUE cuando este cobro fue incluido en la rendición del viaje. */
+  rendido?: boolean;
 }
 
 /** Respuesta del endpoint GET /api/entregas-viaje/viaje/{id}/resumen-financiero */
@@ -499,5 +508,7 @@ export interface ResumenFinancieroViaje {
   totalEntregasIniciales: number;
   /** Suma del total de los documentos asociados. */
   totalDocumentos: number;
+  /** Suma del monto efectivamente cobrado por el conductor en el viaje. */
+  totalCobradoConductor?: number;
   entregas: EntregaFinancieraResumen[];
 }

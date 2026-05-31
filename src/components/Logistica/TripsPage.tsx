@@ -190,12 +190,30 @@ const fmt = (n?: number | null) =>
 
 // ── Componentes de Resumen de Cobros ─────────────────────────────────────────
 
+const COBRO_COLOR_MAP: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+  COBRADO: 'success',
+  COBRADO_PARCIAL: 'warning',
+  COBRO_EXCEDENTE: 'warning',
+  SIN_COBRO: 'default',
+  PENDIENTE: 'error',
+};
+const COBRO_LABEL_MAP: Record<string, string> = {
+  COBRADO: 'Cobrado',
+  COBRADO_PARCIAL: 'Parcial',
+  COBRO_EXCEDENTE: 'Excedente',
+  SIN_COBRO: 'Sin cobro',
+  PENDIENTE: 'Pendiente',
+};
+
 interface ResumenCobrosProps {
   resumen: ResumenFinancieroViaje | null | undefined;
+  estadoViaje?: string;
+  puedeRendir?: boolean;
+  onRendir?: () => void;
 }
 
 /** Versión mobile: lista compacta de tarjetas */
-const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen }) => {
+const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen, estadoViaje, puedeRendir, onRendir }) => {
   if (resumen === undefined) {
     return (
       <Box textAlign="center" py={3}>
@@ -211,25 +229,41 @@ const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen }) => {
     );
   }
 
+  const totalCobrado = resumen.totalCobradoConductor ?? 0;
+  const hayCobrosPendientes = puedeRendir
+    && (estadoViaje === 'COMPLETADO' || estadoViaje === 'PENDIENTE_RENDICION')
+    && totalCobrado > 0
+    && estadoViaje !== 'RENDIDO';
+
   return (
     <Stack spacing={1.5}>
-      {/* Total del viaje */}
-      <Card
-        variant="outlined"
-        sx={{ bgcolor: 'success.50', borderColor: 'success.main' }}
-      >
+      {/* Totales del viaje */}
+      <Card variant="outlined" sx={{ bgcolor: 'success.50', borderColor: 'success.main' }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box display="flex" alignItems="center" gap={1} mb={0.5}>
             <WalletIcon color="success" fontSize="small" />
             <Typography variant="caption" color="text.secondary" fontWeight={600}>
-              TOTAL A RECAUDAR EN EL VIAJE
+              RESUMEN DEL VIAJE
             </Typography>
           </Box>
-          <Typography variant="h5" fontWeight={700} color="success.dark">
-            {fmt(resumen.totalEntregasIniciales)}
-          </Typography>
+          <Stack direction="row" spacing={3}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">A recaudar</Typography>
+              <Typography variant="h6" fontWeight={700} color="success.dark">
+                {fmt(resumen.totalEntregasIniciales)}
+              </Typography>
+            </Box>
+            {totalCobrado > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">Cobrado</Typography>
+                <Typography variant="h6" fontWeight={700} color="primary.main">
+                  {fmt(totalCobrado)}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
           <Typography variant="caption" color="text.secondary">
-            {resumen.cantidadEntregas} entregas · total docs: {fmt(resumen.totalDocumentos)}
+            {resumen.cantidadEntregas} entregas
           </Typography>
         </CardContent>
       </Card>
@@ -239,7 +273,7 @@ const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen }) => {
         <Card key={ef.entregaId} variant="outlined">
           <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
             <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-              <Box>
+              <Box flex={1} mr={1}>
                 <Typography variant="subtitle2">
                   Entrega #{i + 1}
                   {ef.clienteNombre ? ` — ${ef.clienteNombre}` : ''}
@@ -249,7 +283,7 @@ const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen }) => {
                     {ef.numeroDocumento}
                     {ef.tieneFinanciacion && (
                       <Typography component="span" variant="caption" color="primary.main" sx={{ ml: 0.5 }}>
-                        · Financiado ({ef.cantidadCuotas} cuotas de {fmt(ef.montoCuota)})
+                        · Financiado ({ef.cantidadCuotas} × {fmt(ef.montoCuota)})
                       </Typography>
                     )}
                   </Typography>
@@ -261,30 +295,61 @@ const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen }) => {
                 )}
               </Box>
               <Box textAlign="right">
-                <Typography
-                  variant="h6"
-                  fontWeight={700}
-                  color={ef.montoEntregaInicial != null ? 'success.dark' : 'text.disabled'}
-                >
+                {/* A cobrar */}
+                <Typography variant="caption" color="text.secondary" display="block">A cobrar</Typography>
+                <Typography variant="body2" fontWeight={700} color={ef.montoEntregaInicial != null ? 'success.dark' : 'text.disabled'}>
                   {fmt(ef.montoEntregaInicial)}
                 </Typography>
-                <Chip
-                  label={ef.estado}
-                  size="small"
-                  color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
-                  sx={{ mt: 0.5 }}
-                />
+                {/* Cobrado */}
+                {ef.montoCobrado != null && (
+                  <>
+                    <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>Cobrado</Typography>
+                    <Typography variant="body2" fontWeight={700} color="primary.main">
+                      {fmt(ef.montoCobrado)}
+                    </Typography>
+                  </>
+                )}
+                {/* Estado cobro */}
+                {ef.estadoCobro ? (
+                  <Chip
+                    label={COBRO_LABEL_MAP[ef.estadoCobro] ?? ef.estadoCobro}
+                    color={COBRO_COLOR_MAP[ef.estadoCobro] ?? 'default'}
+                    size="small"
+                    sx={{ mt: 0.5, height: 18, fontSize: '0.65rem' }}
+                  />
+                ) : (
+                  <Chip
+                    label={ef.estado === 'ENTREGADA' ? 'Entregada' : ef.estado === 'NO_ENTREGADA' ? 'No entregada' : 'Pendiente'}
+                    size="small"
+                    color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
+                    sx={{ mt: 0.5 }}
+                  />
+                )}
               </Box>
             </Box>
           </CardContent>
         </Card>
       ))}
+
+      {/* Botón rendir */}
+      {hayCobrosPendientes && (
+        <Button
+          variant="contained"
+          color="success"
+          fullWidth
+          startIcon={<AttachMoneyIcon />}
+          onClick={onRendir}
+          sx={{ mt: 1 }}
+        >
+          Rendir cobros ({fmt(totalCobrado)})
+        </Button>
+      )}
     </Stack>
   );
 };
 
 /** Versión desktop: tabla compacta dentro del drawer */
-const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen }) => {
+const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen, estadoViaje, puedeRendir, onRendir }) => {
   if (resumen === undefined) {
     return (
       <Card variant="outlined">
@@ -314,25 +379,55 @@ const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen }) => {
     );
   }
 
+  const totalCobrado = resumen.totalCobradoConductor ?? 0;
+  const hayCobrosPendientes = puedeRendir
+    && (estadoViaje === 'COMPLETADO' || estadoViaje === 'PENDIENTE_RENDICION')
+    && totalCobrado > 0
+    && estadoViaje !== 'RENDIDO';
+
   return (
     <Card variant="outlined" sx={{ borderColor: 'success.main' }}>
       <CardContent>
-        {/* Header con total */}
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+        {/* Header con totales */}
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} flexWrap="wrap" gap={1}>
           <Box display="flex" alignItems="center" gap={1}>
             <WalletIcon color="success" />
             <Typography variant="subtitle1" fontWeight={700}>
               Cobros del viaje
             </Typography>
           </Box>
-          <Box textAlign="right">
-            <Typography variant="caption" color="text.secondary" display="block">
-              Total a recaudar
-            </Typography>
-            <Typography variant="h5" fontWeight={700} color="success.dark">
-              {fmt(resumen.totalEntregasIniciales)}
-            </Typography>
-          </Box>
+          <Stack direction="row" spacing={3} alignItems="flex-end">
+            <Box textAlign="right">
+              <Typography variant="caption" color="text.secondary" display="block">
+                A recaudar
+              </Typography>
+              <Typography variant="h6" fontWeight={700} color="success.dark">
+                {fmt(resumen.totalEntregasIniciales)}
+              </Typography>
+            </Box>
+            {totalCobrado > 0 && (
+              <Box textAlign="right">
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Cobrado por conductor
+                </Typography>
+                <Typography variant="h6" fontWeight={700} color="primary.main">
+                  {fmt(totalCobrado)}
+                </Typography>
+              </Box>
+            )}
+            {hayCobrosPendientes && (
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                startIcon={<AttachMoneyIcon />}
+                onClick={onRendir}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                Rendir cobros
+              </Button>
+            )}
+          </Stack>
         </Box>
 
         <Divider sx={{ mb: 1.5 }} />
@@ -341,12 +436,12 @@ const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen }) => {
         <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
           <Box component="thead">
             <Box component="tr">
-              {['#', 'Cliente', 'Documento', 'A cobrar', 'Estado'].map(h => (
+              {['#', 'Cliente', 'Documento', 'A cobrar', 'Cobrado', 'Estado cobro'].map(h => (
                 <Box
                   key={h}
                   component="th"
                   sx={{
-                    textAlign: h === 'A cobrar' ? 'right' : 'left',
+                    textAlign: (h === 'A cobrar' || h === 'Cobrado') ? 'right' : 'left',
                     py: 0.5,
                     px: 1,
                     fontSize: '0.7rem',
@@ -397,19 +492,46 @@ const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen }) => {
                     {fmt(ef.montoEntregaInicial)}
                   </Typography>
                 </Box>
+                <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {ef.montoCobrado != null ? (
+                    <Box>
+                      <Typography variant="body2" fontWeight={700} color="primary.main">
+                        {fmt(ef.montoCobrado)}
+                      </Typography>
+                      {ef.diferenciaCobro != null && ef.diferenciaCobro !== 0 && (
+                        <Typography
+                          variant="caption"
+                          color={ef.diferenciaCobro > 0 ? 'warning.main' : 'error.main'}
+                        >
+                          {ef.diferenciaCobro > 0 ? '+' : ''}{fmt(ef.diferenciaCobro)}
+                        </Typography>
+                      )}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.disabled">—</Typography>
+                  )}
+                </Box>
                 <Box component="td" sx={{ py: 1, px: 1 }}>
-                  <Chip
-                    label={ef.estado === 'ENTREGADA' ? 'Entregada' : ef.estado === 'NO_ENTREGADA' ? 'No entregada' : 'Pendiente'}
-                    size="small"
-                    color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
-                  />
+                  {ef.estadoCobro ? (
+                    <Chip
+                      label={COBRO_LABEL_MAP[ef.estadoCobro] ?? ef.estadoCobro}
+                      color={COBRO_COLOR_MAP[ef.estadoCobro] ?? 'default'}
+                      size="small"
+                    />
+                  ) : (
+                    <Chip
+                      label={ef.estado === 'ENTREGADA' ? 'Entregada' : ef.estado === 'NO_ENTREGADA' ? 'No entregada' : 'Pendiente'}
+                      size="small"
+                      color={ef.estado === 'ENTREGADA' ? 'success' : ef.estado === 'NO_ENTREGADA' ? 'error' : 'warning'}
+                    />
+                  )}
                 </Box>
               </Box>
             ))}
           </Box>
           {/* Footer con totales */}
           <Box component="tfoot">
-            <Box component="tr" sx={{ bgcolor: 'success.50' }}>
+            <Box component="tr" sx={{ bgcolor: 'action.hover' }}>
               <Box component="td" colSpan={3} sx={{ py: 1, px: 1, fontSize: '0.85rem', fontWeight: 600 }}>
                 Total viaje ({resumen.cantidadEntregas} entregas)
               </Box>
@@ -417,6 +539,13 @@ const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen }) => {
                 <Typography variant="body1" fontWeight={700} color="success.dark">
                   {fmt(resumen.totalEntregasIniciales)}
                 </Typography>
+              </Box>
+              <Box component="td" sx={{ py: 1, px: 1, textAlign: 'right' }}>
+                {totalCobrado > 0 && (
+                  <Typography variant="body1" fontWeight={700} color="primary.main">
+                    {fmt(totalCobrado)}
+                  </Typography>
+                )}
               </Box>
               <Box component="td" />
             </Box>
@@ -2575,6 +2704,9 @@ const TripsPage2: React.FC = () => {
               {detailsTab === 3 && (
                 <ResumenCobrosMobile
                   resumen={resumenFinancieroMap[selectedTrip.id]}
+                  estadoViaje={selectedTrip.estado}
+                  puedeRendir={puedeRendir}
+                  onRendir={() => setRendicionDialogViaje(selectedTrip)}
                 />
               )}
             </Box>
@@ -2681,6 +2813,9 @@ const TripsPage2: React.FC = () => {
                 <Grid item xs={12}>
                   <ResumenCobrosDesktop
                     resumen={resumenFinancieroMap[selectedTrip.id]}
+                    estadoViaje={selectedTrip.estado}
+                    puedeRendir={puedeRendir}
+                    onRendir={() => { setDetailsDialogOpen(false); setRendicionDialogViaje(selectedTrip); }}
                   />
                 </Grid>
               </Grid>
