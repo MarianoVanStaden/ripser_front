@@ -232,8 +232,7 @@ const ResumenCobrosMobile: React.FC<ResumenCobrosProps> = ({ resumen, estadoViaj
   const totalCobrado = resumen.totalCobradoConductor ?? 0;
   const hayCobrosPendientes = puedeRendir
     && (estadoViaje === 'COMPLETADO' || estadoViaje === 'PENDIENTE_RENDICION')
-    && totalCobrado > 0
-    && estadoViaje !== 'RENDIDO';
+    && totalCobrado > 0;
 
   return (
     <Stack spacing={1.5}>
@@ -382,8 +381,7 @@ const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen, estadoVia
   const totalCobrado = resumen.totalCobradoConductor ?? 0;
   const hayCobrosPendientes = puedeRendir
     && (estadoViaje === 'COMPLETADO' || estadoViaje === 'PENDIENTE_RENDICION')
-    && totalCobrado > 0
-    && estadoViaje !== 'RENDIDO';
+    && totalCobrado > 0;
 
   return (
     <Card variant="outlined" sx={{ borderColor: 'success.main' }}>
