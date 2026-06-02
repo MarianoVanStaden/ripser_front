@@ -9,7 +9,7 @@ import {
 import {
   Visibility, Add, Search, Phone,
   PhoneInTalk, Alarm, CheckCircleOutline, Clear,
-  Lock, FlagOutlined, WhatsApp as WhatsAppIcon,
+  Lock, FlagOutlined, WhatsApp as WhatsAppIcon, AttachMoney,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -37,12 +37,13 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { useUrlFilters } from '../../../hooks/useUrlFilters';
 import { NuevaGestionDialog } from './NuevaGestionDialog';
 import { RegistrarAccionDialog } from './RegistrarAccionDialog';
+import { RegistrarCobroDialog } from './RegistrarCobroDialog';
 import { RecordatorioCobranzaDialog } from './RecordatorioCobranzaDialog';
 import ConfirmDialog from '../../common/ConfirmDialog';
 
 type FechaGestionFiltro =
-  | 'HOY_Y_VENCIDAS' | 'VENCIDAS' | 'HOY' | 'MANANA' | 'ESTA_SEMANA'
-  | 'PROXIMOS_7' | 'ESTE_MES' | 'SIN_FECHA' | 'TODAS';
+  | 'HOY_Y_VENCIDAS' | 'VENCIDAS' | 'AYER' | 'HOY' | 'MANANA' | 'ESTA_SEMANA'
+  | 'PROXIMOS_7' | 'ESTE_MES' | 'MORA_PROLONGADA' | 'SIN_FECHA' | 'TODAS';
 
 /** Preset por defecto de la lista: la agenda de gestiones que toca atender hoy. */
 const FECHA_FILTRO_DEFAULT: FechaGestionFiltro = 'HOY_Y_VENCIDAS';
@@ -50,11 +51,13 @@ const FECHA_FILTRO_DEFAULT: FechaGestionFiltro = 'HOY_Y_VENCIDAS';
 const FECHA_FILTRO_OPTIONS: { value: FechaGestionFiltro; label: string; color: string }[] = [
   { value: 'HOY_Y_VENCIDAS', label: 'Agenda de hoy',   color: '#ed6c02' },
   { value: 'VENCIDAS',       label: 'Vencidas',         color: '#d32f2f' },
+  { value: 'AYER',           label: 'Ayer',             color: '#c2185b' },
   { value: 'HOY',            label: 'Solo hoy',         color: '#f57c00' },
   { value: 'MANANA',         label: 'Mañana',           color: '#0288d1' },
   { value: 'ESTA_SEMANA',    label: 'Esta semana',      color: '#7b1fa2' },
   { value: 'PROXIMOS_7',     label: 'Próximos 7 días',  color: '#2e7d32' },
   { value: 'ESTE_MES',       label: 'Este mes',         color: '#00796b' },
+  { value: 'MORA_PROLONGADA',label: 'Mora prolongada',  color: '#6a1b9a' },
   { value: 'SIN_FECHA',      label: 'Sin fecha',        color: '#757575' },
   { value: 'TODAS',          label: 'Todas',            color: '#455a64' },
 ];
@@ -127,6 +130,7 @@ export const CobranzasListPage: React.FC = () => {
   }, [debouncedTerm]);
 
   const [nuevaGestionOpen, setNuevaGestionOpen] = useState(false);
+  const [cobroDialog, setCobroDialog] = useState<{ prestamoId: number; nombre: string } | null>(null);
   const [accionDialog, setAccionDialog] = useState<{ id: number; nombre: string } | null>(null);
   const [recordatorioDialog, setRecordatorioDialog] = useState<{ id: number; nombre: string } | null>(null);
   const [cierreMenuAnchor, setCierreMenuAnchor] = useState<{ el: HTMLElement; id: number } | null>(null);
@@ -367,7 +371,9 @@ export const CobranzasListPage: React.FC = () => {
           <Typography variant="h4">Gestiones de Cobranza</Typography>
           <Typography variant="body2" color="text.secondary">
             {selectedFechaFiltro === 'HOY_Y_VENCIDAS' && !hasCustomRange
-              ? 'Mostrando la agenda de hoy (gestiones de hoy y atrasadas). Elegí «Todas» para ver el resto.'
+              ? 'Agenda de hoy (gestiones de hoy y atrasadas, sin mora prolongada ni legales). Mirá «Mora prolongada» o «Todas» para el resto.'
+              : selectedFechaFiltro === 'MORA_PROLONGADA' && !hasCustomRange
+              ? 'Mora prolongada: gestiones que superan el umbral de días de mora o derivadas a Legal.'
               : 'Filtrá por fecha de próxima gestión, estado, prioridad y promesas.'}
           </Typography>
         </Box>
@@ -799,6 +805,18 @@ export const CobranzasListPage: React.FC = () => {
                       </TableCell>
                       <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.25} justifyContent="center">
+                          <Tooltip title="Registrar cobro">
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => setCobroDialog({ prestamoId: g.prestamoId, nombre: `${g.clienteNombre} ${g.clienteApellido}` })}
+                                disabled={!g.activa}
+                              >
+                                <AttachMoney fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
                           <Tooltip title="Registrar acción">
                             <span>
                               <IconButton
@@ -933,6 +951,16 @@ export const CobranzasListPage: React.FC = () => {
           refresh();
         }}
       />
+
+      {cobroDialog && (
+        <RegistrarCobroDialog
+          open
+          prestamoId={cobroDialog.prestamoId}
+          clienteNombre={cobroDialog.nombre}
+          onClose={() => setCobroDialog(null)}
+          onSaved={refresh}
+        />
+      )}
 
       {accionDialog && (
         <RegistrarAccionDialog
