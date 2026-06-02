@@ -26,16 +26,13 @@ import {
   Stepper,
   Step,
   StepLabel,
-  IconButton,
 } from '@mui/material';
 import {
   AccountBalanceWallet as WalletIcon,
   CheckCircleOutline as CheckIcon,
   WarningAmber as WarningIcon,
   Receipt as ReceiptIcon,
-  Edit as EditIcon,
   Save as SaveIcon,
-  Close as CloseIcon,
   ArrowForward as NextIcon,
   ArrowBack as BackIcon,
 } from '@mui/icons-material';
@@ -219,7 +216,7 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
   const [step, setStep] = useState(0);
 
   // ── Paso 1: cobros declarados por conductor ──
-  const [resumen, setResumen] = useState<RendicionViajeDTO | null>(null);
+  const [, setResumen] = useState<RendicionViajeDTO | null>(null);
   const [loadingResumen, setLoadingResumen] = useState(false);
   const [cobros, setCobros] = useState<CobroEditable[]>([]);
 
