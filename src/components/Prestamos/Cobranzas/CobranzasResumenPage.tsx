@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Box, Grid, Card, CardContent, Typography, Alert, Button, Tooltip,
-  Chip, Paper, Stack, Divider, LinearProgress,
+  Chip, Paper, Stack, Divider, LinearProgress, CircularProgress,
 } from '@mui/material';
 import {
   Gavel, Warning, AttachMoney, Schedule, CheckCircle,
   PhoneCallback, Refresh, List as ListIcon, Handshake,
-  TrendingUp, NotificationsActive, ArrowForward,
+  TrendingUp, NotificationsActive, ArrowForward, Bolt,
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
@@ -22,6 +22,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { getFirstName } from '../../../utils/userDisplay';
 import { useSseEvent } from '../../../hooks/useSseEvent';
 import { SSE_EVENTS } from '../../../lib/sse-contract';
+import { usePermisos } from '../../../hooks/usePermisos';
 
 interface KpiCardProps {
   title: string;
@@ -187,9 +188,12 @@ const FocoItem: React.FC<FocoItemProps> = ({ icon, label, value, color, hint, to
 export const CobranzasResumenPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { esAdmin } = usePermisos();
   const [resumen, setResumen] = useState<ResumenCobranzaDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [motorRunning, setMotorRunning] = useState(false);
+  const [motorMsg, setMotorMsg] = useState<string | null>(null);
 
   const loadResumen = async () => {
     try {
@@ -212,6 +216,22 @@ export const CobranzasResumenPage: React.FC = () => {
   // Auto-refresh en tiempo real: confirmación/rechazo de pagos informados o pagos
   // registrados (otra pantalla/usuario) re-cargan el resumen. Reusa la conexión SSE global.
   useSseEvent([SSE_EVENTS.CUOTA_ACTUALIZADA, SSE_EVENTS.PAGO_REGISTRADO], loadResumen);
+
+  const handleEjecutarMotor = async () => {
+    try {
+      setMotorRunning(true);
+      setError(null);
+      setMotorMsg(null);
+      await gestionCobranzaApi.ejecutarMotor();
+      await loadResumen();
+      setMotorMsg('Motor de cobranza ejecutado. Se actualizaron las gestiones (mora, agenda, fantasmas cerrados).');
+    } catch (err) {
+      console.error('Error ejecutando motor de cobranza:', err);
+      setError('No se pudo ejecutar el motor de cobranza.');
+    } finally {
+      setMotorRunning(false);
+    }
+  };
 
   const totalFoco = useMemo(() => {
     if (!resumen) return 0;
@@ -270,6 +290,21 @@ export const CobranzasResumenPage: React.FC = () => {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          {esAdmin && (
+            <Tooltip title="Recalcula mora, abre/agenda gestiones y cierra las de préstamos refinanciados/finalizados">
+              <span>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={motorRunning ? <CircularProgress size={16} /> : <Bolt />}
+                  onClick={handleEjecutarMotor}
+                  disabled={motorRunning}
+                >
+                  {motorRunning ? 'Ejecutando…' : 'Ejecutar motor'}
+                </Button>
+              </span>
+            </Tooltip>
+          )}
           <Button variant="outlined" startIcon={<Refresh />} onClick={loadResumen}>
             Actualizar
           </Button>
@@ -291,6 +326,7 @@ export const CobranzasResumenPage: React.FC = () => {
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      {motorMsg && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setMotorMsg(null)}>{motorMsg}</Alert>}
 
       {resumen && (
         <>

@@ -119,6 +119,7 @@ export interface EquipoFabricadoDTO {
   observaciones?: string;
   fechaCreacion: string;
   numeroHeladera: string;
+  codigoVenta?: string | null;   // código de venta/despacho (se asigna al vender)
   cantidad: number;
   asignado: boolean;
   estadoAsignacion?: EstadoAsignacionEquipo;
@@ -168,6 +169,7 @@ export interface EquipoFabricadoListDTO {
   modelo: string;
   medida?: MedidaEquipo;
   numeroHeladera: string;
+  codigoVenta?: string | null;   // código de venta/despacho (se asigna al vender)
   color?: ColorEquipo;
   observaciones?: string;    // e.g. "Color previsto: PLATA (detalle #354)" for PENDIENTE_TERMINACION bases
   cantidad: number;
