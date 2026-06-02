@@ -105,9 +105,17 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
               <Divider sx={{ mb: 1 }} />
 
               {cobrables.length === 0 ? (
-                <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                  No hay cuotas pendientes. El crédito está al día.
-                </Typography>
+                cuotas.length === 0 ? (
+                  <Alert severity="warning" sx={{ my: 1 }}>
+                    Este crédito no tiene cuotas cargadas. Puede ser un dato incompleto de
+                    migración o un préstamo refinanciado/cancelado — revisá el crédito.
+                  </Alert>
+                ) : (
+                  <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                    Este crédito no tiene cuotas pendientes de cobro (todas pagadas, refinanciadas
+                    o sin saldo).
+                  </Typography>
+                )
               ) : (
                 <Table size="small">
                   <TableHead>

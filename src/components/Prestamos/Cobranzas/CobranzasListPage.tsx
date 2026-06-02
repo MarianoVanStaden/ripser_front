@@ -50,18 +50,18 @@ type FechaGestionFiltro =
 /** Preset por defecto de la lista: la agenda de gestiones que toca atender hoy. */
 const FECHA_FILTRO_DEFAULT: FechaGestionFiltro = 'HOY_Y_VENCIDAS';
 
-const FECHA_FILTRO_OPTIONS: { value: FechaGestionFiltro; label: string; color: string }[] = [
-  { value: 'HOY_Y_VENCIDAS', label: 'Agenda de hoy',   color: '#ed6c02' },
-  { value: 'VENCIDAS',       label: 'Vencidas',         color: '#d32f2f' },
-  { value: 'AYER',           label: 'Ayer',             color: '#c2185b' },
-  { value: 'HOY',            label: 'Solo hoy',         color: '#f57c00' },
-  { value: 'MANANA',         label: 'Mañana',           color: '#0288d1' },
-  { value: 'ESTA_SEMANA',    label: 'Esta semana',      color: '#7b1fa2' },
-  { value: 'PROXIMOS_7',     label: 'Próximos 7 días',  color: '#2e7d32' },
-  { value: 'ESTE_MES',       label: 'Este mes',         color: '#00796b' },
-  { value: 'MORA_PROLONGADA',label: 'Mora prolongada',  color: '#6a1b9a' },
-  { value: 'SIN_FECHA',      label: 'Sin fecha',        color: '#757575' },
-  { value: 'TODAS',          label: 'Todas',            color: '#455a64' },
+const FECHA_FILTRO_OPTIONS: { value: FechaGestionFiltro; label: string; color: string; tip: string }[] = [
+  { value: 'HOY_Y_VENCIDAS', label: 'Agenda de hoy',   color: '#ed6c02', tip: 'Lo que toca gestionar hoy: próxima gestión de hoy o anterior, excluyendo mora prolongada y legales.' },
+  { value: 'VENCIDAS',       label: 'Gestión atrasada', color: '#d32f2f', tip: 'Gestiones cuya fecha de PRÓXIMA GESTIÓN ya pasó (es la fecha de contacto, NO la mora del préstamo).' },
+  { value: 'AYER',           label: 'Ayer',             color: '#c2185b', tip: 'Próxima gestión agendada para ayer.' },
+  { value: 'HOY',            label: 'Solo hoy',         color: '#f57c00', tip: 'Próxima gestión agendada exactamente para hoy (sin tope de mora).' },
+  { value: 'MANANA',         label: 'Mañana',           color: '#0288d1', tip: 'Próxima gestión agendada para mañana.' },
+  { value: 'ESTA_SEMANA',    label: 'Esta semana',      color: '#7b1fa2', tip: 'Próxima gestión dentro de esta semana.' },
+  { value: 'PROXIMOS_7',     label: 'Próximos 7 días',  color: '#2e7d32', tip: 'Próxima gestión en los próximos 7 días.' },
+  { value: 'ESTE_MES',       label: 'Este mes',         color: '#00796b', tip: 'Próxima gestión dentro de este mes.' },
+  { value: 'MORA_PROLONGADA',label: 'Mora prolongada',  color: '#6a1b9a', tip: 'Préstamos con muchos días de mora (sobre el umbral configurado) o en legal. Se trabajan aparte de la agenda diaria.' },
+  { value: 'SIN_FECHA',      label: 'Sin fecha',        color: '#757575', tip: 'Gestiones sin próxima gestión agendada.' },
+  { value: 'TODAS',          label: 'Todas',            color: '#455a64', tip: 'Todas las gestiones activas, sin filtrar por fecha.' },
 ];
 
 const FECHA_VALUES = new Set<FechaGestionFiltro>(FECHA_FILTRO_OPTIONS.map((o) => o.value));
@@ -461,32 +461,35 @@ export const CobranzasListPage: React.FC = () => {
 
           {/* Fecha próxima gestión chips */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Próxima gestión:</Typography>
-            {FECHA_FILTRO_OPTIONS.map(({ value, label, color }) => {
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+              Próxima gestión <em>(fecha de contacto, no la mora)</em>:
+            </Typography>
+            {FECHA_FILTRO_OPTIONS.map(({ value, label, color, tip }) => {
               const selected = !hasCustomRange && selectedFechaFiltro === value;
               const chipLabel = value === 'MORA_PROLONGADA' && moraProlongadaCount != null
                 ? `${label} (${moraProlongadaCount})`
                 : label;
               return (
-                <Chip
-                  key={value}
-                  label={chipLabel}
-                  size="small"
-                  onClick={() => {
-                    setUrlFilters({
-                      desde: undefined,
-                      hasta: undefined,
-                      fechaFiltro: selected ? undefined : value,
-                    });
-                  }}
-                  variant={selected ? 'filled' : 'outlined'}
-                  sx={{
-                    borderColor: color,
-                    color: selected ? 'white' : color,
-                    bgcolor: selected ? color : 'transparent',
-                    opacity: hasCustomRange ? 0.45 : 1,
-                  }}
-                />
+                <Tooltip key={value} title={tip} arrow>
+                  <Chip
+                    label={chipLabel}
+                    size="small"
+                    onClick={() => {
+                      setUrlFilters({
+                        desde: undefined,
+                        hasta: undefined,
+                        fechaFiltro: selected ? undefined : value,
+                      });
+                    }}
+                    variant={selected ? 'filled' : 'outlined'}
+                    sx={{
+                      borderColor: color,
+                      color: selected ? 'white' : color,
+                      bgcolor: selected ? color : 'transparent',
+                      opacity: hasCustomRange ? 0.45 : 1,
+                    }}
+                  />
+                </Tooltip>
               );
             })}
           </Box>
