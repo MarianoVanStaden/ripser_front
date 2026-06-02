@@ -1,16 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TableSortLabel, TablePagination, IconButton, Typography,
-  Tooltip, Alert, TextField, InputAdornment,
+  Tooltip, Alert, TextField, InputAdornment, CircularProgress,
   Chip, Stack, Button, Menu, MenuItem, Dialog, DialogTitle,
   DialogContent, DialogContentText, DialogActions,
 } from '@mui/material';
 import {
   Visibility, Edit, Delete, Add, Search, FilterList,
 } from '@mui/icons-material';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
+import type { PrestamoListParams } from '../../api/services/prestamoPersonalApi';
 import {
   EstadoPrestamo, ESTADO_PRESTAMO_LABELS, ESTADO_PRESTAMO_COLORS,
   CategoriaPrestamo, CATEGORIA_PRESTAMO_LABELS, CATEGORIA_PRESTAMO_COLORS,
@@ -19,32 +20,46 @@ import {
 import type { PrestamoPersonalDTO } from '../../types/prestamo.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
-import LoadingOverlay from '../common/LoadingOverlay';
+import { usePagination } from '../../hooks/usePagination';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useUrlFilters } from '../../hooks/useUrlFilters';
 
-type Order = 'asc' | 'desc';
-type OrderBy = 'clienteNombre' | 'montoTotal' | 'cuotaActual' | 'estado' | 'categoria' | 'diasVencido' | 'saldoPendiente';
+const ESTADO_VALUES = new Set<EstadoPrestamo>(Object.values(EstadoPrestamo));
+const CATEGORIA_VALUES = new Set<CategoriaPrestamo>(Object.values(CategoriaPrestamo));
+
+const FILTER_SCHEMA = {
+  term: 'string',
+  estados: 'string[]',
+  categorias: 'string[]',
+} as const;
 
 export const PrestamosListPage: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  const [allPrestamos, setAllPrestamos] = useState<PrestamoPersonalDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { filters: urlFilters, setFilters: setUrlFilters, resetFilters } = useUrlFilters(FILTER_SCHEMA);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEstados, setSelectedEstados] = useState<EstadoPrestamo[]>(() => {
-    const e = searchParams.get('estado');
-    return e ? [e as EstadoPrestamo] : [];
-  });
-  const [selectedCategorias, setSelectedCategorias] = useState<CategoriaPrestamo[]>(() => {
-    const c = searchParams.get('categoria');
-    return c ? [c as CategoriaPrestamo] : [];
-  });
-  const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('diasVencido');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const selectedEstados = useMemo(
+    () => (urlFilters.estados ?? []).filter((e): e is EstadoPrestamo => ESTADO_VALUES.has(e as EstadoPrestamo)),
+    [urlFilters.estados]
+  );
+  const selectedCategorias = useMemo(
+    () => (urlFilters.categorias ?? []).filter((c): c is CategoriaPrestamo => CATEGORIA_VALUES.has(c as CategoriaPrestamo)),
+    [urlFilters.categorias]
+  );
+
+  // Search input mirrors URL term with debounce.
+  const [searchInput, setSearchInput] = useState<string>(urlFilters.term ?? '');
+  const debouncedTerm = useDebounce(searchInput, 300);
+
+  useEffect(() => {
+    setSearchInput(urlFilters.term ?? '');
+  }, [urlFilters.term]);
+
+  useEffect(() => {
+    if ((urlFilters.term ?? '') === debouncedTerm) return;
+    setUrlFilters({ term: debouncedTerm || undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedTerm]);
 
   // Dialogs
   const [formOpen, setFormOpen] = useState(false);
@@ -56,79 +71,63 @@ export const PrestamosListPage: React.FC = () => {
   const [estadoMenuAnchor, setEstadoMenuAnchor] = useState<null | HTMLElement>(null);
   const [estadoMenuPrestamo, setEstadoMenuPrestamo] = useState<PrestamoPersonalDTO | null>(null);
 
-  const loadPrestamos = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await prestamoPersonalApi.getAll({ page: 0, size: 9999, sort: 'diasVencido,desc' });
-      setAllPrestamos(response.content);
-    } catch (err) {
-      setError('Error al cargar créditos personales');
-      console.error('Error loading prestamos:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const backendFilters = useMemo<PrestamoListParams>(() => ({
+    term: urlFilters.term || undefined,
+    estados: selectedEstados.length > 0 ? selectedEstados : undefined,
+    categorias: selectedCategorias.length > 0 ? selectedCategorias : undefined,
+  }), [urlFilters.term, selectedEstados, selectedCategorias]);
 
-  useEffect(() => {
-    loadPrestamos();
-  }, []);
-
-  // Client-side filtering + sorting
-  const filteredPrestamos = useMemo(() => {
-    let result = allPrestamos;
-
-    if (searchTerm.trim()) {
-      const term = searchTerm.trim().toLowerCase();
-      result = result.filter(p =>
-        p.clienteNombre?.toLowerCase().includes(term) ||
-        p.codigoClienteRojas?.toLowerCase().includes(term)
-      );
-    }
-
-    if (selectedEstados.length > 0) {
-      result = result.filter(p => selectedEstados.includes(p.estado));
-    }
-
-    if (selectedCategorias.length > 0) {
-      result = result.filter(p => selectedCategorias.includes(p.categoria));
-    }
-
-    // Sorting
-    result = [...result].sort((a, b) => {
-      let valA: string | number = a[orderBy] ?? '';
-      let valB: string | number = b[orderBy] ?? '';
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
-      if (valA < valB) return order === 'asc' ? -1 : 1;
-      if (valA > valB) return order === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return result;
-  }, [allPrestamos, searchTerm, selectedEstados, selectedCategorias, order, orderBy]);
-
-  const pagedPrestamos = useMemo(
-    () => filteredPrestamos.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [filteredPrestamos, page, rowsPerPage]
+  const fetchPrestamos = useCallback(
+    (page: number, size: number, sort: string, filters: PrestamoListParams) =>
+      prestamoPersonalApi.getAll({ page, size, sort, ...filters }),
+    []
   );
 
-  const handleSort = (property: OrderBy) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-    setPage(0);
+  const {
+    data: prestamos,
+    totalElements,
+    loading,
+    error,
+    page,
+    size: rowsPerPage,
+    sort,
+    handleChangePage,
+    handleChangeRowsPerPage,
+    setFilters: setBackendFilters,
+    setSort,
+    refresh,
+  } = usePagination<PrestamoPersonalDTO, PrestamoListParams>({
+    fetchFn: fetchPrestamos,
+    defaultSort: 'diasVencido,desc',
+    initialSize: 25,
+    initialFilters: backendFilters,
+  });
+
+  useEffect(() => {
+    setBackendFilters(backendFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendFilters]);
+
+  const [sortField, sortDir] = sort.split(',') as [string, 'asc' | 'desc'];
+  const handleSort = (field: string) => {
+    if (sortField === field) setSort(`${field},${sortDir === 'asc' ? 'desc' : 'asc'}`);
+    else setSort(`${field},asc`);
   };
 
   const toggleEstado = (estado: EstadoPrestamo) => {
-    setSelectedEstados(prev => prev.includes(estado) ? [] : [estado]);
-    setPage(0);
+    const next = selectedEstados.includes(estado)
+      ? selectedEstados.filter((e) => e !== estado)
+      : [...selectedEstados, estado];
+    setUrlFilters({ estados: next });
+  };
+  const toggleCategoria = (cat: CategoriaPrestamo) => {
+    const next = selectedCategorias.includes(cat)
+      ? selectedCategorias.filter((c) => c !== cat)
+      : [...selectedCategorias, cat];
+    setUrlFilters({ categorias: next });
   };
 
-  const toggleCategoria = (cat: CategoriaPrestamo) => {
-    setSelectedCategorias(prev => prev.includes(cat) ? [] : [cat]);
-    setPage(0);
-  };
+  const hasAnyFilter = !!urlFilters.term || selectedEstados.length > 0 || selectedCategorias.length > 0;
 
   const handleDelete = async () => {
     if (!prestamoToDelete) return;
@@ -136,7 +135,7 @@ export const PrestamosListPage: React.FC = () => {
       await prestamoPersonalApi.delete(prestamoToDelete.id);
       setDeleteDialogOpen(false);
       setPrestamoToDelete(null);
-      loadPrestamos();
+      refresh();
     } catch (err) {
       console.error('Error deleting prestamo:', err);
     }
@@ -148,15 +147,26 @@ export const PrestamosListPage: React.FC = () => {
       await prestamoPersonalApi.cambiarEstado(estadoMenuPrestamo.id, estado);
       setEstadoMenuAnchor(null);
       setEstadoMenuPrestamo(null);
-      loadPrestamos();
+      refresh();
     } catch (err) {
       console.error('Error changing estado:', err);
     }
   };
 
+  const sortableHeader = (label: string, field: string, align: 'left' | 'right' | 'center' = 'left') => (
+    <TableCell align={align}>
+      <TableSortLabel
+        active={sortField === field}
+        direction={sortField === field ? sortDir : 'asc'}
+        onClick={() => handleSort(field)}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>
+  );
+
   return (
     <Box>
-      <LoadingOverlay open={loading} message="Cargando créditos personales..." />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Gestión de Créditos Personales</Typography>
         <Button
@@ -171,108 +181,103 @@ export const PrestamosListPage: React.FC = () => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {/* Search & Filters */}
-      <Box sx={{ mb: 3 }}>
-        <TextField
-          fullWidth
-          placeholder="Buscar por nombre o código..."
-          value={searchTerm}
-          onChange={(e) => { setSearchTerm(e.target.value); setPage(0); }}
-          InputProps={{
-            startAdornment: <InputAdornment position="start"><Search /></InputAdornment>,
-          }}
-          sx={{ mb: 2 }}
-        />
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-          <FilterList fontSize="small" color="action" />
-          <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>Estado:</Typography>
-          {Object.entries(ESTADO_PRESTAMO_LABELS).map(([key, label]) => (
-            <Chip
-              key={key}
-              label={label}
-              size="small"
-              variant={selectedEstados.includes(key as EstadoPrestamo) ? 'filled' : 'outlined'}
-              onClick={() => toggleEstado(key as EstadoPrestamo)}
-              sx={{
-                bgcolor: selectedEstados.includes(key as EstadoPrestamo)
-                  ? ESTADO_PRESTAMO_COLORS[key as EstadoPrestamo]
-                  : 'transparent',
-                color: selectedEstados.includes(key as EstadoPrestamo) ? 'white' : 'inherit',
-                borderColor: ESTADO_PRESTAMO_COLORS[key as EstadoPrestamo],
-              }}
-            />
-          ))}
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 2, mr: 1 }}>Categoría:</Typography>
-          {Object.entries(CATEGORIA_PRESTAMO_LABELS).map(([key, label]) => (
-            <Chip
-              key={key}
-              label={label}
-              size="small"
-              variant={selectedCategorias.includes(key as CategoriaPrestamo) ? 'filled' : 'outlined'}
-              onClick={() => toggleCategoria(key as CategoriaPrestamo)}
-              sx={{
-                bgcolor: selectedCategorias.includes(key as CategoriaPrestamo)
-                  ? CATEGORIA_PRESTAMO_COLORS[key as CategoriaPrestamo]
-                  : 'transparent',
-                color: selectedCategorias.includes(key as CategoriaPrestamo) ? 'white' : 'inherit',
-                borderColor: CATEGORIA_PRESTAMO_COLORS[key as CategoriaPrestamo],
-              }}
-            />
-          ))}
-        </Box>
-      </Box>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Stack spacing={2}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Buscar por nombre o código..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: <InputAdornment position="start"><Search fontSize="small" /></InputAdornment>,
+              },
+            }}
+          />
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <FilterList fontSize="small" color="action" />
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Estado:</Typography>
+            {(Object.keys(ESTADO_PRESTAMO_LABELS) as EstadoPrestamo[]).map((key) => {
+              const selected = selectedEstados.includes(key);
+              return (
+                <Chip
+                  key={key}
+                  label={ESTADO_PRESTAMO_LABELS[key]}
+                  size="small"
+                  variant={selected ? 'filled' : 'outlined'}
+                  onClick={() => toggleEstado(key)}
+                  sx={{
+                    bgcolor: selected ? ESTADO_PRESTAMO_COLORS[key] : 'transparent',
+                    color: selected ? 'white' : ESTADO_PRESTAMO_COLORS[key],
+                    borderColor: ESTADO_PRESTAMO_COLORS[key],
+                  }}
+                />
+              );
+            })}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 3.5, mr: 0.5 }}>Categoría:</Typography>
+            {(Object.keys(CATEGORIA_PRESTAMO_LABELS) as CategoriaPrestamo[]).map((key) => {
+              const selected = selectedCategorias.includes(key);
+              return (
+                <Chip
+                  key={key}
+                  label={CATEGORIA_PRESTAMO_LABELS[key]}
+                  size="small"
+                  variant={selected ? 'filled' : 'outlined'}
+                  onClick={() => toggleCategoria(key)}
+                  sx={{
+                    bgcolor: selected ? CATEGORIA_PRESTAMO_COLORS[key] : 'transparent',
+                    color: selected ? 'white' : CATEGORIA_PRESTAMO_COLORS[key],
+                    borderColor: CATEGORIA_PRESTAMO_COLORS[key],
+                  }}
+                />
+              );
+            })}
+            {hasAnyFilter && (
+              <Button size="small" variant="text" color="inherit"
+                onClick={() => { resetFilters(); setSearchInput(''); }}>
+                Limpiar
+              </Button>
+            )}
+          </Box>
+        </Stack>
+      </Paper>
 
       {/* Table */}
-      {!loading && (
-        <TableContainer component={Paper}>
+      <TableContainer component={Paper}>
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        )}
+        {!loading && (
           <Table sx={{ minWidth: 900 }}>
             <TableHead>
-              <TableRow>
-                <TableCell>
-                  <TableSortLabel active={orderBy === 'clienteNombre'} direction={orderBy === 'clienteNombre' ? order : 'asc'} onClick={() => handleSort('clienteNombre')}>
-                    Cliente
-                  </TableSortLabel>
-                </TableCell>
+              <TableRow sx={{ bgcolor: 'grey.100' }}>
+                {sortableHeader('Cliente', 'cliente.nombre')}
                 <TableCell align="right">Financiación</TableCell>
-                <TableCell align="center">Cuotas</TableCell>
-                <TableCell align="right">
-                  <TableSortLabel active={orderBy === 'montoTotal'} direction={orderBy === 'montoTotal' ? order : 'asc'} onClick={() => handleSort('montoTotal')}>
-                    Monto Total
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell align="right">
-                  <TableSortLabel active={orderBy === 'saldoPendiente'} direction={orderBy === 'saldoPendiente' ? order : 'asc'} onClick={() => handleSort('saldoPendiente')}>
-                    Saldo Pendiente
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell align="center">
-                  <TableSortLabel active={orderBy === 'estado'} direction={orderBy === 'estado' ? order : 'asc'} onClick={() => handleSort('estado')}>
-                    Estado
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell align="center">
-                  <TableSortLabel active={orderBy === 'categoria'} direction={orderBy === 'categoria' ? order : 'asc'} onClick={() => handleSort('categoria')}>
-                    Categoría
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell align="right">
-                  <TableSortLabel active={orderBy === 'diasVencido'} direction={orderBy === 'diasVencido' ? order : 'asc'} onClick={() => handleSort('diasVencido')}>
-                    Días Vencido
-                  </TableSortLabel>
-                </TableCell>
+                {sortableHeader('Cuotas', 'cuotaActual', 'center')}
+                {sortableHeader('Monto Total', 'montoTotal', 'right')}
+                <TableCell align="right">Saldo Pendiente</TableCell>
+                {sortableHeader('Estado', 'estado', 'center')}
+                {sortableHeader('Categoría', 'categoria', 'center')}
+                {sortableHeader('Días Vencido', 'diasVencido', 'right')}
                 <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {pagedPrestamos.length === 0 ? (
+              {prestamos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} align="center">
-                    <Box py={4}>
-                      <Typography color="text.secondary">No hay créditos personales que mostrar</Typography>
-                    </Box>
+                    <Typography color="text.secondary" py={4}>
+                      No hay créditos personales que mostrar
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                pagedPrestamos.map(p => (
+                prestamos.map(p => (
                   <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/prestamos/${p.id}`)}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">{p.clienteNombre}</Typography>
@@ -293,11 +298,8 @@ export const PrestamosListPage: React.FC = () => {
                     </TableCell>
                     <TableCell align="right">{formatPrice(p.montoTotal)}</TableCell>
                     <TableCell align="right">
-                      <Typography
-                        variant="body2"
-                        fontWeight="bold"
-                        color={p.saldoPendiente > 0 ? 'error.main' : 'success.main'}
-                      >
+                      <Typography variant="body2" fontWeight="bold"
+                        color={p.saldoPendiente > 0 ? 'error.main' : 'success.main'}>
                         {formatPrice(p.saldoPendiente)}
                       </Typography>
                     </TableCell>
@@ -305,15 +307,8 @@ export const PrestamosListPage: React.FC = () => {
                       <Chip
                         label={ESTADO_PRESTAMO_LABELS[p.estado]}
                         size="small"
-                        sx={{
-                          bgcolor: ESTADO_PRESTAMO_COLORS[p.estado],
-                          color: 'white',
-                          cursor: 'pointer',
-                        }}
-                        onClick={(e) => {
-                          setEstadoMenuAnchor(e.currentTarget);
-                          setEstadoMenuPrestamo(p);
-                        }}
+                        sx={{ bgcolor: ESTADO_PRESTAMO_COLORS[p.estado], color: 'white', cursor: 'pointer' }}
+                        onClick={(e) => { setEstadoMenuAnchor(e.currentTarget); setEstadoMenuPrestamo(p); }}
                       />
                     </TableCell>
                     <TableCell align="center">
@@ -355,20 +350,19 @@ export const PrestamosListPage: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </TableContainer>
-      )}
-
-      <TablePagination
-        component="div"
-        count={filteredPrestamos.length}
-        page={page}
-        onPageChange={(_, newPage) => setPage(newPage)}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-        rowsPerPageOptions={[10, 25, 50, 100]}
-        labelRowsPerPage="Filas por página:"
-        labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-      />
+        )}
+        <TablePagination
+          component="div"
+          count={totalElements}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          labelRowsPerPage="Filas:"
+          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+        />
+      </TableContainer>
 
       {/* Estado Change Menu */}
       <Menu
@@ -376,17 +370,10 @@ export const PrestamosListPage: React.FC = () => {
         open={Boolean(estadoMenuAnchor)}
         onClose={() => { setEstadoMenuAnchor(null); setEstadoMenuPrestamo(null); }}
       >
-        {Object.entries(ESTADO_PRESTAMO_LABELS).map(([key, label]) => (
-          <MenuItem
-            key={key}
-            onClick={() => handleEstadoChange(key as EstadoPrestamo)}
-            disabled={estadoMenuPrestamo?.estado === key}
-          >
-            <Chip
-              label={label}
-              size="small"
-              sx={{ bgcolor: ESTADO_PRESTAMO_COLORS[key as EstadoPrestamo], color: 'white', mr: 1 }}
-            />
+        {(Object.keys(ESTADO_PRESTAMO_LABELS) as EstadoPrestamo[]).map((key) => (
+          <MenuItem key={key} onClick={() => handleEstadoChange(key)} disabled={estadoMenuPrestamo?.estado === key}>
+            <Chip label={ESTADO_PRESTAMO_LABELS[key]} size="small"
+              sx={{ bgcolor: ESTADO_PRESTAMO_COLORS[key], color: 'white', mr: 1 }} />
           </MenuItem>
         ))}
       </Menu>
@@ -395,7 +382,7 @@ export const PrestamosListPage: React.FC = () => {
       <PrestamoFormDialog
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditingPrestamo(null); }}
-        onSaved={loadPrestamos}
+        onSaved={refresh}
         prestamo={editingPrestamo}
       />
 

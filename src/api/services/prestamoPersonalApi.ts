@@ -13,10 +13,35 @@ import type { PageResponse, PaginationParams } from '../../types/pagination.type
 
 const BASE_PATH = '/api/prestamos-personales';
 
+/** Filtros server-side aceptados por el listado paginado. Espeja el backend PrestamoPersonalFilter. */
+export interface PrestamoPersonalFilters {
+  term?: string;
+  estados?: EstadoPrestamo[];
+  categorias?: CategoriaPrestamo[];
+}
+
+export type PrestamoListParams = PaginationParams & PrestamoPersonalFilters;
+
+/** Limpia vacíos y serializa arrays como CSV (Spring @RequestParam List<X> bindea ?k=A,B). */
+const cleanParams = (params: PrestamoListParams): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null) continue;
+    if (typeof v === 'string' && v === '') continue;
+    if (Array.isArray(v)) {
+      if (v.length === 0) continue;
+      out[k] = v.join(',');
+      continue;
+    }
+    out[k] = v;
+  }
+  return out;
+};
+
 export const prestamoPersonalApi = {
-  getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<PrestamoPersonalDTO>> => {
+  getAll: async (params: PrestamoListParams = {}): Promise<PageResponse<PrestamoPersonalDTO>> => {
     const response = await api.get<PageResponse<PrestamoPersonalDTO>>(BASE_PATH, {
-      params: { ...pagination },
+      params: cleanParams(params),
     });
     return response.data;
   },

@@ -94,15 +94,19 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon, color, subtitle, 
 };
 
 const LISTA = '/cobranzas/lista';
-const linkActivasOrdenadoPorMonto = `${LISTA}?soloActivas=true&sort=montoPendiente,desc`;
-const linkVencidasHoy = `${LISTA}?soloActivas=true&fechaFiltro=VENCIDAS`;
-const linkActivas = `${LISTA}?soloActivas=true`;
-const linkPromesasIncumplidas = `${LISTA}?soloActivas=true&promesaIncumplida=true`;
-const linkRecordatoriosPendientes = `${LISTA}?soloActivas=true&recordatoriosPendientes=true`;
-const linkPromesasVencenHoy = `${LISTA}?soloActivas=true&promesaVenceHoy=true`;
-const linkConMora = `${LISTA}?soloActivas=true&conMora=true`;
+// La lista por defecto muestra la "agenda de hoy" (fechaFiltro=HOY_Y_VENCIDAS), espejando
+// el default del backend. Los deep-links que deben mostrar TODAS las gestiones que cumplen
+// un filtro (no sólo las de hoy) pasan fechaFiltro=TODAS para desactivar ese default.
+const TODAS = 'fechaFiltro=TODAS';
+const linkActivasOrdenadoPorMonto = `${LISTA}?soloActivas=true&${TODAS}&sort=montoPendiente,desc`;
+const linkVencidasHoy = `${LISTA}?soloActivas=true&fechaFiltro=HOY_Y_VENCIDAS`;
+const linkActivas = `${LISTA}?soloActivas=true&${TODAS}`;
+const linkPromesasIncumplidas = `${LISTA}?soloActivas=true&${TODAS}&promesaIncumplida=true`;
+const linkRecordatoriosPendientes = `${LISTA}?soloActivas=true&${TODAS}&recordatoriosPendientes=true`;
+const linkPromesasVencenHoy = `${LISTA}?soloActivas=true&${TODAS}&promesaVenceHoy=true`;
+const linkConMora = `${LISTA}?soloActivas=true&${TODAS}&conMora=true`;
 const linkEstado = (estado: EstadoGestionCobranza) =>
-  `${LISTA}?soloActivas=true&estados=${encodeURIComponent(estado)}`;
+  `${LISTA}?soloActivas=true&${TODAS}&estados=${encodeURIComponent(estado)}`;
 
 const getSaludo = (): string => {
   const hora = new Date().getHours();
@@ -264,11 +268,18 @@ export const CobranzasResumenPage: React.FC = () => {
             Actualizar
           </Button>
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<ListIcon />}
+            onClick={() => navigate(linkActivas)}
+          >
+            Ver Todas
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Schedule />}
             onClick={() => navigate('/cobranzas/lista')}
           >
-            Ver Gestiones
+            Agenda de Hoy
           </Button>
         </Box>
       </Box>

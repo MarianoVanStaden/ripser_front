@@ -40,16 +40,23 @@ import { RegistrarAccionDialog } from './RegistrarAccionDialog';
 import { RecordatorioCobranzaDialog } from './RecordatorioCobranzaDialog';
 import ConfirmDialog from '../../common/ConfirmDialog';
 
-type FechaGestionFiltro = 'VENCIDAS' | 'HOY' | 'MANANA' | 'ESTA_SEMANA' | 'PROXIMOS_7' | 'ESTE_MES' | 'SIN_FECHA';
+type FechaGestionFiltro =
+  | 'HOY_Y_VENCIDAS' | 'VENCIDAS' | 'HOY' | 'MANANA' | 'ESTA_SEMANA'
+  | 'PROXIMOS_7' | 'ESTE_MES' | 'SIN_FECHA' | 'TODAS';
+
+/** Preset por defecto de la lista: la agenda de gestiones que toca atender hoy. */
+const FECHA_FILTRO_DEFAULT: FechaGestionFiltro = 'HOY_Y_VENCIDAS';
 
 const FECHA_FILTRO_OPTIONS: { value: FechaGestionFiltro; label: string; color: string }[] = [
-  { value: 'VENCIDAS',     label: 'Vencidas',       color: '#d32f2f' },
-  { value: 'HOY',          label: 'Hoy',             color: '#ed6c02' },
-  { value: 'MANANA',       label: 'Mañana',          color: '#0288d1' },
-  { value: 'ESTA_SEMANA',  label: 'Esta semana',     color: '#7b1fa2' },
-  { value: 'PROXIMOS_7',   label: 'Próximos 7 días', color: '#2e7d32' },
-  { value: 'ESTE_MES',     label: 'Este mes',        color: '#00796b' },
-  { value: 'SIN_FECHA',    label: 'Sin fecha',       color: '#757575' },
+  { value: 'HOY_Y_VENCIDAS', label: 'Agenda de hoy',   color: '#ed6c02' },
+  { value: 'VENCIDAS',       label: 'Vencidas',         color: '#d32f2f' },
+  { value: 'HOY',            label: 'Solo hoy',         color: '#f57c00' },
+  { value: 'MANANA',         label: 'Mañana',           color: '#0288d1' },
+  { value: 'ESTA_SEMANA',    label: 'Esta semana',      color: '#7b1fa2' },
+  { value: 'PROXIMOS_7',     label: 'Próximos 7 días',  color: '#2e7d32' },
+  { value: 'ESTE_MES',       label: 'Este mes',         color: '#00796b' },
+  { value: 'SIN_FECHA',      label: 'Sin fecha',        color: '#757575' },
+  { value: 'TODAS',          label: 'Todas',            color: '#455a64' },
 ];
 
 const FECHA_VALUES = new Set<FechaGestionFiltro>(FECHA_FILTRO_OPTIONS.map((o) => o.value));
@@ -82,7 +89,7 @@ export const CobranzasListPage: React.FC = () => {
 
   const { filters: urlFilters, setFilters: setUrlFilters, resetFilters: resetUrlFilters } = useUrlFilters(
     FILTER_SCHEMA,
-    { soloActivas: true }
+    { soloActivas: true, fechaFiltro: FECHA_FILTRO_DEFAULT }
   );
 
   // Narrow URL strings/arrays into the typed enums the UI / API expect.
@@ -355,8 +362,15 @@ export const CobranzasListPage: React.FC = () => {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">Gestiones de Cobranza</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+        <Box>
+          <Typography variant="h4">Gestiones de Cobranza</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {selectedFechaFiltro === 'HOY_Y_VENCIDAS' && !hasCustomRange
+              ? 'Mostrando la agenda de hoy (gestiones de hoy y atrasadas). Elegí «Todas» para ver el resto.'
+              : 'Filtrá por fecha de próxima gestión, estado, prioridad y promesas.'}
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -651,9 +665,22 @@ export const CobranzasListPage: React.FC = () => {
               {gestiones.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={11} align="center">
-                    <Typography color="text.secondary" py={4}>
-                      No se encontraron gestiones
-                    </Typography>
+                    <Stack spacing={1} alignItems="center" py={4}>
+                      <Typography color="text.secondary">
+                        {selectedFechaFiltro === 'HOY_Y_VENCIDAS' && !hasCustomRange
+                          ? 'No hay gestiones para hoy. ¡Agenda al día!'
+                          : 'No se encontraron gestiones con los filtros actuales'}
+                      </Typography>
+                      {selectedFechaFiltro === 'HOY_Y_VENCIDAS' && !hasCustomRange && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setUrlFilters({ fechaFiltro: 'TODAS' })}
+                        >
+                          Ver todas las gestiones
+                        </Button>
+                      )}
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ) : (

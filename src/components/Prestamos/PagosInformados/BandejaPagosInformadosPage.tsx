@@ -4,9 +4,12 @@ import {
   Chip, IconButton, Tooltip, CircularProgress, Alert, Stack,
 } from '@mui/material';
 import { CheckCircle, Block, Refresh, ReceiptLong } from '@mui/icons-material';
+import dayjs from 'dayjs';
 import { pagoInformadoApi } from '../../../api/services/pagoInformadoApi';
 import type { PagoInformadoDTO } from '../../../types/prestamo.types';
 import { formatPrice } from '../../../utils/priceCalculations';
+
+const formatFecha = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
 import { ConfirmarPagoInformadoDialog } from './ConfirmarPagoInformadoDialog';
 import { RechazarPagoInformadoDialog } from './RechazarPagoInformadoDialog';
 
@@ -24,8 +27,9 @@ export const BandejaPagosInformadosPage: React.FC = () => {
       setError(null);
       const data = await pagoInformadoApi.listarPendientes();
       setPagos(data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'No se pudieron cargar los pagos informados');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || 'No se pudieron cargar los pagos informados');
     } finally {
       setLoading(false);
     }
@@ -99,8 +103,12 @@ export const BandejaPagosInformadosPage: React.FC = () => {
                     <TableCell>#{p.prestamoId} — {p.numeroCuota}</TableCell>
                     <TableCell>{p.numeroComprobante}</TableCell>
                     <TableCell>{p.metodoPago}</TableCell>
-                    <TableCell align="right"><strong>{formatPrice(p.montoInformado)}</strong></TableCell>
-                    <TableCell>{p.fechaPagoInformada}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={700} color="primary.main">
+                        {formatPrice(p.montoInformado)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{formatFecha(p.fechaPagoInformada)}</TableCell>
                     <TableCell>{p.usuarioCobranzasNombre}</TableCell>
                     <TableCell><Chip size="small" label={p.estadoCuotaPrevio} /></TableCell>
                     <TableCell align="center">

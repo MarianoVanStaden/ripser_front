@@ -23,10 +23,16 @@ export const EstadoPrestamo = {
 export type EstadoPrestamo = typeof EstadoPrestamo[keyof typeof EstadoPrestamo];
 
 export const CategoriaPrestamo = {
+  // Manuales heredadas
   NORMAL: 'NORMAL',
   LEGALES: 'LEGALES',
   PAGO_CON_MORA: 'PAGO_CON_MORA',
   ALTO_RIESGO: 'ALTO_RIESGO',
+  // Calculadas por el motor de cobranza según días de mora
+  CON_SEGUIMIENTO: 'CON_SEGUIMIENTO',
+  DUDOSO: 'DUDOSO',
+  MOROSO: 'MOROSO',
+  IRRECUPERABLE: 'IRRECUPERABLE',
 } as const;
 export type CategoriaPrestamo = typeof CategoriaPrestamo[keyof typeof CategoriaPrestamo];
 
@@ -83,6 +89,10 @@ export const CATEGORIA_PRESTAMO_LABELS: Record<CategoriaPrestamo, string> = {
   LEGALES: 'Legales',
   PAGO_CON_MORA: 'Pago con Mora',
   ALTO_RIESGO: 'Alto Riesgo',
+  CON_SEGUIMIENTO: 'Con Seguimiento',
+  DUDOSO: 'Dudoso',
+  MOROSO: 'Moroso',
+  IRRECUPERABLE: 'Irrecuperable',
 };
 
 export const ESTADO_CUOTA_LABELS: Record<EstadoCuota, string> = {
@@ -125,6 +135,11 @@ export const CATEGORIA_PRESTAMO_COLORS: Record<CategoriaPrestamo, string> = {
   LEGALES: '#F44336',
   PAGO_CON_MORA: '#FF9800',
   ALTO_RIESGO: '#E91E63',
+  // Gradiente de severidad creciente del motor (0–30 ok → >180 irrecuperable)
+  CON_SEGUIMIENTO: '#FFC107',
+  DUDOSO: '#FF9800',
+  MOROSO: '#F44336',
+  IRRECUPERABLE: '#7B1FA2',
 };
 
 export const ESTADO_CUOTA_COLORS: Record<EstadoCuota, string> = {
@@ -216,6 +231,11 @@ export interface ResumenPrestamosDTO {
   prestamosLegales: number;
   prestamosPagoConMora: number;
   prestamosAltoRiesgo: number;
+  // Categorías calculadas por el motor de cobranza
+  prestamosConSeguimiento: number;
+  prestamosDudosos: number;
+  prestamosMorosos: number;
+  prestamosIrrecuperables: number;
 }
 
 export interface CuotaPrestamoDTO {
