@@ -214,6 +214,19 @@ export const CobranzasListPage: React.FC = () => {
   // agenda se actualiza sola. Reusa la conexión SSE global (no abre una nueva).
   useSseEvent([SSE_EVENTS.CUOTA_ACTUALIZADA, SSE_EVENTS.PAGO_REGISTRADO], refresh);
 
+  // Conteo para el chip "Mora prolongada" (query liviano: size=1, sólo se lee totalElements).
+  // Se recalcula cada vez que cambia la lista (acciones del usuario, filtros, refresh por SSE).
+  const [moraProlongadaCount, setMoraProlongadaCount] = useState<number | null>(null);
+  const fetchMoraProlongadaCount = useCallback(async () => {
+    try {
+      const res = await gestionCobranzaApi.getAll({ fechaFiltro: 'MORA_PROLONGADA', page: 0, size: 1 });
+      setMoraProlongadaCount(res.totalElements);
+    } catch {
+      /* no crítico: el chip simplemente no muestra el conteo */
+    }
+  }, []);
+  useEffect(() => { fetchMoraProlongadaCount(); }, [gestiones, fetchMoraProlongadaCount]);
+
   const [sortField, sortDir] = sort.split(',') as [string, 'asc' | 'desc'];
 
   const handleSort = (field: string) => {
@@ -451,10 +464,13 @@ export const CobranzasListPage: React.FC = () => {
             <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Próxima gestión:</Typography>
             {FECHA_FILTRO_OPTIONS.map(({ value, label, color }) => {
               const selected = !hasCustomRange && selectedFechaFiltro === value;
+              const chipLabel = value === 'MORA_PROLONGADA' && moraProlongadaCount != null
+                ? `${label} (${moraProlongadaCount})`
+                : label;
               return (
                 <Chip
                   key={value}
-                  label={label}
+                  label={chipLabel}
                   size="small"
                   onClick={() => {
                     setUrlFilters({

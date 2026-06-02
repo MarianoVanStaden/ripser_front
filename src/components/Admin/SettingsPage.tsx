@@ -175,6 +175,7 @@ const SettingsPage: React.FC = () => {
     REDONDEO: 'Calculo de Precios',
     COSTEO: 'Costos de Fabricación',
     FABRICACION: 'Fabricación',
+    COBRANZA: 'Cobranza',
     VALOR: 'Valores de Referencia',
     GENERAL: 'General',
   };
@@ -404,6 +405,73 @@ const SettingsPage: React.FC = () => {
           >
             Crear FABRICACION_DURACION_ESTIMADA_DIAS
           </Button>
+        </Alert>
+      ) : null}
+
+      {/* Ayuda Rápida - Parámetros de Cobranza */}
+      {!parameters.find(p => p.clave === 'COBRANZA_DIAS_MORA_AGENDA') || !parameters.find(p => p.clave === 'COBRANZA_DIAS_PREVENTIVO') ? (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            📞 Configuración de Cobranza
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Controlan la "Agenda de hoy" de Gestiones de Cobranza. Si no se crean, el sistema usa
+            los valores por defecto (90 y 3).
+          </Typography>
+          <Box sx={{ ml: 2, mb: 2 }}>
+            <Typography variant="body2" fontWeight="600">• COBRANZA_DIAS_MORA_AGENDA</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Días de mora a partir de los cuales una gestión sale de la "Agenda de hoy" y pasa a
+              "Mora prolongada" (ej: 90). Subilo si tu cartera está muy atrasada y querés ver más en la agenda diaria.
+            </Typography>
+            <br/>
+            <Typography variant="body2" fontWeight="600" sx={{ mt: 1 }}>• COBRANZA_DIAS_PREVENTIVO</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Días de anticipación con que se abre la gestión antes del vencimiento de cada cuota (ej: 3).
+            </Typography>
+          </Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            {!parameters.find(p => p.clave === 'COBRANZA_DIAS_MORA_AGENDA') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                fullWidth={isMobile}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'COBRANZA_DIAS_MORA_AGENDA',
+                    valor: '90',
+                    descripcion: 'Días de mora a partir de los cuales una gestión sale de la "Agenda de hoy" de cobranza y pasa al filtro "Mora prolongada". Configurable por empresa.',
+                    tipo: 'INTEGER',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear COBRANZA_DIAS_MORA_AGENDA
+              </Button>
+            )}
+            {!parameters.find(p => p.clave === 'COBRANZA_DIAS_PREVENTIVO') && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                fullWidth={isMobile}
+                onClick={() => {
+                  setEditingParameter(null);
+                  setFormData({
+                    clave: 'COBRANZA_DIAS_PREVENTIVO',
+                    valor: '3',
+                    descripcion: 'Días de anticipación con que el motor abre la gestión de cobranza antes del vencimiento de cada cuota. Configurable por empresa.',
+                    tipo: 'INTEGER',
+                  });
+                  setDialogOpen(true);
+                }}
+              >
+                Crear COBRANZA_DIAS_PREVENTIVO
+              </Button>
+            )}
+          </Stack>
         </Alert>
       ) : null}
 
