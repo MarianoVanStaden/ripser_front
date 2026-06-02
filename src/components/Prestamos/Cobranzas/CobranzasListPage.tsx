@@ -130,7 +130,7 @@ export const CobranzasListPage: React.FC = () => {
   }, [debouncedTerm]);
 
   const [nuevaGestionOpen, setNuevaGestionOpen] = useState(false);
-  const [cobroDialog, setCobroDialog] = useState<{ prestamoId: number; nombre: string } | null>(null);
+  const [cobroDialog, setCobroDialog] = useState<{ prestamoId: number; clienteId: number; nombre: string } | null>(null);
   const [accionDialog, setAccionDialog] = useState<{ id: number; nombre: string } | null>(null);
   const [recordatorioDialog, setRecordatorioDialog] = useState<{ id: number; nombre: string } | null>(null);
   const [cierreMenuAnchor, setCierreMenuAnchor] = useState<{ el: HTMLElement; id: number } | null>(null);
@@ -810,7 +810,7 @@ export const CobranzasListPage: React.FC = () => {
                               <IconButton
                                 size="small"
                                 color="primary"
-                                onClick={() => setCobroDialog({ prestamoId: g.prestamoId, nombre: `${g.clienteNombre} ${g.clienteApellido}` })}
+                                onClick={() => setCobroDialog({ prestamoId: g.prestamoId, clienteId: g.clienteId, nombre: [g.clienteNombre, g.clienteApellido].filter(Boolean).join(' ') })}
                                 disabled={!g.activa}
                               >
                                 <AttachMoney fontSize="small" />
@@ -956,6 +956,7 @@ export const CobranzasListPage: React.FC = () => {
         <RegistrarCobroDialog
           open
           prestamoId={cobroDialog.prestamoId}
+          clienteId={cobroDialog.clienteId}
           clienteNombre={cobroDialog.nombre}
           onClose={() => setCobroDialog(null)}
           onSaved={refresh}

@@ -232,6 +232,7 @@ export interface GestionCobranzaDTO {
   id: number;
   empresaId: number;
   prestamoId: number;
+  clienteId: number;
   clienteNombre: string;
   clienteApellido: string;
   clienteTelefono: string;

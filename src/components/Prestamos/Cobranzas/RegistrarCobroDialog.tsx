@@ -6,7 +6,6 @@ import {
 } from '@mui/material';
 import { Payment, Close } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import { prestamoPersonalApi } from '../../../api/services/prestamoPersonalApi';
 import { cuotaPrestamoApi } from '../../../api/services/cuotaPrestamoApi';
 import {
   EstadoCuota, ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
@@ -18,6 +17,7 @@ import { RegistrarPagoDialog } from '../RegistrarPagoDialog';
 interface RegistrarCobroDialogProps {
   open: boolean;
   prestamoId: number;
+  clienteId: number;
   clienteNombre: string;
   onClose: () => void;
   /** Se llama tras cada pago/informe para refrescar la agenda. */
@@ -31,11 +31,10 @@ const COBRABLE = new Set<EstadoCuota>([
 const saldoCuota = (c: CuotaPrestamoDTO) => c.montoCuota - c.montoPagado;
 
 export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
-  open, prestamoId, clienteNombre, onClose, onSaved,
+  open, prestamoId, clienteId, clienteNombre, onClose, onSaved,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clienteId, setClienteId] = useState<number>(0);
   const [cuotas, setCuotas] = useState<CuotaPrestamoDTO[]>([]);
   const [pagoCuota, setPagoCuota] = useState<CuotaPrestamoDTO | null>(null);
 
@@ -43,13 +42,10 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const [prestamo, allCuotas] = await Promise.all([
-        prestamoPersonalApi.getById(prestamoId),
-        cuotaPrestamoApi.getByPrestamo(prestamoId),
-      ]);
-      setClienteId(prestamo.clienteId);
+      const allCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
       setCuotas([...allCuotas].sort((a, b) => a.numeroCuota - b.numeroCuota));
     } catch {
+      setCuotas([]);
       setError('No se pudieron cargar las cuotas del crédito.');
     } finally {
       setLoading(false);
