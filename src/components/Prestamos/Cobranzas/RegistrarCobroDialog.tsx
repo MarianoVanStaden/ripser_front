@@ -39,17 +39,22 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
   const [pagoCuota, setPagoCuota] = useState<CuotaPrestamoDTO | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const allCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
-      setCuotas([...allCuotas].sort((a, b) => a.numeroCuota - b.numeroCuota));
-    } catch {
-      setCuotas([]);
-      setError('No se pudieron cargar las cuotas del crédito.');
-    } finally {
-      setLoading(false);
+    setLoading(true);
+    setError(null);
+    // Un reintento ante fallos transitorios de red (ej. ERR_INCOMPLETE_CHUNKED_ENCODING).
+    for (let intento = 0; intento < 2; intento++) {
+      try {
+        const allCuotas = await cuotaPrestamoApi.getByPrestamo(prestamoId);
+        setCuotas([...allCuotas].sort((a, b) => a.numeroCuota - b.numeroCuota));
+        setLoading(false);
+        return;
+      } catch {
+        if (intento === 0) continue;
+        setCuotas([]);
+        setError('No se pudieron cargar las cuotas. Reintentá en unos segundos.');
+      }
     }
+    setLoading(false);
   }, [prestamoId]);
 
   useEffect(() => {
@@ -76,10 +81,17 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
           <Typography component="span" variant="body2" color="text.secondary">{clienteNombre}</Typography>
         </DialogTitle>
         <DialogContent dividers>
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+          ) : error ? (
+            <Box sx={{ py: 2 }}>
+              <Alert
+                severity="error"
+                action={<Button color="inherit" size="small" onClick={load}>Reintentar</Button>}
+              >
+                {error}
+              </Alert>
+            </Box>
           ) : (
             <>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>

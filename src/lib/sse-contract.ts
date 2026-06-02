@@ -33,6 +33,13 @@ export const SSE_EVENTS = {
 
 export type SseEventName = (typeof SSE_EVENTS)[keyof typeof SSE_EVENTS];
 
+/**
+ * Nombre del CustomEvent que useFinancialEvents dispara en `window` por cada evento SSE
+ * de negocio. Permite que vistas que NO usan React Query (ej. paneles con usePagination)
+ * reaccionen reusando la única conexión SSE, vía el hook useSseEvent. detail = { event }.
+ */
+export const APP_SSE_BROWSER_EVENT = 'app:sse';
+
 // ---------------------------------------------------------------------------
 // Base envelope — every SSE event is wrapped in this shape
 // ---------------------------------------------------------------------------

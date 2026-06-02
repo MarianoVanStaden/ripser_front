@@ -20,6 +20,8 @@ import { formatPrice } from '../../../utils/priceCalculations';
 import LoadingOverlay from '../../common/LoadingOverlay';
 import { useAuth } from '../../../context/AuthContext';
 import { getFirstName } from '../../../utils/userDisplay';
+import { useSseEvent } from '../../../hooks/useSseEvent';
+import { SSE_EVENTS } from '../../../lib/sse-contract';
 
 interface KpiCardProps {
   title: string;
@@ -206,6 +208,10 @@ export const CobranzasResumenPage: React.FC = () => {
   useEffect(() => {
     loadResumen();
   }, []);
+
+  // Auto-refresh en tiempo real: confirmación/rechazo de pagos informados o pagos
+  // registrados (otra pantalla/usuario) re-cargan el resumen. Reusa la conexión SSE global.
+  useSseEvent([SSE_EVENTS.CUOTA_ACTUALIZADA, SSE_EVENTS.PAGO_REGISTRADO], loadResumen);
 
   const totalFoco = useMemo(() => {
     if (!resumen) return 0;

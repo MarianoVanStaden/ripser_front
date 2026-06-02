@@ -35,6 +35,8 @@ import { openWhatsAppWeb } from '../../../utils/whatsapp';
 import { usePagination } from '../../../hooks/usePagination';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useUrlFilters } from '../../../hooks/useUrlFilters';
+import { useSseEvent } from '../../../hooks/useSseEvent';
+import { SSE_EVENTS } from '../../../lib/sse-contract';
 import { NuevaGestionDialog } from './NuevaGestionDialog';
 import { RegistrarAccionDialog } from './RegistrarAccionDialog';
 import { RegistrarCobroDialog } from './RegistrarCobroDialog';
@@ -206,6 +208,11 @@ export const CobranzasListPage: React.FC = () => {
     setBackendFilters(backendFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendFilters]);
+
+  // Auto-refresh en tiempo real: cuando admin confirma/rechaza un pago informado o se
+  // registra un pago (otra pantalla/usuario), el backend emite estos eventos SSE y la
+  // agenda se actualiza sola. Reusa la conexión SSE global (no abre una nueva).
+  useSseEvent([SSE_EVENTS.CUOTA_ACTUALIZADA, SSE_EVENTS.PAGO_REGISTRADO], refresh);
 
   const [sortField, sortDir] = sort.split(',') as [string, 'asc' | 'desc'];
 
@@ -715,6 +722,17 @@ export const CobranzasListPage: React.FC = () => {
                         <Typography variant="body2" fontWeight={600}>
                           {g.clienteNombre} {g.clienteApellido}
                         </Typography>
+                        {g.cuotasInformadasCount > 0 && (
+                          <Tooltip title="Tiene pago(s) informado(s) esperando confirmación de administración">
+                            <Chip
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              label="Pago informado"
+                              sx={{ height: 18, fontSize: '0.65rem', mt: 0.25 }}
+                            />
+                          </Tooltip>
+                        )}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {g.clienteTelefono ? (

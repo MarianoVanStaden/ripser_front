@@ -250,6 +250,8 @@ export interface GestionCobranzaDTO {
   diasMoraReal: number;
   /** Cuotas actualmente en mora. */
   cuotasEnMoraCount: number;
+  /** Cuotas con pago informado pendiente de confirmación de administración. */
+  cuotasInformadasCount: number;
   /** Próxima fecha de vencimiento de cuota pendiente. */
   proximaCuotaVencimiento: string | null;
   fechaApertura: string;

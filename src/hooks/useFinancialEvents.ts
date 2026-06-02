@@ -7,6 +7,7 @@ import {
   SSE_EVENTS,
   EVENT_QUERY_MAP,
   ALL_SSE_QUERY_KEYS,
+  APP_SSE_BROWSER_EVENT,
   parseSseData,
 } from '../lib/sse-contract';
 
@@ -250,6 +251,10 @@ export function useFinancialEvents(): void {
         console.log('[SSE EVENT]', ev.event, ev.data);
 
         if (isDuplicate(ev.id)) return;
+
+        // Rebroadcast para consumidores que NO usan React Query (ej. paneles de cobranza
+        // con usePagination). Reusa esta única conexión SSE — ver hook useSseEvent.
+        window.dispatchEvent(new CustomEvent(APP_SSE_BROWSER_EVENT, { detail: { event: ev.event } }));
 
         // Resolve query keys: canonical contract map first, then legacy map.
         const queryKeys =
