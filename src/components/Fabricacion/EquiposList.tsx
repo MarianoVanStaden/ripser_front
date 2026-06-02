@@ -679,6 +679,16 @@ const EquiposList: React.FC = () => {
       ),
     },
     {
+      field: 'codigoVenta',
+      headerName: 'Cód. Venta',
+      width: 130,
+      renderCell: (params: GridRenderCellParams) => (
+        params.value
+          ? <Typography variant="body2" fontFamily="monospace">{params.value}</Typography>
+          : <Typography variant="body2" color="text.disabled">—</Typography>
+      ),
+    },
+    {
       field: 'modelo',
       headerName: 'Modelo',
       flex: 1,

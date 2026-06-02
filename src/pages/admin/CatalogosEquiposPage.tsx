@@ -8,13 +8,15 @@ import { Box, CircularProgress, Tab, Tabs, Typography } from '@mui/material';
 const EspecificacionesTecnicasPage = lazy(() => import('../../components/Admin/EspecificacionesTecnicasPage'));
 const MedidasPage = lazy(() => import('../../components/Admin/MedidasPage'));
 const ColoresPage = lazy(() => import('../../components/Admin/ColoresPage'));
+const ModeloCodigoEquipoPage = lazy(() => import('../../components/Admin/ModeloCodigoEquipoPage'));
 
-type TabKey = 'fichas' | 'medidas' | 'colores';
+type TabKey = 'fichas' | 'medidas' | 'colores' | 'codigos';
 
 const TAB_DEFS: Array<{ key: TabKey; label: string }> = [
   { key: 'fichas', label: 'Fichas técnicas' },
   { key: 'medidas', label: 'Medidas' },
   { key: 'colores', label: 'Colores' },
+  { key: 'codigos', label: 'Códigos de venta' },
 ];
 
 export default function CatalogosEquiposPage() {
@@ -42,6 +44,7 @@ export default function CatalogosEquiposPage() {
         {tab === 'fichas' && <EspecificacionesTecnicasPage />}
         {tab === 'medidas' && <MedidasPage />}
         {tab === 'colores' && <ColoresPage />}
+        {tab === 'codigos' && <ModeloCodigoEquipoPage />}
       </Suspense>
     </Box>
   );
