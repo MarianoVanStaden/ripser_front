@@ -65,6 +65,7 @@ const ExcepcionDialog: React.FC<Props> = ({
             onChange={(_, newValue) =>
               update('empleadoId', newValue ? newValue.id.toString() : '')
             }
+            disabled={isEdit}
             renderInput={(params) => <TextField {...params} label="Empleado" required />}
           />
 
