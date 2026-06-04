@@ -22,6 +22,8 @@ import {
   Add as AddIcon,
   CheckCircle as CheckCircleIcon,
   Delete as DeleteIcon,
+  Edit as EditIcon,
+  GroupAdd as GroupAddIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
@@ -34,6 +36,10 @@ interface Props {
   excepciones: any[];
   onOpenExcepcionDialog: () => void;
   onDeleteExcepcion: (excepcionId: number) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onEditExcepcion: (excepcion: any) => void;
+  /** Opcional: si se provee, muestra el botón de carga masiva de horas extras. */
+  onOpenMasivaDialog?: () => void;
 }
 
 const tipoChipColor = (tipo: string): 'error' | 'warning' | 'success' | 'default' => {
@@ -48,6 +54,8 @@ const ExcepcionesTab: React.FC<Props> = ({
   excepciones,
   onOpenExcepcionDialog,
   onDeleteExcepcion,
+  onEditExcepcion,
+  onOpenMasivaDialog,
 }) => {
   const hasItems = Array.isArray(excepciones) && excepciones.length > 0;
 
@@ -56,9 +64,20 @@ const ExcepcionesTab: React.FC<Props> = ({
       <CardContent>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h6">Registro de Excepciones</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={onOpenExcepcionDialog}>
-            Nueva Excepción
-          </Button>
+          <Box display="flex" gap={1} flexWrap="wrap">
+            {onOpenMasivaDialog && (
+              <Button
+                variant="outlined"
+                startIcon={<GroupAddIcon />}
+                onClick={onOpenMasivaDialog}
+              >
+                Horas Extras en grupo
+              </Button>
+            )}
+            <Button variant="contained" startIcon={<AddIcon />} onClick={onOpenExcepcionDialog}>
+              Nueva Excepción
+            </Button>
+          </Box>
         </Box>
 
         <TableContainer>
@@ -116,6 +135,15 @@ const ExcepcionesTab: React.FC<Props> = ({
                         )}
                       </TableCell>
                       <TableCell align="center">
+                        <Tooltip title="Editar">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => onEditExcepcion(excepcion)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Eliminar">
                           <IconButton
                             size="small"

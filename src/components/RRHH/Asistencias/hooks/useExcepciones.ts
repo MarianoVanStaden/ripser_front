@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { excepcionAsistenciaApi } from '../../../../api/services/excepcionAsistenciaApi';
 import { asistenciaAutomaticaApi } from '../../../../api/services/asistenciaAutomaticaApi';
-import { createInitialExcepcionForm } from '../constants';
+import { createInitialExcepcionForm, excepcionToFormData } from '../constants';
 import type { ExcepcionFormData } from '../types';
 
 interface UseExcepcionesOptions {
@@ -25,6 +25,7 @@ export function useExcepciones({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ExcepcionFormData>(createInitialExcepcionForm);
 
   const reload = useCallback(
@@ -50,12 +51,21 @@ export function useExcepciones({
   }, [reload]);
 
   const openCreateDialog = useCallback(() => {
+    setEditingId(null);
     setForm(createInitialExcepcionForm());
+    setOpenDialog(true);
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const openEditDialog = useCallback((excepcion: any) => {
+    setEditingId(excepcion.id);
+    setForm(excepcionToFormData(excepcion));
     setOpenDialog(true);
   }, []);
 
   const closeDialog = useCallback(() => {
     setOpenDialog(false);
+    setEditingId(null);
     setForm(createInitialExcepcionForm());
   }, []);
 
@@ -109,7 +119,11 @@ export function useExcepciones({
         payload.motivo = form.motivo;
       }
 
-      await excepcionAsistenciaApi.create(payload);
+      if (editingId != null) {
+        await excepcionAsistenciaApi.update(editingId, payload);
+      } else {
+        await excepcionAsistenciaApi.create(payload);
+      }
       await reload();
       closeDialog();
       return true;
@@ -118,7 +132,7 @@ export function useExcepciones({
       setError('Error al guardar excepción');
       return false;
     }
-  }, [closeDialog, form, getHoraEntradaBase, reload]);
+  }, [closeDialog, editingId, form, getHoraEntradaBase, reload]);
 
   const deleteExcepcion = useCallback(
     async (id: number) => {
@@ -139,9 +153,11 @@ export function useExcepciones({
     error,
     setError,
     openDialog,
+    isEdit: editingId != null,
     form,
     setForm,
     openCreateDialog,
+    openEditDialog,
     closeDialog,
     saveExcepcion,
     deleteExcepcion,

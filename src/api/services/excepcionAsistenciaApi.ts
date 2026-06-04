@@ -26,6 +26,31 @@ export interface ExcepcionAsistenciaDTO {
   licenciaId?: number | null;
 }
 
+/** Empleado dentro de una carga masiva; horasExtras pisa el valor compartido. */
+export interface ExcepcionMasivaItem {
+  empleadoId: number;
+  /** Override opcional de horas extras para este empleado. */
+  horasExtras?: number | null;
+}
+
+/**
+ * Request de carga masiva: misma excepción para varios empleados (caso típico:
+ * horas extras en grupo). Los campos del nivel raíz son los valores compartidos;
+ * cada item puede sobreescribir sus horasExtras.
+ */
+export interface ExcepcionMasivaDTO {
+  empleados: ExcepcionMasivaItem[];
+  fecha: string; // "YYYY-MM-DD"
+  tipo: TipoExcepcionAsistencia;
+  horaEntradaReal?: string | null;
+  horaSalidaReal?: string | null;
+  horasExtras?: number | null;
+  minutosTardanza?: number | null;
+  motivo?: string;
+  observaciones?: string;
+  justificado?: boolean;
+}
+
 export const excepcionAsistenciaApi = {
   /**
    * Listar todas las excepciones
@@ -67,6 +92,16 @@ export const excepcionAsistenciaApi = {
    */
   create: async (data: ExcepcionAsistenciaDTO): Promise<ExcepcionAsistenciaDTO> => {
     const response = await api.post('/api/excepciones-asistencia', data);
+    return response.data;
+  },
+
+  /**
+   * Registrar la misma excepción para varios empleados de una vez.
+   * Caso típico: horas extras en grupo. Atómico en el backend.
+   * Efecto automático: Recalcula el registro de asistencia del día por cada empleado.
+   */
+  createMasiva: async (data: ExcepcionMasivaDTO): Promise<ExcepcionAsistenciaDTO[]> => {
+    const response = await api.post('/api/excepciones-asistencia/masiva', data);
     return response.data;
   },
 

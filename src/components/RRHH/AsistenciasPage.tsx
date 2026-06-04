@@ -37,10 +37,12 @@ import {
   DIAS_SEMANA,
   FALLBACK_DIA,
   createInitialExcepcionForm,
+  excepcionToFormData,
 } from './Asistencias/constants';
 import { getEmpleadoNombre } from './Asistencias/utils';
 import ConfigHorariosDialog from './Asistencias/dialogs/ConfigHorariosDialog';
 import ExcepcionDialog from './Asistencias/dialogs/ExcepcionDialog';
+import ExcepcionMasivaDialog from './Asistencias/dialogs/ExcepcionMasivaDialog';
 import ConfigurarHorariosTab from './Asistencias/tabs/ConfigurarHorariosTab';
 import ExcepcionesTab from './Asistencias/tabs/ExcepcionesTab';
 import ResumenDiarioTab from './Asistencias/tabs/ResumenDiarioTab';
@@ -66,6 +68,8 @@ const AsistenciasPage: React.FC = () => {
   const [licencias, setLicencias] = useState<Licencia[]>([]);
   const [openConfigDialog, setOpenConfigDialog] = useState(false);
   const [openExcepcionDialog, setOpenExcepcionDialog] = useState(false);
+  const [openMasivaDialog, setOpenMasivaDialog] = useState(false);
+  const [editingExcepcionId, setEditingExcepcionId] = useState<number | null>(null);
   const [selectedEmpleado, setSelectedEmpleado] = useState<Empleado | null>(null);
   const [configFormData, setConfigFormData] = useState<ConfigFormData>(DEFAULT_DIA_CONFIG);
   const [excepcionFormData, setExcepcionFormData] = useState<ExcepcionFormData>(
@@ -320,12 +324,20 @@ const AsistenciasPage: React.FC = () => {
   };
 
   const handleOpenExcepcionDialog = () => {
+    setEditingExcepcionId(null);
     setExcepcionFormData(createInitialExcepcionForm());
+    setOpenExcepcionDialog(true);
+  };
+
+  const handleOpenEditExcepcion = (excepcion: any) => {
+    setEditingExcepcionId(excepcion.id);
+    setExcepcionFormData(excepcionToFormData(excepcion));
     setOpenExcepcionDialog(true);
   };
 
   const handleCloseExcepcionDialog = () => {
     setOpenExcepcionDialog(false);
+    setEditingExcepcionId(null);
     setExcepcionFormData(createInitialExcepcionForm());
   };
 
@@ -382,7 +394,11 @@ const AsistenciasPage: React.FC = () => {
       }
       
       console.log('Payload de excepción a enviar:', payload);
-      await excepcionAsistenciaApi.create(payload);
+      if (editingExcepcionId != null) {
+        await excepcionAsistenciaApi.update(editingExcepcionId, payload);
+      } else {
+        await excepcionAsistenciaApi.create(payload);
+      }
       await loadData();
       handleCloseExcepcionDialog();
     } catch (error) {
@@ -457,6 +473,8 @@ const AsistenciasPage: React.FC = () => {
           excepciones={excepciones}
           onOpenExcepcionDialog={handleOpenExcepcionDialog}
           onDeleteExcepcion={handleDeleteExcepcion}
+          onEditExcepcion={handleOpenEditExcepcion}
+          onOpenMasivaDialog={() => setOpenMasivaDialog(true)}
         />
       )}
 
@@ -505,6 +523,15 @@ const AsistenciasPage: React.FC = () => {
         empleados={empleados}
         form={excepcionFormData}
         setForm={setExcepcionFormData}
+        isEdit={editingExcepcionId != null}
+      />
+
+      <ExcepcionMasivaDialog
+        open={openMasivaDialog}
+        onClose={() => setOpenMasivaDialog(false)}
+        onSaved={loadData}
+        fullScreen={isMobile}
+        empleados={empleados}
       />
     </Box>
   );

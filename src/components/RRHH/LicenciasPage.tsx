@@ -64,6 +64,7 @@ import dayjs from 'dayjs';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ExcepcionesTab from './Asistencias/tabs/ExcepcionesTab';
 import ExcepcionDialog from './Asistencias/dialogs/ExcepcionDialog';
+import ExcepcionMasivaDialog from './Asistencias/dialogs/ExcepcionMasivaDialog';
 import { useExcepciones } from './Asistencias/hooks/useExcepciones';
 import AusenciaCombinadaDialog from './Licencias/AusenciaCombinadaDialog';
 
@@ -87,6 +88,7 @@ const LicenciasPage: React.FC = () => {
   const [editingLicencia, setEditingLicencia] = useState<Licencia | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [openCombinada, setOpenCombinada] = useState(false);
+  const [openMasivaExcepcion, setOpenMasivaExcepcion] = useState(false);
 
   // Hook compartido de excepciones (tab "Excepciones de asistencia"). El mismo
   // hook lo consume AsistenciasPage, así no hay duplicación de lógica.
@@ -791,6 +793,8 @@ const LicenciasPage: React.FC = () => {
             excepciones={excepcionesHook.excepciones}
             onOpenExcepcionDialog={excepcionesHook.openCreateDialog}
             onDeleteExcepcion={excepcionesHook.deleteExcepcion}
+            onEditExcepcion={excepcionesHook.openEditDialog}
+            onOpenMasivaDialog={() => setOpenMasivaExcepcion(true)}
           />
           <ExcepcionDialog
             open={excepcionesHook.openDialog}
@@ -800,6 +804,14 @@ const LicenciasPage: React.FC = () => {
             empleados={empleados}
             form={excepcionesHook.form}
             setForm={excepcionesHook.setForm}
+            isEdit={excepcionesHook.isEdit}
+          />
+          <ExcepcionMasivaDialog
+            open={openMasivaExcepcion}
+            onClose={() => setOpenMasivaExcepcion(false)}
+            onSaved={excepcionesHook.reload}
+            fullScreen={isMobile}
+            empleados={empleados}
           />
         </>
       )}

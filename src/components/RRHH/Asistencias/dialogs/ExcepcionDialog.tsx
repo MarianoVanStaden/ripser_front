@@ -32,6 +32,8 @@ interface Props {
   empleados: Empleado[];
   form: ExcepcionFormData;
   setForm: Dispatch<SetStateAction<ExcepcionFormData>>;
+  /** Modo edición: cambia título y label del botón. */
+  isEdit?: boolean;
 }
 
 const SHOW_HORAS_REALES: TipoExcepcion[] = ['SALIDA_ANTICIPADA', 'MODIFICACION_HORARIO'];
@@ -44,6 +46,7 @@ const ExcepcionDialog: React.FC<Props> = ({
   empleados,
   form,
   setForm,
+  isEdit = false,
 }) => {
   const update = <K extends keyof ExcepcionFormData>(key: K, value: ExcepcionFormData[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -52,7 +55,7 @@ const ExcepcionDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth fullScreen={fullScreen}>
-      <DialogTitle>Registrar Excepción</DialogTitle>
+      <DialogTitle>{isEdit ? 'Editar Excepción' : 'Registrar Excepción'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 2 }}>
           <Autocomplete
@@ -174,7 +177,7 @@ const ExcepcionDialog: React.FC<Props> = ({
           onClick={onSave}
           disabled={!form.empleadoId || !form.tipo}
         >
-          Registrar Excepción
+          {isEdit ? 'Guardar Cambios' : 'Registrar Excepción'}
         </Button>
       </DialogActions>
     </Dialog>

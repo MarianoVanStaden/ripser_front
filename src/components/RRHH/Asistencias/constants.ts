@@ -58,3 +58,27 @@ export const createInitialExcepcionForm = (): ExcepcionFormData => ({
   observaciones: '',
   justificado: false,
 });
+
+/** Time inputs esperan "HH:mm"; el backend devuelve "HH:mm:ss". */
+const toInputTime = (value?: string | null): string =>
+  value ? value.slice(0, 5) : '';
+
+/**
+ * Precarga el form de excepción a partir de una excepción existente (modo edición).
+ * Todos los campos se vuelven string porque están atados a inputs controlados.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const excepcionToFormData = (excepcion: any): ExcepcionFormData => ({
+  empleadoId: excepcion.empleadoId != null ? String(excepcion.empleadoId) : '',
+  fecha: excepcion.fecha
+    ? dayjs(excepcion.fecha).format('YYYY-MM-DD')
+    : dayjs().format('YYYY-MM-DD'),
+  tipo: excepcion.tipo ?? '',
+  horaEntradaReal: toInputTime(excepcion.horaEntradaReal),
+  horaSalidaReal: toInputTime(excepcion.horaSalidaReal),
+  horasExtras: excepcion.horasExtras != null ? String(excepcion.horasExtras) : '',
+  minutosTardanza: excepcion.minutosTardanza != null ? String(excepcion.minutosTardanza) : '',
+  motivo: excepcion.motivo ?? '',
+  observaciones: excepcion.observaciones ?? '',
+  justificado: Boolean(excepcion.justificado),
+});
