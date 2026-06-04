@@ -2,6 +2,12 @@ import api from '../config';
 import type { RegistroAsistencia } from '../../types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
+/** Totales del rango calculados en el servidor (KPIs exactos con tabla paginada). */
+export interface ResumenAsistencia {
+  totalAsistencias: number;
+  asistenciasNormales: number;
+}
+
 export const registroAsistenciaApi = {
   // Get all registros
   getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<RegistroAsistencia>> => {
@@ -27,6 +33,27 @@ export const registroAsistenciaApi = {
   getByPeriodo: async (fechaInicio: string, fechaFin: string): Promise<RegistroAsistencia[]> => {
     const response = await api.get('/api/registro-asistencia/periodo', {
       params: { fechaInicio, fechaFin }
+    });
+    return response.data;
+  },
+
+  // Get registros by periodo — paginado en servidor (más nuevo primero por defecto)
+  getByPeriodoPaged: async (
+    fechaInicio: string,
+    fechaFin: string,
+    pagination: PaginationParams = {}
+  ): Promise<PageResponse<RegistroAsistencia>> => {
+    const response = await api.get<PageResponse<RegistroAsistencia>>(
+      '/api/registro-asistencia/periodo/paged',
+      { params: { fechaInicio, fechaFin, ...pagination } }
+    );
+    return response.data;
+  },
+
+  // Totales del rango (KPIs exactos sin traer todo el dataset)
+  getResumenPeriodo: async (fechaInicio: string, fechaFin: string): Promise<ResumenAsistencia> => {
+    const response = await api.get<ResumenAsistencia>('/api/registro-asistencia/periodo/resumen', {
+      params: { fechaInicio, fechaFin },
     });
     return response.data;
   },

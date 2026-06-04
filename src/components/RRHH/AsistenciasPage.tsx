@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Alert,
   Box,
@@ -22,6 +22,7 @@ import { registroAsistenciaApi } from '../../api/services/registroAsistenciaApi'
 import { employeeApi } from '../../api/services/employeeApi';
 import { configuracionAsistenciaApi } from '../../api/services/configuracionAsistenciaApi';
 import { excepcionAsistenciaApi } from '../../api/services/excepcionAsistenciaApi';
+import type { ResumenAsistencia } from '../../api/services/registroAsistenciaApi';
 import { asistenciaAutomaticaApi } from '../../api/services/asistenciaAutomaticaApi';
 import { licenciaApi } from '../../api/services/licenciaApi';
 import type { Licencia, RegistroAsistencia, Empleado } from '../../types';
@@ -39,7 +40,6 @@ import {
   createInitialExcepcionForm,
   excepcionToFormData,
 } from './Asistencias/constants';
-import { getEmpleadoNombre } from './Asistencias/utils';
 import ConfigHorariosDialog from './Asistencias/dialogs/ConfigHorariosDialog';
 import ExcepcionDialog from './Asistencias/dialogs/ExcepcionDialog';
 import ExcepcionMasivaDialog from './Asistencias/dialogs/ExcepcionMasivaDialog';
@@ -55,8 +55,20 @@ const AsistenciasPage: React.FC = () => {
   // Tab state
   const [tabValue, setTabValue] = useState(0);
 
+  // `asistencias` (dataset completo) sólo se usa en el tab Reportes y se carga
+  // de forma diferida al abrirlo. El Resumen Diario usa paginación de servidor.
   const [asistencias, setAsistencias] = useState<RegistroAsistencia[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
+
+  // Resumen Diario: tabla paginada en servidor + totales exactos del rango.
+  const [resumenRowsRaw, setResumenRowsRaw] = useState<RegistroAsistencia[]>([]);
+  const [resumenTotal, setResumenTotal] = useState(0);
+  const [resumenKpis, setResumenKpis] = useState<ResumenAsistencia>({
+    totalAsistencias: 0,
+    asistenciasNormales: 0,
+  });
+  const [resumenPage, setResumenPage] = useState(0);
+  const [resumenRowsPerPage, setResumenRowsPerPage] = useState(50);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,11 +88,7 @@ const AsistenciasPage: React.FC = () => {
     createInitialExcepcionForm
   );
 
-  // Filtros (búsqueda libre y filtro por empleado quedaron como placeholders;
-  // los setters están sin cablear porque la UI nunca se conectó.)
-  const [searchTerm] = useState('');
-  const [empleadoFilter] = useState<Empleado | null>(null);
-  const [fechaDesde, setFechaDesde] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
+  const [fechaDesde, setFechaDesde] = useState(dayjs().subtract(3, 'month').format('YYYY-MM-DD'));
   const [fechaHasta, setFechaHasta] = useState(dayjs().format('YYYY-MM-DD'));
 
   // Filtros específicos para reportes
@@ -105,15 +113,42 @@ const AsistenciasPage: React.FC = () => {
     loadData();
   }, []);
 
+  // Resumen Diario: trae la página actual + los totales exactos del rango.
+  const loadResumenAsistencias = useCallback(async () => {
+    if (!fechaDesde || !fechaHasta) return;
+    try {
+      const [pageData, kpis] = await Promise.all([
+        registroAsistenciaApi.getByPeriodoPaged(fechaDesde, fechaHasta, {
+          page: resumenPage,
+          size: resumenRowsPerPage,
+        }),
+        registroAsistenciaApi.getResumenPeriodo(fechaDesde, fechaHasta),
+      ]);
+      setResumenRowsRaw(Array.isArray(pageData.content) ? pageData.content : []);
+      setResumenTotal(pageData.totalElements ?? 0);
+      setResumenKpis(kpis ?? { totalAsistencias: 0, asistenciasNormales: 0 });
+    } catch (err) {
+      console.error('Error loading resumen asistencias:', err);
+      setResumenRowsRaw([]);
+      setResumenTotal(0);
+    }
+  }, [fechaDesde, fechaHasta, resumenPage, resumenRowsPerPage]);
+
+  useEffect(() => {
+    loadResumenAsistencias();
+  }, [loadResumenAsistencias]);
+
+  // Tab Reportes: carga el dataset completo de asistencias sólo al abrirlo.
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
-    if (fechaDesde && fechaHasta) {
+    if (tabValue === 3 && fechaDesde && fechaHasta) {
       loadAsistenciasByPeriodo();
     }
-  }, [fechaDesde, fechaHasta]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue, fechaDesde, fechaHasta]);
 
   // Licencias necesitan cubrir cualquier rango visible (Resumen, Reportes,
   // Comparación). Recargamos cuando cambia alguno de esos rangos usando la
@@ -154,7 +189,7 @@ const AsistenciasPage: React.FC = () => {
       const [configsData, excepcionesData, licenciasData] = await Promise.all([
         configuracionAsistenciaApi.getAll().catch(() => []),
         excepcionAsistenciaApi.getByPeriodo(
-          dayjs().subtract(30, 'days').format('YYYY-MM-DD'),
+          dayjs().subtract(1, 'year').format('YYYY-MM-DD'),
           dayjs().format('YYYY-MM-DD')
         ).catch(() => []),
         licenciaApi.getByPeriodo(fechaDesde, fechaHasta).catch(() => [])
@@ -168,8 +203,9 @@ const AsistenciasPage: React.FC = () => {
       setExcepciones(Array.isArray(excepcionesData) ? excepcionesData : []);
       setLicencias(Array.isArray(licenciasData) ? licenciasData : []);
 
-      // Finalmente cargar asistencias con empleados ya disponibles
-      await loadAsistenciasByPeriodoWithEmpleados(empleadosArray);
+      // La tabla del Resumen Diario se carga paginada vía efecto aparte
+      // (loadResumenAsistencias). El dataset completo de `asistencias` queda
+      // para el tab Reportes y se carga al abrirlo.
     } catch (err) {
       setError('Error al cargar los datos');
       console.error('Error loading data:', err);
@@ -229,23 +265,34 @@ const AsistenciasPage: React.FC = () => {
     }
   };
 
-  const filteredAsistencias = asistencias.filter(a => {
-    if (!a.empleado) return false;
-    
-    const matchesEmpleado = !empleadoFilter || a.empleado.id === empleadoFilter.id;
-    
-    const matchesSearch = !searchTerm ||
-      getEmpleadoNombre(a.empleado).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.observaciones?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchesEmpleado && matchesSearch;
-  });
+  // Filas de la página actual del Resumen Diario con el objeto empleado resuelto
+  // (el backend devuelve empleadoId; el nombre se arma desde la lista de empleados).
+  const resumenRows = useMemo<RegistroAsistencia[]>(
+    () =>
+      resumenRowsRaw.map((a) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = a as any;
+        return {
+          ...raw,
+          empleado:
+            empleados.find((e) => e.id === raw.empleadoId) ||
+            ({
+              id: raw.empleadoId,
+              nombre: raw.empleadoNombre || '',
+              apellido: raw.empleadoApellido || '',
+              dni: raw.empleadoDni || '',
+            } as Empleado),
+        } as RegistroAsistencia;
+      }),
+    [resumenRowsRaw, empleados]
+  );
 
 
   const handleGenerarAutomaticas = async () => {
     try {
       await asistenciaAutomaticaApi.ejecutarGeneracionDiaria();
       await loadData();
+      await loadResumenAsistencias();
     } catch (err) {
       console.error('Error al generar asistencias:', err);
       setError('Error al generar asistencias automáticas');
@@ -269,6 +316,7 @@ const AsistenciasPage: React.FC = () => {
     try {
       await excepcionAsistenciaApi.delete(excepcionId);
       await loadData();
+      await loadResumenAsistencias();
       // Mostrar notificación de éxito
     } catch (error) {
       console.error('Error al eliminar excepción:', error);
@@ -400,6 +448,7 @@ const AsistenciasPage: React.FC = () => {
         await excepcionAsistenciaApi.create(payload);
       }
       await loadData();
+      await loadResumenAsistencias();
       handleCloseExcepcionDialog();
     } catch (error) {
       console.error('Error al guardar excepción:', error);
@@ -446,15 +495,21 @@ const AsistenciasPage: React.FC = () => {
 
       {tabValue === 0 && (
         <ResumenDiarioTab
-          asistencias={filteredAsistencias}
+          asistencias={resumenRows}
           excepciones={excepciones}
           licencias={licencias}
           empleados={empleados}
           fechaDesde={fechaDesde}
           fechaHasta={fechaHasta}
-          onChangeFechaDesde={setFechaDesde}
-          onChangeFechaHasta={setFechaHasta}
+          onChangeFechaDesde={(v) => { setResumenPage(0); setFechaDesde(v); }}
+          onChangeFechaHasta={(v) => { setResumenPage(0); setFechaHasta(v); }}
           onGenerarAutomaticas={handleGenerarAutomaticas}
+          totalAsistencias={resumenTotal}
+          asistenciasNormales={resumenKpis.asistenciasNormales}
+          page={resumenPage}
+          rowsPerPage={resumenRowsPerPage}
+          onPageChange={setResumenPage}
+          onRowsPerPageChange={(rpp) => { setResumenRowsPerPage(rpp); setResumenPage(0); }}
         />
       )}
 

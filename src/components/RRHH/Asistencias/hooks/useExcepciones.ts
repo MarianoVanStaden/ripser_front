@@ -10,14 +10,14 @@ import { createInitialExcepcionForm, excepcionToFormData } from '../constants';
 import type { ExcepcionFormData } from '../types';
 
 interface UseExcepcionesOptions {
-  /** Días hacia atrás para la carga inicial. Default 30. */
+  /** Días hacia atrás para la carga inicial. Default 365 (1 año de historial). */
   diasHistoria?: number;
   /** Hook al que se le pasa el id de empleado/día para inferir horaEntrada base (LLEGADA_TARDE). */
   getHoraEntradaBase?: (empleadoId: number, fecha: string) => string | null;
 }
 
 export function useExcepciones({
-  diasHistoria = 30,
+  diasHistoria = 365,
   getHoraEntradaBase,
 }: UseExcepcionesOptions = {}) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

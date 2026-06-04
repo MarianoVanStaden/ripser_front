@@ -1,7 +1,7 @@
 // FRONT-003: extracted from AsistenciasPage.tsx — Tab "Excepciones".
 // Lists all registered excepciones with delete + entry-point to the
 // ExcepcionDialog.
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -14,6 +14,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   Tooltip,
   Typography,
@@ -57,7 +58,26 @@ const ExcepcionesTab: React.FC<Props> = ({
   onEditExcepcion,
   onOpenMasivaDialog,
 }) => {
-  const hasItems = Array.isArray(excepciones) && excepciones.length > 0;
+  // Orden de lo más nuevo a lo más viejo (por fecha; desempate por id desc).
+  const ordenadas = useMemo(() => {
+    const arr = Array.isArray(excepciones) ? [...excepciones] : [];
+    return arr.sort((a, b) => {
+      const diff = dayjs(b.fecha).valueOf() - dayjs(a.fecha).valueOf();
+      return diff !== 0 ? diff : (b.id ?? 0) - (a.id ?? 0);
+    });
+  }, [excepciones]);
+
+  const hasItems = ordenadas.length > 0;
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+
+  // Si cambia el set de datos (recarga/filtro), volver a la primera página.
+  useEffect(() => {
+    setPage(0);
+  }, [ordenadas.length]);
+
+  const pageItems = ordenadas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Card>
@@ -102,7 +122,7 @@ const ExcepcionesTab: React.FC<Props> = ({
                   </TableCell>
                 </TableRow>
               ) : (
-                excepciones.map((excepcion) => {
+                pageItems.map((excepcion) => {
                   const empleado = empleados.find((e) => e.id === excepcion.empleadoId);
                   return (
                     <TableRow key={excepcion.id}>
@@ -161,6 +181,25 @@ const ExcepcionesTab: React.FC<Props> = ({
             </TableBody>
           </Table>
         </TableContainer>
+
+        {hasItems && (
+          <TablePagination
+            component="div"
+            count={ordenadas.length}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
+        )}
       </CardContent>
     </Card>
   );

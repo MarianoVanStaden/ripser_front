@@ -11,6 +11,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   Paper,
   Button,
@@ -117,6 +118,9 @@ const CapacitacionesPage: React.FC = () => {
   const [motivoFilter, setMotivoFilter] = useState<MotivoCapacitacion | 'TODOS'>('TODOS');
   const [areaFilter, setAreaFilter] = useState<Area | null>(null);
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+
   const [formData, setFormData] = useState(emptyForm());
 
   useEffect(() => { loadData(); }, []);
@@ -161,6 +165,11 @@ const CapacitacionesPage: React.FC = () => {
     }
     return true;
   }).sort((a, b) => (b.fechaInicio ?? '').localeCompare(a.fechaInicio ?? ''));
+
+  // Volver a la primera página cuando cambian los filtros.
+  useEffect(() => { setPage(0); }, [searchTerm, motivoFilter, areaFilter]);
+
+  const paged = filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const openCreate = () => {
     setEditing(null);
@@ -406,7 +415,7 @@ const CapacitacionesPage: React.FC = () => {
                       </Typography>
                     </TableCell>
                   </TableRow>
-                ) : filtered.map(c => (
+                ) : paged.map(c => (
                   <TableRow key={c.id} hover>
                     <TableCell>
                       {c.motivo ? (
@@ -464,6 +473,25 @@ const CapacitacionesPage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {filtered.length > 0 && (
+            <TablePagination
+              component="div"
+              count={filtered.length}
+              page={page}
+              onPageChange={(_, newPage) => setPage(newPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+              labelRowsPerPage="Filas por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+              }
+            />
+          )}
         </CardContent>
       </Card>
 

@@ -1,7 +1,7 @@
 // FRONT-003: extracted from AsistenciasPage.tsx — Tab "Resumen Diario".
 // Reads asistencias + excepciones from the orchestrator and renders the
 // 4 KPI cards plus the daily detail table (Sistema Inteligente view).
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Alert,
   Box,
@@ -16,6 +16,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Tooltip,
@@ -37,21 +38,30 @@ import type { Empleado, Licencia, RegistroAsistencia } from '../../../../types';
 import { buildLicenciaRows, getEmpleadoNombre } from '../utils';
 
 interface Props {
+  /** Página actual de asistencias (paginadas en el servidor, más nuevo primero). */
   asistencias: RegistroAsistencia[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   excepciones: any[];
   /**
-   * Licencias del período (cualquier estado). Se renderizan como filas
-   * sintéticas "En Licencia" en los días APROBADA dentro de [fechaDesde, fechaHasta].
+   * Licencias del período (cualquier estado). Los días APROBADA se muestran como
+   * filas "En Licencia" en un panel aparte dentro de [fechaDesde, fechaHasta].
    */
   licencias?: Licencia[];
-  /** Empleados para resolver el nombre de la fila sintética de licencia. */
+  /** Empleados para resolver el nombre de la fila de licencia. */
   empleados?: Empleado[];
   fechaDesde: string;
   fechaHasta: string;
   onChangeFechaDesde: (value: string) => void;
   onChangeFechaHasta: (value: string) => void;
   onGenerarAutomaticas: () => Promise<void> | void;
+  /** Total de asistencias del rango (server-side) para la paginación. */
+  totalAsistencias: number;
+  /** Asistencias normales del rango (server-side), exacto sin traer todo. */
+  asistenciasNormales: number;
+  page: number;
+  rowsPerPage: number;
+  onPageChange: (page: number) => void;
+  onRowsPerPageChange: (rowsPerPage: number) => void;
 }
 
 /** Color por tipo de licencia para el chip "En Licencia". */
@@ -83,13 +93,22 @@ const ResumenDiarioTab: React.FC<Props> = ({
   onChangeFechaDesde,
   onChangeFechaHasta,
   onGenerarAutomaticas,
+  totalAsistencias,
+  asistenciasNormales,
+  page,
+  rowsPerPage,
+  onPageChange,
+  onRowsPerPageChange,
 }) => {
   const excepcionesArr = Array.isArray(excepciones) ? excepciones : [];
 
-  // Filas sintéticas para licencias APROBADAS, deduplicadas: si el empleado
-  // igualmente fichó ese día (registro real existe), no mostramos el chip
-  // "En Licencia" para evitar la doble fila empleado+día.
-  const licenciaRows = buildLicenciaRows(licencias, asistencias, empleados, fechaDesde, fechaHasta);
+  // Filas "En Licencia": días APROBADA del rango. Como la tabla de asistencias
+  // ahora pagina en el servidor, ya no deduplicamos contra asistencias; se
+  // muestran en un panel aparte. Las licencias se cargan completas (son pocas).
+  const licenciaRows = useMemo(
+    () => buildLicenciaRows(licencias, [], empleados, fechaDesde, fechaHasta),
+    [licencias, empleados, fechaDesde, fechaHasta]
+  );
 
   const findExcepcion = (a: RegistroAsistencia) =>
     excepcionesArr.find(
@@ -97,8 +116,6 @@ const ResumenDiarioTab: React.FC<Props> = ({
         ex.empleadoId === a.empleado?.id &&
         dayjs(ex.fecha).format('YYYY-MM-DD') === dayjs(a.fecha).format('YYYY-MM-DD')
     ) ?? null;
-
-  const asistenciasNormales = asistencias.filter((a) => !findExcepcion(a)).length;
 
   const tardanzasCount = excepcionesArr.filter(
     (ex) =>
@@ -340,45 +357,7 @@ const ResumenDiarioTab: React.FC<Props> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {/* Filas sintéticas para licencias APROBADAS: el backend no
-                    genera registro AUSENTE para esos días, así que rellenamos
-                    visualmente con un chip "En Licencia". */}
-                {licenciaRows.map((row) => (
-                  <TableRow key={row.id} hover sx={{ bgcolor: 'primary.50' }}>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="600">
-                        {row.empleado ? getEmpleadoNombre(row.empleado) : 'N/A'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{dayjs(row.fecha).format('DD/MM/YYYY')}</TableCell>
-                    <TableCell align="center">
-                      <Chip
-                        icon={<BeachAccessIcon />}
-                        label={`En Licencia (${row.licencia.tipo})`}
-                        size="small"
-                        color={colorLicencia(row.licencia.tipo)}
-                      />
-                    </TableCell>
-                    <TableCell align="center">-</TableCell>
-                    <TableCell align="center">-</TableCell>
-                    <TableCell align="center">-</TableCell>
-                    <TableCell align="center">
-                      <Tooltip title={`Licencia #${row.licencia.id} · ${dayjs(row.licencia.fechaInicio).format('DD/MM')}–${dayjs(row.licencia.fechaFin).format('DD/MM')}`}>
-                        <Chip
-                          icon={<BeachAccessIcon />}
-                          label="Licencia"
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" noWrap>{row.licencia.motivo || '-'}</Typography>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {asistencias.length === 0 && licenciaRows.length === 0 ? (
+                {asistencias.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography variant="body2" color="textSecondary" py={3}>
@@ -512,8 +491,71 @@ const ResumenDiarioTab: React.FC<Props> = ({
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={totalAsistencias}
+            page={page}
+            onPageChange={(_, newPage) => onPageChange(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => onRowsPerPageChange(parseInt(e.target.value, 10))}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
         </CardContent>
       </Card>
+
+      {/* Panel aparte: días "En Licencia" del rango (las licencias se cargan
+          completas, así que no dependen de la paginación de asistencias). */}
+      {enLicenciaCount > 0 && (
+        <Card sx={{ mt: 3 }}>
+          <CardContent>
+            <Typography variant="h6" mb={2}>
+              Días en Licencia ({enLicenciaCount})
+            </Typography>
+            <TableContainer sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: { xs: 600, md: 'auto' } }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ minWidth: 150 }}>Empleado</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Fecha</TableCell>
+                    <TableCell align="center" sx={{ minWidth: 200 }}>Licencia</TableCell>
+                    <TableCell sx={{ minWidth: 150 }}>Motivo</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {licenciaRows.map((row) => (
+                    <TableRow key={row.id} hover sx={{ bgcolor: 'primary.50' }}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="600">
+                          {row.empleado ? getEmpleadoNombre(row.empleado) : 'N/A'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{dayjs(row.fecha).format('DD/MM/YYYY')}</TableCell>
+                      <TableCell align="center">
+                        <Tooltip title={`Licencia #${row.licencia.id} · ${dayjs(row.licencia.fechaInicio).format('DD/MM')}–${dayjs(row.licencia.fechaFin).format('DD/MM')}`}>
+                          <Chip
+                            icon={<BeachAccessIcon />}
+                            label={`En Licencia (${row.licencia.tipo})`}
+                            size="small"
+                            color={colorLicencia(row.licencia.tipo)}
+                          />
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" noWrap>{row.licencia.motivo || '-'}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 };
