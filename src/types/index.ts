@@ -40,3 +40,4 @@ export * from './posicionPatrimonial.types';
 export * from './cajasAhorro.types';
 export * from './cajasPesos.types';
 export * from './caja.types';
+export * from './transporte.types';

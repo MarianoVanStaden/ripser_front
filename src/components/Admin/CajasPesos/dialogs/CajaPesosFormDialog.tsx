@@ -10,6 +10,7 @@ import {
   DialogTitle,
   Divider,
   Grid2 as Grid,
+  MenuItem,
   Radio,
   Stack,
   TextField,
@@ -20,7 +21,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { cajasPesosApi } from '../../../../api/services/cajasPesosApi';
-import type { CajaPesos, CajaMetodoPagoConfig } from '../../../../types';
+import type { CajaPesos, CajaMetodoPagoConfig, TipoCajaPesos } from '../../../../types';
 import { MetodoPago, METODO_PAGO_LABELS } from '../../../../types/prestamo.types';
 import { metodoPagoRequiereCaja } from '../../../../types/caja.types';
 import { extractError } from '../../CajasAhorro/utils';
@@ -38,6 +39,7 @@ interface FormData {
   nombre: string;
   descripcion: string;
   sucursalId: string;
+  tipo: TipoCajaPesos;
   /**
    * Matriz de métodos. Por cada método del enum, un flag "acepta" y otro
    * "esDefault". La UI mantiene esto como record plano para edición cómoda,
@@ -80,6 +82,7 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], on
         nombre: '',
         descripcion: '',
         sucursalId: '',
+        tipo: 'OPERATIVA',
         metodos: emptyMatrix(),
       },
     });
@@ -97,11 +100,13 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], on
       nombre: mode === 'edit' && caja ? caja.nombre : '',
       descripcion: mode === 'edit' && caja ? (caja.descripcion ?? '') : '',
       sucursalId: mode === 'edit' && caja && caja.sucursalId != null ? String(caja.sucursalId) : '',
+      tipo: mode === 'edit' && caja ? caja.tipo : 'OPERATIVA',
       metodos: metodosBase,
     });
   }, [open, mode, caja, reset]);
 
   const metodosWatch = watch('metodos');
+  const tipoWatch = watch('tipo');
 
   // Detectar conflictos de default contra otras cajas existentes.
   const conflictosDefault = useMemo(() => {
@@ -139,9 +144,10 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], on
         metodosAceptados,
       };
       if (mode === 'edit' && caja) {
+        // tipo es inmutable: el back lo ignora en update, no lo enviamos.
         await cajasPesosApi.update(caja.id, dto);
       } else {
-        await cajasPesosApi.create(dto);
+        await cajasPesosApi.create({ ...dto, tipo: data.tipo });
       }
       onSaved();
     } catch (err) {
@@ -214,6 +220,41 @@ const CajaPesosFormDialog: React.FC<Props> = ({ open, mode, caja, cajas = [], on
                 )}
               />
             </Grid>
+
+            <Grid size={12}>
+              <Controller
+                name="tipo"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    select
+                    fullWidth
+                    label="Tipo de cuenta"
+                    disabled={mode === 'edit'}
+                    helperText={
+                      mode === 'edit'
+                        ? 'El tipo no se puede cambiar después de crear la cuenta.'
+                        : 'Operativa: efectivo/banco real. Crédito: financiamiento que vive en negativo (deuda).'
+                    }
+                  >
+                    <MenuItem value="OPERATIVA">Operativa (efectivo / banco)</MenuItem>
+                    <MenuItem value="CREDITO">Crédito (financiamiento / deuda)</MenuItem>
+                  </TextField>
+                )}
+              />
+            </Grid>
+
+            {tipoWatch === 'CREDITO' && (
+              <Grid size={12}>
+                <Alert severity="info">
+                  Cuenta de financiamiento (ej: "Cuenta Crédito Sergio"). Su saldo vive en
+                  negativo representando la deuda. Para tomar crédito, transferí desde esta
+                  cuenta hacia una caja operativa; para devolver, transferí de vuelta. No se
+                  cuenta como efectivo operativo disponible.
+                </Alert>
+              </Grid>
+            )}
 
             <Grid size={12}>
               <Divider sx={{ my: 1 }} />

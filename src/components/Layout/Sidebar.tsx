@@ -172,6 +172,7 @@ const navigation: NavigationSection[] = [
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
       // { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
       { text: 'Legajo de Vehículos', icon: <DirectionsCarIcon />, path: '/logistica/vehiculos/incidencias' },
+      { text: 'Km por Empleado', icon: <DirectionsCarIcon />, path: '/logistica/vehiculos/km-empleados' },
     ],
   },
   {
@@ -419,6 +420,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/distribucion/entregas-productos',
     '/logistica/distribucion/entregas-equipos',
     '/logistica/vehiculos/incidencias',
+    '/logistica/vehiculos/km-empleados',
     '/fabricacion/equipos',
     '/fabricacion/ficha-equipo',
     '/garantias/registro',
@@ -462,6 +464,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/distribucion/entregas-productos',
     '/logistica/distribucion/entregas-equipos',
     '/logistica/vehiculos/incidencias',
+    '/logistica/vehiculos/km-empleados',
     '/fabricacion/equipos',
     '/fabricacion/ficha-equipo',
     '/garantias/registro',
@@ -568,6 +571,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/distribucion/entregas-productos',
     '/logistica/distribucion/entregas-equipos',
     '/logistica/vehiculos/incidencias',
+    '/logistica/vehiculos/km-empleados',
     // PRODUCCIÓN (acotado, igual que TRANSPORTE)
     '/fabricacion/equipos',
     '/fabricacion/ficha-equipo',
@@ -594,6 +598,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/distribucion/entregas-productos',
     '/logistica/distribucion/entregas-equipos',
     '/logistica/vehiculos/incidencias',
+    '/logistica/vehiculos/km-empleados',
     '/fabricacion/equipos',
     '/fabricacion/ficha-equipo',
     '/garantias/registro',
@@ -614,6 +619,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/distribucion/entregas-productos',
     '/logistica/distribucion/entregas-equipos',
     '/logistica/vehiculos/incidencias',
+    '/logistica/vehiculos/km-empleados',
   ];
 
   // Filtrar las secciones según los permisos del usuario.

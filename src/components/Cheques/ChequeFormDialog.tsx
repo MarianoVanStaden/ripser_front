@@ -134,8 +134,11 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
     }
   }, [open]);
 
-  // Reset form cuando cambia el cheque
+  // Reset del formulario cada vez que se abre el diálogo (o cambia el cheque).
+  // Depende de `open` para que al reabrir en modo "nuevo" no queden los datos
+  // del cheque creado anteriormente.
   useEffect(() => {
+    if (!open) return;
     if (cheque) {
       reset({
         numeroCheque: cheque.numeroCheque,
@@ -177,7 +180,7 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
         esEcheq: false,
       });
     }
-  }, [cheque, reset]);
+  }, [open, cheque, reset]);
 
   const loadOptions = async () => {
     try {
@@ -195,16 +198,24 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
   // Cargar el cliente seleccionado al editar un cheque de terceros (el
   // Autocomplete busca server-side, por eso necesitamos el objeto completo).
+  // Depende de `open` para re-ejecutarse en cada apertura del diálogo.
   useEffect(() => {
+    if (!open) return;
     if (cheque?.clienteId) {
       clienteApi
         .getById(cheque.clienteId)
         .then(setSelectedCliente)
-        .catch((err) => console.error('Error loading cliente:', err));
+        .catch((err) => {
+          console.error('Error loading cliente:', err);
+          // Fallback: al menos mostrar el nombre que ya trae el cheque
+          if (cheque.clienteNombre) {
+            setSelectedCliente({ id: cheque.clienteId!, nombre: cheque.clienteNombre } as Cliente);
+          }
+        });
     } else {
       setSelectedCliente(null);
     }
-  }, [cheque]);
+  }, [open, cheque]);
 
   const onSubmit = async (data: ChequeFormData) => {
     try {

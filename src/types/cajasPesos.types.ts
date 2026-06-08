@@ -14,6 +14,13 @@ export interface CajaMetodoPagoConfig {
   esDefault: boolean;
 }
 
+/**
+ * Clasifica la caja: OPERATIVA = efectivo/banco real (suma al efectivo
+ * disponible); CREDITO = cuenta de financiamiento que vive en negativo
+ * (deuda) y se reporta aparte del efectivo operativo.
+ */
+export type TipoCajaPesos = 'OPERATIVA' | 'CREDITO';
+
 export interface CajaPesos {
   id: number;
   empresaId: number;
@@ -22,6 +29,8 @@ export interface CajaPesos {
   descripcion: string | null;
   saldoActual: number;
   estado: EstadoCajaAhorro;
+  /** OPERATIVA (efectivo/banco) o CREDITO (financiamiento/deuda). */
+  tipo: TipoCajaPesos;
   /** Métodos que acepta esta caja con sus flags de default. */
   metodosAceptados: CajaMetodoPagoConfig[];
   /** Derivado del back: primer método marcado como default, o null. */
@@ -36,6 +45,8 @@ export interface CreateCajaPesosDTO {
   nombre: string;
   descripcion?: string;
   sucursalId?: number;
+  /** Default OPERATIVA si se omite. Inmutable: solo se setea al crear. */
+  tipo?: TipoCajaPesos;
   metodosAceptados?: CajaMetodoPagoConfig[];
 }
 

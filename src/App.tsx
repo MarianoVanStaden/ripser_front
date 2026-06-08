@@ -187,6 +187,7 @@ const TripsPage = lazy(() => import('./components/Logistica/TripsPage'));
 const DeliveriesPage = lazy(() => import('./components/Logistica/DeliveriesPage'));
 // const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
 const IncidenciasVehiculoPage = lazy(() => import('./components/Logistica/IncidenciasVehiculoPage'));
+const KmEmpleadosPage = lazy(() => import('./components/Logistica/KmEmpleadosPage'));
 const DepositosPage = lazy(() => import('./components/Logistica/Depositos/DepositosPage'));
 const UbicacionEquiposPage = lazy(() => import('./components/Logistica/Depositos/UbicacionEquiposPage'));
 const AuditoriaPage = lazy(() => import('./components/Logistica/Depositos/AuditoriaPage'));
@@ -428,6 +429,7 @@ function App() {
                   <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
                   {/* <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} /> */}
                   <Route path="logistica/vehiculos/incidencias" element={priv(<IncidenciasVehiculoPage />)} />
+                  <Route path="logistica/vehiculos/km-empleados" element={priv(<KmEmpleadosPage />)} />
                   <Route path="logistica/movimientos/auditoria" element={priv(<AuditoriaPage />)} />
                   <Route path="logistica/configuracion/depositos" element={priv(<DepositosPage />)} />
 

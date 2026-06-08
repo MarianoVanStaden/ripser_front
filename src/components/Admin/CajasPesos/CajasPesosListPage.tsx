@@ -84,9 +84,14 @@ const CajasPesosListPage: React.FC = () => {
     }
   };
 
-  const saldoTotal = cajas
-    .filter((c) => c.estado === 'ACTIVA')
+  const cajasActivas = cajas.filter((c) => c.estado === 'ACTIVA');
+  const saldoOperativo = cajasActivas
+    .filter((c) => c.tipo !== 'CREDITO')
     .reduce((acc, c) => acc + c.saldoActual, 0);
+  const saldoCredito = cajasActivas
+    .filter((c) => c.tipo === 'CREDITO')
+    .reduce((acc, c) => acc + c.saldoActual, 0);
+  const hayCredito = cajasActivas.some((c) => c.tipo === 'CREDITO');
 
   return (
     <Box sx={{ p: 3 }}>
@@ -131,18 +136,30 @@ const CajasPesosListPage: React.FC = () => {
       </Box>
 
       {!loading && cajas.length > 0 && (
-        <Box mb={2}>
-          <Typography variant="body2" color="text.secondary">
-            Saldo total activo {saldoTotal < 0 && '(en deuda)'}
-          </Typography>
-          <Typography
-            variant="h5"
-            fontWeight={700}
-            color={saldoTotal < 0 ? 'error.main' : 'success.main'}
-          >
-            {formatPesos(saldoTotal)}
-          </Typography>
-        </Box>
+        <Stack direction="row" spacing={4} mb={2} flexWrap="wrap">
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Efectivo operativo {saldoOperativo < 0 && '(en negativo)'}
+            </Typography>
+            <Typography
+              variant="h5"
+              fontWeight={700}
+              color={saldoOperativo < 0 ? 'error.main' : 'success.main'}
+            >
+              {formatPesos(saldoOperativo)}
+            </Typography>
+          </Box>
+          {hayCredito && (
+            <Box>
+              <Typography variant="body2" color="text.secondary">
+                Financiamiento / deuda
+              </Typography>
+              <Typography variant="h5" fontWeight={700} color="error.main">
+                {formatPesos(saldoCredito)}
+              </Typography>
+            </Box>
+          )}
+        </Stack>
       )}
 
       {loading && (
@@ -194,11 +211,16 @@ const CajasPesosListPage: React.FC = () => {
                       >
                         {caja.nombre}
                       </Typography>
-                      <Chip
-                        label={activa ? 'Activa' : 'Inactiva'}
-                        color={activa ? 'success' : 'default'}
-                        size="small"
-                      />
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        {caja.tipo === 'CREDITO' && (
+                          <Chip label="Crédito" color="warning" size="small" />
+                        )}
+                        <Chip
+                          label={activa ? 'Activa' : 'Inactiva'}
+                          color={activa ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </Stack>
                     </Box>
 
                     {caja.descripcion && (
