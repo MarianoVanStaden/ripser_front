@@ -387,12 +387,51 @@ const DeliveriesPage2: React.FC = () => {
       setOrdenes(Array.isArray(ordenesData) ? ordenesData : []);
       setTrips(Array.isArray(tripsData) ? tripsData : []);
 
+      // El backend capa el listado de clientes a 500 (ordenado por nombre), así
+      // que las entregas de clientes "altos" en el abecedario quedaban sin cliente
+      // en el cache → WhatsApp/nombre sin datos. Traemos los faltantes por id.
+      void resolveMissingClients(deliveriesData, facturasData, ordenesData, clientsData);
+
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error?.response?.data?.message || 'Error al cargar los datos');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Resuelve por id los clientes referenciados por las entregas que no entraron
+  // en la primera página del listado (cap 500 del backend) y los fusiona en el
+  // cache `clients`, para que getClientName/getClientPhone (síncronos) los vean.
+  const resolveMissingClients = async (
+    deliveriesData: EntregaViaje[],
+    facturasData: DocumentoComercial[],
+    ordenesData: any[],
+    loadedClients: Cliente[],
+  ) => {
+    const known = new Set(loadedClients.map(c => c.id));
+    const needed = new Set<number>();
+    for (const d of deliveriesData) {
+      const facturaId = d.documentoComercialId ?? d.documentoComercial?.id ?? d.ventaId ?? d.venta?.id;
+      const factura = facturaId ? facturasData.find(f => f.id === facturaId) : undefined;
+      if (factura?.clienteId && !known.has(factura.clienteId)) needed.add(factura.clienteId);
+
+      const ordenId = (d as any).ordenServicioId;
+      const orden = ordenId ? ordenesData.find(o => o.id === ordenId) : undefined;
+      if (orden?.clienteId && !known.has(orden.clienteId)) needed.add(orden.clienteId);
+    }
+    if (needed.size === 0) return;
+
+    const fetched = await Promise.all(
+      [...needed].map(id => clienteApi.getById(id).catch(() => null))
+    );
+    const valid = fetched.filter((c): c is Cliente => c != null);
+    if (valid.length === 0) return;
+
+    setClients(prev => {
+      const ids = new Set(prev.map(c => c.id));
+      return [...prev, ...valid.filter(c => !ids.has(c.id))];
+    });
   };
 
   const filteredDeliveries = deliveries

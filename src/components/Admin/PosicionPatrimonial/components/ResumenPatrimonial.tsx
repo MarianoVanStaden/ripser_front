@@ -57,6 +57,7 @@ export default function ResumenPatrimonial({ data, formatPesos }: Props) {
           <FilaActivo label="Stock fabricación" valor={data.stockFabricacionPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <FilaActivo label="Stock comercialización" valor={data.stockComercializacionPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <FilaActivo label="Cuentas x cobrar" valor={data.cuentasXCobrarPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
+          <FilaActivo label="Créditos a cobrar" valor={data.creditosACobrarPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <FilaActivo label="Patrimonio fijo" valor={data.patrimonioFijoPesos} total={data.totalActivosPesos} formatPesos={formatPesos} />
           <Divider sx={{ my: 1 }} />
           <FilaActivo label="TOTAL ACTIVOS" valor={data.totalActivosPesos} total={data.totalActivosPesos} formatPesos={formatPesos} bold />

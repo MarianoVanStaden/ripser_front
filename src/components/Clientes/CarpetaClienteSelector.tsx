@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -24,60 +24,52 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { useDebounce } from '../../hooks/useDebounce';
 import type { Cliente } from '../../types';
 
 const CarpetaClienteSelector: React.FC = () => {
   const navigate = useNavigate();
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(12);
 
+  const debouncedSearch = useDebounce(searchTerm.trim(), 300);
+
+  // Reset a la primera página cuando cambia el término de búsqueda
   useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
+
+  // Búsqueda + paginación server-side: con ~942 clientes no podemos traer
+  // todo y filtrar en memoria (truncaría resultados). El backend busca por
+  // nombre, apellido, razón social, CUIT, email y teléfono.
+  useEffect(() => {
+    let cancelled = false;
+    const loadClientes = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = debouncedSearch
+          ? await clienteApi.search(debouncedSearch, { page, size: rowsPerPage })
+          : await clienteApi.getAll({ page, size: rowsPerPage });
+        if (cancelled) return;
+        setClientes(res.content);
+        setTotal(res.totalElements);
+      } catch (err) {
+        if (cancelled) return;
+        setError('Error al cargar los clientes');
+        console.error('Error loading clientes:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     loadClientes();
-  }, []);
-
-  const loadClientes = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = (await clienteApi.getAll({ page: 0, size: 500 })).content;
-      setClientes(data);
-    } catch (err) {
-      setError('Error al cargar los clientes');
-      console.error('Error loading clientes:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredClientes = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return clientes;
-    return clientes.filter((c) =>
-      (c.nombre ?? '').toLowerCase().includes(q) ||
-      (c.apellido ?? '').toLowerCase().includes(q) ||
-      (c.razonSocial ?? '').toLowerCase().includes(q) ||
-      (c.email ?? '').toLowerCase().includes(q)
-    );
-  }, [clientes, searchTerm]);
-
-  // Ordenar alfabéticamente por nombre
-  const sortedClientes = useMemo(() => {
-    return [...filteredClientes].sort((a, b) => {
-      const nombreA = `${a.nombre ?? ''} ${a.apellido ?? ''}`.toLowerCase();
-      const nombreB = `${b.nombre ?? ''} ${b.apellido ?? ''}`.toLowerCase();
-      return nombreA.localeCompare(nombreB);
-    });
-  }, [filteredClientes]);
-
-  // Paginación
-  const paginatedClientes = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return sortedClientes.slice(startIndex, startIndex + rowsPerPage);
-  }, [sortedClientes, page, rowsPerPage]);
+    return () => { cancelled = true; };
+  }, [debouncedSearch, page, rowsPerPage]);
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -143,7 +135,7 @@ const CarpetaClienteSelector: React.FC = () => {
           }}
         />
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1.5, display: 'block' }}>
-          {sortedClientes.length} resultado(s)
+          {total} resultado(s)
         </Typography>
       </Paper>
 
@@ -153,7 +145,7 @@ const CarpetaClienteSelector: React.FC = () => {
       </Typography>
 
       <Grid container spacing={2.5} alignItems="stretch">
-        {paginatedClientes.map((cliente) => (
+        {clientes.map((cliente) => (
           <Grid key={cliente.id} item xs={12} sm={6} md={4} lg={3}>
             <Card elevation={1} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flex: 1 }}>
@@ -214,11 +206,11 @@ const CarpetaClienteSelector: React.FC = () => {
       </Grid>
 
       {/* Paginación */}
-      {sortedClientes.length > 0 && (
+      {total > 0 && (
         <Box display="flex" justifyContent="center" mt={4}>
           <TablePagination
             component="div"
-            count={sortedClientes.length}
+            count={total}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
@@ -230,7 +222,7 @@ const CarpetaClienteSelector: React.FC = () => {
         </Box>
       )}
 
-      {filteredClientes.length === 0 && !loading && (
+      {clientes.length === 0 && !loading && (
         <Box textAlign="center" py={6}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             {searchTerm ? 'No se encontraron clientes que coincidan' : 'No hay clientes registrados'}
