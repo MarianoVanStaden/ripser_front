@@ -27,7 +27,6 @@ import {
   Tooltip,
   useMediaQuery,
   useTheme,
-  Autocomplete,
   MenuItem,
 } from '@mui/material';
 import {
@@ -47,6 +46,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { clienteApi } from '../../api/services/clienteApi';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import { cuentaCorrienteApi } from '../../api/services/cuentaCorrienteApi';
 import type { Cliente, TipoMovimiento, MetodoPago } from '../../types';
 import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
@@ -54,7 +54,6 @@ import { CajaSelector } from '../common/CajaSelector';
 import { useCuentaCorrienteCliente } from '../../hooks/useCuentaCorrienteCliente';
 import { useSmartRefresh, formatLastUpdated } from '../../hooks/useSmartRefresh';
 import { generateCuentaCorrienteClientePDF } from '../../utils/pdfExportUtils';
-import LoadingOverlay from '../common/LoadingOverlay';
 
 dayjs.locale('es');
 
@@ -62,9 +61,7 @@ const CuentaCorrientePage: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
-  const [clientesLoading, setClientesLoading] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<TipoMovimiento | ''>('');
@@ -104,29 +101,17 @@ const CuentaCorrientePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setClientesLoading(true);
-        setLocalError(null);
-        const clientesData = await clienteApi.getAll({ page: 0, size: 500 });
-        setClientes(clientesData.content);
-
-        // Pre-seleccionar cliente si viene por navigation state
-        const initialClienteId = location.state?.clienteId;
-        if (initialClienteId) {
-          const initialCliente = clientesData.content.find(c => c.id === initialClienteId);
-          if (initialCliente) setSelectedCliente(initialCliente);
-          // React Query se encarga de fetchear los movimientos cuando selectedCliente cambia
-        }
-      } catch (err) {
-        setLocalError('Error al cargar los datos iniciales.');
-        console.error('Error loading initial data:', err);
-      } finally {
-        setClientesLoading(false);
-      }
-    };
-
-    loadInitialData();
+    // Pre-seleccionar cliente si viene por navigation state.
+    // El selector ahora busca server-side, así que traemos ese cliente puntual por id.
+    const initialClienteId = location.state?.clienteId;
+    if (!initialClienteId) return;
+    clienteApi
+      .getById(initialClienteId)
+      .then((cliente) => setSelectedCliente(cliente))
+      .catch((err) => {
+        setLocalError('Error al cargar el cliente seleccionado.');
+        console.error('Error loading initial cliente:', err);
+      });
   }, [location.state]);
 
 
@@ -170,7 +155,6 @@ const CuentaCorrientePage: React.FC = () => {
         clienteApi.getById(selectedCliente.id),
       ]);
       setSelectedCliente(clienteActualizado);
-      setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? clienteActualizado : c));
     } catch (err) {
       setLocalError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
       console.error('Error saving movement:', err);
@@ -262,7 +246,6 @@ const CuentaCorrientePage: React.FC = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box p={{ xs: 2, sm: 3 }}>
-        <LoadingOverlay open={clientesLoading} message="Cargando clientes..." />
         {/* Header */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
           <Box>
@@ -353,29 +336,16 @@ const CuentaCorrientePage: React.FC = () => {
             Filtros
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Autocomplete
-              options={clientes}
-              getOptionLabel={(c) => `${c.nombre}${c.apellido ? ' ' + c.apellido : ''}`}
-              value={selectedCliente}
-              onChange={(_, value) => {
-                setSelectedCliente(value);
-                setPage(0);
-              }}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              sx={{ minWidth: { xs: '100%', sm: 220 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
-              size={isMobile ? 'small' : 'medium'}
-              renderOption={(props, option) => {
-                const { key: _key, ...otherProps } = props;
-                return (
-                  <li key={option.id} {...otherProps}>
-                    {`${option.nombre}${option.apellido ? ' ' + option.apellido : ''}`}
-                  </li>
-                );
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Cliente" placeholder="Buscar cliente..." />
-              )}
-            />
+            <Box sx={{ minWidth: { xs: '100%', sm: 260 }, flex: { xs: '1 1 100%', sm: '0 0 auto' } }}>
+              <ClienteAutocomplete
+                size={isMobile ? 'small' : 'medium'}
+                value={selectedCliente}
+                onChange={(value) => {
+                  setSelectedCliente(value);
+                  setPage(0);
+                }}
+              />
+            </Box>
 
             <TextField
               label="Buscar"

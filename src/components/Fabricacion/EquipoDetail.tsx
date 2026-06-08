@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Button, Card, CardContent, Chip, IconButton,
   Stack, Alert, Snackbar, CircularProgress, Grid, Divider, Dialog,
-  DialogTitle, DialogContent, DialogActions, Autocomplete, TextField, Tooltip,
+  DialogTitle, DialogContent, DialogActions, TextField, Tooltip,
 } from '@mui/material';
 import {
   Timeline, TimelineItem, TimelineSeparator, TimelineConnector, 
@@ -17,7 +17,7 @@ import {
   equipoFabricadoApi,
 } from '../../api/services/equipoFabricadoApi';
 import { historialEstadoEquipoApi } from '../../api/historialEstadoEquipoApi';
-import api from '../../api/config';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import type { EquipoFabricadoDTO, EtapaFabricacionDTO, HistorialEstadoEquipo } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
@@ -28,7 +28,6 @@ const EquipoDetail: React.FC = () => {
   const { id: numeroHeladera } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<EquipoFabricadoDTO | null>(null);
   const [loading, setLoading] = useState(true);
-  const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [assignDialog, setAssignDialog] = useState(false);
   const [historial, setHistorial] = useState<HistorialEstadoEquipo[]>([]);
@@ -61,7 +60,6 @@ const EquipoDetail: React.FC = () => {
   useEffect(() => {
     if (numeroHeladera) {
       loadEquipo();
-      loadClientes();
     }
   }, [numeroHeladera]);
 
@@ -144,19 +142,6 @@ const EquipoDetail: React.FC = () => {
     }
   };
 
-const loadClientes = async () => {
-    try {
-      await api.get('/api/clientes', { params: { page: 0, size: 10000 } })
-      .then(response => {
-        if (typeof response.data === 'string') {
-          throw new Error('API returned HTML instead of JSON. Check if the backend endpoint exists.');
-        }
-        setClientes(response.data.content || response.data || []);
-      });
-    } catch (error) {
-      console.error('Error loading clientes:', error);
-    }
-  };
 
   const handleIniciarFabricacion = async () => {
     if (!equipo?.id) return;
@@ -750,14 +735,12 @@ const loadClientes = async () => {
       <Dialog open={assignDialog} onClose={() => setAssignDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Asignar Cliente</DialogTitle>
         <DialogContent>
-          <Autocomplete
-            options={clientes}
-            getOptionLabel={(option) => option.nombre || ''}
+          <ClienteAutocomplete
+            size="medium"
+            label="Cliente *"
             value={selectedCliente}
-            onChange={(_, newValue) => setSelectedCliente(newValue)}
-            renderInput={(params) => (
-              <TextField {...params} label="Cliente *" required sx={{ mt: 2 }} />
-            )}
+            onChange={(newValue) => setSelectedCliente(newValue)}
+            required
           />
         </DialogContent>
         <DialogActions>

@@ -24,6 +24,7 @@ import { chequeApi } from '../../api/services/chequeApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import { proveedorApi } from '../../api/services/proveedorApi';
 import { bancoApi } from '../../api/services/bancoApi';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import type { Cheque, Cliente, Proveedor, Banco, ChequeCreateDTO, ChequeUpdateDTO, TipoChequeType, EstadoChequeType } from '../../types';
 
 interface Props {
@@ -88,7 +89,7 @@ const validationSchema = yup.object({
 });
 
 const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) => {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [loading, setLoading] = useState(false);
@@ -180,18 +181,30 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
 
   const loadOptions = async () => {
     try {
-      const [clientesData, proveedoresData, bancosData] = await Promise.all([
-        clienteApi.getAll({ page: 0, size: 500 }).then(res => res.content),
-        proveedorApi.getAll(),
+      const [proveedoresRes, bancosData] = await Promise.all([
+        proveedorApi.getAll({ page: 0, size: 1000 }),  // ~57 proveedores: traer todos
         bancoApi.getActivos(),  // Solo cargar bancos activos
       ]);
-      setClientes(Array.isArray(clientesData) ? clientesData : []);
+      const proveedoresData = proveedoresRes?.content ?? [];
       setProveedores(Array.isArray(proveedoresData) ? proveedoresData : []);
       setBancos(Array.isArray(bancosData) ? bancosData : []);
     } catch (err) {
       console.error('Error loading options:', err);
     }
   };
+
+  // Cargar el cliente seleccionado al editar un cheque de terceros (el
+  // Autocomplete busca server-side, por eso necesitamos el objeto completo).
+  useEffect(() => {
+    if (cheque?.clienteId) {
+      clienteApi
+        .getById(cheque.clienteId)
+        .then(setSelectedCliente)
+        .catch((err) => console.error('Error loading cliente:', err));
+    } else {
+      setSelectedCliente(null);
+    }
+  }, [cheque]);
 
   const onSubmit = async (data: ChequeFormData) => {
     try {
@@ -453,25 +466,17 @@ const ChequeFormDialog: React.FC<Props> = ({ open, cheque, onClose, onSave }) =>
                 <Controller
                   name="clienteId"
                   control={control}
-                  render={({ field: { onChange, value } }) => (
-                    <Autocomplete
-                      options={clientes}
-                      getOptionLabel={(option) =>
-                        `${option.nombre} ${option.apellido || ''} ${
-                          option.razonSocial ? `- ${option.razonSocial}` : ''
-                        }`
-                      }
-                      value={clientes.find((c) => c.id === value) || null}
-                      onChange={(_, newValue) => onChange(newValue?.id || undefined)}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Cliente"
-                          required
-                          error={!!errors.clienteId}
-                          helperText={errors.clienteId?.message}
-                        />
-                      )}
+                  render={({ field: { onChange } }) => (
+                    <ClienteAutocomplete
+                      size="medium"
+                      value={selectedCliente}
+                      onChange={(cliente) => {
+                        setSelectedCliente(cliente);
+                        onChange(cliente?.id || undefined);
+                      }}
+                      required
+                      error={!!errors.clienteId}
+                      helperText={errors.clienteId?.message}
                     />
                   )}
                 />

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
-  Grid, TextField, MenuItem, Box, Typography, Autocomplete,
+  Grid, TextField, MenuItem, Box, Typography,
   CircularProgress, Alert,
 } from '@mui/material';
 import { Save } from '@mui/icons-material';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
-import { clienteApi } from '../../api/services/clienteApi';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import {
   TIPO_FINANCIACION_LABELS,
   CATEGORIA_PRESTAMO_LABELS,
@@ -40,13 +40,10 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
   const [formData, setFormData] = useState<CreatePrestamoPersonalDTO>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loadingClientes, setLoadingClientes] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 
   useEffect(() => {
     if (open) {
-      loadClientes();
       if (prestamo) {
         setFormData({
           clienteId: prestamo.clienteId,
@@ -66,21 +63,6 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
       setError(null);
     }
   }, [open, prestamo]);
-
-  const loadClientes = async () => {
-    try {
-      setLoadingClientes(true);
-      const data: any = await clienteApi.getAll();
-      console.log('Clientes data received:', data);
-      // Handle both plain array and paginated response ({ content: [...] })
-      const list = Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
-      setClientes(list);
-    } catch (err) {
-      console.error('Error loading clientes:', err);
-    } finally {
-      setLoadingClientes(false);
-    }
-  };
 
   const handleChange = (field: keyof CreatePrestamoPersonalDTO, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -127,43 +109,14 @@ export const PrestamoFormDialog: React.FC<PrestamoFormDialogProps> = ({
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Autocomplete
-                options={clientes}
-                getOptionLabel={(cliente) =>
-                  cliente.razonSocial
-                    ? `${cliente.razonSocial} (${cliente.cuit})`
-                    : `${cliente.nombre} ${cliente.apellido || ''}`
-                }
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                renderOption={({ key, ...props }, option) => (
-                  <li key={key} {...props}>
-                    {option.razonSocial
-                      ? `${option.razonSocial} (${option.cuit})`
-                      : `${option.nombre} ${option.apellido || ''}`}
-                  </li>
-                )}
+              <ClienteAutocomplete
+                size="medium"
                 value={selectedCliente}
-                onChange={(_, newVal) => {
-                  setSelectedCliente(newVal);
-                  handleChange('clienteId', newVal?.id || 0);
+                onChange={(cliente) => {
+                  setSelectedCliente(cliente);
+                  handleChange('clienteId', cliente?.id || 0);
                 }}
-                loading={loadingClientes}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Cliente"
-                    required
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {loadingClientes && <CircularProgress size={20} />}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>

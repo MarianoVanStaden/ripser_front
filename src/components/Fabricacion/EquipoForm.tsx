@@ -22,7 +22,7 @@ import type {
 import ColorPicker from '../common/ColorPicker';
 import MedidaPicker from '../common/MedidaPicker';
 import { employeeApi } from '../../api/services/employeeApi';
-import { clienteApi } from '../../api/services/clienteApi';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import StockErrorDialog, { type ProductoInsuficiente } from '../common/StockErrorDialog';
 import EquipoSuccessDialog, { type EquipoCreado } from '../common/EquipoSuccessDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -51,7 +51,6 @@ const EquipoForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [recetas, setRecetas] = useState<any[]>([]);
   const [empleados, setEmpleados] = useState<any[]>([]);
-  const [clientes, setClientes] = useState<any[]>([]);
   const [selectedReceta, setSelectedReceta] = useState<any>(null);
   const [selectedResponsable, setSelectedResponsable] = useState<any>(null);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
@@ -98,7 +97,6 @@ const EquipoForm: React.FC = () => {
       await Promise.all([
         loadRecetas(),
         loadEmpleados(),
-        loadClientes(),
       ]);
       if (isEdit && numeroHeladera) {
         await loadEquipo(numeroHeladera);
@@ -148,23 +146,12 @@ const EquipoForm: React.FC = () => {
     }
   };
 
-  const loadClientes = async () => {
-    try {
-      const clientesData = (await clienteApi.getAll({ page: 0, size: 500 })).content;
-      console.log('Loaded clientes:', clientesData);
-      setClientes(clientesData);
-    } catch (error) {
-      console.error('Error loading clientes:', error);
-    }
-  };
-
   const loadEquipo = async (numeroHeladera: string) => {
     try {
       setLoading(true);
       const data = await equipoFabricadoApi.findByNumeroHeladera(numeroHeladera);
       console.log('Loaded equipo data:', data);
       console.log('Available empleados:', empleados);
-      console.log('Available clientes:', clientes);
 
       reset({
         tipo: data.tipo,
@@ -189,9 +176,7 @@ const EquipoForm: React.FC = () => {
         setSelectedResponsable(empleado || null);
       }
       if (data.clienteId) {
-        const cliente = clientes.find(c => c.id === data.clienteId);
-        console.log('Looking for cliente ID:', data.clienteId, 'Found:', cliente);
-        setSelectedCliente(cliente || null);
+        setSelectedCliente({ id: data.clienteId, nombre: data.clienteNombre });
       }
     } catch (error) {
       console.error('Error loading equipo:', error);
@@ -543,13 +528,11 @@ const EquipoForm: React.FC = () => {
               renderInput={(params) => <TextField {...params} label="Responsable" />}
             />
 
-            <Autocomplete
-              options={clientes}
-              getOptionLabel={(option) => option.nombre || ''}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
+            <ClienteAutocomplete
+              size="medium"
+              label="Cliente (opcional)"
               value={selectedCliente}
-              onChange={(_, newValue) => setSelectedCliente(newValue)}
-              renderInput={(params) => <TextField {...params} label="Cliente (opcional)" />}
+              onChange={(newValue) => setSelectedCliente(newValue)}
             />
 
             {isEdit && (

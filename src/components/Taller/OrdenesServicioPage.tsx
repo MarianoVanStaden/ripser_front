@@ -43,7 +43,7 @@ import {
   PlayArrow as PlayArrowIcon
 } from '@mui/icons-material';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
-import { clienteApi } from '../../api/services/clienteApi';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import { employeeApi } from '../../api/services/employeeApi';
 import { equipoFabricadoApi } from '../../api/services';
 import type { OrdenServicio, Cliente, Empleado, EquipoFabricadoDTO } from '../../types';
@@ -63,7 +63,7 @@ const OrdenesServicioPage: React.FC = () => {
   // Estados para el formulario
   const [formOpen, setFormOpen] = useState(false);
   const [editingOrden, setEditingOrden] = useState<OrdenServicio | null>(null);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -100,21 +100,8 @@ const OrdenesServicioPage: React.FC = () => {
 
   useEffect(() => {
     loadOrdenes();
-    loadClientes();
     loadEmpleados();
   }, []);
-
-  const loadClientes = async () => {
-    try {
-      const data = await clienteApi.getAll({ page: 0, size: 1000 });
-      const clientesList = Array.isArray(data) 
-        ? data 
-        : (data as any).content || [];
-      setClientes(clientesList);
-    } catch (err) {
-      console.error('Error loading clientes:', err);
-    }
-  };
 
   const loadEmpleados = async () => {
     try {
@@ -149,6 +136,7 @@ const OrdenesServicioPage: React.FC = () => {
   const handleOpenForm = (orden?: OrdenServicio) => {
     if (orden) {
       setEditingOrden(orden);
+      setSelectedCliente({ id: orden.clienteId, nombre: orden.clienteNombre } as Cliente);
       setFormData({
         clienteId: orden.clienteId.toString(),
         responsableId: orden.responsableId?.toString() || '',
@@ -159,6 +147,7 @@ const OrdenesServicioPage: React.FC = () => {
       });
     } else {
       setEditingOrden(null);
+      setSelectedCliente(null);
       setFormData({
         clienteId: '',
         responsableId: '',
@@ -182,6 +171,7 @@ const OrdenesServicioPage: React.FC = () => {
   const handleCloseForm = () => {
     setFormOpen(false);
     setEditingOrden(null);
+    setSelectedCliente(null);
     setFormData({
       clienteId: '',
       responsableId: '',
@@ -913,23 +903,15 @@ const OrdenesServicioPage: React.FC = () => {
                   👤 INFORMACIÓN DEL CLIENTE
                 </Typography>
                 <Stack spacing={2}>
-                  <Autocomplete
-                    options={clientes}
-                    getOptionLabel={(cliente) =>
-                      `${cliente.nombre}${cliente.apellido ? ' ' + cliente.apellido : ''}${cliente.razonSocial ? ' - ' + cliente.razonSocial : ''}`
-                    }
-                    value={clientes.find(c => c.id.toString() === formData.clienteId) || null}
-                    onChange={(_, value) =>
-                      setFormData({ ...formData, clienteId: value?.id.toString() || '' })
-                    }
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Cliente *"
-                        required
-                        placeholder="Seleccione un cliente"
-                      />
-                    )}
+                  <ClienteAutocomplete
+                    size="medium"
+                    label="Cliente *"
+                    value={selectedCliente}
+                    onChange={(cliente) => {
+                      setSelectedCliente(cliente);
+                      setFormData({ ...formData, clienteId: cliente?.id.toString() || '' });
+                    }}
+                    required
                   />
 
                   <Autocomplete

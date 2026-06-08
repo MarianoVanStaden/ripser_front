@@ -3,7 +3,7 @@ import { useTheme, useMediaQuery } from '@mui/material';
 import {
   Box, Paper, Typography, Button, TextField, MenuItem, Chip, IconButton,
   Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
-  DialogContentText, DialogActions, Stack, Autocomplete, Card, CardContent,
+  DialogContentText, DialogActions, Stack, Card, CardContent,
   Grid, Tabs, Tab, Divider, Accordion, AccordionSummary, AccordionDetails,
   LinearProgress, CircularProgress, Checkbox,
 } from '@mui/material';
@@ -25,7 +25,7 @@ import {
 import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO } from '../../types';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { usePermisos } from '../../hooks/usePermisos';
-import api from '../../api/config';
+import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 // Helper function to get color for estadoAsignacion
@@ -314,7 +314,6 @@ const EquiposList: React.FC = () => {
     });
   };
 
-  const [clientes, setClientes] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [currentTab, setCurrentTab] = useState(0);
 
@@ -368,10 +367,6 @@ const EquiposList: React.FC = () => {
   useEffect(() => {
     loadEquipos();
   }, [page, pageSize, tipoFilter, estadoFilter, estadoAsignacionFilter, location.key]);
-
-  useEffect(() => {
-    loadClientes();
-  }, []);
 
   const loadEquipos = async () => {
     try {
@@ -434,23 +429,6 @@ const EquiposList: React.FC = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadClientes = async () => {
-    try {
-      const response = await api.get('/api/clientes');
-      const clientesData = response.data.content || response.data || [];
-      console.log('EquiposList - Loaded clientes:', clientesData);
-      console.log('EquiposList - Response structure:', response.data);
-      setClientes(clientesData);
-    } catch (error) {
-      console.error('Error loading clientes:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar los clientes',
-        severity: 'error',
-      });
     }
   };
 
@@ -1690,38 +1668,18 @@ const EquiposList: React.FC = () => {
           setAssignDialog({ open: false, equipoId: null });
           setSelectedCliente(null);
         }}
-        onTransitionEnter={() => {
-          console.log('Assign dialog opened. Available clientes:', clientes);
-          console.log('Clientes count:', clientes.length);
-        }}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle>Asignar Cliente</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
-            {clientes.length === 0 ? (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                No hay clientes disponibles. Por favor, verifique la conexión con la API.
-              </Alert>
-            ) : (
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                {clientes.length} cliente(s) disponible(s)
-              </Typography>
-            )}
-            <Autocomplete
-              options={clientes}
-              getOptionLabel={(option) => option.nombre || ''}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
+            <ClienteAutocomplete
+              size="medium"
+              label="Cliente *"
               value={selectedCliente}
-              onChange={(_, newValue) => {
-                console.log('Selected cliente:', newValue);
-                setSelectedCliente(newValue);
-              }}
-              renderInput={(params) => (
-                <TextField {...params} label="Cliente *" required />
-              )}
-              noOptionsText="No hay clientes disponibles"
+              onChange={(newValue) => setSelectedCliente(newValue)}
+              required
             />
           </Box>
         </DialogContent>
