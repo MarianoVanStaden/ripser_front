@@ -190,7 +190,8 @@ const IncidenciasVehiculoPage = lazy(() => import('./components/Logistica/Incide
 const DepositosPage = lazy(() => import('./components/Logistica/Depositos/DepositosPage'));
 const UbicacionEquiposPage = lazy(() => import('./components/Logistica/Depositos/UbicacionEquiposPage'));
 const AuditoriaPage = lazy(() => import('./components/Logistica/Depositos/AuditoriaPage'));
-const ReconciliacionStockPage = lazy(() => import('./components/Logistica/Depositos/ReconciliacionStockPage'));
+// Reconciliación Stock: deshabilitada mientras la empresa opera con un solo depósito vigente.
+// const ReconciliacionStockPage = lazy(() => import('./components/Logistica/Depositos/ReconciliacionStockPage'));
 
 // Taller
 const TrabajosRealizadosPage = lazy(() => import('./components/Taller/TrabajosRealizadosPage'));
@@ -420,7 +421,8 @@ function App() {
                   <Route path="logistica/inventario/stock-equipos" element={priv(<StockEquiposPage />)} />
                   <Route path="logistica/inventario/ubicaciones" element={priv(<UbicacionEquiposPage />)} />
                   <Route path="logistica/inventario/recuentos" element={priv(<RecountTasksPage />)} />
-                  <Route path="logistica/inventario/reconciliacion" element={priv(<ReconciliacionStockPage />)} />
+                  {/* Reconciliación Stock deshabilitada: un solo depósito vigente */}
+                  {/* <Route path="logistica/inventario/reconciliacion" element={priv(<ReconciliacionStockPage />)} /> */}
                   <Route path="logistica/inventario/stock-productos" element={priv(<StockPage />)} />
                   <Route path="logistica/distribucion/viajes" element={priv(<TripsPage />)} />
                   <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
@@ -439,7 +441,7 @@ function App() {
                   <Route path="logistica/depositos" element={<Navigate to="/logistica/configuracion/depositos" replace />} />
                   <Route path="logistica/ubicacion-equipos" element={<Navigate to="/logistica/inventario/ubicaciones" replace />} />
                   <Route path="logistica/auditoria" element={<Navigate to="/logistica/movimientos/auditoria" replace />} />
-                  <Route path="logistica/reconciliacion" element={<Navigate to="/logistica/inventario/reconciliacion" replace />} />
+                  {/* <Route path="logistica/reconciliacion" element={<Navigate to="/logistica/inventario/reconciliacion" replace />} /> */}
 
                   {/* TALLER */}
                   <Route path="taller/trabajos" element={priv(<TrabajosRealizadosPage />)} />

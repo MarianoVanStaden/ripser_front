@@ -40,7 +40,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import BusinessIcon from '@mui/icons-material/Business';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import SyncIcon from '@mui/icons-material/Sync';
+// import SyncIcon from '@mui/icons-material/Sync'; // usado solo por Reconciliación Stock (deshabilitada)
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -157,7 +157,8 @@ const navigation: NavigationSection[] = [
       { text: 'Ubicación Equipos', icon: <AssignmentIcon />, path: '/logistica/inventario/ubicaciones' },
       { text: 'Recuento Manual', icon: <AssignmentIcon />, path: '/logistica/inventario' },
       { text: 'Tareas de Recuento', icon: <AssignmentIcon />, path: '/logistica/inventario/recuentos' },
-      { text: 'Reconciliación Stock', icon: <SyncIcon />, path: '/logistica/inventario/reconciliacion' },
+      // Reconciliación Stock: deshabilitada mientras la empresa opera con un solo depósito vigente.
+      // { text: 'Reconciliación Stock', icon: <SyncIcon />, path: '/logistica/inventario/reconciliacion' },
             // MOVIMIENTOS - Trazabilidad
       { text: 'Auditoría', icon: <AssignmentIcon />, path: '/logistica/movimientos/auditoria' },
     ],
@@ -322,7 +323,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/inventario/ubicaciones',
     '/logistica/inventario',
     '/logistica/inventario/recuentos',
-    '/logistica/inventario/reconciliacion',
+    // '/logistica/inventario/reconciliacion', // deshabilitada: un solo depósito vigente
     '/logistica/movimientos/auditoria',
     // TALLER (todo)
     '/taller/ordenes',
@@ -381,7 +382,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/inventario/ubicaciones',
     '/logistica/inventario',
     '/logistica/inventario/recuentos',
-    '/logistica/inventario/reconciliacion',
+    // '/logistica/inventario/reconciliacion', // deshabilitada: un solo depósito vigente
     '/logistica/movimientos/auditoria',
     // PROVEEDORES (todo)
     '/proveedores/gestion',

@@ -144,9 +144,8 @@ const FichaEquipoPage: React.FC = () => {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
         setError(
-          `No se encontró ningún equipo con número "${numero}". ` +
-          'Verificá el formato — los números van con padding de 4 dígitos ' +
-          '(ej: COOL-0003, no COOL-3 ni COOL-003). ' +
+          `No se encontró ningún equipo con "${numero}". ` +
+          'Podés buscar por número de equipo o por código de venta (ej: 052026HCU09942). ' +
           'Para evitar tipear, podés entrar desde la lista de equipos con el botón "Ficha + QR".',
         );
       } else {
@@ -310,7 +309,8 @@ const FichaEquipoPage: React.FC = () => {
             <form onSubmit={handleSearch}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <TextField
-                  label="Número de equipo (ej: 042026HCU12842)"
+                  label="Número de equipo o código de venta"
+                  placeholder="ej: HEL-0042 o 052026HCU09942"
                   size="small"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
