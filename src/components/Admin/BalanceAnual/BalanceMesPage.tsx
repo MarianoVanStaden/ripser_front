@@ -47,7 +47,6 @@ function dtoToForm(dto: BalanceMensualDTO): FormValues {
     totalAmortizadoPesos: n(dto.totalAmortizadoPesos),
     saldoNetoMesPesos: n(dto.saldoNetoMesPesos),
     saldoFinalPesos: n(dto.saldoFinalPesos),
-    cuentasXCobrarPesos: n(dto.cuentasXCobrarPesos),
     stockMaterialesPesos: n(dto.stockMaterialesPesos),
     stockFabricacionPesos: n(dto.stockFabricacionPesos),
     stockComercializacionPesos: n(dto.stockComercializacionPesos),
@@ -60,7 +59,6 @@ function dtoToForm(dto: BalanceMensualDTO): FormValues {
     totalAmortizadoDolares: n(dto.totalAmortizadoDolares),
     saldoNetoMesDolares: n(dto.saldoNetoMesDolares),
     saldoFinalDolares: n(dto.saldoFinalDolares),
-    cuentasXCobrarDolares: n(dto.cuentasXCobrarDolares),
     stockMaterialesDolares: n(dto.stockMaterialesDolares),
     stockFabricacionDolares: n(dto.stockFabricacionDolares),
     stockComercializacionDolares: n(dto.stockComercializacionDolares),
@@ -80,7 +78,6 @@ const EMPTY_FORM: FormValues = {
   totalAmortizadoPesos: undefined,
   saldoNetoMesPesos: undefined,
   saldoFinalPesos: undefined,
-  cuentasXCobrarPesos: undefined,
   stockMaterialesPesos: undefined,
   stockFabricacionPesos: undefined,
   stockComercializacionPesos: undefined,
@@ -93,7 +90,6 @@ const EMPTY_FORM: FormValues = {
   totalAmortizadoDolares: undefined,
   saldoNetoMesDolares: undefined,
   saldoFinalDolares: undefined,
-  cuentasXCobrarDolares: undefined,
   stockMaterialesDolares: undefined,
   stockFabricacionDolares: undefined,
   stockComercializacionDolares: undefined,
@@ -348,9 +344,6 @@ export default function BalanceMesPage() {
         <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <NumericField label="Cuentas x cobrar ($)" fieldKey="cuentasXCobrarPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Cuentas x pagar ($)" fieldKey="cuentasXPagarPesos" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -406,9 +399,6 @@ export default function BalanceMesPage() {
         <Divider sx={{ mb: 2 }} />
         <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', lineHeight: 2 }}></Typography>
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <NumericField label="Cuentas x cobrar (USD)" fieldKey="cuentasXCobrarDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
-          </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <NumericField label="Cuentas x pagar (USD)" fieldKey="cuentasXPagarDolares" form={form} onChange={handleFieldChange} disabled={isReadonly} />
           </Grid>

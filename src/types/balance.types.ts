@@ -16,7 +16,6 @@ export interface BalanceMensualDTO {
   totalAmortizadoPesos: number;
   saldoNetoMesPesos: number;
   saldoFinalPesos: number;
-  cuentasXCobrarPesos: number;
   stockMaterialesPesos: number;
   stockFabricacionPesos: number;
   stockComercializacionPesos: number;
@@ -31,7 +30,6 @@ export interface BalanceMensualDTO {
   totalAmortizadoDolares: number;
   saldoNetoMesDolares: number;
   saldoFinalDolares: number;
-  cuentasXCobrarDolares: number;
   stockMaterialesDolares: number;
   stockFabricacionDolares: number;
   stockComercializacionDolares: number;
@@ -73,7 +71,6 @@ export interface GuardarBalanceMensualDTO {
   totalAmortizadoPesos?: number;
   saldoNetoMesPesos?: number;
   saldoFinalPesos?: number;
-  cuentasXCobrarPesos?: number;
   stockMaterialesPesos?: number;
   stockFabricacionPesos?: number;
   stockComercializacionPesos?: number;
@@ -86,7 +83,6 @@ export interface GuardarBalanceMensualDTO {
   totalAmortizadoDolares?: number;
   saldoNetoMesDolares?: number;
   saldoFinalDolares?: number;
-  cuentasXCobrarDolares?: number;
   stockMaterialesDolares?: number;
   stockFabricacionDolares?: number;
   stockComercializacionDolares?: number;

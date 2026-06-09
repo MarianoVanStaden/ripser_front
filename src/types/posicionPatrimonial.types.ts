@@ -30,7 +30,6 @@ export interface PosicionPatrimonialDTO {
   stockMaterialesPesos: number;
   stockFabricacionPesos: number;
   stockComercializacionPesos: number;
-  cuentasXCobrarPesos: number;
   creditosACobrarPesos: number;
   patrimonioFijoPesos: number;
   totalActivosPesos: number;
