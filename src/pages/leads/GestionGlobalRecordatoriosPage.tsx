@@ -139,6 +139,10 @@ const getMonthEndStr = () => {
 const shiftDateStrBack = (dateStr: string): string => {
   if (!dateStr || dateStr === '9999-99-99' || dateStr === '0000-00-00') return dateStr;
   const d = new Date(`${dateStr}T00:00:00`);
+  // Un <input type="date"> permite años fuera del rango representable por Date
+  // (p.ej. "999999-06-09"), lo que produce un Invalid Date y rompe toISOString
+  // con "Invalid time value". En ese caso devolvemos la cadena sin shiftear.
+  if (Number.isNaN(d.getTime())) return dateStr;
   d.setDate(d.getDate() - 1);
   return d.toISOString().split('T')[0];
 };
@@ -336,9 +340,10 @@ const InteraccionDialog: React.FC<InteraccionDialogProps> = ({
     setSubmitting(true);
     setFormError(null);
     try {
+      const fechaParsed = new Date(form.fecha);
       await onSubmit(leadId, {
         tipo: form.tipo,
-        fecha: new Date(form.fecha).toISOString(),
+        fecha: (Number.isNaN(fechaParsed.getTime()) ? new Date() : fechaParsed).toISOString(),
         descripcion: form.descripcion.trim(),
         resultado: form.resultado || null,
         duracionMinutos: form.duracionMinutos !== '' ? Number(form.duracionMinutos) : null,
