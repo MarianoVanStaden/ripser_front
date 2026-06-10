@@ -668,6 +668,9 @@ export interface Empleado {
   // ── Fase 1: formación ─────────────────────────────────────────────────────
   nivelEstudios?: NivelEstudios | null;
   tituloCarrera?: string | null;
+  // ── Transporte: roles de viaje ─────────────────────────────────────────────
+  esConductor?: boolean | null;
+  esAcompanante?: boolean | null;
   asistencias?: RegistroAsistencia[];
   licencias?: Licencia[];
   capacitaciones?: Capacitacion[];
@@ -893,6 +896,9 @@ export interface EmpleadoFase1Fields {
   fechaExamenPreocupacional?: string | null;
   nivelEstudios?: NivelEstudios | null;
   tituloCarrera?: string | null;
+  // ── Transporte: roles de viaje ─────────────────────────────────────────────
+  esConductor?: boolean | null;
+  esAcompanante?: boolean | null;
 }
 
 export interface EmpleadoCreateDTO extends EmpleadoFase1Fields {

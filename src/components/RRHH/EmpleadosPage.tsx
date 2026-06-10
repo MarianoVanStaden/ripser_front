@@ -152,6 +152,8 @@ const emptyFase1Fields = () => ({
   alergiasCondiciones: '', artNombre: '', fechaExamenPreocupacional: '',
   nivelEstudios: '' as '' | (typeof NIVELES_ESTUDIOS)[number],
   tituloCarrera: '',
+  esConductor: false,
+  esAcompanante: false,
 });
 
 type Fase1State = ReturnType<typeof emptyFase1Fields>;
@@ -200,6 +202,8 @@ const fase1FromEmpleado = (e: Empleado): Fase1State => ({
   fechaExamenPreocupacional: e.fechaExamenPreocupacional ?? '',
   nivelEstudios: (e.nivelEstudios ?? '') as Fase1State['nivelEstudios'],
   tituloCarrera: e.tituloCarrera ?? '',
+  esConductor: e.esConductor ?? false,
+  esAcompanante: e.esAcompanante ?? false,
 });
 
 // Serializa los Fase 1 fields al payload de API: '' → null, valores válidos
@@ -1538,6 +1542,24 @@ const EmpleadosPage: React.FC = () => {
                     <TextField fullWidth label="Email Laboral" type="email"
                       value={fase1Data.emailLaboral}
                       onChange={(e) => setFase1Data({ ...fase1Data, emailLaboral: e.target.value })} />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }}><Typography variant="caption" color="textSecondary">Roles de transporte</Typography></Divider>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControlLabel
+                      control={<Checkbox checked={fase1Data.esConductor}
+                        onChange={(e) => setFase1Data({ ...fase1Data, esConductor: e.target.checked })} />}
+                      label="Puede conducir (conductor)"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControlLabel
+                      control={<Checkbox checked={fase1Data.esAcompanante}
+                        onChange={(e) => setFase1Data({ ...fase1Data, esAcompanante: e.target.checked })} />}
+                      label="Puede ir de acompañante"
+                    />
                   </Grid>
                 </Grid>
               </AccordionDetails>

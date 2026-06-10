@@ -33,6 +33,18 @@ export const employeeApi = {
     throw new Error('Unexpected response format from empleados API');
   },
 
+  // Get employees enabled as trip drivers (rol de transporte)
+  getConductores: async (): Promise<Empleado[]> => {
+    const response = await api.get('/api/empleados/conductores');
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  // Get employees enabled as trip co-drivers / companions (rol de transporte)
+  getAcompanantes: async (): Promise<Empleado[]> => {
+    const response = await api.get('/api/empleados/acompanantes');
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
   // Get employee by ID
   getById: async (id: number): Promise<Empleado> => {
     const response = await api.get(`/api/empleados/${id}`);

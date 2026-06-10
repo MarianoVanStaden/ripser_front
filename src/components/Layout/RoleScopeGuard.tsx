@@ -18,6 +18,10 @@ type RestrictedRole = {
   // Prefijos permitidos. Se chequea con startsWith para cubrir sub-rutas
   // (ej. /rrhh/empleados/123/editar).
   allowedPrefixes: string[];
+  // Prefijos explícitamente denegados, aunque caigan dentro de un allowedPrefix
+  // más amplio (ej. denegar /logistica/vehiculos/km-empleados pero permitir el
+  // resto de /logistica/vehiculos). Tiene prioridad sobre allowedPrefixes.
+  deniedPrefixes?: string[];
 };
 
 const RESTRICTED_ROLES: RestrictedRole[] = [
@@ -175,6 +179,11 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/logistica/distribucion',
       '/logistica/vehiculos',
     ],
+    // 'Km por Empleado' queda fuera del scope del conductor aunque cuelgue de
+    // /logistica/vehiculos. Mantener en sync con conductorAllowedPaths en Sidebar.
+    deniedPrefixes: [
+      '/logistica/vehiculos/km-empleados',
+    ],
   },
 ];
 
@@ -237,6 +246,15 @@ const RoleScopeGuard: React.FC<Props> = ({ children }) => {
 
   const restricted = RESTRICTED_ROLES.find(r => tieneRol(r.rol));
   if (!restricted) return <>{children}</>;
+
+  // Denylist tiene prioridad: una ruta denegada explícitamente redirige al home
+  // aunque caiga dentro de un allowedPrefix más amplio.
+  const denegado = (restricted.deniedPrefixes ?? []).some(
+    prefix => path === prefix || path.startsWith(prefix + '/'),
+  );
+  if (denegado) {
+    return <Navigate to={restricted.home} replace />;
+  }
 
   const dentroDeScope = restricted.allowedPrefixes.some(
     prefix => path === prefix || path.startsWith(prefix + '/'),

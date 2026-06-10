@@ -77,8 +77,14 @@ const KmEmpleadosPage: React.FC = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm(currentYear));
+  // id del registro en edición (null = alta nueva → inserta otra fila).
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Celda (empleado × mes) abierta en el panel de detalle, para ver/editar/borrar
+  // los registros acumulados de ese período.
+  const [cellDetail, setCellDetail] = useState<{ empleadoId: number; nombre: string; mes: number } | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const load = useCallback(async (anioSel: number) => {
     setLoading(true);
@@ -114,20 +120,22 @@ const KmEmpleadosPage: React.FC = () => {
     }
   }, [empleados.length]);
 
-  // Matriz empleado × mes con el valor de la métrica elegida.
+  // Matriz empleado × mes con el valor de la métrica elegida. Cada celda puede
+  // tener varios registros (acumulación/corrección): se SUMA por período.
   const matriz = useMemo(() => {
-    const porEmpleado = new Map<number, { nombre: string; meses: Record<number, RegistroKmEmpleadoDTO> }>();
+    const porEmpleado = new Map<number, { nombre: string; meses: Record<number, RegistroKmEmpleadoDTO[]> }>();
     for (const r of registros) {
       if (!porEmpleado.has(r.empleadoId)) {
         porEmpleado.set(r.empleadoId, { nombre: r.empleadoNombre || `#${r.empleadoId}`, meses: {} });
       }
-      porEmpleado.get(r.empleadoId)!.meses[r.mes] = r;
+      const meses = porEmpleado.get(r.empleadoId)!.meses;
+      (meses[r.mes] ??= []).push(r);
     }
     const filas = Array.from(porEmpleado.entries()).map(([empleadoId, data]) => {
       const valores = MESES.map((_, idx) => {
-        const reg = data.meses[idx + 1];
-        if (!reg) return null;
-        return metrica === 'km' ? reg.kmRecorridos : reg.horasExtra;
+        const regs = data.meses[idx + 1];
+        if (!regs || regs.length === 0) return null;
+        return regs.reduce((acc, reg) => acc + (metrica === 'km' ? reg.kmRecorridos : reg.horasExtra), 0);
       });
       const total = valores.reduce<number>((acc, v) => acc + (v ?? 0), 0);
       return { empleadoId, nombre: data.nombre, valores, total };
@@ -136,10 +144,23 @@ const KmEmpleadosPage: React.FC = () => {
     return filas;
   }, [registros, metrica]);
 
+  // Registros de la celda actualmente abierta en el panel de detalle.
+  const cellRegistros = useMemo(() => {
+    if (!cellDetail) return [];
+    return registros
+      .filter((r) => r.empleadoId === cellDetail.empleadoId && r.mes === cellDetail.mes)
+      .sort((a, b) => (a.fechaCreacion ?? '').localeCompare(b.fechaCreacion ?? ''));
+  }, [registros, cellDetail]);
+
   const totalGeneral = matriz.reduce((acc, f) => acc + f.total, 0);
 
-  const openNuevo = async () => {
-    setForm(emptyForm(anio));
+  const openNuevo = async (prefill?: { empleadoId?: number; mes?: number }) => {
+    setForm({
+      ...emptyForm(anio),
+      ...(prefill?.empleadoId != null ? { empleadoId: String(prefill.empleadoId) } : {}),
+      ...(prefill?.mes != null ? { mes: String(prefill.mes) } : {}),
+    });
+    setEditingId(null);
     setFormError(null);
     setDialogOpen(true);
     await ensureEmpleados();
@@ -154,6 +175,7 @@ const KmEmpleadosPage: React.FC = () => {
       horasExtra: String(reg.horasExtra ?? ''),
       observaciones: reg.observaciones ?? '',
     });
+    setEditingId(reg.id);
     setFormError(null);
     setDialogOpen(true);
     await ensureEmpleados();
@@ -167,14 +189,21 @@ const KmEmpleadosPage: React.FC = () => {
     setSaving(true);
     setFormError(null);
     try {
-      await registroKmEmpleadoApi.upsert({
+      const payload = {
         empleadoId: Number(form.empleadoId),
         anio: Number(form.anio),
         mes: Number(form.mes),
         kmRecorridos: Number(form.kmRecorridos || 0),
         horasExtra: Number(form.horasExtra || 0),
         observaciones: form.observaciones || undefined,
-      });
+      };
+      // Con editingId actualizamos esa fila; sin él, se inserta una fila nueva
+      // (se acumula con lo ya cargado para ese período, no lo pisa).
+      if (editingId != null) {
+        await registroKmEmpleadoApi.update(editingId, payload);
+      } else {
+        await registroKmEmpleadoApi.upsert(payload);
+      }
       setDialogOpen(false);
       // Si cargó otro año, saltamos a ese; si no, recargamos el actual.
       const anioForm = Number(form.anio);
@@ -184,6 +213,18 @@ const KmEmpleadosPage: React.FC = () => {
       setFormError(extractError(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id);
+    try {
+      await registroKmEmpleadoApi.delete(id);
+      await load(anio);
+    } catch (err) {
+      setPageError(extractError(err));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -218,7 +259,7 @@ const KmEmpleadosPage: React.FC = () => {
               <MenuItem key={a} value={a}>{a}</MenuItem>
             ))}
           </TextField>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openNuevo}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => openNuevo()}>
             Nuevo registro
           </Button>
         </Stack>
@@ -253,18 +294,18 @@ const KmEmpleadosPage: React.FC = () => {
                     {fila.nombre}
                   </TableCell>
                   {fila.valores.map((v, idx) => {
-                    const reg = registros.find(
-                      (r) => r.empleadoId === fila.empleadoId && r.mes === idx + 1,
-                    );
+                    const tieneRegistros = v != null;
                     return (
                       <TableCell
                         key={idx}
                         align="right"
-                        onClick={reg ? () => openEditar(reg) : undefined}
+                        onClick={tieneRegistros
+                          ? () => setCellDetail({ empleadoId: fila.empleadoId, nombre: fila.nombre, mes: idx + 1 })
+                          : () => openNuevo({ empleadoId: fila.empleadoId, mes: idx + 1 })}
                         sx={{
-                          cursor: reg ? 'pointer' : 'default',
+                          cursor: 'pointer',
                           color: v == null ? 'text.disabled' : 'text.primary',
-                          '&:hover': reg ? { bgcolor: 'action.hover' } : undefined,
+                          '&:hover': { bgcolor: 'action.hover' },
                         }}
                       >
                         {v == null ? '—' : v.toLocaleString('es-AR')}
@@ -298,11 +339,81 @@ const KmEmpleadosPage: React.FC = () => {
       )}
 
       <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-        Tocá una celda con valor para editar ese mes. La carga es por (empleado, año, mes): si el período ya existe, se actualiza.
+        Cada celda suma todos los registros de ese mes. Tocá una celda con valor para ver el detalle, agregar otro registro (se acumula, no pisa) o corregir/borrar los existentes. Tocá una celda vacía para cargar el primero.
       </Typography>
 
+      {/* Detalle del período: lista los registros acumulados de la celda */}
+      <Dialog open={cellDetail !== null} onClose={() => setCellDetail(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {cellDetail ? `${cellDetail.nombre} — ${MESES[cellDetail.mes - 1]} ${anio}` : ''}
+        </DialogTitle>
+        <DialogContent>
+          {cellRegistros.length === 0 ? (
+            <Alert severity="info" sx={{ mt: 1 }}>No hay registros en este período.</Alert>
+          ) : (
+            <TableContainer component={Paper} variant="outlined" sx={{ mt: 1 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell align="right">Km</TableCell>
+                    <TableCell align="right">Hs extra</TableCell>
+                    <TableCell>Observaciones</TableCell>
+                    <TableCell align="right">Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {cellRegistros.map((r) => (
+                    <TableRow key={r.id} hover>
+                      <TableCell align="right">{(r.kmRecorridos ?? 0).toLocaleString('es-AR')}</TableCell>
+                      <TableCell align="right">{(r.horasExtra ?? 0).toLocaleString('es-AR')}</TableCell>
+                      <TableCell>{r.observaciones || '—'}</TableCell>
+                      <TableCell align="right">
+                        <Button size="small" onClick={() => { setCellDetail(null); openEditar(r); }}>
+                          Editar
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          disabled={deletingId === r.id}
+                          onClick={() => handleDelete(r.id)}
+                        >
+                          {deletingId === r.id ? <CircularProgress size={16} /> : 'Borrar'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                      {cellRegistros.reduce((acc, r) => acc + (r.kmRecorridos ?? 0), 0).toLocaleString('es-AR')}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                      {cellRegistros.reduce((acc, r) => acc + (r.horasExtra ?? 0), 0).toLocaleString('es-AR')}
+                    </TableCell>
+                    <TableCell colSpan={2} sx={{ fontWeight: 700 }}>Total acumulado</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCellDetail(null)}>Cerrar</Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              const c = cellDetail;
+              setCellDetail(null);
+              if (c) openNuevo({ empleadoId: c.empleadoId, mes: c.mes });
+            }}
+          >
+            Agregar registro
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Registro de km / horas extra</DialogTitle>
+        <DialogTitle>{editingId != null ? 'Corregir registro' : 'Nuevo registro de km / horas extra'}</DialogTitle>
         <DialogContent>
           {formError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
           <Stack spacing={2} mt={1}>

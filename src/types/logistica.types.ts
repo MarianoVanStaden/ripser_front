@@ -165,9 +165,13 @@ export interface Viaje {
   numeroViaje?: string;
   fechaViaje: string;
   destino: string;
-  conductorId: number;
+  // conductorId/vehiculoId pueden venir null en viajes PLANIFICADOS sin asignar.
+  conductorId: number | null;
+  conductorNombre?: string;
   conductor?: Empleado;
-  vehiculoId: number;
+  acompananteId?: number | null;
+  acompananteNombre?: string;
+  vehiculoId: number | null;
   vehiculo?: Vehiculo;
   estado: EstadoViaje;
   observaciones?: string;
@@ -178,8 +182,11 @@ export interface Viaje {
 export interface ViajeCreateDTO {
   fechaViaje: string;
   destino: string;
-  conductorId: number;
-  vehiculoId: number;
+  // Opcionales: un viaje PLANIFICADO puede crearse sin conductor/vehículo y
+  // asignarlos más cerca de la salida. El acompañante es siempre opcional.
+  conductorId?: number | null;
+  acompananteId?: number | null;
+  vehiculoId?: number | null;
   estado?: EstadoViaje;
   observaciones?: string;
 }

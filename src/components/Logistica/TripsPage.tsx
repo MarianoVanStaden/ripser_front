@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -71,6 +71,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import RendicionDialog from './RendicionDialog';
 import { usePermisos } from '../../hooks/usePermisos';
+import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { viajeApi } from '../../api/services/viajeApi';
 import { vehiculoApi } from '../../api/services/vehiculoApi';
 import { employeeApi } from '../../api/services/employeeApi';
@@ -560,6 +561,10 @@ const TripsPage2: React.FC = () => {
   const esConductor = tieneRol('CONDUCTOR');
   const puedeRendir = !esConductor; // admin, transporte, coordinadora, etc.
 
+  // Días estimados de entrega (parámetro global editable en /admin/settings).
+  // Fecha estimada = fecha de emisión de la factura + estos días.
+  const { value: diasEntregaEstimada } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
+
   const [trips, setTrips] = useState<Viaje[]>([]);
   const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
   const [drivers, setDrivers] = useState<Empleado[]>([]);
@@ -624,11 +629,18 @@ const TripsPage2: React.FC = () => {
     fechaViaje: '',
     destino: '',
     conductorId: '',
+    acompananteId: '',
     vehiculoId: '',
     facturaId: '',
     estado: 'PLANIFICADO' as EstadoViaje,
     observaciones: '',
   });
+
+  // Listas filtradas por rol de transporte. `drivers` mantiene TODOS los
+  // empleados (para resolver nombres en la grilla); los selectores de viaje
+  // muestran sólo los habilitados como conductor / acompañante.
+  const conductores = useMemo(() => drivers.filter(d => d.esConductor), [drivers]);
+  const acompanantes = useMemo(() => drivers.filter(d => d.esAcompanante), [drivers]);
 
   // Deliveries for current trip
   type DeliveryFormState = Partial<EntregaViaje> & {
@@ -933,6 +945,7 @@ const TripsPage2: React.FC = () => {
       fechaViaje: '',
       destino: '',
       conductorId: '',
+      acompananteId: '',
       vehiculoId: '',
       facturaId: '',
       estado: 'PLANIFICADO',
@@ -953,6 +966,7 @@ const TripsPage2: React.FC = () => {
       // tipo). Sin el guard, el botón Editar crashea con
       // "Cannot read properties of null (reading 'toString')". Ver Sentry 3e4bac…
       conductorId: trip.conductorId?.toString() ?? '',
+      acompananteId: trip.acompananteId?.toString() ?? '',
       vehiculoId: trip.vehiculoId?.toString() ?? '',
       facturaId: '',
       estado: trip.estado,
@@ -1002,12 +1016,29 @@ const TripsPage2: React.FC = () => {
   };
 
   const handleSave = async () => {
+    // Un viaje no puede guardarse vacío: debe tener al menos una entrega con
+    // factura u orden de servicio (sea recién agregada o ya persistida al editar).
+    const tieneEntrega = tripDeliveries.some(d =>
+      d.facturaId != null ||
+      d.ordenServicioId != null ||
+      (d as any).documentoComercialId != null ||
+      (d as any).documentoComercial?.id != null ||
+      (d as any).ordenServicio?.id != null
+    );
+    if (!tieneEntrega) {
+      setError('El viaje debe tener al menos una factura u orden de servicio asociada. Agregá una entrega antes de guardar.');
+      return;
+    }
+
     try {
       const viajeData = {
         fechaViaje: new Date(formData.fechaViaje).toISOString(),
         destino: formData.destino,
-        conductorId: parseInt(formData.conductorId),
-        vehiculoId: parseInt(formData.vehiculoId),
+        // Conductor/vehículo/acompañante son opcionales: en PLANIFICADO pueden
+        // quedar sin asignar (null) y completarse cerca de la salida.
+        conductorId: formData.conductorId ? parseInt(formData.conductorId) : null,
+        acompananteId: formData.acompananteId ? parseInt(formData.acompananteId) : null,
+        vehiculoId: formData.vehiculoId ? parseInt(formData.vehiculoId) : null,
         estado: formData.estado,
         observaciones: formData.observaciones,
       };
@@ -1200,14 +1231,41 @@ const TripsPage2: React.FC = () => {
     return <Chip label={config.label} color={config.color} size="small" />;
   };
 
-  const getDriverName = (driverId: number) => {
+  const getDriverName = (driverId: number | null | undefined) => {
+    if (driverId == null) return 'Sin asignar';
     const driver = drivers.find(d => d.id === driverId);
     return driver ? `${driver.nombre} ${driver.apellido}` : 'N/A';
   };
 
-  const getVehicleInfo = (vehicleId: number) => {
+  const getAcompananteName = (id: number | null | undefined) => {
+    if (id == null) return null;
+    const emp = drivers.find(d => d.id === id);
+    return emp ? `${emp.nombre} ${emp.apellido}` : null;
+  };
+
+  const getVehicleInfo = (vehicleId: number | null | undefined) => {
+    if (vehicleId == null) return 'Sin asignar';
     const vehicle = vehicles.find(v => v.id === vehicleId);
     return vehicle ? `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})` : 'N/A';
+  };
+
+  // Fecha de entrega estimada = fecha de emisión de la factura + días del
+  // parámetro global. Devuelve dd/mm/aaaa o null si no hay fecha base.
+  const calcEntregaEstimada = (fechaEmision?: string | null): string | null => {
+    if (!fechaEmision) return null;
+    const base = new Date(fechaEmision);
+    if (isNaN(base.getTime())) return null;
+    base.setDate(base.getDate() + diasEntregaEstimada);
+    return base.toLocaleDateString('es-AR');
+  };
+
+  // Estimada para una entrega: resuelve su factura (documentoComercialId) y usa
+  // su fechaEmision. Las entregas de orden de servicio no tienen factura → null.
+  const estimadaDeEntrega = (delivery: EntregaViaje): string | null => {
+    const docId = (delivery as any).documentoComercialId ?? (delivery as any).documentoComercial?.id;
+    if (docId == null) return null;
+    const factura = facturas.find(f => f.id === docId);
+    return calcEntregaEstimada(factura?.fechaEmision ?? (factura as any)?.fecha);
   };
 
   const getTripDeliveries = (tripId: number) => {
@@ -1276,7 +1334,12 @@ const TripsPage2: React.FC = () => {
   };
 
   const canProceedStep1 = () => {
-    return formData.destino && formData.conductorId && formData.vehiculoId && formData.fechaViaje;
+    // PLANIFICADO puede crearse sin conductor/vehículo; sólo EN_CURSO los exige.
+    const baseOk = formData.destino && formData.fechaViaje;
+    if (formData.estado === 'EN_CURSO') {
+      return baseOk && formData.conductorId && formData.vehiculoId;
+    }
+    return baseOk;
   };
 
   // Render wizard step content
@@ -1297,10 +1360,10 @@ const TripsPage2: React.FC = () => {
             />
 
             <Autocomplete
-              options={drivers}
+              options={conductores}
               getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
               isOptionEqualToValue={(a, b) => a.id === b.id}
-              value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
+              value={conductores.find(d => d.id.toString() === formData.conductorId) || null}
               onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
               renderOption={({ key: _key, ...props }, option) => (
                 <li key={option.id} {...props}>
@@ -1311,13 +1374,35 @@ const TripsPage2: React.FC = () => {
                 <TextField
                   {...params}
                   label="Conductor"
-                  required
                   size="medium"
-                  helperText={drivers.length === 0 ? 'No hay conductores' : `${drivers.length} disponibles`}
+                  helperText={conductores.length === 0 ? 'No hay empleados marcados como conductor' : `${conductores.length} conductores`}
                   InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
                 />
               )}
-              noOptionsText="No hay conductores"
+              noOptionsText="No hay conductores habilitados"
+            />
+
+            <Autocomplete
+              options={acompanantes}
+              getOptionLabel={(emp) => `${emp.nombre} ${emp.apellido}`}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              value={acompanantes.find(d => d.id.toString() === formData.acompananteId) || null}
+              onChange={(_, value) => setFormData({ ...formData, acompananteId: value?.id.toString() || '' })}
+              renderOption={({ key: _key, ...props }, option) => (
+                <li key={option.id} {...props}>
+                  {`${option.nombre} ${option.apellido}`}
+                </li>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Acompañante (opcional)"
+                  size="medium"
+                  helperText={acompanantes.length === 0 ? 'No hay empleados marcados como acompañante' : `${acompanantes.length} acompañantes`}
+                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
+                />
+              )}
+              noOptionsText="No hay acompañantes habilitados"
             />
 
             <Autocomplete
@@ -1337,7 +1422,6 @@ const TripsPage2: React.FC = () => {
                 <TextField
                   {...params}
                   label="Vehículo"
-                  required
                   size="medium"
                   helperText={vehicles.length === 0 ? 'No hay vehículos cargados' : `${vehicles.length} totales`}
                   InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
@@ -1587,14 +1671,23 @@ const TripsPage2: React.FC = () => {
                   <Box display="flex" alignItems="center" gap={1}>
                     <DriverIcon color="action" fontSize="small" />
                     <Typography variant="body2">
-                      <strong>Conductor:</strong> {getDriverName(parseInt(formData.conductorId))}
+                      <strong>Conductor:</strong> {getDriverName(formData.conductorId ? parseInt(formData.conductorId) : null)}
                     </Typography>
                   </Box>
+
+                  {formData.acompananteId && (
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <DriverIcon color="action" fontSize="small" />
+                      <Typography variant="body2">
+                        <strong>Acompañante:</strong> {getAcompananteName(parseInt(formData.acompananteId))}
+                      </Typography>
+                    </Box>
+                  )}
 
                   <Box display="flex" alignItems="center" gap={1}>
                     <TruckIcon color="action" fontSize="small" />
                     <Typography variant="body2">
-                      <strong>Vehículo:</strong> {getVehicleInfo(parseInt(formData.vehiculoId))}
+                      <strong>Vehículo:</strong> {getVehicleInfo(formData.vehiculoId ? parseInt(formData.vehiculoId) : null)}
                     </Typography>
                   </Box>
 
@@ -2327,10 +2420,10 @@ const TripsPage2: React.FC = () => {
               />
 
               <Autocomplete
-                options={drivers}
+                options={conductores}
                 getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                value={drivers.find(d => d.id.toString() === formData.conductorId) || null}
+                value={conductores.find(d => d.id.toString() === formData.conductorId) || null}
                 onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
                 renderOption={({ key: _key, ...props }, option) => (
                   <li key={option.id} {...props}>
@@ -2338,8 +2431,28 @@ const TripsPage2: React.FC = () => {
                   </li>
                 )}
                 renderInput={(params) => (
-                  <TextField {...params} label="Conductor" required />
+                  <TextField {...params} label="Conductor"
+                    helperText={conductores.length === 0 ? 'No hay empleados marcados como conductor' : undefined} />
                 )}
+                noOptionsText="No hay conductores habilitados"
+              />
+
+              <Autocomplete
+                options={acompanantes}
+                getOptionLabel={(emp) => `${emp.nombre} ${emp.apellido}`}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                value={acompanantes.find(d => d.id.toString() === formData.acompananteId) || null}
+                onChange={(_, value) => setFormData({ ...formData, acompananteId: value?.id.toString() || '' })}
+                renderOption={({ key: _key, ...props }, option) => (
+                  <li key={option.id} {...props}>
+                    {`${option.nombre} ${option.apellido}`}
+                  </li>
+                )}
+                renderInput={(params) => (
+                  <TextField {...params} label="Acompañante (opcional)"
+                    helperText={acompanantes.length === 0 ? 'No hay empleados marcados como acompañante' : undefined} />
+                )}
+                noOptionsText="No hay acompañantes habilitados"
               />
 
               <Autocomplete
@@ -2356,7 +2469,7 @@ const TripsPage2: React.FC = () => {
                   </li>
                 )}
                 renderInput={(params) => (
-                  <TextField {...params} label="Vehículo" required />
+                  <TextField {...params} label="Vehículo" />
                 )}
               />
 
@@ -2591,6 +2704,12 @@ const TripsPage2: React.FC = () => {
                           <Box>
                             <Typography variant="caption" color="text.secondary">Conductor</Typography>
                             <Typography variant="body2">{getDriverName(selectedTrip.conductorId)}</Typography>
+                            {getAcompananteName(selectedTrip.acompananteId) && (
+                              <>
+                                <Typography variant="caption" color="text.secondary">Acompañante</Typography>
+                                <Typography variant="body2">{getAcompananteName(selectedTrip.acompananteId)}</Typography>
+                              </>
+                            )}
                           </Box>
                         </Box>
                         <Box display="flex" alignItems="center" gap={1}>
@@ -2654,6 +2773,11 @@ const TripsPage2: React.FC = () => {
                           <Typography variant="caption" color="text.secondary">
                             {new Date(delivery.fechaEntrega).toLocaleString()}
                           </Typography>
+                          {estimadaDeEntrega(delivery) && (
+                            <Typography variant="caption" color="info.main" display="block">
+                              Entrega estimada: {estimadaDeEntrega(delivery)}
+                            </Typography>
+                          )}
                           {detalles?.equipos?.length > 0 && (
                             <Box mt={1}>
                               <Typography variant="caption" color="primary">
@@ -2685,9 +2809,14 @@ const TripsPage2: React.FC = () => {
                         <Typography variant="body2" fontWeight="bold">
                           ${factura.total.toLocaleString()}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" display="block">
                           {factura.detalles.length} items
                         </Typography>
+                        {calcEntregaEstimada(factura.fechaEmision ?? (factura as any).fecha) && (
+                          <Typography variant="caption" color="info.main" display="block">
+                            Entrega estimada: {calcEntregaEstimada(factura.fechaEmision ?? (factura as any).fecha)}
+                          </Typography>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
@@ -2741,6 +2870,9 @@ const TripsPage2: React.FC = () => {
                       <Typography variant="subtitle2" gutterBottom>Información General</Typography>
                       <Stack spacing={1}>
                         <Typography variant="body2"><strong>Conductor:</strong> {getDriverName(selectedTrip.conductorId)}</Typography>
+                        {getAcompananteName(selectedTrip.acompananteId) && (
+                          <Typography variant="body2"><strong>Acompañante:</strong> {getAcompananteName(selectedTrip.acompananteId)}</Typography>
+                        )}
                         <Typography variant="body2"><strong>Vehículo:</strong> {getVehicleInfo(selectedTrip.vehiculoId)}</Typography>
                         <Typography variant="body2"><strong>Destino:</strong> {selectedTrip.destino}</Typography>
                         <Typography variant="body2"><strong>Fecha:</strong> {new Date(selectedTrip.fechaViaje).toLocaleString()}</Typography>
@@ -2760,7 +2892,11 @@ const TripsPage2: React.FC = () => {
                           <ListItem key={delivery.id} disablePadding>
                             <ListItemText
                               primary={`Entrega #${index + 1}`}
-                              secondary={delivery.direccionEntrega}
+                              secondary={
+                                estimadaDeEntrega(delivery)
+                                  ? `${delivery.direccionEntrega} · Entrega estimada: ${estimadaDeEntrega(delivery)}`
+                                  : delivery.direccionEntrega
+                              }
                             />
                             <Chip
                               label={delivery.estado}

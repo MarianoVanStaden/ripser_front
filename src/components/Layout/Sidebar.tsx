@@ -619,7 +619,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/distribucion/entregas-productos',
     '/logistica/distribucion/entregas-equipos',
     '/logistica/vehiculos/incidencias',
-    '/logistica/vehiculos/km-empleados',
+    // 'Km por Empleado' (/logistica/vehiculos/km-empleados) NO va: es gestión de
+    // datos de RRHH/transporte, fuera del scope operativo del conductor.
   ];
 
   // Filtrar las secciones según los permisos del usuario.
