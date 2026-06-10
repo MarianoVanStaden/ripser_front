@@ -26,11 +26,20 @@ const sortRecordatorios = (list: RecordatorioConLeadDTO[]) =>
     return (b.lead?.score ?? 0) - (a.lead?.score ?? 0);
   });
 
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+// "YYYY-MM-DD" en hora LOCAL. toISOString() convierte a UTC y de noche
+// (Argentina UTC-3) devuelve el día siguiente, desfasando los conteos un día.
+const fmtLocal = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getTodayStr = () => fmtLocal(new Date());
 const getYesterdayStr = () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
+  return fmtLocal(d);
 };
 
 const computeConteos = (list: RecordatorioConLeadDTO[]): ConteosRecordatoriosDTO => {

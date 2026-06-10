@@ -96,12 +96,22 @@ const mapTipoInteraccionToRecordatorio = (tipo: string) =>
   tipo === 'WHATSAPP' ? 'WHATSAPP' as const :
   'TAREA' as const;
 
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+// Formatea un Date como "YYYY-MM-DD" en hora LOCAL. No usar toISOString(): ese
+// convierte a UTC y, en zonas con offset negativo (Argentina UTC-3), de noche
+// devuelve el día siguiente, desfasando todos los filtros de fecha un día.
+const fmtLocal = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getTodayStr = () => fmtLocal(new Date());
 
 const getDateStr = (offset: number) => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toISOString().split('T')[0];
+  return fmtLocal(d);
 };
 
 const getWeekStartStr = () => {
@@ -109,7 +119,7 @@ const getWeekStartStr = () => {
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  return fmtLocal(d);
 };
 
 const getWeekEndStr = () => {
@@ -117,19 +127,19 @@ const getWeekEndStr = () => {
   const day = d.getDay();
   const diff = 7 - day;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  return fmtLocal(d);
 };
 
 const getMonthStartStr = () => {
   const d = new Date();
   d.setDate(1);
-  return d.toISOString().split('T')[0];
+  return fmtLocal(d);
 };
 
 const getMonthEndStr = () => {
   const d = new Date();
   d.setMonth(d.getMonth() + 1, 0); // último día del mes actual
-  return d.toISOString().split('T')[0];
+  return fmtLocal(d);
 };
 
 // "Vencidos + X" se interpreta como "items que se vencieron/se vencerán durante
@@ -140,11 +150,11 @@ const shiftDateStrBack = (dateStr: string): string => {
   if (!dateStr || dateStr === '9999-99-99' || dateStr === '0000-00-00') return dateStr;
   const d = new Date(`${dateStr}T00:00:00`);
   // Un <input type="date"> permite años fuera del rango representable por Date
-  // (p.ej. "999999-06-09"), lo que produce un Invalid Date y rompe toISOString
-  // con "Invalid time value". En ese caso devolvemos la cadena sin shiftear.
+  // (p.ej. "999999-06-09"), lo que produce un Invalid Date. En ese caso
+  // devolvemos la cadena sin shiftear.
   if (Number.isNaN(d.getTime())) return dateStr;
   d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
+  return fmtLocal(d);
 };
 
 const formatDateDisplay = (dateStr: string) => {
