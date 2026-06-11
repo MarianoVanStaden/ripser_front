@@ -49,7 +49,7 @@ import {
   Badge as BadgeIcon,
   VpnKey as VpnKeyIcon,
 } from '@mui/icons-material';
-import usuarioAdminApi, { type TipoRol, type ChangePasswordDTO } from '../../api/services/usuarioAdminApi';
+import usuarioAdminApi, { type TipoRol } from '../../api/services/usuarioAdminApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { Empleado } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -128,12 +128,12 @@ const UsersPage: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Change password
+  // Reset password (admin fija una clave nueva sin conocer la actual)
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [passwordTarget, setPasswordTarget] = useState<UsuarioWithEmpresa | null>(null);
-  const [passwordForm, setPasswordForm] = useState<ChangePasswordDTO>({ currentPassword: '', newPassword: '' });
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState<{ newPassword: string; confirmPassword: string }>({ newPassword: '', confirmPassword: '' });
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Vincular empleado
@@ -598,18 +598,18 @@ const UsersPage: React.FC = () => {
 
   const openPasswordDialog = (user: UsuarioWithEmpresa) => {
     setPasswordTarget(user);
-    setPasswordForm({ currentPassword: '', newPassword: '' });
-    setShowCurrentPassword(false);
+    setPasswordForm({ newPassword: '', confirmPassword: '' });
     setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setPasswordError(null);
     setPasswordDialogOpen(true);
   };
 
-  const handleChangePassword = async () => {
+  const handleResetPassword = async () => {
     if (!passwordTarget) return;
     try {
       setPasswordError(null);
-      if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
         setPasswordError('Debe completar ambos campos');
         return;
       }
@@ -617,12 +617,16 @@ const UsersPage: React.FC = () => {
         setPasswordError('La nueva contraseña debe tener al menos 8 caracteres');
         return;
       }
-      await usuarioAdminApi.changePassword(passwordTarget.id, passwordForm);
-      setSuccess('Contraseña cambiada correctamente');
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setPasswordError('Las contraseñas no coinciden');
+        return;
+      }
+      await usuarioAdminApi.resetPassword(passwordTarget.id, { newPassword: passwordForm.newPassword });
+      setSuccess('Contraseña restablecida. Comunicásela al usuario.');
       setPasswordDialogOpen(false);
       setPasswordTarget(null);
     } catch (err: any) {
-      setPasswordError(err.response?.data?.message || 'Error al cambiar la contraseña');
+      setPasswordError(err.response?.data?.message || 'Error al restablecer la contraseña');
     }
   };
 
@@ -792,7 +796,7 @@ const UsersPage: React.FC = () => {
                             <EditIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Cambiar Contraseña">
+                        <Tooltip title="Restablecer Contraseña">
                           <IconButton onClick={() => openPasswordDialog(user)} size="small" color="warning">
                             <VpnKeyIcon />
                           </IconButton>
@@ -1606,32 +1610,19 @@ const UsersPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Change Password Dialog */}
+      {/* Reset Password Dialog */}
       <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>Cambiar Contraseña: {passwordTarget?.username}</DialogTitle>
+        <DialogTitle>Restablecer Contraseña: {passwordTarget?.username}</DialogTitle>
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2} mt={1}>
+            <Alert severity="info">
+              Las contraseñas se guardan cifradas y no pueden verse. Definí una clave nueva y comunicásela al usuario.
+            </Alert>
             {passwordError && (
               <Alert severity="error" onClose={() => setPasswordError(null)}>
                 {passwordError}
               </Alert>
             )}
-            <TextField
-              fullWidth
-              label="Contraseña Actual *"
-              type={showCurrentPassword ? 'text' : 'password'}
-              value={passwordForm.currentPassword}
-              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end">
-                      {showCurrentPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
             <TextField
               fullWidth
               label="Nueva Contraseña *"
@@ -1649,12 +1640,28 @@ const UsersPage: React.FC = () => {
                 ),
               }}
             />
+            <TextField
+              fullWidth
+              label="Confirmar Contraseña *"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={passwordForm.confirmPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                      {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPasswordDialogOpen(false)}>Cancelar</Button>
-          <Button variant="contained" color="warning" onClick={handleChangePassword}>
-            Cambiar Contraseña
+          <Button variant="contained" color="warning" onClick={handleResetPassword}>
+            Restablecer Contraseña
           </Button>
         </DialogActions>
       </Dialog>

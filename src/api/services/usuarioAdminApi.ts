@@ -41,6 +41,10 @@ export interface ChangePasswordDTO {
   newPassword: string;
 }
 
+export interface ResetPasswordDTO {
+  newPassword: string;
+}
+
 /**
  * API service for user management (Admin only)
  */
@@ -82,10 +86,19 @@ class UsuarioAdminApi {
   }
 
   /**
-   * Change user password
+   * Change user password (requires the current password)
    */
   async changePassword(id: number, dto: ChangePasswordDTO): Promise<void> {
     await api.patch(`${this.BASE_URL}/${id}/change-password`, dto);
+  }
+
+  /**
+   * Reset a user's password as admin (no current password required).
+   * For the "user forgot their password" case — passwords are hashed and
+   * cannot be recovered, so the admin sets a new one.
+   */
+  async resetPassword(id: number, dto: ResetPasswordDTO): Promise<void> {
+    await api.patch(`${this.BASE_URL}/${id}/reset-password`, dto);
   }
 
   /**

@@ -642,6 +642,17 @@ const TripsPage2: React.FC = () => {
   const conductores = useMemo(() => drivers.filter(d => d.esConductor), [drivers]);
   const acompanantes = useMemo(() => drivers.filter(d => d.esAcompanante), [drivers]);
 
+  // Un empleado no puede ser conductor y acompañante del mismo viaje: cada
+  // selector excluye al ya elegido en el otro.
+  const conductoresDisponibles = useMemo(
+    () => conductores.filter(d => d.id.toString() !== formData.acompananteId),
+    [conductores, formData.acompananteId],
+  );
+  const acompanantesDisponibles = useMemo(
+    () => acompanantes.filter(d => d.id.toString() !== formData.conductorId),
+    [acompanantes, formData.conductorId],
+  );
+
   // Deliveries for current trip
   type DeliveryFormState = Partial<EntregaViaje> & {
     fechaProgramada?: string;
@@ -1249,24 +1260,57 @@ const TripsPage2: React.FC = () => {
     return vehicle ? `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})` : 'N/A';
   };
 
-  // Fecha de entrega estimada = fecha de emisión de la factura + días del
-  // parámetro global. Devuelve dd/mm/aaaa o null si no hay fecha base.
-  const calcEntregaEstimada = (fechaEmision?: string | null): string | null => {
+  // Info de entrega estimada a partir de la fecha de emisión de la factura:
+  // fecha estimada (emisión + días del parámetro), días transcurridos desde la
+  // emisión y días restantes hasta la estimada (negativo = atrasada).
+  const entregaEstimadaInfo = (fechaEmision?: string | null):
+    { fecha: string; transcurridos: number; restantes: number } | null => {
     if (!fechaEmision) return null;
     const base = new Date(fechaEmision);
     if (isNaN(base.getTime())) return null;
-    base.setDate(base.getDate() + diasEntregaEstimada);
-    return base.toLocaleDateString('es-AR');
+    const DIA_MS = 86400000;
+    const hoy = new Date();
+    // Contamos días calendario (normalizados a medianoche UTC).
+    const dBase = Date.UTC(base.getFullYear(), base.getMonth(), base.getDate());
+    const dHoy = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const dEst = dBase + diasEntregaEstimada * DIA_MS;
+    const transcurridos = Math.max(0, Math.round((dHoy - dBase) / DIA_MS));
+    const restantes = Math.round((dEst - dHoy) / DIA_MS);
+    return { fecha: new Date(dEst).toLocaleDateString('es-AR'), transcurridos, restantes };
   };
 
-  // Estimada para una entrega: resuelve su factura (documentoComercialId) y usa
-  // su fechaEmision. Las entregas de orden de servicio no tienen factura → null.
-  const estimadaDeEntrega = (delivery: EntregaViaje): string | null => {
+  // Info estimada para una entrega: resuelve su factura (documentoComercialId).
+  // Las entregas de orden de servicio no tienen factura → null.
+  const infoEntregaDeDelivery = (delivery: EntregaViaje) => {
     const docId = (delivery as any).documentoComercialId ?? (delivery as any).documentoComercial?.id;
     if (docId == null) return null;
     const factura = facturas.find(f => f.id === docId);
-    return calcEntregaEstimada(factura?.fechaEmision ?? (factura as any)?.fecha);
+    return entregaEstimadaInfo(factura?.fechaEmision ?? (factura as any)?.fecha);
   };
+
+  // Entrega más urgente del viaje (menor "restantes" = más próxima/atrasada),
+  // para mostrar un indicador en la fila del listado. null si no hay facturas.
+  const infoEntregaViaje = (tripId: number) => {
+    const infos = getTripDeliveries(tripId)
+      .map(d => infoEntregaDeDelivery(d))
+      .filter((x): x is { fecha: string; transcurridos: number; restantes: number } => x != null);
+    if (infos.length === 0) return null;
+    return infos.reduce((min, cur) => (cur.restantes < min.restantes ? cur : min));
+  };
+
+  // Línea "Transcurridos X de N d · faltan/atrasada" reutilizable.
+  const renderEntregaEstimada = (info: { fecha: string; transcurridos: number; restantes: number } | null) =>
+    info ? (
+      <>
+        <Typography variant="caption" color="info.main" display="block">
+          Entrega estimada: {info.fecha}
+        </Typography>
+        <Typography variant="caption" color={info.restantes < 0 ? 'error.main' : 'text.secondary'} display="block">
+          Transcurridos {info.transcurridos} de {diasEntregaEstimada} d ·{' '}
+          {info.restantes >= 0 ? `faltan ${info.restantes} d` : `atrasada ${Math.abs(info.restantes)} d`}
+        </Typography>
+      </>
+    ) : null;
 
   const getTripDeliveries = (tripId: number) => {
     return deliveries.filter(d => d.viajeId === tripId);
@@ -1360,10 +1404,10 @@ const TripsPage2: React.FC = () => {
             />
 
             <Autocomplete
-              options={conductores}
+              options={conductoresDisponibles}
               getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
               isOptionEqualToValue={(a, b) => a.id === b.id}
-              value={conductores.find(d => d.id.toString() === formData.conductorId) || null}
+              value={conductoresDisponibles.find(d => d.id.toString() === formData.conductorId) || null}
               onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
               renderOption={({ key: _key, ...props }, option) => (
                 <li key={option.id} {...props}>
@@ -1383,10 +1427,10 @@ const TripsPage2: React.FC = () => {
             />
 
             <Autocomplete
-              options={acompanantes}
+              options={acompanantesDisponibles}
               getOptionLabel={(emp) => `${emp.nombre} ${emp.apellido}`}
               isOptionEqualToValue={(a, b) => a.id === b.id}
-              value={acompanantes.find(d => d.id.toString() === formData.acompananteId) || null}
+              value={acompanantesDisponibles.find(d => d.id.toString() === formData.acompananteId) || null}
               onChange={(_, value) => setFormData({ ...formData, acompananteId: value?.id.toString() || '' })}
               renderOption={({ key: _key, ...props }, option) => (
                 <li key={option.id} {...props}>
@@ -1794,6 +1838,22 @@ const TripsPage2: React.FC = () => {
                 <Typography variant="caption" color="text.secondary">Entregas</Typography>
               </Badge>
             </Stack>
+            {(() => {
+              const info = infoEntregaViaje(trip.id);
+              if (!info) return null;
+              return (
+                <Box display="flex" alignItems="center" gap={0.5} mt={1}>
+                  <Typography variant="caption" color="text.secondary">Entrega est.:</Typography>
+                  <Typography variant="caption">{info.fecha}</Typography>
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={info.restantes >= 0 ? `faltan ${info.restantes} d` : `atrasada ${Math.abs(info.restantes)} d`}
+                    color={info.restantes < 0 ? 'error' : info.restantes <= 3 ? 'warning' : 'default'}
+                  />
+                </Box>
+              );
+            })()}
           </Box>
 
           {/* Expanded content */}
@@ -2146,6 +2206,7 @@ const TripsPage2: React.FC = () => {
                       {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Vehículo</Box>}
                       <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Destino</Box>
                       <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Fecha</Box>
+                      <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Entrega est.</Box>
                       <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Estado</Box>
                       <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Acciones</Box>
                     </Box>
@@ -2238,6 +2299,23 @@ const TripsPage2: React.FC = () => {
                             <Typography variant="body2" noWrap>
                               {new Date(trip.fechaViaje).toLocaleDateString()}
                             </Typography>
+                          </Box>
+                          <Box component="td" sx={{ p: 1.5 }}>
+                            {(() => {
+                              const info = infoEntregaViaje(trip.id);
+                              if (!info) return <Typography variant="caption" color="text.secondary">—</Typography>;
+                              return (
+                                <Box>
+                                  <Typography variant="body2" noWrap>{info.fecha}</Typography>
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    label={info.restantes >= 0 ? `faltan ${info.restantes} d` : `atrasada ${Math.abs(info.restantes)} d`}
+                                    color={info.restantes < 0 ? 'error' : info.restantes <= 3 ? 'warning' : 'default'}
+                                  />
+                                </Box>
+                              );
+                            })()}
                           </Box>
                           <Box component="td" sx={{ p: 1.5 }}>
                             {getStatusChip(trip.estado)}
@@ -2420,10 +2498,10 @@ const TripsPage2: React.FC = () => {
               />
 
               <Autocomplete
-                options={conductores}
+                options={conductoresDisponibles}
                 getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                value={conductores.find(d => d.id.toString() === formData.conductorId) || null}
+                value={conductoresDisponibles.find(d => d.id.toString() === formData.conductorId) || null}
                 onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
                 renderOption={({ key: _key, ...props }, option) => (
                   <li key={option.id} {...props}>
@@ -2438,10 +2516,10 @@ const TripsPage2: React.FC = () => {
               />
 
               <Autocomplete
-                options={acompanantes}
+                options={acompanantesDisponibles}
                 getOptionLabel={(emp) => `${emp.nombre} ${emp.apellido}`}
                 isOptionEqualToValue={(a, b) => a.id === b.id}
-                value={acompanantes.find(d => d.id.toString() === formData.acompananteId) || null}
+                value={acompanantesDisponibles.find(d => d.id.toString() === formData.acompananteId) || null}
                 onChange={(_, value) => setFormData({ ...formData, acompananteId: value?.id.toString() || '' })}
                 renderOption={({ key: _key, ...props }, option) => (
                   <li key={option.id} {...props}>
@@ -2773,11 +2851,7 @@ const TripsPage2: React.FC = () => {
                           <Typography variant="caption" color="text.secondary">
                             {new Date(delivery.fechaEntrega).toLocaleString()}
                           </Typography>
-                          {estimadaDeEntrega(delivery) && (
-                            <Typography variant="caption" color="info.main" display="block">
-                              Entrega estimada: {estimadaDeEntrega(delivery)}
-                            </Typography>
-                          )}
+                          {renderEntregaEstimada(infoEntregaDeDelivery(delivery))}
                           {detalles?.equipos?.length > 0 && (
                             <Box mt={1}>
                               <Typography variant="caption" color="primary">
@@ -2812,11 +2886,7 @@ const TripsPage2: React.FC = () => {
                         <Typography variant="caption" color="text.secondary" display="block">
                           {factura.detalles.length} items
                         </Typography>
-                        {calcEntregaEstimada(factura.fechaEmision ?? (factura as any).fecha) && (
-                          <Typography variant="caption" color="info.main" display="block">
-                            Entrega estimada: {calcEntregaEstimada(factura.fechaEmision ?? (factura as any).fecha)}
-                          </Typography>
-                        )}
+                        {renderEntregaEstimada(entregaEstimadaInfo(factura.fechaEmision ?? (factura as any).fecha))}
                       </CardContent>
                     </Card>
                   ))}
@@ -2892,11 +2962,14 @@ const TripsPage2: React.FC = () => {
                           <ListItem key={delivery.id} disablePadding>
                             <ListItemText
                               primary={`Entrega #${index + 1}`}
-                              secondary={
-                                estimadaDeEntrega(delivery)
-                                  ? `${delivery.direccionEntrega} · Entrega estimada: ${estimadaDeEntrega(delivery)}`
-                                  : delivery.direccionEntrega
-                              }
+                              secondary={(() => {
+                                const info = infoEntregaDeDelivery(delivery);
+                                if (!info) return delivery.direccionEntrega;
+                                const restTxt = info.restantes >= 0
+                                  ? `faltan ${info.restantes} d`
+                                  : `atrasada ${Math.abs(info.restantes)} d`;
+                                return `${delivery.direccionEntrega} · Estimada ${info.fecha} (transcurridos ${info.transcurridos}/${diasEntregaEstimada} d, ${restTxt})`;
+                              })()}
                             />
                             <Chip
                               label={delivery.estado}

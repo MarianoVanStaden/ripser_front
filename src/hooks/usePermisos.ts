@@ -36,7 +36,7 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // esconde por denylist en Sidebar (adminEmpresaLimitadoDeniedPaths) y se
   // bloquea por URL en RoleScopeGuard. NO incluye 'ADMIN' como systemRole para
   // no bypassear los guards de scope.
-  ADMIN_EMPRESA_LIMITADO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'ADMINISTRACION', 'PRESTAMOS'],
+  ADMIN_EMPRESA_LIMITADO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TRANSPORTE', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'ADMINISTRACION', 'PRESTAMOS'],
 
   GERENTE_SUCURSAL: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
 
