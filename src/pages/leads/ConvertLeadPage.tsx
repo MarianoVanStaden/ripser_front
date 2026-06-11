@@ -63,7 +63,9 @@ export const ConvertLeadPage = () => {
     ciudadCliente: '',
     telefonoAlternativoCliente: '',
     rubroCliente: undefined,
-    rubroDetalleCliente: ''
+    rubroDetalleCliente: '',
+    apellidoCliente: '',
+    cuitCliente: ''
   });
 
   useEffect(() => {
@@ -102,7 +104,8 @@ export const ConvertLeadPage = () => {
         ciudadCliente: leadData.ciudad || '',
         telefonoAlternativoCliente: leadData.telefonoAlternativo || '',
         rubroCliente: leadData.rubro,
-        rubroDetalleCliente: leadData.rubroDetalle || ''
+        rubroDetalleCliente: leadData.rubroDetalle || '',
+        apellidoCliente: leadData.apellido || ''
       }));
 
       // Pre-seleccionar producto/receta si está disponible
@@ -529,6 +532,27 @@ export const ConvertLeadPage = () => {
 
               <form onSubmit={handleSubmit}>
                 <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Apellido"
+                      value={conversionData.apellidoCliente || ''}
+                      onChange={handleChange('apellidoCliente')}
+                      helperText="Apellido del cliente (opcional)"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="CUIT / CUIL"
+                      value={conversionData.cuitCliente || ''}
+                      onChange={handleChange('cuitCliente')}
+                      helperText="Para facturación (opcional)"
+                      inputProps={{ maxLength: 13 }}
+                    />
+                  </Grid>
+
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth

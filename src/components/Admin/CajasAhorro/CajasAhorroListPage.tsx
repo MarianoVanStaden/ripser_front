@@ -31,6 +31,7 @@ import CajaFormDialog from './dialogs/CajaFormDialog';
 import DepositarDialog from './dialogs/DepositarDialog';
 import ExtraerDialog from './dialogs/ExtraerDialog';
 import ConvertirAmortizacionDialog from './dialogs/ConvertirAmortizacionDialog';
+import TransferirDialog from './dialogs/TransferirDialog';
 
 const CajasAhorroListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +46,8 @@ const CajasAhorroListPage: React.FC = () => {
   const [depositarOpen, setDepositarOpen] = useState(false);
   const [extraerOpen, setExtraerOpen] = useState(false);
   const [convertirOpen, setConvertirOpen] = useState(false);
+  const [transferirOpen, setTransferirOpen] = useState(false);
+  const [transferirOrigenId, setTransferirOrigenId] = useState<number | undefined>(undefined);
 
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -118,6 +121,17 @@ const CajasAhorroListPage: React.FC = () => {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button
+            variant="outlined"
+            startIcon={<SwapHorizIcon />}
+            onClick={() => {
+              setTransferirOrigenId(undefined);
+              setTransferirOpen(true);
+            }}
+            disabled={cajasActivas.length < 2}
+          >
+            Transferir entre cajas
+          </Button>
           <Button
             variant="outlined"
             startIcon={<SwapHorizIcon />}
@@ -251,6 +265,19 @@ const CajasAhorroListPage: React.FC = () => {
                         >
                           Extraer
                         </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          startIcon={<SwapHorizIcon />}
+                          onClick={() => {
+                            setTransferirOrigenId(caja.id);
+                            setTransferirOpen(true);
+                          }}
+                          disabled={cajasActivas.length < 2}
+                        >
+                          Transferir
+                        </Button>
                         <Box display="flex" gap={0.5}>
                           <IconButton size="small" onClick={() => handleOpenEdit(caja)} title="Editar">
                             <EditIcon fontSize="small" />
@@ -312,6 +339,17 @@ const CajasAhorroListPage: React.FC = () => {
         onClose={() => setConvertirOpen(false)}
         onSuccess={() => {
           setConvertirOpen(false);
+          loadCajas();
+        }}
+      />
+
+      <TransferirDialog
+        open={transferirOpen}
+        cajasActivas={cajasActivas}
+        defaultOrigenId={transferirOrigenId}
+        onClose={() => setTransferirOpen(false)}
+        onSuccess={() => {
+          setTransferirOpen(false);
           loadCajas();
         }}
       />

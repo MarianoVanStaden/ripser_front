@@ -39,13 +39,25 @@ const TIPO_LABEL: Record<TipoMovimientoCaja, string> = {
   DEPOSITO: 'Depósito',
   EXTRACCION: 'Extracción',
   CONVERSION_AMORTIZACION: 'Conversión amort.',
+  TRANSFERENCIA_EGRESO: 'Transf. salida',
+  TRANSFERENCIA_INGRESO: 'Transf. entrada',
 };
 
 const TIPO_COLOR: Record<TipoMovimientoCaja, 'success' | 'error' | 'info'> = {
   DEPOSITO: 'success',
   EXTRACCION: 'error',
   CONVERSION_AMORTIZACION: 'info',
+  TRANSFERENCIA_EGRESO: 'error',
+  TRANSFERENCIA_INGRESO: 'success',
 };
+
+// Tipos que restan saldo (se muestran en rojo con prefijo −).
+const TIPOS_EGRESO: TipoMovimientoCaja[] = ['EXTRACCION', 'TRANSFERENCIA_EGRESO'];
+// Tipos de transferencia interna USD→USD (sin tipo de cambio aplicable).
+const TIPOS_TRANSFERENCIA: TipoMovimientoCaja[] = [
+  'TRANSFERENCIA_EGRESO',
+  'TRANSFERENCIA_INGRESO',
+];
 
 const CajaMovimientosPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -245,9 +257,10 @@ const CajaMovimientosPage: React.FC = () => {
             )}
             {!movLoading &&
               movimientos.map((mov) => {
-                const esExtraccion = mov.tipo === 'EXTRACCION';
-                const montoColor = esExtraccion ? 'error.main' : 'success.main';
-                const prefix = esExtraccion ? '−' : '+';
+                const esEgreso = TIPOS_EGRESO.includes(mov.tipo);
+                const esTransferencia = TIPOS_TRANSFERENCIA.includes(mov.tipo);
+                const montoColor = esEgreso ? 'error.main' : 'success.main';
+                const prefix = esEgreso ? '−' : '+';
                 const desc = mov.descripcion ?? '';
 
                 return (
@@ -288,7 +301,9 @@ const CajaMovimientosPage: React.FC = () => {
                         ? formatPesos(mov.montoPesosOriginal)
                         : '—'}
                     </TableCell>
-                    <TableCell align="right">{formatPesos(mov.valorDolar)}</TableCell>
+                    <TableCell align="right">
+                      {esTransferencia ? '—' : formatPesos(mov.valorDolar)}
+                    </TableCell>
                     <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 360 }}>
                       {desc}
                     </TableCell>

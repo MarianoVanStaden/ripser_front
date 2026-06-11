@@ -398,6 +398,7 @@ const GarantiaReportPage: React.FC = () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow>
+                      <TableCell><strong>Cliente</strong></TableCell>
                       <TableCell><strong>N° Serie</strong></TableCell>
                       <TableCell><strong>Modelo</strong></TableCell>
                       <TableCell align="center"><strong>Vencimiento</strong></TableCell>
@@ -407,7 +408,7 @@ const GarantiaReportPage: React.FC = () => {
                   <TableBody>
                     {garantiasPorVencer.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} align="center">
+                        <TableCell colSpan={5} align="center">
                           <Typography variant="body2" color="textSecondary" py={2}>
                             No hay garantías por vencer en los próximos 30 días
                           </Typography>
@@ -418,6 +419,13 @@ const GarantiaReportPage: React.FC = () => {
                         const diasRestantes = dayjs(g.fechaVencimiento).diff(dayjs(), 'day');
                         return (
                           <TableRow key={g.id} hover>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="500">
+                                {g.clienteNombre && g.clienteApellido
+                                  ? `${g.clienteNombre} ${g.clienteApellido}`
+                                  : g.clienteNombre || '-'}
+                              </Typography>
+                            </TableCell>
                             <TableCell>
                               <Typography variant="body2" fontWeight="500">
                                 {g.numeroSerie}
@@ -462,6 +470,7 @@ const GarantiaReportPage: React.FC = () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow>
+                      <TableCell><strong>Cliente</strong></TableCell>
                       <TableCell><strong>N° Reclamo</strong></TableCell>
                       <TableCell><strong>Fecha</strong></TableCell>
                       <TableCell><strong>Garantía</strong></TableCell>
@@ -473,7 +482,7 @@ const GarantiaReportPage: React.FC = () => {
                   <TableBody>
                     {reclamosRecientes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center">
+                        <TableCell colSpan={7} align="center">
                           <Typography variant="body2" color="textSecondary" py={2}>
                             No hay reclamos registrados
                           </Typography>
@@ -493,6 +502,13 @@ const GarantiaReportPage: React.FC = () => {
 
                         return (
                           <TableRow key={r.id} hover>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="500">
+                                {r.clienteNombre && r.clienteApellido
+                                  ? `${r.clienteNombre} ${r.clienteApellido}`
+                                  : r.clienteNombre || '-'}
+                              </Typography>
+                            </TableCell>
                             <TableCell>
                               <Typography variant="body2" fontWeight="500">
                                 {r.numeroReclamo}

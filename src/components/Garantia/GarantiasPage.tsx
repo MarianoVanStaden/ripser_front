@@ -389,6 +389,7 @@ const GarantiasPage: React.FC = () => {
             <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
+                  <TableCell sx={{ minWidth: 160 }}><strong>Cliente</strong></TableCell>
                   <TableCell sx={{ minWidth: 120 }}><strong>N° Serie</strong></TableCell>
                   <TableCell sx={{ minWidth: 150 }}><strong>Modelo de Equipo</strong></TableCell>
                   <TableCell sx={{ minWidth: 100 }}><strong>N° Venta</strong></TableCell>
@@ -402,7 +403,7 @@ const GarantiasPage: React.FC = () => {
               <TableBody>
                 {filteredGarantias.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       <Typography variant="body2" color="textSecondary" py={4}>
                         No se encontraron garantías
                       </Typography>
@@ -411,6 +412,13 @@ const GarantiasPage: React.FC = () => {
                 ) : (
                   paginatedGarantias.map((garantia) => (
                 <TableRow key={garantia.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight="500">
+                      {garantia.clienteNombre && garantia.clienteApellido
+                        ? `${garantia.clienteNombre} ${garantia.clienteApellido}`
+                        : garantia.clienteNombre || '-'}
+                    </Typography>
+                  </TableCell>
                   <TableCell>
                     <Typography variant="body2" fontWeight="500">
                       {garantia.numeroSerie}

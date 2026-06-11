@@ -165,6 +165,7 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/leads/metricas',
       '/logistica/distribucion/viajes',
       '/logistica/distribucion/entregas-productos',
+      '/garantias',
     ],
   },
   {

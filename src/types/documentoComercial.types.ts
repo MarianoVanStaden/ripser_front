@@ -68,11 +68,23 @@ export interface DocumentoComercial {
   prestamoId?: number | null;
 }
 
+export type MotivoNotaCredito = 'DEVOLUCION_EQUIPO' | 'ERROR_FACTURACION' | 'OTRO';
+
+export interface DetalleNotaCreditoItemDTO {
+  detalleDocumentoId: number;
+  cantidadAcreditar: number;
+  equipoFabricadoId?: number;
+}
+
 export interface CreateNotaCreditoDTO {
   facturaId: number;
   usuarioId: number;
   observaciones?: string;
+  motivo?: MotivoNotaCredito;
+  /** Modo DEVOLUCION_EQUIPO: IDs de equipos a retornar al inventario. */
   equiposADevolver?: number[];
+  /** Modo ERROR_FACTURACION / OTRO: ítems exactos a acreditar. */
+  itemsAcreditar?: DetalleNotaCreditoItemDTO[];
 }
 // En types/index.ts agregar:
 export interface CreateOpcionFinanciamientoDTO {

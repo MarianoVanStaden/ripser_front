@@ -18,6 +18,8 @@ export interface ReclamoGarantiaDTO {
   tecnicoId?: number;
   tecnicoNombre?: string;
   tecnicoApellido?: string;
+  clienteNombre?: string;
+  clienteApellido?: string;
 }
 
 export interface ReclamoGarantiaCreateDTO {

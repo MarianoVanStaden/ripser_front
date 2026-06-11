@@ -6,6 +6,8 @@ import type {
   MovimientoCajaAhorro,
   DepositoExtraCajaDTO,
   DisponibleConversionDTO,
+  TransferenciaCajaAhorroRequestDTO,
+  TransferenciaCajaAhorroResponseDTO,
 } from '../../types';
 import type { MetodoPago } from '../../types/prestamo.types';
 
@@ -74,6 +76,16 @@ export const cajasAhorroApi = {
     const res = await api.get<DisponibleConversionDTO[]>(
       `${BASE}/amortizaciones-disponibles`,
       { params: { anio, mes } }
+    );
+    return res.data;
+  },
+
+  transferir: async (
+    dto: TransferenciaCajaAhorroRequestDTO
+  ): Promise<TransferenciaCajaAhorroResponseDTO> => {
+    const res = await api.post<TransferenciaCajaAhorroResponseDTO>(
+      `${BASE}/transferencias`,
+      dto
     );
     return res.data;
   },

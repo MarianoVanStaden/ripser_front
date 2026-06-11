@@ -17,6 +17,8 @@ export interface GarantiaDTO {
   estado: 'VIGENTE' | 'VENCIDA' | 'ANULADA';
   tiposGarantia?: string; // "DESPERFECTO_FABRICA,DESPERFECTO_ELECTRICO"
   observaciones?: string;
+  clienteNombre?: string;
+  clienteApellido?: string;
   reclamos?: any[];
 }
 

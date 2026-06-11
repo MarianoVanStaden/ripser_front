@@ -333,6 +333,7 @@ const ReclamosGarantiaPage: React.FC = () => {
             <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
               <TableHead>
                 <TableRow>
+                  <TableCell sx={{ minWidth: 160 }}><strong>Cliente</strong></TableCell>
                   <TableCell sx={{ minWidth: 120 }}><strong>N° Reclamo</strong></TableCell>
                   <TableCell sx={{ minWidth: 120 }}><strong>Fecha</strong></TableCell>
                   <TableCell sx={{ minWidth: 120 }}><strong>Garantía</strong></TableCell>
@@ -347,7 +348,7 @@ const ReclamosGarantiaPage: React.FC = () => {
               <TableBody>
                 {filteredReclamos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center">
+                    <TableCell colSpan={10} align="center">
                       <Typography variant="body2" color="textSecondary" py={4}>
                         No se encontraron reclamos
                       </Typography>
@@ -356,6 +357,13 @@ const ReclamosGarantiaPage: React.FC = () => {
                 ) : (
                   paginatedReclamos.map((reclamo) => (
                 <TableRow key={reclamo.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight="500">
+                      {reclamo.clienteNombre && reclamo.clienteApellido
+                        ? `${reclamo.clienteNombre} ${reclamo.clienteApellido}`
+                        : reclamo.clienteNombre || '-'}
+                    </Typography>
+                  </TableCell>
                   <TableCell>
                     <Typography variant="body2" fontWeight="500">
                       {reclamo.numeroReclamo}

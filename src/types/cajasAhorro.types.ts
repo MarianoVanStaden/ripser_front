@@ -1,7 +1,12 @@
 import type { MetodoPago } from './prestamo.types';
 
 export type EstadoCajaAhorro = 'ACTIVA' | 'INACTIVA';
-export type TipoMovimientoCaja = 'DEPOSITO' | 'EXTRACCION' | 'CONVERSION_AMORTIZACION';
+export type TipoMovimientoCaja =
+  | 'DEPOSITO'
+  | 'EXTRACCION'
+  | 'CONVERSION_AMORTIZACION'
+  | 'TRANSFERENCIA_EGRESO'
+  | 'TRANSFERENCIA_INGRESO';
 
 import type { CajaMetodoPagoConfig } from './cajasPesos.types';
 export type { CajaMetodoPagoConfig };
@@ -37,6 +42,7 @@ export interface MovimientoCajaAhorro {
   montoPesosOriginal: number | null;
   valorDolar: number;
   amortizacionMensualId: number | null;
+  transferenciaId: number | null;
   descripcion: string | null;
   fecha: string;
   usuarioId: number | null;
@@ -48,6 +54,30 @@ export interface DepositoExtraCajaDTO {
   valorDolar: number;
   fecha: string;
   descripcion?: string;
+}
+
+export interface TransferenciaCajaAhorroRequestDTO {
+  cajaOrigenId: number;
+  cajaDestinoId: number;
+  montoUsd: number;
+  descripcion?: string;
+  fecha?: string;
+}
+
+export interface TransferenciaCajaAhorroResponseDTO {
+  transferenciaId: number;
+  cajaOrigenId: number;
+  cajaOrigenNombre: string;
+  cajaOrigenSaldoPost: number;
+  cajaDestinoId: number;
+  cajaDestinoNombre: string;
+  cajaDestinoSaldoPost: number;
+  montoUsd: number;
+  descripcion: string | null;
+  fecha: string;
+  fechaCreacion: string;
+  movimientoEgresoId: number;
+  movimientoIngresoId: number;
 }
 
 export interface DisponibleConversionDTO {

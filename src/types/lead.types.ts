@@ -166,6 +166,8 @@ export interface ConversionLeadRequest {
   telefonoAlternativoCliente?: string;
   rubroCliente?: RubroEnum;
   rubroDetalleCliente?: string;
+  apellidoCliente?: string;
+  cuitCliente?: string;
 }
 
 export interface ConversionLeadResponse {
