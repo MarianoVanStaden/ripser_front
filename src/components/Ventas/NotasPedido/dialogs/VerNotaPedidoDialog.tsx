@@ -271,7 +271,7 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
                 {/* Calcular el total correcto del documento */}
                 {(() => {
                   const subtotal = nota.subtotal ?? 0;
-                  const descuento = Number(nota.descuentoMonto) ?? 0;
+                  const descuento = Number(nota.descuentoMonto) || 0;
                   const iva = nota.iva ?? 0;
                   const totalCalculado = subtotal - descuento + iva;
                   const totalEnBD = nota.total ?? 0;

@@ -122,7 +122,7 @@ const UploadingIndicator: React.FC = () => (
 
 const fmt = (n?: number | null) =>
   n != null
-    ? `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ? `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : null;
 
 interface CobroSectionProps {

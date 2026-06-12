@@ -205,6 +205,22 @@ const NotasCreditoPage: React.FC = () => {
         if (detalle.tipoItem === 'EQUIPO') {
           const ids = detalle.equiposFabricadosIds || [];
           const nums = detalle.equiposNumerosHeladera || [];
+          if (ids.length === 0) {
+            // Línea EQUIPO sin equipo físico asignado (factura migrada o sin asignación
+            // en detalle_equipo_asignacion). Igual debe poder acreditarse por error de
+            // facturación; simplemente no hay stock que retornar al inventario.
+            items.push({
+              key: `${detalle.id}-equipo-sin-asignacion`,
+              detalleDocumentoId: detalle.id,
+              tipoItem: 'EQUIPO',
+              descripcion: detalle.descripcionEquipo || detalle.recetaNombre || 'Equipo',
+              cantidadOriginal: detalle.cantidad || 1,
+              subtotalOriginal: detalle.subtotal || 0,
+              seleccionado: false,
+              cantidadAcreditar: detalle.cantidad || 1,
+              retornarInventario: false,
+            });
+          }
           ids.forEach((equipoId: number, idx: number) => {
             const equipo = equiposPorId.get(equipoId);
             items.push({
@@ -318,7 +334,7 @@ const NotasCreditoPage: React.FC = () => {
   );
 
   const totalEquiposEnFactura = useMemo(
-    () => itemsError.filter(i => i.tipoItem === 'EQUIPO').length,
+    () => itemsError.filter(i => i.tipoItem === 'EQUIPO' && i.equipoFabricadoId).length,
     [itemsError]
   );
 
@@ -817,7 +833,7 @@ const NotasCreditoPage: React.FC = () => {
                                   <Typography variant="body2">{item.cantidadOriginal}</Typography>
                                 </TableCell>
                                 <TableCell align="center">
-                                  {item.tipoItem === 'PRODUCTO' && item.seleccionado ? (
+                                  {(item.tipoItem === 'PRODUCTO' || (item.tipoItem === 'EQUIPO' && !item.equipoFabricadoId)) && item.seleccionado ? (
                                     <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
                                       <IconButton size="small" onClick={() => handleItemErrorCantidad(item.key, -1)} disabled={item.cantidadAcreditar <= 1}>
                                         <RemoveCircleOutline fontSize="small" />
@@ -839,7 +855,7 @@ const NotasCreditoPage: React.FC = () => {
                                   </Typography>
                                 </TableCell>
                                 <TableCell align="center">
-                                  {item.tipoItem === 'EQUIPO' ? (
+                                  {item.tipoItem === 'EQUIPO' && item.equipoFabricadoId ? (
                                     <Tooltip title="Si está marcado, el equipo vuelve al inventario como DISPONIBLE">
                                       <Checkbox
                                         size="small"

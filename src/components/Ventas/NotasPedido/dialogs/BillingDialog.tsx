@@ -49,7 +49,7 @@ interface Props {
 const BillingDialog: React.FC<Props> = ({ open, onClose, onSubmit, nota, form, setForm }) => {
   // Calcular el total real considerando descuentos aplicables
   // descuentoMonto ya excluye items ENVIO en el backend, por eso lo sumamos de nuevo después
-  const descuentoMonto = Number(nota?.descuentoMonto) ?? 0;
+  const descuentoMonto = Number(nota?.descuentoMonto) || 0;
   const ivaAmount = nota?.iva ?? 0;
   const montoTotal = (nota?.subtotal ?? 0) - descuentoMonto + ivaAmount;
 
