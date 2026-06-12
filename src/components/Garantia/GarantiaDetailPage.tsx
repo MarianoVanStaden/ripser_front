@@ -11,12 +11,13 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import { type GarantiaDTO, tipoGarantiaLabel, tipoGarantiaMonths } from '../../api/services/garantiaApi';
+import { type GarantiaDTO, tipoGarantiaLabel } from '../../api/services/garantiaApi';
 import {
   reclamoGarantiaApi,
   type ReclamoGarantiaDTO
 } from '../../api/services/reclamoGarantiaApi';
 import ReclamoFormDialog from './ReclamoFormDialog';
+import GarantiaVigenciaBar from './GarantiaVigenciaBar';
 
 interface GarantiaDetailPageProps {
   garantia: GarantiaDTO;
@@ -82,84 +83,6 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
   const tiposGarantia = garantia.tiposGarantia
     ? garantia.tiposGarantia.split(',').map(t => t.trim())
     : [];
-
-  // Componente para mostrar vigencia de un tipo específico
-  const VigilanceBlock = ({
-    tipo,
-    fechaVencimiento,
-    label
-  }: {
-    tipo: string;
-    fechaVencimiento?: string;
-    label: string;
-  }) => {
-    if (!fechaVencimiento) return null;
-
-    const diasRestantes = dayjs(fechaVencimiento).diff(dayjs(), 'day');
-    const diasTranscurridos = dayjs().diff(dayjs(garantia.fechaCompra), 'day');
-    const meses = tipoGarantiaMonths[tipo as keyof typeof tipoGarantiaMonths] || 12;
-    const diasTotales = meses * 30;
-    const porcentajeUsado = Math.min(100, Math.max(0, (diasTranscurridos / diasTotales) * 100));
-
-    return (
-      <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-        <Typography variant="subtitle2" fontWeight="600" mb={1}>
-          {label}
-        </Typography>
-        <Stack spacing={1}>
-          <Box>
-            <Typography variant="caption" color="textSecondary">
-              Fecha de Vencimiento
-            </Typography>
-            <Typography
-              variant="body2"
-              fontWeight="500"
-              color={
-                garantia.estado === 'VENCIDA'
-                  ? 'error.main'
-                  : diasRestantes < 30
-                    ? 'warning.main'
-                    : 'textPrimary'
-              }
-            >
-              {dayjs(fechaVencimiento).format('DD/MM/YYYY')}
-            </Typography>
-          </Box>
-
-          <Box>
-            <Typography variant="caption" color="textSecondary" mb={0.5} display="block">
-              Tiempo Transcurrido
-            </Typography>
-            <Box
-              sx={{
-                height: 12,
-                bgcolor: 'grey.200',
-                borderRadius: 1,
-                overflow: 'hidden',
-                mb: 1
-              }}
-            >
-              <Box
-                sx={{
-                  height: '100%',
-                  width: `${porcentajeUsado}%`,
-                  bgcolor:
-                    porcentajeUsado >= 90 ? 'error.main' :
-                      porcentajeUsado >= 70 ? 'warning.main' :
-                        'success.main',
-                  transition: 'width 0.3s'
-                }}
-              />
-            </Box>
-            <Typography variant="caption" color="textSecondary">
-              {Math.max(0, diasTranscurridos)} de {diasTotales} días ({porcentajeUsado.toFixed(0)}%)•{' '}
-              {Math.max(0, diasRestantes)} días restantes
-            </Typography>
-          </Box>
-        </Stack>
-      </Box>
-    );
-  };
 
   return (
     <Box>
@@ -299,19 +222,21 @@ const GarantiaDetailPage: React.FC<GarantiaDetailPageProps> = ({
 
                   {/* Vigencia para Desperfecto de Fábrica */}
                   {garantia.fechaVencimientoFabrica && (
-                    <VigilanceBlock
+                    <GarantiaVigenciaBar
                       tipo="DESPERFECTO_FABRICA"
+                      fechaCompra={garantia.fechaCompra}
                       fechaVencimiento={garantia.fechaVencimientoFabrica}
-                      label="Desperfecto de Fábrica (1 año)"
+                      estado={garantia.estado}
                     />
                   )}
 
                   {/* Vigencia para Desperfecto Eléctrico */}
                   {garantia.fechaVencimientoElectrico && (
-                    <VigilanceBlock
+                    <GarantiaVigenciaBar
                       tipo="DESPERFECTO_ELECTRICO"
+                      fechaCompra={garantia.fechaCompra}
                       fechaVencimiento={garantia.fechaVencimientoElectrico}
-                      label="Desperfecto Eléctrico (6 meses)"
+                      estado={garantia.estado}
                     />
                   )}
                 </Stack>

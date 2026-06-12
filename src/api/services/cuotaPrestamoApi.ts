@@ -30,4 +30,16 @@ export const cuotaPrestamoApi = {
     const response = await api.get<CuotaPrestamoDTO[]>(`${BASE_PATH}/vencidas`);
     return response.data;
   },
+
+  editarFechaPago: async (
+    cuotaId: number,
+    nuevaFechaPago: string,
+    motivo: string
+  ): Promise<CuotaPrestamoDTO> => {
+    const response = await api.patch<CuotaPrestamoDTO>(
+      `${BASE_PATH}/${cuotaId}/fecha-pago`,
+      { nuevaFechaPago, motivo }
+    );
+    return response.data;
+  },
 };

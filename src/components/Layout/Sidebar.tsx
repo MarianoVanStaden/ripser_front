@@ -176,14 +176,25 @@ const navigation: NavigationSection[] = [
     ],
   },
   {
-    title: 'TALLER',
-    modulo: 'TALLER',
+    // Sección unificada Garantías + Taller: el fin (gestionar un reclamo/servicio)
+    // es el mismo. El módulo de la sección es GARANTIAS, pero cada ítem declara
+    // su propio `modulo` para que el filtro `tienePermiso(item.modulo ?? section.modulo)`
+    // esconda los ítems de Taller a quien no tiene acceso a Taller (y viceversa).
+    // Si todos los ítems se filtran, la sección entera se elimina más abajo.
+    title: 'SERVICIO TÉCNICO / POSTVENTA',
+    modulo: 'GARANTIAS',
     items: [
-      { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes' },
-      { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales' },
-      { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas' },
-      { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos' },
-      { text: 'Configuración', icon: <SettingsIcon />, path: '/taller/configuracion' },
+      { text: 'Dashboard Postventa', icon: <BarChartIcon />, path: '/postventa/dashboard', modulo: 'GARANTIAS' },
+      // GARANTÍAS
+      { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro', modulo: 'GARANTIAS' },
+      { text: 'Seguimiento Reclamos', icon: <AssignmentIcon />, path: '/garantias/reclamos', modulo: 'GARANTIAS' },
+      { text: 'Reporte de Garantías', icon: <BarChartIcon />, path: '/garantias/reporte', modulo: 'GARANTIAS' },
+      // TALLER
+      { text: 'Órdenes Servicio', icon: <CategoryIcon />, path: '/taller/ordenes', modulo: 'TALLER' },
+      { text: 'Control Materiales', icon: <CategoryIcon />, path: '/taller/materiales', modulo: 'TALLER' },
+      { text: 'Asignación Tareas', icon: <CategoryIcon />, path: '/taller/tareas', modulo: 'TALLER' },
+      { text: 'Trabajos Realizados', icon: <CategoryIcon />, path: '/taller/trabajos', modulo: 'TALLER' },
+      { text: 'Configuración', icon: <SettingsIcon />, path: '/taller/configuracion', modulo: 'TALLER' },
     ],
   },
   {
@@ -196,15 +207,6 @@ const navigation: NavigationSection[] = [
       { text: 'Ficha + QR', icon: <AssignmentIcon />, path: '/fabricacion/ficha-equipo' },
       { text: 'Reportes de Estados', icon: <AssignmentIcon />, path: '/fabricacion/reportes-estados' },
       { text: 'Stock Preventivo', icon: <InventoryIcon />, path: '/fabricacion/stock-planificacion' },
-    ],
-  },
-  {
-    title: 'GARANTÍAS',
-    modulo: 'GARANTIAS',
-    items: [
-      { text: 'Registro Garantías', icon: <AssignmentIcon />, path: '/garantias/registro' },
-      { text: 'Seguimiento Reclamos', icon: <AssignmentIcon />, path: '/garantias/reclamos' },
-      { text: 'Reporte de Garantías', icon: <BarChartIcon />, path: '/garantias/reporte' },
     ],
   },
   {
@@ -305,6 +307,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/prestamos/lista',
     '/cobranzas/resumen',
     '/cobranzas/lista',
+    '/postventa/dashboard',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',
@@ -340,6 +343,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/fabricacion/reportes-estados',
     '/fabricacion/stock-planificacion',
     // GARANTIAS (todo)
+    '/postventa/dashboard',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',
@@ -423,6 +427,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/vehiculos/km-empleados',
     '/fabricacion/equipos',
     '/fabricacion/ficha-equipo',
+    '/postventa/dashboard',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',
@@ -467,6 +472,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/vehiculos/km-empleados',
     '/fabricacion/equipos',
     '/fabricacion/ficha-equipo',
+    '/postventa/dashboard',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',
@@ -504,6 +510,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/leads/metricas',
     '/logistica/distribucion/viajes',
     '/logistica/distribucion/entregas-productos',
+    '/postventa/dashboard',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',
@@ -563,6 +570,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/cobranzas/resumen',
     '/cobranzas/lista',
     // GARANTÍAS (de COBRANZAS + TRANSPORTE)
+    '/postventa/dashboard',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',
@@ -601,6 +609,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/logistica/vehiculos/km-empleados',
     '/fabricacion/equipos',
     '/fabricacion/ficha-equipo',
+    '/postventa/dashboard',
     '/garantias/registro',
     '/garantias/reclamos',
     '/garantias/reporte',

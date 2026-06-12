@@ -23,6 +23,11 @@ export const EstadoDocumento = {
 export type EstadoDocumento = typeof EstadoDocumento[keyof typeof EstadoDocumento];
 
 export type TipoDocumento = 'PRESUPUESTO' | 'NOTA_PEDIDO' | 'FACTURA' | 'NOTA_CREDITO';
+export interface UpdateFechaEmisionRequest {
+  fechaEmision: string; // ISO LocalDateTime string
+  motivo: string;
+}
+
 export interface DocumentoComercial {
   id: number;
   numeroDocumento: string;
@@ -59,6 +64,8 @@ export interface DocumentoComercial {
   documentoSiguienteNumero?: string;
   documentoSiguienteTipo?: TipoDocumento;
   numeroReferencia?: string;
+  /** Ciudad del cliente (para mostrar en selectores de viaje). */
+  clienteCiudad?: string;
   usuarioCreadorPresupuestoId:        number | null;
   usuarioCreadorPresupuestoNombre:    string | null;
   usuarioConvertidorNotaPedidoId:     number | null;

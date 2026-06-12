@@ -180,6 +180,13 @@ export const documentoApi = {
     );
     return response.data;
   },
+  updateFechaEmision: async (id: number, fechaEmision: string, motivo: string): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/fecha-emision`,
+      { fechaEmision, motivo }
+    );
+    return response.data;
+  },
   // Change metodoPago of documento
   changeMetodoPago: async (id: number, metodoPago: MetodoPago): Promise<DocumentoComercial> => {
     const response = await api.put<DocumentoComercial>(

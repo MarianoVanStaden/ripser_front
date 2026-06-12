@@ -177,6 +177,7 @@ const BuscarProveedorPorProductoPage = lazy(() => import('./components/Proveedor
 const GarantiasPage = lazy(() => import('./components/Garantia/GarantiasPage'));
 const ReclamosGarantiaPage = lazy(() => import('./components/Garantia/ReclamosGarantiaPage'));
 const GarantiaReportPage = lazy(() => import('./components/Garantia/GarantiaReportPage'));
+const PostventaDashboard = lazy(() => import('./components/Postventa/PostventaDashboard'));
 
 // Logística
 const StockPage = lazy(() => import('./components/Logistica/StockPage'));
@@ -392,6 +393,9 @@ function App() {
                   <Route path="proveedores/contactos" element={priv(<ContactosCondicionesPage />)} />
                   <Route path="proveedores/historial" element={priv(<HistorialComprasPage />)} />
                   <Route path="proveedores/evaluacion" element={priv(<EvaluacionDesempenoPage />)} />
+
+                  {/* POSTVENTA (Garantías + Taller unificados) */}
+                  <Route path="postventa/dashboard" element={priv(<PostventaDashboard />)} />
 
                   {/* GARANTÍAS */}
                   <Route path="garantias/registro" element={priv(<GarantiasPage />)} />

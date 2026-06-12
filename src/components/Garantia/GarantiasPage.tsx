@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton, TextField, Stack,
-  Chip, Alert, Grid, InputAdornment, Autocomplete, Dialog,
+  Chip, Alert, Grid, InputAdornment, Dialog,
   MenuItem, Select, FormControl, InputLabel, TablePagination
 } from '@mui/material';
 import { 
@@ -11,7 +11,8 @@ import {
   Block as BlockIcon,
   Visibility as VisibilityIcon,
   LocalShipping as ShippingIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  AddTask as AddTaskIcon
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { garantiaApi, type GarantiaDTO, tipoGarantiaLabel } from '../../api/services/garantiaApi';
@@ -19,20 +20,25 @@ import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import { documentoApi } from '../../api/documentoApi';
 import GarantiaFormDialog from './GarantiaFormDialog';
 import GarantiaDetailPage from './GarantiaDetailPage';
+import GarantiaVigenciaBar from './GarantiaVigenciaBar';
+import ReclamoFormDialog from './ReclamoFormDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 const GarantiasPage: React.FC = () => {
   const [garantias, setGarantias] = useState<GarantiaDTO[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
   const [equipos, setEquipos] = useState<any[]>([]);
   const [facturas, setFacturas] = useState<any[]>([]);
+  const [formOptionsLoaded, setFormOptionsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ total: 0, vigentes: 0, vencidas: 0, anuladas: 0 });
 
-  // Filters
+  // Filters (server-side)
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('TODOS');
-  const [equipoFilter, setEquipoFilter] = useState<any>(null);
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -45,56 +51,92 @@ const GarantiasPage: React.FC = () => {
   const [anularTarget, setAnularTarget] = useState<GarantiaDTO | null>(null);
   const [anularLoading, setAnularLoading] = useState(false);
   const [anularError, setAnularError] = useState<string | null>(null);
+  const [reclamoTarget, setReclamoTarget] = useState<GarantiaDTO | null>(null);
 
-  // Load data
+  // Debounce de la búsqueda (evita una request por tecla)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Carga server-side de la página actual cuando cambian filtros/paginado
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, rowsPerPage, estadoFilter, debouncedSearch]);
+
+  // Estadísticas (totales por estado) — independientes del paginado
+  useEffect(() => {
+    loadStats();
   }, []);
+
+  const buildParams = () => ({
+    page,
+    size: rowsPerPage,
+    sort: 'fechaCompra,desc',
+    estado: estadoFilter !== 'TODOS' ? estadoFilter : undefined,
+    search: debouncedSearch || undefined,
+  });
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Load data with error handling for each request
-      const [garantiasData, equiposData, facturasData] = await Promise.allSettled([
-        garantiaApi.findAll(),
-        equipoFabricadoApi.findAll({ page: 0, size: 1000 }), // Load all equipos
-        documentoApi.getByTipo('FACTURA')
-      ]);
-
-      // Handle garantias with pagination support
-      if (garantiasData.status === 'fulfilled') {
-        const responseValue = garantiasData.value;
-        const garantiasList = Array.isArray(responseValue) 
-          ? responseValue 
-          : (responseValue as any).content || [];
-        setGarantias(garantiasList);
-      } else {
-        console.error('Error loading garantias:', garantiasData.reason);
-        setError('Error al cargar las garantías: ' + (garantiasData.reason?.response?.data?.message || garantiasData.reason?.message || 'Error desconocido'));
-      }
-
-      // Handle equipos fabricados
-      if (equiposData.status === 'fulfilled') {
-        const equiposContent = equiposData.value?.content || equiposData.value || [];
-        setEquipos(Array.isArray(equiposContent) ? equiposContent : []);
-      } else {
-        console.error('Error loading equipos:', equiposData.reason);
-      }
-
-      // Handle facturas
-      if (facturasData.status === 'fulfilled') {
-        setFacturas(Array.isArray(facturasData.value) ? facturasData.value : []);
-      } else {
-        console.error('Error loading facturas:', facturasData.reason);
-      }
+      const data = await garantiaApi.findAll(buildParams());
+      setGarantias(data.content || []);
+      setTotalElements(data.totalElements ?? (data.content?.length || 0));
     } catch (err: any) {
-      console.error('Error loading data:', err);
-      setError(err.response?.data?.message || 'Error al cargar los datos');
+      console.error('Error loading garantias:', err);
+      setError('Error al cargar las garantías: ' + (err?.response?.data?.message || err?.message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadStats = async () => {
+    try {
+      const [vig, ven, anu] = await Promise.all([
+        garantiaApi.findAll({ page: 0, size: 1, estado: 'VIGENTE' }),
+        garantiaApi.findAll({ page: 0, size: 1, estado: 'VENCIDA' }),
+        garantiaApi.findAll({ page: 0, size: 1, estado: 'ANULADA' }),
+      ]);
+      const vigentes = vig.totalElements || 0;
+      const vencidas = ven.totalElements || 0;
+      const anuladas = anu.totalElements || 0;
+      setStats({ total: vigentes + vencidas + anuladas, vigentes, vencidas, anuladas });
+    } catch (err) {
+      console.error('Error loading stats:', err);
+    }
+  };
+
+  // Carga perezosa de opciones del formulario (equipos + facturas) sólo al abrir el alta
+  const ensureFormOptions = async () => {
+    if (formOptionsLoaded) return;
+    try {
+      const [equiposData, facturasData] = await Promise.allSettled([
+        equipoFabricadoApi.findAll({ page: 0, size: 1000 }),
+        documentoApi.getByTipo('FACTURA'),
+      ]);
+      if (equiposData.status === 'fulfilled') {
+        const equiposContent = equiposData.value?.content || equiposData.value || [];
+        setEquipos(Array.isArray(equiposContent) ? equiposContent : []);
+      }
+      if (facturasData.status === 'fulfilled') {
+        setFacturas(Array.isArray(facturasData.value) ? facturasData.value : []);
+      }
+      setFormOptionsLoaded(true);
+    } catch (err) {
+      console.error('Error loading form options:', err);
+    }
+  };
+
+  const openForm = () => {
+    setSelectedGarantia(null);
+    ensureFormOptions();
+    setFormOpen(true);
   };
 
   // Handle anular garantia
@@ -114,41 +156,13 @@ const GarantiasPage: React.FC = () => {
       const updated = await garantiaApi.anular(anularTarget.id);
       setGarantias(garantias.map(g => g.id === anularTarget.id ? updated : g));
       setAnularTarget(null);
+      loadStats();
     } catch (err: any) {
       setAnularError(err.response?.data?.message || 'Error al anular la garantía');
     } finally {
       setAnularLoading(false);
     }
   };
-
-  // Filter and sort garantias (newest first)
-  const filteredGarantias = useMemo(() => {
-    const filtered = garantias.filter(g => {
-      const matchSearch = search === '' ||
-        g.equipoFabricadoModelo.toLowerCase().includes(search.toLowerCase()) ||
-        g.numeroSerie.toLowerCase().includes(search.toLowerCase());
-
-      const matchEstado = estadoFilter === 'TODOS' || g.estado === estadoFilter;
-      const matchEquipo = !equipoFilter || g.equipoFabricadoId === equipoFilter.id;
-
-      return matchSearch && matchEstado && matchEquipo;
-    });
-
-    // Sort by fechaCompra DESC (newest first)
-    return filtered.sort((a, b) => {
-      const dateA = new Date(a.fechaCompra).getTime();
-      const dateB = new Date(b.fechaCompra).getTime();
-      return dateB - dateA; // Descending order (newest first)
-    });
-  }, [garantias, search, estadoFilter, equipoFilter]);
-
-  // Paginate filtered garantias
-  const paginatedGarantias = useMemo(() => {
-    return filteredGarantias.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    );
-  }, [filteredGarantias, page, rowsPerPage]);
 
   const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
@@ -178,19 +192,6 @@ const GarantiasPage: React.FC = () => {
     if (!tiposGarantiaStr) return [];
     return tiposGarantiaStr.split(',').map(t => t.trim());
   };
-
-  // Calculate statistics
-  const stats = {
-    total: garantias.length,
-    vigentes: garantias.filter(g => g.estado === 'VIGENTE').length,
-    vencidas: garantias.filter(g => g.estado === 'VENCIDA').length,
-    anuladas: garantias.filter(g => g.estado === 'ANULADA').length,
-  };
-
-  // Filter equipos that already have a guarantee
-  const availableEquipos = equipos.filter(equipo =>
-    !garantias.some(garantia => garantia.equipoFabricadoId === equipo.id)
-  );
 
   return (
     <Box p={3}>
@@ -284,7 +285,7 @@ const GarantiasPage: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Buscar por modelo, serie"
@@ -300,13 +301,13 @@ const GarantiasPage: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select
                   value={estadoFilter}
                   label="Estado"
-                  onChange={(e) => setEstadoFilter(e.target.value)}
+                  onChange={(e) => { setEstadoFilter(e.target.value); setPage(0); }}
                 >
                   <MenuItem value="TODOS">Todos</MenuItem>
                   <MenuItem value="VIGENTE">Vigente</MenuItem>
@@ -316,25 +317,12 @@ const GarantiasPage: React.FC = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Autocomplete
-                options={equipos}
-                getOptionLabel={(option) => `${option.modelo} - ${option.numeroHeladera}`}
-                value={equipoFilter}
-                onChange={(_, newValue) => setEquipoFilter(newValue)}
-                renderInput={(params) => <TextField {...params} label="Equipo" />}
-              />
-            </Grid>
-
             <Grid item xs={12} md={2}>
               <Button
                 fullWidth
                 variant="contained"
                 startIcon={<AddIcon />}
-                onClick={() => {
-                  setSelectedGarantia(null);
-                  setFormOpen(true);
-                }}
+                onClick={openForm}
               >
                 Nueva Garantía
               </Button>
@@ -342,7 +330,7 @@ const GarantiasPage: React.FC = () => {
           </Grid>
 
           {/* Active Filters */}
-          {(estadoFilter !== 'TODOS' || equipoFilter || search) && (
+          {(estadoFilter !== 'TODOS' || search) && (
             <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
               {search && (
                 <Chip
@@ -354,17 +342,9 @@ const GarantiasPage: React.FC = () => {
               {estadoFilter !== 'TODOS' && (
                 <Chip
                   label={`Estado: ${estadoFilter}`}
-                  onDelete={() => setEstadoFilter('TODOS')}
+                  onDelete={() => { setEstadoFilter('TODOS'); setPage(0); }}
                   size="small"
                   color="primary"
-                />
-              )}
-              {equipoFilter && (
-                <Chip
-                  label={`Equipo: ${equipoFilter.modelo}`}
-                  onDelete={() => setEquipoFilter(null)}
-                  size="small"
-                  color="secondary"
                 />
               )}
               <Button
@@ -372,7 +352,7 @@ const GarantiasPage: React.FC = () => {
                 onClick={() => {
                   setSearch('');
                   setEstadoFilter('TODOS');
-                  setEquipoFilter(null);
+                  setPage(0);
                 }}
               >
                 Limpiar Filtros
@@ -394,14 +374,14 @@ const GarantiasPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 150 }}><strong>Modelo de Equipo</strong></TableCell>
                   <TableCell sx={{ minWidth: 100 }}><strong>N° Venta</strong></TableCell>
                   <TableCell sx={{ minWidth: 120 }} align="center"><strong>Fecha Compra</strong></TableCell>
-                  <TableCell sx={{ minWidth: 140 }} align="center"><strong>Fecha Vencimiento</strong></TableCell>
+                  <TableCell sx={{ minWidth: 160 }} align="center"><strong>Vigencia</strong></TableCell>
                   <TableCell sx={{ minWidth: 100 }} align="center"><strong>Estado</strong></TableCell>
                   <TableCell sx={{ minWidth: 150 }} align="center"><strong>Tipo</strong></TableCell>
                   <TableCell sx={{ minWidth: 120 }} align="center"><strong>Acciones</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredGarantias.length === 0 ? (
+                {garantias.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} align="center">
                       <Typography variant="body2" color="textSecondary" py={4}>
@@ -410,7 +390,7 @@ const GarantiasPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedGarantias.map((garantia) => (
+                  garantias.map((garantia) => (
                 <TableRow key={garantia.id} hover>
                   <TableCell>
                     <Typography variant="body2" fontWeight="500">
@@ -432,19 +412,37 @@ const GarantiasPage: React.FC = () => {
                     {dayjs(garantia.fechaCompra).format('DD/MM/YYYY')}
                   </TableCell>
                   <TableCell align="center">
-                    <Typography 
-                      variant="body2"
-                      color={
-                        garantia.estado === 'VENCIDA' 
-                          ? 'error.main' 
-                          : dayjs(garantia.fechaVencimiento).diff(dayjs(), 'day') < 30
-                            ? 'warning.main'
-                            : 'textPrimary'
-                      }
-                      fontWeight="500"
-                    >
-                      {dayjs(garantia.fechaVencimiento).format('DD/MM/YYYY')}
-                    </Typography>
+                    {garantia.estado === 'ANULADA' ? (
+                      <Typography variant="body2" color="textSecondary">
+                        —
+                      </Typography>
+                    ) : (
+                      <Stack spacing={1} alignItems="stretch">
+                        {garantia.fechaVencimientoFabrica && (
+                          <GarantiaVigenciaBar
+                            compact
+                            tipo="DESPERFECTO_FABRICA"
+                            fechaCompra={garantia.fechaCompra}
+                            fechaVencimiento={garantia.fechaVencimientoFabrica}
+                            estado={garantia.estado}
+                          />
+                        )}
+                        {garantia.fechaVencimientoElectrico && (
+                          <GarantiaVigenciaBar
+                            compact
+                            tipo="DESPERFECTO_ELECTRICO"
+                            fechaCompra={garantia.fechaCompra}
+                            fechaVencimiento={garantia.fechaVencimientoElectrico}
+                            estado={garantia.estado}
+                          />
+                        )}
+                        {!garantia.fechaVencimientoFabrica && !garantia.fechaVencimientoElectrico && (
+                          <Typography variant="body2" color="textSecondary">
+                            {dayjs(garantia.fechaVencimiento).format('DD/MM/YYYY')}
+                          </Typography>
+                        )}
+                      </Stack>
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     <Chip
@@ -480,7 +478,18 @@ const GarantiasPage: React.FC = () => {
                       >
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
-                      
+
+                      {garantia.estado !== 'ANULADA' && (
+                        <IconButton
+                          size="small"
+                          color="secondary"
+                          onClick={() => setReclamoTarget(garantia)}
+                          title="Nuevo Reclamo"
+                        >
+                          <AddTaskIcon fontSize="small" />
+                        </IconButton>
+                      )}
+
                       {garantia.estado === 'VIGENTE' && (
                         <IconButton
                           size="small"
@@ -502,7 +511,7 @@ const GarantiasPage: React.FC = () => {
 
           <TablePagination
             component="div"
-            count={filteredGarantias.length}
+            count={totalElements}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
@@ -527,8 +536,9 @@ const GarantiasPage: React.FC = () => {
           setFormOpen(false);
           setSelectedGarantia(null);
           loadData();
+          loadStats();
         }}
-        equipos={availableEquipos}
+        equipos={equipos}
         ventas={facturas}
       />
 
@@ -549,6 +559,20 @@ const GarantiasPage: React.FC = () => {
           />
         )}
       </Dialog>
+
+      {reclamoTarget && (
+        <ReclamoFormDialog
+          open={!!reclamoTarget}
+          garantiaId={reclamoTarget.id}
+          garantias={[reclamoTarget]}
+          reclamo={null}
+          onClose={() => setReclamoTarget(null)}
+          onSave={() => {
+            setReclamoTarget(null);
+            loadData();
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!anularTarget}

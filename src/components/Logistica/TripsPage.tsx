@@ -1600,6 +1600,27 @@ const TripsPage2: React.FC = () => {
                   getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
                   value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
                   onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
+                  renderOption={({ key, ...props }, factura) => {
+                    const info = entregaEstimadaInfo(factura.fechaEmision ?? (factura as any).fecha);
+                    return (
+                      <li key={key} {...props}>
+                        <Box sx={{ py: 0.5 }}>
+                          <Typography variant="body2" fontWeight="600">
+                            {factura.numeroDocumento} — {factura.clienteNombre}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {(factura as any).clienteCiudad ? `📍 ${(factura as any).clienteCiudad}  ·  ` : ''}
+                            ${factura.total.toLocaleString()}
+                            {info && (
+                              <Box component="span" sx={{ ml: 1, color: info.restantes < 0 ? 'error.main' : info.restantes <= 5 ? 'warning.main' : 'info.main', fontWeight: 600 }}>
+                                {info.restantes >= 0 ? `⏱ ${info.restantes}d` : `⚠ ${Math.abs(info.restantes)}d atraso`}
+                              </Box>
+                            )}
+                          </Typography>
+                        </Box>
+                      </li>
+                    );
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1616,10 +1637,16 @@ const TripsPage2: React.FC = () => {
                   <Alert severity="info" sx={{ py: 1 }}>
                     <Typography variant="caption" fontWeight="bold">
                       {selectedDeliveryFactura.clienteNombre}
+                      {(selectedDeliveryFactura as any).clienteCiudad && (
+                        <Box component="span" sx={{ ml: 1, fontWeight: 400, color: 'text.secondary' }}>
+                          📍 {(selectedDeliveryFactura as any).clienteCiudad}
+                        </Box>
+                      )}
                     </Typography>
                     <Typography variant="caption" display="block">
                       Total: ${selectedDeliveryFactura.total.toLocaleString()} | {selectedDeliveryFactura.detalles.length} items
                     </Typography>
+                    {renderEntregaEstimada(entregaEstimadaInfo(selectedDeliveryFactura.fechaEmision ?? (selectedDeliveryFactura as any).fecha))}
                   </Alert>
                 )}
               </>
@@ -2665,6 +2692,27 @@ const TripsPage2: React.FC = () => {
                   getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
                   value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
                   onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
+                  renderOption={({ key, ...props }, factura) => {
+                    const info = entregaEstimadaInfo(factura.fechaEmision ?? (factura as any).fecha);
+                    return (
+                      <li key={key} {...props}>
+                        <Box sx={{ py: 0.25 }}>
+                          <Typography variant="body2" fontWeight="600">
+                            {factura.numeroDocumento} — {factura.clienteNombre}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {(factura as any).clienteCiudad ? `📍 ${(factura as any).clienteCiudad}  ·  ` : ''}
+                            ${factura.total.toLocaleString()}
+                            {info && (
+                              <Box component="span" sx={{ ml: 1, color: info.restantes < 0 ? 'error.main' : info.restantes <= 5 ? 'warning.main' : 'info.main', fontWeight: 600 }}>
+                                {info.restantes >= 0 ? `⏱ ${info.restantes}d` : `⚠ ${Math.abs(info.restantes)}d atraso`}
+                              </Box>
+                            )}
+                          </Typography>
+                        </Box>
+                      </li>
+                    );
+                  }}
                   renderInput={(params) => (
                     <TextField {...params} label="Factura" size="small" />
                   )}

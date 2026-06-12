@@ -45,10 +45,14 @@ import {
   TrendingUp as TrendingUpIcon,
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
+  EditCalendar as EditCalendarIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
 import { useTenant } from '../../context/TenantContext';
+import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
+import { calcEntregaInfo, EntregaDeadlineChip } from '../../utils/entregaDeadline';
+import { EditarFechaVentaDialog } from './EditarFechaVentaDialog';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
@@ -57,7 +61,9 @@ import LoadingOverlay from '../common/LoadingOverlay';
 
 const RegistroVentasPage: React.FC = () => {
   const navigate = useNavigate();
-  const { empresaId } = useTenant();
+  const { empresaId, esSuperAdmin, rolActual } = useTenant();
+  const isAdmin = esSuperAdmin || rolActual === 'ADMIN' || rolActual === 'ADMIN_EMPRESA';
+  const { value: diasEntrega } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
   // sales viene de useQuery server-side. Mantenemos el nombre para no tocar el JSX.
   const queryClient = useQueryClient();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -66,6 +72,8 @@ const RegistroVentasPage: React.FC = () => {
   const [viewLoading, setViewLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editarFechaDialogOpen, setEditarFechaDialogOpen] = useState(false);
+  const [ventaToEditarFecha, setVentaToEditarFecha] = useState<Venta | null>(null);
   const [confirmStateChangeDialogOpen, setConfirmStateChangeDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Venta | null>(null);
   const [ventaToDelete, setVentaToDelete] = useState<Venta | null>(null);
@@ -784,6 +792,7 @@ const RegistroVentasPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 100 }}>Estado</TableCell>
                   <TableCell sx={{ minWidth: 120 }}>Total</TableCell>
                   <TableCell sx={{ minWidth: 150 }}>Método de Pago</TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>Días p/entrega</TableCell>
                   <TableCell align="center" sx={{ minWidth: 180 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -840,6 +849,14 @@ const RegistroVentasPage: React.FC = () => {
                         variant="outlined"
                       />
                     </TableCell>
+                    <TableCell>
+                      {(sale as any).tipoDocumento === 'FACTURA' && (
+                        <EntregaDeadlineChip
+                          info={calcEntregaInfo((sale as any).fechaEmision || sale.fechaVenta, diasEntrega)}
+                          diasLimite={diasEntrega}
+                        />
+                      )}
+                    </TableCell>
                     <TableCell align="center">
                       <IconButton
                         size="small"
@@ -855,6 +872,16 @@ const RegistroVentasPage: React.FC = () => {
                       >
                         <EditIcon />
                       </IconButton>
+                      {isAdmin && (sale as any).tipoDocumento === 'FACTURA' && (
+                        <IconButton
+                          size="small"
+                          onClick={() => { setVentaToEditarFecha(sale); setEditarFechaDialogOpen(true); }}
+                          title="Editar fecha de emisión"
+                          color="warning"
+                        >
+                          <EditCalendarIcon />
+                        </IconButton>
+                      )}
                       <IconButton
                         size="small"
                         onClick={() => handleExportarPDF(sale)}
@@ -1328,6 +1355,27 @@ const RegistroVentasPage: React.FC = () => {
           </Box>
         </Alert>
       </Box>
+
+      {/* Dialog: editar fecha de emisión */}
+      {ventaToEditarFecha && (
+        <EditarFechaVentaDialog
+          open={editarFechaDialogOpen}
+          documento={{
+            id: ventaToEditarFecha.id,
+            numeroDocumento: (ventaToEditarFecha as any).numeroDocumento || (ventaToEditarFecha.ventaNumero ?? ''),
+            fechaEmision: (ventaToEditarFecha as any).fechaEmision || ventaToEditarFecha.fechaVenta,
+            clienteNombre: (ventaToEditarFecha as any).clienteNombre || '',
+            documentoSiguienteId: (ventaToEditarFecha as any).documentoSiguienteId ?? null,
+            documentoSiguienteNumero: (ventaToEditarFecha as any).documentoSiguienteNumero ?? null,
+          } as any}
+          onClose={() => { setEditarFechaDialogOpen(false); setVentaToEditarFecha(null); }}
+          onSaved={() => {
+            setEditarFechaDialogOpen(false);
+            setVentaToEditarFecha(null);
+            invalidateSales();
+          }}
+        />
+      )}
     </Box>
   );
 };

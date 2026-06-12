@@ -40,6 +40,7 @@ import { SeguimientoFormDialog } from './SeguimientoFormDialog';
 import { RecordatorioFormDialog } from './RecordatorioFormDialog';
 import { EditarFechaEntregaDialog } from './EditarFechaEntregaDialog';
 import { EditarFechaCuotaDialog } from './EditarFechaCuotaDialog';
+import { EditarFechaPagoDialog } from './EditarFechaPagoDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { usePermisos } from '../../hooks/usePermisos';
 import { generarCreditoPDF } from '../../services/pdfService';
@@ -105,6 +106,8 @@ export const PrestamoDetailPage: React.FC = () => {
   const [editFechaEntregaOpen, setEditFechaEntregaOpen] = useState(false);
   const [editFechaCuotaOpen, setEditFechaCuotaOpen] = useState(false);
   const [cuotaParaEditarFecha, setCuotaParaEditarFecha] = useState<CuotaPrestamoDTO | null>(null);
+  const [editFechaPagoOpen, setEditFechaPagoOpen] = useState(false);
+  const [cuotaParaEditarFechaPago, setCuotaParaEditarFechaPago] = useState<CuotaPrestamoDTO | null>(null);
 
   // Permisos
   const { tieneRol, esAdmin } = usePermisos();
@@ -478,7 +481,22 @@ export const PrestamoDetailPage: React.FC = () => {
                       ? dayjs(c.fechaVencimiento).format('DD/MM/YYYY')
                       : <Typography variant="caption" color="text.disabled" fontStyle="italic">Pendiente de anclaje</Typography>}
                   </TableCell>
-                  <TableCell>{c.fechaPago ? dayjs(c.fechaPago).format('DD/MM/YYYY') : '-'}</TableCell>
+                  <TableCell>
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                      {c.fechaPago ? dayjs(c.fechaPago).format('DD/MM/YYYY') : '-'}
+                      {(c.estado === 'PAGADA' || c.estado === 'PARCIAL') && c.fechaPago && (
+                        <Tooltip title="Editar fecha de pago">
+                          <IconButton
+                            size="small"
+                            onClick={() => { setCuotaParaEditarFechaPago(c); setEditFechaPagoOpen(true); }}
+                            sx={{ p: 0.25 }}
+                          >
+                            <EditCalendar sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell>{c.numeroComprobante || '-'}</TableCell>
                   <TableCell align="center">
                     <Stack direction="column" spacing={0.5} alignItems="center">
@@ -765,6 +783,18 @@ export const PrestamoDetailPage: React.FC = () => {
             setSnackbar({ open: true, message: msg, severity: 'success' });
           }}
           onConflict={loadData}
+        />
+      )}
+
+      {editFechaPagoOpen && cuotaParaEditarFechaPago && (
+        <EditarFechaPagoDialog
+          open={editFechaPagoOpen}
+          cuota={cuotaParaEditarFechaPago}
+          onClose={() => { setEditFechaPagoOpen(false); setCuotaParaEditarFechaPago(null); }}
+          onSaved={async (msg) => {
+            await loadData();
+            setSnackbar({ open: true, message: msg, severity: 'success' });
+          }}
         />
       )}
 

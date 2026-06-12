@@ -33,6 +33,13 @@ export const tipoGarantiaMonths: Record<TipoGarantia, number> = {
   DESPERFECTO_ELECTRICO: 6,
 };
 
+// Duración total de cada cobertura en días (fallback cuando no se puede
+// derivar de fechaCompra → fechaVencimiento). Fábrica = 1 año, Eléctrico = 6 meses.
+export const tipoGarantiaDias: Record<TipoGarantia, number> = {
+  DESPERFECTO_FABRICA: 365,
+  DESPERFECTO_ELECTRICO: 182,
+};
+
 export interface GarantiaCreateDTO {
   equipoFabricadoId: number;
   ventaId: number;
@@ -46,8 +53,10 @@ export interface GarantiaCreateDTO {
 
 // ==================== GARANTIAS API ====================
 export const garantiaApi = {
-  // GET /api/garantias
-  findAll: async (pagination: PaginationParams = {}): Promise<PageResponse<GarantiaDTO>> => {
+  // GET /api/garantias — paginado server-side con filtros opcionales (estado, search)
+  findAll: async (
+    pagination: PaginationParams & { estado?: string; search?: string } = {}
+  ): Promise<PageResponse<GarantiaDTO>> => {
     const response = await api.get<PageResponse<GarantiaDTO>>('/api/garantias', {
       params: { ...pagination },
     });
