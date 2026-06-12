@@ -48,7 +48,6 @@ export function calcEntregaInfo(
  */
 export function EntregaDeadlineChip({
   info,
-  diasLimite,
 }: {
   info: EntregaInfo | null;
   diasLimite: number;
