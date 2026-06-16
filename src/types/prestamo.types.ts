@@ -158,6 +158,7 @@ export interface PrestamoPersonalDTO {
   empresaId: number;
   clienteId: number;
   clienteNombre: string;
+  clienteApellido?: string;
   codigoClienteRojas?: string;
   tipoFinanciacion: TipoFinanciacion;
   cantidadCuotas: number;

@@ -184,6 +184,17 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               }));
             }
 
+            // Roles que siempre ven todas las sucursales (sin filtro por sucursal)
+            const ROLES_VEN_TODAS_SUCURSALES: RolEmpresa[] = ['COBRANZAS'];
+            const veTodasSucursales = ROLES_VEN_TODAS_SUCURSALES.includes(relacionActual.rol);
+
+            if (veTodasSucursales) {
+              // Limpiar cualquier filtro de sucursal previo para que vea todo
+              setSucursalFiltroState(null);
+              sessionStorage.removeItem('sucursalFiltro');
+              console.log('🌐 Rol', relacionActual.rol, '- sin filtro de sucursal (ve todas)');
+            }
+
             // Lógica mejorada para inicializar sucursal con validación
             const savedSucursal = sessionStorage.getItem('sucursalFiltro');
             let sucursalSeleccionada: number | null = null;
@@ -194,55 +205,55 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               const activas = sucursalesDisponibles.filter(s => s.estado === 'ACTIVO');
               console.log('🏢 Sucursales activas cargadas:', activas.map(s => s.id));
 
-              // Si hay sucursal guardada, validar que esté en la lista de disponibles
-              if (savedSucursal) {
-                const savedSucursalId = parseInt(savedSucursal);
-                const isValid = activas.some(s => s.id === savedSucursalId);
+              if (!veTodasSucursales) {
+                // Si hay sucursal guardada, validar que esté en la lista de disponibles
+                if (savedSucursal) {
+                  const savedSucursalId = parseInt(savedSucursal);
+                  const isValid = activas.some(s => s.id === savedSucursalId);
 
-                if (isValid) {
-                  console.log('✅ Sucursal guardada validada:', savedSucursal);
-                  sucursalSeleccionada = savedSucursalId;
-                } else {
-                  console.log('⚠️ Sucursal guardada inválida (ID:', savedSucursalId, ') - no está en sucursales disponibles');
-                  sessionStorage.removeItem('sucursalFiltro');
-                }
-              }
-
-              // Si no hay sucursal válida guardada, intentar con la asignada directamente al usuario
-              if (sucursalSeleccionada === null && relacionActual.sucursalId) {
-                console.log('📍 Usuario asignado a sucursal específica:', relacionActual.sucursalId);
-                sucursalSeleccionada = relacionActual.sucursalId;
-              }
-              // Si no, intentar con la sucursal por defecto
-              else if (sucursalSeleccionada === null && relacionActual.sucursalDefectoId) {
-                console.log('📍 Usando sucursal por defecto:', relacionActual.sucursalDefectoId);
-                sucursalSeleccionada = relacionActual.sucursalDefectoId;
-              }
-              // Si no, auto-seleccionar según lógica de empresa
-              else if (sucursalSeleccionada === null) {
-                console.log('📍 No hay sucursal asignada, seleccionando automáticamente');
-                if (activas.length === 1) {
-                  // Solo hay una sucursal, seleccionarla automáticamente
-                  console.log('📍 Solo hay una sucursal activa, seleccionándola automáticamente:', activas[0].id);
-                  sucursalSeleccionada = activas[0].id;
-                } else if (activas.length > 1) {
-                  // Hay múltiples sucursales, buscar la principal
-                  const principal = activas.find(s => s.esPrincipal);
-                  if (principal) {
-                    console.log('📍 Seleccionando sucursal principal:', principal.id);
-                    sucursalSeleccionada = principal.id;
+                  if (isValid) {
+                    console.log('✅ Sucursal guardada validada:', savedSucursal);
+                    sucursalSeleccionada = savedSucursalId;
                   } else {
-                    console.log('📍 Seleccionando primera sucursal activa:', activas[0].id);
-                    sucursalSeleccionada = activas[0].id;
+                    console.log('⚠️ Sucursal guardada inválida (ID:', savedSucursalId, ') - no está en sucursales disponibles');
+                    sessionStorage.removeItem('sucursalFiltro');
                   }
                 }
-              }
 
-              // Aplicar la sucursal seleccionada
-              if (sucursalSeleccionada !== null) {
-                console.log('✅ Sucursal final seleccionada:', sucursalSeleccionada);
-                setSucursalFiltroState(sucursalSeleccionada);
-                sessionStorage.setItem('sucursalFiltro', sucursalSeleccionada.toString());
+                // Si no hay sucursal válida guardada, intentar con la asignada directamente al usuario
+                if (sucursalSeleccionada === null && relacionActual.sucursalId) {
+                  console.log('📍 Usuario asignado a sucursal específica:', relacionActual.sucursalId);
+                  sucursalSeleccionada = relacionActual.sucursalId;
+                }
+                // Si no, intentar con la sucursal por defecto
+                else if (sucursalSeleccionada === null && relacionActual.sucursalDefectoId) {
+                  console.log('📍 Usando sucursal por defecto:', relacionActual.sucursalDefectoId);
+                  sucursalSeleccionada = relacionActual.sucursalDefectoId;
+                }
+                // Si no, auto-seleccionar según lógica de empresa
+                else if (sucursalSeleccionada === null) {
+                  console.log('📍 No hay sucursal asignada, seleccionando automáticamente');
+                  if (activas.length === 1) {
+                    console.log('📍 Solo hay una sucursal activa, seleccionándola automáticamente:', activas[0].id);
+                    sucursalSeleccionada = activas[0].id;
+                  } else if (activas.length > 1) {
+                    const principal = activas.find(s => s.esPrincipal);
+                    if (principal) {
+                      console.log('📍 Seleccionando sucursal principal:', principal.id);
+                      sucursalSeleccionada = principal.id;
+                    } else {
+                      console.log('📍 Seleccionando primera sucursal activa:', activas[0].id);
+                      sucursalSeleccionada = activas[0].id;
+                    }
+                  }
+                }
+
+                // Aplicar la sucursal seleccionada
+                if (sucursalSeleccionada !== null) {
+                  console.log('✅ Sucursal final seleccionada:', sucursalSeleccionada);
+                  setSucursalFiltroState(sucursalSeleccionada);
+                  sessionStorage.setItem('sucursalFiltro', sucursalSeleccionada.toString());
+                }
               }
             } catch (err: any) {
               // 403 esperado para roles con permisos recortados (TALLER, etc.).

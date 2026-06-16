@@ -186,7 +186,7 @@ export const PrestamosListPage: React.FC = () => {
           <TextField
             fullWidth
             size="small"
-            placeholder="Buscar por nombre o código..."
+            placeholder="Buscar por nombre, apellido, CUIT/DNI o teléfono..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             slotProps={{
@@ -280,7 +280,9 @@ export const PrestamosListPage: React.FC = () => {
                 prestamos.map(p => (
                   <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/prestamos/${p.id}`)}>
                     <TableCell>
-                      <Typography variant="body2" fontWeight="medium">{p.clienteNombre}</Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        {p.clienteNombre}{p.clienteApellido ? ` ${p.clienteApellido}` : ''}
+                      </Typography>
                       {p.codigoClienteRojas && (
                         <Typography variant="caption" color="text.secondary">Cód: {p.codigoClienteRojas}</Typography>
                       )}
@@ -391,7 +393,7 @@ export const PrestamosListPage: React.FC = () => {
         <DialogTitle>Eliminar Crédito Personal</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            ¿Está seguro que desea eliminar el crédito personal de <strong>{prestamoToDelete?.clienteNombre}</strong>?
+            ¿Está seguro que desea eliminar el crédito personal de <strong>{prestamoToDelete?.clienteNombre}{prestamoToDelete?.clienteApellido ? ` ${prestamoToDelete.clienteApellido}` : ''}</strong>?
             Esta acción no se puede deshacer.
           </DialogContentText>
         </DialogContent>
