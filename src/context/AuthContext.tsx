@@ -28,6 +28,7 @@ export interface AuthUser {
   empresaId?: number;      // Active company ID
   sucursalId?: number;     // Active branch ID
   nombre?: string;         // User's full name
+  empleadoId?: number;     // Linked employee ID (for trip access control)
 }
 
 interface AuthContextType {
@@ -140,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: res.email || "",
         roles: normalizeRoles(res.roles),
         esSuperAdmin: isSuperAdmin,
+        empleadoId: res.empleadoId,
       };
       const access = res.accessToken || (res as any).token; // support alternate field name
       if (!access) throw new Error('No access token en la respuesta');

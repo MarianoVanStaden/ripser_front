@@ -19,6 +19,7 @@ export interface LoginResponse {
   empresaId?: number;        // Multi-tenant: active company ID
   sucursalId?: number;       // Multi-tenant: active branch ID
   esSuperAdmin?: boolean;    // Multi-tenant: super admin flag
+  empleadoId?: number;       // Linked employee ID (for trip access control)
 }
 
 export interface RefreshResponse {

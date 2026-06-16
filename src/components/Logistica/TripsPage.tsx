@@ -80,6 +80,7 @@ import { documentoApi } from '../../api/services/documentoApi';
 import { clienteApi } from '../../api/services/clienteApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { EquipoFabricadoDTO } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 // Custom hook for responsive breakpoints
 const useResponsive = () => {
@@ -558,8 +559,25 @@ const ResumenCobrosDesktop: React.FC<ResumenCobrosProps> = ({ resumen, estadoVia
 const TripsPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
   const { tieneRol } = usePermisos();
+  const { user } = useAuth();
   const esConductor = tieneRol('CONDUCTOR');
-  const puedeRendir = !esConductor; // admin, transporte, coordinadora, etc.
+  const esLogistico = tieneRol('LOGISTICO');
+
+  // Devuelve true si el usuario actual está asignado al viaje como conductor o acompañante.
+  // Usado para decidir si LOGISTICO puede ver la recaudación de un viaje específico.
+  const esAsignadoAlViaje = (trip: Viaje): boolean => {
+    if (!user?.empleadoId) return false;
+    return user.empleadoId === trip.conductorId || user.empleadoId === trip.acompananteId;
+  };
+
+  // CONDUCTOR: siempre puede rendir sus propios viajes (el backend filtra la lista).
+  // LOGISTICO: puede rendir solo si está asignado al viaje — se evalúa por viaje en el render.
+  // Otros roles (admin, transporte, etc.): siempre pueden rendir.
+  const puedeRendirViaje = (trip: Viaje): boolean => {
+    if (esConductor) return true;
+    if (esLogistico) return esAsignadoAlViaje(trip);
+    return true;
+  };
 
   // Días estimados de entrega (parámetro global editable en /admin/settings).
   // Fecha estimada = fecha de emisión de la factura + estos días.
@@ -2017,7 +2035,7 @@ const TripsPage2: React.FC = () => {
               )}
 
               {/* Rendir viaje (admin recibe el dinero) */}
-              {puedeRendir && (trip.estado === 'COMPLETADO' || trip.estado === 'PENDIENTE_RENDICION') && (
+              {puedeRendirViaje(trip) && (trip.estado === 'COMPLETADO' || trip.estado === 'PENDIENTE_RENDICION') && (
                 <Tooltip title="Registrar rendición de efectivo" enterDelay={300}>
                   <IconButton
                     onClick={(e) => { e.stopPropagation(); setRendicionDialogViaje(trip); }}
@@ -2812,12 +2830,14 @@ const TripsPage2: React.FC = () => {
                 <Tab label="Info" />
                 <Tab label={`Entregas (${getTripDeliveries(selectedTrip.id).length})`} />
                 <Tab label={`Facturas (${getFacturasByTrip(selectedTrip.id).length})`} />
-                <Tab
-                  label="Cobros"
-                  icon={<AttachMoneyIcon sx={{ fontSize: 16 }} />}
-                  iconPosition="start"
-                  sx={{ minHeight: 48 }}
-                />
+                {(!esLogistico || esAsignadoAlViaje(selectedTrip)) && (
+                  <Tab
+                    label="Cobros"
+                    icon={<AttachMoneyIcon sx={{ fontSize: 16 }} />}
+                    iconPosition="start"
+                    sx={{ minHeight: 48 }}
+                  />
+                )}
               </Tabs>
 
               {detailsTab === 0 && (
@@ -2946,11 +2966,11 @@ const TripsPage2: React.FC = () => {
                 </Stack>
               )}
 
-              {detailsTab === 3 && (
+              {detailsTab === 3 && (!esLogistico || esAsignadoAlViaje(selectedTrip)) && (
                 <ResumenCobrosMobile
                   resumen={resumenFinancieroMap[selectedTrip.id]}
                   estadoViaje={selectedTrip.estado}
-                  puedeRendir={puedeRendir}
+                  puedeRendir={puedeRendirViaje(selectedTrip)}
                   onRendir={() => setRendicionDialogViaje(selectedTrip)}
                 />
               )}
@@ -3064,15 +3084,17 @@ const TripsPage2: React.FC = () => {
                   </Grid>
                 )}
 
-                {/* Resumen financiero — siempre visible en desktop */}
-                <Grid item xs={12}>
-                  <ResumenCobrosDesktop
-                    resumen={resumenFinancieroMap[selectedTrip.id]}
-                    estadoViaje={selectedTrip.estado}
-                    puedeRendir={puedeRendir}
-                    onRendir={() => { setDetailsDialogOpen(false); setRendicionDialogViaje(selectedTrip); }}
-                  />
-                </Grid>
+                {/* Resumen financiero — visible para roles con acceso financiero */}
+                {(!esLogistico || esAsignadoAlViaje(selectedTrip)) && (
+                  <Grid item xs={12}>
+                    <ResumenCobrosDesktop
+                      resumen={resumenFinancieroMap[selectedTrip.id]}
+                      estadoViaje={selectedTrip.estado}
+                      puedeRendir={puedeRendirViaje(selectedTrip)}
+                      onRendir={() => { setDetailsDialogOpen(false); setRendicionDialogViaje(selectedTrip); }}
+                    />
+                  </Grid>
+                )}
               </Grid>
 
               <Box mt={3}>
