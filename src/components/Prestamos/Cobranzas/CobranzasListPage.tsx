@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Box, Paper, Table, TableBody, TableCell, TableContainer,
+  Box, Paper, Table, TableBody, TableCell,
   TableHead, TableRow, TablePagination, TableSortLabel, IconButton, Typography,
   Tooltip, CircularProgress, Alert, TextField, InputAdornment,
   Chip, Stack, Button, FormControlLabel, Switch, Checkbox,
   Toolbar, Menu, MenuItem, Snackbar, ListItemIcon, ListItemText, Divider,
 } from '@mui/material';
+import {
+  StickyScrollTable,
+  sxStickyCheckboxHead,
+  sxStickyCheckboxBody,
+  sxStickyClienteHead,
+  sxStickyClienteBody,
+} from '../../common/StickyScrollTable';
 import {
   Visibility, Add, Search, Phone,
   PhoneInTalk, Alarm, CheckCircleOutline, Clear,
@@ -646,7 +653,22 @@ export const CobranzasListPage: React.FC = () => {
       )}
 
       {/* Table */}
-      <TableContainer component={Paper}>
+      <StickyScrollTable
+        minWidth={1200}
+        pagination={
+          <TablePagination
+            component="div"
+            count={totalElements}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[10, 25, 50]}
+            labelRowsPerPage="Filas:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          />
+        }
+      >
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
@@ -656,7 +678,7 @@ export const CobranzasListPage: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.100' }}>
-                <TableCell padding="checkbox">
+                <TableCell padding="checkbox" sx={sxStickyCheckboxHead}>
                   <Checkbox
                     size="small"
                     color="primary"
@@ -668,7 +690,7 @@ export const CobranzasListPage: React.FC = () => {
                   />
                 </TableCell>
                 {[
-                  { label: 'Cliente', field: null },
+                  { label: 'Cliente', field: null, sticky: true },
                   { label: 'Teléfono', field: null },
                   { label: 'Días Mora', field: 'diasMoraReal', align: 'center' as const },
                   { label: 'Monto Pendiente', field: 'montoPendiente', align: 'right' as const },
@@ -678,8 +700,12 @@ export const CobranzasListPage: React.FC = () => {
                   { label: 'Acc.', field: null, align: 'center' as const },
                   { label: 'Recor.', field: null, align: 'center' as const },
                   { label: 'Acciones', field: null, align: 'center' as const },
-                ].map(({ label, field, align }) => (
-                  <TableCell key={label} sx={{ fontWeight: 700 }} align={align}>
+                ].map(({ label, field, align, sticky }) => (
+                  <TableCell
+                    key={label}
+                    align={align}
+                    sx={{ fontWeight: 700, ...(sticky ? sxStickyClienteHead : {}) }}
+                  >
                     {field ? (
                       <TableSortLabel
                         active={sortField === field}
@@ -727,7 +753,7 @@ export const CobranzasListPage: React.FC = () => {
                       sx={{ cursor: 'pointer' }}
                       onClick={() => navigate(`/cobranzas/${g.id}`)}
                     >
-                      <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                      <TableCell padding="checkbox" sx={sxStickyCheckboxBody} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           size="small"
                           color="primary"
@@ -737,7 +763,7 @@ export const CobranzasListPage: React.FC = () => {
                           inputProps={{ 'aria-label': `Seleccionar gestión ${g.id}` }}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={sxStickyClienteBody}>
                         <Typography variant="body2" fontWeight={600}>
                           {g.clienteNombre} {g.clienteApellido}
                         </Typography>
@@ -904,18 +930,7 @@ export const CobranzasListPage: React.FC = () => {
             </TableBody>
           </Table>
         )}
-        <TablePagination
-          component="div"
-          count={totalElements}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={[10, 25, 50]}
-          labelRowsPerPage="Filas:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-        />
-      </TableContainer>
+      </StickyScrollTable>
 
       {/* Single-row close menu */}
       <Menu
