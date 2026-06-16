@@ -26,6 +26,7 @@ import {
 } from '@mui/material';
 import { puestoApi } from '../../api/services/puestoApi';
 import { fetchCatalogosSnapshot } from '../../api/services/catalogosCache';
+import { categoriaSalarialApi } from '../../api/services/categoriaSalarialApi';
 import type {
   CreatePuestoDTO,
   PuestoResponseDTO,
@@ -39,6 +40,7 @@ import type {
   PuestoRiesgoDTO,
   PuestoEppDTO,
   PuestoListDTO,
+  CategoriaSalarial,
 } from '../../types';
 import type {
   Area,
@@ -73,6 +75,7 @@ interface FormState {
   descripcion: string;
   departamentoLegacy: string;
   salarioBase: number | '';
+  categoriaSalarialId: number | '';
   ciuo: string;
   volumenDotacion: number | '';
 
@@ -119,6 +122,7 @@ const EMPTY_FORM: FormState = {
   descripcion: '',
   departamentoLegacy: '',
   salarioBase: '',
+  categoriaSalarialId: '',
   ciuo: '',
   volumenDotacion: '',
   unidadNegocioId: '',
@@ -165,12 +169,14 @@ interface Catalogos {
   tiposFormacion: TipoFormacion[];
   nivelesExperiencia: NivelExperiencia[];
   puestos: PuestoListDTO[];
+  categoriasSalariales: CategoriaSalarial[];
 }
 
 const EMPTY_CATS: Catalogos = {
   unidadesNegocio: [], lugaresTrabajo: [], areas: [], departamentos: [], sectores: [],
   bandas: [], niveles: [], competencias: [], riesgos: [], epp: [],
   nivelesEducacion: [], tiposFormacion: [], nivelesExperiencia: [], puestos: [],
+  categoriasSalariales: [],
 };
 
 export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Props) {
@@ -194,11 +200,12 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
 
     const loadCatalogos = async () => {
       try {
-        const [snapshot, puestos] = await Promise.all([
+        const [snapshot, puestos, categoriasSalariales] = await Promise.all([
           fetchCatalogosSnapshot(),
           puestoApi.getActivos(),
+          categoriaSalarialApi.getAll(),
         ]);
-        setCats({ ...snapshot, puestos });
+        setCats({ ...snapshot, puestos, categoriasSalariales });
       } catch {
         setError('No se pudieron cargar los catálogos de referencia');
       }
@@ -215,6 +222,7 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
             descripcion: d.descripcion ?? '',
             departamentoLegacy: d.departamento ?? '',
             salarioBase: d.salarioBase ?? '',
+            categoriaSalarialId: d.categoriaSalarialId ?? '',
             ciuo: d.ciuo ?? '',
             volumenDotacion: d.volumenDotacion ?? '',
             unidadNegocioId: d.unidadNegocioId ?? '',
@@ -258,6 +266,7 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
       descripcion: form.descripcion || undefined,
       departamento: form.departamentoLegacy || undefined,
       salarioBase: form.salarioBase === '' ? undefined : Number(form.salarioBase),
+      categoriaSalarialId: form.categoriaSalarialId === '' ? undefined : Number(form.categoriaSalarialId),
       requisitos: form.requisitos || undefined,
       objetivoGeneral: form.objetivoGeneral || undefined,
       activo: form.activo,
@@ -472,10 +481,30 @@ export default function PuestoFormDialog({ open, puestoId, onClose, onSave }: Pr
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <TextField
+                    select fullWidth label="Categoría salarial"
+                    value={form.categoriaSalarialId}
+                    onChange={(e) => {
+                      const id = e.target.value === '' ? '' : Number(e.target.value);
+                      upd('categoriaSalarialId', id);
+                      if (id !== '') {
+                        const cat = cats.categoriasSalariales.find((c) => c.id === id);
+                        if (cat) upd('salarioBase', cat.sueldoFijo);
+                      }
+                    }}
+                  >
+                    <MenuItem value=""><em>— Sin categoría —</em></MenuItem>
+                    {cats.categoriasSalariales.filter((c) => c.activo).map((c) => (
+                      <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
                     fullWidth label="Salario base" type="number"
                     value={form.salarioBase}
                     onChange={(e) => upd('salarioBase', e.target.value === '' ? '' : Number(e.target.value))}
                     InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                    helperText="Se completa automáticamente al elegir categoría."
                   />
                 </Grid>
 

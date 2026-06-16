@@ -165,6 +165,8 @@ export interface PuestoListDTO {
   activo: boolean;
   cantidadEmpleados: number;
   cantidadTareas: number;
+  categoriaSalarialId?: number | null;
+  categoriaSalarialNombre?: string | null;
 }
 
 // ===== Manual de Puestos: tipos auxiliares =====
@@ -276,6 +278,8 @@ export interface PuestoResponseDTO {
   areaNombre?: string;
   departamentoId?: number;
   departamentoNombre?: string;
+  categoriaSalarialId?: number | null;
+  categoriaSalarialNombre?: string | null;
   sectorId?: number;
   sectorNombre?: string;
   bandaJerarquicaId?: number;
@@ -316,6 +320,7 @@ export interface CreatePuestoDTO {
   descripcion?: string;
   departamento?: string;
   salarioBase?: number;
+  categoriaSalarialId?: number | null;
   requisitos?: string;
   objetivoGeneral?: string;
 
@@ -363,6 +368,7 @@ export interface UpdatePuestoDTO {
   descripcion?: string;
   departamento?: string;
   salarioBase?: number;
+  categoriaSalarialId?: number | null;
   requisitos?: string;
   objetivoGeneral?: string;
   activo?: boolean;

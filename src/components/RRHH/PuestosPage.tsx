@@ -323,6 +323,11 @@ const PuestosPage: React.FC = () => {
                     <Typography variant="body2" fontWeight="600" color="success.main">
                       {formatPrice(puesto.salarioBase || 0)}
                     </Typography>
+                    {puesto.categoriaSalarialNombre && (
+                      <Typography variant="caption" color="textSecondary" display="block">
+                        {puesto.categoriaSalarialNombre}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     <Chip label={`v${puesto.version}`} size="small" variant="outlined" />
