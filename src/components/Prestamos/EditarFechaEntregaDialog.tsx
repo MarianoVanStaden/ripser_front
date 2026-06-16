@@ -56,14 +56,13 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
     return nuevaFecha.startOf('day').diff(fechaActual.startOf('day'), 'day');
   }, [nuevaFecha, fechaActual]);
 
-  const motivoValido = motivo.trim().length >= 5;
   const fechaValida = !!nuevaFecha && nuevaFecha.isValid();
   const cambioReal = fechaValida && !!fechaActual && deltaDias !== 0;
   // Cuando no había fechaEntrega previa, el checkbox "shift" se interpreta como "anclar"
   // (recalcular cuotas desde cero usando la nueva fecha + n períodos).
   const esAnclajeInicial = !fechaActual && fechaValida;
 
-  const submitDisabled = !fechaValida || !motivoValido || submitting;
+  const submitDisabled = !fechaValida || submitting;
 
   const handleSubmit = async () => {
     if (!nuevaFecha) return;
@@ -112,19 +111,13 @@ export const EditarFechaEntregaDialog: React.FC<Props> = ({
           </LocalizationProvider>
 
           <TextField
-            label="Motivo del cambio"
+            label="Motivo del cambio (opcional)"
             value={motivo}
             onChange={e => setMotivo(e.target.value)}
             multiline
             minRows={2}
             fullWidth
-            required
-            error={motivo.length > 0 && !motivoValido}
-            helperText={
-              motivo.length > 0 && !motivoValido
-                ? 'Debe tener al menos 5 caracteres'
-                : 'Quedará registrado en el historial del préstamo'
-            }
+            helperText="Quedará registrado en el historial del préstamo"
           />
 
           <FormControlLabel

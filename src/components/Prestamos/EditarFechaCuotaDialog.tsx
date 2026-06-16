@@ -40,7 +40,6 @@ export const EditarFechaCuotaDialog: React.FC<Props> = ({
     return nuevaFecha.startOf('day').diff(fechaActual.startOf('day'), 'day');
   }, [nuevaFecha, fechaActual]);
 
-  const motivoValido = motivo.trim().length >= 5;
   const fechaValida = !!nuevaFecha && nuevaFecha.isValid();
   const cambioReal = fechaValida && deltaDias !== 0;
 
@@ -51,7 +50,7 @@ export const EditarFechaCuotaDialog: React.FC<Props> = ({
     [cuotas, cuota.numeroCuota],
   );
 
-  const submitDisabled = !fechaValida || !motivoValido || !cambioReal || submitting;
+  const submitDisabled = !fechaValida || !cambioReal || submitting;
 
   const handleSubmit = async () => {
     if (!nuevaFecha) return;
@@ -103,19 +102,13 @@ export const EditarFechaCuotaDialog: React.FC<Props> = ({
           </LocalizationProvider>
 
           <TextField
-            label="Motivo del cambio"
+            label="Motivo del cambio (opcional)"
             value={motivo}
             onChange={e => setMotivo(e.target.value)}
             multiline
             minRows={2}
             fullWidth
-            required
-            error={motivo.length > 0 && !motivoValido}
-            helperText={
-              motivo.length > 0 && !motivoValido
-                ? 'Debe tener al menos 5 caracteres'
-                : 'Quedará registrado en el historial del préstamo'
-            }
+            helperText="Quedará registrado en el historial del préstamo"
           />
 
           <FormControlLabel

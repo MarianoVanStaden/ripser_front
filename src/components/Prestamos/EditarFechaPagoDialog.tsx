@@ -26,10 +26,9 @@ export const EditarFechaPagoDialog: React.FC<Props> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const motivoValido = motivo.trim().length >= 5;
   const fechaValida = !!nuevaFecha && nuevaFecha.isValid();
   const cambioReal = fechaValida && !nuevaFecha.isSame(fechaActual, 'day');
-  const submitDisabled = !fechaValida || !motivoValido || !cambioReal || submitting;
+  const submitDisabled = !fechaValida || !cambioReal || submitting;
 
   const handleClose = () => {
     if (submitting) return;
@@ -88,15 +87,10 @@ export const EditarFechaPagoDialog: React.FC<Props> = ({
               fullWidth
               multiline
               rows={2}
-              label="Motivo del cambio *"
+              label="Motivo del cambio (opcional)"
               value={motivo}
               onChange={e => setMotivo(e.target.value)}
-              error={motivo.length > 0 && !motivoValido}
-              helperText={
-                motivo.length > 0 && !motivoValido
-                  ? 'El motivo debe tener al menos 5 caracteres'
-                  : `${motivo.length} / 500`
-              }
+              helperText={`${motivo.length} / 500`}
               inputProps={{ maxLength: 500 }}
             />
 
