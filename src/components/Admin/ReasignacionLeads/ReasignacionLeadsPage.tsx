@@ -51,7 +51,10 @@ const ReasignacionLeadsPage: React.FC = () => {
     return roles.includes('ADMIN') || roles.includes('SUPER_ADMIN');
   }, [esSuperAdmin, user]);
 
-  // Sucursal del supervisor (lock). Para admin global = sin restricción.
+  // Sucursal fija a la que queda acotado el supervisor (bloquea los selectores).
+  // Convención del sistema: sucursalId NULL = supervisa TODAS las sucursales de la
+  // empresa → no se bloquea, puede elegir libremente como un admin. Admin global
+  // también queda sin restricción.
   const supervisorSucursalId = !esAdminGlobal ? (user?.sucursalId ?? null) : null;
 
   const [tab, setTab] = useState(0);
@@ -217,12 +220,6 @@ const ReasignacionLeadsPage: React.FC = () => {
         <SwapHorizIcon color="primary" />
         <Typography variant="h5" fontWeight={700}>Reasignación de Leads</Typography>
       </Stack>
-
-      {!esAdminGlobal && supervisorSucursalId == null && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          No tenés una sucursal activa asignada. Seleccioná una sucursal antes de reasignar.
-        </Alert>
-      )}
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Reasignar" />
