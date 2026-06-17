@@ -26,6 +26,8 @@ import {
   type HistorialReasignacionLeadDTO,
 } from '../../../types/leadReasignacion.types';
 import type { LeadListItemDTO } from '../../../types/lead.types';
+import { useSseEvent } from '../../../hooks/useSseEvent';
+import { SSE_EVENTS } from '../../../lib/sse-contract';
 
 interface Vendedor { id: number; nombre?: string; apellido?: string; username?: string }
 
@@ -523,6 +525,9 @@ const HistorialTab: React.FC<{ vendedores: Vendedor[] }> = ({ vendedores }) => {
   }, [page, rowsPerPage, vendedorFiltro, fechaDesde, fechaHasta]);
 
   useEffect(() => { return load(); }, [load]);
+
+  // Tiempo real: refrescar el historial cuando otro usuario reasigna/revierte.
+  useSseEvent([SSE_EVENTS.LEAD_REASIGNADO], load);
 
   // Al cambiar un filtro, volver a la primera página.
   const onFiltroChange = (fn: () => void) => { setPage(0); fn(); };
