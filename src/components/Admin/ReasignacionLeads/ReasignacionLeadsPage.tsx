@@ -77,9 +77,18 @@ const ReasignacionLeadsPage: React.FC = () => {
 
   // ---- selección de leads (modo LEADS_SELECCIONADOS) ----
   const [leadSearch, setLeadSearch] = useState('');
+  const [leadVendedorFiltro, setLeadVendedorFiltro] = useState<Vendedor | null>(null);
+  const [leadOrden, setLeadOrden] = useState<'desc' | 'asc'>('desc');
   const [leadOptions, setLeadOptions] = useState<LeadListItemDTO[]>([]);
+  const [leadTotal, setLeadTotal] = useState(0);
+  const [leadPage, setLeadPage] = useState(0);
+  const [leadRowsPerPage, setLeadRowsPerPage] = useState(25);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<number>>(new Set());
+  // Guardamos la info (no solo el id) para poder listar los seleccionados aunque
+  // estén en otra página/filtro.
+  const [selectedLeadInfo, setSelectedLeadInfo] = useState<Map<number, LeadListItemDTO>>(new Map());
+  const [verSelOpen, setVerSelOpen] = useState(false);
 
   // ---- preview / ejecución ----
   const [preview, setPreview] = useState<ReasignacionPreviewResponse | null>(null);
@@ -107,24 +116,40 @@ const ReasignacionLeadsPage: React.FC = () => {
     let cancelled = false;
     setLoadingLeads(true);
     leadApi.getAll(
-      { page: 0, size: 100 },
+      { page: leadPage, size: leadRowsPerPage, sort: `fechaPrimerContacto,${leadOrden}` },
       {
         ...(supervisorSucursalId != null ? { sucursalId: supervisorSucursalId } : {}),
+        ...(leadVendedorFiltro ? { usuarioId: leadVendedorFiltro.id } : {}),
         ...(leadSearch.trim() ? { busqueda: leadSearch.trim() } : {}),
       },
     )
-      .then((res) => { if (!cancelled) setLeadOptions(res.content ?? []); })
-      .catch(() => { if (!cancelled) setLeadOptions([]); })
+      .then((res) => { if (!cancelled) { setLeadOptions(res.content ?? []); setLeadTotal(res.totalElements ?? 0); } })
+      .catch(() => { if (!cancelled) { setLeadOptions([]); setLeadTotal(0); } })
       .finally(() => { if (!cancelled) setLoadingLeads(false); });
     return () => { cancelled = true; };
-  }, [modo, activeStep, leadSearch, supervisorSucursalId]);
+  }, [modo, activeStep, leadSearch, supervisorSucursalId, leadVendedorFiltro, leadOrden, leadPage, leadRowsPerPage]);
 
-  const toggleLead = (id: number) => {
+  const toggleLead = (lead: LeadListItemDTO) => {
     setSelectedLeadIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(lead.id) ? next.delete(lead.id) : next.add(lead.id);
       return next;
     });
+    setSelectedLeadInfo((prev) => {
+      const next = new Map(prev);
+      next.has(lead.id) ? next.delete(lead.id) : next.set(lead.id, lead);
+      return next;
+    });
+  };
+
+  const removeSeleccionado = (id: number) => {
+    setSelectedLeadIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    setSelectedLeadInfo((prev) => { const n = new Map(prev); n.delete(id); return n; });
+  };
+
+  const limpiarSeleccion = () => {
+    setSelectedLeadIds(new Set());
+    setSelectedLeadInfo(new Map());
   };
 
   // ---- validación por paso ----
@@ -163,7 +188,7 @@ const ReasignacionLeadsPage: React.FC = () => {
       setResultado(res);
       setConfirmOpen(false);
       // reset selección para evitar reejecución accidental
-      setSelectedLeadIds(new Set());
+      limpiarSeleccion();
     } catch (err) {
       setError(extractError(err));
       setConfirmOpen(false);
@@ -181,7 +206,7 @@ const ReasignacionLeadsPage: React.FC = () => {
     setVendedorDestino(null);
     setSucursalDestinoId('');
     setObservaciones('');
-    setSelectedLeadIds(new Set());
+    limpiarSeleccion();
     if (supervisorSucursalId == null) setSucursalOrigenId('');
   };
 
@@ -252,15 +277,43 @@ const ReasignacionLeadsPage: React.FC = () => {
 
                   {modo === 'LEADS_SELECCIONADOS' && (
                     <Box>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 1.5 }}>
+                        <Autocomplete
+                          sx={{ minWidth: 220, flex: 1 }}
+                          size="small"
+                          options={vendedores}
+                          value={leadVendedorFiltro}
+                          onChange={(_, v) => { setLeadVendedorFiltro(v); setLeadPage(0); }}
+                          getOptionLabel={vendedorLabel}
+                          isOptionEqualToValue={(o, v) => o.id === v.id}
+                          renderInput={(p) => <TextField {...p} label="Filtrar por vendedor" />}
+                        />
+                        <TextField
+                          select size="small" label="Orden" sx={{ minWidth: 200 }}
+                          value={leadOrden}
+                          onChange={(e) => { setLeadOrden(e.target.value as 'desc' | 'asc'); setLeadPage(0); }}
+                        >
+                          <MenuItem value="desc">Más nuevos primero</MenuItem>
+                          <MenuItem value="asc">Más viejos primero</MenuItem>
+                        </TextField>
+                      </Stack>
                       <TextField
                         fullWidth size="small" placeholder="Buscar por nombre o teléfono…"
-                        value={leadSearch} onChange={(e) => setLeadSearch(e.target.value)}
+                        value={leadSearch} onChange={(e) => { setLeadSearch(e.target.value); setLeadPage(0); }}
                         InputProps={{ startAdornment: <SearchIcon fontSize="small" color="action" sx={{ mr: 1 }} /> }}
                         sx={{ mb: 1 }}
                       />
-                      <Typography variant="caption" color="text.secondary">
-                        {selectedLeadIds.size} seleccionado(s)
-                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="caption" color="text.secondary">
+                          {selectedLeadIds.size} seleccionado(s)
+                        </Typography>
+                        <Button size="small" disabled={selectedLeadIds.size === 0} onClick={() => setVerSelOpen(true)}>
+                          Ver
+                        </Button>
+                        <Button size="small" color="error" disabled={selectedLeadIds.size === 0} onClick={limpiarSeleccion}>
+                          Limpiar
+                        </Button>
+                      </Stack>
                       <TableContainer sx={{ maxHeight: 320, mt: 1 }}>
                         <Table size="small" stickyHeader>
                           <TableHead>
@@ -279,7 +332,7 @@ const ReasignacionLeadsPage: React.FC = () => {
                               <TableRow><TableCell colSpan={4} align="center">Sin leads</TableCell></TableRow>
                             )}
                             {!loadingLeads && leadOptions.map((l) => (
-                              <TableRow key={l.id} hover onClick={() => toggleLead(l.id)} sx={{ cursor: 'pointer' }}>
+                              <TableRow key={l.id} hover onClick={() => toggleLead(l)} sx={{ cursor: 'pointer' }}>
                                 <TableCell padding="checkbox">
                                   <Checkbox checked={selectedLeadIds.has(l.id)} />
                                 </TableCell>
@@ -291,6 +344,16 @@ const ReasignacionLeadsPage: React.FC = () => {
                           </TableBody>
                         </Table>
                       </TableContainer>
+                      <TablePagination
+                        component="div"
+                        count={leadTotal}
+                        page={leadPage}
+                        onPageChange={(_, p) => setLeadPage(p)}
+                        rowsPerPage={leadRowsPerPage}
+                        onRowsPerPageChange={(e) => { setLeadRowsPerPage(parseInt(e.target.value, 10)); setLeadPage(0); }}
+                        rowsPerPageOptions={[25, 50, 100]}
+                        labelRowsPerPage="Filas por página"
+                      />
                     </Box>
                   )}
                 </Stack>
@@ -440,6 +503,50 @@ const ReasignacionLeadsPage: React.FC = () => {
           <Button variant="contained" color="warning" onClick={doEjecutar} disabled={ejecutando}>
             {ejecutando ? <CircularProgress size={20} /> : 'Confirmar'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* VER / LIMPIAR SELECCIONADOS */}
+      <Dialog open={verSelOpen} onClose={() => setVerSelOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Leads seleccionados ({selectedLeadInfo.size})</DialogTitle>
+        <DialogContent dividers>
+          {selectedLeadInfo.size === 0 ? (
+            <DialogContentText>No hay leads seleccionados.</DialogContentText>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Nombre</TableCell>
+                  <TableCell>Teléfono</TableCell>
+                  <TableCell align="right">Quitar</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {Array.from(selectedLeadInfo.values()).map((l) => (
+                  <TableRow key={l.id} hover>
+                    <TableCell>{l.id}</TableCell>
+                    <TableCell>{`${l.nombre ?? ''} ${l.apellido ?? ''}`.trim()}</TableCell>
+                    <TableCell>{l.telefono}</TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Quitar de la selección">
+                        <span>
+                          <Checkbox checked onChange={() => removeSeleccionado(l.id)} />
+                        </span>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button color="error" disabled={selectedLeadInfo.size === 0}
+            onClick={() => { limpiarSeleccion(); setVerSelOpen(false); }}>
+            Limpiar todo
+          </Button>
+          <Button variant="contained" onClick={() => setVerSelOpen(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>
