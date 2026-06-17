@@ -7,6 +7,7 @@ import theme from './theme';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
 import LoginPage from './components/Auth/LoginPage';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { ColoresProvider } from './context/ColoresContext';
@@ -107,6 +108,7 @@ const BalanceMesPage = lazy(() => import('./components/Admin/BalanceAnual/Balanc
 const AmortizacionesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionesPage'));
 const AmortizacionMesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionMesPage'));
 const RegistroActividadPage = lazy(() => import('./components/Admin/RegistroActividadPage'));
+const ReasignacionLeadsPage = lazy(() => import('./components/Admin/ReasignacionLeads/ReasignacionLeadsPage'));
 const ProvisionesPage = lazy(() => import('./components/Admin/Provisiones/ProvisionesPage'));
 const ProvisionResumenAnualPage = lazy(() => import('./components/Admin/Provisiones/ProvisionResumenAnualPage'));
 const TiposProvisionPage = lazy(() => import('./components/Admin/TiposProvision/TiposProvisionPage'));
@@ -330,6 +332,7 @@ function App() {
                   <Route path="admin/amortizaciones" element={priv(<AmortizacionesPage />)} />
                   <Route path="admin/amortizaciones/:anio/:mes" element={priv(<AmortizacionMesPage />)} />
                   <Route path="admin/actividad" element={priv(<RegistroActividadPage />)} />
+                  <Route path="admin/reasignacion-leads" element={priv(<ProtectedRoute requiredRoles={['ADMIN', 'ADMIN_EMPRESA', 'SUPERVISOR']}><ReasignacionLeadsPage /></ProtectedRoute>)} />
                   <Route path="admin/provisiones" element={priv(<ProvisionesPage />)} />
                   <Route path="admin/provisiones/:anio/:mes" element={priv(<ProvisionesPage />)} />
                   <Route path="admin/provisiones/resumen/:tipoId/:anio" element={priv(<ProvisionResumenAnualPage />)} />

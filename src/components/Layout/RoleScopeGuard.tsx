@@ -40,6 +40,8 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
     home: '/leads/metricas',
     allowedPrefixes: [
       '/leads',
+      // Única ruta /admin/* habilitada: reasignación de leads (scope sucursal).
+      '/admin/reasignacion-leads',
       '/ventas',
       '/clientes',
       '/prestamos',

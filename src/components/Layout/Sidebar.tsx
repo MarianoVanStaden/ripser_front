@@ -253,6 +253,7 @@ const navigation: NavigationSection[] = [
       { text: 'Sucursales', icon: <AccountBalanceIcon />, path: '/admin/sucursales' },
       { text: 'Cambiar Contexto', icon: <SwapHorizIcon />, path: '/admin/tenant-selector' },
       { text: 'Usuarios', icon: <PeopleIcon />, path: '/admin/users' },
+      { text: 'Reasignación de Leads', icon: <SwapHorizIcon />, path: '/admin/reasignacion-leads' },
       { text: 'Catálogos RRHH', icon: <SettingsIcon />, path: '/admin/catalogos-rrhh' },
       { text: 'Catálogos Globales', icon: <SettingsIcon />, path: '/admin/catalogos-globales' },
       // Unifica Fichas técnicas + Medidas + Colores en una sola pantalla con tabs.
@@ -564,6 +565,9 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/leads',
     '/leads/recordatorios',
     '/leads/metricas',
+    // ADMINISTRACIÓN — única ruta /admin/* habilitada para SUPERVISOR:
+    // reasignación de leads (acotada a su sucursal server-side).
+    '/admin/reasignacion-leads',
     // CRÉDITOS / COBRANZAS (de COBRANZAS)
     '/prestamos/resumen',
     '/prestamos/lista',
