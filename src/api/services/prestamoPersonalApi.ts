@@ -8,6 +8,7 @@ import type {
   CategoriaPrestamo,
   UpdateFechaEntregaDTO,
   UpdateFechaVencimientoCuotaDTO,
+  UpdateMontoCuotaDTO,
 } from '../../types/prestamo.types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
@@ -131,6 +132,24 @@ export const prestamoPersonalApi = {
   ): Promise<CuotaPrestamoDTO> => {
     const response = await api.patch<CuotaPrestamoDTO>(
       `${BASE_PATH}/${prestamoId}/cuotas/${cuotaId}/fecha-vencimiento`,
+      dto,
+    );
+    return response.data;
+  },
+
+  /**
+   * Edita manualmente el monto de una cuota individual (recargos por mora,
+   * ajustes puntuales) sin afectar el resto de las cuotas. Recalcula el
+   * montoTotal del préstamo en el backend. Devuelve 409 si la prestamoVersion
+   * no coincide. Restringido a COBRANZAS y a cualquier tipo de admin.
+   */
+  actualizarMontoCuota: async (
+    prestamoId: number,
+    cuotaId: number,
+    dto: UpdateMontoCuotaDTO,
+  ): Promise<CuotaPrestamoDTO> => {
+    const response = await api.patch<CuotaPrestamoDTO>(
+      `${BASE_PATH}/${prestamoId}/cuotas/${cuotaId}/monto`,
       dto,
     );
     return response.data;

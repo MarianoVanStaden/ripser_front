@@ -9,7 +9,7 @@ import {
   ArrowBack, Edit, Payment, Add, Send, CheckCircle,
   Phone, Email, WhatsApp, Videocam, PersonPin, Groups,
   Delete, Notifications, Receipt, Undo, Autorenew,
-  EditCalendar, PictureAsPdf,
+  EditCalendar, PictureAsPdf, PriceChange,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -40,6 +40,7 @@ import { SeguimientoFormDialog } from './SeguimientoFormDialog';
 import { RecordatorioFormDialog } from './RecordatorioFormDialog';
 import { EditarFechaEntregaDialog } from './EditarFechaEntregaDialog';
 import { EditarFechaCuotaDialog } from './EditarFechaCuotaDialog';
+import { EditarMontoCuotaDialog } from './EditarMontoCuotaDialog';
 import { EditarFechaPagoDialog } from './EditarFechaPagoDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { usePermisos } from '../../hooks/usePermisos';
@@ -108,10 +109,14 @@ export const PrestamoDetailPage: React.FC = () => {
   const [cuotaParaEditarFecha, setCuotaParaEditarFecha] = useState<CuotaPrestamoDTO | null>(null);
   const [editFechaPagoOpen, setEditFechaPagoOpen] = useState(false);
   const [cuotaParaEditarFechaPago, setCuotaParaEditarFechaPago] = useState<CuotaPrestamoDTO | null>(null);
+  const [editMontoOpen, setEditMontoOpen] = useState(false);
+  const [cuotaParaEditarMonto, setCuotaParaEditarMonto] = useState<CuotaPrestamoDTO | null>(null);
 
   // Permisos
   const { tieneRol, esAdmin } = usePermisos();
   const puedeEditarFechas = esAdmin || tieneRol('ADMIN_EMPRESA', 'GERENTE_SUCURSAL', 'COBRANZAS');
+  // Edición manual del monto de una cuota: COBRANZAS o cualquier tipo de admin/gerencia.
+  const puedeEditarMonto = esAdmin || tieneRol('ADMIN_EMPRESA', 'ADMIN_EMPRESA_LIMITADO', 'GERENTE_SUCURSAL', 'COBRANZAS');
 
   // Cascade highlight (Task 2)
   const [highlightedCuotaIds, setHighlightedCuotaIds] = useState<Set<number>>(new Set());
@@ -565,6 +570,19 @@ export const PrestamoDetailPage: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                         )}
+                        {puedeEditarMonto
+                          && c.estado !== 'PAGADA'
+                          && c.estado !== 'REFINANCIADA'
+                          && c.estado !== 'PAGO_INFORMADO' && (
+                          <Tooltip title="Editar monto de la cuota">
+                            <IconButton
+                              size="small"
+                              onClick={() => { setCuotaParaEditarMonto(c); setEditMontoOpen(true); }}
+                            >
+                              <PriceChange fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         <Tooltip title="Agregar Recordatorio">
                           <IconButton size="small" onClick={() => { setRecordatorioCuotaId(c.id); setEditingRecordatorio(null); setRecordatorioOpen(true); }}>
                             <Notifications fontSize="small" />
@@ -795,6 +813,20 @@ export const PrestamoDetailPage: React.FC = () => {
             await loadData();
             setSnackbar({ open: true, message: msg, severity: 'success' });
           }}
+        />
+      )}
+
+      {editMontoOpen && cuotaParaEditarMonto && (
+        <EditarMontoCuotaDialog
+          open={editMontoOpen}
+          prestamo={prestamo}
+          cuota={cuotaParaEditarMonto}
+          onClose={() => { setEditMontoOpen(false); setCuotaParaEditarMonto(null); }}
+          onSaved={async (msg) => {
+            await loadData();
+            setSnackbar({ open: true, message: msg, severity: 'success' });
+          }}
+          onConflict={loadData}
         />
       )}
 

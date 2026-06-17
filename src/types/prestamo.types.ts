@@ -204,6 +204,14 @@ export interface UpdateFechaVencimientoCuotaDTO {
   prestamoVersion: number;
 }
 
+export interface UpdateMontoCuotaDTO {
+  /** Nuevo monto de la cuota (recargo por mora, ajuste puntual, etc.). */
+  nuevoMonto: number;
+  motivo: string;
+  /** Versión actual del préstamo conocida por el cliente (optimistic locking). */
+  prestamoVersion: number;
+}
+
 export interface CreatePrestamoPersonalDTO {
   clienteId: number;
   cantidadCuotas: number;

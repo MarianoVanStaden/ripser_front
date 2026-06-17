@@ -1113,6 +1113,13 @@ export const generarCreditoPDF = (
   y += 32;
 
   // ---- Tabla de cuotas ----
+  // En el PDF que envía Cobranzas, una cuota cuyo pago fue informado pero aún no
+  // confirmado por Administración se muestra como "Pagada" (no "Pago informado"):
+  // el cliente necesita ver el estado al día aunque la confirmación interna demore.
+  // El estado real en el sistema sigue siendo PAGO_INFORMADO.
+  const estadoLabelPDF = (estado: CuotaPrestamoDTO['estado']): string =>
+    estado === 'PAGO_INFORMADO' ? 'Pagada' : (ESTADO_CUOTA_LABELS[estado] || estado);
+
   const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
   const rows = cuotasOrdenadas.map(c => [
     c.numeroCuota.toString(),
@@ -1121,7 +1128,7 @@ export const generarCreditoPDF = (
     formatCurrency(c.montoPagado),
     formatCurrency(Math.max(0, Number(c.montoCuota) - Number(c.montoPagado))),
     c.numeroComprobante || '-',
-    ESTADO_CUOTA_LABELS[c.estado] || c.estado,
+    estadoLabelPDF(c.estado),
     c.diasMora && c.diasMora > 0 ? c.diasMora.toString() : '-',
   ]);
 
@@ -1151,7 +1158,8 @@ export const generarCreditoPDF = (
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 6) {
         const estado = cuotasOrdenadas[data.row.index]?.estado;
-        if (estado === 'PAGADA') {
+        // PAGO_INFORMADO se pinta igual que PAGADA: en el PDF figura como "Pagada".
+        if (estado === 'PAGADA' || estado === 'PAGO_INFORMADO') {
           data.cell.styles.textColor = [0, 128, 0];
           data.cell.styles.fontStyle = 'bold';
         } else if (estado === 'VENCIDA') {
