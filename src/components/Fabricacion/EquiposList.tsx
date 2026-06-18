@@ -26,6 +26,7 @@ import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsign
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { usePermisos } from '../../hooks/usePermisos';
 import ClienteAutocomplete from '../common/ClienteAutocomplete';
+import { DataGridDragScroll } from '../common/DataGridDragScroll';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 // Helper function to get color for estadoAsignacion
@@ -1431,7 +1432,7 @@ const EquiposList: React.FC = () => {
                       </Box>
                     </AccordionSummary>
                     <AccordionDetails sx={{ p: 0 }}>
-                      <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                      <DataGridDragScroll sx={{ width: '100%', overflowX: 'auto' }}>
                         <DataGrid
                           rows={equiposDelTipo}
                           columns={columns}
@@ -1467,7 +1468,7 @@ const EquiposList: React.FC = () => {
                             },
                           }}
                         />
-                      </Box>
+                      </DataGridDragScroll>
                     </AccordionDetails>
                   </Accordion>
                 );
