@@ -8,6 +8,7 @@ import type {
   Empleado,
   CategoriaSalarial,
 } from '../types';
+import type { LeadDTO } from '../types/lead.types';
 import { CONCEPTO_SUELDO_LABELS } from '../types/remuneraciones.types';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../types/prestamo.types';
 import type { FichaTecnicaEquipoDTO } from '../api/services/especificacionTecnicaApi';
@@ -40,7 +41,8 @@ interface DocumentoPDFData {
 // Alias para mantener compatibilidad
 interface PresupuestoPDFData {
   presupuesto: DocumentoComercial;
-  cliente: Cliente;
+  cliente?: Cliente;
+  lead?: LeadDTO;
   opcionesFinanciamiento: OpcionFinanciamientoDTO[];
 }
 
@@ -325,7 +327,17 @@ const renderOpcionFinanciamiento = ({
  * Genera y descarga un PDF del presupuesto replicando el formato original
  */
 export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
-  const { presupuesto, cliente, opcionesFinanciamiento } = data;
+  const { presupuesto, cliente, lead, opcionesFinanciamiento } = data;
+  const contacto = {
+    nombre: presupuesto.clienteNombre || presupuesto.leadNombre || cliente?.nombre || (lead ? `${lead.nombre}${lead.apellido ? ' ' + lead.apellido : ''}` : '') || '',
+    cuit: cliente?.cuit || '',
+    telefono: cliente?.telefono || lead?.telefono || '',
+    direccion: cliente?.direccion || '',
+    email: cliente?.email || lead?.email || '',
+    codigoPostal: cliente?.codigoPostal || '',
+    provincia: cliente?.provincia || lead?.provincia || '',
+    ciudad: cliente?.ciudad || lead?.ciudad || '',
+  };
 
   // Crear documento PDF (A4)
   const doc = new jsPDF({
@@ -384,7 +396,7 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
   const clienteData = [
     [
       { content: 'Cliente:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: presupuesto.clienteNombre || cliente.nombre || '', styles: { fillColor: COLORS.white } },
+      { content: contacto.nombre, styles: { fillColor: COLORS.white } },
       { content: 'N°Presupuesto:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
       { content: presupuesto.numeroDocumento || '', styles: { fillColor: COLORS.white } }
     ],
@@ -394,29 +406,29 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
     ],
     [
       { content: 'DNI:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.cuit || '', styles: { fillColor: COLORS.white }, colSpan: 3 }
+      { content: contacto.cuit, styles: { fillColor: COLORS.white }, colSpan: 3 }
     ],
     [
       { content: 'Telefono:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.telefono || '', styles: { fillColor: COLORS.white } },
+      { content: contacto.telefono, styles: { fillColor: COLORS.white } },
       { content: 'Dirección:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.direccion || '', styles: { fillColor: COLORS.white } }
+      { content: contacto.direccion, styles: { fillColor: COLORS.white } }
     ],
     [
       { content: 'Email:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.email || '', styles: { fillColor: COLORS.white } },
+      { content: contacto.email, styles: { fillColor: COLORS.white } },
       { content: 'Cod postal:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.codigoPostal || '', styles: { fillColor: COLORS.white } }
+      { content: contacto.codigoPostal, styles: { fillColor: COLORS.white } }
     ],
     [
       { content: 'Provincia:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.provincia || '', styles: { fillColor: COLORS.white } },
+      { content: contacto.provincia, styles: { fillColor: COLORS.white } },
       { content: '', styles: { fillColor: COLORS.lightBlue } },
       { content: '', styles: { fillColor: COLORS.white } }
     ],
     [
       { content: 'Localidad:', styles: { fontStyle: 'bold' as const, fillColor: COLORS.lightBlue } },
-      { content: cliente.ciudad || '', styles: { fillColor: COLORS.white }, colSpan: 3 }
+      { content: contacto.ciudad, styles: { fillColor: COLORS.white }, colSpan: 3 }
     ]
   ];
 

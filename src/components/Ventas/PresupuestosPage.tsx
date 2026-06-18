@@ -49,7 +49,7 @@ import {
   AttachMoney as MoneyIcon,
   Search as SearchIcon,
 } from "@mui/icons-material";
-import { clienteApi, usuarioApi, productApi } from "../../api/services";
+import { clienteApi, leadApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
 import { recetaFabricacionApi } from "../../api/services/recetaFabricacionApi";
 import { useOfertasVigentes } from "../../hooks/useOfertasVigentes";
@@ -864,26 +864,24 @@ const PresupuestosPage: React.FC = () => {
   // Handler para exportar presupuesto a PDF
   const handleExportarPDF = useCallback(async (presupuesto: DocumentoComercial) => {
     try {
-      if (!presupuesto.clienteId) {
+      if (!presupuesto.clienteId && !presupuesto.leadId) {
         setSnackbar({
           open: true,
-          message: 'Este presupuesto no tiene cliente asociado',
+          message: 'Este presupuesto no tiene cliente ni lead asociado',
           severity: 'error'
         });
         return;
       }
-      // Traer el cliente completo del backend (no se cachea localmente para soportar +700 clientes)
-      const cliente = await clienteApi.getById(presupuesto.clienteId);
 
-      // Obtener las opciones de financiamiento del presupuesto (ya embebidas en la respuesta del backend)
       const opciones: OpcionFinanciamientoDTO[] = presupuestosFinanciamiento[presupuesto.id] ?? [];
 
-      // Generar el PDF
-      generarPresupuestoPDF({
-        presupuesto,
-        cliente,
-        opcionesFinanciamiento: opciones
-      });
+      if (presupuesto.clienteId) {
+        const cliente = await clienteApi.getById(presupuesto.clienteId);
+        generarPresupuestoPDF({ presupuesto, cliente, opcionesFinanciamiento: opciones });
+      } else {
+        const lead = await leadApi.getById(presupuesto.leadId!);
+        generarPresupuestoPDF({ presupuesto, lead, opcionesFinanciamiento: opciones });
+      }
 
       setSnackbar({
         open: true,
