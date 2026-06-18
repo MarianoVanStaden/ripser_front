@@ -264,11 +264,65 @@ export interface HistorialFabricacionDTO {
   usuarioNombre?: string;
 }
 
+// Detalle estructurado de un producto faltante para fabricar (insumo del modal y del requerimiento)
+export interface ProductoFaltanteDTO {
+  productoId: number;
+  nombre: string;
+  codigo?: string;
+  necesario: number;
+  disponible: number;
+  faltante: number;
+  proveedorSugeridoId?: number | null;
+  proveedorSugeridoNombre?: string | null;
+}
+
 // Validación de stock para fabricación
 export interface ValidacionStockDTO {
   stockSuficiente: boolean;
   productosInsuficientes?: string[];
+  faltantes?: ProductoFaltanteDTO[];
   mensaje: string;
+}
+
+// ── Requerimientos de stock (pedidos internos de reposición) ──────────────
+export type EstadoRequerimientoStock = 'PENDIENTE' | 'PARCIAL' | 'RESUELTO' | 'CANCELADO';
+export type OrigenRequerimiento = 'FABRICACION' | 'MANUAL';
+
+export interface DetalleRequerimientoStockDTO {
+  id: number;
+  productoId: number;
+  productoNombre?: string;
+  productoCodigo?: string;
+  cantidadRequerida: number;
+  cantidadComprada: number;
+  proveedorSugeridoId?: number | null;
+  proveedorSugeridoNombre?: string | null;
+}
+
+export interface RequerimientoStockDTO {
+  id: number;
+  estado: EstadoRequerimientoStock;
+  origen: OrigenRequerimiento;
+  recetaId?: number | null;
+  cantidadEquipos?: number | null;
+  observaciones?: string | null;
+  fechaCreacion: string;
+  fechaActualizacion?: string | null;
+  detalles: DetalleRequerimientoStockDTO[];
+}
+
+export interface CreateDetalleRequerimientoStockDTO {
+  productoId: number;
+  cantidadRequerida: number;
+  proveedorSugeridoId?: number | null;
+}
+
+export interface CreateRequerimientoStockDTO {
+  origen?: OrigenRequerimiento;
+  recetaId?: number | null;
+  cantidadEquipos?: number | null;
+  observaciones?: string | null;
+  detalles: CreateDetalleRequerimientoStockDTO[];
 }
 // ── Desglose por Modelo (Ubicación de Equipos — Tab server-side) ──────────
 /**

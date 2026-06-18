@@ -207,6 +207,7 @@ const navigation: NavigationSection[] = [
       { text: 'Ficha + QR', icon: <AssignmentIcon />, path: '/fabricacion/ficha-equipo' },
       { text: 'Reportes de Estados', icon: <AssignmentIcon />, path: '/fabricacion/reportes-estados' },
       { text: 'Stock Preventivo', icon: <InventoryIcon />, path: '/fabricacion/stock-planificacion' },
+      { text: 'Requerimientos de Stock', icon: <InventoryIcon />, path: '/fabricacion/requerimientos-stock' },
     ],
   },
   {
@@ -343,6 +344,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/fabricacion/ficha-equipo',
     '/fabricacion/reportes-estados',
     '/fabricacion/stock-planificacion',
+    '/fabricacion/requerimientos-stock',
     // GARANTIAS (todo)
     '/postventa/dashboard',
     '/garantias/registro',
@@ -382,6 +384,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/fabricacion/ficha-equipo',
     '/fabricacion/reportes-estados',
     '/fabricacion/stock-planificacion',
+    '/fabricacion/requerimientos-stock',
     // LOGISTICA (todo)
     '/logistica/stock',
     '/logistica/inventario/stock-equipos',

@@ -66,6 +66,7 @@ const EquipoForm: React.FC = () => {
   const [stockErrorDialogOpen, setStockErrorDialogOpen] = useState(false);
   const [productosInsuficientes, setProductosInsuficientes] = useState<ProductoInsuficiente[]>([]);
   const [cantidadEquiposIntentados, setCantidadEquiposIntentados] = useState(1);
+  const [recetaIdIntentada, setRecetaIdIntentada] = useState<number | null>(null);
 
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [equiposCreados, setEquiposCreados] = useState<EquipoCreado[]>([]);
@@ -193,6 +194,50 @@ const EquipoForm: React.FC = () => {
   const onSubmit = async (data: any) => {
     try {
       setLoading(true);
+
+      // Validación proactiva de stock (solo al crear con receta): muestra el modal
+      // con los faltantes estructurados ANTES de intentar fabricar.
+      if (!isEdit && selectedReceta?.id) {
+        try {
+          const validacion = await equipoFabricadoApi.validarStock({
+            tipo: data.tipo,
+            modelo: data.modelo,
+            equipo: data.equipo,
+            medidaId: data.medidaId ?? null,
+            colorId: data.colorId ?? null,
+            cantidad: data.cantidad,
+            estado: 'PENDIENTE',
+            numeroHeladera: 'AUTO',
+            recetaId: selectedReceta.id,
+            responsableId: selectedResponsable?.id,
+          } as EquipoFabricadoCreateDTO);
+
+          if (!validacion.stockSuficiente && (validacion.faltantes?.length ?? 0) > 0) {
+            setProductosInsuficientes(
+              (validacion.faltantes ?? []).map((f) => ({
+                nombre: f.nombre,
+                codigo: f.codigo,
+                necesario: f.necesario,
+                disponible: f.disponible,
+                faltante: f.faltante,
+                productoId: f.productoId,
+                proveedorSugeridoId: f.proveedorSugeridoId,
+                proveedorSugeridoNombre: f.proveedorSugeridoNombre,
+              })),
+            );
+            setCantidadEquiposIntentados(data.cantidad);
+            setRecetaIdIntentada(selectedReceta.id);
+            setStockErrorDialogOpen(true);
+            setLoading(false);
+            return;
+          }
+        } catch (validationError) {
+          // Si la validación previa falla (red u otro motivo) seguimos al flujo
+          // normal: el backend vuelve a validar el stock al crear.
+          console.warn('No se pudo validar stock previamente:', validationError);
+        }
+      }
+
       if (isEdit && numeroHeladera) {
         const updateData: EquipoFabricadoUpdateDTO = {
           tipo: data.tipo,
@@ -319,6 +364,7 @@ const EquipoForm: React.FC = () => {
           if (productosParseados.length > 0) {
             setProductosInsuficientes(productosParseados);
             setCantidadEquiposIntentados(data.cantidad);
+            setRecetaIdIntentada(selectedReceta?.id ?? null);
             setStockErrorDialogOpen(true);
           } else {
             // Fallback si no se pudo parsear
@@ -600,6 +646,10 @@ const EquipoForm: React.FC = () => {
         onClose={() => setStockErrorDialogOpen(false)}
         productosInsuficientes={productosInsuficientes}
         cantidadEquipos={cantidadEquiposIntentados}
+        recetaId={recetaIdIntentada}
+        onRequerimientoCreado={(msg) =>
+          setSnackbar({ open: true, message: msg, severity: 'success' })
+        }
       />
 
       <EquipoSuccessDialog

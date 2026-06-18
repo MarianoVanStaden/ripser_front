@@ -230,6 +230,7 @@ const FichaEquipoPage = lazy(() => import('./components/Fabricacion/FichaEquipoP
 const DashboardFabricacion = lazy(() => import('./components/Fabricacion/DashboardFabricacion'));
 const ReportesEstadosPage = lazy(() => import('./components/Fabricacion/ReportesEstadosPage'));
 const StockPlanificacionPage = lazyNamed(() => import('./components/Fabricacion/StockPlanificacion'), 'StockPlanificacionPage');
+const RequerimientosStockPage = lazy(() => import('./components/Fabricacion/RequerimientosStockPage'));
 
 // Public pages (no auth required)
 const PublicFichaEquipoPage = lazy(() => import('./components/Public/PublicFichaEquipoPage'));
@@ -473,6 +474,7 @@ function App() {
                   <Route path="fabricacion/ficha-equipo" element={priv(<FichaEquipoPage />)} />
                   <Route path="fabricacion/reportes-estados" element={priv(<ReportesEstadosPage />)} />
                   <Route path="fabricacion/stock-planificacion" element={priv(<StockPlanificacionPage />)} />
+                  <Route path="fabricacion/requerimientos-stock" element={priv(<RequerimientosStockPage />)} />
                 </Route>
               </Routes>
             </Suspense>
