@@ -27,7 +27,9 @@ import {
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
   LocalShipping as LocalShippingIcon,
+  ShoppingCartCheckout as ShoppingCartCheckoutIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { requerimientoStockApi } from '../../api/services/requerimientoStockApi';
 import type {
   RequerimientoStockDTO,
@@ -59,11 +61,14 @@ const formatFecha = (iso: string) => {
 
 const RequerimientoRow: React.FC<{
   req: RequerimientoStockDTO;
+  generando: boolean;
   onCambiarEstado: (id: number, estado: EstadoRequerimientoStock) => void;
   onEliminar: (id: number) => void;
-}> = ({ req, onCambiarEstado, onEliminar }) => {
+  onGenerarOrden: (id: number) => void;
+}> = ({ req, generando, onCambiarEstado, onEliminar, onGenerarOrden }) => {
   const [open, setOpen] = useState(false);
   const totalUnidades = req.detalles.reduce((s, d) => s + d.cantidadRequerida, 0);
+  const puedeGenerar = req.estado === 'PENDIENTE' || req.estado === 'PARCIAL';
 
   return (
     <>
@@ -100,6 +105,24 @@ const RequerimientoRow: React.FC<{
           </TextField>
         </TableCell>
         <TableCell align="right">
+          {puedeGenerar && (
+            <Tooltip title="Generar orden(es) de compra">
+              <span>
+                <IconButton
+                  size="small"
+                  color="primary"
+                  disabled={generando}
+                  onClick={() => onGenerarOrden(req.id)}
+                >
+                  {generando ? (
+                    <CircularProgress size={18} />
+                  ) : (
+                    <ShoppingCartCheckoutIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
           <Tooltip title="Eliminar requerimiento">
             <IconButton size="small" color="error" onClick={() => onEliminar(req.id)}>
               <DeleteIcon fontSize="small" />
@@ -162,7 +185,10 @@ export const RequerimientosStockPage: React.FC = () => {
   const [requerimientos, setRequerimientos] = useState<RequerimientoStockDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [generandoId, setGenerandoId] = useState<number | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<EstadoRequerimientoStock | ''>('');
+  const navigate = useNavigate();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,6 +224,26 @@ export const RequerimientosStockPage: React.FC = () => {
       setRequerimientos((prev) => prev.filter((r) => r.id !== id));
     } catch {
       setError('No se pudo eliminar el requerimiento');
+    }
+  };
+
+  const handleGenerarOrden = async (id: number) => {
+    setGenerandoId(id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await requerimientoStockApi.generarOrdenesCompra(id);
+      let msg = res.mensaje;
+      if (res.productosSinProveedor.length > 0) {
+        msg += ` Sin proveedor (quedan pendientes): ${res.productosSinProveedor.join(', ')}.`;
+      }
+      setSuccess(msg);
+      await load();
+    } catch (err) {
+      const axiosLike = err as { response?: { data?: { message?: string } } };
+      setError(axiosLike?.response?.data?.message ?? 'No se pudieron generar las órdenes de compra');
+    } finally {
+      setGenerandoId(null);
     }
   };
 
@@ -259,6 +305,21 @@ export const RequerimientosStockPage: React.FC = () => {
         </Alert>
       )}
 
+      {success && (
+        <Alert
+          severity="success"
+          sx={{ mb: 2 }}
+          onClose={() => setSuccess(null)}
+          action={
+            <Button color="inherit" size="small" onClick={() => navigate('/proveedores/compras')}>
+              Ver compras
+            </Button>
+          }
+        >
+          {success}
+        </Alert>
+      )}
+
       <TableContainer component={Paper} variant="outlined">
         <Table>
           <TableHead>
@@ -293,8 +354,10 @@ export const RequerimientosStockPage: React.FC = () => {
                 <RequerimientoRow
                   key={req.id}
                   req={req}
+                  generando={generandoId === req.id}
                   onCambiarEstado={handleCambiarEstado}
                   onEliminar={handleEliminar}
+                  onGenerarOrden={handleGenerarOrden}
                 />
               ))
             )}

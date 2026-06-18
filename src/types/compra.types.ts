@@ -255,6 +255,20 @@ export interface Compra {
   total: number;
   items: CompraItem[];
   observaciones?: string;
+  usuarioCreadorId?: number | null;
+  usuarioCreadorNombre?: string | null;
+  requerimientoOrigenId?: number | null;
+  historialEstados?: HistorialEstadoCompra[];
+}
+
+export interface HistorialEstadoCompra {
+  id: number;
+  estadoAnterior?: string | null;
+  estadoNuevo: string;
+  usuarioId?: number | null;
+  usuarioNombre?: string | null;
+  observaciones?: string | null;
+  fecha: string;
 }
 export interface CompraItem {
   id: number;

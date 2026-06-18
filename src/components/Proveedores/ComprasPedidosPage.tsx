@@ -25,6 +25,7 @@ import {
   InputAdornment,
   Avatar,
   TablePagination,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -202,6 +203,9 @@ const loadCompras = async () => {
           })),
           observaciones: compra.observaciones,
           metodoPago: (compra as any).metodoPago || 'EFECTIVO',
+          usuarioCreadorNombre: (compra as any).usuarioCreadorNombre ?? null,
+          requerimientoOrigenId: (compra as any).requerimientoOrigenId ?? null,
+          historialEstados: (compra as any).historialEstados ?? [],
         };
         return orden;
       })
@@ -1082,6 +1086,7 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
                 <TableCell>Fecha Creación</TableCell>
                 <TableCell>Entrega Estimada</TableCell>
                 <TableCell>Estado</TableCell>
+                <TableCell>Creado por</TableCell>
                 <TableCell align="right">Total</TableCell>
                 <TableCell align="center">Acciones</TableCell>
               </TableRow>
@@ -1126,6 +1131,35 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
                       color={getEstadoColor(orden.estado) as any}
                       size="small"
                     />
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip
+                      title={
+                        (orden.historialEstados && orden.historialEstados.length > 0) ? (
+                          <Box>
+                            {orden.historialEstados.map((h: any) => (
+                              <Typography key={h.id} variant="caption" component="div">
+                                {dayjs(h.fecha).format('DD/MM/YY HH:mm')} ·{' '}
+                                {h.estadoAnterior ? `${h.estadoAnterior} → ` : ''}
+                                {h.estadoNuevo} · {h.usuarioNombre ?? 'Sistema'}
+                              </Typography>
+                            ))}
+                          </Box>
+                        ) : 'Sin historial de cambios'
+                      }
+                      arrow
+                    >
+                      <Box>
+                        <Typography variant="body2">
+                          {orden.usuarioCreadorNombre ?? '—'}
+                        </Typography>
+                        {orden.requerimientoOrigenId && (
+                          <Typography variant="caption" color="text.secondary">
+                            Req. #{orden.requerimientoOrigenId}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Tooltip>
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="subtitle2">

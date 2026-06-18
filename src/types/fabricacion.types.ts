@@ -324,6 +324,12 @@ export interface CreateRequerimientoStockDTO {
   observaciones?: string | null;
   detalles: CreateDetalleRequerimientoStockDTO[];
 }
+
+export interface GenerarOrdenesCompraResponseDTO {
+  ordenesCreadas: Array<{ id: number; numero?: string; estado?: string; total?: number }>;
+  productosSinProveedor: string[];
+  mensaje: string;
+}
 // ── Desglose por Modelo (Ubicación de Equipos — Tab server-side) ──────────
 /**
  * Agrupación de equipos físicos por tipo y modelo con conteos calculados
