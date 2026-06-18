@@ -193,6 +193,9 @@ export interface OrdenCompra {
   }[];
   observaciones?: string;
   metodoPago?: MetodoPago;
+  usuarioCreadorNombre?: string | null;
+  requerimientoOrigenId?: number | null;
+  historialEstados?: HistorialEstadoCompra[];
 }
 
 export interface CompraDTO {
@@ -205,6 +208,10 @@ export interface CompraDTO {
   estado: string;
   observaciones?: string;
   metodoPago?: MetodoPago;
+  usuarioCreadorId?: number | null;
+  usuarioCreadorNombre?: string | null;
+  requerimientoOrigenId?: number | null;
+  historialEstados?: HistorialEstadoCompra[];
   detalles: {
     id?: number;
     productoId?: number;
