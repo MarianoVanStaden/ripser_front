@@ -40,7 +40,7 @@ import dayjs from 'dayjs';
 import {
   recetaFabricacionApi,
 } from '../../api/services/recetaFabricacionApi';
-import type { DetalleRecetaCreateDTO, RecetaFabricacionDTO } from  '../../types';
+import type { DetalleRecetaCreateDTO, DetalleRecetaDTO, RecetaFabricacionDTO } from  '../../types';
 import api from '../../api/config';
 import RecetaCosteoSection from './RecetaCosteoSection';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -69,6 +69,16 @@ const RecetaDetail: React.FC = () => {
     observaciones: '',
   });
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
+
+  // Estado para editar material
+  const [editDialog, setEditDialog] = useState(false);
+  const [editingDetalle, setEditingDetalle] = useState<DetalleRecetaDTO | null>(null);
+  const [editForm, setEditForm] = useState<{ cantidad: number; costoUnitario: number; observaciones: string }>({
+    cantidad: 1,
+    costoUnitario: 0,
+    observaciones: '',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Estado para notificaciones
   const [snackbar, setSnackbar] = useState<{
@@ -166,6 +176,57 @@ const RecetaDetail: React.FC = () => {
         message: 'Error al eliminar el material',
         severity: 'error',
       });
+    }
+  };
+
+  const handleOpenEditDetalle = (detalle: DetalleRecetaDTO) => {
+    setEditingDetalle(detalle);
+    setEditForm({
+      cantidad: detalle.cantidad,
+      costoUnitario: detalle.costoUnitario,
+      observaciones: detalle.observaciones || '',
+    });
+    setEditDialog(true);
+  };
+
+  const handleSaveEditDetalle = async () => {
+    if (!editingDetalle) return;
+    if (editForm.cantidad <= 0 || editForm.costoUnitario < 0) {
+      setSnackbar({
+        open: true,
+        message: 'La cantidad debe ser mayor que 0',
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      const detalle: DetalleRecetaCreateDTO = {
+        productoId: editingDetalle.productoId,
+        cantidad: editForm.cantidad,
+        costoUnitario: editForm.costoUnitario,
+        observaciones: editForm.observaciones,
+      };
+      // El backend recalcula subtotal (@PreUpdate) y el costo de fabricación (@Formula)
+      await recetaFabricacionApi.updateDetalle(Number(id), editingDetalle.id, detalle);
+      setSnackbar({
+        open: true,
+        message: 'Material actualizado correctamente',
+        severity: 'success',
+      });
+      setEditDialog(false);
+      setEditingDetalle(null);
+      await loadReceta();
+    } catch (error) {
+      console.error('Error updating detalle:', error);
+      setSnackbar({
+        open: true,
+        message: 'Error al actualizar el material',
+        severity: 'error',
+      });
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -440,6 +501,13 @@ const RecetaDetail: React.FC = () => {
                     <TableCell align="center">
                       <IconButton
                         size="small"
+                        color="primary"
+                        onClick={() => handleOpenEditDetalle(detalle)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
                         color="error"
                         onClick={() => handleRemoveDetalle(detalle.id)}
                       >
@@ -552,6 +620,85 @@ const RecetaDetail: React.FC = () => {
           </Button>
           <Button variant="contained" onClick={handleAddDetalle}>
             Agregar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog para editar material */}
+      <Dialog
+        open={editDialog}
+        onClose={() => {
+          if (!savingEdit) {
+            setEditDialog(false);
+            setEditingDetalle(null);
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Editar Material{editingDetalle ? ` — ${editingDetalle.productoNombre}` : ''}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              label="Cantidad *"
+              type="number"
+              value={editForm.cantidad}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, cantidad: Number(e.target.value) }))
+              }
+              InputProps={{ inputProps: { min: 0, step: 0.0001 } }}
+              required
+              autoFocus
+            />
+            <TextField
+              label="Costo Unitario *"
+              type="number"
+              value={editForm.costoUnitario}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, costoUnitario: Number(e.target.value) }))
+              }
+              InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+              required
+            />
+            <TextField
+              label="Observaciones"
+              multiline
+              rows={3}
+              value={editForm.observaciones}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, observaciones: e.target.value }))
+              }
+            />
+            <Alert severity="info" icon={false}>
+              Subtotal:{' '}
+              <strong>
+                ${((editForm.cantidad || 0) * (editForm.costoUnitario || 0)).toLocaleString('es-AR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </strong>
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setEditDialog(false);
+              setEditingDetalle(null);
+            }}
+            disabled={savingEdit}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveEditDetalle}
+            disabled={savingEdit}
+            startIcon={savingEdit ? <CircularProgress size={20} /> : undefined}
+          >
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>
