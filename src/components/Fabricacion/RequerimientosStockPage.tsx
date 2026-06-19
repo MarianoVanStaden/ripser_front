@@ -39,6 +39,7 @@ import {
 import { requerimientoStockApi } from '../../api/services/requerimientoStockApi';
 import { productApi } from '../../api/services/productApi';
 import { supplierApi } from '../../api/services/supplierApi';
+import { proveedorProductoApi } from '../../api/services/proveedorProductoApi';
 import { usePermisos } from '../../hooks/usePermisos';
 import type {
   RequerimientoStockDTO,
@@ -341,7 +342,12 @@ interface FilaAsignacion {
   proveedor: ProveedorDTO | null;
   cantidad: number;
   precioUnitario: number | '';
+  /** Precio de referencia guardado para ese proveedor+producto (null si no está catalogado). */
+  precioGuardado?: number | null;
 }
+
+const formatMoneda = (n: number) =>
+  n.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
 
 const AsignarProveedoresDialog: React.FC<{
   req: RequerimientoStockDTO | null;
@@ -355,6 +361,29 @@ const AsignarProveedoresDialog: React.FC<{
   const [filas, setFilas] = useState<Record<number, FilaAsignacion[]>>({});
   const [guardando, setGuardando] = useState(false);
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
+  // cache proveedorId → (productoId → precio guardado), para precargar precios de referencia
+  const [catalogos, setCatalogos] = useState<Record<number, Record<number, number>>>({});
+
+  // Trae (y cachea) el catálogo de precios de un proveedor; devuelve el precio del producto o null.
+  const obtenerPrecioGuardado = useCallback(
+    async (proveedorId: number, productoId: number): Promise<number | null> => {
+      let mapa = catalogos[proveedorId];
+      if (!mapa) {
+        try {
+          const items = await proveedorProductoApi.getActivosByProveedor(proveedorId);
+          mapa = {};
+          items.forEach((pp) => {
+            if (pp.precioProveedor != null) mapa![pp.productoId] = pp.precioProveedor;
+          });
+          setCatalogos((prev) => ({ ...prev, [proveedorId]: mapa! }));
+        } catch {
+          mapa = {};
+        }
+      }
+      return mapa[productoId] ?? null;
+    },
+    [catalogos],
+  );
 
   useEffect(() => {
     if (req) {
@@ -396,6 +425,31 @@ const AsignarProveedoresDialog: React.FC<{
       ...prev,
       [detalleId]: prev[detalleId].filter((_, idx) => idx !== i),
     }));
+
+  // Al elegir proveedor, precarga el precio guardado como referencia (si existe).
+  const handleProveedorChange = async (
+    detalleId: number,
+    i: number,
+    productoId: number,
+    proveedor: ProveedorDTO | null,
+  ) => {
+    setFila(detalleId, i, { proveedor, precioGuardado: undefined });
+    if (!proveedor) {
+      setFila(detalleId, i, { precioUnitario: '', precioGuardado: undefined });
+      return;
+    }
+    const precio = await obtenerPrecioGuardado(proveedor.id, productoId);
+    setFila(detalleId, i, {
+      precioGuardado: precio,
+      precioUnitario: precio ?? '',
+    });
+  };
+
+  // % de variación entre el precio editado y el guardado de referencia.
+  const variacionPct = (f: FilaAsignacion): number | null => {
+    if (f.precioGuardado == null || f.precioGuardado === 0 || f.precioUnitario === '') return null;
+    return ((Number(f.precioUnitario) - f.precioGuardado) / f.precioGuardado) * 100;
+  };
 
   const handleAsignar = async () => {
     const asignaciones: Array<{
@@ -472,53 +526,72 @@ const AsignarProveedoresDialog: React.FC<{
                     color={asignado > pendiente ? 'error' : asignado === pendiente ? 'success' : 'default'}
                   />
                 </Stack>
-                <Stack spacing={1}>
-                  {rows.map((f, i) => (
-                    <Stack key={i} direction="row" spacing={1} alignItems="center">
-                      <Autocomplete
-                        sx={{ flex: 1 }}
-                        size="small"
-                        options={proveedores}
-                        value={f.proveedor}
-                        getOptionLabel={proveedorLabel}
-                        isOptionEqualToValue={(o, v) => o.id === v.id}
-                        onChange={(_, value) => setFila(d.id, i, { proveedor: value })}
-                        renderInput={(params) => <TextField {...params} label="Proveedor" />}
-                      />
-                      <TextField
-                        size="small"
-                        type="number"
-                        label="Cantidad"
-                        value={f.cantidad}
-                        onChange={(e) =>
-                          setFila(d.id, i, { cantidad: Math.max(0, Number(e.target.value) || 0) })
-                        }
-                        sx={{ width: 110 }}
-                        inputProps={{ min: 1 }}
-                      />
-                      <TextField
-                        size="small"
-                        type="number"
-                        label="Precio unit."
-                        value={f.precioUnitario}
-                        onChange={(e) =>
-                          setFila(d.id, i, {
-                            precioUnitario: e.target.value === '' ? '' : Number(e.target.value),
-                          })
-                        }
-                        sx={{ width: 120 }}
-                        inputProps={{ min: 0, step: '0.01' }}
-                      />
-                      <IconButton
-                        size="small"
-                        color="error"
-                        disabled={rows.length === 1}
-                        onClick={() => removeFila(d.id, i)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  ))}
+                <Stack spacing={1.5}>
+                  {rows.map((f, i) => {
+                    const pct = variacionPct(f);
+                    return (
+                      <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+                        <Autocomplete
+                          sx={{ flex: 1 }}
+                          size="small"
+                          options={proveedores}
+                          value={f.proveedor}
+                          getOptionLabel={proveedorLabel}
+                          isOptionEqualToValue={(o, v) => o.id === v.id}
+                          onChange={(_, value) => handleProveedorChange(d.id, i, d.productoId, value)}
+                          renderInput={(params) => <TextField {...params} label="Proveedor" />}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Cantidad"
+                          value={f.cantidad}
+                          onChange={(e) =>
+                            setFila(d.id, i, { cantidad: Math.max(0, Number(e.target.value) || 0) })
+                          }
+                          sx={{ width: 110 }}
+                          inputProps={{ min: 1 }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          label="Precio unit."
+                          value={f.precioUnitario}
+                          onChange={(e) =>
+                            setFila(d.id, i, {
+                              precioUnitario: e.target.value === '' ? '' : Number(e.target.value),
+                            })
+                          }
+                          sx={{ width: 150 }}
+                          inputProps={{ min: 0, step: '0.01' }}
+                          helperText={
+                            f.proveedor == null
+                              ? ' '
+                              : f.precioGuardado == null
+                                ? 'Sin precio guardado'
+                                : pct == null || Math.abs(pct) < 0.01
+                                  ? `Guardado ${formatMoneda(f.precioGuardado)}`
+                                  : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}% vs ${formatMoneda(f.precioGuardado)}`
+                          }
+                          FormHelperTextProps={{
+                            sx:
+                              pct != null && Math.abs(pct) >= 0.01
+                                ? { color: pct > 0 ? 'error.main' : 'success.main' }
+                                : undefined,
+                          }}
+                        />
+                        <IconButton
+                          size="small"
+                          color="error"
+                          disabled={rows.length === 1}
+                          onClick={() => removeFila(d.id, i)}
+                          sx={{ mt: 0.5 }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    );
+                  })}
                 </Stack>
                 <Button startIcon={<AddIcon />} size="small" sx={{ mt: 0.5 }} onClick={() => addFila(d.id)}>
                   Dividir entre otro proveedor
