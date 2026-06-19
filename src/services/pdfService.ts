@@ -276,7 +276,7 @@ const renderOpcionFinanciamiento = ({
         ],
         [
           {
-            content: `Interés ${opcion.tasaInteres}% sobre saldo → ${formatCurrency(calc.saldoConInteres)}`,
+            content: `Interés ${opcion.tasaInteres}% sobre saldo: ${formatCurrency(calc.saldoConInteres)}`,
             styles: {
               halign: 'left',
               fontSize: 8,

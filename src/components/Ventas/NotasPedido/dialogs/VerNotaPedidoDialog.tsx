@@ -275,7 +275,10 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
                   const iva = nota.iva ?? 0;
                   const totalCalculado = subtotal - descuento + iva;
                   const totalEnBD = nota.total ?? 0;
-                  const hayInconsistencia = Math.abs(totalCalculado - totalEnBD) > 0.01;
+                  // Si hay financiamiento seleccionado, el total en DB es el monto financiado
+                  // (incluye interés) — esa diferencia es intencional, no es un error.
+                  const tieneFinanciamiento = !!nota.opcionFinanciamientoSeleccionadaId;
+                  const hayInconsistencia = !tieneFinanciamiento && Math.abs(totalCalculado - totalEnBD) > 0.01;
 
                   return (
                     <>
@@ -288,7 +291,7 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
                         </Typography>
                       </Box>
 
-                      {/* Mostrar advertencia si hay inconsistencia con BD */}
+                      {/* Mostrar advertencia solo si hay diferencia real no explicada por financiamiento */}
                       {hayInconsistencia && (
                         <Typography
                           variant="caption"
