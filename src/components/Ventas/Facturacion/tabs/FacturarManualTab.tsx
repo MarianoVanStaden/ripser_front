@@ -66,6 +66,7 @@ interface Props {
   cart: CartItem[];
   onAddItem: () => void;
   onAddEnvio: () => void;
+  onAddRevestimiento: () => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onUpdateCartItem: (index: number, field: any, value: any) => void;
   onRemoveCartItem: (index: number) => void;
@@ -90,7 +91,7 @@ const FacturarManualTab: React.FC<Props> = ({
   selectedIva, onChangeIva, dueDate, onChangeDueDate,
   descuentoTipo, onChangeDescuentoTipo, descuentoValor, onChangeDescuentoValor,
   notes, onChangeNotes,
-  cart, onAddItem, onAddEnvio, onUpdateCartItem, onRemoveCartItem, products, recetas,
+  cart, onAddItem, onAddEnvio, onAddRevestimiento, onUpdateCartItem, onRemoveCartItem, products, recetas,
   totals, loading, selectedClientId, onClear, onOpenFinanciamiento, onSubmit,
   selectedOpcionFinanciamiento,
 }) => {
@@ -284,6 +285,15 @@ const FacturarManualTab: React.FC<Props> = ({
                   onClick={onAddEnvio}
                 >
                   Agregar Envío
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="info"
+                  startIcon={<AddIcon />}
+                  onClick={onAddRevestimiento}
+                  disabled={!cart.some((i) => i.tipoItem === 'EQUIPO')}
+                >
+                  Agregar Revestimiento
                 </Button>
               </Box>
             </Box>

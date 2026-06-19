@@ -186,6 +186,11 @@ const PresupuestosPage: React.FC = () => {
   const [envioCantidad, setEnvioCantidad] = useState(1);
   const [envioBonificado, setEnvioBonificado] = useState(false);
 
+  // Revestimiento de acero state
+  const [revestimientoDialogOpen, setRevestimientoDialogOpen] = useState(false);
+  const [revestimientoPrecio, setRevestimientoPrecio] = useState(0);
+  const [revestimientoCantidad, setRevestimientoCantidad] = useState(1);
+
   // View dialog (read-only) state — espejo del de NotasPedidoPage.
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingPresupuesto, setViewingPresupuesto] = useState<DocumentoComercial | null>(null);
@@ -453,6 +458,34 @@ const PresupuestosPage: React.FC = () => {
     setEnvioDialogOpen(false);
   }, [envioProvincia, envioPrecio, envioCantidad, envioBonificado, costosEnvio]);
 
+  const handleOpenRevestimientoDialog = useCallback(async () => {
+    const cantEquipos = detalles
+      .filter((d) => d.tipoItem === 'EQUIPO')
+      .reduce((sum, d) => sum + (d.cantidad || 0), 0);
+    try {
+      const precio = await documentoApi.getPrecioRevestimiento();
+      setRevestimientoPrecio(precio);
+    } catch {
+      setRevestimientoPrecio(280000);
+    }
+    setRevestimientoCantidad(cantEquipos > 0 ? cantEquipos : 1);
+    setRevestimientoDialogOpen(true);
+  }, [detalles]);
+
+  const handleConfirmRevestimiento = useCallback(() => {
+    const cantidad = Math.max(1, revestimientoCantidad);
+    const detalleRevestimiento: DetalleForm = {
+      tipoItem: 'REVESTIMIENTO',
+      descripcion: 'Revestimiento de acero',
+      cantidad,
+      precioUnitario: revestimientoPrecio,
+      subtotal: revestimientoPrecio * cantidad,
+    };
+    setDetalles((prev) => [...prev, detalleRevestimiento]);
+    setHasUnsavedChanges(true);
+    setRevestimientoDialogOpen(false);
+  }, [revestimientoPrecio, revestimientoCantidad]);
+
   const updateDetalle = useCallback((index: number, field: keyof DetalleForm, value: string | number) => {
     if (readOnly) return;
     setDetalles((prev) => {
@@ -678,7 +711,7 @@ const PresupuestosPage: React.FC = () => {
           baseDetalle.colorId = d.colorId ?? undefined;
           // medida no se envía: el backend la deriva de la receta.
         }
-        // ENVIO: no productoId/recetaId — descripcion ya está en baseDetalle.
+        // ENVIO/REVESTIMIENTO: no productoId/recetaId — descripcion ya está en baseDetalle.
 
         return baseDetalle;
       }),
@@ -705,7 +738,7 @@ const PresupuestosPage: React.FC = () => {
             return;
           }
         }
-        // ENVIO items only need descripcion (precio puede ser 0 si está bonificado).
+        // ENVIO: precio puede ser 0 si bonificado. REVESTIMIENTO siempre requiere precio > 0.
         if (!detalle.descripcion.trim()) {
           setError("Todos los detalles deben tener una descripción");
           return;
@@ -1668,6 +1701,8 @@ const PresupuestosPage: React.FC = () => {
                   {detalles.length > 0 ? (
                     detalles.map((detalle, index) => {
                       const isEnvio = detalle.tipoItem === 'ENVIO';
+                      const isRevestimiento = detalle.tipoItem === 'REVESTIMIENTO';
+                      const isSpecialItem = isEnvio || isRevestimiento;
                       const refId = detalle.tipoItem === 'PRODUCTO'
                         ? (detalle.productoId ? Number(detalle.productoId) : null)
                         : detalle.tipoItem === 'EQUIPO'
@@ -1680,9 +1715,9 @@ const PresupuestosPage: React.FC = () => {
                       <TableRow key={index}>
                         {!readOnly && !editingPresupuesto && (
                           <TableCell>
-                            {isEnvio ? (
+                            {isSpecialItem ? (
                               <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                Envío
+                                {isRevestimiento ? 'Revestimiento' : 'Envío'}
                               </Typography>
                             ) : (
                               <TextField
@@ -1700,7 +1735,7 @@ const PresupuestosPage: React.FC = () => {
                           </TableCell>
                         )}
                         <TableCell>
-                          {isEnvio ? (
+                          {isSpecialItem ? (
                             <Typography variant="body2">{detalle.descripcion}</Typography>
                           ) : detalle.tipoItem === 'PRODUCTO' ? (
                             <TextField
@@ -1759,7 +1794,7 @@ const PresupuestosPage: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {isEnvio ? (
+                          {isSpecialItem ? (
                             <Typography variant="body2" color="text.secondary">—</Typography>
                           ) : readOnly || editingPresupuesto ? (
                             <Typography variant="body2">
@@ -1776,11 +1811,11 @@ const PresupuestosPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {isEnvio ? '—' : (detalle.medidaNombre || '-')}
+                            {isSpecialItem ? '—' : (detalle.medidaNombre || '-')}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          {isEnvio ? (
+                          {isSpecialItem ? (
                             <Typography variant="body2">{detalle.cantidad}</Typography>
                           ) : (
                             <TextField
@@ -1796,7 +1831,7 @@ const PresupuestosPage: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {isEnvio ? (
+                          {isSpecialItem ? (
                             <Typography variant="body2">
                               ${detalle.precioUnitario.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
                             </Typography>
@@ -1866,6 +1901,15 @@ const PresupuestosPage: React.FC = () => {
                   onClick={handleOpenEnvioDialog}
                 >
                   Agregar Envío
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="info"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenRevestimientoDialog}
+                  disabled={!detalles.some((d) => d.tipoItem === 'EQUIPO')}
+                >
+                  Agregar Revestimiento
                 </Button>
                 {productos.length === 0 && recetas.length === 0 && (
                   <Typography variant="caption" color="text.secondary" sx={{ ml: 1, alignSelf: 'center' }}>
@@ -2066,6 +2110,49 @@ const PresupuestosPage: React.FC = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
+
+      {/* Revestimiento de acero dialog */}
+      <Dialog open={revestimientoDialogOpen} onClose={() => setRevestimientoDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Agregar revestimiento de acero</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField
+            label="Precio por unidad"
+            type="number"
+            value={revestimientoPrecio}
+            onChange={(e) => setRevestimientoPrecio(parseFloat(e.target.value) || 0)}
+            size="small"
+            fullWidth
+            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
+            helperText="Tomado del parámetro de sistema. Puede ajustarlo."
+          />
+          <TextField
+            label="Cantidad de equipos"
+            type="number"
+            value={revestimientoCantidad}
+            onChange={(e) => setRevestimientoCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+            size="small"
+            fullWidth
+            inputProps={{ min: 1 }}
+            helperText="Auto-detectado desde los equipos del documento. No puede superar la cantidad de equipos."
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+            <Typography variant="body1" fontWeight={600}>
+              ${(revestimientoPrecio * revestimientoCantidad).toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRevestimientoDialogOpen(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmRevestimiento}
+            disabled={revestimientoPrecio <= 0 || revestimientoCantidad <= 0}
+          >
+            Agregar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Province / envío selector dialog */}
       <Dialog open={envioDialogOpen} onClose={() => setEnvioDialogOpen(false)} maxWidth="xs" fullWidth>

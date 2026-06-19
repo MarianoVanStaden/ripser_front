@@ -399,5 +399,11 @@ export const documentoApi = {
       throw error;
     }
   },
+
+  // Precio unitario vigente del revestimiento de acero (parámetro de sistema).
+  getPrecioRevestimiento: async (): Promise<number> => {
+    const response = await api.get<number>('/api/documentos/precio-revestimiento');
+    return response.data;
+  },
 };
 

@@ -8,7 +8,7 @@ export interface CreateClientRequest {
   phone: string;
   address: string;
 }
-export type TipoItemDocumento = 'PRODUCTO' | 'EQUIPO' | 'ENVIO';
+export type TipoItemDocumento = 'PRODUCTO' | 'EQUIPO' | 'ENVIO' | 'REVESTIMIENTO';
 
 export const EstadoDocumento = {
   PENDIENTE: "PENDIENTE",

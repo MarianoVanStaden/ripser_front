@@ -113,6 +113,11 @@ const FacturacionPage = () => {
   const [envioPrecioFact, setEnvioPrecioFact] = useState(0);
   const [envioCantidadFact, setEnvioCantidadFact] = useState(1);
   const [envioBonificadoFact, setEnvioBonificadoFact] = useState(false);
+
+  // Revestimiento dialog state
+  const [revestimientoDialogOpenFact, setRevestimientoDialogOpenFact] = useState(false);
+  const [revestimientoPrecioFact, setRevestimientoPrecioFact] = useState(0);
+  const [revestimientoCantidadFact, setRevestimientoCantidadFact] = useState(1);
   const [descuentoTipo, setDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
   const [descuentoValor, setDescuentoValor] = useState<number>(0);
   const [notaDescuentoTipo, setNotaDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
@@ -635,6 +640,35 @@ const FacturacionPage = () => {
     setEnvioDialogOpenFact(false);
   };
 
+  const handleOpenRevestimientoDialogFact = async () => {
+    const cantEquipos = cart
+      .filter((c) => c.tipoItem === 'EQUIPO')
+      .reduce((sum, c) => sum + (c.cantidad || 0), 0);
+    try {
+      const precio = await documentoApi.getPrecioRevestimiento();
+      setRevestimientoPrecioFact(precio);
+    } catch {
+      setRevestimientoPrecioFact(280000);
+    }
+    setRevestimientoCantidadFact(cantEquipos > 0 ? cantEquipos : 1);
+    setRevestimientoDialogOpenFact(true);
+  };
+
+  const handleConfirmRevestimientoFact = () => {
+    const cantidad = Math.max(1, revestimientoCantidadFact);
+    setCart((prev) => [
+      ...prev,
+      {
+        tipoItem: 'REVESTIMIENTO' as const,
+        descripcion: 'Revestimiento de acero',
+        cantidad,
+        precioUnitario: revestimientoPrecioFact,
+        descuento: 0,
+      },
+    ]);
+    setRevestimientoDialogOpenFact(false);
+  };
+
   // Función para verificar stock disponible de un equipo
   const verificarStockEquipo = useCallback(async (recetaId: number, colorId?: number, medidaId?: number): Promise<number> => {
     try {
@@ -892,6 +926,8 @@ const FacturacionPage = () => {
         if (item.colorId != null) detalle.colorId = item.colorId;
       } else if (item.tipoItem === 'ENVIO') {
         detalle.descripcion = item.descripcion || 'Envío';
+      } else if (item.tipoItem === 'REVESTIMIENTO') {
+        detalle.descripcion = item.descripcion || 'Revestimiento de acero';
       } else {
         detalle.productoId = Number(item.productoId);
         detalle.descripcion = item.productoNombre || undefined;
@@ -1782,6 +1818,7 @@ const FacturacionPage = () => {
           cart={cart}
           onAddItem={addItemToCart}
           onAddEnvio={handleOpenEnvioDialogFact}
+          onAddRevestimiento={handleOpenRevestimientoDialogFact}
           onUpdateCartItem={updateCartItem}
           onRemoveCartItem={removeItemFromCart}
           products={products}
@@ -1954,6 +1991,49 @@ const FacturacionPage = () => {
         onConfirm={handleDeudaConfirm}
         onCancel={handleDeudaCancel}
       />
+
+      {/* Revestimiento de acero dialog — Factura Manual */}
+      <Dialog open={revestimientoDialogOpenFact} onClose={() => setRevestimientoDialogOpenFact(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Agregar revestimiento de acero</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField
+            label="Precio por unidad"
+            type="number"
+            value={revestimientoPrecioFact}
+            onChange={(e) => setRevestimientoPrecioFact(parseFloat(e.target.value) || 0)}
+            size="small"
+            fullWidth
+            InputProps={{ startAdornment: <span style={{ marginRight: 4 }}>$</span> }}
+            helperText="Tomado del parámetro de sistema. Puede ajustarlo."
+          />
+          <TextField
+            label="Cantidad de equipos"
+            type="number"
+            value={revestimientoCantidadFact}
+            onChange={(e) => setRevestimientoCantidadFact(Math.max(1, parseInt(e.target.value) || 1))}
+            size="small"
+            fullWidth
+            inputProps={{ min: 1 }}
+            helperText="Auto-detectado desde los equipos del documento. No puede superar la cantidad de equipos."
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+            <Typography variant="body1" fontWeight={600}>
+              ${(revestimientoPrecioFact * revestimientoCantidadFact).toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRevestimientoDialogOpenFact(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmRevestimientoFact}
+            disabled={revestimientoPrecioFact <= 0 || revestimientoCantidadFact <= 0}
+          >
+            Agregar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Province / envío selector dialog — Factura Manual */}
       <Dialog open={envioDialogOpenFact} onClose={() => setEnvioDialogOpenFact(false)} maxWidth="xs" fullWidth>
