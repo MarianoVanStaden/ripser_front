@@ -285,8 +285,27 @@ export interface ValidacionStockDTO {
 }
 
 // ── Requerimientos de stock (pedidos internos de reposición) ──────────────
-export type EstadoRequerimientoStock = 'PENDIENTE' | 'PARCIAL' | 'RESUELTO' | 'CANCELADO';
+export type EstadoRequerimientoStock =
+  | 'PENDIENTE'
+  | 'PARCIAL'
+  | 'EN_COMPRA'
+  | 'RECIBIDO'
+  | 'RESUELTO'
+  | 'CANCELADO';
 export type OrigenRequerimiento = 'FABRICACION' | 'MANUAL';
+
+/** Una orden de compra generada para una línea del requerimiento (qué se pidió y a quién). */
+export interface LineaCompraGeneradaDTO {
+  detalleCompraId: number;
+  compraId: number;
+  numeroCompra?: string | null;
+  proveedorId?: number | null;
+  proveedorNombre?: string | null;
+  cantidadPedida: number;
+  cantidadRecibida: number;
+  estadoCompra?: string | null;
+  fechaEntrega?: string | null;
+}
 
 export interface DetalleRequerimientoStockDTO {
   id: number;
@@ -295,8 +314,10 @@ export interface DetalleRequerimientoStockDTO {
   productoCodigo?: string;
   cantidadRequerida: number;
   cantidadComprada: number;
+  cantidadRecibida: number;
   proveedorSugeridoId?: number | null;
   proveedorSugeridoNombre?: string | null;
+  ordenesGeneradas?: LineaCompraGeneradaDTO[];
 }
 
 export interface RequerimientoStockDTO {
@@ -306,6 +327,8 @@ export interface RequerimientoStockDTO {
   recetaId?: number | null;
   cantidadEquipos?: number | null;
   observaciones?: string | null;
+  usuarioCreadorId?: number | null;
+  usuarioCreadorNombre?: string | null;
   fechaCreacion: string;
   fechaActualizacion?: string | null;
   detalles: DetalleRequerimientoStockDTO[];
@@ -329,6 +352,27 @@ export interface GenerarOrdenesCompraResponseDTO {
   ordenesCreadas: Array<{ id: number; numero?: string; estado?: string; total?: number }>;
   productosSinProveedor: string[];
   mensaje: string;
+}
+
+/** Asignación de proveedores por el admin de compras (permite dividir cantidades). */
+export interface AsignarProveedoresDTO {
+  asignaciones: Array<{
+    detalleRequerimientoId: number;
+    proveedorId: number;
+    cantidad: number;
+    precioUnitario?: number | null;
+  }>;
+}
+
+/** Recepción registrada por el taller sobre su pedido. */
+export interface RecibirRequerimientoDTO {
+  fechaRecepcion?: string | null;
+  observaciones?: string | null;
+  items: Array<{
+    detalleCompraId: number;
+    cantidadRecibida: number;
+    depositoId?: number | null;
+  }>;
 }
 // ── Desglose por Modelo (Ubicación de Equipos — Tab server-side) ──────────
 /**

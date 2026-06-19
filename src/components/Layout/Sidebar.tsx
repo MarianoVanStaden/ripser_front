@@ -207,7 +207,7 @@ const navigation: NavigationSection[] = [
       { text: 'Ficha + QR', icon: <AssignmentIcon />, path: '/fabricacion/ficha-equipo' },
       { text: 'Reportes de Estados', icon: <AssignmentIcon />, path: '/fabricacion/reportes-estados' },
       { text: 'Stock Preventivo', icon: <InventoryIcon />, path: '/fabricacion/stock-planificacion' },
-      { text: 'Requerimientos de Stock', icon: <InventoryIcon />, path: '/fabricacion/requerimientos-stock' },
+      { text: 'Pedidos de Materiales', icon: <InventoryIcon />, path: '/fabricacion/requerimientos-stock' },
     ],
   },
   {

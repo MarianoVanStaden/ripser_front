@@ -5,6 +5,8 @@ import type {
   CreateRequerimientoStockDTO,
   EstadoRequerimientoStock,
   GenerarOrdenesCompraResponseDTO,
+  AsignarProveedoresDTO,
+  RecibirRequerimientoDTO,
 } from '../../types';
 
 const BASE = '/api/requerimientos-stock';
@@ -50,6 +52,24 @@ export const requerimientoStockApi = {
     const response = await api.post<GenerarOrdenesCompraResponseDTO>(
       `${BASE}/${id}/generar-ordenes-compra`,
     );
+    return response.data;
+  },
+
+  /** Asignación manual de proveedores por el admin de compras (permite dividir cantidades). */
+  asignarProveedores: async (
+    id: number,
+    dto: AsignarProveedoresDTO,
+  ): Promise<GenerarOrdenesCompraResponseDTO> => {
+    const response = await api.post<GenerarOrdenesCompraResponseDTO>(
+      `${BASE}/${id}/asignar-proveedores`,
+      dto,
+    );
+    return response.data;
+  },
+
+  /** Recepción registrada por el taller sobre su pedido (ingresa stock al depósito). */
+  recibir: async (id: number, dto: RecibirRequerimientoDTO): Promise<RequerimientoStockDTO> => {
+    const response = await api.post<RequerimientoStockDTO>(`${BASE}/${id}/recibir`, dto);
     return response.data;
   },
 };

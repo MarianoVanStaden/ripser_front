@@ -142,11 +142,26 @@ export const usePermisos = () => {
    */
   const esAdmin = useMemo(() => roles.includes('ADMIN'), [roles]);
 
+  /**
+   * Admin de compras: únicos que pueden elegir proveedor (crear órdenes de compra
+   * directas) y asignar proveedores a los pedidos del taller. Debe coincidir con
+   * COMPRAS_ADMINS del backend (SecurityConfig).
+   */
+  const esAdminCompras = useMemo(
+    () =>
+      Boolean(user?.esSuperAdmin) ||
+      (['ADMIN', 'ADMIN_EMPRESA_LIMITADO', 'COORDINADORA_COMPRAS'] as TipoRol[]).some((rol) =>
+        roles.includes(rol),
+      ),
+    [roles, user],
+  );
+
   return {
     tienePermiso,
     modulosPermitidos,
     tieneRol,
     esAdmin,
+    esAdminCompras,
     roles,
   };
 };

@@ -41,9 +41,10 @@ const GarantiaVigenciaBar: React.FC<GarantiaVigenciaBarProps> = ({
     ? 0
     : Math.max(0, dayjs(fechaVencimiento).diff(dayjs(), 'day'));
 
-  const porcentajeRestante = Math.min(
+  const diasConsumidos = diasTotales - diasRestantes;
+  const porcentajeConsumido = Math.min(
     100,
-    Math.max(0, (diasRestantes / diasTotales) * 100)
+    Math.max(0, (diasConsumidos / diasTotales) * 100)
   );
 
   const color =
@@ -68,7 +69,7 @@ const GarantiaVigenciaBar: React.FC<GarantiaVigenciaBarProps> = ({
       <Box
         sx={{
           height: '100%',
-          width: `${porcentajeRestante}%`,
+          width: `${porcentajeConsumido}%`,
           bgcolor: color,
           transition: 'width 0.3s',
         }}

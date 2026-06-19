@@ -59,6 +59,7 @@ import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { usePermisos } from '../../hooks/usePermisos';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import type { NewOrdenForm, PriceChange, RecepcionItem } from './Compras/types';
 import { createInitialNewOrden } from './Compras/constants';
@@ -86,6 +87,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, { hasError: bool
   }
 }
 const ComprasPedidosPage: React.FC = () => {
+  const { esAdminCompras } = usePermisos();
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([]);
   const [proveedores, setProveedores] = useState<ProveedorDTO[]>([]);
   const [compras, setCompras] = useState<CompraDTO[]>([]);
@@ -931,21 +933,23 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
               >
                 Exportar PDF
               </Button>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => {
-                  setIsEditMode(false);
-                  setSelectedOrden(null);
-                  setProductosProveedor([]);
-                  setErrorProductosProveedor(null);
-                  setOpenOrdenDialog(true);
-                }}
-                fullWidth
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
-                Nueva Orden
-              </Button>
+              {esAdminCompras && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => {
+                    setIsEditMode(false);
+                    setSelectedOrden(null);
+                    setProductosProveedor([]);
+                    setErrorProductosProveedor(null);
+                    setOpenOrdenDialog(true);
+                  }}
+                  fullWidth
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
+                  Nueva Orden
+                </Button>
+              )}
             </Box>
           </Box>
 
