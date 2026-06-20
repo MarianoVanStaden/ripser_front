@@ -316,13 +316,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
   ];
 
   // Rutas permitidas para el rol TALLER (allowlist):
-  // - PROVEEDORES: solo Gestión + Compras/Pedidos.
   // - LOGISTICA, TALLER, PRODUCCION, GARANTIAS: todo el módulo.
+  // (PROVEEDORES quitado: el taller no gestiona proveedores; usa Pedidos de Materiales.)
   const tallerAllowedPaths = [
     '/',
-    // PROVEEDORES (recortado)
-    '/proveedores/gestion',
-    '/proveedores/compras',
     // LOGISTICA (todo)
     '/logistica/stock',
     '/logistica/inventario/stock-equipos',
@@ -484,12 +481,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open = false, onToggle }) => {
     '/taller/materiales',
     '/taller/tareas',
     '/taller/trabajos',
-    // PROVEEDORES (sin Cuenta Corriente)
-    '/proveedores/gestion',
-    '/proveedores/compras',
-    '/proveedores/contactos',
-    '/proveedores/evaluacion',
-    '/proveedores/historial',
+    // PROVEEDORES quitado: LOGISTICO ya no accede al módulo Proveedores.
     // LOGISTICA (parcial)
     '/logistica/stock',
     '/logistica/inventario/stock-equipos',

@@ -10,7 +10,7 @@ type PermisosMap = Record<TipoRol, Modulo[]>;
 const PERMISOS_POR_ROL: PermisosMap = {
   ADMIN: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
 
-  OFICINA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'GARANTIAS', 'PRESTAMOS'],
+  OFICINA: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'LOGISTICA', 'GARANTIAS', 'PRESTAMOS'],
 
   VENDEDOR: ['VENTAS', 'CLIENTES'], // Se removió GARANTIAS
 
@@ -23,7 +23,7 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // El rol TALLER ve: Proveedores (sólo gestión y compras — filtrado fino en Sidebar),
   // Logística completa, Taller completo, Producción completa, Garantías completa.
   // El detalle por path se controla en tallerAllowedPaths en Sidebar.tsx.
-  TALLER: ['DASHBOARD', 'TALLER', 'GARANTIAS', 'LOGISTICA', 'PROVEEDORES', 'PRODUCCION'],
+  TALLER: ['DASHBOARD', 'TALLER', 'GARANTIAS', 'LOGISTICA', 'PRODUCCION'],
 
   USER: ['DASHBOARD'],
 
@@ -38,7 +38,7 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // no bypassear los guards de scope.
   ADMIN_EMPRESA_LIMITADO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'TRANSPORTE', 'TALLER', 'PRODUCCION', 'GARANTIAS', 'RRHH', 'ADMINISTRACION', 'PRESTAMOS'],
 
-  GERENTE_SUCURSAL: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'PROVEEDORES', 'LOGISTICA', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
+  GERENTE_SUCURSAL: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'LOGISTICA', 'GARANTIAS', 'RRHH', 'PRESTAMOS'],
 
   // Acceso restringido: el filtrado fino por path se hace en Sidebar (cobranzasAllowedPaths).
   COBRANZAS: ['CLIENTES', 'ADMINISTRACION', 'GARANTIAS', 'PRESTAMOS'],
@@ -65,7 +65,7 @@ const PERMISOS_POR_ROL: PermisosMap = {
 
   // Todo lo de TRANSPORTE + Proveedores parcial + Logística parcial.
   // Filtrado fino por allowlist en Sidebar (logisticoAllowedPaths).
-  LOGISTICO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER', 'PROVEEDORES', 'LOGISTICA'],
+  LOGISTICO: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER', 'LOGISTICA'],
 
   // Personal post-venta: ve Registro de Ventas, Clientes/Leads completo,
   // Viajes y Control de Entregas, Garantías completas. Dashboard propio con KPIs operativos.

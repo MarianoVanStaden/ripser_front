@@ -139,12 +139,7 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/taller/materiales',
       '/taller/tareas',
       '/taller/trabajos',
-      // PROVEEDORES (sin Cuenta Corriente)
-      '/proveedores/gestion',
-      '/proveedores/compras',
-      '/proveedores/contactos',
-      '/proveedores/evaluacion',
-      '/proveedores/historial',
+      // PROVEEDORES quitado: LOGISTICO ya no accede al módulo Proveedores.
       // LOGISTICA (parcial)
       '/logistica/stock',
       '/logistica/inventario/stock-equipos',

@@ -389,14 +389,14 @@ function App() {
                   <Route path="leads/:id/editar" element={priv(<LeadFormPage />)} />
                   <Route path="leads/:id/convertir" element={priv(<ConvertLeadPage />)} />
 
-                  {/* PROVEEDORES */}
-                  <Route path="proveedores/gestion" element={priv(<SuppliersPage />)} />
-                  <Route path="proveedores/buscar" element={priv(<BuscarProveedorPorProductoPage />)} />
-                  <Route path="proveedores/compras" element={priv(<ComprasPedidosPage />)} />
-                  <Route path="proveedores/cuenta-corriente" element={priv(<CuentaCorrienteProveedoresPage />)} />
-                  <Route path="proveedores/contactos" element={priv(<ContactosCondicionesPage />)} />
-                  <Route path="proveedores/historial" element={priv(<HistorialComprasPage />)} />
-                  <Route path="proveedores/evaluacion" element={priv(<EvaluacionDesempenoPage />)} />
+                  {/* PROVEEDORES — solo ADMIN, ADMIN_EMPRESA(_LIMITADO) y COORDINADORA_COMPRAS (gate por módulo) */}
+                  <Route path="proveedores/gestion" element={priv(<ProtectedRoute requiredModulo="PROVEEDORES"><SuppliersPage /></ProtectedRoute>)} />
+                  <Route path="proveedores/buscar" element={priv(<ProtectedRoute requiredModulo="PROVEEDORES"><BuscarProveedorPorProductoPage /></ProtectedRoute>)} />
+                  <Route path="proveedores/compras" element={priv(<ProtectedRoute requiredModulo="PROVEEDORES"><ComprasPedidosPage /></ProtectedRoute>)} />
+                  <Route path="proveedores/cuenta-corriente" element={priv(<ProtectedRoute requiredModulo="PROVEEDORES"><CuentaCorrienteProveedoresPage /></ProtectedRoute>)} />
+                  <Route path="proveedores/contactos" element={priv(<ProtectedRoute requiredModulo="PROVEEDORES"><ContactosCondicionesPage /></ProtectedRoute>)} />
+                  <Route path="proveedores/historial" element={priv(<ProtectedRoute requiredModulo="PROVEEDORES"><HistorialComprasPage /></ProtectedRoute>)} />
+                  <Route path="proveedores/evaluacion" element={priv(<ProtectedRoute requiredModulo="PROVEEDORES"><EvaluacionDesempenoPage /></ProtectedRoute>)} />
 
                   {/* POSTVENTA (Garantías + Taller unificados) */}
                   <Route path="postventa/dashboard" element={priv(<PostventaDashboard />)} />
