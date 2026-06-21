@@ -44,6 +44,7 @@ import type { DetalleRecetaCreateDTO, DetalleRecetaDTO, RecetaFabricacionDTO } f
 import api from '../../api/config';
 import RecetaCosteoSection from './RecetaCosteoSection';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { usePermisos } from '../../hooks/usePermisos';
 
 interface Producto {
   id: number;
@@ -56,6 +57,8 @@ interface Producto {
 const RecetaDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  // Roles operativos (Taller/Transporte/Logístico) no ven costos de fabricación.
+  const { puedeVerCostos } = usePermisos();
   const [receta, setReceta] = useState<RecetaFabricacionDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -371,26 +374,30 @@ const RecetaDetail: React.FC = () => {
                   </Typography>
                   <Typography variant="body1">{receta.medida?.nombre || 'N/A'}</Typography>
                 </Box>
-                <Box>
-                  <Typography variant="caption" color="textSecondary">
-                    Precio de Venta
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600" color="primary">
-                    {receta.precioVenta
-                      ? `$${receta.precioVenta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
-                      : 'No configurado'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="textSecondary">
-                    Costo de Fabricacion
-                  </Typography>
-                  <Typography variant="body1" fontWeight="600" color="secondary">
-                    {receta.costoFabricacion != null
-                      ? `$${receta.costoFabricacion.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
-                      : 'No calculado'}
-                  </Typography>
-                </Box>
+                {puedeVerCostos && (
+                  <Box>
+                    <Typography variant="caption" color="textSecondary">
+                      Precio de Venta
+                    </Typography>
+                    <Typography variant="body1" fontWeight="600" color="primary">
+                      {receta.precioVenta
+                        ? `$${receta.precioVenta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                        : 'No configurado'}
+                    </Typography>
+                  </Box>
+                )}
+                {puedeVerCostos && (
+                  <Box>
+                    <Typography variant="caption" color="textSecondary">
+                      Costo de Fabricacion
+                    </Typography>
+                    <Typography variant="body1" fontWeight="600" color="secondary">
+                      {receta.costoFabricacion != null
+                        ? `$${receta.costoFabricacion.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                        : 'No calculado'}
+                    </Typography>
+                  </Box>
+                )}
                 <Box>
                   <Typography variant="caption" color="textSecondary">
                     Disponible para Venta
@@ -442,15 +449,17 @@ const RecetaDetail: React.FC = () => {
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Lista de Materiales</Typography>
           <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              color="secondary"
-              startIcon={recalculatingCosts ? <CircularProgress size={20} /> : <RefreshIcon />}
-              onClick={handleRecalcularCostos}
-              disabled={recalculatingCosts || receta.detalles.length === 0}
-            >
-              Recalcular Costos
-            </Button>
+            {puedeVerCostos && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={recalculatingCosts ? <CircularProgress size={20} /> : <RefreshIcon />}
+                onClick={handleRecalcularCostos}
+                disabled={recalculatingCosts || receta.detalles.length === 0}
+              >
+                Recalcular Costos
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<AddIcon />}
@@ -468,8 +477,8 @@ const RecetaDetail: React.FC = () => {
                 <TableCell>Producto</TableCell>
                 <TableCell>Código</TableCell>
                 <TableCell align="right">Cantidad</TableCell>
-                <TableCell align="right">Costo Unit.</TableCell>
-                <TableCell align="right">Subtotal</TableCell>
+                {puedeVerCostos && <TableCell align="right">Costo Unit.</TableCell>}
+                {puedeVerCostos && <TableCell align="right">Subtotal</TableCell>}
                 <TableCell>Observaciones</TableCell>
                 <TableCell align="center">Acciones</TableCell>
               </TableRow>
@@ -477,7 +486,7 @@ const RecetaDetail: React.FC = () => {
             <TableBody>
               {receta.detalles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={puedeVerCostos ? 7 : 5} align="center">
                     <Typography variant="body2" color="textSecondary">
                       No hay materiales agregados
                     </Typography>
@@ -489,14 +498,18 @@ const RecetaDetail: React.FC = () => {
                     <TableCell>{detalle.productoNombre}</TableCell>
                     <TableCell>{detalle.productoCodigo}</TableCell>
                     <TableCell align="right">{detalle.cantidad}</TableCell>
-                    <TableCell align="right">
-                      ${detalle.costoUnitario.toFixed(2)}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography fontWeight="500">
-                        ${detalle.subtotal.toFixed(2)}
-                      </Typography>
-                    </TableCell>
+                    {puedeVerCostos && (
+                      <TableCell align="right">
+                        ${detalle.costoUnitario.toFixed(2)}
+                      </TableCell>
+                    )}
+                    {puedeVerCostos && (
+                      <TableCell align="right">
+                        <Typography fontWeight="500">
+                          ${detalle.subtotal.toFixed(2)}
+                        </Typography>
+                      </TableCell>
+                    )}
                     <TableCell>{detalle.observaciones || '-'}</TableCell>
                     <TableCell align="center">
                       <IconButton
@@ -517,7 +530,7 @@ const RecetaDetail: React.FC = () => {
                   </TableRow>
                 ))
               )}
-              {receta.detalles.length > 0 && (
+              {puedeVerCostos && receta.detalles.length > 0 && (
                 <TableRow>
                   <TableCell colSpan={4} align="right">
                     <Typography variant="h6">Total:</Typography>
@@ -536,7 +549,7 @@ const RecetaDetail: React.FC = () => {
       </Paper>
 
       {/* Costeo */}
-      <RecetaCosteoSection recetaId={Number(id)} />
+      {puedeVerCostos && <RecetaCosteoSection recetaId={Number(id)} />}
 
       {/* Dialog para agregar material */}
       <Dialog
@@ -582,19 +595,21 @@ const RecetaDetail: React.FC = () => {
               InputProps={{ inputProps: { min: 1 } }}
               required
             />
-            <TextField
-              label="Costo Unitario *"
-              type="number"
-              value={newDetalle.costoUnitario}
-              onChange={(e) =>
-                setNewDetalle((prev) => ({
-                  ...prev,
-                  costoUnitario: Number(e.target.value),
-                }))
-              }
-              InputProps={{ inputProps: { min: 0, step: 0.01 } }}
-              required
-            />
+            {puedeVerCostos && (
+              <TextField
+                label="Costo Unitario *"
+                type="number"
+                value={newDetalle.costoUnitario}
+                onChange={(e) =>
+                  setNewDetalle((prev) => ({
+                    ...prev,
+                    costoUnitario: Number(e.target.value),
+                  }))
+                }
+                InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                required
+              />
+            )}
             <TextField
               label="Observaciones"
               multiline
@@ -652,16 +667,18 @@ const RecetaDetail: React.FC = () => {
               required
               autoFocus
             />
-            <TextField
-              label="Costo Unitario *"
-              type="number"
-              value={editForm.costoUnitario}
-              onChange={(e) =>
-                setEditForm((prev) => ({ ...prev, costoUnitario: Number(e.target.value) }))
-              }
-              InputProps={{ inputProps: { min: 0, step: 0.01 } }}
-              required
-            />
+            {puedeVerCostos && (
+              <TextField
+                label="Costo Unitario *"
+                type="number"
+                value={editForm.costoUnitario}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, costoUnitario: Number(e.target.value) }))
+                }
+                InputProps={{ inputProps: { min: 0, step: 0.01 } }}
+                required
+              />
+            )}
             <TextField
               label="Observaciones"
               multiline
@@ -671,15 +688,17 @@ const RecetaDetail: React.FC = () => {
                 setEditForm((prev) => ({ ...prev, observaciones: e.target.value }))
               }
             />
-            <Alert severity="info" icon={false}>
-              Subtotal:{' '}
-              <strong>
-                ${((editForm.cantidad || 0) * (editForm.costoUnitario || 0)).toLocaleString('es-AR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </strong>
-            </Alert>
+            {puedeVerCostos && (
+              <Alert severity="info" icon={false}>
+                Subtotal:{' '}
+                <strong>
+                  ${((editForm.cantidad || 0) * (editForm.costoUnitario || 0)).toLocaleString('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </strong>
+              </Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

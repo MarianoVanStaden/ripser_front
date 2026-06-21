@@ -156,12 +156,26 @@ export const usePermisos = () => {
     [roles, user],
   );
 
+  /**
+   * Roles operativos (Taller, Transporte, Logístico) a los que se les oculta
+   * cualquier dato de costo/precio en Pedidos de materiales: cargan los
+   * materiales que necesitan, pero no ven el valor de la compra. Los admins
+   * (incluido SuperAdmin) siempre ven costos. Por defecto, ocultar es la opción
+   * segura para roles sensibles a información económica.
+   */
+  const puedeVerCostos = useMemo(() => {
+    if (Boolean(user?.esSuperAdmin) || roles.includes('ADMIN')) return true;
+    const rolesSinCostos: TipoRol[] = ['TALLER', 'TRANSPORTE', 'LOGISTICO'];
+    return !rolesSinCostos.some((rol) => roles.includes(rol));
+  }, [roles, user]);
+
   return {
     tienePermiso,
     modulosPermitidos,
     tieneRol,
     esAdmin,
     esAdminCompras,
+    puedeVerCostos,
     roles,
   };
 };

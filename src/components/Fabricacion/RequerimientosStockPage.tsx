@@ -532,9 +532,11 @@ const CargarPedidoDialog: React.FC<{
   categorias: CategoriaProducto[];
   /** Si se abre desde la métrica de bajo stock, arranca filtrado a bajo stock. */
   soloBajoStockInicial?: boolean;
+  /** Roles operativos (Taller/Transporte/Logístico) no ven costos. */
+  puedeVerCostos: boolean;
   onClose: () => void;
   onGuardar: (lineas: LineaPedido[], observaciones: string) => Promise<void>;
-}> = ({ open, productos, categorias, soloBajoStockInicial, onClose, onGuardar }) => {
+}> = ({ open, productos, categorias, soloBajoStockInicial, puedeVerCostos, onClose, onGuardar }) => {
   // carrito: productoId → línea
   const [carrito, setCarrito] = useState<Record<number, LineaPedido>>({});
   const [observaciones, setObservaciones] = useState('');
@@ -811,9 +813,10 @@ const CargarPedidoDialog: React.FC<{
                           <StockChip producto={l.producto} />
                           <Typography variant="caption" color="text.secondary">
                             {l.cantidad} u.
-                            {l.producto.costo != null
-                              ? ` · ${formatMoneda(l.producto.costo * l.cantidad)}`
-                              : ' · s/costo'}
+                            {puedeVerCostos &&
+                              (l.producto.costo != null
+                                ? ` · ${formatMoneda(l.producto.costo * l.cantidad)}`
+                                : ' · s/costo')}
                           </Typography>
                         </Stack>
                       </Box>
@@ -830,7 +833,7 @@ const CargarPedidoDialog: React.FC<{
                 </Stack>
               )}
             </Box>
-            {lineas.length > 0 && (
+            {puedeVerCostos && lineas.length > 0 && (
               <Stack
                 direction="row"
                 justifyContent="space-between"
@@ -1281,7 +1284,7 @@ const RecibirDialog: React.FC<{
 
 // ── Página ──────────────────────────────────────────────────────────────────
 export const RequerimientosStockPage: React.FC = () => {
-  const { esAdminCompras } = usePermisos();
+  const { esAdminCompras, puedeVerCostos } = usePermisos();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [requerimientos, setRequerimientos] = useState<RequerimientoStockDTO[]>([]);
@@ -1662,6 +1665,7 @@ export const RequerimientosStockPage: React.FC = () => {
         productos={productos}
         categorias={categorias}
         soloBajoStockInicial={cargarBajoStock}
+        puedeVerCostos={puedeVerCostos}
         onClose={() => setCargarOpen(false)}
         onGuardar={handleCrearPedido}
       />

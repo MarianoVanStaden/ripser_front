@@ -54,6 +54,7 @@ import { generateStockInventoryPDF } from '../../utils/pdfExportUtils';
 import { loadPriceCalculationParams, calculateSellingPrice } from '../../utils/priceCalculations';
 import type { PriceCalculationParams } from '../../utils/priceCalculations';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { usePermisos } from '../../hooks/usePermisos';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -79,6 +80,8 @@ function TabPanel(props: TabPanelProps) {
 const StockPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // Roles operativos (Taller/Transporte/Logístico) no ven costo ni precio.
+  const { puedeVerCostos } = usePermisos();
   const [products, setProducts] = useState<ProductoUnificado[]>([]);
   const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
@@ -391,14 +394,16 @@ const StockPage: React.FC = () => {
           <InventoryIcon />
           Gestión de Stock
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<GetAppIcon />}
-          onClick={handleExportInventoryPDF}
-          fullWidth={isMobile}
-        >
-          Exportar PDF
-        </Button>
+        {puedeVerCostos && (
+          <Button
+            variant="outlined"
+            startIcon={<GetAppIcon />}
+            onClick={handleExportInventoryPDF}
+            fullWidth={isMobile}
+          >
+            Exportar PDF
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -452,21 +457,23 @@ const StockPage: React.FC = () => {
             </Box>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent>
-            <Box display="flex" alignItems="center" gap={2}>
-              <InventoryIcon color="info" />
-              <Box>
-                <Typography variant="h4">
-                  ${products.reduce((sum, p) => sum + (p.precio * p.stockActual), 0).toLocaleString()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Valor Total
-                </Typography>
+        {puedeVerCostos && (
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={2}>
+                <InventoryIcon color="info" />
+                <Box>
+                  <Typography variant="h4">
+                    ${products.reduce((sum, p) => sum + (p.precio * p.stockActual), 0).toLocaleString()}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Valor Total
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </Box>
 
       {/* Tabs */}
@@ -553,8 +560,8 @@ const StockPage: React.FC = () => {
                     <TableCell sx={{ minWidth: 100 }} align="center">Stock Actual</TableCell>
                     <TableCell sx={{ minWidth: 100 }} align="center">Stock Mínimo</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Categoría</TableCell>
-                    <TableCell sx={{ minWidth: 100 }}>Costo</TableCell>
-                    <TableCell sx={{ minWidth: 100 }}>Precio</TableCell>
+                    {puedeVerCostos && <TableCell sx={{ minWidth: 100 }}>Costo</TableCell>}
+                    {puedeVerCostos && <TableCell sx={{ minWidth: 100 }}>Precio</TableCell>}
                     <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
                     <TableCell sx={{ minWidth: 100 }} align="center">Acciones</TableCell>
                   </TableRow>
@@ -597,13 +604,15 @@ const StockPage: React.FC = () => {
                           variant="outlined"
                         />
                       </TableCell>
-                      <TableCell>
-                        {product.costo != null
-                          ? `$${product.costo.toLocaleString()}`
-                          : <Typography variant="caption" color="text.secondary">-</Typography>
-                        }
-                      </TableCell>
-                      <TableCell>${product.precio.toLocaleString()}</TableCell>
+                      {puedeVerCostos && (
+                        <TableCell>
+                          {product.costo != null
+                            ? `$${product.costo.toLocaleString()}`
+                            : <Typography variant="caption" color="text.secondary">-</Typography>
+                          }
+                        </TableCell>
+                      )}
+                      {puedeVerCostos && <TableCell>${product.precio.toLocaleString()}</TableCell>}
                       <TableCell>
                         {getStockChip(product.stockActual, product.stockMinimo, product.activo)}
                       </TableCell>
@@ -620,7 +629,7 @@ const StockPage: React.FC = () => {
                   ))}
                   {filteredProducts.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={10} align="center">
+                      <TableCell colSpan={puedeVerCostos ? 10 : 8} align="center">
                         <Box textAlign="center" py={4}>
                           <Typography variant="body1" color="text.secondary">
                             No se encontraron productos con los filtros aplicados
@@ -818,20 +827,22 @@ const StockPage: React.FC = () => {
               rows={2}
             />
 
-            <TextField
-              label="Costo (Precio de Compra)"
-              type="number"
-              value={editForm.costo ?? ''}
-              onChange={(e) => setEditForm({
-                ...editForm,
-                costo: e.target.value ? parseFloat(e.target.value) : null
-              })}
-              fullWidth
-              inputProps={{ step: '0.01', min: '0' }}
-              helperText="Costo de adquisicion del producto"
-            />
+            {puedeVerCostos && (
+              <TextField
+                label="Costo (Precio de Compra)"
+                type="number"
+                value={editForm.costo ?? ''}
+                onChange={(e) => setEditForm({
+                  ...editForm,
+                  costo: e.target.value ? parseFloat(e.target.value) : null
+                })}
+                fullWidth
+                inputProps={{ step: '0.01', min: '0' }}
+                helperText="Costo de adquisicion del producto"
+              />
+            )}
 
-            {suggestedPrice !== null && (
+            {puedeVerCostos && suggestedPrice !== null && (
               <Box sx={{ p: 2, bgcolor: 'info.main', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
                   <Typography variant="body2" color="info.contrastText">
@@ -852,15 +863,17 @@ const StockPage: React.FC = () => {
               </Box>
             )}
 
-            <TextField
-              label="Precio de Venta"
-              type="number"
-              value={editForm.precio}
-              onChange={(e) => setEditForm({ ...editForm, precio: parseFloat(e.target.value) || 0 })}
-              fullWidth
-              required
-              inputProps={{ step: '0.01', min: '0' }}
-            />
+            {puedeVerCostos && (
+              <TextField
+                label="Precio de Venta"
+                type="number"
+                value={editForm.precio}
+                onChange={(e) => setEditForm({ ...editForm, precio: parseFloat(e.target.value) || 0 })}
+                fullWidth
+                required
+                inputProps={{ step: '0.01', min: '0' }}
+              />
+            )}
 
             <TextField
               label="Stock Mínimo"
