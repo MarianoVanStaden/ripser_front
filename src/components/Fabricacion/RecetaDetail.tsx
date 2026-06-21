@@ -33,7 +33,6 @@ import {
   Delete as DeleteIcon,
   CheckCircle,
   Cancel,
-  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -89,9 +88,6 @@ const RecetaDetail: React.FC = () => {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
-
-  // Estado para recalculo de costos
-  const [recalculatingCosts, setRecalculatingCosts] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -253,29 +249,6 @@ const RecetaDetail: React.FC = () => {
         message: 'Error al cambiar el estado',
         severity: 'error',
       });
-    }
-  };
-
-  const handleRecalcularCostos = async () => {
-    if (!receta) return;
-    try {
-      setRecalculatingCosts(true);
-      const updated = await recetaFabricacionApi.recalcularCostos(receta.id);
-      setReceta(updated);
-      setSnackbar({
-        open: true,
-        message: 'Costos recalculados correctamente',
-        severity: 'success',
-      });
-    } catch (error) {
-      console.error('Error recalculating costs:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al recalcular los costos',
-        severity: 'error',
-      });
-    } finally {
-      setRecalculatingCosts(false);
     }
   };
 
@@ -448,26 +421,13 @@ const RecetaDetail: React.FC = () => {
       <Paper elevation={2} sx={{ p: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Lista de Materiales</Typography>
-          <Stack direction="row" spacing={1}>
-            {puedeVerCostos && (
-              <Button
-                variant="outlined"
-                color="secondary"
-                startIcon={recalculatingCosts ? <CircularProgress size={20} /> : <RefreshIcon />}
-                onClick={handleRecalcularCostos}
-                disabled={recalculatingCosts || receta.detalles.length === 0}
-              >
-                Recalcular Costos
-              </Button>
-            )}
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={() => setAddDialog(true)}
-            >
-              Agregar Material
-            </Button>
-          </Stack>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => setAddDialog(true)}
+          >
+            Agregar Material
+          </Button>
         </Box>
 
         <TableContainer>
