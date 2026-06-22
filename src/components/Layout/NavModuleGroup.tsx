@@ -58,6 +58,7 @@ function NavModuleGroupBase({
     <>
       {showDivider && <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
       <ListSubheader
+        disableSticky
         onClick={() => onToggle(title)}
         sx={{
           bgcolor: 'inherit',

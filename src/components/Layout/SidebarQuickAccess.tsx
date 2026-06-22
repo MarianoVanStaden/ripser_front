@@ -91,7 +91,7 @@ export function SidebarQuickAccess({
 
       {favItems.length > 0 && (
         <List dense disablePadding>
-          <ListSubheader sx={subheaderSx}>
+          <ListSubheader disableSticky sx={subheaderSx}>
             <StarIcon sx={{ fontSize: 14, mr: 0.5 }} /> FAVORITOS
           </ListSubheader>
           {renderRows(favItems)}
@@ -100,7 +100,7 @@ export function SidebarQuickAccess({
 
       {recItems.length > 0 && (
         <List dense disablePadding>
-          <ListSubheader sx={subheaderSx}>
+          <ListSubheader disableSticky sx={subheaderSx}>
             <HistoryIcon sx={{ fontSize: 14, mr: 0.5 }} /> RECIENTES
           </ListSubheader>
           {renderRows(recItems)}

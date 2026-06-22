@@ -125,7 +125,7 @@ export const navigation: NavModule[] = [
     // su propio `modulo` para que el filtro `tienePermiso(item.modulo ?? section.modulo)`
     // esconda los ítems de Taller a quien no tiene acceso a Taller (y viceversa).
     // Si todos los ítems se filtran, la sección entera se elimina más abajo.
-    title: 'SERVICIO TÉCNICO / POSTVENTA',
+    title: 'POSTVENTA',
     modulo: 'GARANTIAS',
     items: [
       { text: 'Dashboard Postventa', icon: <BarChartIcon />, path: '/postventa/dashboard', modulo: 'GARANTIAS' },
