@@ -9,14 +9,16 @@ import Sidebar from './Sidebar';
 import { TenantRequiredRoute } from '../Tenant';
 import { useFinancialEvents } from '../../hooks/useFinancialEvents';
 import RoleScopeGuard from './RoleScopeGuard';
+import { useSidebar } from '../../context/useSidebar';
+import { SIDEBAR_WIDTH_FULL, SIDEBAR_WIDTH_MINI } from './sidebarConstants';
 //import { TenantDebugPanel } from '../Debug'; // Panel de debugging para desarrollo
 
 
 
-const drawerWidth = 240;
-
 const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true); // Open by default on desktop
+  const { mini } = useSidebar();
+  const drawerWidth = mini ? SIDEBAR_WIDTH_MINI : SIDEBAR_WIDTH_FULL;
 
   // Single SSE connection for the entire authenticated session.
   useFinancialEvents();

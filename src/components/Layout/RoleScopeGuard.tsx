@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { usePermisos } from '../../hooks/usePermisos';
+import { adminEmpresaLimitadoDeniedPaths } from '../../navigation/navAccess';
 
 interface Props {
   children: React.ReactNode;
@@ -195,31 +196,12 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
 // al resto de RRHH (sólo accede a Sueldos / Adelantos / Config. Sueldos).
 // Usamos denylist (no allowlist) porque su scope es prácticamente todo el
 // sistema. Acceso por URL directa a estos prefijos → redirect al dashboard.
-// Mantener en sync con adminEmpresaLimitadoDeniedPaths en Sidebar.tsx.
-const ADMIN_EMPRESA_LIMITADO_DENIED_PREFIXES = [
-  '/taller/configuracion',
-  // RRHH: sólo Sueldos, Adelantos y Config. Sueldos quedan accesibles.
-  '/rrhh/dashboard',
-  '/rrhh/empleados',
-  '/rrhh/legajos',
-  '/rrhh/asistencia',
-  '/rrhh/capacitaciones',
-  '/rrhh/puestos',
-  '/rrhh/licencias',
-  '/rrhh/disciplina',
-  '/admin/catalogos-rrhh',
-  // ADMIN: pantallas reservadas al dueño.
-  '/admin/actividad',
-  '/admin/settings',
-  '/admin/users',
-  '/admin/empresas',
-  '/admin/sucursales',
-  '/admin/patrimonio',
-  // Cambiar contexto (sólo SuperAdmin): ya bloqueado por SuperAdminRoute en
-  // App.tsx, lo replicamos acá para mantener la denylist de Sidebar y guard
-  // sincronizadas (UX coherente y defensa en profundidad).
-  '/admin/tenant-selector',
-];
+//
+// Fuente de verdad única: `adminEmpresaLimitadoDeniedPaths` en navAccess.ts,
+// compartida con el filtrado del menú (Sidebar/useNavigation). Acá se usan los
+// mismos paths como PREFIJOS (cubren sub-rutas vía startsWith); en el menú se
+// usan como paths exactos. Mismo dato, una sola lista para mantener.
+const ADMIN_EMPRESA_LIMITADO_DENIED_PREFIXES = adminEmpresaLimitadoDeniedPaths;
 
 const RoleScopeGuard: React.FC<Props> = ({ children }) => {
   const { esSuperAdmin } = useAuth();

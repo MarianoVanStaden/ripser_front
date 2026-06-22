@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
 import { ColoresProvider } from './context/ColoresContext';
 import { MedidasProvider } from './context/MedidasContext';
+import { SidebarProvider } from './context/SidebarContext';
 import SentryScope from './components/SentryScope';
 import SentryErrorBoundary from './components/SentryErrorBoundary';
 
@@ -299,6 +300,7 @@ function App() {
         <MedidasProvider onlyActive>
         <ThemeProvider theme={theme}>
           <CssBaseline />
+          <SidebarProvider>
           <Router>
             <Suspense fallback={<CenteredFallback />}>
               <Routes>
@@ -479,6 +481,7 @@ function App() {
               </Routes>
             </Suspense>
           </Router>
+          </SidebarProvider>
         </ThemeProvider>
         </MedidasProvider>
         </ColoresProvider>
