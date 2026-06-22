@@ -95,7 +95,6 @@ const StockPage: React.FC = () => {
   const canGestionCompuestos = esAdmin || tieneRol('ADMIN_EMPRESA_LIMITADO', 'TALLER');
   const [products, setProducts] = useState<ProductoUnificado[]>([]);
   const [desgloseMap, setDesgloseMap] = useState<Record<number, DesgloseStockProductoDTO>>({});
-  const [compuestoIds, setCompuestoIds] = useState<Set<number>>(new Set());
   const [composicionProd, setComposicionProd] = useState<ProductoPicker | null>(null);
   const [ajusteProd, setAjusteProd] = useState<(ProductoPicker & { stockActual?: number }) | null>(null);
   const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
@@ -166,19 +165,17 @@ const StockPage: React.FC = () => {
     try {
       setLoading(true);
       // Pedimos materiales + productos de reventa unificados, anotando tipoEntidad.
-      const [productsList, movementsData, categoriasData, desglose, compuestos] = await Promise.all([
+      const [productsList, movementsData, categoriasData, desglose] = await Promise.all([
         fetchProductosUnificados(),
         movimientoStockApi.getAll({ page: 0, size: 10000 }),
         categoriaProductoApi.getAll(),
         productoCompuestoApi.getDesgloseStock().catch(() => [] as DesgloseStockProductoDTO[]),
-        productoCompuestoApi.getCompuestosIds().catch(() => [] as number[]),
       ]);
 
       setProducts(productsList);
       setStockMovements(movementsData.content ?? []);
       setCategorias(categoriasData);
       setDesgloseMap(Object.fromEntries(desglose.map((d) => [d.productoId, d])));
-      setCompuestoIds(new Set(compuestos));
       setError(null);
     } catch (err) {
       const error = err as { response?: { status?: number } };
@@ -242,6 +239,16 @@ const StockPage: React.FC = () => {
 
   const lowStockCount = products.filter(p => p.stockActual <= p.stockMinimo && p.stockActual > 0).length;
   const outOfStockCount = products.filter(p => p.stockActual === 0).length;
+
+  // Categorías marcadas como compuestas: solo sus productos pueden tener composición (BOM).
+  const categoriasCompuestasIds = useMemo(
+    () => new Set(categorias.filter((c) => c.esCompuesto).map((c) => c.id)),
+    [categorias],
+  );
+  const esProductoCompuesto = (product: ProductoUnificado): boolean => {
+    const catId = product.categoriaProductoId ?? product.categoriaProducto?.id;
+    return catId != null && categoriasCompuestasIds.has(catId);
+  };
 
   // Filter products for Inventory tab
   const filteredProducts = useMemo(() => {
@@ -595,7 +602,7 @@ const StockPage: React.FC = () => {
                             <Typography variant="body2" fontWeight="bold">
                               {product.nombre}
                             </Typography>
-                            {compuestoIds.has(product.id) && (
+                            {esProductoCompuesto(product) && (
                               <Chip
                                 icon={<AccountTreeIcon />}
                                 label="Compuesto"
@@ -664,7 +671,7 @@ const StockPage: React.FC = () => {
                         >
                           <EditIcon />
                         </IconButton>
-                        {product.tipoEntidad !== TipoEntidadProducto.PRODUCTO_TERMINADO && canGestionCompuestos && (
+                        {canGestionCompuestos && esProductoCompuesto(product) && (
                           <Tooltip title="Composición (materia prima que ocupa)">
                             <IconButton
                               size="small"

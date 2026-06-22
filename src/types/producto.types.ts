@@ -170,6 +170,7 @@ export interface CategoriaProducto {
   descripcion?: string;
   activo: boolean;
   esReventa?: boolean;
+  esCompuesto?: boolean;
 }
 export const MovementType = {
   ENTRY: 'ENTRY',

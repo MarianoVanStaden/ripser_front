@@ -15,12 +15,6 @@ export const productoCompuestoApi = {
     return data;
   },
 
-  /** IDs de los productos que son compuestos (tienen composición). */
-  getCompuestosIds: async (): Promise<number[]> => {
-    const { data } = await api.get<number[]>(`${BASE}/compuestos-ids`);
-    return data;
-  },
-
   getComponentes: async (productoId: number): Promise<ComponenteProductoDTO[]> => {
     const { data } = await api.get<ComponenteProductoDTO[]>(`${BASE}/${productoId}/componentes`);
     return data;

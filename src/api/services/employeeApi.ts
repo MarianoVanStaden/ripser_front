@@ -45,6 +45,12 @@ export const employeeApi = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
+  // Get employees enabled as conductor or acompañante (para selector de km-empleado)
+  getConductoresOAcompanantes: async (): Promise<Empleado[]> => {
+    const response = await api.get('/api/empleados/conductores-o-acompanantes');
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
   // Get employee by ID
   getById: async (id: number): Promise<Empleado> => {
     const response = await api.get(`/api/empleados/${id}`);

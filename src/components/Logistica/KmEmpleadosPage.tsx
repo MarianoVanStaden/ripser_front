@@ -113,7 +113,7 @@ const KmEmpleadosPage: React.FC = () => {
   const ensureEmpleados = useCallback(async () => {
     if (empleados.length > 0) return;
     try {
-      const list = await employeeApi.getAllList();
+      const list = await employeeApi.getConductoresOAcompanantes();
       setEmpleados(list as EmpleadoLite[]);
     } catch (err) {
       setFormError(extractError(err));

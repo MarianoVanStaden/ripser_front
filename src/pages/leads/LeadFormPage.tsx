@@ -113,7 +113,7 @@ export const LeadFormPage = () => {
     estadoLead: EstadoLeadEnum.PRIMER_CONTACTO,
     fechaPrimerContacto: new Date().toISOString().split('T')[0],
     sucursalId: sucursalFiltro ?? undefined,
-    usuarioAsignadoId: user?.id ?? undefined,
+    usuarioAsignadoId: isEditMode ? undefined : (user?.id ?? undefined),
     productoInteresId: undefined,
     cantidadProductoInteres: undefined,
     recetaInteresId: undefined,

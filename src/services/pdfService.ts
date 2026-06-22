@@ -1085,6 +1085,15 @@ export const generarCreditoPDF = (
   }
   y += 24;
 
+  // ---- Cálculos ajustados: PAGO_INFORMADO se trata como pagada en el PDF ----
+  const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
+  const montoPagoInformado = cuotasOrdenadas
+    .filter(c => c.estado === 'PAGO_INFORMADO')
+    .reduce((sum, c) => sum + Number(c.montoCuota), 0);
+  const cuotasPagoInformadoCount = cuotasOrdenadas.filter(c => c.estado === 'PAGO_INFORMADO').length;
+  const cobradoAjustado = Number(prestamo.montoPagado) + montoPagoInformado;
+  const saldoAjustado = Math.max(0, Number(prestamo.saldoPendiente) - montoPagoInformado);
+
   // ---- Bloque Crédito ----
   doc.setFillColor(...COLORS.white);
   doc.rect(margin + 1, y, pageWidth - (margin * 2) - 2, 30, 'F');
@@ -1103,7 +1112,7 @@ export const generarCreditoPDF = (
   const c3 = c2 + colW;
 
   doc.text(`Monto total: ${formatCurrency(prestamo.montoTotal)}`, c1, y + 11);
-  doc.text(`Cuotas: ${prestamo.cuotasPagadas}/${prestamo.cantidadCuotas}`, c2, y + 11);
+  doc.text(`Cuotas: ${Number(prestamo.cuotasPagadas) + cuotasPagoInformadoCount}/${prestamo.cantidadCuotas}`, c2, y + 11);
   doc.text(`Valor cuota: ${formatCurrency(prestamo.valorCuota)}`, c3, y + 11);
 
   doc.text(`Financiación: ${TIPO_FINANCIACION_LABELS[prestamo.tipoFinanciacion] || prestamo.tipoFinanciacion}`, c1, y + 17);
@@ -1113,8 +1122,8 @@ export const generarCreditoPDF = (
     : 'Pendiente de entrega';
   doc.text(`Fecha entrega: ${fechaEntregaTxt}`, c3, y + 17);
 
-  doc.text(`Cobrado: ${formatCurrency(prestamo.montoPagado)}`, c1, y + 23);
-  doc.text(`Saldo: ${formatCurrency(prestamo.saldoPendiente)}`, c2, y + 23);
+  doc.text(`Cobrado: ${formatCurrency(cobradoAjustado)}`, c1, y + 23);
+  doc.text(`Saldo: ${formatCurrency(saldoAjustado)}`, c2, y + 23);
   if (prestamo.diasVencido && prestamo.diasVencido > 0) {
     doc.setTextColor(...COLORS.darkGray);
     doc.setFont('helvetica', 'bold');
@@ -1132,17 +1141,21 @@ export const generarCreditoPDF = (
   const estadoLabelPDF = (estado: CuotaPrestamoDTO['estado']): string =>
     estado === 'PAGO_INFORMADO' ? 'Pagada' : (ESTADO_CUOTA_LABELS[estado] || estado);
 
-  const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
-  const rows = cuotasOrdenadas.map(c => [
-    c.numeroCuota.toString(),
-    c.fechaVencimiento ? formatDate(c.fechaVencimiento) : 'Pendiente',
-    formatCurrency(c.montoCuota),
-    formatCurrency(c.montoPagado),
-    formatCurrency(Math.max(0, Number(c.montoCuota) - Number(c.montoPagado))),
-    c.numeroComprobante || '-',
-    estadoLabelPDF(c.estado),
-    c.diasMora && c.diasMora > 0 ? c.diasMora.toString() : '-',
-  ]);
+  const rows = cuotasOrdenadas.map(c => {
+    const esPagoInformado = c.estado === 'PAGO_INFORMADO';
+    const pagado = esPagoInformado ? Number(c.montoCuota) : Number(c.montoPagado);
+    const saldo = esPagoInformado ? 0 : Math.max(0, Number(c.montoCuota) - Number(c.montoPagado));
+    return [
+      c.numeroCuota.toString(),
+      c.fechaVencimiento ? formatDate(c.fechaVencimiento) : 'Pendiente',
+      formatCurrency(c.montoCuota),
+      formatCurrency(pagado),
+      formatCurrency(saldo),
+      c.numeroComprobante || '-',
+      estadoLabelPDF(c.estado),
+      c.diasMora && c.diasMora > 0 ? c.diasMora.toString() : '-',
+    ];
+  });
 
   autoTable(doc, {
     head: [['#', 'Vencimiento', 'Monto', 'Pagado', 'Saldo', 'Comprobante', 'Estado', 'Días mora']],
@@ -1196,7 +1209,7 @@ export const generarCreditoPDF = (
     yT = margin + 5;
   }
 
-  const cuotasPagadas = cuotasOrdenadas.filter(c => c.estado === 'PAGADA').length;
+  const cuotasPagadas = cuotasOrdenadas.filter(c => c.estado === 'PAGADA' || c.estado === 'PAGO_INFORMADO').length;
   const cuotasVencidas = cuotasOrdenadas.filter(c => c.estado === 'VENCIDA').length;
   const cuotasPendientes = cuotasOrdenadas.filter(c => c.estado === 'PENDIENTE').length;
 
@@ -1216,8 +1229,8 @@ export const generarCreditoPDF = (
   doc.text(`Vencidas: ${cuotasVencidas}`, c3, yT + 11);
 
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total cobrado: ${formatCurrency(prestamo.montoPagado)}`, c1, yT + 17);
-  doc.text(`Saldo pendiente: ${formatCurrency(prestamo.saldoPendiente)}`, c2, yT + 17);
+  doc.text(`Total cobrado: ${formatCurrency(cobradoAjustado)}`, c1, yT + 17);
+  doc.text(`Saldo pendiente: ${formatCurrency(saldoAjustado)}`, c2, yT + 17);
   if (prestamo.vencimientoActual) {
     doc.text(`Próximo vence: ${formatDate(prestamo.vencimientoActual)}`, c3, yT + 17);
   }
