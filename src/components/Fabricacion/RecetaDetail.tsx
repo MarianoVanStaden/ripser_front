@@ -555,21 +555,7 @@ const RecetaDetail: React.FC = () => {
               InputProps={{ inputProps: { min: 1 } }}
               required
             />
-            {puedeVerCostos && (
-              <TextField
-                label="Costo Unitario *"
-                type="number"
-                value={newDetalle.costoUnitario}
-                onChange={(e) =>
-                  setNewDetalle((prev) => ({
-                    ...prev,
-                    costoUnitario: Number(e.target.value),
-                  }))
-                }
-                InputProps={{ inputProps: { min: 0, step: 0.01 } }}
-                required
-              />
-            )}
+            {/* El costo unitario se toma del producto (costo vigente); no se edita acá. */}
             <TextField
               label="Observaciones"
               multiline
@@ -627,18 +613,7 @@ const RecetaDetail: React.FC = () => {
               required
               autoFocus
             />
-            {puedeVerCostos && (
-              <TextField
-                label="Costo Unitario *"
-                type="number"
-                value={editForm.costoUnitario}
-                onChange={(e) =>
-                  setEditForm((prev) => ({ ...prev, costoUnitario: Number(e.target.value) }))
-                }
-                InputProps={{ inputProps: { min: 0, step: 0.01 } }}
-                required
-              />
-            )}
+            {/* El costo unitario se toma del producto (costo vigente); no se edita acá. */}
             <TextField
               label="Observaciones"
               multiline
@@ -648,17 +623,6 @@ const RecetaDetail: React.FC = () => {
                 setEditForm((prev) => ({ ...prev, observaciones: e.target.value }))
               }
             />
-            {puedeVerCostos && (
-              <Alert severity="info" icon={false}>
-                Subtotal:{' '}
-                <strong>
-                  ${((editForm.cantidad || 0) * (editForm.costoUnitario || 0)).toLocaleString('es-AR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </strong>
-              </Alert>
-            )}
           </Stack>
         </DialogContent>
         <DialogActions>

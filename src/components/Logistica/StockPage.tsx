@@ -30,6 +30,7 @@ import {
   Switch,
   FormControlLabel,
   TablePagination,
+  Tooltip,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -39,16 +40,24 @@ import {
   TrendingDown as TrendingDownIcon,
   Edit as EditIcon,
   GetApp as GetAppIcon,
+  AccountTree as AccountTreeIcon,
+  Tune as TuneIcon,
 } from '@mui/icons-material';
 import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
+import { productoCompuestoApi } from '../../api/services/productoCompuestoApi';
 import {
   fetchProductosUnificados,
   updateProducto,
   isCategoriaReventa,
 } from '../../api/services/productoRouting';
 import type { ProductoUnificado } from '../../api/services/productoRouting';
-import type { MovimientoStock, CategoriaProducto } from '../../types';
+import type { MovimientoStock, CategoriaProducto, DesgloseStockProductoDTO } from '../../types';
+import {
+  ComposicionDialog,
+  AjusteStockDialog,
+  type ProductoPicker,
+} from './MaterialesCompuestosDialogs';
 import { TipoEntidadProducto } from '../../types';
 import { generateStockInventoryPDF } from '../../utils/pdfExportUtils';
 import { loadPriceCalculationParams, calculateSellingPrice } from '../../utils/priceCalculations';
@@ -81,8 +90,14 @@ const StockPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   // Roles operativos (Taller/Transporte/Logístico) no ven costo ni precio.
-  const { puedeVerCostos } = usePermisos();
+  const { puedeVerCostos, esAdmin, tieneRol } = usePermisos();
+  // Gestión de compuestos (definir composición / ajustar stock) = ADMIN_TAL (backend).
+  const canGestionCompuestos = esAdmin || tieneRol('ADMIN_EMPRESA_LIMITADO', 'TALLER');
   const [products, setProducts] = useState<ProductoUnificado[]>([]);
+  const [desgloseMap, setDesgloseMap] = useState<Record<number, DesgloseStockProductoDTO>>({});
+  const [compuestoIds, setCompuestoIds] = useState<Set<number>>(new Set());
+  const [composicionProd, setComposicionProd] = useState<ProductoPicker | null>(null);
+  const [ajusteProd, setAjusteProd] = useState<(ProductoPicker & { stockActual?: number }) | null>(null);
   const [stockMovements, setStockMovements] = useState<MovimientoStock[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,15 +166,19 @@ const StockPage: React.FC = () => {
     try {
       setLoading(true);
       // Pedimos materiales + productos de reventa unificados, anotando tipoEntidad.
-      const [productsList, movementsData, categoriasData] = await Promise.all([
+      const [productsList, movementsData, categoriasData, desglose, compuestos] = await Promise.all([
         fetchProductosUnificados(),
         movimientoStockApi.getAll({ page: 0, size: 10000 }),
         categoriaProductoApi.getAll(),
+        productoCompuestoApi.getDesgloseStock().catch(() => [] as DesgloseStockProductoDTO[]),
+        productoCompuestoApi.getCompuestosIds().catch(() => [] as number[]),
       ]);
 
       setProducts(productsList);
       setStockMovements(movementsData.content ?? []);
       setCategorias(categoriasData);
+      setDesgloseMap(Object.fromEntries(desglose.map((d) => [d.productoId, d])));
+      setCompuestoIds(new Set(compuestos));
       setError(null);
     } catch (err) {
       const error = err as { response?: { status?: number } };
@@ -572,9 +591,21 @@ const StockPage: React.FC = () => {
                       <TableCell>{product.codigo}</TableCell>
                       <TableCell>
                         <Box>
-                          <Typography variant="body2" fontWeight="bold">
-                            {product.nombre}
-                          </Typography>
+                          <Box display="flex" alignItems="center" gap={0.5}>
+                            <Typography variant="body2" fontWeight="bold">
+                              {product.nombre}
+                            </Typography>
+                            {compuestoIds.has(product.id) && (
+                              <Chip
+                                icon={<AccountTreeIcon />}
+                                label="Compuesto"
+                                size="small"
+                                color="info"
+                                variant="outlined"
+                                sx={{ height: 20 }}
+                              />
+                            )}
+                          </Box>
                           <Typography variant="caption" color="text.secondary">
                             {product.descripcion}
                           </Typography>
@@ -591,6 +622,15 @@ const StockPage: React.FC = () => {
                         <Typography variant="h6" fontWeight="bold">
                           {product.stockActual}
                         </Typography>
+                        {(() => {
+                          const d = desgloseMap[product.id];
+                          if (!d || d.embebido <= 0) return null;
+                          return (
+                            <Typography variant="caption" color="info.main" display="block">
+                              + {d.embebido} en compuestos · Total {d.total}
+                            </Typography>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell align="center">
                         <Typography variant="body2">
@@ -624,6 +664,36 @@ const StockPage: React.FC = () => {
                         >
                           <EditIcon />
                         </IconButton>
+                        {product.tipoEntidad !== TipoEntidadProducto.PRODUCTO_TERMINADO && canGestionCompuestos && (
+                          <Tooltip title="Composición (materia prima que ocupa)">
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={() =>
+                                setComposicionProd({ id: product.id, nombre: product.nombre, codigo: product.codigo })
+                              }
+                            >
+                              <AccountTreeIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canGestionCompuestos && (
+                          <Tooltip title="Contar / ajustar stock">
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                setAjusteProd({
+                                  id: product.id,
+                                  nombre: product.nombre,
+                                  codigo: product.codigo,
+                                  stockActual: product.stockActual,
+                                })
+                              }
+                            >
+                              <TuneIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -937,6 +1007,28 @@ const StockPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Materiales compuestos: composición, producción y ajuste */}
+      <ComposicionDialog
+        open={composicionProd != null}
+        producto={composicionProd}
+        productos={products.map((p) => ({ id: p.id, nombre: p.nombre, codigo: p.codigo }))}
+        canEdit={canGestionCompuestos}
+        onClose={() => setComposicionProd(null)}
+        onSaved={() => {
+          setComposicionProd(null);
+          loadData();
+        }}
+      />
+      <AjusteStockDialog
+        open={ajusteProd != null}
+        producto={ajusteProd}
+        onClose={() => setAjusteProd(null)}
+        onAdjusted={() => {
+          setAjusteProd(null);
+          loadData();
+        }}
+      />
     </Box>
   );
 };

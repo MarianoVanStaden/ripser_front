@@ -96,14 +96,6 @@ export const recetaFabricacionApi = {
     return response.data;
   },
 
-  // Recalculate costs for all ingredients using current Producto.costo
-  recalcularCostos: async (id: number): Promise<RecetaFabricacionDTO> => {
-    const response = await api.patch<RecetaFabricacionDTO>(
-      `/api/recetas-fabricacion/${id}/recalcular-costos`
-    );
-    return response.data;
-  },
-
   // Get full cost breakdown for a receta
   getCosteo: async (id: number): Promise<CosteoRecetaDTO> => {
     const response = await api.get<CosteoRecetaDTO>(`/api/recetas-fabricacion/${id}/costeo`);
