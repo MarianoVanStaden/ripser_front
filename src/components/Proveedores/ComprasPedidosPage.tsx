@@ -1555,13 +1555,23 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
         required
       />
       <TextField
-        label="Total"
+        label="Subtotal neto"
         value={(item.cantidad * item.precioUnitario).toFixed(2)}
         InputProps={{
           startAdornment: <InputAdornment position="start">$</InputAdornment>,
           readOnly: true,
         }}
         sx={{ width: 120 }}
+      />
+      <TextField
+        label="Subtotal c/IVA"
+        value={(item.cantidad * item.precioUnitario * (1 + (IVA_RATE[newOrden.tipoIva] ?? 0))).toFixed(2)}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">$</InputAdornment>,
+          readOnly: true,
+        }}
+        sx={{ width: 130 }}
+        helperText={IVA_LABEL[newOrden.tipoIva]}
       />
     </Box>
   </Box>

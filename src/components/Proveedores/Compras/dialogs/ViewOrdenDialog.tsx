@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import { Print as PrintIcon } from '@mui/icons-material';
 import type { OrdenCompra, Producto } from '../../../../types';
+import { IVA_RATE, IVA_LABEL } from '../../../../types/compra.types';
 import { getEstadoColor, getEstadoIcon } from '../utils';
 
 interface Props {
@@ -104,6 +105,14 @@ const ViewOrdenDialog: React.FC<Props> = ({ open, onClose, onPrintPdf, orden, pr
                     </Typography>
                   </Box>
                 )}
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    IVA
+                  </Typography>
+                  <Typography variant="body1">
+                    {IVA_LABEL[orden.tipoIva ?? 'EXENTO']}
+                  </Typography>
+                </Box>
               </Box>
               {orden.observaciones && (
                 <Box sx={{ mt: 2 }}>
@@ -125,7 +134,8 @@ const ViewOrdenDialog: React.FC<Props> = ({ open, onClose, onPrintPdf, orden, pr
                     <TableCell>Descripción</TableCell>
                     <TableCell align="right">Cantidad</TableCell>
                     <TableCell align="right">Precio Unit.</TableCell>
-                    <TableCell align="right">Subtotal</TableCell>
+                    <TableCell align="right">Subtotal neto</TableCell>
+                    <TableCell align="right">Subtotal c/IVA</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -176,17 +186,48 @@ const ViewOrdenDialog: React.FC<Props> = ({ open, onClose, onPrintPdf, orden, pr
                           ${item.precioUnitario.toLocaleString()}
                         </TableCell>
                         <TableCell align="right">${item.subtotal.toLocaleString()}</TableCell>
+                        <TableCell align="right">
+                          ${(item.subtotal * (1 + (IVA_RATE[orden.tipoIva ?? 'EXENTO'] ?? 0))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
-                  <TableRow>
-                    <TableCell colSpan={3} sx={{ fontWeight: 'bold' }}>
-                      Total
-                    </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                      ${orden.total.toLocaleString()}
-                    </TableCell>
-                  </TableRow>
+                  {(() => {
+                    const tasa = IVA_RATE[orden.tipoIva ?? 'EXENTO'] ?? 0;
+                    const neto = orden.subtotalNeto
+                      ?? orden.items.reduce((sum, it) => sum + it.subtotal, 0);
+                    const iva = orden.montoIva ?? Math.round(neto * tasa * 100) / 100;
+                    const total = orden.total ?? neto + iva;
+                    const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    return (
+                      <>
+                        <TableRow>
+                          <TableCell colSpan={3} align="right" sx={{ borderBottom: 'none' }}>
+                            Subtotal neto
+                          </TableCell>
+                          <TableCell colSpan={2} align="right" sx={{ borderBottom: 'none' }}>
+                            ${fmt(neto)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} align="right" sx={{ borderBottom: 'none' }}>
+                            {IVA_LABEL[orden.tipoIva ?? 'EXENTO']}
+                          </TableCell>
+                          <TableCell colSpan={2} align="right" sx={{ borderBottom: 'none' }}>
+                            ${fmt(iva)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} align="right" sx={{ fontWeight: 'bold' }}>
+                            Total
+                          </TableCell>
+                          <TableCell colSpan={2} align="right" sx={{ fontWeight: 'bold' }}>
+                            ${fmt(total)}
+                          </TableCell>
+                        </TableRow>
+                      </>
+                    );
+                  })()}
                 </TableBody>
               </Table>
             </TableContainer>
