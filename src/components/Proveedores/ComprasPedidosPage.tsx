@@ -62,6 +62,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 import { usePermisos } from '../../hooks/usePermisos';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import type { NewOrdenForm, PriceChange, RecepcionItem } from './Compras/types';
+import { IVA_RATE, IVA_LABEL, type TipoIvaCompra } from '../../types/compra.types';
 import { createInitialNewOrden } from './Compras/constants';
 import { getEstadoColor, getEstadoIcon } from './Compras/utils';
 import DeleteOrdenDialog from './Compras/dialogs/DeleteOrdenDialog';
@@ -188,7 +189,12 @@ const loadCompras = async () => {
             ? (compra as any).fechaEntrega
             : new Date().toISOString(),
           estado: compra.estado,
-          total: (compra as any).detalles?.reduce((sum: number, item: any) => sum + item.cantidad * item.costoUnitario, 0) || 0,
+          tipoIva: ((compra as any).tipoIva as TipoIvaCompra) || 'EXENTO',
+          subtotalNeto: (compra as any).subtotalNeto ?? undefined,
+          montoIva: (compra as any).montoIva ?? undefined,
+          // Usar el total bruto del backend (neto + IVA); fallback a neto calculado.
+          total: (compra as any).total
+            ?? ((compra as any).detalles?.reduce((sum: number, item: any) => sum + item.cantidad * item.costoUnitario, 0) || 0),
           items: ((compra as any).detalles || []).map((detalle: any) => ({
             id: detalle.id,
             productoId: detalle.productoId ? detalle.productoId.toString() : '',
@@ -202,6 +208,7 @@ const loadCompras = async () => {
             codigoProductoTemporal: detalle.codigoProductoTemporal || '',
             categoriaProductoId: detalle.categoriaProductoId,
             esProductoNuevo: detalle.esProductoNuevo ?? !detalle.productoId,
+            actualizarCosto: detalle.actualizarCosto ?? false,
           })),
           observaciones: compra.observaciones,
           metodoPago: (compra as any).metodoPago || 'EFECTIVO',
@@ -390,6 +397,7 @@ const handleEditOrden = (orden: OrdenCompra) => {
     observaciones: orden.observaciones || '',
     estado: orden.estado || 'PENDIENTE', // Set estado from the selected order
     metodoPago: (orden.metodoPago || '') as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA',
+    tipoIva: orden.tipoIva || 'EXENTO',
     items: orden.items.map((item) => ({
       productoId: item.productoId ? item.productoId.toString() : '',
       nombreProductoTemporal: item.nombreProductoTemporal || item.descripcion || '',
@@ -494,26 +502,25 @@ const createStockMovementsForReceivedItems = async (compra: CompraDTO): Promise<
 };
 
 // Function to detect price changes and show confirmation dialog
-const detectPriceChanges = () => {
-  const changes: Array<{
-    productoId: number;
-    nombreProducto: string;
-    precioAnterior: number;
-    precioNuevo: number;
-    shouldUpdate: boolean;
-  }> = [];
+const detectPriceChanges = (): PriceChange[] => {
+  const changes: PriceChange[] = [];
+  // El IVA es a nivel orden: el costo que se persistirá es BRUTO (neto + IVA).
+  const tasa = IVA_RATE[newOrden.tipoIva] ?? 0;
 
   newOrden.items.forEach((item) => {
     if (item.productoId && !item.esProductoNuevo) {
       const producto = productos.find(p => p.id.toString() === item.productoId);
-      // Comparar con el costo anterior (precio de compra), no el precio de venta
+      // Comparar el costo anterior persistido contra el costo BRUTO nuevo (con IVA),
+      // que es exactamente lo que el backend guardará en Producto.costo.
       const costoAnterior = producto?.costo ?? 0;
-      if (producto && costoAnterior !== item.precioUnitario) {
+      const costoBruto = Math.round(item.precioUnitario * (1 + tasa) * 100) / 100;
+      if (producto && costoAnterior !== costoBruto) {
         changes.push({
           productoId: producto.id,
           nombreProducto: producto.nombre,
           precioAnterior: costoAnterior,
-          precioNuevo: item.precioUnitario,
+          precioNuevo: costoBruto,
+          netoNuevo: item.precioUnitario,
           shouldUpdate: true, // Default to true
         });
       }
@@ -580,12 +587,16 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
     const isNowRecibida = newOrden.estado === 'RECIBIDA';
     const shouldUpdateStock = isNowRecibida && (!isEditMode || wasNotRecibida);
 
+    // Productos cuyo costo el usuario decidió actualizar (Caso B) → flag por detalle.
+    const productosAActualizar = new Set(priceUpdates.map((u) => u.productoId));
+
     const compraPayload: CreateCompraDTO = {
       proveedorId: parseInt(newOrden.supplierId),
       fechaEntrega: newOrden.fechaEntregaEstimada.format('YYYY-MM-DDTHH:mm:ss'),
       observaciones: newOrden.observaciones,
       estado: newOrden.estado,
       metodoPago: newOrden.metodoPago || undefined,
+      tipoIva: newOrden.tipoIva,
       detalles: newOrden.items.map((item) => ({
         productoId: item.productoId ? parseInt(item.productoId) : undefined,
         nombreProductoTemporal: item.esProductoNuevo ? item.nombreProductoTemporal : undefined,
@@ -594,7 +605,11 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
         categoriaProductoId: item.categoriaId ? parseInt(item.categoriaId) : undefined,
         esProductoNuevo: item.esProductoNuevo,
         cantidad: item.cantidad,
+        // Se envía el precio NETO; el backend aplica el IVA de la orden una sola vez.
         costoUnitario: item.precioUnitario,
+        actualizarCosto: item.productoId
+          ? productosAActualizar.has(parseInt(item.productoId))
+          : false,
       })),
     };
 
@@ -616,15 +631,16 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
       await createStockMovementsForReceivedItems(createdOrUpdatedCompra);
     }
 
-    // Update prices for selected products
+    // Actualizar el COSTO (no el precio de venta) de los productos seleccionados.
+    // precioNuevo ya es el costo BRUTO (neto + IVA de la orden) — no se re-aplica IVA.
     for (const update of priceUpdates) {
       try {
         await productApi.update(update.productoId, {
-          precio: update.precioNuevo,
+          costo: update.precioNuevo,
         });
-        console.log(`Updated price for product ${update.productoId} to ${update.precioNuevo}`);
+        console.log(`Updated costo for product ${update.productoId} to ${update.precioNuevo}`);
       } catch (err) {
-        console.error(`Error updating price for product ${update.productoId}:`, err);
+        console.error(`Error updating costo for product ${update.productoId}:`, err);
       }
     }
 
@@ -641,6 +657,7 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
       observaciones: '',
       estado: 'PENDIENTE',
       metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA',
+      tipoIva: 'EXENTO',
       items: [{
         productoId: '',
         nombreProductoTemporal: '',
@@ -1315,6 +1332,20 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
   <MenuItem value="FINANCIACION_PROPIA">Financiación Propia</MenuItem>
 </TextField>
 
+<TextField
+  fullWidth
+  select
+  label="IVA"
+  value={newOrden.tipoIva}
+  onChange={(e) => setNewOrden({ ...newOrden, tipoIva: e.target.value as TipoIvaCompra })}
+  margin="normal"
+  helperText="Se aplica a toda la orden. Los precios de los ítems se cargan SIN IVA (netos)."
+>
+  <MenuItem value="EXENTO">{IVA_LABEL.EXENTO}</MenuItem>
+  <MenuItem value="IVA_10_5">{IVA_LABEL.IVA_10_5}</MenuItem>
+  <MenuItem value="IVA_21">{IVA_LABEL.IVA_21}</MenuItem>
+</TextField>
+
       <DatePicker
         label="Fecha de Entrega Estimada"
         value={newOrden.fechaEntregaEstimada}
@@ -1544,12 +1575,26 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
       >
         Agregar Item
       </Button>
-      <Typography>
-        Total: $
-        {newOrden.items
-          .reduce((sum, item) => sum + item.cantidad * item.precioUnitario, 0)
-          .toLocaleString()}
-      </Typography>
+      {(() => {
+        const neto = newOrden.items.reduce(
+          (sum, item) => sum + item.cantidad * item.precioUnitario, 0);
+        const tasa = IVA_RATE[newOrden.tipoIva] ?? 0;
+        const iva = Math.round(neto * tasa * 100) / 100;
+        const total = neto + iva;
+        return (
+          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Subtotal neto: ${neto.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {IVA_LABEL[newOrden.tipoIva]}: ${iva.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Typography>
+            <Typography variant="h6">
+              Total: ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Typography>
+          </Box>
+        );
+      })()}
     </Box>
   </DialogContent>
   <DialogActions sx={{ justifyContent: 'space-between' }}>

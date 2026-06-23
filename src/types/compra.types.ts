@@ -153,6 +153,22 @@ export interface CreateMovimientoProveedorPayload {
   cajaPesosId?: number | null;
   cajaAhorroId?: number | null;
 }
+/** Alícuotas de IVA soportadas (espejo del enum backend TipoIva). */
+export type TipoIvaCompra = 'IVA_21' | 'IVA_10_5' | 'EXENTO';
+
+/** Tasa decimal por alícuota (0.21, 0.105, 0). */
+export const IVA_RATE: Record<TipoIvaCompra, number> = {
+  IVA_21: 0.21,
+  IVA_10_5: 0.105,
+  EXENTO: 0,
+};
+
+export const IVA_LABEL: Record<TipoIvaCompra, string> = {
+  IVA_21: 'IVA 21%',
+  IVA_10_5: 'IVA 10.5%',
+  EXENTO: 'Exento',
+};
+
 export interface DetalleCompraDTO {
   id: number;
   productoId: number;
@@ -166,6 +182,7 @@ export interface DetalleCompraDTO {
   codigoProductoTemporal?: string;
   categoriaProductoId?: number;
   esProductoNuevo?: boolean;
+  actualizarCosto?: boolean;
 }
 export interface OrdenCompra {
   id: number;
@@ -176,6 +193,9 @@ export interface OrdenCompra {
   fechaEntregaEstimada: string;
   fechaEntregaReal?: string;
   estado: string;
+  tipoIva?: TipoIvaCompra;
+  subtotalNeto?: number;
+  montoIva?: number;
   total: number;
   items: {
     id?: number;
@@ -206,6 +226,10 @@ export interface CompraDTO {
   fechaCreacion: string;
   fechaEntrega: string;
   estado: string;
+  tipoIva?: TipoIvaCompra;
+  subtotalNeto?: number;
+  montoIva?: number;
+  total?: number;
   observaciones?: string;
   metodoPago?: MetodoPago;
   usuarioCreadorId?: number | null;
@@ -222,6 +246,7 @@ export interface CompraDTO {
     esProductoNuevo: boolean;
     cantidad: number;
     costoUnitario: number;
+    actualizarCosto?: boolean;
   }[];
 }
 
@@ -231,6 +256,7 @@ export interface CreateCompraDTO {
   observaciones?: string;
   estado?: string; // Included for state updates
   metodoPago?: MetodoPago;
+  tipoIva?: TipoIvaCompra;
   detalles: Array<{
     id?: number; // For existing detalles
     productoId?: number;
@@ -241,6 +267,7 @@ export interface CreateCompraDTO {
     esProductoNuevo: boolean;
     cantidad: number;
     costoUnitario: number;
+    actualizarCosto?: boolean;
   }>;
 }
 

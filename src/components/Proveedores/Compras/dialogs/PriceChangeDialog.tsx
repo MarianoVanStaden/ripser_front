@@ -50,13 +50,14 @@ const PriceChangeDialog: React.FC<Props> = ({
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={1}>
           <MoneyIcon color="warning" />
-          <Typography variant="h6">Cambios de Precio Detectados</Typography>
+          <Typography variant="h6">Cambios de Costo Detectados</Typography>
         </Box>
       </DialogTitle>
       <DialogContent>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Se detectaron cambios en los precios de compra. Seleccione los productos cuyos precios
-          desea actualizar en el sistema.
+          Se detectaron cambios en el costo de compra. Seleccione los productos cuyo costo
+          desea actualizar en el sistema. El costo nuevo es el valor <strong>con IVA</strong>
+          {' '}(neto + IVA de la orden) que quedará guardado.
         </Alert>
 
         <TableContainer>
@@ -67,7 +68,8 @@ const PriceChangeDialog: React.FC<Props> = ({
                 <TableCell>Producto</TableCell>
                 <TableCell align="right">Costo Anterior</TableCell>
                 <TableCell align="center">→</TableCell>
-                <TableCell align="right">Costo Nuevo</TableCell>
+                <TableCell align="right">Neto</TableCell>
+                <TableCell align="right">Costo Nuevo (c/IVA)</TableCell>
                 <TableCell align="right">Variación</TableCell>
               </TableRow>
             </TableHead>
@@ -107,6 +109,11 @@ const PriceChangeDialog: React.FC<Props> = ({
                     </TableCell>
                     <TableCell align="center">
                       <Typography color={isIncrease ? 'error' : 'success'}>→</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color="text.secondary">
+                        ${change.netoNuevo.toLocaleString()}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography
@@ -151,7 +158,7 @@ const PriceChangeDialog: React.FC<Props> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={onSaveWithoutUpdates} color="inherit">
-          Guardar sin Actualizar Precios
+          Guardar sin Actualizar Costos
         </Button>
         <Button
           onClick={() => {
@@ -164,7 +171,7 @@ const PriceChangeDialog: React.FC<Props> = ({
           color="primary"
           disabled={!someChecked}
         >
-          Actualizar {selectedCount} Precio(s)
+          Actualizar {selectedCount} Costo(s)
         </Button>
       </DialogActions>
     </Dialog>

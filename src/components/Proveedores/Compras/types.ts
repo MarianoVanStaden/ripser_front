@@ -1,5 +1,6 @@
 // FRONT-003: extracted from ComprasPedidosPage.tsx — types kept colocated.
 import type { Dayjs } from 'dayjs';
+import type { TipoIvaCompra } from '../../../types/compra.types';
 
 export type MetodoPagoCompra =
   | ''
@@ -28,14 +29,19 @@ export interface NewOrdenForm {
   observaciones: string;
   estado: string;
   metodoPago: MetodoPagoCompra;
+  tipoIva: TipoIvaCompra;
   items: NewOrdenItem[];
 }
 
 export interface PriceChange {
   productoId: number;
   nombreProducto: string;
+  /** Costo anterior persistido (Producto.costo, ya con IVA si vino de una OC con IVA). */
   precioAnterior: number;
+  /** Costo bruto (neto + IVA) que se persistirá si shouldUpdate. */
   precioNuevo: number;
+  /** Precio neto ingresado en la OC (sin IVA), sólo informativo. */
+  netoNuevo: number;
   shouldUpdate: boolean;
 }
 

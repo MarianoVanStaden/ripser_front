@@ -21,5 +21,6 @@ export const createInitialNewOrden = (): NewOrdenForm => ({
   observaciones: '',
   estado: 'PENDIENTE',
   metodoPago: '',
+  tipoIva: 'EXENTO',
   items: [{ ...initialOrdenItem }],
 });
