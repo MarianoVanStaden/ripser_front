@@ -329,6 +329,15 @@ export const LeadDetailPage = () => {
                 <CanalBadge canal={lead.canal} size="medium" />
               </Box>
 
+              {lead.asesorNombre && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Asesor Asignado
+                  </Typography>
+                  <Typography variant="body1">{lead.asesorNombre}</Typography>
+                </Box>
+              )}
+
               {lead.fechaPrimerContacto && (
                 <Box>
                   <Typography variant="body2" color="text.secondary" gutterBottom>

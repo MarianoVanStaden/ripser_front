@@ -1595,7 +1595,6 @@ const PresupuestosPage: React.FC = () => {
                 disabled={readOnly || !editingPresupuesto}
               >
                 <MenuItem value={EstadoDocumentoEnum.PENDIENTE}>Pendiente</MenuItem>
-                <MenuItem value={EstadoDocumentoEnum.APROBADO}>Aprobado</MenuItem>
                 <MenuItem value={EstadoDocumentoEnum.RECHAZADO}>Rechazado</MenuItem>
               </TextField>
 

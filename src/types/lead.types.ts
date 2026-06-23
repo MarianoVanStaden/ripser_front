@@ -101,6 +101,7 @@ export interface LeadDTO {
   fechaUltimoContacto?: string;
   fechaProximoSeguimiento?: string;
   usuarioAsignadoId?: number;
+  asesorNombre?: string;
   // Producto de interés
   productoInteresId?: number;
   productoInteresNombre?: string;

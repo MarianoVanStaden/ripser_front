@@ -203,7 +203,7 @@ const renderOpcionFinanciamiento = ({
         },
       },
       {
-        content: propio ? `Total estimado: ${formatCurrency(calc!.totalEstimado)}` : `Total: ${formatCurrency(opcion.montoTotal)}`,
+        content: propio ? '' : `Total: ${formatCurrency(opcion.montoTotal)}`,
         styles: {
           halign: 'right',
           fontStyle: 'bold' as const,
@@ -272,19 +272,6 @@ const renderOpcionFinanciamiento = ({
           {
             content: `Saldo a financiar: ${formatCurrency(calc.saldo)}`,
             styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
-          },
-        ],
-        [
-          {
-            content: `Interés ${opcion.tasaInteres}% sobre saldo: ${formatCurrency(calc.saldoConInteres)}`,
-            styles: {
-              halign: 'left',
-              fontSize: 8,
-              fontStyle: 'italic' as const,
-              fillColor: COLORS.white,
-              cellPadding: 2,
-            },
-            colSpan: 2,
           },
         ],
       ],

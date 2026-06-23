@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Paper,
@@ -43,6 +43,8 @@ import { useNavigate } from 'react-router-dom';
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { leadApi, type LeadFilterParams } from '../../api/services/leadApi';
+import { usuarioApi } from '../../api/services/usuarioApi';
+import type { Usuario } from '../../types';
 import {
   EstadoLeadEnum,
   PrioridadLeadEnum,
@@ -214,6 +216,7 @@ export const LeadsTablePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [soloMisLeads, setSoloMisLeads] = useState(false);
   const [datePreset, setDatePreset] = useState<DatePreset>('todos');
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [customFechaDesde, setCustomFechaDesde] = useState('');
   const [customFechaHasta, setCustomFechaHasta] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -301,6 +304,26 @@ export const LeadsTablePage = () => {
     leads.length,
     fetchNextPage
   ]);
+
+  useEffect(() => {
+    usuarioApi
+      .getVendedores()
+      .then((data) => {
+        if (data.length > 0) setUsuarios(data);
+        else return usuarioApi.getActivos().then(setUsuarios);
+      })
+      .catch(() => usuarioApi.getActivos().then(setUsuarios).catch(() => {}));
+  }, []);
+
+  const usuarioPrimerNombre = useCallback(
+    (id?: number) => {
+      if (!id) return '—';
+      const u = usuarios.find((u) => u.id === id);
+      if (!u) return `#${id}`;
+      return u.nombre || (u as any).username || `#${id}`;
+    },
+    [usuarios]
+  );
 
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -672,8 +695,8 @@ export const LeadsTablePage = () => {
                   Prior.
                 </TableSortLabel>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '12%', minWidth: 120, display: { xs: 'none', lg: 'table-cell' } }}>
-                Interés
+              <TableCell sx={{ fontWeight: 'bold', py: 1, width: '10%', minWidth: 100, display: { xs: 'none', lg: 'table-cell' } }}>
+                Asesor
               </TableCell>
               <TableCell align="center" sx={{ fontWeight: 'bold', py: 1, width: '6%', minWidth: 70, display: { xs: 'none', md: 'table-cell' } }}>
                 Rec.
@@ -782,27 +805,10 @@ export const LeadsTablePage = () => {
                           onUpdate={handleUpdatePriority}
                         />
                       </TableCell>
-                      <TableCell sx={{ py: 0.75, fontSize: '0.75rem', maxWidth: 150, display: { xs: 'none', lg: 'table-cell' } }}>
-                        {lead.productoInteresNombre ? (
-                          <Typography variant="caption" display="block" noWrap title={lead.productoInteresNombre}>
-                            {lead.productoInteresNombre}
-                          </Typography>
-                        ) : lead.modeloRecetaInteres || lead.modeloEquipoInteres ? (
-                          <Typography
-                            variant="caption"
-                            display="block"
-                            noWrap
-                            title={lead.modeloRecetaInteres || lead.modeloEquipoInteres}
-                          >
-                            {lead.modeloRecetaInteres || lead.modeloEquipoInteres}
-                          </Typography>
-                        ) : lead.equipoInteresadoNombre ? (
-                          <Typography variant="caption" display="block" noWrap title={lead.equipoInteresadoNombre}>
-                            {lead.equipoInteresadoNombre}
-                          </Typography>
-                        ) : (
-                          '-'
-                        )}
+                      <TableCell sx={{ py: 0.75, display: { xs: 'none', lg: 'table-cell' } }}>
+                        <Typography variant="body2" color="text.secondary" noWrap>
+                          {usuarioPrimerNombre(lead.usuarioAsignadoId)}
+                        </Typography>
                       </TableCell>
                       <TableCell align="center" sx={{ py: 0.75, display: { xs: 'none', md: 'table-cell' } }}>
                         <RecordatorioStatusBadge recordatorios={recordatorios} />
