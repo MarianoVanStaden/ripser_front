@@ -3,67 +3,6 @@ import { Box, Paper } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
 import { useHorizontalScroll } from '../../hooks/useHorizontalScroll';
 
-// ─── Sticky column sx helpers ────────────────────────────────────────────────
-//
-// Usage:
-//   <TableCell sx={sxStickyCheckboxHead} padding="checkbox">…</TableCell>
-//   <TableCell sx={sxStickyClienteHead}>Cliente</TableCell>
-//   …in body rows:
-//   <TableCell sx={sxStickyCheckboxBody} padding="checkbox">…</TableCell>
-//   <TableCell sx={sxStickyClienteBody}>…</TableCell>
-//
-// The checkbox column is ~48 px wide (MUI spec for padding="checkbox").
-// The "Cliente" column is sticky at left: 48px, immediately after it.
-// Both have an opaque background so they paint over scrolling columns.
-
-const CHECKBOX_WIDTH = 48; // px — MUI padding="checkbox"
-
-export const sxStickyCheckboxHead: SxProps<Theme> = {
-  position: 'sticky',
-  left: 0,
-  zIndex: 4,
-  bgcolor: 'grey.100',
-  width: CHECKBOX_WIDTH,
-  minWidth: CHECKBOX_WIDTH,
-};
-
-export const sxStickyCheckboxBody: SxProps<Theme> = {
-  position: 'sticky',
-  left: 0,
-  zIndex: 2,
-  bgcolor: 'background.paper',
-  width: CHECKBOX_WIDTH,
-  minWidth: CHECKBOX_WIDTH,
-  // Mirror TableRow hover/selected so the cell doesn't look detached.
-  '.MuiTableRow-root.MuiTableRow-hover:hover &': { bgcolor: 'action.hover' },
-  '.MuiTableRow-root.Mui-selected &': { bgcolor: 'action.selected' },
-  '.MuiTableRow-root.Mui-selected.MuiTableRow-hover:hover &': { bgcolor: 'action.selected' },
-};
-
-export const sxStickyClienteHead: SxProps<Theme> = {
-  position: 'sticky',
-  left: CHECKBOX_WIDTH,
-  zIndex: 4,
-  bgcolor: 'grey.100',
-  // Right-side shadow to signal that this column is frozen.
-  borderRight: '2px solid',
-  borderColor: 'divider',
-  boxShadow: 'inset -4px 0 6px -4px rgba(0,0,0,0.15)',
-};
-
-export const sxStickyClienteBody: SxProps<Theme> = {
-  position: 'sticky',
-  left: CHECKBOX_WIDTH,
-  zIndex: 2,
-  bgcolor: 'background.paper',
-  borderRight: '2px solid',
-  borderColor: 'divider',
-  boxShadow: 'inset -4px 0 6px -4px rgba(0,0,0,0.08)',
-  // Mirror TableRow hover/selected.
-  '.MuiTableRow-root.MuiTableRow-hover:hover &': { bgcolor: 'action.hover' },
-  '.MuiTableRow-root.Mui-selected &': { bgcolor: 'action.selected' },
-  '.MuiTableRow-root.Mui-selected.MuiTableRow-hover:hover &': { bgcolor: 'action.selected' },
-};
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

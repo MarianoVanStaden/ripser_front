@@ -68,7 +68,7 @@ export const LeadFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const { sucursalFiltro, sucursales } = useTenant();
+  const { sucursalFiltro, sucursales, canSelectSucursal } = useTenant();
   const { user } = useAuth();
   const isEditMode = Boolean(id);
   const clienteOrigenIdParam = searchParams.get('clienteId');
@@ -260,6 +260,10 @@ export const LeadFormPage = () => {
 
     if (formData.rubro === 'OTRO' && (!formData.rubroDetalle || formData.rubroDetalle.trim() === '')) {
       newErrors.rubroDetalle = 'Especificá el rubro';
+    }
+
+    if (!isEditMode && !formData.usuarioAsignadoId) {
+      newErrors.usuarioAsignadoId = 'El asesor asignado es obligatorio';
     }
 
     // Validar fechaPrimerContacto: rango razonable (evita typos como año 5026).
@@ -537,6 +541,17 @@ export const LeadFormPage = () => {
         </Alert>
       )}
 
+      {isEditMode && formData.fechaPrimerContacto && (() => {
+        const match = /^(\d{4})-/.exec(formData.fechaPrimerContacto);
+        const year = match ? Number(match[1]) : 0;
+        const invalid = year < 2000 || year > new Date().getFullYear() || formData.fechaPrimerContacto > new Date().toISOString().split('T')[0];
+        return invalid ? (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            Este lead tiene una <strong>fecha inválida ({formData.fechaPrimerContacto})</strong>. Corregila antes de guardar.
+          </Alert>
+        ) : null;
+      })()}
+
       <Card>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -709,7 +724,7 @@ export const LeadFormPage = () => {
                 />
               </Grid>
 
-              {sucursales.length > 0 && (
+              {canSelectSucursal && sucursales.length > 0 && (
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
                     <InputLabel>Sucursal</InputLabel>
@@ -727,7 +742,7 @@ export const LeadFormPage = () => {
               )}
 
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth required={!isEditMode} error={Boolean(errors.usuarioAsignadoId)}>
                   <InputLabel>Asesor asignado</InputLabel>
                   <Select
                     value={formData.usuarioAsignadoId ?? ''}
@@ -737,10 +752,15 @@ export const LeadFormPage = () => {
                         ...formData,
                         usuarioAsignadoId: v === '' ? undefined : Number(v),
                       });
+                      if (errors.usuarioAsignadoId) {
+                        const newErrors = { ...errors };
+                        delete newErrors.usuarioAsignadoId;
+                        setErrors(newErrors);
+                      }
                     }}
                     label="Asesor asignado"
                   >
-                    <MenuItem value=""><em>Sin asignar</em></MenuItem>
+                    {isEditMode && <MenuItem value=""><em>Sin asignar</em></MenuItem>}
                     {usuarios.map((u) => {
                       const nombre = u.nombre || (u as any).username || `#${u.id}`;
                       const apellido = u.apellido || '';
@@ -758,6 +778,11 @@ export const LeadFormPage = () => {
                       </MenuItem>
                     )}
                   </Select>
+                  {errors.usuarioAsignadoId && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                      {errors.usuarioAsignadoId}
+                    </Typography>
+                  )}
                 </FormControl>
               </Grid>
 

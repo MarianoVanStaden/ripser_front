@@ -135,12 +135,12 @@ const ReasignacionLeadsPage: React.FC = () => {
   const toggleLead = (lead: LeadListItemDTO) => {
     setSelectedLeadIds((prev) => {
       const next = new Set(prev);
-      next.has(lead.id) ? next.delete(lead.id) : next.add(lead.id);
+      if (next.has(lead.id)) { next.delete(lead.id); } else { next.add(lead.id); }
       return next;
     });
     setSelectedLeadInfo((prev) => {
       const next = new Map(prev);
-      next.has(lead.id) ? next.delete(lead.id) : next.set(lead.id, lead);
+      if (next.has(lead.id)) { next.delete(lead.id); } else { next.set(lead.id, lead); }
       return next;
     });
   };

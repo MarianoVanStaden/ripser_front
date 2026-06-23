@@ -78,7 +78,8 @@ type OrderBy =
   | 'prioridad'
   | 'dias'
   | 'fechaPrimerContacto'
-  | 'fechaUltimoContacto';
+  | 'fechaUltimoContacto'
+  | 'fechaCreacion';
 
 const SORT_FIELD: Record<OrderBy, string> = {
   nombre: 'nombre',
@@ -89,7 +90,8 @@ const SORT_FIELD: Record<OrderBy, string> = {
   prioridad: 'prioridad',
   dias: 'fechaPrimerContacto',
   fechaPrimerContacto: 'fechaPrimerContacto',
-  fechaUltimoContacto: 'fechaUltimoContacto'
+  fechaUltimoContacto: 'fechaUltimoContacto',
+  fechaCreacion: 'fechaCreacion',
 };
 
 const buildSort = (orderBy: OrderBy, order: Order): string => {
@@ -205,7 +207,7 @@ export const LeadsTablePage = () => {
   const canManageDeleted = esSuperAdmin || tieneRol('ADMIN', 'GERENTE_SUCURSAL');
 
   const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('dias');
+  const [orderBy, setOrderBy] = useState<OrderBy>('fechaCreacion');
   const [undoSnack, setUndoSnack] = useState<{ id: number; nombre: string } | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; nombre: string } | null>(null);

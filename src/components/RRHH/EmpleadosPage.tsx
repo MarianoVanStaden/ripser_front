@@ -382,6 +382,11 @@ const EmpleadosPage: React.FC = () => {
       setEmpleados(empleadosData);
       setPuestos(puestosData.content || []);
       setCategoriasSalariales(Array.isArray(categoriasData) ? categoriasData : []);
+      setSelectedEmpleado(prev => {
+        if (!prev) return prev;
+        const fresh = empleadosData.find((e: Empleado) => e.id === prev.id);
+        return fresh ?? prev;
+      });
 
       if (empresaId) {
         try {

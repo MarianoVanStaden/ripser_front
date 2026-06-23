@@ -6,13 +6,13 @@ import {
   Chip, Stack, Button, FormControlLabel, Switch, Checkbox,
   Toolbar, Menu, MenuItem, Snackbar, ListItemIcon, ListItemText, Divider,
 } from '@mui/material';
+import { StickyScrollTable } from '../../common/StickyScrollTable';
 import {
-  StickyScrollTable,
   sxStickyCheckboxHead,
   sxStickyCheckboxBody,
   sxStickyClienteHead,
   sxStickyClienteBody,
-} from '../../common/StickyScrollTable';
+} from '../../common/stickyScrollTableStyles';
 import {
   Visibility, Add, Search, Phone,
   PhoneInTalk, Alarm, CheckCircleOutline, Clear,
