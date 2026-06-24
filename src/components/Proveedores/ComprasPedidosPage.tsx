@@ -873,7 +873,6 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
         },
         {
           pendientes: getOrderCountByStatus('PENDIENTE'),
-          enTransito: getOrderCountByStatus('EN_TRANSITO'),
           recibidas: getOrderCountByStatus('RECIBIDA'),
           totalAmount: getTotalAmount(),
         }
@@ -993,18 +992,6 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={1}>
-                <ShippingIcon color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">En Tránsito</Typography>
-              </Box>
-              <Typography variant="h4">
-                {getOrderCountByStatus('EN_TRANSITO')}
-              </Typography>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" mb={1}>
                 <CheckIcon color="success" sx={{ mr: 1 }} />
                 <Typography variant="h6">Recibidas</Typography>
               </Box>
@@ -1057,7 +1044,6 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
               <MenuItem value="">Todos</MenuItem>
               <MenuItem value="PENDIENTE">Pendiente</MenuItem>
               <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
-              <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
               <MenuItem value="RECIBIDA">Recibida</MenuItem>
               <MenuItem value="CANCELADA">Cancelada</MenuItem>
             </TextField>
@@ -1213,8 +1199,8 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
                     >
                       <DeleteIcon />
                     </IconButton>
-                    {/* Recibir button - only show for CONFIRMADA or EN_TRANSITO orders */}
-                    {(orden.estado === 'CONFIRMADA' || orden.estado === 'EN_TRANSITO') && (
+                    {/* Recibir button - only show for CONFIRMADA orders */}
+                    {orden.estado === 'CONFIRMADA' && (
                       <IconButton
                         size="small"
                         onClick={() => handleOpenRecepcion(orden)}
@@ -1308,7 +1294,7 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
   margin="normal"
   required
 >
-  {['PENDIENTE', 'CONFIRMADA', 'EN_TRANSITO', 'RECIBIDA', 'CANCELADA'].map((estado) => (
+  {['PENDIENTE', 'CONFIRMADA', 'RECIBIDA', 'CANCELADA'].map((estado) => (
     <MenuItem key={estado} value={estado}>
       {estado}
     </MenuItem>

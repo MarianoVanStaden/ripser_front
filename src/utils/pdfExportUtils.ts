@@ -662,7 +662,6 @@ export const generatePurchaseOrdersListPDF = async (
   },
   stats: {
     pendientes: number;
-    enTransito: number;
     recibidas: number;
     totalAmount: number;
   }
@@ -713,8 +712,6 @@ export const generatePurchaseOrdersListPDF = async (
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
   pdf.text(`Órdenes Pendientes: ${stats.pendientes}`, 20, yPosition);
-  yPosition += 6;
-  pdf.text(`Órdenes en Tránsito: ${stats.enTransito}`, 20, yPosition);
   yPosition += 6;
   pdf.text(`Órdenes Recibidas: ${stats.recibidas}`, 20, yPosition);
   yPosition += 6;
