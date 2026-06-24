@@ -54,7 +54,7 @@ import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema
 import { calcEntregaInfo, EntregaDeadlineChip } from '../../utils/entregaDeadline';
 import { EditarFechaVentaDialog } from './EditarFechaVentaDialog';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
-import { ProvinciaEnum, PROVINCIA_LABELS } from '../../types/shared.enums';
+import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 import { useClienteSearch } from '../../hooks/useClienteSearch';
