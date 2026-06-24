@@ -34,7 +34,6 @@ import {
   Visibility as ViewIcon,
   Delete as DeleteIcon,
   ShoppingCart as ShoppingCartIcon,
-  LocalShipping as ShippingIcon,
   CheckCircle as CheckIcon,
   Schedule as ScheduleIcon,
   Business as BusinessIcon,
