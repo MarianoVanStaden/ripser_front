@@ -64,8 +64,10 @@ export interface DocumentoComercial {
   documentoSiguienteNumero?: string;
   documentoSiguienteTipo?: TipoDocumento;
   numeroReferencia?: string;
-  /** Ciudad del cliente (para mostrar en selectores de viaje). */
+  /** Ciudad del cliente. */
   clienteCiudad?: string;
+  /** Provincia del cliente (valor del enum Provincia). */
+  clienteProvincia?: string;
   usuarioCreadorPresupuestoId:        number | null;
   usuarioCreadorPresupuestoNombre:    string | null;
   usuarioConvertidorNotaPedidoId:     number | null;

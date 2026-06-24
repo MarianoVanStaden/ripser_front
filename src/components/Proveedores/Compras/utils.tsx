@@ -20,12 +20,34 @@ export const getEstadoColor = (estado: string): ChipColor => {
       return 'info';
     case 'EN_TRANSITO':
       return 'primary';
+    case 'PARCIALMENTE_RECIBIDA':
+      return 'secondary';
     case 'RECIBIDA':
       return 'success';
     case 'CANCELADA':
       return 'error';
     default:
       return 'default';
+  }
+};
+
+/** Maps estado de orden de compra → etiqueta legible. */
+export const getEstadoLabel = (estado: string): string => {
+  switch (estado) {
+    case 'PENDIENTE':
+      return 'Pendiente';
+    case 'CONFIRMADA':
+      return 'Confirmada';
+    case 'EN_TRANSITO':
+      return 'En tránsito';
+    case 'PARCIALMENTE_RECIBIDA':
+      return 'Parcialmente recibida';
+    case 'RECIBIDA':
+      return 'Recibida';
+    case 'CANCELADA':
+      return 'Cancelada';
+    default:
+      return estado;
   }
 };
 
@@ -38,6 +60,8 @@ export const getEstadoIcon = (estado: string): React.ReactElement => {
       return <CheckIcon />;
     case 'EN_TRANSITO':
       return <ShippingIcon />;
+    case 'PARCIALMENTE_RECIBIDA':
+      return <ReceiptIcon />;
     case 'RECIBIDA':
       return <CheckIcon />;
     case 'CANCELADA':

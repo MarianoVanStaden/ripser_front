@@ -33,6 +33,8 @@ export interface DocumentoFilterParams {
   clienteId?: number;
   fechaDesde?: string; // ISO yyyy-mm-dd
   fechaHasta?: string;
+  ciudad?: string;
+  provincia?: string;
   busqueda?: string;
 }
 

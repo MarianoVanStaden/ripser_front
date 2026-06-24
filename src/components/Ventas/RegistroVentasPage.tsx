@@ -54,6 +54,7 @@ import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema
 import { calcEntregaInfo, EntregaDeadlineChip } from '../../utils/entregaDeadline';
 import { EditarFechaVentaDialog } from './EditarFechaVentaDialog';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
+import { ProvinciaEnum, PROVINCIA_LABELS } from '../../types/shared.enums';
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 import { useClienteSearch } from '../../hooks/useClienteSearch';
@@ -104,6 +105,8 @@ const RegistroVentasPage: React.FC = () => {
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
   const [tipoDocumentoFilter, setTipoDocumentoFilter] = useState<string>('all');
+  const [ciudadFilter, setCiudadFilter] = useState<string>('');
+  const [provinciaFilter, setProvinciaFilter] = useState<string>('all');
 
   // Carga inicial de usuarios (lookup map para enriquecer ventas).
   useEffect(() => {
@@ -124,12 +127,13 @@ const RegistroVentasPage: React.FC = () => {
   }, [empresaId]);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedCiudad = useDebounce(ciudadFilter, 300);
 
   // Reset page=0 cuando cambian filtros server-side.
   useEffect(() => {
     setPage(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter, tipoDocumentoFilter]);
+  }, [debouncedSearch, statusFilter, clientFilter, dateFromFilter, dateToFilter, tipoDocumentoFilter, debouncedCiudad, provinciaFilter]);
 
   const usuariosMap = useMemo(
     () => new Map(usuarios.map((u) => [u.id, u])),
@@ -150,7 +154,9 @@ const RegistroVentasPage: React.FC = () => {
     ...(clientFilter !== 'all' ? { clienteId: Number(clientFilter) } : {}),
     ...(dateFromFilter ? { fechaDesde: dateFromFilter } : {}),
     ...(dateToFilter ? { fechaHasta: dateToFilter } : {}),
-  }), [tipoDocumentoFilter, debouncedSearch, statusFilter, paymentMethodFilter, clientFilter, dateFromFilter, dateToFilter]);
+    ...(debouncedCiudad.trim() ? { ciudad: debouncedCiudad.trim() } : {}),
+    ...(provinciaFilter !== 'all' ? { provincia: provinciaFilter } : {}),
+  }), [tipoDocumentoFilter, debouncedSearch, statusFilter, paymentMethodFilter, clientFilter, dateFromFilter, dateToFilter, debouncedCiudad, provinciaFilter]);
 
   const salesQuery = useQuery({
     queryKey: ['ventas', { page, size: rowsPerPage, empresaId, ...serverFilters }] as const,
@@ -404,6 +410,8 @@ const RegistroVentasPage: React.FC = () => {
     setDateFromFilter('');
     setDateToFilter('');
     setTipoDocumentoFilter('all');
+    setCiudadFilter('');
+    setProvinciaFilter('all');
   };
 
   // Totales exactos sobre el dataset filtrado completo (no sobre la página
@@ -765,6 +773,32 @@ const RegistroVentasPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
+            <Grid item xs={12} md={2}>
+              <TextField
+                fullWidth
+                label="Ciudad"
+                variant="outlined"
+                size="small"
+                value={ciudadFilter}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCiudadFilter(e.target.value)}
+                placeholder="Filtrar por ciudad..."
+              />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Provincia</InputLabel>
+                <Select
+                  value={provinciaFilter}
+                  label="Provincia"
+                  onChange={(e) => setProvinciaFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todas</MenuItem>
+                  {Object.entries(PROVINCIA_LABELS).map(([value, label]) => (
+                    <MenuItem key={value} value={value}>{label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
           <Box mt={2}>
             <Button
@@ -951,6 +985,12 @@ const RegistroVentasPage: React.FC = () => {
                     <Typography><strong>Fecha:</strong> {new Date(viewingSale.fechaVenta).toLocaleDateString()}</Typography>
                     <Typography><strong>Estado:</strong> {getStatusLabel(viewingSale.estado)}</Typography>
                     <Typography><strong>Método de Pago:</strong> {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod || 'CASH')}</Typography>
+                    {(viewingSale as any).clienteProvincia && (
+                      <Typography><strong>Provincia:</strong> {PROVINCIA_LABELS[(viewingSale as any).clienteProvincia as keyof typeof PROVINCIA_LABELS] || (viewingSale as any).clienteProvincia}</Typography>
+                    )}
+                    {(viewingSale as any).clienteCiudad && (
+                      <Typography><strong>Ciudad:</strong> {(viewingSale as any).clienteCiudad}</Typography>
+                    )}
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>

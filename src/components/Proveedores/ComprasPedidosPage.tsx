@@ -54,7 +54,6 @@ import { proveedorProductoApi } from '../../api/services/proveedorProductoApi';
 import type { ProveedorDTO, CompraDTO, CreateCompraDTO, RecepcionCompraDTO, Producto, OrdenCompra, CategoriaProducto, ProveedorProductoDTO } from '../../types';
 import Autocomplete from '@mui/material/Autocomplete';
 import { productApi } from '../../api/services/productApi';
-import { movimientoStockApi } from '../../api/services/movimientoStockApi';
 import { categoriaProductoApi } from '../../api/services/categoriaProductoApi';
 import { generatePurchaseOrdersListPDF, generatePurchaseOrderDetailPDF } from '../../utils/pdfExportUtils';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -63,7 +62,7 @@ import { usePermisos } from '../../hooks/usePermisos';
 import type { NewOrdenForm, PriceChange, RecepcionItem } from './Compras/types';
 import { IVA_RATE, IVA_LABEL, type TipoIvaCompra } from '../../types/compra.types';
 import { createInitialNewOrden } from './Compras/constants';
-import { getEstadoColor, getEstadoIcon } from './Compras/utils';
+import { getEstadoColor, getEstadoIcon, getEstadoLabel } from './Compras/utils';
 import DeleteOrdenDialog from './Compras/dialogs/DeleteOrdenDialog';
 import PriceChangeDialog from './Compras/dialogs/PriceChangeDialog';
 import ViewOrdenDialog from './Compras/dialogs/ViewOrdenDialog';
@@ -413,92 +412,10 @@ const handleEditOrden = (orden: OrdenCompra) => {
   }
   setOpenOrdenDialog(true);
 };
-// Function to create new products
-const createNewProduct = async (item: CompraDTO['detalles'][0]): Promise<number> => {
-  try {
-    // Validate that category is present
-    if (!item.categoriaProductoId) {
-      throw new Error(`El producto "${item.nombreProductoTemporal}" requiere una categoría`);
-    }
-
-    const newProduct = await productApi.create({
-      nombre: item.nombreProductoTemporal || 'Producto sin nombre',
-      descripcion: item.descripcionProductoTemporal || item.nombreProductoTemporal || '',
-      codigo: item.codigoProductoTemporal || `PROD-${Date.now()}`,
-      precio: item.costoUnitario,
-      stockActual: 0, // Initial stock is 0, will be updated via stock movement
-      stockMinimo: 0,
-      categoriaProductoId: item.categoriaProductoId, // Category is required, no default
-    });
-    console.log('Created new product:', newProduct);
-    return newProduct.id;
-  } catch (error) {
-    console.error('Error creating new product:', error);
-    throw new Error(`No se pudo crear el producto: ${item.nombreProductoTemporal || 'desconocido'}`);
-  }
-};
-
-// Function to create stock movements for received items
-const createStockMovementsForReceivedItems = async (compra: CompraDTO): Promise<void> => {
-  try {
-    console.log('Creating stock movements for compra:', compra.id);
-
-    for (const detalle of compra.detalles) {
-      let productoId = detalle.productoId;
-
-      // If it's a new product, create it first
-      if (detalle.esProductoNuevo && !productoId) {
-        productoId = await createNewProduct(detalle);
-      }
-
-      if (!productoId) {
-        console.warn('Skipping stock movement - no productoId for detalle:', detalle);
-        continue;
-      }
-
-      // Get current stock to calculate stockAnterior and stockActual
-      let stockAnterior = 0;
-      let producto;
-      try {
-        producto = await productApi.getById(productoId);
-        stockAnterior = producto.stockActual || 0;
-      } catch (err) {
-        console.warn('Could not get current stock for producto:', productoId, err);
-        // If we can't get the product, skip this movement
-        continue;
-      }
-
-      const stockActual = stockAnterior + detalle.cantidad;
-
-      // Create stock movement for the product
-      // The backend expects the full producto object (ManyToOne relationship)
-      const movimiento = {
-        producto: {
-          id: productoId
-        },
-        tipo: 'ENTRADA' as const,
-        cantidad: detalle.cantidad,
-        stockAnterior: stockAnterior,
-        stockActual: stockActual,
-        concepto: 'Compra recibida',
-        numeroComprobante: compra.numero || `COMPRA-${compra.id}`,
-        fecha: new Date().toISOString(),
-      };
-
-      await movimientoStockApi.create(movimiento);
-      console.log('Stock movement created for producto:', productoId, {
-        stockAnterior,
-        cantidad: detalle.cantidad,
-        stockActual
-      });
-    }
-
-    console.log('All stock movements created successfully');
-  } catch (error) {
-    console.error('Error creating stock movements:', error);
-    throw new Error('Error al actualizar el stock de los productos');
-  }
-};
+// NOTA: La creación de productos nuevos y los movimientos de stock al "recibir" desde el
+// formulario de la orden se eliminaron. El ingreso de stock ocurre EXCLUSIVAMENTE en la
+// recepción de mercadería (compraApi.recibirCompra). El estado RECIBIDA / PARCIALMENTE_RECIBIDA
+// es DERIVADO y lo calcula el backend a partir de las cantidades recibidas.
 
 // Function to detect price changes and show confirmation dialog
 const detectPriceChanges = (): PriceChange[] => {
@@ -581,11 +498,6 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
   try {
     setLoading(true);
 
-    // Check if estado is changing to RECIBIDA
-    const wasNotRecibida = isEditMode && selectedOrden?.estado !== 'RECIBIDA';
-    const isNowRecibida = newOrden.estado === 'RECIBIDA';
-    const shouldUpdateStock = isNowRecibida && (!isEditMode || wasNotRecibida);
-
     // Productos cuyo costo el usuario decidió actualizar (Caso B) → flag por detalle.
     const productosAActualizar = new Set(priceUpdates.map((u) => u.productoId));
 
@@ -613,7 +525,6 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
     };
 
     console.log('Compra Payload:', JSON.stringify(compraPayload, null, 2));
-    console.log('Should update stock:', shouldUpdateStock);
 
     let createdOrUpdatedCompra: CompraDTO;
     if (isEditMode && selectedOrden?.id) {
@@ -622,12 +533,6 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
     } else {
       createdOrUpdatedCompra = await compraApi.create(compraPayload);
       setCompras([createdOrUpdatedCompra, ...compras]);
-    }
-
-    // If estado changed to RECIBIDA, create stock movements
-    if (shouldUpdateStock) {
-      console.log('Estado changed to RECIBIDA, updating stock...');
-      await createStockMovementsForReceivedItems(createdOrUpdatedCompra);
     }
 
     // Actualizar el COSTO (no el precio de venta) de los productos seleccionados.
@@ -1043,6 +948,8 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
               <MenuItem value="">Todos</MenuItem>
               <MenuItem value="PENDIENTE">Pendiente</MenuItem>
               <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
+              <MenuItem value="EN_TRANSITO">En tránsito</MenuItem>
+              <MenuItem value="PARCIALMENTE_RECIBIDA">Parcialmente recibida</MenuItem>
               <MenuItem value="RECIBIDA">Recibida</MenuItem>
               <MenuItem value="CANCELADA">Cancelada</MenuItem>
             </TextField>
@@ -1133,7 +1040,7 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
                   <TableCell>
                     <Chip
                       icon={getEstadoIcon(orden.estado)}
-                      label={orden.estado}
+                      label={getEstadoLabel(orden.estado)}
                       color={getEstadoColor(orden.estado) as any}
                       size="small"
                     />
@@ -1198,8 +1105,8 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
                     >
                       <DeleteIcon />
                     </IconButton>
-                    {/* Recibir button - only show for CONFIRMADA orders */}
-                    {orden.estado === 'CONFIRMADA' && (
+                    {/* Recibir: disponible mientras pueda llegar mercadería (incluye recepciones parciales). */}
+                    {['CONFIRMADA', 'EN_TRANSITO', 'PARCIALMENTE_RECIBIDA'].includes(orden.estado) && (
                       <IconButton
                         size="small"
                         onClick={() => handleOpenRecepcion(orden)}
@@ -1293,7 +1200,8 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
   margin="normal"
   required
 >
-  {['PENDIENTE', 'CONFIRMADA', 'RECIBIDA', 'CANCELADA'].map((estado) => (
+  {/* RECIBIDA / PARCIALMENTE_RECIBIDA son DERIVADOS: se calculan al recibir mercadería, no se setean acá. */}
+  {['PENDIENTE', 'CONFIRMADA', 'EN_TRANSITO', 'CANCELADA'].map((estado) => (
     <MenuItem key={estado} value={estado}>
       {estado}
     </MenuItem>
