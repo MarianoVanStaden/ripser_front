@@ -12,6 +12,7 @@ export const initialOrdenItem: NewOrdenItem = {
   esProductoNuevo: false,
   cantidad: 1,
   precioUnitario: 0,
+  observaciones: '',
 };
 
 /** Factory for a fresh "Nueva Orden de Compra" form (fechaEntrega = today + 15d). */

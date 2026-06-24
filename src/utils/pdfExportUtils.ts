@@ -912,6 +912,24 @@ export const generatePurchaseOrderDetailPDF = async (orden: any) => {
       pdf.text(`$${item.precioUnitario.toLocaleString()}`, itemCol3, yPosition);
       pdf.text(`$${item.subtotal.toLocaleString()}`, itemCol4, yPosition);
       yPosition += 5;
+
+      // Sub-línea con la aclaración para el proveedor (color/terminación), si existe.
+      if (item.observaciones && item.observaciones.trim()) {
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(120, 120, 120);
+        const obsLines = pdf.splitTextToSize(`Obs: ${item.observaciones.trim()}`, pageWidth - 30 - 5);
+        obsLines.forEach((linea: string) => {
+          if (yPosition > pageHeight - 40) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          pdf.text(linea, itemCol1 + 3, yPosition);
+          yPosition += 4;
+        });
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        yPosition += 1;
+      }
     });
   }
 

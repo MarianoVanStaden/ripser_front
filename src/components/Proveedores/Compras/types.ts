@@ -20,6 +20,8 @@ export interface NewOrdenItem {
   esProductoNuevo: boolean;
   cantidad: number;
   precioUnitario: number;
+  /** Aclaración para el proveedor a nivel de línea (color/terminación). */
+  observaciones: string;
 }
 
 /** Form state for the "Crear/Editar Orden de Compra" dialog. */
@@ -51,5 +53,6 @@ export interface RecepcionItem {
   productoNombre: string;
   cantidadCompra: number;
   cantidadRecibida: number;
+  cantidadPendiente: number;
   observaciones: string;
 }

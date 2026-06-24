@@ -61,7 +61,7 @@ import { usePermisos } from '../../hooks/usePermisos';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import type { NewOrdenForm, PriceChange, RecepcionItem } from './Compras/types';
 import { IVA_RATE, IVA_LABEL, type TipoIvaCompra } from '../../types/compra.types';
-import { createInitialNewOrden } from './Compras/constants';
+import { createInitialNewOrden, initialOrdenItem } from './Compras/constants';
 import { getEstadoColor, getEstadoIcon, getEstadoLabel } from './Compras/utils';
 import DeleteOrdenDialog from './Compras/dialogs/DeleteOrdenDialog';
 import PriceChangeDialog from './Compras/dialogs/PriceChangeDialog';
@@ -198,6 +198,8 @@ const loadCompras = async () => {
             productoId: detalle.productoId ? detalle.productoId.toString() : '',
             descripcion: detalle.nombreProductoTemporal || detalle.descripcionProductoTemporal || '',
             cantidad: detalle.cantidad,
+            cantidadRecibida: detalle.cantidadRecibida ?? 0,
+            cantidadPendiente: detalle.cantidadPendiente ?? detalle.cantidad,
             precioUnitario: detalle.costoUnitario,
             subtotal: detalle.cantidad * detalle.costoUnitario,
             // Include fields needed for editing
@@ -207,6 +209,7 @@ const loadCompras = async () => {
             categoriaProductoId: detalle.categoriaProductoId,
             esProductoNuevo: detalle.esProductoNuevo ?? !detalle.productoId,
             actualizarCosto: detalle.actualizarCosto ?? false,
+            observaciones: detalle.observaciones || '',
           })),
           observaciones: compra.observaciones,
           metodoPago: (compra as any).metodoPago || 'EFECTIVO',
@@ -291,15 +294,23 @@ const handleOpenRecepcion = async (orden: OrdenCompra) => {
 
   // Ya no es necesario cargar depósitos - el backend asigna automáticamente al depósito principal
 
-  // Initialize reception items from the order items
-  const items = orden.items.map((item) => ({
-    detalleCompraId: item.id || 0,
-    productoId: item.productoId ? parseInt(item.productoId.toString()) : 0,
-    productoNombre: item.nombreProductoTemporal || item.descripcion || `Producto ${item.productoId}`,
-    cantidadCompra: item.cantidad,
-    cantidadRecibida: item.cantidad,
-    observaciones: '',
-  }));
+  // Initialize reception items from the order items. Para recepciones parciales (Caso D) se
+  // ofrece y limita por lo PENDIENTE (cantidad - ya recibido), no por la cantidad total comprada.
+  const items = orden.items
+    .map((item) => {
+      const pendiente = item.cantidadPendiente ?? item.cantidad;
+      return {
+        detalleCompraId: item.id || 0,
+        productoId: item.productoId ? parseInt(item.productoId.toString()) : 0,
+        productoNombre: item.nombreProductoTemporal || item.descripcion || `Producto ${item.productoId}`,
+        cantidadCompra: item.cantidad,
+        cantidadPendiente: pendiente,
+        cantidadRecibida: pendiente,
+        observaciones: '',
+      };
+    })
+    // No tiene sentido volver a recibir líneas ya completas.
+    .filter((item) => item.cantidadPendiente > 0);
 
   setRecepcionItems(items);
   setRecepcionObservaciones('');
@@ -329,7 +340,7 @@ const handleSubmitRecepcion = async () => {
         productoId: item.productoId,
         // NO incluir depositoId - backend lo asigna automáticamente al depósito principal
         cantidadRecibida: item.cantidadRecibida,
-        esRecepcionParcial: item.cantidadRecibida < item.cantidadCompra,
+        esRecepcionParcial: item.cantidadRecibida < item.cantidadPendiente,
         observaciones: item.observaciones,
       })),
       observaciones: recepcionObservaciones,
@@ -405,6 +416,7 @@ const handleEditOrden = (orden: OrdenCompra) => {
       esProductoNuevo: item.esProductoNuevo ?? !item.productoId,
       cantidad: item.cantidad,
       precioUnitario: item.precioUnitario,
+      observaciones: item.observaciones || '',
     })),
   });
   if (orden.supplierId) {
@@ -521,6 +533,7 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
         actualizarCosto: item.productoId
           ? productosAActualizar.has(parseInt(item.productoId))
           : false,
+        observaciones: item.observaciones?.trim() || undefined,
       })),
     };
 
@@ -562,16 +575,7 @@ const saveOrdenWithPriceUpdates = async (priceUpdates: Array<{ productoId: numbe
       estado: 'PENDIENTE',
       metodoPago: '' as '' | 'EFECTIVO' | 'TARJETA_CREDITO' | 'TARJETA_DEBITO' | 'TRANSFERENCIA' | 'CHEQUE' | 'FINANCIACION_PROPIA',
       tipoIva: 'EXENTO',
-      items: [{
-        productoId: '',
-        nombreProductoTemporal: '',
-        descripcionProductoTemporal: '',
-        codigoProductoTemporal: '',
-        categoriaId: '',
-        esProductoNuevo: false,
-        cantidad: 1,
-        precioUnitario: 0,
-      }],
+      items: [{ ...initialOrdenItem }],
     });
     setError(null);
   } catch (err: any) {
@@ -633,7 +637,7 @@ const handleCancelDelete = () => {
       ...newOrden,
       items: [
         ...newOrden.items,
-        { productoId: '', nombreProductoTemporal: '', descripcionProductoTemporal: '', codigoProductoTemporal: '', categoriaId: '', esProductoNuevo: false, cantidad: 1, precioUnitario: 0 },
+        { ...initialOrdenItem },
       ],
     });
   };
@@ -1172,7 +1176,7 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
           setNewOrden({
             ...newOrden,
             supplierId: newSupplierId,
-            items: [{ productoId: '', nombreProductoTemporal: '', descripcionProductoTemporal: '', codigoProductoTemporal: '', categoriaId: '', esProductoNuevo: false, cantidad: 1, precioUnitario: 0 }],
+            items: [{ ...initialOrdenItem }],
           });
           loadProductosDelProveedor(newSupplierId);
         }}
@@ -1467,6 +1471,14 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
         helperText={IVA_LABEL[newOrden.tipoIva]}
       />
     </Box>
+    <TextField
+      fullWidth
+      label="Observaciones para el proveedor (color / terminación)"
+      value={item.observaciones || ''}
+      onChange={(e) => handleItemChange(index, 'observaciones', e.target.value)}
+      placeholder="Opcional. Ej: color negro mate, sin pulir, etc."
+      sx={{ mt: 2 }}
+    />
   </Box>
         );
       })}

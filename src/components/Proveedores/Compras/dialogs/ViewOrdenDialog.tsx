@@ -180,6 +180,16 @@ const ViewOrdenDialog: React.FC<Props> = ({ open, onClose, onPrintPdf, orden, pr
                                 {item.descripcionProductoTemporal}
                               </Typography>
                             )}
+                          {item.observaciones && (
+                            <Typography
+                              variant="caption"
+                              color="warning.main"
+                              display="block"
+                              sx={{ fontStyle: 'italic' }}
+                            >
+                              Obs: {item.observaciones}
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell align="right">{item.cantidad}</TableCell>
                         <TableCell align="right">

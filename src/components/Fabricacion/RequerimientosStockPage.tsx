@@ -332,6 +332,7 @@ const DetalleRequerimiento: React.FC<{ req: RequerimientoStockDTO }> = ({ req })
           <TableCell align="center">Pedido</TableCell>
           <TableCell align="center">Recibido</TableCell>
           <TableCell>Proveedor sugerido</TableCell>
+          <TableCell>Observaciones</TableCell>
         </TableRow>
       </TableHead>
       <TableBody>
@@ -354,6 +355,9 @@ const DetalleRequerimiento: React.FC<{ req: RequerimientoStockDTO }> = ({ req })
               ) : (
                 '—'
               )}
+            </TableCell>
+            <TableCell sx={{ fontStyle: d.observaciones ? 'italic' : undefined }}>
+              {d.observaciones || '—'}
             </TableCell>
           </TableRow>
         ))}
@@ -522,6 +526,8 @@ const RequerimientoCard: React.FC<{
 interface LineaPedido {
   producto: Producto;
   cantidad: number;
+  /** Aclaración para el proveedor (color/terminación). Opcional. */
+  observaciones?: string;
 }
 
 const MAX_CATALOGO = 120;
@@ -563,9 +569,17 @@ const CargarPedidoDialog: React.FC<{
       if (cantidad <= 0) {
         delete next[producto.id];
       } else {
-        next[producto.id] = { producto, cantidad };
+        // Preserva la observación de la línea si ya existía.
+        next[producto.id] = { ...next[producto.id], producto, cantidad };
       }
       return next;
+    });
+
+  const setObservacionLinea = (productoId: number, observaciones: string) =>
+    setCarrito((prev) => {
+      const linea = prev[productoId];
+      if (!linea) return prev;
+      return { ...prev, [productoId]: { ...linea, observaciones } };
     });
 
   // Catálogo filtrado en memoria (búsqueda por nombre/código + categoría + bajo stock).
@@ -804,30 +818,41 @@ const CargarPedidoDialog: React.FC<{
               ) : (
                 <Stack spacing={1}>
                   {lineas.map((l) => (
-                    <Paper key={l.producto.id} variant="outlined" sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body2" noWrap>
-                          {l.producto.nombre}
-                        </Typography>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <StockChip producto={l.producto} />
-                          <Typography variant="caption" color="text.secondary">
-                            {l.cantidad} u.
-                            {puedeVerCostos &&
-                              (l.producto.costo != null
-                                ? ` · ${formatMoneda(l.producto.costo * l.cantidad)}`
-                                : ' · s/costo')}
+                    <Paper key={l.producto.id} variant="outlined" sx={{ p: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body2" noWrap>
+                            {l.producto.nombre}
                           </Typography>
-                        </Stack>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <StockChip producto={l.producto} />
+                            <Typography variant="caption" color="text.secondary">
+                              {l.cantidad} u.
+                              {puedeVerCostos &&
+                                (l.producto.costo != null
+                                  ? ` · ${formatMoneda(l.producto.costo * l.cantidad)}`
+                                  : ' · s/costo')}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          aria-label={`Quitar ${l.producto.nombre}`}
+                          onClick={() => setCantidad(l.producto, 0)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
                       </Box>
-                      <IconButton
+                      <TextField
+                        fullWidth
                         size="small"
-                        color="error"
-                        aria-label={`Quitar ${l.producto.nombre}`}
-                        onClick={() => setCantidad(l.producto, 0)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                        variant="standard"
+                        placeholder="Observación p/ proveedor (color, terminación…)"
+                        value={l.observaciones || ''}
+                        onChange={(e) => setObservacionLinea(l.producto.id, e.target.value)}
+                        sx={{ mt: 0.5 }}
+                      />
                     </Paper>
                   ))}
                 </Stack>
@@ -1065,6 +1090,15 @@ const AsignarProveedoresDialog: React.FC<{
                     color={asignado > pendiente ? 'error' : asignado === pendiente ? 'success' : 'default'}
                   />
                 </Stack>
+                {d.observaciones && (
+                  <Typography
+                    variant="caption"
+                    color="warning.main"
+                    sx={{ display: 'block', mb: 1, fontStyle: 'italic' }}
+                  >
+                    Obs. del taller: {d.observaciones}
+                  </Typography>
+                )}
                 <Stack spacing={1.5}>
                   {rows.map((f, i) => {
                     const pct = variacionPct(f);
@@ -1382,6 +1416,7 @@ export const RequerimientosStockPage: React.FC = () => {
         detalles: lineas.map((l) => ({
           productoId: l.producto.id,
           cantidadRequerida: l.cantidad,
+          observaciones: l.observaciones?.trim() || null,
         })),
       });
       setCargarOpen(false);

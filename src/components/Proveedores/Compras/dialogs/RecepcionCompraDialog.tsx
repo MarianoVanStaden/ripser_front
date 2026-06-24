@@ -146,6 +146,7 @@ const RecepcionCompraDialog: React.FC<Props> = ({
                   <TableRow sx={{ bgcolor: 'grey.100' }}>
                     <TableCell>Producto</TableCell>
                     <TableCell align="center">Cant. Comprada</TableCell>
+                    <TableCell align="center">Pendiente</TableCell>
                     <TableCell align="center" sx={{ minWidth: 120 }}>
                       Cant. Recibida *
                     </TableCell>
@@ -163,6 +164,9 @@ const RecepcionCompraDialog: React.FC<Props> = ({
                       <TableCell align="center">
                         <Chip label={item.cantidadCompra} size="small" />
                       </TableCell>
+                      <TableCell align="center">
+                        <Chip label={item.cantidadPendiente} size="small" color="warning" variant="outlined" />
+                      </TableCell>
                       <TableCell>
                         <TextField
                           type="number"
@@ -174,8 +178,13 @@ const RecepcionCompraDialog: React.FC<Props> = ({
                             updated[index].cantidadRecibida = parseInt(e.target.value) || 0;
                             setItems(updated);
                           }}
-                          inputProps={{ min: 0, max: item.cantidadCompra }}
-                          error={item.cantidadRecibida <= 0}
+                          inputProps={{ min: 0, max: item.cantidadPendiente }}
+                          error={item.cantidadRecibida <= 0 || item.cantidadRecibida > item.cantidadPendiente}
+                          helperText={
+                            item.cantidadRecibida > item.cantidadPendiente
+                              ? `Máximo pendiente: ${item.cantidadPendiente}`
+                              : undefined
+                          }
                           disabled={loading}
                         />
                       </TableCell>
@@ -220,7 +229,11 @@ const RecepcionCompraDialog: React.FC<Props> = ({
           variant="contained"
           color="success"
           onClick={onSubmit}
-          disabled={loading || items.some((i) => i.cantidadRecibida <= 0)}
+          disabled={
+            loading ||
+            items.length === 0 ||
+            items.some((i) => i.cantidadRecibida <= 0 || i.cantidadRecibida > i.cantidadPendiente)
+          }
           startIcon={
             loading ? <CircularProgress size={20} color="inherit" /> : <CheckIcon />
           }

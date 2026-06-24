@@ -317,6 +317,8 @@ export interface DetalleRequerimientoStockDTO {
   cantidadRecibida: number;
   proveedorSugeridoId?: number | null;
   proveedorSugeridoNombre?: string | null;
+  /** Aclaración para el proveedor a nivel de línea (color/terminación). */
+  observaciones?: string | null;
   ordenesGeneradas?: LineaCompraGeneradaDTO[];
 }
 
@@ -338,6 +340,7 @@ export interface CreateDetalleRequerimientoStockDTO {
   productoId: number;
   cantidadRequerida: number;
   proveedorSugeridoId?: number | null;
+  observaciones?: string | null;
 }
 
 export interface CreateRequerimientoStockDTO {

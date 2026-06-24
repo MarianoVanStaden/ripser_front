@@ -174,6 +174,8 @@ export interface DetalleCompraDTO {
   productoId: number;
   productoNombre: string;
   cantidad: number;
+  cantidadRecibida: number;
+  cantidadPendiente: number;
   costoUnitario: number;
   subtotal: number;
   // Campos para productos temporales
@@ -183,6 +185,7 @@ export interface DetalleCompraDTO {
   categoriaProductoId?: number;
   esProductoNuevo?: boolean;
   actualizarCosto?: boolean;
+  observaciones?: string;
 }
 export interface OrdenCompra {
   id: number;
@@ -202,6 +205,8 @@ export interface OrdenCompra {
     productoId?: string | number; // Allow string or number
     descripcion: string;
     cantidad: number;
+    cantidadRecibida?: number;
+    cantidadPendiente?: number;
     precioUnitario: number;
     subtotal: number;
     // Campos para productos temporales
@@ -210,6 +215,7 @@ export interface OrdenCompra {
     codigoProductoTemporal?: string;
     categoriaProductoId?: number;
     esProductoNuevo?: boolean;
+    observaciones?: string;
   }[];
   observaciones?: string;
   metodoPago?: MetodoPago;
@@ -245,8 +251,11 @@ export interface CompraDTO {
     categoriaProductoId?: number;
     esProductoNuevo: boolean;
     cantidad: number;
+    cantidadRecibida?: number;
+    cantidadPendiente?: number;
     costoUnitario: number;
     actualizarCosto?: boolean;
+    observaciones?: string;
   }[];
 }
 
@@ -268,6 +277,7 @@ export interface CreateCompraDTO {
     cantidad: number;
     costoUnitario: number;
     actualizarCosto?: boolean;
+    observaciones?: string;
   }>;
 }
 
