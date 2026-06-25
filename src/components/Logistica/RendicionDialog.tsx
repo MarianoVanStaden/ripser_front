@@ -305,8 +305,7 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
     try {
       await entregaViajeApi.registrarCobro(entregaId, {
         entregaId,
-        montoCobrado: monto,
-        metodoPagoEntrega: cobro.metodoPagoAdmin,
+        detallesCobro: [{ metodoPago: cobro.metodoPagoAdmin, monto }],
       });
       setCobros(prev => prev.map(c =>
         c.entregaId === entregaId

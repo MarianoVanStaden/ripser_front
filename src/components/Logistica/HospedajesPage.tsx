@@ -80,8 +80,8 @@ const FORM_VACIO: CreateHospedajeEstadiaDTO = {
 
 const HospedajesPage: React.FC = () => {
   const { tieneRol, esAdmin } = usePermisos();
-  const canEdit = esAdmin || tieneRol('SUPER_ADMIN', 'COORDINADORA_LOGISTICA');
-  const canDelete = esAdmin || tieneRol('SUPER_ADMIN');
+  const canEdit = esAdmin || tieneRol('COORDINADORA_LOGISTICA');
+  const canDelete = esAdmin;
 
   const [hospedajes, setHospedajes] = useState<HospedajeEstadiaDTO[]>([]);
   const [provincias, setProvincias] = useState<string[]>([]);

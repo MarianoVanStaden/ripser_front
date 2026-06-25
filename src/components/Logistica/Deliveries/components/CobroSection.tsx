@@ -127,7 +127,7 @@ const CobroSection: React.FC<Props> = ({ cobro, setCobro, montoEsperado }) => {
       </Box>
 
       <Stack spacing={1.5}>
-        {cobro.detalles.map((detalle, idx) => (
+        {cobro.detalles.map((detalle) => (
           <Stack
             key={detalle.id}
             spacing={1}
