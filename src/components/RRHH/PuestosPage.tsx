@@ -80,10 +80,10 @@ const PuestosPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const [puestosData, deptsData] = await Promise.all([
-        puestoApi.getAll(),
+        puestoApi.getActivos(),
         puestoApi.getDepartamentos(),
       ]);
-      setPuestos(Array.isArray(puestosData) ? puestosData : (puestosData?.content ?? []));
+      setPuestos(Array.isArray(puestosData) ? puestosData : []);
       setDepartamentos(Array.isArray(deptsData) ? deptsData : []);
     } catch (err) {
       setError('Error al cargar los puestos');

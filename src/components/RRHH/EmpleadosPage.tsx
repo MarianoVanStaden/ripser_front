@@ -376,11 +376,11 @@ const EmpleadosPage: React.FC = () => {
       setError(null);
       const [empleadosData, puestosData, categoriasData] = await Promise.all([
         employeeApi.getAllList(),
-        puestoApi.getAll(),
+        puestoApi.getActivos(),
         categoriaSalarialApi.getAll().catch(() => [] as CategoriaSalarial[]),
       ]);
       setEmpleados(empleadosData);
-      setPuestos(puestosData.content || []);
+      setPuestos(puestosData);
       setCategoriasSalariales(Array.isArray(categoriasData) ? categoriasData : []);
       setSelectedEmpleado(prev => {
         if (!prev) return prev;
