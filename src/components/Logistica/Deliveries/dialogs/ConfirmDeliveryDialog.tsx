@@ -1,20 +1,14 @@
 // FRONT-003: extracted from DeliveriesPage.tsx — par mobile (BottomSheet)
 // + desktop (SwipeableDrawer) para confirmar una entrega.  El padre maneja
 // la mutación + el upload de fotos/archivos (recibido como callback).
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Divider,
-  FormControl,
   IconButton,
-  InputAdornment,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   SwipeableDrawer,
   TextField,
@@ -22,22 +16,14 @@ import {
 } from '@mui/material';
 import {
   Article as ArticleIcon,
-  AttachMoney as AttachMoneyIcon,
   CheckCircle as CheckIcon,
   Close as CloseIcon,
   PhotoCamera as PhotoCameraIcon,
 } from '@mui/icons-material';
 import BottomSheet from '../components/BottomSheet';
+import CobroSection from '../components/CobroSection';
 import { useResponsive } from '../useResponsive';
 import type { CobroData, ReceptorData } from '../types';
-
-const METODOS_PAGO = [
-  { value: 'EFECTIVO', label: 'Efectivo' },
-  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia bancaria' },
-  { value: 'CHEQUE', label: 'Cheque' },
-  { value: 'TARJETA_DEBITO', label: 'Tarjeta de débito' },
-  { value: 'TARJETA_CREDITO', label: 'Tarjeta de crédito' },
-];
 
 interface Props {
   open: boolean;
@@ -119,97 +105,6 @@ const UploadingIndicator: React.FC = () => (
     <Typography variant="caption">Subiendo archivos...</Typography>
   </Box>
 );
-
-const fmt = (n?: number | null) =>
-  n != null
-    ? `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    : null;
-
-interface CobroSectionProps {
-  cobro: CobroData;
-  setCobro: (d: CobroData) => void;
-  montoEsperado?: number | null;
-}
-
-const CobroSection: React.FC<CobroSectionProps> = ({ cobro, setCobro, montoEsperado }) => {
-  const diff = useMemo(() => {
-    const val = parseFloat(cobro.montoCobrado);
-    if (!cobro.montoCobrado || isNaN(val)) return null;
-    if (montoEsperado == null) return null;
-    return val - montoEsperado;
-  }, [cobro.montoCobrado, montoEsperado]);
-
-  const diffLabel = diff == null ? null : diff === 0
-    ? { label: 'Cobro exacto ✓', color: 'success' as const }
-    : diff > 0
-    ? { label: `+${fmt(diff)} de más`, color: 'warning' as const }
-    : { label: `${fmt(diff)} de menos`, color: 'error' as const };
-
-  return (
-    <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-        <AttachMoneyIcon fontSize="small" color="action" />
-        <Typography variant="subtitle2" fontWeight={600}>
-          Cobro al cliente
-        </Typography>
-        {montoEsperado != null && (
-          <Typography variant="caption" color="text.secondary">
-            (esperado: {fmt(montoEsperado)})
-          </Typography>
-        )}
-      </Box>
-
-      <Stack spacing={1.5}>
-        <TextField
-          label="Monto cobrado"
-          value={cobro.montoCobrado}
-          onChange={(e) => setCobro({ ...cobro, montoCobrado: e.target.value })}
-          fullWidth
-          type="number"
-          inputMode="decimal"
-          placeholder={montoEsperado != null ? String(montoEsperado) : '0.00'}
-          InputProps={{
-            startAdornment: <InputAdornment position="start">$</InputAdornment>,
-            sx: { minHeight: 52 },
-          }}
-        />
-
-        {diffLabel && (
-          <Chip
-            label={diffLabel.label}
-            color={diffLabel.color}
-            size="small"
-            sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
-          />
-        )}
-
-        <FormControl fullWidth size="small">
-          <InputLabel>Método de pago</InputLabel>
-          <Select
-            value={cobro.metodoPago}
-            label="Método de pago"
-            onChange={(e) => setCobro({ ...cobro, metodoPago: e.target.value })}
-          >
-            {METODOS_PAGO.map((mp) => (
-              <MenuItem key={mp.value} value={mp.value}>
-                {mp.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          label="N.º de comprobante / transferencia (opcional)"
-          value={cobro.comprobante}
-          onChange={(e) => setCobro({ ...cobro, comprobante: e.target.value })}
-          fullWidth
-          size="small"
-          placeholder="Ej: CVU / número de recibo"
-        />
-      </Stack>
-    </Box>
-  );
-};
 
 const ConfirmDeliveryDialog: React.FC<Props> = ({
   open,

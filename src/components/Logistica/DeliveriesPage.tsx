@@ -66,18 +66,11 @@ import { useResponsive } from './Deliveries/useResponsive';
 import type { CobroData } from './Deliveries/types';
 import { compressImageFile, getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
 import BottomSheet from './Deliveries/components/BottomSheet';
+import CobroSection, { hasMontoValido, initialCobroData, toDetalleCobroDTOs } from './Deliveries/components/CobroSection';
 import LightboxDialog from './Deliveries/dialogs/LightboxDialog';
 import RejectDeliveryDialog from './Deliveries/dialogs/RejectDeliveryDialog';
 import ConfirmDeliveryDialog from './Deliveries/dialogs/ConfirmDeliveryDialog';
 import DeliveryFormDialog from './Deliveries/dialogs/DeliveryFormDialog';
-
-const METODOS_PAGO_COBRO = [
-  { value: 'EFECTIVO', label: 'Efectivo' },
-  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia bancaria' },
-  { value: 'CHEQUE', label: 'Cheque' },
-  { value: 'TARJETA_DEBITO', label: 'Tarjeta de débito' },
-  { value: 'TARJETA_CREDITO', label: 'Tarjeta de crédito' },
-];
 
 const fmtMonto = (n?: number | null) =>
   n != null
@@ -97,18 +90,7 @@ const CobroStandaloneDialog: React.FC<CobroStandaloneDialogProps> = ({
   open, onClose, onConfirm, cobro, setCobro, montoEsperado,
 }) => {
   const { isMobile } = useResponsive();
-
-  const diff = React.useMemo(() => {
-    const val = parseFloat(cobro.montoCobrado);
-    if (!cobro.montoCobrado || isNaN(val) || montoEsperado == null) return null;
-    return val - montoEsperado;
-  }, [cobro.montoCobrado, montoEsperado]);
-
-  const diffChip = diff == null ? null : diff === 0
-    ? { label: 'Cobro exacto ✓', color: 'success' as const }
-    : diff > 0
-    ? { label: `+${fmtMonto(diff)} de más`, color: 'warning' as const }
-    : { label: `${fmtMonto(diff)} de menos`, color: 'error' as const };
+  const canConfirm = hasMontoValido(cobro);
 
   const body = (
     <Stack spacing={2}>
@@ -134,50 +116,7 @@ const CobroStandaloneDialog: React.FC<CobroStandaloneDialogProps> = ({
         </Box>
       )}
 
-      <TextField
-        label="Monto cobrado *"
-        value={cobro.montoCobrado}
-        onChange={(e) => setCobro({ ...cobro, montoCobrado: e.target.value })}
-        fullWidth
-        type="number"
-        inputMode="decimal"
-        placeholder={montoEsperado != null ? String(montoEsperado) : '0.00'}
-        InputProps={{
-          startAdornment: <InputAdornment position="start">$</InputAdornment>,
-          sx: { minHeight: 52 },
-        }}
-      />
-
-      {diffChip && (
-        <Chip
-          label={diffChip.label}
-          color={diffChip.color}
-          size="small"
-          sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
-        />
-      )}
-
-      <FormControl fullWidth>
-        <InputLabel>Método de pago</InputLabel>
-        <Select
-          value={cobro.metodoPago}
-          label="Método de pago"
-          onChange={(e) => setCobro({ ...cobro, metodoPago: e.target.value })}
-        >
-          {METODOS_PAGO_COBRO.map((mp) => (
-            <MenuItem key={mp.value} value={mp.value}>{mp.label}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <TextField
-        label="N.º de comprobante / transferencia (opcional)"
-        value={cobro.comprobante}
-        onChange={(e) => setCobro({ ...cobro, comprobante: e.target.value })}
-        fullWidth
-        size="small"
-        placeholder="Ej: CVU / número de recibo"
-      />
+      <CobroSection cobro={cobro} setCobro={setCobro} montoEsperado={montoEsperado} />
     </Stack>
   );
 
@@ -195,7 +134,7 @@ const CobroStandaloneDialog: React.FC<CobroStandaloneDialogProps> = ({
               color="success"
               startIcon={<AttachMoneyIcon />}
               onClick={onConfirm}
-              disabled={!cobro.montoCobrado}
+              disabled={!canConfirm}
               sx={{ flex: 1, minHeight: 48 }}
             >
               Guardar cobro
@@ -228,7 +167,7 @@ const CobroStandaloneDialog: React.FC<CobroStandaloneDialogProps> = ({
             variant="contained"
             color="success"
             onClick={onConfirm}
-            disabled={!cobro.montoCobrado}
+            disabled={!canConfirm}
             sx={{ flex: 1 }}
           >
             Guardar cobro
@@ -270,7 +209,7 @@ const DeliveriesPage2: React.FC = () => {
     dni: '',
     observaciones: ''
   });
-  const [cobroData, setCobroData] = useState({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+  const [cobroData, setCobroData] = useState<CobroData>(initialCobroData());
   /** Monto esperado de la entrega que se está confirmando actualmente. */
   const [cobroMontoEsperado, setCobroMontoEsperado] = useState<number | null>(null);
 
@@ -282,7 +221,7 @@ const DeliveriesPage2: React.FC = () => {
   // Estado para registrar cobro standalone (entregas ya ENTREGADAS sin cobro)
   const [cobroStandaloneOpen, setCobroStandaloneOpen] = useState(false);
   const [cobroStandaloneId, setCobroStandaloneId] = useState<number | null>(null);
-  const [cobroStandaloneData, setCobroStandaloneData] = useState({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+  const [cobroStandaloneData, setCobroStandaloneData] = useState<CobroData>(initialCobroData());
   const [cobroStandaloneMontoEsperado, setCobroStandaloneMontoEsperado] = useState<number | null>(null);
 
   // Estado para fotos/archivos en confirmación (múltiples)
@@ -690,7 +629,7 @@ const DeliveriesPage2: React.FC = () => {
   const openConfirmDialog = (id: number) => {
     setConfirmDeliveryId(id);
     setReceptorData({ nombre: '', dni: '', observaciones: '' });
-    setCobroData({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+    setCobroData(initialCobroData());
     // Pre-cargar el monto esperado para mostrarlo en el diálogo
     const delivery = deliveries.find(d => d.id === id);
     const monto = delivery ? getMontoACobrar(delivery) : null;
@@ -708,19 +647,13 @@ const DeliveriesPage2: React.FC = () => {
         return;
       }
 
-      const montoCobradoNum = cobroData.montoCobrado
-        ? parseFloat(cobroData.montoCobrado)
-        : undefined;
-
       await entregaViajeApi.confirmarEntrega(
         confirmDeliveryId,
         'ENTREGADA',
         receptorData.nombre,
         receptorData.dni,
         receptorData.observaciones || undefined,
-        !isNaN(montoCobradoNum as number) ? montoCobradoNum : undefined,
-        cobroData.metodoPago || undefined,
-        cobroData.comprobante || undefined
+        toDetalleCobroDTOs(cobroData)
       );
 
       // Subir archivos adjuntos si fueron seleccionados
@@ -753,7 +686,7 @@ const DeliveriesPage2: React.FC = () => {
       setConfirmDialogOpen(false);
       setConfirmDeliveryId(null);
       setReceptorData({ nombre: '', dni: '', observaciones: '' });
-      setCobroData({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+      setCobroData(initialCobroData());
       setCobroMontoEsperado(null);
       limpiarFotos();
       setError(null);
@@ -805,28 +738,24 @@ const DeliveriesPage2: React.FC = () => {
     const monto = delivery ? getMontoACobrar(delivery) : null;
     setCobroStandaloneId(id);
     setCobroStandaloneMontoEsperado(monto ?? null);
-    setCobroStandaloneData({
-      montoCobrado: monto != null ? String(monto) : '',
-      metodoPago: 'EFECTIVO',
-      comprobante: '',
-    });
+    setCobroStandaloneData(
+      monto != null
+        ? { detalles: [{ id: `det-${Date.now()}`, metodoPago: 'EFECTIVO', monto: String(monto), comprobante: '' }] }
+        : initialCobroData()
+    );
     setCobroStandaloneOpen(true);
   };
 
   const handleCobroStandalone = async () => {
-    if (!cobroStandaloneId || !cobroStandaloneData.montoCobrado) return;
-    const montoCobradoNum = parseFloat(cobroStandaloneData.montoCobrado);
-    if (isNaN(montoCobradoNum)) { setError('Monto inválido'); return; }
+    if (!cobroStandaloneId || !hasMontoValido(cobroStandaloneData)) return;
     try {
       await entregaViajeApi.registrarCobro(cobroStandaloneId, {
         entregaId: cobroStandaloneId,
-        montoCobrado: montoCobradoNum,
-        metodoPagoEntrega: cobroStandaloneData.metodoPago,
-        comprobanteCobro: cobroStandaloneData.comprobante || undefined,
+        detallesCobro: toDetalleCobroDTOs(cobroStandaloneData),
       });
       setCobroStandaloneOpen(false);
       setCobroStandaloneId(null);
-      setCobroStandaloneData({ montoCobrado: '', metodoPago: 'EFECTIVO', comprobante: '' });
+      setCobroStandaloneData(initialCobroData());
       setError(null);
       await loadData();
     } catch (err) {

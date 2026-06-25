@@ -1,11 +1,9 @@
 import api from '../config';
-import type { EntregaViaje, EstadoEntrega, ResumenFinancieroViaje } from '../../types';
+import type { DetalleCobroDTO, EntregaViaje, EstadoEntrega, ResumenFinancieroViaje } from '../../types';
 
 export interface RegistrarCobroPayload {
   entregaId: number;
-  montoCobrado: number;
-  metodoPagoEntrega: string;
-  comprobanteCobro?: string;
+  detallesCobro: DetalleCobroDTO[];
 }
 
 export const entregaViajeApi = {
@@ -129,9 +127,7 @@ export const entregaViajeApi = {
     receptorNombre: string,
     receptorDni: string,
     observaciones?: string,
-    montoCobrado?: number,
-    metodoPagoEntrega?: string,
-    comprobanteCobro?: string
+    detallesCobro?: DetalleCobroDTO[]
   ): Promise<EntregaViaje> => {
     const response = await api.post('/api/entregas-viaje/confirmar-entrega', {
       entregaId,
@@ -139,9 +135,7 @@ export const entregaViajeApi = {
       receptorNombre,
       receptorDni,
       observaciones,
-      ...(montoCobrado != null && { montoCobrado }),
-      ...(metodoPagoEntrega && { metodoPagoEntrega }),
-      ...(comprobanteCobro && { comprobanteCobro }),
+      ...(detallesCobro && detallesCobro.length > 0 && { detallesCobro }),
     });
     return response.data;
   },

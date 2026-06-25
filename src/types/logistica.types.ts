@@ -327,6 +327,17 @@ export interface EntregaViaje {
   metodoPagoEntrega?: string | null;
   comprobanteCobro?: string | null;
   estadoCobro?: EstadoCobro | null;
+  /** Líneas de cobro mixto (efectivo + transferencia + cheques + pagaré, etc.). */
+  detallesCobro?: DetalleCobroDTO[];
+}
+
+/** Una línea de cobro mixto dentro de una entrega. */
+export interface DetalleCobroDTO {
+  metodoPago: string;
+  monto: number;
+  comprobanteCobro?: string | null;
+  /** Cantidad de cheques que componen el monto (solo aplica cuando metodoPago = CHEQUE). */
+  cantidadCheques?: number | null;
 }
 
 export type EstadoEntrega = 'PENDIENTE' | 'ENTREGADA' | 'NO_ENTREGADA';

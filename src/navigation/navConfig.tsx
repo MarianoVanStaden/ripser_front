@@ -4,6 +4,7 @@ import WorkIcon from '@mui/icons-material/Work';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import HotelIcon from '@mui/icons-material/Hotel';
 import CategoryIcon from '@mui/icons-material/Category';
 import StoreIcon from '@mui/icons-material/Store';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -117,6 +118,7 @@ export const navigation: NavModule[] = [
       // { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
       { text: 'Legajo de Vehículos', icon: <DirectionsCarIcon />, path: '/logistica/vehiculos/incidencias' },
       { text: 'Km por Empleado', icon: <DirectionsCarIcon />, path: '/logistica/vehiculos/km-empleados' },
+      { text: 'Hospedajes / Estadías', icon: <HotelIcon />, path: '/logistica/transporte/hospedajes' },
     ],
   },
   {

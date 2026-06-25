@@ -1,0 +1,225 @@
+// Sección de cobro mixto (varias líneas: efectivo + transferencia + cheques +
+// pagaré, etc.) compartida entre ConfirmDeliveryDialog y el diálogo standalone
+// de "Registrar/Corregir cobro" en DeliveriesPage.
+import React, { useMemo } from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  FormControl,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import {
+  AddCircleOutline as AddIcon,
+  AttachMoney as AttachMoneyIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
+import type { DetalleCobroDTO } from '../../../../types';
+import type { CobroData, DetalleCobro } from '../types';
+
+export const METODOS_PAGO = [
+  { value: 'EFECTIVO', label: 'Efectivo' },
+  { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferencia bancaria' },
+  { value: 'CHEQUE', label: 'Cheque' },
+  { value: 'TARJETA_DEBITO', label: 'Tarjeta de débito' },
+  { value: 'TARJETA_CREDITO', label: 'Tarjeta de crédito' },
+  { value: 'PAGARE', label: 'Pagaré' },
+];
+
+const fmt = (n?: number | null) =>
+  n != null
+    ? `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : null;
+
+let nextLocalId = 0;
+const newDetalle = (overrides?: Partial<DetalleCobro>): DetalleCobro => ({
+  id: `det-${Date.now()}-${nextLocalId++}`,
+  metodoPago: 'EFECTIVO',
+  monto: '',
+  comprobante: '',
+  ...overrides,
+});
+
+/** Crea el CobroData inicial con una sola línea vacía. */
+export const initialCobroData = (): CobroData => ({ detalles: [newDetalle()] });
+
+export const sumaCobro = (cobro: CobroData): number =>
+  cobro.detalles.reduce((acc, d) => {
+    const val = parseFloat(d.monto);
+    return acc + (isNaN(val) ? 0 : val);
+  }, 0);
+
+export const hasMontoValido = (cobro: CobroData): boolean =>
+  cobro.detalles.length > 0 && cobro.detalles.every((d) => d.monto.trim() !== '' && !isNaN(parseFloat(d.monto)));
+
+/** Convierte el form state a las líneas que espera el backend (DetalleCobroDTO[]). */
+export const toDetalleCobroDTOs = (cobro: CobroData): DetalleCobroDTO[] =>
+  cobro.detalles
+    .filter((d) => d.monto.trim() !== '' && !isNaN(parseFloat(d.monto)))
+    .map((d) => ({
+      metodoPago: d.metodoPago,
+      monto: parseFloat(d.monto),
+      comprobanteCobro: d.comprobante || undefined,
+      cantidadCheques: d.cantidadCheques ? parseInt(d.cantidadCheques, 10) : undefined,
+    }));
+
+interface Props {
+  cobro: CobroData;
+  setCobro: (d: CobroData) => void;
+  montoEsperado?: number | null;
+}
+
+const CobroSection: React.FC<Props> = ({ cobro, setCobro, montoEsperado }) => {
+  const total = useMemo(() => sumaCobro(cobro), [cobro]);
+
+  const diff = useMemo(() => {
+    if (montoEsperado == null) return null;
+    if (cobro.detalles.every((d) => !d.monto)) return null;
+    return total - montoEsperado;
+  }, [total, montoEsperado, cobro.detalles]);
+
+  const diffLabel = diff == null ? null : diff === 0
+    ? { label: 'Cobro exacto ✓', color: 'success' as const }
+    : diff > 0
+    ? { label: `+${fmt(diff)} de más`, color: 'warning' as const }
+    : { label: `${fmt(diff)} de menos`, color: 'error' as const };
+
+  const updateDetalle = (id: string, changes: Partial<DetalleCobro>) => {
+    setCobro({
+      detalles: cobro.detalles.map((d) => (d.id === id ? { ...d, ...changes } : d)),
+    });
+  };
+
+  const removeDetalle = (id: string) => {
+    if (cobro.detalles.length <= 1) return;
+    setCobro({ detalles: cobro.detalles.filter((d) => d.id !== id) });
+  };
+
+  const addDetalle = () => {
+    const restante = montoEsperado != null ? montoEsperado - total : null;
+    setCobro({
+      detalles: [
+        ...cobro.detalles,
+        newDetalle(restante != null && restante > 0 ? { monto: restante.toFixed(2) } : undefined),
+      ],
+    });
+  };
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+        <AttachMoneyIcon fontSize="small" color="action" />
+        <Typography variant="subtitle2" fontWeight={600}>
+          Cobro al cliente
+        </Typography>
+        {montoEsperado != null && (
+          <Typography variant="caption" color="text.secondary">
+            (esperado: {fmt(montoEsperado)})
+          </Typography>
+        )}
+      </Box>
+
+      <Stack spacing={1.5}>
+        {cobro.detalles.map((detalle, idx) => (
+          <Stack
+            key={detalle.id}
+            spacing={1}
+            sx={{ p: 1.25, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Método de pago</InputLabel>
+                <Select
+                  value={detalle.metodoPago}
+                  label="Método de pago"
+                  onChange={(e) => updateDetalle(detalle.id, { metodoPago: e.target.value })}
+                >
+                  {METODOS_PAGO.map((mp) => (
+                    <MenuItem key={mp.value} value={mp.value}>
+                      {mp.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {cobro.detalles.length > 1 && (
+                <IconButton size="small" onClick={() => removeDetalle(detalle.id)} aria-label="Quitar forma de pago">
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+
+            <TextField
+              label="Monto"
+              value={detalle.monto}
+              onChange={(e) => updateDetalle(detalle.id, { monto: e.target.value })}
+              fullWidth
+              size="small"
+              type="number"
+              inputMode="decimal"
+              placeholder="0.00"
+              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+            />
+
+            {detalle.metodoPago === 'CHEQUE' ? (
+              <TextField
+                label="Cantidad de cheques (opcional)"
+                value={detalle.cantidadCheques ?? ''}
+                onChange={(e) => updateDetalle(detalle.id, { cantidadCheques: e.target.value })}
+                fullWidth
+                size="small"
+                type="number"
+                inputMode="numeric"
+                placeholder="Ej: 3"
+              />
+            ) : (
+              <TextField
+                label={
+                  detalle.metodoPago === 'PAGARE'
+                    ? 'Nota (opcional) — Ej: pagaré firmado por el cliente'
+                    : 'N.º de comprobante / transferencia (opcional)'
+                }
+                value={detalle.comprobante}
+                onChange={(e) => updateDetalle(detalle.id, { comprobante: e.target.value })}
+                fullWidth
+                size="small"
+              />
+            )}
+          </Stack>
+        ))}
+
+        <Button
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={addDetalle}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Agregar forma de pago
+        </Button>
+
+        {cobro.detalles.length > 1 && (
+          <Typography variant="body2" color="text.secondary">
+            Total ingresado: <strong>{fmt(total)}</strong>
+          </Typography>
+        )}
+
+        {diffLabel && (
+          <Chip
+            label={diffLabel.label}
+            color={diffLabel.color}
+            size="small"
+            sx={{ alignSelf: 'flex-start', fontWeight: 600 }}
+          />
+        )}
+      </Stack>
+    </Box>
+  );
+};
+
+export default CobroSection;

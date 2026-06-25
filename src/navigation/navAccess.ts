@@ -153,6 +153,7 @@ export const coordinadoraLogisticaAllowedPaths = [
   '/logistica/distribucion/entregas-equipos',
   '/logistica/vehiculos/incidencias',
   '/logistica/vehiculos/km-empleados',
+  '/logistica/transporte/hospedajes',
   '/fabricacion/equipos',
   '/fabricacion/ficha-equipo',
   '/postventa/dashboard',

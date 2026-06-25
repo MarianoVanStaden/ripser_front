@@ -9,12 +9,20 @@ export interface ReceptorData {
   observaciones: string;
 }
 
-/** Form state for the cobro section inside "Confirmar Entrega". */
-export interface CobroData {
-  /** Monto efectivamente cobrado. Empty string = campo vacío (sin informar). */
-  montoCobrado: string;
+/** Una línea de cobro mixto (efectivo + transferencia + cheques + pagaré, etc.). */
+export interface DetalleCobro {
+  /** uuid local, solo para key de React — no se envía al backend. */
+  id: string;
   metodoPago: string;
+  monto: string;
   comprobante: string;
+  /** Cantidad de cheques que componen el monto (solo aplica cuando metodoPago = CHEQUE). */
+  cantidadCheques?: string;
+}
+
+/** Form state for the cobro section inside "Confirmar Entrega": una o más líneas de cobro. */
+export interface CobroData {
+  detalles: DetalleCobro[];
 }
 
 /** Form state for the "Crear/Editar Entrega" bottom-sheet/drawer. */
