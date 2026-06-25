@@ -4,6 +4,21 @@ import type { PageResponse, PaginationParams } from '../../types/pagination.type
 
 const BASE_URL = '/api/sueldos';
 
+/** Heladeras (no exhibidores) vendidas por una vendedora en el mes. */
+export interface VentaVendedora {
+  usuarioId: number | null;
+  empleadoId: number | null;
+  nombre: string;
+  heladerasVendidas: number;
+}
+
+/** Conteo automático de unidades del mes para la calculadora de bonos. */
+export interface UnidadesMes {
+  producidas: number;
+  vendidas: number;
+  ventasPorVendedora: VentaVendedora[];
+}
+
 export const sueldoApi = {
   // Get all sueldos
   getAll: async (pagination: PaginationParams = {}): Promise<PageResponse<Sueldo>> => {
@@ -70,14 +85,25 @@ export const sueldoApi = {
   },
 
   // Cuenta automática de unidades del mes para alimentar la calculadora de
-  // bonos: producidas = equipos fabricados / vendidas = notas pedido aprobadas.
-  getUnidadesMes: async (periodo: string): Promise<{ producidas: number; vendidas: number }> => {
-    const { data } = await axios.get<{ producidas: number; vendidas: number }>(
+  // bonos:
+  //   - producidas: equipos (no exhibidores) fabricados en el mes → bono producción del taller.
+  //   - vendidas: total de unidades en notas de pedido aprobadas (agregado).
+  //   - ventasPorVendedora: heladeras (no exhibidores) vendidas por cada
+  //     vendedora (quien convirtió la nota de pedido) → bono ventas por asesora.
+  getUnidadesMes: async (periodo: string): Promise<UnidadesMes> => {
+    const { data } = await axios.get<UnidadesMes>(
       `${BASE_URL}/unidades-mes`, { params: { periodo } },
     );
     return {
       producidas: Number(data.producidas) || 0,
       vendidas: Number(data.vendidas) || 0,
+      ventasPorVendedora: (Array.isArray(data.ventasPorVendedora) ? data.ventasPorVendedora : [])
+        .map(v => ({
+          usuarioId: v.usuarioId ?? null,
+          empleadoId: v.empleadoId ?? null,
+          nombre: v.nombre ?? '',
+          heladerasVendidas: Number(v.heladerasVendidas) || 0,
+        })),
     };
   },
 

@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { sueldoApi } from '../../../api/services/sueldoApi';
+import { sueldoApi, type VentaVendedora } from '../../../api/services/sueldoApi';
 import { employeeApi } from '../../../api/services/employeeApi';
 import { categoriaSalarialApi } from '../../../api/services/categoriaSalarialApi';
 import { bonoProduccionApi } from '../../../api/services/bonoProduccionApi';
@@ -86,6 +86,9 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   const [unidadesAutoProducidas, setUnidadesAutoProducidas] = useState<number | null>(null);
   const [unidadesAutoVendidas, setUnidadesAutoVendidas] = useState<number | null>(null);
   const [loadingUnidades, setLoadingUnidades] = useState<boolean>(false);
+  // Desglose de heladeras vendidas por vendedora (quien convirtió la nota de
+  // pedido). Cada asesora cobra su bono de ventas según SU propio conteo.
+  const [ventasPorVendedora, setVentasPorVendedora] = useState<VentaVendedora[]>([]);
 
   // Filtros de filtrado de filas
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaSalarial | null>(null);
@@ -168,6 +171,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
         setUnidadesAutoVendidas(r.vendidas);
         setUnidadesProducidas(r.producidas);
         setUnidadesVendidas(r.vendidas);
+        setVentasPorVendedora(r.ventasPorVendedora);
       })
       .catch(() => {/* mantener 0 si falla */})
       .finally(() => { if (!cancelado) setLoadingUnidades(false); });
@@ -267,11 +271,27 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     [categorias],
   );
 
+  // empleadoId → heladeras (no exhibidores) vendidas en el período. Sólo entran
+  // las vendedoras cuyo usuario está vinculado a un empleado.
+  const ventasMap = useMemo(() => {
+    const m = new Map<number, number>();
+    ventasPorVendedora.forEach(v => {
+      if (v.empleadoId != null) m.set(v.empleadoId, v.heladerasVendidas);
+    });
+    return m;
+  }, [ventasPorVendedora]);
+
   const computeRow = useCallback((row: RowState) => {
     const categoria = getCategoria(row.categoriaSalarialId);
     if (!categoria) return null;
     const bonosProdCat = bonosProduccion.filter(b => b.categoriaSalarialId === categoria.id);
     const bonosVentasCat = bonosVentas.filter(b => b.categoriaSalarialId === categoria.id);
+    // Si el empleado figura en el desglose de ventas, su bono usa SU conteo de
+    // heladeras; si no, cae al valor global editable (override / empleados sin
+    // venta atribuida en el sistema).
+    const vendidasRow = ventasMap.has(row.empleadoId)
+      ? ventasMap.get(row.empleadoId)!
+      : unidadesVendidas;
     return calcularRemuneracion({
       categoria,
       presentismoPct: row.presentismoPct,
@@ -279,7 +299,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       horasAusenteCant: row.horasAusenteCant,
       kmCant: row.kmCant,
       unidadesProducidas,
-      unidadesVendidas,
+      unidadesVendidas: vendidasRow,
       bonosProduccion: bonosProdCat,
       bonosVentas: bonosVentasCat,
       bonificaciones: row.bonificaciones,
@@ -289,7 +309,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       descuentosOtros: row.descuentosOtros,
       adelantos: row.adelantos,
     });
-  }, [getCategoria, bonosProduccion, bonosVentas, unidadesProducidas, unidadesVendidas]);
+  }, [getCategoria, bonosProduccion, bonosVentas, unidadesProducidas, unidadesVendidas, ventasMap]);
 
   // Filas filtradas para mostrar
   const filteredRows = useMemo(() => {
@@ -523,9 +543,11 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                 helperText={
                   loadingUnidades
                     ? 'Cargando...'
-                    : unidadesAutoVendidas != null
-                      ? `Auto: ${unidadesAutoVendidas} unid. en notas aprobadas`
-                      : 'Dispara bono ventas'
+                    : ventasMap.size > 0
+                      ? `Cada vendedora cobra por sus heladeras (${ventasMap.size} con ventas). Este valor aplica al resto.`
+                      : unidadesAutoVendidas != null
+                        ? `Auto: ${unidadesAutoVendidas} unid. en notas aprobadas`
+                        : 'Dispara bono ventas'
                 }
               />
             </Grid>
@@ -758,6 +780,13 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                         <Typography variant="body2" color={calc && calc.bonoVentas > 0 ? 'success.main' : 'textSecondary'} fontWeight={calc && calc.bonoVentas > 0 ? 600 : 400}>
                           ${(calc?.bonoVentas ?? 0).toLocaleString('es-AR')}
                         </Typography>
+                        {ventasMap.has(row.empleadoId) && (
+                          <Tooltip title="Heladeras (no exhibidores) vendidas por esta vendedora en el período — disparan su bono de ventas.">
+                            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', lineHeight: 1 }}>
+                              {ventasMap.get(row.empleadoId)} hel.
+                            </Typography>
+                          </Tooltip>
+                        )}
                       </TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'bonoEspecial', 100)}</TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'descuentosLegales', 100)}</TableCell>
