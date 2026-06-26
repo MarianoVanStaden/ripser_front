@@ -55,4 +55,8 @@ export interface RecepcionItem {
   cantidadRecibida: number;
   cantidadPendiente: number;
   observaciones: string;
+  /** Unidad física del stock del producto (MT2 | METROS | KILOS | UNIDAD). */
+  unidadMedida?: string;
+  /** Unidades base por unidad de compra recibida. null/undefined = 1. */
+  factorConversion?: number | null;
 }

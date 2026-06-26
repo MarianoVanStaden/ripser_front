@@ -68,6 +68,10 @@ export interface Producto {
   activo: boolean;
   fechaCreacion?: string; // ISO string
   tipoEntidad?: TipoEntidadProducto;
+  /** Unidad física del stock: MT2 | METROS | KILOS | UNIDAD */
+  unidadMedida?: string;
+  /** Unidades base por unidad de compra (ej: 9 m² por plancha). null/undefined = 1. */
+  factorConversion?: number | null;
 }
 
 // ProductoCreateDTO interface for product creation
@@ -120,6 +124,8 @@ export interface ProductoDTO {
   categoriaProductoNombre?: string;
   activo: boolean;
   fechaCreacion: string;
+  unidadMedida?: string;
+  factorConversion?: number | null;
 }
 
 // ProductoListDTO

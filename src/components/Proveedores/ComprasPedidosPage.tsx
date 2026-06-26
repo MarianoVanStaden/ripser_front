@@ -307,6 +307,8 @@ const handleOpenRecepcion = async (orden: OrdenCompra) => {
         cantidadPendiente: pendiente,
         cantidadRecibida: pendiente,
         observaciones: '',
+        unidadMedida: item.unidadMedida,
+        factorConversion: item.factorConversion,
       };
     })
     // No tiene sentido volver a recibir líneas ya completas.

@@ -216,6 +216,8 @@ export interface OrdenCompra {
     categoriaProductoId?: number;
     esProductoNuevo?: boolean;
     observaciones?: string;
+    unidadMedida?: string;
+    factorConversion?: number | null;
   }[];
   observaciones?: string;
   metodoPago?: MetodoPago;

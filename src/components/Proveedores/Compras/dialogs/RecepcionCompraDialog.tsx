@@ -145,21 +145,34 @@ const RecepcionCompraDialog: React.FC<Props> = ({
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'grey.100' }}>
                     <TableCell>Producto</TableCell>
-                    <TableCell align="center">Cant. Comprada</TableCell>
+                    <TableCell align="center">Comprada</TableCell>
                     <TableCell align="center">Pendiente</TableCell>
-                    <TableCell align="center" sx={{ minWidth: 120 }}>
+                    <TableCell align="center" sx={{ minWidth: 140 }}>
                       Cant. Recibida *
                     </TableCell>
                     <TableCell>Observaciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {items.map((item, index) => (
+                  {items.map((item, index) => {
+                    const factor = item.factorConversion ?? 1;
+                    const unidad = item.unidadMedida ?? 'UNIDAD';
+                    const tieneConversion = factor !== 1 && factor > 0;
+                    const baseEquiv = tieneConversion
+                      ? (item.cantidadRecibida * factor).toLocaleString('es-AR', { maximumFractionDigits: 4 })
+                      : null;
+                    const labelUnidad = unidad === 'MT2' ? 'm²' : unidad === 'METROS' ? 'm' : unidad === 'KILOS' ? 'kg' : '';
+                    return (
                     <TableRow key={index}>
                       <TableCell>
                         <Typography variant="body2" fontWeight="medium">
                           {item.productoNombre}
                         </Typography>
+                        {tieneConversion && (
+                          <Typography variant="caption" color="text.secondary">
+                            × {factor} {labelUnidad}/unidad
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell align="center">
                         <Chip label={item.cantidadCompra} size="small" />
@@ -183,7 +196,9 @@ const RecepcionCompraDialog: React.FC<Props> = ({
                           helperText={
                             item.cantidadRecibida > item.cantidadPendiente
                               ? `Máximo pendiente: ${item.cantidadPendiente}`
-                              : undefined
+                              : baseEquiv
+                                ? `= ${baseEquiv} ${labelUnidad} a ingresar`
+                                : undefined
                           }
                           disabled={loading}
                         />
@@ -203,7 +218,8 @@ const RecepcionCompraDialog: React.FC<Props> = ({
                         />
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
