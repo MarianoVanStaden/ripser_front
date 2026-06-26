@@ -114,6 +114,11 @@ const StockPage: React.FC = () => {
     stockMinimo: 0,
     categoriaProductoId: 1,
     activo: true,
+    unidadMedida: 'UNIDAD' as string,
+    factorConversion: null as number | null,
+    // Campos auxiliares para cálculo MT2 (no se envían al backend)
+    _ancho: null as number | null,
+    _largo: null as number | null,
   });
 
   // Price calculation states
@@ -192,6 +197,8 @@ const StockPage: React.FC = () => {
 
   const handleEditProduct = (product: ProductoUnificado) => {
     setSelectedProduct(product);
+    const factor = product.factorConversion ?? null;
+    const unidad = product.unidadMedida ?? 'UNIDAD';
     setEditForm({
       nombre: product.nombre,
       codigo: product.codigo || '',
@@ -201,6 +208,10 @@ const StockPage: React.FC = () => {
       stockMinimo: product.stockMinimo,
       categoriaProductoId: product.categoriaProducto?.id || product.categoriaProductoId || 1,
       activo: product.activo,
+      unidadMedida: unidad,
+      factorConversion: factor,
+      _ancho: null,
+      _largo: null,
     });
     setSuggestedPrice(null);
     setEditDialogOpen(true);
@@ -222,6 +233,8 @@ const StockPage: React.FC = () => {
           stockMinimo: editForm.stockMinimo,
           categoriaProductoId: editForm.categoriaProductoId,
           activo: editForm.activo,
+          unidadMedida: editForm.unidadMedida === 'UNIDAD' ? undefined : editForm.unidadMedida,
+          factorConversion: editForm.unidadMedida === 'UNIDAD' ? null : editForm.factorConversion,
         },
         selectedProduct.tipoEntidad,
       );
@@ -960,6 +973,109 @@ const StockPage: React.FC = () => {
               fullWidth
               helperText="Define el umbral para 'Stock Bajo'"
             />
+
+            {/* Unidad de medida y factor de conversión — solo para materiales */}
+            {selectedProduct?.tipoEntidad === TipoEntidadProducto.MATERIAL && (
+              <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Unidad de Medida para Ingreso de Stock
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Unidad</InputLabel>
+                    <Select
+                      value={editForm.unidadMedida}
+                      label="Unidad"
+                      onChange={(e) => {
+                        const u = e.target.value as string;
+                        setEditForm({ ...editForm, unidadMedida: u, factorConversion: null, _ancho: null, _largo: null });
+                      }}
+                    >
+                      <MenuItem value="UNIDAD">Unidad (sin conversión)</MenuItem>
+                      <MenuItem value="MT2">m² — plancha/lámina</MenuItem>
+                      <MenuItem value="METROS">Metros — barra/rollo</MenuItem>
+                      <MenuItem value="KILOS">Kg — garrafa/bolsa</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  {editForm.unidadMedida === 'MT2' && (
+                    <>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <TextField
+                          label="Ancho (m)"
+                          type="number"
+                          size="small"
+                          value={editForm._ancho ?? ''}
+                          onChange={(e) => {
+                            const ancho = parseFloat(e.target.value) || null;
+                            const factor = ancho && editForm._largo ? parseFloat((ancho * editForm._largo).toFixed(4)) : editForm.factorConversion;
+                            setEditForm({ ...editForm, _ancho: ancho, factorConversion: factor });
+                          }}
+                          inputProps={{ step: '0.01', min: '0.01' }}
+                          sx={{ flex: 1 }}
+                        />
+                        <TextField
+                          label="Largo (m)"
+                          type="number"
+                          size="small"
+                          value={editForm._largo ?? ''}
+                          onChange={(e) => {
+                            const largo = parseFloat(e.target.value) || null;
+                            const factor = largo && editForm._ancho ? parseFloat((editForm._ancho * largo).toFixed(4)) : editForm.factorConversion;
+                            setEditForm({ ...editForm, _largo: largo, factorConversion: factor });
+                          }}
+                          inputProps={{ step: '0.01', min: '0.01' }}
+                          sx={{ flex: 1 }}
+                        />
+                      </Box>
+                      <TextField
+                        label="Factor (m² por plancha)"
+                        type="number"
+                        size="small"
+                        value={editForm.factorConversion ?? ''}
+                        onChange={(e) => setEditForm({ ...editForm, factorConversion: parseFloat(e.target.value) || null, _ancho: null, _largo: null })}
+                        inputProps={{ step: '0.0001', min: '0.0001' }}
+                        helperText={editForm._ancho && editForm._largo ? `Auto-calculado: ${editForm._ancho} × ${editForm._largo} = ${editForm.factorConversion} m²` : 'Podés editar manualmente'}
+                        fullWidth
+                      />
+                    </>
+                  )}
+
+                  {editForm.unidadMedida === 'METROS' && (
+                    <TextField
+                      label="Metros por barra/rollo"
+                      type="number"
+                      size="small"
+                      value={editForm.factorConversion ?? ''}
+                      onChange={(e) => setEditForm({ ...editForm, factorConversion: parseFloat(e.target.value) || null })}
+                      inputProps={{ step: '0.01', min: '0.01' }}
+                      helperText="Ej: 6 si cada barra mide 6 metros"
+                      fullWidth
+                    />
+                  )}
+
+                  {editForm.unidadMedida === 'KILOS' && (
+                    <TextField
+                      label="Kg por unidad/garrafa"
+                      type="number"
+                      size="small"
+                      value={editForm.factorConversion ?? ''}
+                      onChange={(e) => setEditForm({ ...editForm, factorConversion: parseFloat(e.target.value) || null })}
+                      inputProps={{ step: '0.01', min: '0.01' }}
+                      helperText="Ej: 10 si cada garrafa tiene 10 kg"
+                      fullWidth
+                    />
+                  )}
+
+                  {editForm.unidadMedida !== 'UNIDAD' && editForm.factorConversion && (
+                    <Typography variant="caption" color="success.main">
+                      Al recibir 1 unidad de compra → se suman {editForm.factorConversion}{' '}
+                      {editForm.unidadMedida === 'MT2' ? 'm²' : editForm.unidadMedida === 'METROS' ? 'm' : 'kg'} al stock
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            )}
 
             <FormControl fullWidth>
               <InputLabel>Categoría</InputLabel>

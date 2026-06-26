@@ -97,6 +97,8 @@ export interface ProductoCreateDTO {
   stockMinimo: number;
   codigo?: string;
   categoriaProductoId: number;
+  unidadMedida?: string;
+  factorConversion?: number | null;
 }
 
 // ProductoUpdateDTO
@@ -108,6 +110,8 @@ export interface ProductoUpdateDTO {
   stockMinimo?: number;
   categoriaProductoId?: number;
   activo?: boolean;
+  unidadMedida?: string;
+  factorConversion?: number | null;
 }
 
 // ProductoDTO

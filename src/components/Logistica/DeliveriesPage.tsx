@@ -48,6 +48,7 @@ import {
   PhotoCamera as PhotoCameraIcon,
   Download as DownloadIcon,
   WhatsApp as WhatsAppIcon,
+  SpeakerNotes as NoteIcon,
 } from '@mui/icons-material';
 import { Tooltip } from '@mui/material';
 import type { EntregaViaje, Viaje, Cliente, EstadoEntrega, DocumentoComercial } from '../../types';
@@ -930,10 +931,27 @@ const DeliveriesPage2: React.FC = () => {
               </Typography>
             </Box>
 
+            {(() => {
+              const monto = getMontoACobrar(delivery);
+              if (monto == null) return null;
+              return (
+                <Box sx={{ bgcolor: 'success.50', border: '1px solid', borderColor: 'success.main',
+                            borderRadius: 1, px: 1.5, py: 0.75, mb: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">A cobrar en esta entrega</Typography>
+                  <Typography variant="subtitle2" fontWeight={700} color="success.dark">
+                    ${monto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+              );
+            })()}
+
             {delivery.observaciones && (
-              <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
-                {delivery.observaciones}
-              </Typography>
+              <Box display="flex" alignItems="flex-start" gap={0.5} mb={1.5}>
+                <NoteIcon sx={{ fontSize: 14, color: 'text.secondary', mt: 0.3, flexShrink: 0 }} />
+                <Typography variant="caption" color="text.secondary">
+                  {delivery.observaciones}
+                </Typography>
+              </Box>
             )}
 
             {/* Actions */}
@@ -1608,6 +1626,14 @@ const DeliveriesPage2: React.FC = () => {
                           <Box>
                             <Typography variant="caption" color="text.secondary">Receptor</Typography>
                             <Typography variant="body2">{selectedDelivery.receptorNombre}</Typography>
+                          </Box>
+                        )}
+                        {selectedDelivery.observaciones && (
+                          <Box>
+                            <Typography variant="caption" color="text.secondary">Observaciones</Typography>
+                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                              {selectedDelivery.observaciones}
+                            </Typography>
                           </Box>
                         )}
                         <Button
