@@ -340,6 +340,16 @@ const ChecklistProduccionPanel: React.FC<Props> = ({
                       )}
                     </Stack>
                   )}
+                  {etapa.estado === 'RECHAZADO' && etapa.usuarioRechazo && (
+                    <Stack direction="row" spacing={0.75} mt={0.5} flexWrap="wrap" useFlexGap>
+                      <Chip
+                        size="small"
+                        label={`Rechazada por: ${etapa.usuarioRechazo}`}
+                        variant="outlined"
+                        color="error"
+                      />
+                    </Stack>
+                  )}
                   {etapa.motivoRechazo && (
                     <Typography
                       variant="body2"

@@ -18,7 +18,7 @@ import {
 } from '../../api/services/equipoFabricadoApi';
 import { historialEstadoEquipoApi } from '../../api/historialEstadoEquipoApi';
 import ClienteAutocomplete from '../common/ClienteAutocomplete';
-import type { EquipoFabricadoDTO, EtapaFabricacionDTO, HistorialEstadoEquipo } from '../../types';
+import type { EquipoFabricadoDTO, EtapaFabricacionDTO, HistorialEstadoEquipo, HistorialFabricacionDTO } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
 
@@ -32,6 +32,8 @@ const EquipoDetail: React.FC = () => {
   const [assignDialog, setAssignDialog] = useState(false);
   const [historial, setHistorial] = useState<HistorialEstadoEquipo[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(false);
+  const [historialFabricacion, setHistorialFabricacion] = useState<HistorialFabricacionDTO[]>([]);
+  const [loadingHistorialFabricacion, setLoadingHistorialFabricacion] = useState(false);
 
   const [unassignDialog, setUnassignDialog] = useState(false);
   const [unassignErrorDialog, setUnassignErrorDialog] = useState<{
@@ -66,6 +68,7 @@ const EquipoDetail: React.FC = () => {
   useEffect(() => {
     if (equipo?.id) {
       loadHistorial();
+      loadHistorialFabricacion();
     }
   }, [equipo?.id]);
 
@@ -130,7 +133,7 @@ const EquipoDetail: React.FC = () => {
   };
 
   const loadHistorial = async () => {
-    if (!equipo?.id) return; // Wait until equipo is loaded to get the real ID
+    if (!equipo?.id) return;
     try {
       setLoadingHistorial(true);
       const data = await historialEstadoEquipoApi.getByEquipoId(equipo.id);
@@ -139,6 +142,19 @@ const EquipoDetail: React.FC = () => {
       console.error('Error loading historial:', error);
     } finally {
       setLoadingHistorial(false);
+    }
+  };
+
+  const loadHistorialFabricacion = async () => {
+    if (!equipo?.id) return;
+    try {
+      setLoadingHistorialFabricacion(true);
+      const data = await equipoFabricadoApi.getHistorialFabricacion(equipo.id);
+      setHistorialFabricacion(data);
+    } catch (error) {
+      console.error('Error loading historial fabricacion:', error);
+    } finally {
+      setLoadingHistorialFabricacion(false);
     }
   };
 
@@ -724,6 +740,78 @@ const EquipoDetail: React.FC = () => {
                         </TimelineContent>
                       </TimelineItem>
                     ))}
+                  </Timeline>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Historial de Control de Calidad */}
+        {historialFabricacion.some((h) =>
+          ['enviarControlCalidad', 'rechazarControlCalidad', 'rechazarEtapasControlCalidad',
+           'aprobarControlCalidad', 'aprobarControlCalidadSinColor'].includes(h.evento ?? '')
+        ) && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={1} mb={2}>
+                  <History color="warning" />
+                  <Typography variant="h6">Historial de Control de Calidad</Typography>
+                </Box>
+                <Divider sx={{ mb: 3 }} />
+                {loadingHistorialFabricacion ? (
+                  <Box display="flex" justifyContent="center" py={3}>
+                    <CircularProgress size={30} />
+                  </Box>
+                ) : (
+                  <Timeline position="right">
+                    {historialFabricacion
+                      .filter((h) =>
+                        ['enviarControlCalidad', 'rechazarControlCalidad', 'rechazarEtapasControlCalidad',
+                         'aprobarControlCalidad', 'aprobarControlCalidadSinColor'].includes(h.evento ?? '')
+                      )
+                      .map((item, index, arr) => {
+                        const esRechazo = item.evento === 'rechazarControlCalidad' || item.evento === 'rechazarEtapasControlCalidad';
+                        const esAprobacion = item.evento === 'aprobarControlCalidad' || item.evento === 'aprobarControlCalidadSinColor';
+                        const fecha = item.fechaCambio ?? item.fecha;
+                        return (
+                          <TimelineItem key={item.id}>
+                            <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+                              <Typography variant="body2" fontWeight="500">
+                                {dayjs(fecha).format('DD/MM/YYYY')}
+                              </Typography>
+                              <Typography variant="caption">
+                                {dayjs(fecha).format('HH:mm')}
+                              </Typography>
+                            </TimelineOppositeContent>
+                            <TimelineSeparator>
+                              <TimelineDot color={esAprobacion ? 'success' : esRechazo ? 'error' : 'grey'} />
+                              {index < arr.length - 1 && <TimelineConnector />}
+                            </TimelineSeparator>
+                            <TimelineContent sx={{ py: '12px', px: 2 }}>
+                              <Box>
+                                <Typography variant="body2" fontWeight={600} color={
+                                  esAprobacion ? 'success.main' : esRechazo ? 'error.main' : 'text.primary'
+                                }>
+                                  {esAprobacion ? 'Aprobado' : esRechazo ? 'Rechazado' : 'Enviado a QC'}
+                                </Typography>
+                                {item.usuarioNombre && (
+                                  <Typography variant="body2" color="text.secondary">
+                                    {esAprobacion ? 'Aprobado por' : esRechazo ? 'Rechazado por' : 'Por'}:{' '}
+                                    <strong>{item.usuarioNombre}</strong>
+                                  </Typography>
+                                )}
+                                {item.observaciones && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, display: 'block' }}>
+                                    {item.observaciones}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </TimelineContent>
+                          </TimelineItem>
+                        );
+                      })}
                   </Timeline>
                 )}
               </CardContent>

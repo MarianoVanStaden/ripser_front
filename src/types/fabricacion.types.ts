@@ -153,6 +153,7 @@ export interface EtapaFabricacionDTO {
   responsableNombre?: string;
   observaciones?: string;
   motivoRechazo?: string;
+  usuarioRechazo?: string;
   fechaCompletado?: string;
 }
 
@@ -257,10 +258,13 @@ export interface EtapaTerminacionDTO {
 
 export interface HistorialFabricacionDTO {
   id: number;
+  evento?: string;
   estadoAnterior: EstadoFabricacion;
   estadoNuevo: EstadoFabricacion;
   descripcion: string;
   fecha: string;
+  fechaCambio?: string;
+  observaciones?: string;
   usuarioNombre?: string;
 }
 
