@@ -1565,6 +1565,11 @@ const TripsPage2: React.FC = () => {
                               sx={{ mt: 0.5 }}
                             />
                           )}
+                          {delivery.observaciones && (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                              📝 {delivery.observaciones}
+                            </Typography>
+                          )}
                         </Box>
                         {!delivery.id && (
                           <IconButton
@@ -1717,6 +1722,17 @@ const TripsPage2: React.FC = () => {
               placeholder="Calle 123, Ciudad"
               helperText="Se autocompleta con la dirección del cliente al elegir la factura. Editable."
               InputProps={{ sx: { minHeight: 56 } }}
+            />
+
+            <TextField
+              label="Observaciones de entrega (opcional)"
+              value={newDelivery.observaciones}
+              onChange={(e) => setNewDelivery({ ...newDelivery, observaciones: e.target.value })}
+              fullWidth
+              size="medium"
+              multiline
+              rows={2}
+              placeholder="Notas para esta entrega..."
             />
 
             <TextField
@@ -2648,7 +2664,7 @@ const TripsPage2: React.FC = () => {
               {tripDeliveries.map((delivery, index) => (
                 <Card key={index} variant="outlined">
                   <CardContent sx={{ py: 1, px: 2 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                       <Box flex={1}>
                         <Typography variant="body2">{delivery.direccionEntrega}</Typography>
                         {delivery.factura && (
@@ -2668,6 +2684,11 @@ const TripsPage2: React.FC = () => {
                             variant="outlined"
                             sx={{ mt: 0.5 }}
                           />
+                        )}
+                        {delivery.observaciones && (
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                            📝 {delivery.observaciones}
+                          </Typography>
                         )}
                       </Box>
                       {!delivery.id && (
@@ -2769,6 +2790,17 @@ const TripsPage2: React.FC = () => {
                 size="small"
                 placeholder="Calle 123, Ciudad"
                 helperText="Se autocompleta con la dirección del cliente al elegir la factura. Editable."
+              />
+
+              <TextField
+                label="Observaciones de entrega (opcional)"
+                value={newDelivery.observaciones}
+                onChange={(e) => setNewDelivery({ ...newDelivery, observaciones: e.target.value })}
+                fullWidth
+                size="small"
+                multiline
+                rows={2}
+                placeholder="Notas para esta entrega..."
               />
 
               <Button
@@ -2920,6 +2952,11 @@ const TripsPage2: React.FC = () => {
                             {new Date(delivery.fechaEntrega).toLocaleString()}
                           </Typography>
                           {renderEntregaEstimada(infoEntregaDeDelivery(delivery))}
+                          {delivery.observaciones && (
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                              📝 {delivery.observaciones}
+                            </Typography>
+                          )}
                           {detalles?.equipos?.length > 0 && (
                             <Box mt={1}>
                               <Typography variant="caption" color="primary">
@@ -3027,22 +3064,32 @@ const TripsPage2: React.FC = () => {
                       </Typography>
                       <List dense>
                         {getTripDeliveries(selectedTrip.id).map((delivery, index) => (
-                          <ListItem key={delivery.id} disablePadding>
+                          <ListItem key={delivery.id} disablePadding sx={{ alignItems: 'flex-start', py: 0.5 }}>
                             <ListItemText
                               primary={`Entrega #${index + 1}`}
-                              secondary={(() => {
-                                const info = infoEntregaDeDelivery(delivery);
-                                if (!info) return delivery.direccionEntrega;
-                                const restTxt = info.restantes >= 0
-                                  ? `faltan ${info.restantes} d`
-                                  : `atrasada ${Math.abs(info.restantes)} d`;
-                                return `${delivery.direccionEntrega} · Estimada ${info.fecha} (transcurridos ${info.transcurridos}/${diasEntregaEstimada} d, ${restTxt})`;
-                              })()}
+                              secondary={
+                                <>
+                                  {(() => {
+                                    const info = infoEntregaDeDelivery(delivery);
+                                    if (!info) return delivery.direccionEntrega;
+                                    const restTxt = info.restantes >= 0
+                                      ? `faltan ${info.restantes} d`
+                                      : `atrasada ${Math.abs(info.restantes)} d`;
+                                    return `${delivery.direccionEntrega} · Estimada ${info.fecha} (transcurridos ${info.transcurridos}/${diasEntregaEstimada} d, ${restTxt})`;
+                                  })()}
+                                  {delivery.observaciones && (
+                                    <Box component="span" display="block" sx={{ fontStyle: 'italic', mt: 0.25 }}>
+                                      📝 {delivery.observaciones}
+                                    </Box>
+                                  )}
+                                </>
+                              }
                             />
                             <Chip
                               label={delivery.estado}
                               size="small"
                               color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
+                              sx={{ mt: 0.5 }}
                             />
                           </ListItem>
                         ))}
