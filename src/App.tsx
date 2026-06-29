@@ -109,6 +109,7 @@ const BalanceMesPage = lazy(() => import('./components/Admin/BalanceAnual/Balanc
 const AmortizacionesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionesPage'));
 const AmortizacionMesPage = lazy(() => import('./components/Admin/Amortizaciones/AmortizacionMesPage'));
 const RegistroActividadPage = lazy(() => import('./components/Admin/RegistroActividadPage'));
+const BackupsPage = lazy(() => import('./components/Admin/Backups/BackupsPage'));
 const ReasignacionLeadsPage = lazy(() => import('./components/Admin/ReasignacionLeads/ReasignacionLeadsPage'));
 const ProvisionesPage = lazy(() => import('./components/Admin/Provisiones/ProvisionesPage'));
 const ProvisionResumenAnualPage = lazy(() => import('./components/Admin/Provisiones/ProvisionResumenAnualPage'));
@@ -336,6 +337,7 @@ function App() {
                   <Route path="admin/amortizaciones" element={priv(<AmortizacionesPage />)} />
                   <Route path="admin/amortizaciones/:anio/:mes" element={priv(<AmortizacionMesPage />)} />
                   <Route path="admin/actividad" element={priv(<RegistroActividadPage />)} />
+                  <Route path="admin/backups" element={priv(<BackupsPage />)} />
                   <Route path="admin/reasignacion-leads" element={priv(<ProtectedRoute requiredRoles={['ADMIN', 'ADMIN_EMPRESA', 'SUPERVISOR']}><ReasignacionLeadsPage /></ProtectedRoute>)} />
                   <Route path="admin/provisiones" element={priv(<ProvisionesPage />)} />
                   <Route path="admin/provisiones/:anio/:mes" element={priv(<ProvisionesPage />)} />

@@ -21,6 +21,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 import SavingsIcon from '@mui/icons-material/Savings';
 import HistoryIcon from '@mui/icons-material/History';
 import PhoneCallbackIcon from '@mui/icons-material/PhoneCallback';
+import BackupIcon from '@mui/icons-material/Backup';
 import type { NavModule } from './navConfig.types';
 
 /**
@@ -210,6 +211,7 @@ export const navigation: NavModule[] = [
       { text: 'Precios y Ofertas', icon: <SettingsIcon />, path: '/admin/precios-ofertas' },
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
       { text: 'Actividad del sistema', icon: <HistoryIcon />, path: '/admin/actividad' },
+      { text: 'Backups', icon: <BackupIcon />, path: '/admin/backups' },
     ],
   },
 ];

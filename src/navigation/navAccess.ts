@@ -265,6 +265,7 @@ export const adminEmpresaLimitadoDeniedPaths = [
   // ADMIN: pantallas reservadas al dueño.
   '/admin/actividad',
   '/admin/settings',
+  '/admin/backups',
   '/admin/users',
   '/admin/empresas',
   '/admin/sucursales',
