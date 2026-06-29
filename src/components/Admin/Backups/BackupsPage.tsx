@@ -14,12 +14,14 @@ import {
   IconButton,
   Paper,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -33,8 +35,19 @@ import {
   backupApi,
   type BackupFileDTO,
   type BackupStatusDTO,
+  type BackupsPorTier,
+  type BackupTier,
   type EstadoBackup,
 } from '../../../api/services/backupApi';
+
+const TIERS: { code: BackupTier; label: string }[] = [
+  { code: 'hourly', label: 'Horarios' },
+  { code: 'weekly', label: 'Semanales' },
+  { code: 'monthly', label: 'Mensuales' },
+  { code: 'yearly', label: 'Anuales' },
+];
+
+const EMPTY: BackupsPorTier = { hourly: [], weekly: [], monthly: [], yearly: [] };
 
 const formatFecha = (iso: string | null): string => {
   if (!iso) return '—';
@@ -57,17 +70,14 @@ const estadoChip = (estado: EstadoBackup) => {
 
 interface StatCardProps {
   label: string;
-  value: string;
   hint?: string;
-  children?: React.ReactNode;
+  children: React.ReactNode;
 }
-function StatCard({ label, value, hint, children }: StatCardProps) {
+function StatCard({ label, hint, children }: StatCardProps) {
   return (
     <Paper sx={{ p: 2, height: '100%' }}>
       <Typography variant="caption" color="text.secondary">{label}</Typography>
-      <Box sx={{ mt: 0.5 }}>
-        {children ?? <Typography variant="h6" fontWeight={700}>{value}</Typography>}
-      </Box>
+      <Box sx={{ mt: 0.5 }}>{children}</Box>
       {hint && <Typography variant="caption" color="text.secondary">{hint}</Typography>}
     </Paper>
   );
@@ -75,11 +85,12 @@ function StatCard({ label, value, hint, children }: StatCardProps) {
 
 export default function BackupsPage() {
   const [status, setStatus] = useState<BackupStatusDTO | null>(null);
-  const [backups, setBackups] = useState<BackupFileDTO[]>([]);
+  const [backups, setBackups] = useState<BackupsPorTier>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  const [tab, setTab] = useState<BackupTier>('hourly');
   const [running, setRunning] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<BackupFileDTO | null>(null);
@@ -93,12 +104,10 @@ export default function BackupsPage() {
     try {
       const [st, list] = await Promise.all([backupApi.status(), backupApi.list()]);
       setStatus(st);
-      setBackups(list);
-      return st;
+      setBackups({ ...EMPTY, ...list });
     } catch (err) {
       console.error('Error cargando backups:', err);
       setError('No se pudieron cargar los backups. Verificá tus permisos y la conexión.');
-      return null;
     } finally {
       if (!silent) setLoading(false);
     }
@@ -112,7 +121,7 @@ export default function BackupsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Polling mientras hay un backup en progreso (refresca estado + lista).
+  // Polling mientras hay un backup en progreso.
   useEffect(() => {
     const enProgreso = status?.estadoUltimo === 'EN_PROGRESO';
     if (enProgreso && !pollRef.current) {
@@ -130,7 +139,6 @@ export default function BackupsPage() {
     try {
       const res = await backupApi.run();
       setInfo(res.mensaje ?? 'Backup solicitado.');
-      // Tras un instante, el contenedor empieza a generar el dump.
       setTimeout(() => { void load(true); }, 2000);
     } catch (err) {
       console.error('Error solicitando backup:', err);
@@ -141,10 +149,11 @@ export default function BackupsPage() {
   };
 
   const handleDownload = async (b: BackupFileDTO) => {
-    setDownloading(b.nombre);
+    const key = `${b.tier}/${b.nombre}`;
+    setDownloading(key);
     setError(null);
     try {
-      await backupApi.download(b.nombre);
+      await backupApi.download(b.tier, b.nombre);
     } catch (err) {
       console.error('Error descargando backup:', err);
       setError(`No se pudo descargar ${b.nombre}.`);
@@ -158,7 +167,7 @@ export default function BackupsPage() {
     setDeleting(true);
     setError(null);
     try {
-      await backupApi.remove(toDelete.nombre);
+      await backupApi.remove(toDelete.tier, toDelete.nombre);
       setInfo(`Backup ${toDelete.nombre} eliminado.`);
       setToDelete(null);
       await load(true);
@@ -171,6 +180,8 @@ export default function BackupsPage() {
   };
 
   const enProgreso = status?.estadoUltimo === 'EN_PROGRESO';
+  const resumenTier = status?.tiers?.find((t) => t.tier === tab);
+  const filasTier = backups[tab] ?? [];
 
   return (
     <Box sx={{ p: 3 }}>
@@ -180,12 +191,7 @@ export default function BackupsPage() {
           <Typography variant="h5" fontWeight={700}>Backups de base de datos</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => load()}
-            disabled={loading}
-          >
+          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => load()} disabled={loading}>
             Actualizar
           </Button>
           <Button
@@ -213,10 +219,10 @@ export default function BackupsPage() {
         </Alert>
       )}
 
-      {/* Tarjetas de estado */}
+      {/* Tarjetas de estado overall */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard label="Último backup" value={formatFecha(status?.ultimoBackup?.fechaCreacion ?? null)}>
+          <StatCard label="Último backup">
             <Stack spacing={0.5}>
               <Typography variant="subtitle1" fontWeight={700}>
                 {formatFecha(status?.ultimoBackup?.fechaCreacion ?? null)}
@@ -227,24 +233,21 @@ export default function BackupsPage() {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            label="Tamaño último"
-            value={status?.ultimoBackup?.tamanioLegible ?? '—'}
-            hint={status?.duracionUltimoSegundos ? `Generado en ${status.duracionUltimoSegundos}s` : undefined}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
             label="Próxima ejecución"
-            value={formatFecha(status?.proximaEjecucion ?? null)}
             hint={status ? `Cada ${status.intervalo}` : undefined}
-          />
+          >
+            <Typography variant="h6" fontWeight={700}>
+              {formatFecha(status?.proximaEjecucion ?? null)}
+            </Typography>
+          </StatCard>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            label="Almacenamiento"
-            value={status?.espacioOcupadoLegible ?? '—'}
-            hint={status ? `${status.cantidadBackups} backups · retención ${status.retentionDays} días` : undefined}
-          >
+          <StatCard label="Backups almacenados">
+            <Typography variant="h6" fontWeight={700}>{status?.cantidadBackups ?? 0}</Typography>
+          </StatCard>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard label="Almacenamiento total">
             <Stack direction="row" alignItems="center" spacing={1}>
               <StorageIcon fontSize="small" color="action" />
               <Typography variant="h6" fontWeight={700}>
@@ -255,7 +258,39 @@ export default function BackupsPage() {
         </Grid>
       </Grid>
 
-      {/* Tabla de backups */}
+      {/* Tabs por tier (GFS) */}
+      <Paper sx={{ mb: 0 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v as BackupTier)}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          {TIERS.map((t) => {
+            const r = status?.tiers?.find((s) => s.tier === t.code);
+            const count = r?.cantidad ?? backups[t.code]?.length ?? 0;
+            return (
+              <Tab
+                key={t.code}
+                value={t.code}
+                label={
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <span>{t.label}</span>
+                    <Chip label={count} size="small" />
+                  </Stack>
+                }
+              />
+            );
+          })}
+        </Tabs>
+      </Paper>
+
+      {resumenTier && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, mb: 1 }}>
+          Retención: <strong>{resumenTier.retencion}</strong> · {resumenTier.cantidad} backups · {resumenTier.espacioLegible}
+        </Typography>
+      )}
+
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
@@ -271,42 +306,39 @@ export default function BackupsPage() {
               <TableRow>
                 <TableCell colSpan={4} align="center"><CircularProgress size={24} /></TableCell>
               </TableRow>
-            ) : backups.length === 0 ? (
+            ) : filasTier.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} align="center">
                   <Typography variant="body2" color="text.secondary">
-                    No hay backups todavía.
+                    No hay backups en este nivel todavía.
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              backups.map((b) => (
-                <TableRow key={b.nombre} hover>
-                  <TableCell sx={{ fontFamily: 'monospace' }}>{b.nombre}</TableCell>
-                  <TableCell>{formatFecha(b.fechaCreacion)}</TableCell>
-                  <TableCell align="right">{b.tamanioLegible}</TableCell>
-                  <TableCell align="right">
-                    <Tooltip title="Descargar">
-                      <span>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDownload(b)}
-                          disabled={downloading === b.nombre}
-                        >
-                          {downloading === b.nombre
-                            ? <CircularProgress size={18} />
-                            : <DownloadIcon fontSize="small" />}
+              filasTier.map((b) => {
+                const key = `${b.tier}/${b.nombre}`;
+                return (
+                  <TableRow key={key} hover>
+                    <TableCell sx={{ fontFamily: 'monospace' }}>{b.nombre}</TableCell>
+                    <TableCell>{formatFecha(b.fechaCreacion)}</TableCell>
+                    <TableCell align="right">{b.tamanioLegible}</TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Descargar">
+                        <span>
+                          <IconButton size="small" onClick={() => handleDownload(b)} disabled={downloading === key}>
+                            {downloading === key ? <CircularProgress size={18} /> : <DownloadIcon fontSize="small" />}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" color="error" onClick={() => setToDelete(b)}>
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Eliminar">
-                      <IconButton size="small" color="error" onClick={() => setToDelete(b)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
