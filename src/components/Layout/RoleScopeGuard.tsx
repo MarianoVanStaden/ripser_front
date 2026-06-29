@@ -93,6 +93,7 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/clientes/carpeta',
       '/logistica/distribucion',
       '/logistica/vehiculos',
+      '/logistica/transporte',
       '/fabricacion/equipos',
       '/fabricacion/ficha-equipo',
       '/garantias',
