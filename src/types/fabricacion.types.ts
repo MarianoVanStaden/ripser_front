@@ -273,11 +273,16 @@ export interface ProductoFaltanteDTO {
   productoId: number;
   nombre: string;
   codigo?: string;
+  /** Unidades de compra necesarias (planchas, barras, bolsas, piezas). */
   necesario: number;
   disponible: number;
   faltante: number;
   proveedorSugeridoId?: number | null;
   proveedorSugeridoNombre?: string | null;
+  unidadMedida?: string;
+  factorConversion?: number | null;
+  /** Cantidad en unidades base (m², metros, kg). Igual a necesario si unidadMedida=UNIDAD. */
+  necesarioBaseUnits?: number;
 }
 
 // Validación de stock para fabricación

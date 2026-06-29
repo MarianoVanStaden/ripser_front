@@ -413,6 +413,21 @@ const StockPage: React.FC = () => {
     }
   };
 
+  const UNIDAD_LABEL: Record<string, string> = { M2: 'm²', METROS: 'm', KG: 'kg' };
+
+  const formatStockConUnidad = (
+    stockActual: number,
+    unidadMedida?: string,
+    factorConversion?: number | null,
+  ) => {
+    if (!unidadMedida || unidadMedida === 'UNIDAD' || !factorConversion) {
+      return { principal: `${stockActual}`, secundario: null };
+    }
+    const baseUnits = (stockActual * factorConversion).toFixed(2);
+    const label = UNIDAD_LABEL[unidadMedida] ?? unidadMedida;
+    return { principal: `${stockActual} uds.`, secundario: `= ${baseUnits} ${label}` };
+  };
+
   const getStockChip = (stock: number, stockMinimo: number, activo: boolean) => {
     if (!activo) {
       return <Chip label="Inactivo" color="default" size="small" />;
@@ -639,16 +654,34 @@ const StockPage: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell align="center">
-                        <Typography variant="h6" fontWeight="bold">
-                          {product.stockActual}
-                        </Typography>
                         {(() => {
+                          const { principal, secundario } = formatStockConUnidad(
+                            product.stockActual,
+                            product.unidadMedida,
+                            product.factorConversion,
+                          );
                           const d = desgloseMap[product.id];
-                          if (!d || d.embebido <= 0) return null;
+                          const hasDesglose = d && d.embebido > 0;
                           return (
-                            <Typography variant="caption" color="info.main" display="block">
-                              + {d.embebido} en compuestos · Total {d.total}
-                            </Typography>
+                            <>
+                              <Typography variant="h6" fontWeight="bold">{principal}</Typography>
+                              {secundario && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {secundario}
+                                </Typography>
+                              )}
+                              {hasDesglose && (() => {
+                                const { principal: libPrinc, secundario: libSec } = formatStockConUnidad(
+                                  d.libre, d.unidadMedida, d.factorConversion);
+                                const { principal: totPrinc, secundario: totSec } = formatStockConUnidad(
+                                  d.total, d.unidadMedida, d.factorConversion);
+                                return (
+                                  <Typography variant="caption" color="info.main" display="block">
+                                    libre {libPrinc}{libSec ? ` (${libSec})` : ''} · total {totPrinc}{totSec ? ` (${totSec})` : ''}
+                                  </Typography>
+                                );
+                              })()}
+                            </>
                           );
                         })()}
                       </TableCell>

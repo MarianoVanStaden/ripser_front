@@ -18,6 +18,8 @@ export interface DesgloseStockProductoDTO {
   embebido: number;
   total: number;
   esCompuesto: boolean;
+  unidadMedida?: string;
+  factorConversion?: number | null;
 }
 
 export interface SetComposicionDTO {
