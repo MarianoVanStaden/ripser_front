@@ -26,6 +26,7 @@ import {
   type HistorialReasignacionLeadDTO,
 } from '../../../types/leadReasignacion.types';
 import type { LeadListItemDTO } from '../../../types/lead.types';
+import { EstadoLeadEnum, ESTADO_LABELS } from '../../../types/lead.types';
 import { useSseEvent } from '../../../hooks/useSseEvent';
 import { SSE_EVENTS } from '../../../lib/sse-contract';
 
@@ -81,6 +82,7 @@ const ReasignacionLeadsPage: React.FC = () => {
   // ---- selección de leads (modo LEADS_SELECCIONADOS) ----
   const [leadSearch, setLeadSearch] = useState('');
   const [leadVendedorFiltro, setLeadVendedorFiltro] = useState<Vendedor | null>(null);
+  const [leadEstadosFiltro, setLeadEstadosFiltro] = useState<EstadoLeadEnum[]>([]);
   const [leadOrden, setLeadOrden] = useState<'desc' | 'asc'>('desc');
   const [leadOptions, setLeadOptions] = useState<LeadListItemDTO[]>([]);
   const [leadTotal, setLeadTotal] = useState(0);
@@ -123,6 +125,7 @@ const ReasignacionLeadsPage: React.FC = () => {
       {
         ...(supervisorSucursalId != null ? { sucursalId: supervisorSucursalId } : {}),
         ...(leadVendedorFiltro ? { usuarioId: leadVendedorFiltro.id } : {}),
+        ...(leadEstadosFiltro.length > 0 ? { estados: leadEstadosFiltro } : {}),
         ...(leadSearch.trim() ? { busqueda: leadSearch.trim() } : {}),
       },
     )
@@ -130,7 +133,7 @@ const ReasignacionLeadsPage: React.FC = () => {
       .catch(() => { if (!cancelled) { setLeadOptions([]); setLeadTotal(0); } })
       .finally(() => { if (!cancelled) setLoadingLeads(false); });
     return () => { cancelled = true; };
-  }, [modo, activeStep, leadSearch, supervisorSucursalId, leadVendedorFiltro, leadOrden, leadPage, leadRowsPerPage]);
+  }, [modo, activeStep, leadSearch, supervisorSucursalId, leadVendedorFiltro, leadEstadosFiltro, leadOrden, leadPage, leadRowsPerPage]);
 
   const toggleLead = (lead: LeadListItemDTO) => {
     setSelectedLeadIds((prev) => {
@@ -209,6 +212,7 @@ const ReasignacionLeadsPage: React.FC = () => {
     setVendedorDestino(null);
     setSucursalDestinoId('');
     setObservaciones('');
+    setLeadEstadosFiltro([]);
     limpiarSeleccion();
     if (supervisorSucursalId == null) setSucursalOrigenId('');
   };
@@ -284,6 +288,27 @@ const ReasignacionLeadsPage: React.FC = () => {
                           getOptionLabel={vendedorLabel}
                           isOptionEqualToValue={(o, v) => o.id === v.id}
                           renderInput={(p) => <TextField {...p} label="Filtrar por vendedor" />}
+                        />
+                        <Autocomplete
+                          multiple
+                          size="small"
+                          sx={{ minWidth: 280, flex: 1 }}
+                          options={Object.values(EstadoLeadEnum)}
+                          value={leadEstadosFiltro}
+                          onChange={(_, v) => { setLeadEstadosFiltro(v as EstadoLeadEnum[]); setLeadPage(0); }}
+                          getOptionLabel={(o) => ESTADO_LABELS[o as EstadoLeadEnum] ?? o}
+                          isOptionEqualToValue={(o, v) => o === v}
+                          renderTags={(value, getTagProps) =>
+                            value.map((option, index) => (
+                              <Chip
+                                {...getTagProps({ index })}
+                                key={option}
+                                label={ESTADO_LABELS[option as EstadoLeadEnum] ?? option}
+                                size="small"
+                              />
+                            ))
+                          }
+                          renderInput={(p) => <TextField {...p} label="Filtrar por estado" />}
                         />
                         <TextField
                           select size="small" label="Orden" sx={{ minWidth: 200 }}
