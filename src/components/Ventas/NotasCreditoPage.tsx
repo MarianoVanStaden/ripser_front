@@ -384,8 +384,17 @@ const NotasCreditoPage: React.FC = () => {
     }
     try {
       setCreating(true);
-      const currentUser = localStorage.getItem('user');
-      const usuarioId = currentUser ? JSON.parse(currentUser).id : 1;
+      // El backend resuelve el usuario desde el token autenticado. Solo mandamos
+      // usuarioId si lo tenemos de verdad; nunca un fallback hardcodeado (causaba
+      // "Usuario no encontrado con ID: 1").
+      let usuarioId: number | undefined;
+      try {
+        const currentUser = localStorage.getItem('user');
+        const parsed = currentUser ? JSON.parse(currentUser) : null;
+        usuarioId = parsed && typeof parsed.id === 'number' ? parsed.id : undefined;
+      } catch {
+        usuarioId = undefined;
+      }
 
       const observacionesTexto = form.observaciones.trim() || undefined;
       const motivo: MotivoNotaCredito = modoCredito === 'ERROR_FACTURACION' ? 'ERROR_FACTURACION' : 'DEVOLUCION_EQUIPO';

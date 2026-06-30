@@ -50,19 +50,38 @@ const newDetalle = (overrides?: Partial<DetalleCobro>): DetalleCobro => ({
 /** Crea el CobroData inicial con una sola línea vacía. */
 export const initialCobroData = (): CobroData => ({ detalles: [newDetalle()] });
 
+/** Subtotal de una línea: para CHEQUE es monto (por cheque) × cantidad. */
+export const subtotalLinea = (d: DetalleCobro): number => {
+  const monto = parseFloat(d.monto);
+  if (isNaN(monto)) return 0;
+  if (d.metodoPago === 'CHEQUE') {
+    const cant = parseInt(d.cantidadCheques ?? '', 10);
+    return isNaN(cant) ? 0 : monto * cant;
+  }
+  return monto;
+};
+
 export const sumaCobro = (cobro: CobroData): number =>
-  cobro.detalles.reduce((acc, d) => {
-    const val = parseFloat(d.monto);
-    return acc + (isNaN(val) ? 0 : val);
-  }, 0);
+  cobro.detalles.reduce((acc, d) => acc + subtotalLinea(d), 0);
+
+/** Una línea de cheque exige cantidad ≥ 1; el resto solo un monto numérico válido. */
+const lineaValida = (d: DetalleCobro): boolean => {
+  if (d.monto.trim() === '' || isNaN(parseFloat(d.monto))) return false;
+  if (d.metodoPago === 'CHEQUE') {
+    const cant = parseInt(d.cantidadCheques ?? '', 10);
+    return !isNaN(cant) && cant >= 1;
+  }
+  return true;
+};
 
 export const hasMontoValido = (cobro: CobroData): boolean =>
-  cobro.detalles.length > 0 && cobro.detalles.every((d) => d.monto.trim() !== '' && !isNaN(parseFloat(d.monto)));
+  cobro.detalles.length > 0 && cobro.detalles.every(lineaValida);
 
-/** Convierte el form state a las líneas que espera el backend (DetalleCobroDTO[]). */
+/** Convierte el form state a las líneas que espera el backend (DetalleCobroDTO[]).
+ *  Para CHEQUE se manda el monto unitario + cantidad; el backend calcula el total. */
 export const toDetalleCobroDTOs = (cobro: CobroData): DetalleCobroDTO[] =>
   cobro.detalles
-    .filter((d) => d.monto.trim() !== '' && !isNaN(parseFloat(d.monto)))
+    .filter(lineaValida)
     .map((d) => ({
       metodoPago: d.metodoPago,
       monto: parseFloat(d.monto),
@@ -156,7 +175,7 @@ const CobroSection: React.FC<Props> = ({ cobro, setCobro, montoEsperado }) => {
             </Box>
 
             <TextField
-              label="Monto"
+              label={detalle.metodoPago === 'CHEQUE' ? 'Monto por cheque' : 'Monto'}
               value={detalle.monto}
               onChange={(e) => updateDetalle(detalle.id, { monto: e.target.value })}
               fullWidth
@@ -168,16 +187,32 @@ const CobroSection: React.FC<Props> = ({ cobro, setCobro, montoEsperado }) => {
             />
 
             {detalle.metodoPago === 'CHEQUE' ? (
-              <TextField
-                label="Cantidad de cheques (opcional)"
-                value={detalle.cantidadCheques ?? ''}
-                onChange={(e) => updateDetalle(detalle.id, { cantidadCheques: e.target.value })}
-                fullWidth
-                size="small"
-                type="number"
-                inputMode="numeric"
-                placeholder="Ej: 3"
-              />
+              <>
+                <TextField
+                  label="Cantidad de cheques"
+                  required
+                  value={detalle.cantidadCheques ?? ''}
+                  onChange={(e) => updateDetalle(detalle.id, { cantidadCheques: e.target.value })}
+                  fullWidth
+                  size="small"
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Ej: 3"
+                  error={
+                    detalle.monto.trim() !== '' &&
+                    (!detalle.cantidadCheques || parseInt(detalle.cantidadCheques, 10) < 1)
+                  }
+                  helperText={
+                    detalle.monto.trim() !== '' &&
+                    (!detalle.cantidadCheques || parseInt(detalle.cantidadCheques, 10) < 1)
+                      ? 'Obligatorio (mínimo 1)'
+                      : ' '
+                  }
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Subtotal de esta línea: <strong>{fmt(subtotalLinea(detalle))}</strong>
+                </Typography>
+              </>
             ) : (
               <TextField
                 label={

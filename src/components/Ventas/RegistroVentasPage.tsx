@@ -334,13 +334,20 @@ const RegistroVentasPage: React.FC = () => {
     }));
   };
 
+  // Estados reales de DocumentoComercial (EstadoDocumento en el backend). Los
+  // labels legacy (Enviada/Entregada) no existían como estado de factura y
+  // confundían: "Cancelada" en realidad es ANULADA (se activa al emitir una
+  // Nota de Crédito de devolución total).
   const getStatusLabel = (status: string): string => {
     const statusLabels: Record<string, string> = {
       'PENDIENTE': 'Pendiente',
-      'ENVIADA': 'Enviada', 
-      'CANCELADA': 'Cancelada',
-      'ENTREGADA': 'Entregada',
+      'APROBADO': 'Aprobada',
       'CONFIRMADA': 'Confirmada',
+      'FACTURADA': 'Facturada',
+      'PAGADA': 'Pagada',
+      'VENCIDA': 'Vencida',
+      'RECHAZADO': 'Rechazada',
+      'ANULADA': 'Anulada',
     };
     return statusLabels[status] || status;
   };
@@ -348,10 +355,13 @@ const RegistroVentasPage: React.FC = () => {
   const getStatusColor = (status: string): 'warning' | 'info' | 'error' | 'success' | 'default' => {
     const statusColors: Record<string, 'warning' | 'info' | 'error' | 'success' | 'default'> = {
       'PENDIENTE': 'warning',
-      'ENVIADA': 'info',
-      'CANCELADA': 'error',
-      'ENTREGADA': 'success',
+      'APROBADO': 'info',
       'CONFIRMADA': 'success',
+      'FACTURADA': 'info',
+      'PAGADA': 'success',
+      'VENCIDA': 'error',
+      'RECHAZADO': 'error',
+      'ANULADA': 'error',
     };
     return statusColors[status] || 'default';
   };
@@ -693,10 +703,11 @@ const RegistroVentasPage: React.FC = () => {
                 >
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-                  <MenuItem value="ENVIADA">Enviada</MenuItem>
-                  <MenuItem value="CANCELADA">Cancelada</MenuItem>
-                  <MenuItem value="ENTREGADA">Entregada</MenuItem>
                   <MenuItem value="CONFIRMADA">Confirmada</MenuItem>
+                  <MenuItem value="FACTURADA">Facturada</MenuItem>
+                  <MenuItem value="PAGADA">Pagada</MenuItem>
+                  <MenuItem value="VENCIDA">Vencida</MenuItem>
+                  <MenuItem value="ANULADA">Anulada (cancelada por N. Crédito)</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

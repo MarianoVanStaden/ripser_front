@@ -37,6 +37,7 @@ import {
   Receipt as ReceiptIcon,
   Payment as PaymentIcon,
   Edit as EditIcon,
+  PriceChange as PriceChangeIcon,
 } from "@mui/icons-material";
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
@@ -66,6 +67,7 @@ import { getMetodoPagoLabel } from './NotasPedido/paymentMethodIcons';
 import ConvertirPresupuestoDialog from './NotasPedido/dialogs/ConvertirPresupuestoDialog';
 import VerNotaPedidoDialog from './NotasPedido/dialogs/VerNotaPedidoDialog';
 import EditarNotaPedidoDialog from './NotasPedido/dialogs/EditarNotaPedidoDialog';
+import CorregirPreciosDialog from './NotasPedido/dialogs/CorregirPreciosDialog';
 import ConvertirLeadDialog from './NotasPedido/dialogs/ConvertirLeadDialog';
 import BillingDialog from './NotasPedido/dialogs/BillingDialog';
 import OpcionesFinanciamientoDialog from './NotasPedido/dialogs/OpcionesFinanciamientoDialog';
@@ -258,6 +260,10 @@ const NotasPedidoPage: React.FC = () => {
     nuevoEstado: EstadoDocumentoEnum.PENDIENTE,
   });
   const [editLoading, setEditLoading] = useState(false);
+
+  // Corregir precios dialog (líneas + descuento — solo PENDIENTE).
+  const [corregirDialogOpen, setCorregirDialogOpen] = useState(false);
+  const [notaToCorregir, setNotaToCorregir] = useState<DocumentoComercial | null>(null);
 
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
@@ -923,6 +929,17 @@ const NotasPedidoPage: React.FC = () => {
     setEditDialogOpen(true);
   }, []);
 
+  const handleOpenCorregirDialog = useCallback(async (nota: DocumentoComercial) => {
+    try {
+      // El listado puede no traer las líneas; traemos la nota completa.
+      const full = await documentoApi.getById(nota.id);
+      setNotaToCorregir(full);
+      setCorregirDialogOpen(true);
+    } catch {
+      setSnackbar({ open: true, message: 'No se pudo cargar la nota para corregir', severity: 'error' });
+    }
+  }, []);
+
   const handleCloseEditDialog = useCallback(() => {
     setEditDialogOpen(false);
     setNotaToEdit(null);
@@ -1521,6 +1538,19 @@ const NotasPedidoPage: React.FC = () => {
                           </IconButton>
                         </span>
                       </Tooltip>
+                      <Tooltip title={nota.estado === EstadoDocumentoEnum.PENDIENTE ? 'Corregir precios' : 'Solo se pueden corregir precios en estado PENDIENTE'}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            color="warning"
+                            onClick={() => handleOpenCorregirDialog(nota)}
+                            disabled={nota.estado !== EstadoDocumentoEnum.PENDIENTE}
+                            aria-label={`Corregir precios de la nota de pedido ${nota.numeroDocumento}`}
+                          >
+                            <PriceChangeIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                       <Tooltip
                         title={
                           esSoloVendedor
@@ -1640,6 +1670,16 @@ const NotasPedidoPage: React.FC = () => {
         nota={notaToEdit}
         form={editForm}
         setForm={setEditForm}
+      />
+
+      <CorregirPreciosDialog
+        open={corregirDialogOpen}
+        onClose={() => { setCorregirDialogOpen(false); setNotaToCorregir(null); }}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
+          setSnackbar({ open: true, message: 'Precios corregidos correctamente', severity: 'success' });
+        }}
+        nota={notaToCorregir}
       />
 
       {/* AsignarEquiposDialog for Factura conversion */}

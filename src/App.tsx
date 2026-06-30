@@ -157,6 +157,7 @@ const RegistroVentasPage = lazy(() => import('./components/Ventas/RegistroVentas
 const FacturacionPage = lazy(() => import('./components/Ventas/FacturacionPage'));
 const InformesVentasPage = lazy(() => import('./components/Ventas/InformesVentasPage'));
 const NotasCreditoPage = lazy(() => import('./components/Ventas/NotasCreditoPage'));
+const AnulacionesPage = lazy(() => import('./components/Ventas/AnulacionesPage'));
 
 // Préstamos / cobranzas
 const PrestamosResumenPage = lazyNamed(() => import('./components/Prestamos/PrestamosResumenPage'), 'PrestamosResumenPage');
@@ -190,6 +191,7 @@ const InventoryPage = lazy(() => import('./components/Logistica/InventoryPage'))
 const RecountTasksPage = lazy(() => import('./components/Logistica/RecountTasksPage'));
 const TripsPage = lazy(() => import('./components/Logistica/TripsPage'));
 const DeliveriesPage = lazy(() => import('./components/Logistica/DeliveriesPage'));
+const ImportarFacturasHistoricasPage = lazy(() => import('./components/Logistica/ImportarFacturasHistoricasPage'));
 // const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
 const IncidenciasVehiculoPage = lazy(() => import('./components/Logistica/IncidenciasVehiculoPage'));
 const KmEmpleadosPage = lazy(() => import('./components/Logistica/KmEmpleadosPage'));
@@ -359,6 +361,7 @@ function App() {
                   <Route path="ventas/registro" element={priv(<RegistroVentasPage />)} />
                   <Route path="ventas/facturacion" element={priv(<FacturacionPage />)} />
                   <Route path="ventas/notas-credito" element={priv(<NotasCreditoPage />)} />
+                  <Route path="ventas/anulaciones" element={priv(<AnulacionesPage />)} />
                   <Route path="ventas/informes" element={priv(<InformesVentasPage />)} />
                   <Route path="ventas/cheques" element={priv(<ChequesPage />)} />
 
@@ -440,6 +443,7 @@ function App() {
                   <Route path="logistica/inventario/stock-productos" element={priv(<StockPage />)} />
                   <Route path="logistica/distribucion/viajes" element={priv(<TripsPage />)} />
                   <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
+                  <Route path="logistica/distribucion/importar-facturas" element={priv(<ImportarFacturasHistoricasPage />)} />
                   {/* <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} /> */}
                   <Route path="logistica/vehiculos/incidencias" element={priv(<IncidenciasVehiculoPage />)} />
                   <Route path="logistica/vehiculos/km-empleados" element={priv(<KmEmpleadosPage />)} />

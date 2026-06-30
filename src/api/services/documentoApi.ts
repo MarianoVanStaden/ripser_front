@@ -44,6 +44,29 @@ export interface DocumentoTotalesDTO {
   averageOrderValue: number;
 }
 
+export interface AnulacionMensual {
+  anio: number;
+  mes: number;
+  cantidadNotasCredito: number;
+  cantidadEquipos: number;
+  montoAcreditado: number;
+}
+
+export interface ClienteAnulado {
+  clienteId: number;
+  nombre: string;
+  cantidadNotasCredito: number;
+  ultimaAnulacion: string;
+}
+
+export interface ImportarFacturasResult {
+  dryRun: boolean;
+  totalFilas: number;
+  validas: number;
+  creadas: number;
+  errores: { fila: number; mensaje: string }[];
+}
+
 const ARRAY_KEYS = ['tipos', 'estados'] as const;
 
 function serializeDocumentoFilters(
@@ -139,6 +162,44 @@ export const documentoApi = {
     );
     return response.data;
   },
+
+  // Importación masiva de facturas históricas (CSV ';'). dryRun=true devuelve preview.
+  importarFacturasHistoricas: async (
+    archivo: File,
+    dryRun: boolean
+  ): Promise<ImportarFacturasResult> => {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    formData.append('dryRun', String(dryRun));
+    const response = await api.post<ImportarFacturasResult>(
+      '/api/documentos/importar-historicas',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  // Resumen mensual de anulaciones (Notas de Crédito).
+  getResumenAnulaciones: async (
+    desde?: string,
+    hasta?: string
+  ): Promise<AnulacionMensual[]> => {
+    const response = await api.get<AnulacionMensual[]>('/api/documentos/anulaciones/resumen', {
+      params: { desde, hasta },
+    });
+    return response.data;
+  },
+
+  // Clientes que anularon ventas, para recontacto.
+  getClientesConAnulaciones: async (
+    desde?: string,
+    hasta?: string
+  ): Promise<ClienteAnulado[]> => {
+    const response = await api.get<ClienteAnulado[]>('/api/documentos/anulaciones/clientes', {
+      params: { desde, hasta },
+    });
+    return response.data;
+  },
   // Get documento by ID
   getById: async (id: number): Promise<DocumentoComercial> => {
     const response = await api.get(`/api/documentos/${id}`);
@@ -179,6 +240,22 @@ export const documentoApi = {
     const response = await api.patch<DocumentoComercial>(
       `/api/documentos/${id}/descuento`,
       { descuentoTipo, descuentoValor },
+    );
+    return response.data;
+  },
+  // Corregir precios (líneas + descuento) de una Nota de Pedido en PENDIENTE.
+  corregirLineas: async (
+    id: number,
+    payload: {
+      lineas: { detalleId: number; precioUnitario?: number; cantidad?: number }[];
+      descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
+      descuentoValor?: number;
+      motivo?: string;
+    },
+  ): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/lineas`,
+      payload,
     );
     return response.data;
   },

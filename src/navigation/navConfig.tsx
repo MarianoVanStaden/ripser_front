@@ -50,6 +50,7 @@ export const navigation: NavModule[] = [
       { text: 'Notas de Pedido', icon: <AssignmentIcon />, path: '/ventas/notas-pedido' },
       { text: 'Facturación', icon: <AssignmentIcon />, path: '/ventas/facturacion' },
       { text: 'Notas de Crédito', icon: <AssignmentIcon />, path: '/ventas/notas-credito' },
+      { text: 'Anulaciones', icon: <BarChartIcon />, path: '/ventas/anulaciones' },
       { text: 'Registro Ventas', icon: <AssignmentIcon />, path: '/ventas/registro' },
       { text: 'Informes', icon: <AssignmentIcon />, path: '/ventas/informes' },
       { text: 'Cheques', icon: <AccountBalanceIcon />, path: '/ventas/cheques' },
@@ -116,6 +117,7 @@ export const navigation: NavModule[] = [
       // DISTRIBUCIÓN - Logística de salida
       { text: 'Armado de Viajes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
+      { text: 'Importar Facturas Históricas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/importar-facturas' },
       // { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
       { text: 'Legajo de Vehículos', icon: <DirectionsCarIcon />, path: '/logistica/vehiculos/incidencias' },
       { text: 'Km por Empleado', icon: <DirectionsCarIcon />, path: '/logistica/vehiculos/km-empleados' },
