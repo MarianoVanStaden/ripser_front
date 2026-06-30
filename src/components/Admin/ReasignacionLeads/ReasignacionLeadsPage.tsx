@@ -94,6 +94,9 @@ const ReasignacionLeadsPage: React.FC = () => {
   // estén en otra página/filtro.
   const [selectedLeadInfo, setSelectedLeadInfo] = useState<Map<number, LeadListItemDTO>>(new Map());
   const [verSelOpen, setVerSelOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customInputValue, setCustomInputValue] = useState('');
 
   // ---- preview / ejecución ----
   const [preview, setPreview] = useState<ReasignacionPreviewResponse | null>(null);
@@ -115,6 +118,55 @@ const ReasignacionLeadsPage: React.FC = () => {
     expectedCount: withExpected && preview ? preview.total : undefined,
   });
 
+  // Filtros activos en la tabla de leads (reutilizados en bulk select).
+  const currentLeadFilters = useMemo(() => ({
+    ...(supervisorSucursalId != null ? { sucursalId: supervisorSucursalId } : {}),
+    ...(leadVendedorFiltro ? { usuarioId: leadVendedorFiltro.id } : {}),
+    ...(leadEstadosFiltro.length > 0 ? { estados: leadEstadosFiltro } : {}),
+    ...(leadSearch.trim() ? { busqueda: leadSearch.trim() } : {}),
+  }), [supervisorSucursalId, leadVendedorFiltro, leadEstadosFiltro, leadSearch]);
+
+  // Selecciona masivamente los primeros N leads que coincidan con los filtros actuales.
+  const bulkSelect = async (n: number) => {
+    if (n <= 0) return;
+    setBulkLoading(true);
+    try {
+      const res = await leadApi.getAll(
+        { page: 0, size: n, sort: `fechaPrimerContacto,${leadOrden}` },
+        currentLeadFilters,
+      );
+      const leads = res.content ?? [];
+      setSelectedLeadIds((prev) => {
+        const next = new Set(prev);
+        leads.forEach((l) => next.add(l.id));
+        return next;
+      });
+      setSelectedLeadInfo((prev) => {
+        const next = new Map(prev);
+        leads.forEach((l) => next.set(l.id, l));
+        return next;
+      });
+    } catch {
+      // silencioso: el error se verá al intentar avanzar
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // Selecciona todos los leads de la página actualmente visible.
+  const selectCurrentPage = () => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      leadOptions.forEach((l) => next.add(l.id));
+      return next;
+    });
+    setSelectedLeadInfo((prev) => {
+      const next = new Map(prev);
+      leadOptions.forEach((l) => next.set(l.id, l));
+      return next;
+    });
+  };
+
   // Carga de leads para selección manual.
   useEffect(() => {
     if (modo !== 'LEADS_SELECCIONADOS' || activeStep !== 0) return;
@@ -122,18 +174,13 @@ const ReasignacionLeadsPage: React.FC = () => {
     setLoadingLeads(true);
     leadApi.getAll(
       { page: leadPage, size: leadRowsPerPage, sort: `fechaPrimerContacto,${leadOrden}` },
-      {
-        ...(supervisorSucursalId != null ? { sucursalId: supervisorSucursalId } : {}),
-        ...(leadVendedorFiltro ? { usuarioId: leadVendedorFiltro.id } : {}),
-        ...(leadEstadosFiltro.length > 0 ? { estados: leadEstadosFiltro } : {}),
-        ...(leadSearch.trim() ? { busqueda: leadSearch.trim() } : {}),
-      },
+      currentLeadFilters,
     )
       .then((res) => { if (!cancelled) { setLeadOptions(res.content ?? []); setLeadTotal(res.totalElements ?? 0); } })
       .catch(() => { if (!cancelled) { setLeadOptions([]); setLeadTotal(0); } })
       .finally(() => { if (!cancelled) setLoadingLeads(false); });
     return () => { cancelled = true; };
-  }, [modo, activeStep, leadSearch, supervisorSucursalId, leadVendedorFiltro, leadEstadosFiltro, leadOrden, leadPage, leadRowsPerPage]);
+  }, [modo, activeStep, currentLeadFilters, leadOrden, leadPage, leadRowsPerPage]);
 
   const toggleLead = (lead: LeadListItemDTO) => {
     setSelectedLeadIds((prev) => {
@@ -325,9 +372,54 @@ const ReasignacionLeadsPage: React.FC = () => {
                         InputProps={{ startAdornment: <SearchIcon fontSize="small" color="action" sx={{ mr: 1 }} /> }}
                         sx={{ mb: 1 }}
                       />
+
+                      {/* Selección rápida */}
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                          Selección rápida:
+                        </Typography>
+                        <Button
+                          size="small" variant="outlined"
+                          disabled={bulkLoading || leadOptions.length === 0}
+                          onClick={selectCurrentPage}
+                        >
+                          Esta pág. ({leadOptions.length})
+                        </Button>
+                        {([50, 100, 200] as const).map((n) => (
+                          <Button
+                            key={n} size="small" variant="outlined"
+                            disabled={bulkLoading || leadTotal === 0 || n > leadTotal}
+                            onClick={() => bulkSelect(n)}
+                          >
+                            {n}
+                          </Button>
+                        ))}
+                        <Button
+                          size="small" variant="outlined"
+                          disabled={bulkLoading || leadTotal === 0}
+                          onClick={() => { setCustomInputValue(''); setCustomOpen(true); }}
+                        >
+                          Personalizado…
+                        </Button>
+                        <Tooltip title={leadTotal > 1000 ? `${leadTotal.toLocaleString()} leads — puede tardar` : ''}>
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color={leadTotal > 1000 ? 'warning' : 'primary'}
+                              disabled={bulkLoading || leadTotal === 0}
+                              onClick={() => bulkSelect(leadTotal)}
+                            >
+                              {bulkLoading ? <CircularProgress size={14} sx={{ mr: 0.5 }} /> : null}
+                              Todos ({leadTotal.toLocaleString()})
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </Stack>
+
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Typography variant="caption" color="text.secondary">
-                          {selectedLeadIds.size} seleccionado(s)
+                          {selectedLeadIds.size.toLocaleString()} seleccionado(s)
                         </Typography>
                         <Button size="small" disabled={selectedLeadIds.size === 0} onClick={() => setVerSelOpen(true)}>
                           Ver
@@ -524,6 +616,40 @@ const ReasignacionLeadsPage: React.FC = () => {
           <Button onClick={() => setConfirmOpen(false)} disabled={ejecutando}>Cancelar</Button>
           <Button variant="contained" color="warning" onClick={doEjecutar} disabled={ejecutando}>
             {ejecutando ? <CircularProgress size={20} /> : 'Confirmar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* CANTIDAD PERSONALIZADA */}
+      <Dialog open={customOpen} onClose={() => setCustomOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Seleccionar cantidad personalizada</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus fullWidth type="number" label="Cantidad de leads"
+            value={customInputValue}
+            onChange={(e) => setCustomInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const n = parseInt(customInputValue, 10);
+                if (n > 0) { bulkSelect(Math.min(n, leadTotal)); setCustomOpen(false); }
+              }
+            }}
+            inputProps={{ min: 1, max: leadTotal }}
+            helperText={`Máximo disponible con los filtros actuales: ${leadTotal.toLocaleString()}`}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCustomOpen(false)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            disabled={!customInputValue || parseInt(customInputValue, 10) <= 0}
+            onClick={() => {
+              const n = parseInt(customInputValue, 10);
+              if (n > 0) { bulkSelect(Math.min(n, leadTotal)); setCustomOpen(false); }
+            }}
+          >
+            Seleccionar
           </Button>
         </DialogActions>
       </Dialog>

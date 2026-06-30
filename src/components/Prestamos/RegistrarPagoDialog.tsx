@@ -19,11 +19,16 @@ import { formatPrice } from '../../utils/priceCalculations';
 import { usePermisos } from '../../hooks/usePermisos';
 import dayjs from 'dayjs';
 
-// Exclude FINANCIACION_PROPIA from cuota payment selector.
+// Métodos que NO se ofrecen al cobrar una cuota:
+//  - FINANCIACION_PROPIA: no es un cobro efectivo.
+//  - TRANSFERENCIA / FINANCIAMIENTO: alias legacy de venta.types que el backend
+//    NO acepta (el enum real usa TRANSFERENCIA_BANCARIA). Elegirlos rompía el
+//    POST con "not one of the values accepted for Enum class".
 // Anotación explícita: si no, TS 5.5+ infiere el array como
-// `Exclude<MetodoPago, 'FINANCIACION_PROPIA'>[]` y rompe `.includes(sugerido)`.
+// `Exclude<MetodoPago, ...>[]` y rompe `.includes(sugerido)`.
+const METODOS_PAGO_EXCLUIDOS: MetodoPago[] = ['FINANCIACION_PROPIA', 'TRANSFERENCIA', 'FINANCIAMIENTO'];
 const METODOS_PAGO_CUOTA: MetodoPago[] = (Object.keys(METODO_PAGO_LABELS) as MetodoPago[]).filter(
-  k => k !== 'FINANCIACION_PROPIA'
+  k => !METODOS_PAGO_EXCLUIDOS.includes(k)
 );
 
 // Methods that require saldo a favor validation
