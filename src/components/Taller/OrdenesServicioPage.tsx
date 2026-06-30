@@ -48,6 +48,7 @@ import { employeeApi } from '../../api/services/employeeApi';
 import { equipoFabricadoApi } from '../../api/services';
 import type { OrdenServicio, Cliente, Empleado, EquipoFabricadoDTO } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { StickyScrollTable } from '../common/StickyScrollTable';
 
 
 const OrdenesServicioPage: React.FC = () => {
@@ -417,8 +418,8 @@ const OrdenesServicioPage: React.FC = () => {
             </TextField>
           </Box>
 
-          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 700, md: 'auto' } }}>
+          <StickyScrollTable minWidth={800}>
+            <Table>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 100 }}>N° Orden</TableCell>
@@ -456,7 +457,7 @@ const OrdenesServicioPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{orden.descripcionTrabajo}</TableCell>
                       <TableCell align="right">
-                        ${orden.total.toLocaleString()}
+                        ${(orden.total ?? 0).toLocaleString()}
                       </TableCell>
                       <TableCell>
                         <Box display="flex" gap={1}>
@@ -522,10 +523,10 @@ const OrdenesServicioPage: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
+          </StickyScrollTable>
         </CardContent>
       </Card>
-      
+
       {/* Dialog de Detalles */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="lg" fullWidth fullScreen={isMobile}>
         {selected && (

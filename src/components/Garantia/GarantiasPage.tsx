@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, IconButton, TextField, Stack,
+  TableHead, TableRow, IconButton, TextField, Stack,
   Chip, Alert, Grid, InputAdornment, Dialog,
   MenuItem, Select, FormControl, InputLabel, TablePagination
 } from '@mui/material';
+import { StickyScrollTable } from '../common/StickyScrollTable';
 import { 
   Add as AddIcon, 
   Search as SearchIcon,
@@ -362,11 +363,26 @@ const GarantiasPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
-        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+      {/* Table — StickyScrollTable: barra de scroll fija + arrastrar para desplazar lateralmente */}
+      <StickyScrollTable
+        minWidth={1180}
+        pagination={
+          <TablePagination
+            component="div"
+            count={totalElements}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
+        }
+      >
+            <Table>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 160 }}><strong>Cliente</strong></TableCell>
@@ -507,23 +523,7 @@ const GarantiasPage: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
-
-          <TablePagination
-            component="div"
-            count={totalElements}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) =>
-              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-            }
-          />
-        </CardContent>
-      </Card>
+      </StickyScrollTable>
 
       {/* Dialogs */}
       <GarantiaFormDialog

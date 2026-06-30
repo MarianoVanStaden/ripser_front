@@ -99,7 +99,7 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
 
   return (
     <>
-      <Dialog open={open && !pagoCuota} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open && !pagoCuota} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>
           Registrar cobro
           <br />
@@ -153,6 +153,9 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
                       <TableCell>Cuota</TableCell>
                       <TableCell>Vencimiento</TableCell>
                       <TableCell align="right">Saldo</TableCell>
+                      <TableCell align="right">Pagado</TableCell>
+                      <TableCell>Fecha pago</TableCell>
+                      <TableCell>Comprobante</TableCell>
                       <TableCell>Estado</TableCell>
                       <TableCell align="center">Acción</TableCell>
                     </TableRow>
@@ -182,6 +185,21 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
                           <TableCell align="right">
                             <Typography variant="body2" fontWeight={600}>
                               {pagada ? formatPrice(0) : formatPrice(saldoCuota(c))}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" color={c.montoPagado > 0 ? 'success.main' : 'text.disabled'}>
+                              {c.montoPagado > 0 ? formatPrice(c.montoPagado) : '—'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {c.fechaPago ? dayjs(c.fechaPago).format('DD/MM/YYYY') : '—'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {c.numeroComprobante || '—'}
                             </Typography>
                           </TableCell>
                           <TableCell>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Typography, Card, CardContent, Button, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, TextField, Stack, Chip,
+  TableHead, TableRow, TextField, Stack, Chip,
   IconButton, Alert, Grid, MenuItem, Select, FormControl,
   InputLabel, InputAdornment, Autocomplete, TablePagination
 } from '@mui/material';
+import { StickyScrollTable } from '../common/StickyScrollTable';
 import { 
   Add as AddIcon, 
   Edit as EditIcon,
@@ -51,9 +52,13 @@ const ReclamosGarantiaPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
+      // size grande: la tabla filtra y pagina del lado del cliente, así que
+      // necesitamos traer TODOS los reclamos (no sólo la primera página por
+      // defecto del backend). Antes esto pedía sin params y sólo cargaba ~20,
+      // por eso no coincidía con el dashboard de postventa.
       const [reclamosResponse, garantiasResponse] = await Promise.all([
-        reclamoGarantiaApi.findAll(),
-        garantiaApi.findAll()
+        reclamoGarantiaApi.findAll({ page: 0, size: 1000 }),
+        garantiaApi.findAll({ page: 0, size: 1000 })
       ]);
       
       const reclamosList = Array.isArray(reclamosResponse) 
@@ -326,11 +331,26 @@ const ReclamosGarantiaPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
-        <CardContent sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-            <Table sx={{ minWidth: { xs: 800, md: 'auto' } }}>
+      {/* Table — StickyScrollTable: barra de scroll fija + arrastrar para desplazar lateralmente */}
+      <StickyScrollTable
+        minWidth={1370}
+        pagination={
+          <TablePagination
+            component="div"
+            count={filteredReclamos.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+            }
+          />
+        }
+      >
+            <Table>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: 160 }}><strong>Cliente</strong></TableCell>
@@ -424,23 +444,7 @@ const ReclamosGarantiaPage: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
-
-          <TablePagination
-            component="div"
-            count={filteredReclamos.length}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            rowsPerPageOptions={[5, 10, 25, 50, 100]}
-            labelRowsPerPage="Filas por página:"
-            labelDisplayedRows={({ from, to, count }) =>
-              `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
-            }
-          />
-        </CardContent>
-      </Card>
+      </StickyScrollTable>
 
       {/* Reclamo Dialog */}
       <ReclamoFormDialog
