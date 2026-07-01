@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, FormControl, InputLabel, Select,
@@ -24,6 +25,7 @@ interface NuevaGestionDialogProps {
 const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, onClose, onSaved }) => {
+  const navigate = useNavigate();
   const [prestamos, setPrestamos] = useState<PrestamoPersonalDTO[]>([]);
   const [loadingPrestamos, setLoadingPrestamos] = useState(false);
   const [selectedPrestamo, setSelectedPrestamo] = useState<PrestamoPersonalDTO | null>(null);
@@ -35,6 +37,8 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Id de la gestión activa ya existente (409): habilita el botón "Ir a la gestión activa".
+  const [gestionActivaId, setGestionActivaId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +65,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
       observaciones: '',
     });
     setFormError(null);
+    setGestionActivaId(null);
     onClose();
   };
 
@@ -69,11 +74,13 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
       setFormError('Seleccione un crédito personal.');
       return;
     }
+    const prestamoId = selectedPrestamo.id;
     setSubmitting(true);
     setFormError(null);
+    setGestionActivaId(null);
     try {
       await gestionCobranzaApi.create({
-        prestamoId: selectedPrestamo.id,
+        prestamoId,
         prioridad: (form.prioridad || undefined) as PrioridadType | undefined,
         montoPendiente: form.montoPendiente !== '' ? Number(form.montoPendiente) : undefined,
         fechaProximaGestion: form.fechaProximaGestion || undefined,
@@ -81,11 +88,30 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
       });
       onSaved();
       handleClose();
-    } catch {
-      setFormError('Error al crear la gestión. Intente nuevamente.');
+    } catch (err: any) {
+      // 409: ya existe una gestión activa para este crédito. Mostramos motivo claro y
+      // resolvemos el id de esa gestión para ofrecer un atajo al detalle.
+      if (err?.response?.status === 409) {
+        setFormError('Ya existe una gestión activa para este crédito.');
+        try {
+          const activa = await gestionCobranzaApi.getActivaByPrestamo(prestamoId);
+          setGestionActivaId(activa.id);
+        } catch {
+          // Si no se pudo resolver la gestión, se muestra igual el mensaje sin botón.
+        }
+      } else {
+        setFormError(err?.response?.data?.message || err?.response?.data?.error
+          || 'Error al crear la gestión. Intente nuevamente.');
+      }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleIrAGestionActiva = () => {
+    if (gestionActivaId == null) return;
+    navigate(`/cobranzas/${gestionActivaId}`);
+    handleClose();
   };
 
   const getPrestamoLabel = (p: PrestamoPersonalDTO) =>
@@ -96,7 +122,18 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
       <DialogTitle>Nueva Gestión de Cobranza</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} mt={0.5}>
-          {formError && <Alert severity="error">{formError}</Alert>}
+          {formError && (
+            <Alert
+              severity="error"
+              action={gestionActivaId != null ? (
+                <Button color="inherit" size="small" onClick={handleIrAGestionActiva}>
+                  Ir a la gestión activa
+                </Button>
+              ) : undefined}
+            >
+              {formError}
+            </Alert>
+          )}
 
           <Autocomplete
             options={prestamos}
