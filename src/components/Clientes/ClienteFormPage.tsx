@@ -179,10 +179,6 @@ const ClienteFormPage: React.FC = () => {
       setError('La razón social es obligatoria para personas jurídicas');
       return;
     }
-    if (!formData.email.trim()) {
-      setError('El email es obligatorio');
-      return;
-    }
     if (formData.rubro === 'OTRO' && !formData.rubroDetalle.trim()) {
       setError('Especificá el rubro en "Detalle del rubro"');
       return;
@@ -392,7 +388,6 @@ const ClienteFormPage: React.FC = () => {
                 value={formData.email}
                 onChange={handleFormChange}
                 name="email"
-                required
               />
             </Grid>
             <Grid item xs={12} md={6}>

@@ -786,7 +786,7 @@ const OrdenesServicioPage: React.FC = () => {
                                 <TableCell align="center" sx={{ fontWeight: 500 }}>{material.cantidad}</TableCell>
                                 <TableCell align="right">${material.precioUnitario?.toLocaleString('es-AR') || 0}</TableCell>
                                 <TableCell align="right" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                                  ${material.subtotal.toLocaleString('es-AR')}
+                                  ${(material.subtotal ?? 0).toLocaleString('es-AR')}
                                 </TableCell>
                               </TableRow>
                             ))}

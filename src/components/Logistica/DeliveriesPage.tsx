@@ -427,7 +427,7 @@ const DeliveriesPage2: React.FC = () => {
       tipoEntrega: ordenId ? 'ORDEN_SERVICIO' : 'FACTURA',
       ordenServicioId: ordenId?.toString() || '',
       direccionEntrega: delivery.direccionEntrega,
-      fechaEntrega: delivery.fechaEntrega.slice(0, 16),
+      fechaEntrega: delivery.fechaEntrega?.slice(0, 16) ?? '',
       estado: delivery.estado,
       observaciones: delivery.observaciones || '',
       receptorNombre: delivery.receptorNombre || '',
