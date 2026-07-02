@@ -13,6 +13,8 @@ export const METODO_PAGO_LABELS: Record<MetodoPago, string> = {
   FINANCIAMIENTO: 'Financiamiento Propio',
   FINANCIACION_PROPIA: 'Financiamiento Propio',
   CUENTA_CORRIENTE: 'Cuenta Corriente',
+  PAGARE: 'Pagaré',
+  DOLARES: 'Dólares (USD)',
 };
 
 export const getMetodoPagoLabel = (metodo?: MetodoPago | string | null): string => {

@@ -113,7 +113,7 @@ const PostVentaDashboard: React.FC = () => {
       // Entregas del día
       const entregasReq = entregaViajeApi
         .getAll()
-        .then((r: EntregaResponse[]) => {
+        .then((r) => {
           return r.filter(
             (e) => e.fechaEntrega && e.fechaEntrega.startsWith(today)
           );

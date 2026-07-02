@@ -45,6 +45,8 @@ export const getPaymentMethodLabel = (metodo: MetodoPago): string => {
     FINANCIAMIENTO: 'Financiamiento',
     FINANCIACION_PROPIA: 'Financiación Propia',
     CUENTA_CORRIENTE: 'Cuenta Corriente',
+    PAGARE: 'Pagaré',
+    DOLARES: 'Dólares (USD)',
   };
   return labels[metodo] || metodo;
 };
@@ -64,6 +66,8 @@ export const getPaymentMethodIcon = (metodo: MetodoPago) => {
     FINANCIAMIENTO: FinanciacionIcon,
     FINANCIACION_PROPIA: FinanciacionIcon,
     CUENTA_CORRIENTE: BankIcon,
+    PAGARE: ChequeIcon,
+    DOLARES: AttachMoneyIcon,
   };
   return icons[metodo] || OtherIcon;
 };
@@ -83,6 +87,8 @@ export const getPaymentMethodColor = (metodo: MetodoPago): string => {
     FINANCIAMIENTO: '#FFC107', // amarillo
     FINANCIACION_PROPIA: '#FF5722', // naranja oscuro
     CUENTA_CORRIENTE: '#795548', // marrón
+    PAGARE: '#607D8B', // gris azulado
+    DOLARES: '#43A047', // verde dólar
   };
   return colors[metodo] || '#9E9E9E';
 };
