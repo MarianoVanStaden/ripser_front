@@ -2,11 +2,6 @@ import React, { useRef, useEffect } from 'react';
 import { Box } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
 
-/**
- * Tags / ARIA roles that should NOT trigger drag-to-scroll. We walk up the DOM
- * from the click target so a drag started on a button, link, input, etc. is
- * ignored and the element keeps its normal click behaviour.
- */
 const INTERACTIVE_TAGS = new Set([
   'INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A', 'LABEL', 'SUMMARY',
 ]);
@@ -24,7 +19,6 @@ function isInteractiveTarget(target: EventTarget | null, container: HTMLElement)
     const role = el.getAttribute('role');
     if (role && INTERACTIVE_ROLES.has(role)) return true;
     if ((el as HTMLElement).contentEditable === 'true') return true;
-    // The column resize separator manages its own drag — don't fight it.
     if (el.classList.contains('MuiDataGrid-columnSeparator')) return true;
     el = el.parentElement;
   }
@@ -38,67 +32,117 @@ interface DataGridDragScrollProps {
 }
 
 /**
- * Wraps a MUI `<DataGrid>` and enables click-and-drag horizontal panning over
- * the rows area (the same UX the cobranzas tables have via `StickyScrollTable`,
- * but adapted to DataGrid's internal `.MuiDataGrid-virtualScroller`).
- *
- * - Only starts a drag on the rows area; headers/footer keep normal behaviour.
- * - Skips interactive elements (buttons, links, inputs, column resize handles).
- * - A < 4px movement is treated as a click, so row/button clicks still work.
- *
- * @example
- * <DataGridDragScroll sx={{ width: '100%' }}>
- *   <DataGrid rows={rows} columns={columns} … />
- * </DataGridDragScroll>
+ * Wraps a MUI `<DataGrid>` and adds:
+ * 1. **Drag-to-scroll** — click and drag on the rows area to pan horizontally.
+ * 2. **Sticky horizontal scrollbar** — a thin scrollbar that sticks to the
+ *    bottom of the viewport while the DataGrid is on screen, synced two-way
+ *    with the DataGrid's internal `.MuiDataGrid-virtualScroller`.
  */
 export const DataGridDragScroll: React.FC<DataGridDragScrollProps> = ({ children, sx }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollbarRef = useRef<HTMLDivElement>(null);
+  const scrollbarInnerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const sb = scrollbarRef.current;
+    const sbInner = scrollbarInnerRef.current;
+    if (!container || !sb || !sbInner) return;
 
-    const DRAG_THRESHOLD = 4; // px — below this, treat as a click, not a drag.
+    // DataGrid renders async — poll briefly until the virtualScroller appears.
+    let scroller: HTMLElement | null = null;
+    let rafId = 0;
+    let settled = false;
 
+    const findScroller = () => {
+      scroller = container.querySelector<HTMLElement>('.MuiDataGrid-virtualScroller');
+      return scroller;
+    };
+
+    const syncing = { current: false };
+
+    const onScrollerScroll = () => {
+      if (syncing.current || !scroller) return;
+      syncing.current = true;
+      sb.scrollLeft = scroller.scrollLeft;
+      syncing.current = false;
+    };
+
+    const onScrollbarScroll = () => {
+      if (syncing.current || !scroller) return;
+      syncing.current = true;
+      scroller.scrollLeft = sb.scrollLeft;
+      syncing.current = false;
+    };
+
+    const updateWidth = () => {
+      if (!scroller) return;
+      // scrollWidth of the virtual scroller reflects the full content width.
+      sbInner.style.width = `${scroller.scrollWidth}px`;
+    };
+
+    let ro: ResizeObserver | null = null;
+
+    const setup = () => {
+      if (!findScroller()) return false;
+      settled = true;
+
+      scroller!.addEventListener('scroll', onScrollerScroll, { passive: true });
+      sb.addEventListener('scroll', onScrollbarScroll, { passive: true });
+
+      ro = new ResizeObserver(updateWidth);
+      ro.observe(scroller!);
+      // Also watch the content div to detect column additions / data loads.
+      const content = container.querySelector<HTMLElement>('.MuiDataGrid-virtualScrollerContent');
+      if (content) ro.observe(content);
+      updateWidth();
+      return true;
+    };
+
+    // Retry until the DataGrid has mounted its scroller (usually within 1 frame).
+    const retry = () => {
+      if (settled || setup()) return;
+      rafId = requestAnimationFrame(retry);
+    };
+    rafId = requestAnimationFrame(retry);
+
+    // ── Drag-to-scroll ────────────────────────────────────────────────────────
+    const DRAG_THRESHOLD = 4;
     let isDragging = false;
     let hasDragged = false;
     let startX = 0;
     let startScrollLeft = 0;
-    let scroller: HTMLElement | null = null;
+    let dragScroller: HTMLElement | null = null;
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
-      // Re-query each time: DataGrid may re-create the scroller on data changes.
-      scroller = container.querySelector('.MuiDataGrid-virtualScroller');
-      if (!scroller) return;
-      // Only drag when the press starts inside the scrollable rows area.
-      if (!scroller.contains(e.target as Node)) return;
+      dragScroller = container.querySelector('.MuiDataGrid-virtualScroller');
+      if (!dragScroller) return;
+      if (!dragScroller.contains(e.target as Node)) return;
       if (isInteractiveTarget(e.target, container)) return;
 
       isDragging = true;
       hasDragged = false;
       startX = e.clientX;
-      startScrollLeft = scroller.scrollLeft;
+      startScrollLeft = dragScroller.scrollLeft;
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !scroller) return;
+      if (!isDragging || !dragScroller) return;
       const dx = e.clientX - startX;
-
       if (!hasDragged) {
         if (Math.abs(dx) < DRAG_THRESHOLD) return;
         hasDragged = true;
         document.body.style.cursor = 'grabbing';
         document.body.style.userSelect = 'none';
       }
-
-      scroller.scrollLeft = startScrollLeft - dx;
+      dragScroller.scrollLeft = startScrollLeft - dx;
     };
 
     const onMouseUp = () => {
       if (!isDragging) return;
       isDragging = false;
-      scroller = null;
+      dragScroller = null;
       if (hasDragged) {
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
@@ -111,10 +155,13 @@ export const DataGridDragScroll: React.FC<DataGridDragScrollProps> = ({ children
     document.addEventListener('mouseup', onMouseUp);
 
     return () => {
+      cancelAnimationFrame(rafId);
+      if (scroller) scroller.removeEventListener('scroll', onScrollerScroll);
+      sb.removeEventListener('scroll', onScrollbarScroll);
+      ro?.disconnect();
       container.removeEventListener('mousedown', onMouseDown);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      // Safety: restore body styles if unmounted mid-drag.
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -124,14 +171,42 @@ export const DataGridDragScroll: React.FC<DataGridDragScrollProps> = ({ children
     <Box
       ref={containerRef}
       sx={{
-        // Hint that the rows area can be grabbed (DataGrid resets cursor on
-        // interactive cells/headers itself).
         '& .MuiDataGrid-virtualScroller': { cursor: 'grab' },
         '& .MuiDataGrid-virtualScroller:active': { cursor: 'grabbing' },
         ...sx,
       }}
     >
       {children}
+
+      {/* Sticky phantom scrollbar — stays at bottom of viewport while DataGrid is visible */}
+      <Box
+        ref={scrollbarRef}
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 5,
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          height: 10,
+          bgcolor: 'grey.50',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          '&::-webkit-scrollbar': { height: 10 },
+          '&::-webkit-scrollbar-track': { bgcolor: 'grey.100' },
+          '&::-webkit-scrollbar-thumb': {
+            bgcolor: 'grey.400',
+            borderRadius: '5px',
+            border: '2px solid',
+            borderColor: 'grey.100',
+            '&:hover': { bgcolor: 'grey.600' },
+            '&:active': { bgcolor: 'grey.700' },
+          },
+          scrollbarColor: 'var(--mui-palette-grey-400) var(--mui-palette-grey-100)',
+          scrollbarWidth: 'thin',
+        }}
+      >
+        <Box ref={scrollbarInnerRef} sx={{ height: 1 }} />
+      </Box>
     </Box>
   );
 };
