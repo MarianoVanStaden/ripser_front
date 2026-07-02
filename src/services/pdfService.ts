@@ -179,10 +179,22 @@ const renderOpcionFinanciamiento = ({
   costoEnvio = 0,
   showOpcionTag,
 }: RenderOpcionParams): number => {
-  const propio = isFinanciamientoPropio(opcion.metodoPago) && opcion.cantidadCuotas > 1;
-  const calc = propio
+  // Si la opción trae la entrega inicial pre-calculada (viene de la calculadora
+  // de exportación), se usa tal cual para cheques y créditos por igual. Si no,
+  // se mantiene el cálculo legacy sólo para financiamiento propio.
+  const tieneEntregaPrecalc = opcion.montoEntregaInicial != null;
+  const propioLegacy =
+    !tieneEntregaPrecalc && isFinanciamientoPropio(opcion.metodoPago) && opcion.cantidadCuotas > 1;
+  const calc = propioLegacy
     ? calcularFinanciamientoPropio(baseImporte, opcion.tasaInteres, opcion.cantidadCuotas, 0.4, costoEnvio)
     : null;
+  const mostrarDesglose = tieneEntregaPrecalc || propioLegacy;
+  const entregaMonto = tieneEntregaPrecalc ? (opcion.montoEntregaInicial ?? 0) : (calc?.entrega ?? 0);
+  const saldoMonto = tieneEntregaPrecalc
+    ? Math.max(0, opcion.montoTotal - (opcion.montoEntregaInicial ?? 0))
+    : (calc?.saldo ?? 0);
+  const cuotaMonto = tieneEntregaPrecalc ? opcion.montoCuota : (calc?.cuotaEstimada ?? 0);
+  const pctEntrega = tieneEntregaPrecalc ? (opcion.porcentajeEntregaInicial ?? 40) : 40;
 
   const tableWidth = doc.internal.pageSize.getWidth() - (margin + 1) * 2;
 
@@ -203,7 +215,7 @@ const renderOpcionFinanciamiento = ({
         },
       },
       {
-        content: propio ? '' : `Total: ${formatCurrency(opcion.montoTotal)}`,
+        content: mostrarDesglose ? '' : `Total: ${formatCurrency(opcion.montoTotal)}`,
         styles: {
           halign: 'right',
           fontStyle: 'bold' as const,
@@ -242,8 +254,8 @@ const renderOpcionFinanciamiento = ({
         styles: { halign: 'center', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
       },
       {
-        content: propio
-          ? `Cuota estimada: ${formatCurrency(calc!.cuotaEstimada)}`
+        content: mostrarDesglose
+          ? `Cuota estimada: ${formatCurrency(cuotaMonto)}`
           : (opcion.cantidadCuotas > 1 ? `Cuota: ${formatCurrency(opcion.montoCuota)}` : `Importe: ${formatCurrency(opcion.montoTotal)}`),
         styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
       },
@@ -259,18 +271,18 @@ const renderOpcionFinanciamiento = ({
   });
   yPosition = (doc as any).lastAutoTable.finalY;
 
-  // Bloque de financiamiento propio: entrega + saldo
-  if (propio && calc) {
+  // Bloque de desglose: entrega inicial + saldo a financiar
+  if (mostrarDesglose) {
     autoTable(doc, {
       startY: yPosition,
       body: [
         [
           {
-            content: `Entrega inicial estimada (40%): ${formatCurrency(calc.entrega)}`,
+            content: `Entrega inicial estimada (${pctEntrega}%): ${formatCurrency(entregaMonto)}`,
             styles: { halign: 'left', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
           },
           {
-            content: `Saldo a financiar: ${formatCurrency(calc.saldo)}`,
+            content: `Saldo a financiar: ${formatCurrency(saldoMonto)}`,
             styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
           },
         ],

@@ -78,6 +78,7 @@ import { initialDetalle, initialFormData } from './Presupuestos/constants';
 import { computeIva, formatCurrency, getStatusColor, getStatusLabel, normalizeOpcionesFinanciamiento } from './Presupuestos/utils';
 import ConfirmPresupuestoDialog from './Presupuestos/dialogs/ConfirmPresupuestoDialog';
 import OpcionesFinanciamientoDialog from './Presupuestos/dialogs/OpcionesFinanciamientoDialog';
+import CalculadoraPDFDialog from './Presupuestos/dialogs/CalculadoraPDFDialog';
 import VerPresupuestoDialog from './Presupuestos/dialogs/VerPresupuestoDialog';
 
 const PresupuestosPage: React.FC = () => {
@@ -175,6 +176,9 @@ const PresupuestosPage: React.FC = () => {
   const [selectedOpcionId, setSelectedOpcionId] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'success' });
   const [presupuestosFinanciamiento, setPresupuestosFinanciamiento] = useState<Record<number, OpcionFinanciamientoDTO[]>>({});
+  // Calculadora previa a exportar PDF
+  const [calculadoraOpen, setCalculadoraOpen] = useState(false);
+  const [presupuestoParaPDF, setPresupuestoParaPDF] = useState<DocumentoComercial | null>(null);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [createdPresupuesto, setCreatedPresupuesto] = useState<DocumentoComercial | null>(null);
 
@@ -894,20 +898,25 @@ const PresupuestosPage: React.FC = () => {
     }
   }, [selectedPresupuesto, selectedOpcionId, opcionesFinanciamiento]);
 
-  // Handler para exportar presupuesto a PDF
-  const handleExportarPDF = useCallback(async (presupuesto: DocumentoComercial) => {
+  // Handler para exportar presupuesto a PDF: abre la calculadora de financiación.
+  const handleExportarPDF = useCallback((presupuesto: DocumentoComercial) => {
+    if (!presupuesto.clienteId && !presupuesto.leadId) {
+      setSnackbar({
+        open: true,
+        message: 'Este presupuesto no tiene cliente ni lead asociado',
+        severity: 'error'
+      });
+      return;
+    }
+    setPresupuestoParaPDF(presupuesto);
+    setCalculadoraOpen(true);
+  }, []);
+
+  // Genera el PDF con las opciones de financiación elegidas en la calculadora.
+  const handleGenerarPDFConOpciones = useCallback(async (opciones: OpcionFinanciamientoDTO[]) => {
+    const presupuesto = presupuestoParaPDF;
+    if (!presupuesto) return;
     try {
-      if (!presupuesto.clienteId && !presupuesto.leadId) {
-        setSnackbar({
-          open: true,
-          message: 'Este presupuesto no tiene cliente ni lead asociado',
-          severity: 'error'
-        });
-        return;
-      }
-
-      const opciones: OpcionFinanciamientoDTO[] = presupuestosFinanciamiento[presupuesto.id] ?? [];
-
       if (presupuesto.clienteId) {
         const cliente = await clienteApi.getById(presupuesto.clienteId);
         generarPresupuestoPDF({ presupuesto, cliente, opcionesFinanciamiento: opciones });
@@ -921,6 +930,8 @@ const PresupuestosPage: React.FC = () => {
         message: 'PDF generado exitosamente',
         severity: 'success'
       });
+      setCalculadoraOpen(false);
+      setPresupuestoParaPDF(null);
     } catch (error) {
       console.error('Error al generar PDF:', error);
       setSnackbar({
@@ -929,7 +940,7 @@ const PresupuestosPage: React.FC = () => {
         severity: 'error'
       });
     }
-  }, [presupuestosFinanciamiento]);
+  }, [presupuestoParaPDF]);
 
   // El reload manual ahora es: invalidatePresupuestos() (ver useQuery arriba).
 
@@ -2049,6 +2060,13 @@ const PresupuestosPage: React.FC = () => {
         opciones={opcionesFinanciamiento}
         selectedOpcionId={selectedOpcionId}
         onSelectOpcion={setSelectedOpcionId}
+      />
+
+      <CalculadoraPDFDialog
+        open={calculadoraOpen}
+        onClose={() => { setCalculadoraOpen(false); setPresupuestoParaPDF(null); }}
+        presupuesto={presupuestoParaPDF}
+        onExport={handleGenerarPDFConOpciones}
       />
 
       <VerPresupuestoDialog
