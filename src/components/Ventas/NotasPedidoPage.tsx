@@ -1032,19 +1032,28 @@ const NotasPedidoPage: React.FC = () => {
 
   const submitBillingDialog = () => {
     if (!notaToBill) return;
-    // Compute the real total with interest so the success dialog shows the correct value
-    // Usar el total correcto: subtotal - descuento + iva
-    const descuentoMonto = Number(notaToBill.descuentoMonto) ?? 0;
+    // Compute the real total with interest so the success dialog shows the correct value.
+    // Debe coincidir con BillingDialog: el envío NUNCA se financia ni recibe interés;
+    // la entrega = envío completo + % sobre equipos, y el interés se aplica sólo al
+    // saldo de equipos. montoTotal = subtotal - descuento + iva (descuentoMonto ya
+    // excluye el envío en el backend, por eso el envío queda dentro de montoTotal).
+    const descuentoMonto = Number(notaToBill.descuentoMonto ?? 0);
     const ivaAmount = notaToBill.iva ?? 0;
-    const montoBase = (notaToBill.subtotal ?? 0) - descuentoMonto + ivaAmount;
-    const entregaInicial = billingForm.entregarInicial
+    const montoTotal = (notaToBill.subtotal ?? 0) - descuentoMonto + ivaAmount;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const costoEnvio = (notaToBill.detalles ?? [])
+      .filter((d: any) => d.tipoItem === 'ENVIO')
+      .reduce((s: number, d: any) => s + (Number(d.subtotal) || 0), 0);
+    const baseEquipos = montoTotal - costoEnvio;
+    const entregaEquipos = billingForm.entregarInicial
       ? (billingForm.usePorcentaje
-          ? montoBase * (billingForm.porcentajeEntregaInicial / 100)
+          ? baseEquipos * (billingForm.porcentajeEntregaInicial / 100)
           : billingForm.montoEntregaInicial)
       : 0;
-    const saldoFinanciado = montoBase - entregaInicial;
+    const saldoFinanciado = baseEquipos - entregaEquipos;
     const interesTotal = saldoFinanciado * (billingForm.tasaInteres / 100);
-    setFacturaTotalConFinanciamiento(billingForm.tasaInteres > 0 ? montoBase + interesTotal : null);
+    // Total con financiamiento = entrega (envío + %equipos) + saldo + interés = montoTotal + interés.
+    setFacturaTotalConFinanciamiento(billingForm.tasaInteres > 0 ? montoTotal + interesTotal : null);
     handleConvertToFactura(notaToBill.id, false, billingForm);
     handleCloseBillingDialog();
   };
