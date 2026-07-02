@@ -178,6 +178,15 @@ const CobroStandaloneDialog: React.FC<CobroStandaloneDialogProps> = ({
   );
 };
 
+// Etiquetas legibles para el motivo de una parada libre (sin factura ni OS)
+const TIPO_PARADA_LABELS: Record<string, string> = {
+  GARANTIA: 'Garantía',
+  RETIRO_MATERIA_PRIMA: 'Retiro de materia prima',
+  OTRO: 'Otra parada',
+};
+const tipoParadaLabel = (tipo?: string | null): string =>
+  (tipo && TIPO_PARADA_LABELS[tipo]) || 'Parada';
+
 const DeliveriesPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
 
@@ -831,6 +840,10 @@ const DeliveriesPage2: React.FC = () => {
       return orden.clienteNombre || 'Sin cliente (OS)';
     }
 
+    if ((delivery as any).tipoParada) {
+      return tipoParadaLabel((delivery as any).tipoParada);
+    }
+
     return 'Sin Factura';
   };
 
@@ -855,6 +868,8 @@ const DeliveriesPage2: React.FC = () => {
 
     const orden = getOrdenByDelivery(delivery);
     if (orden) return orden.numeroOrden || `OS-${orden.id}`;
+
+    if ((delivery as any).tipoParada) return tipoParadaLabel((delivery as any).tipoParada);
 
     return 'Sin Factura';
   };

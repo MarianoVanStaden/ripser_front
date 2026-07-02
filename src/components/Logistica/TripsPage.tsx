@@ -82,6 +82,15 @@ import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { EquipoFabricadoDTO } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
+// Etiquetas legibles para el motivo de una parada libre (sin factura ni OS)
+const TIPO_PARADA_LABELS: Record<string, string> = {
+  GARANTIA: 'Garantía',
+  RETIRO_MATERIA_PRIMA: 'Retiro de materia prima',
+  OTRO: 'Otra parada',
+};
+const tipoParadaLabel = (tipo?: string | null): string =>
+  (tipo && TIPO_PARADA_LABELS[tipo]) || 'Parada';
+
 // Custom hook for responsive breakpoints
 const useResponsive = () => {
   const theme = useTheme();
@@ -679,12 +688,13 @@ const TripsPage2: React.FC = () => {
   };
   const [tripDeliveries, setTripDeliveries] = useState<DeliveryFormState[]>([]);
   const [newDelivery, setNewDelivery] = useState({
-    tipoEntrega: 'FACTURA' as 'FACTURA' | 'ORDEN_SERVICIO',
+    tipoEntrega: 'FACTURA' as 'FACTURA' | 'ORDEN_SERVICIO' | 'PARADA_LIBRE',
     direccionEntrega: '',
     fechaProgramada: '',
     observaciones: '',
     facturaId: '',
     ordenServicioId: '',
+    tipoParada: 'GARANTIA' as 'GARANTIA' | 'RETIRO_MATERIA_PRIMA' | 'OTRO',
   });
   const [selectedDeliveryFactura, setSelectedDeliveryFactura] = useState<DocumentoComercial | null>(null);
   const [selectedDeliveryOrden, setSelectedDeliveryOrden] = useState<any>(null);
@@ -981,7 +991,7 @@ const TripsPage2: React.FC = () => {
       observaciones: '',
     });
     setTripDeliveries([]);
-    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '' });
+    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '', tipoParada: 'GARANTIA' });
     setActiveStep(0);
     setDialogOpen(true);
   };
@@ -1008,7 +1018,7 @@ const TripsPage2: React.FC = () => {
     } catch (err) {
       setTripDeliveries([]);
     }
-    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '' });
+    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '', tipoParada: 'GARANTIA' });
     setActiveStep(0);
     setDialogOpen(true);
   };
@@ -1052,10 +1062,11 @@ const TripsPage2: React.FC = () => {
       d.ordenServicioId != null ||
       (d as any).documentoComercialId != null ||
       (d as any).documentoComercial?.id != null ||
-      (d as any).ordenServicio?.id != null
+      (d as any).ordenServicio?.id != null ||
+      (d as any).tipoParada != null
     );
     if (!tieneEntrega) {
-      setError('El viaje debe tener al menos una factura u orden de servicio asociada. Agregá una entrega antes de guardar.');
+      setError('El viaje debe tener al menos una entrega o parada asociada. Agregá una entrega o parada antes de guardar.');
       return;
     }
 
@@ -1092,19 +1103,21 @@ const TripsPage2: React.FC = () => {
             estado: 'PENDIENTE' as EstadoEntrega,
           };
 
-          // Handle both FACTURA and ORDEN_SERVICIO
+          // Handle FACTURA, ORDEN_SERVICIO y PARADA_LIBRE (sin documento)
           if (delivery.facturaId) {
             deliveryPayload.documentoComercialId = delivery.facturaId;
           } else if (delivery.ordenServicioId) {
             deliveryPayload.ordenServicioId = delivery.ordenServicioId;
+          } else if (delivery.tipoParada) {
+            deliveryPayload.tipoParada = delivery.tipoParada;
           } else {
-            continue; // Skip if neither factura nor orden is set
+            continue; // Skip if neither factura, orden ni parada libre
           }
 
           await entregaViajeApi.create(deliveryPayload);
         } catch (deliveryError: unknown) {
           const msg = (deliveryError as any)?.response?.data?.message || (deliveryError as any)?.message || 'Error desconocido';
-          const label = delivery.factura?.numeroDocumento || `OS-${delivery.ordenServicioId || 'sin-ref'}`;
+          const label = delivery.factura?.numeroDocumento || (delivery.tipoParada ? tipoParadaLabel(delivery.tipoParada) : `OS-${delivery.ordenServicioId || 'sin-ref'}`);
           entregaErrors.push(`${label}: ${msg}`);
         }
       }
@@ -1148,6 +1161,11 @@ const TripsPage2: React.FC = () => {
       return;
     }
 
+    if (newDelivery.tipoEntrega === 'PARADA_LIBRE' && !newDelivery.tipoParada) {
+      setError('Debe seleccionar el motivo de la parada');
+      return;
+    }
+
     const delivery: any = {
       direccionEntrega: newDelivery.direccionEntrega,
       fechaProgramada: newDelivery.fechaProgramada || formData.fechaViaje,
@@ -1158,9 +1176,12 @@ const TripsPage2: React.FC = () => {
     if (newDelivery.tipoEntrega === 'FACTURA') {
       delivery.facturaId = newDelivery.facturaId ? parseInt(newDelivery.facturaId) : undefined;
       delivery.factura = selectedDeliveryFactura || undefined;
-    } else {
+    } else if (newDelivery.tipoEntrega === 'ORDEN_SERVICIO') {
       delivery.ordenServicioId = newDelivery.ordenServicioId ? parseInt(newDelivery.ordenServicioId) : undefined;
       delivery.ordenServicio = selectedDeliveryOrden || undefined;
+    } else {
+      // Parada libre: sin factura ni OS, sólo motivo
+      delivery.tipoParada = newDelivery.tipoParada;
     }
 
     setTripDeliveries([...tripDeliveries, delivery]);
@@ -1172,6 +1193,7 @@ const TripsPage2: React.FC = () => {
       observaciones: '',
       facturaId: '',
       ordenServicioId: '',
+      tipoParada: 'GARANTIA',
     });
     setSelectedDeliveryFactura(null);
     setSelectedDeliveryOrden(null);
@@ -1565,6 +1587,15 @@ const TripsPage2: React.FC = () => {
                               sx={{ mt: 0.5 }}
                             />
                           )}
+                          {(delivery as any).tipoParada && (
+                            <Chip
+                              label={tipoParadaLabel((delivery as any).tipoParada)}
+                              size="small"
+                              color="secondary"
+                              variant="outlined"
+                              sx={{ mt: 0.5 }}
+                            />
+                          )}
                           {delivery.observaciones && (
                             <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                               📝 {delivery.observaciones}
@@ -1614,9 +1645,27 @@ const TripsPage2: React.FC = () => {
               <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
                 Orden de Servicio
               </ToggleButton>
+              <ToggleButton value="PARADA_LIBRE" sx={{ flex: 1 }}>
+                Otra parada
+              </ToggleButton>
             </ToggleButtonGroup>
 
-            {newDelivery.tipoEntrega === 'FACTURA' ? (
+            {newDelivery.tipoEntrega === 'PARADA_LIBRE' ? (
+              <TextField
+                select
+                label="Motivo de la parada"
+                value={newDelivery.tipoParada}
+                onChange={(e) => setNewDelivery({ ...newDelivery, tipoParada: e.target.value as typeof newDelivery.tipoParada })}
+                fullWidth
+                size="medium"
+                helperText="Parada sin factura ni orden de servicio (ej. garantía, retiro de materia prima)."
+                InputProps={{ sx: { minHeight: 56 } }}
+              >
+                <MenuItem value="GARANTIA">Garantía</MenuItem>
+                <MenuItem value="RETIRO_MATERIA_PRIMA">Retiro de materia prima</MenuItem>
+                <MenuItem value="OTRO">Otra parada</MenuItem>
+              </TextField>
+            ) : newDelivery.tipoEntrega === 'FACTURA' ? (
               <>
                 <Autocomplete
                   options={facturasDisponibles}
@@ -2948,7 +2997,16 @@ const TripsPage2: React.FC = () => {
                           <Typography variant="body2" color="text.secondary">
                             {delivery.direccionEntrega}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          {(delivery as any).tipoParada && (
+                            <Chip
+                              label={tipoParadaLabel((delivery as any).tipoParada)}
+                              size="small"
+                              color="secondary"
+                              variant="outlined"
+                              sx={{ mt: 0.5 }}
+                            />
+                          )}
+                          <Typography variant="caption" color="text.secondary" display="block">
                             {new Date(delivery.fechaEntrega).toLocaleString()}
                           </Typography>
                           {renderEntregaEstimada(infoEntregaDeDelivery(delivery))}

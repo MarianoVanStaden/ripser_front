@@ -316,6 +316,8 @@ export interface EntregaViaje {
   fechaEmision?: string;
   ordenServicioId?: number;
   ordenServicio?: OrdenServicio;
+  // Parada libre (sin factura ni OS): motivo de la parada. Null = entrega normal.
+  tipoParada?: 'GARANTIA' | 'RETIRO_MATERIA_PRIMA' | 'OTRO' | null;
   direccionEntrega: string;
   fechaEntrega: string;
   estado: EstadoEntrega;
