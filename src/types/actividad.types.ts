@@ -17,7 +17,8 @@ export type TipoAccionActividad =
   | 'MOVIMIENTO_EXTRA_ANULADO'
   | 'GESTION_COBRANZA_CERRADA'
   | 'AMORTIZACION_EJECUTADA'
-  | 'AMORTIZACION_CONVERTIDA';
+  | 'AMORTIZACION_CONVERTIDA'
+  | 'LEAD_CREADO';
 
 export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   LOGIN_OK: 'Login',
@@ -36,6 +37,7 @@ export const TIPO_ACCION_LABELS: Record<TipoAccionActividad, string> = {
   GESTION_COBRANZA_CERRADA: 'Gestión de cobranza cerrada',
   AMORTIZACION_EJECUTADA: 'Amortización ejecutada',
   AMORTIZACION_CONVERTIDA: 'Amortización convertida',
+  LEAD_CREADO: 'Lead creado',
 };
 
 /**
@@ -62,6 +64,7 @@ export const TIPO_ACCION_FAMILIA: Record<TipoAccionActividad, AccionFamilia> = {
   GESTION_COBRANZA_CERRADA: 'pago',
   AMORTIZACION_EJECUTADA: 'pago',
   AMORTIZACION_CONVERTIDA: 'pago',
+  LEAD_CREADO: 'documento',
 };
 
 export interface RegistroActividadDTO {

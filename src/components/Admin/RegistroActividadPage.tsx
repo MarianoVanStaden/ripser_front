@@ -77,6 +77,7 @@ const TIPOS_DISPONIBLES: TipoAccionActividad[] = [
   'GESTION_COBRANZA_CERRADA',
   'AMORTIZACION_EJECUTADA',
   'AMORTIZACION_CONVERTIDA',
+  'LEAD_CREADO',
 ];
 
 const FAMILIA_COLOR: Record<string, 'default' | 'primary' | 'success' | 'error' | 'info' | 'warning'> = {
