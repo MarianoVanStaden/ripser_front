@@ -960,9 +960,11 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
     const propio = isFinanciamientoPropio(documento.metodoPago);
     // La entrega inicial es 40% de los equipos (netos, sin envío) MÁS el envío completo.
-    // No se aplica el 40% sobre el envío. equipoBase ya viene neto (total - envío) de arriba.
+    // No se aplica el 40% sobre el envío.
+    const costoEnvioFallback = calculateCostoEnvio(documento.detalles ?? []);
+    const equipoBaseFallback = Math.max(0, Number(documento.total ?? 0) - costoEnvioFallback);
     const entregaEstimada = propio
-      ? Math.round(equipoBase * PORCENTAJE_ENTREGA_PROPIO) + costoEnvio
+      ? Math.round(equipoBaseFallback * PORCENTAJE_ENTREGA_PROPIO) + costoEnvioFallback
       : null;
 
     autoTable(doc, {

@@ -104,6 +104,7 @@ export const getChequeEstadoLabel = (estado: EstadoChequeType): string => {
     COBRADO: 'Cobrado',
     RECHAZADO: 'Rechazado',
     ANULADO: 'Anulado',
+    ENDOSADO: 'Endosado',
   };
   return labels[estado] || estado;
 };
@@ -119,6 +120,7 @@ export const getChequeEstadoColor = (estado: EstadoChequeType): string => {
     COBRADO: '#4CAF50', // verde
     RECHAZADO: '#F44336', // rojo
     ANULADO: '#9E9E9E', // gris
+    ENDOSADO: '#00897B', // teal (entregado a proveedor)
   };
   return colors[estado] || '#9E9E9E';
 };
