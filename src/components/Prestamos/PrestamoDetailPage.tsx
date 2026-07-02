@@ -18,6 +18,8 @@ import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
 import { seguimientoPrestamoApi } from '../../api/services/seguimientoPrestamoApi';
 import { recordatorioCuotaApi } from '../../api/services/recordatorioCuotaApi';
 import { pagoInformadoApi } from '../../api/services/pagoInformadoApi';
+import { clienteApi } from '../../api/services/clienteApi';
+import { documentoApi } from '../../api/services/documentoApi';
 import {
   ESTADO_PRESTAMO_LABELS, ESTADO_PRESTAMO_COLORS,
   CATEGORIA_PRESTAMO_LABELS, CATEGORIA_PRESTAMO_COLORS,
@@ -158,6 +160,30 @@ export const PrestamoDetailPage: React.FC = () => {
   useEffect(() => {
     if (prestamoId) loadData();
   }, [prestamoId]);
+
+  const [exportandoPdf, setExportandoPdf] = useState(false);
+
+  // Genera el PDF de estado de cuenta enriquecido con datos del cliente y los
+  // equipos de la factura de origen. Ambos fetches son best-effort: si fallan,
+  // el PDF se genera igual con lo que ya está cargado.
+  const handleExportPdf = async () => {
+    if (!prestamo) return;
+    setExportandoPdf(true);
+    try {
+      const [cliente, equipos] = await Promise.all([
+        clienteApi.getById(prestamo.clienteId).catch(() => null),
+        prestamo.documentoId
+          ? documentoApi.getById(prestamo.documentoId).then((d) => d.detalles).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+      const doc = generarCreditoPDF(prestamo, cuotas, { cliente, equipos });
+      doc.save(`credito-${prestamo.id}-${prestamo.clienteNombre.replace(/\s+/g, '_')}-${dayjs().format('YYYYMMDD')}.pdf`);
+    } catch {
+      setSnackbar({ open: true, message: 'Error al generar el PDF', severity: 'error' });
+    } finally {
+      setExportandoPdf(false);
+    }
+  };
 
   const handleEstadoChange = async (estado: EstadoPrestamo) => {
     try {
@@ -306,9 +332,10 @@ export const PrestamoDetailPage: React.FC = () => {
         <Button
           variant="outlined"
           startIcon={<PictureAsPdf />}
-          onClick={() => generarCreditoPDF(prestamo, cuotas).save(`credito-${prestamo.id}-${prestamo.clienteNombre.replace(/\s+/g, '_')}-${dayjs().format('YYYYMMDD')}.pdf`)}
+          onClick={handleExportPdf}
+          disabled={exportandoPdf}
         >
-          Exportar PDF
+          {exportandoPdf ? 'Generando…' : 'Exportar PDF'}
         </Button>
         <Button variant="outlined" startIcon={<Edit />} onClick={() => setEditOpen(true)}>Editar</Button>
       </Box>

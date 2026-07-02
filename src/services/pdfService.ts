@@ -2,12 +2,14 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type {
   DocumentoComercial,
+  DetalleDocumento,
   OpcionFinanciamientoDTO,
   Cliente,
   Sueldo,
   Empleado,
   CategoriaSalarial,
 } from '../types';
+import { PROVINCIA_LABELS } from '../types/shared.enums';
 import type { LeadDTO } from '../types/lead.types';
 import { CONCEPTO_SUELDO_LABELS } from '../types/remuneraciones.types';
 import type { CuotaPrestamoDTO, PrestamoPersonalDTO } from '../types/prestamo.types';
@@ -1060,9 +1062,15 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 
 /**
  * Genera un PDF con el estado actual de un crédito personal:
- * datos del cliente, datos del crédito, tabla de cuotas (con estado/montos)
- * y totales. Reutiliza el header/footer corporativo de pdfExportUtils para
- * mantener el mismo look & feel que los PDF del módulo de Ventas.
+ * datos del cliente (completos), equipos de la compra, datos del crédito,
+ * tabla de cuotas (con vencimiento, fecha de pago, estado/montos) y totales.
+ * Reutiliza el header/footer corporativo de pdfExportUtils para mantener el
+ * mismo look & feel que los PDF del módulo de Ventas.
+ *
+ * `opciones.cliente` enriquece el bloque de cliente (DNI/CUIT, teléfono,
+ * localidad, provincia). `opciones.equipos` son los detalles tipo EQUIPO de la
+ * factura de origen (modelo, cantidad, color, medida). Ambos son opcionales:
+ * si no se pasan, el PDF se genera igual con los datos que trae el préstamo.
  *
  * No lo guarda en disco — devuelve la instancia de jsPDF para que el caller
  * decida (save / output / preview).
@@ -1070,7 +1078,15 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
 export const generarCreditoPDF = (
   prestamo: PrestamoPersonalDTO,
   cuotas: CuotaPrestamoDTO[],
+  opciones?: {
+    cliente?: Cliente | null;
+    equipos?: DetalleDocumento[] | null;
+  },
 ): jsPDF => {
+  const cliente = opciones?.cliente ?? null;
+  const equipos = (opciones?.equipos ?? []).filter(
+    (d) => d.tipoItem === 'EQUIPO' || d.recetaModelo || d.recetaNombre,
+  );
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 10;
@@ -1078,27 +1094,80 @@ export const generarCreditoPDF = (
   let y = addCorporateHeader(doc, 'Estado del Crédito Personal');
 
   // ---- Bloque Cliente ----
+  // Datos de contacto y ubicación del cliente para que el PDF sea autosuficiente
+  // (Cobranzas lo usa como estado de cuenta que se envía al cliente).
+  const nombreCompleto = cliente
+    ? [cliente.nombre, cliente.apellido].filter(Boolean).join(' ').trim()
+    : [prestamo.clienteNombre, prestamo.clienteApellido].filter(Boolean).join(' ').trim();
+  const dniCuit = cliente?.cuit?.trim() || null;
+  const telefono = cliente?.telefono?.trim() || cliente?.telefonoAlternativo?.trim()
+    || cliente?.whatsapp?.trim() || null;
+  const localidad = cliente?.ciudad?.trim() || null;
+  const provincia = cliente?.provincia ? (PROVINCIA_LABELS[cliente.provincia] || cliente.provincia) : null;
+
+  const CLIENTE_BOX_H = 34;
+  doc.setDrawColor(...COLORS.mediumGray);
+  doc.setFillColor(...COLORS.darkBlue);
+  doc.rect(margin + 1, y, pageWidth - (margin * 2) - 2, 7, 'F');
   doc.setFillColor(...COLORS.white);
-  doc.rect(margin + 1, y, pageWidth - (margin * 2) - 2, 22, 'F');
-  doc.setTextColor(...COLORS.darkBlue);
+  doc.rect(margin + 1, y + 7, pageWidth - (margin * 2) - 2, CLIENTE_BOX_H - 7, 'FD');
+
+  doc.setTextColor(...COLORS.white);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('CLIENTE', margin + 4, y + 5);
-
-  doc.setTextColor(...COLORS.black);
-  doc.setFont('helvetica', 'normal');
+  doc.text('DATOS DEL CLIENTE', margin + 4, y + 5);
+  // Meta del préstamo alineada a la derecha del encabezado de la sección.
   doc.setFontSize(9);
-  doc.text(`Nombre: ${prestamo.clienteNombre}`, margin + 4, y + 11);
-  if (prestamo.codigoClienteRojas) {
-    doc.text(`Código Rojas: ${prestamo.codigoClienteRojas}`, margin + 4, y + 16);
-  }
-  doc.text(`Préstamo #${prestamo.id}`, pageWidth - margin - 4, y + 11, { align: 'right' });
+  doc.text(`Préstamo #${prestamo.id}`, pageWidth - margin - 4, y + 5, { align: 'right' });
+
+  // Etiqueta/valor con la etiqueta en gris y el valor en negro para jerarquía.
+  const colL = margin + 4;                                  // columna izquierda
+  const colR = margin + (pageWidth - margin * 2) / 2 + 4;   // columna derecha
+  const label = (txt: string, vx: number, vy: number) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...COLORS.darkGray);
+    doc.setFontSize(8);
+    doc.text(txt, vx, vy);
+  };
+  const value = (txt: string, vx: number, vy: number) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...COLORS.black);
+    doc.setFontSize(9);
+    doc.text(txt, vx, vy);
+  };
+
+  let ly = y + 13;
+  label('Nombre:', colL, ly);
+  value(nombreCompleto || '-', colL + 20, ly);
+  label('Cód. Cliente:', colR, ly);
+  value(prestamo.codigoClienteRojas || '-', colR + 24, ly);
+
+  ly += 6;
+  label('DNI / CUIT:', colL, ly);
+  value(dniCuit || '-', colL + 20, ly);
+  label('Teléfono:', colR, ly);
+  value(telefono || '-', colR + 24, ly);
+
+  ly += 6;
+  label('Localidad:', colL, ly);
+  value(localidad || '-', colL + 20, ly);
+  label('Provincia:', colR, ly);
+  value(provincia || '-', colR + 24, ly);
+
+  ly += 6;
   if (prestamo.documentoId) {
-    doc.text(`Factura: #${prestamo.documentoId}`, pageWidth - margin - 4, y + 16, { align: 'right' });
+    label('Factura:', colL, ly);
+    value(`#${prestamo.documentoId}`, colL + 20, ly);
   } else if (prestamo.numeroComprobante) {
-    doc.text(`Comprobante: ${prestamo.numeroComprobante}`, pageWidth - margin - 4, y + 16, { align: 'right' });
+    label('Comprob.:', colL, ly);
+    value(prestamo.numeroComprobante, colL + 20, ly);
   }
-  y += 24;
+  if (cliente?.email) {
+    label('Email:', colR, ly);
+    value(cliente.email, colR + 24, ly);
+  }
+
+  y += CLIENTE_BOX_H + 2;
 
   // ---- Cálculos ajustados: PAGO_INFORMADO se trata como pagada en el PDF ----
   const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
@@ -1148,6 +1217,55 @@ export const generarCreditoPDF = (
   }
   y += 32;
 
+  // ---- Equipos de la compra ----
+  // Detalle de los equipos que originaron el crédito (modelo, cantidad, color,
+  // medida). Solo se dibuja si el caller pasó la factura de origen.
+  if (equipos.length > 0) {
+    const pageHeightEq = doc.internal.pageSize.getHeight();
+    if (y + 20 > pageHeightEq - PAGE_MARGIN_BOTTOM) {
+      doc.addPage();
+      y = margin + 5;
+    }
+    doc.setFillColor(...COLORS.darkBlue);
+    doc.rect(margin + 1, y, pageWidth - (margin * 2) - 2, 7, 'F');
+    doc.setTextColor(...COLORS.white);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EQUIPOS DE LA COMPRA', margin + 4, y + 5);
+    y += 8;
+
+    const equipoRows = equipos.map((d) => [
+      d.recetaModelo || d.recetaNombre || d.descripcionEquipo || d.descripcion || 'Equipo',
+      String(d.cantidad ?? 1),
+      d.color?.nombre || '-',
+      d.medida?.nombre || '-',
+    ]);
+
+    autoTable(doc, {
+      head: [['Modelo', 'Cantidad', 'Color', 'Medida']],
+      body: equipoRows,
+      startY: y,
+      margin: { left: margin + 1, right: margin + 1, bottom: PAGE_MARGIN_BOTTOM },
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 1.8, textColor: COLORS.black },
+      headStyles: {
+        fillColor: COLORS.darkBlue,
+        textColor: COLORS.white,
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      columnStyles: {
+        0: { halign: 'left' },
+        1: { halign: 'center', cellWidth: 24 },
+        2: { halign: 'center', cellWidth: 45 },
+        3: { halign: 'center', cellWidth: 35 },
+      },
+    });
+
+    const finalYEq = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y;
+    y = finalYEq + 6;
+  }
+
   // ---- Tabla de cuotas ----
   // En el PDF que envía Cobranzas, una cuota cuyo pago fue informado pero aún no
   // confirmado por Administración se muestra como "Pagada" (no "Pago informado"):
@@ -1163,6 +1281,7 @@ export const generarCreditoPDF = (
     return [
       c.numeroCuota.toString(),
       c.fechaVencimiento ? formatDate(c.fechaVencimiento) : 'Pendiente',
+      c.fechaPago ? formatDate(c.fechaPago) : '-',
       formatCurrency(c.montoCuota),
       formatCurrency(pagado),
       formatCurrency(saldo),
@@ -1173,12 +1292,12 @@ export const generarCreditoPDF = (
   });
 
   autoTable(doc, {
-    head: [['#', 'Vencimiento', 'Monto', 'Pagado', 'Saldo', 'Comprobante', 'Estado', 'Días mora']],
+    head: [['#', 'Vencimiento', 'Fecha pago', 'Monto', 'Pagado', 'Saldo', 'Comprobante', 'Estado', 'Días mora']],
     body: rows,
     startY: y,
     margin: { left: margin + 1, right: margin + 1, bottom: PAGE_MARGIN_BOTTOM },
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 1.5, textColor: COLORS.black },
+    styles: { fontSize: 7.5, cellPadding: 1.5, textColor: COLORS.black },
     headStyles: {
       fillColor: COLORS.darkBlue,
       textColor: COLORS.white,
@@ -1186,17 +1305,18 @@ export const generarCreditoPDF = (
       halign: 'center',
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
+      0: { halign: 'center', cellWidth: 8 },
       1: { halign: 'center' },
-      2: { halign: 'right' },
+      2: { halign: 'center' },
       3: { halign: 'right' },
       4: { halign: 'right' },
-      5: { halign: 'center' },
+      5: { halign: 'right' },
       6: { halign: 'center' },
-      7: { halign: 'center', cellWidth: 18 },
+      7: { halign: 'center' },
+      8: { halign: 'center', cellWidth: 14 },
     },
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 6) {
+      if (data.section === 'body' && data.column.index === 7) {
         const estado = cuotasOrdenadas[data.row.index]?.estado;
         // PAGO_INFORMADO se pinta igual que PAGADA: en el PDF figura como "Pagada".
         if (estado === 'PAGADA' || estado === 'PAGO_INFORMADO') {

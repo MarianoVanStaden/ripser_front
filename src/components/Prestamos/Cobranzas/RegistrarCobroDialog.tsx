@@ -8,6 +8,8 @@ import { Payment, Close, PictureAsPdf } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { cuotaPrestamoApi } from '../../../api/services/cuotaPrestamoApi';
 import { prestamoPersonalApi } from '../../../api/services/prestamoPersonalApi';
+import { clienteApi } from '../../../api/services/clienteApi';
+import { documentoApi } from '../../../api/services/documentoApi';
 import {
   EstadoCuota, ESTADO_CUOTA_LABELS, ESTADO_CUOTA_COLORS,
 } from '../../../types/prestamo.types';
@@ -85,7 +87,15 @@ export const RegistrarCobroDialog: React.FC<RegistrarCobroDialogProps> = ({
     if (!prestamo) return;
     setExportingPdf(true);
     try {
-      const doc = generarCreditoPDF(prestamo, cuotas);
+      // Enriquecemos con datos del cliente y equipos de la factura de origen.
+      // Best-effort: si fallan los fetches, se genera igual con lo básico.
+      const [cliente, equipos] = await Promise.all([
+        clienteApi.getById(clienteId).catch(() => null),
+        prestamo.documentoId
+          ? documentoApi.getById(prestamo.documentoId).then((d) => d.detalles).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+      const doc = generarCreditoPDF(prestamo, cuotas, { cliente, equipos });
       doc.save(`credito-${prestamo.id}-${clienteNombre.replace(/\s+/g, '_')}-${dayjs().format('YYYYMMDD')}.pdf`);
     } finally {
       setExportingPdf(false);
