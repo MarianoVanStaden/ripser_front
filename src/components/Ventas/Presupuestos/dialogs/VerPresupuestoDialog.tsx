@@ -279,10 +279,12 @@ const VerPresupuestoDialog: React.FC<Props> = ({
                       )}
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                        <Typography sx={{ mr: 4 }}>Subtotal (neto):</Typography>
                         <Typography>
                           $
-                          {presupuesto.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          {/* Neto gravado = total - IVA (equipos - descuento + envío). El descuento
+                              ya está aplicado; el IVA se liquida sobre esta base. */}
+                          {(presupuesto.total - presupuesto.iva).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>

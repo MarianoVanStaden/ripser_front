@@ -1774,7 +1774,7 @@ const DeliveriesPage2: React.FC = () => {
                           <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                             <Box>
                               <Typography variant="subtitle2" fontWeight="bold">
-                                #{equipo.numeroHeladera || equipo.id}
+                                #{equipo.codigoVenta ?? equipo.numeroHeladera ?? equipo.id}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
                                 {equipo.modelo || 'N/A'} - {equipo.tipo || 'N/A'}
@@ -1798,7 +1798,10 @@ const DeliveriesPage2: React.FC = () => {
                   {(!selectedDeliveryDetails?.equipos || selectedDeliveryDetails.equipos.length === 0) && (
                     <Box textAlign="center" py={4}>
                       <EquipmentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                      <Typography color="text.secondary">No hay equipos en esta entrega</Typography>
+                      <Typography color="text.secondary">Sin equipos asignados</Typography>
+                      <Typography variant="caption" color="text.disabled" display="block" mt={0.5}>
+                        La factura no tiene unidades individuales registradas
+                      </Typography>
                     </Box>
                   )}
                 </Stack>
@@ -1897,23 +1900,24 @@ const DeliveriesPage2: React.FC = () => {
                   </Card>
                 </Grid>
 
-                {selectedDeliveryDetails?.equipos?.length > 0 && (
-                  <Grid item xs={12}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Equipos ({selectedDeliveryDetails.equipos.length})
-                        </Typography>
+                <Grid item xs={12}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Equipos ({selectedDeliveryDetails?.equipos?.length || 0})
+                      </Typography>
+                      {selectedDeliveryDetails?.equipos?.length > 0 ? (
                         <List dense>
                           {selectedDeliveryDetails.equipos.map((equipo: any) => {
                             let estadoAsignacion = equipo.estadoAsignacion;
                             if (!estadoAsignacion) {
                               estadoAsignacion = selectedDelivery.estado === 'ENTREGADA' ? 'ENTREGADO' : 'EN_TRANSITO';
                             }
+                            const codigoDisplay = equipo.codigoVenta ?? equipo.numeroHeladera ?? equipo.id;
                             return (
                               <ListItem key={equipo.id} divider>
                                 <ListItemText
-                                  primary={`#${equipo.numeroHeladera || equipo.id} - ${equipo.modelo || 'N/A'}`}
+                                  primary={`#${codigoDisplay} - ${equipo.modelo || 'N/A'}`}
                                   secondary={(() => {
                                     const colorLabel = typeof equipo.color === 'string'
                                       ? equipo.color
@@ -1930,10 +1934,14 @@ const DeliveriesPage2: React.FC = () => {
                             );
                           })}
                         </List>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                )}
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 1 }}>
+                          La factura no tiene unidades individuales registradas
+                        </Typography>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
 
                 {selectedDelivery.observaciones && (
                   <Grid item xs={12}>

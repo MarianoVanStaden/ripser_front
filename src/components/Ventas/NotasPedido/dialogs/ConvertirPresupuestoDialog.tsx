@@ -36,6 +36,7 @@ import type { ConvertFormData, TipoDescuento, TipoIva } from '../types';
 import { IVA_RATES } from '../constants';
 import { getTipoIvaLabel } from '../utils';
 import { getMetodoPagoIcon, getMetodoPagoLabel } from '../paymentMethodIcons';
+import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 
 interface Props {
   open: boolean;
@@ -312,12 +313,16 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
 
           {selectedPresupuesto && (() => {
             const baseSubtotal = selectedPresupuesto.subtotal ?? 0;
+            // El descuento aplica sólo sobre equipos/revestimiento, nunca sobre el envío.
+            // La base elegible = subtotal bruto - envío (consistente con el backend).
+            const costoEnvio = calculateCostoEnvio(selectedPresupuesto.detalles ?? []);
+            const baseElegible = Math.max(0, baseSubtotal - costoEnvio);
             const descAmt = form.descuentoTipo === 'PORCENTAJE'
-              ? baseSubtotal * (Math.min(100, Math.max(0, form.descuentoValor || 0)) / 100)
+              ? baseElegible * (Math.min(100, Math.max(0, form.descuentoValor || 0)) / 100)
               : form.descuentoTipo === 'MONTO_FIJO'
-                ? Math.min(baseSubtotal, Math.max(0, form.descuentoValor || 0))
+                ? Math.min(baseElegible, Math.max(0, form.descuentoValor || 0))
                 : 0;
-            const subNeto = Math.max(0, baseSubtotal - descAmt);
+            const subNeto = Math.max(0, baseElegible - descAmt) + costoEnvio;
             const ivaRate = IVA_RATES[form.tipoIva];
             const ivaAmt = subNeto * ivaRate;
             const totalPreview = subNeto + ivaAmt;
@@ -325,16 +330,22 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
               <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
                 <Typography variant="subtitle2" gutterBottom>Resumen de totales</Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">Subtotal:</Typography>
+                  <Typography variant="body2">{descAmt > 0 ? 'Subtotal (bruto):' : 'Subtotal:'}</Typography>
                   <Typography variant="body2">${baseSubtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
                 </Box>
                 {descAmt > 0 && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="body2" color="error.main">
-                      Descuento {form.descuentoTipo === 'PORCENTAJE' ? `(${form.descuentoValor}%)` : '(monto fijo)'}:
-                    </Typography>
-                    <Typography variant="body2" color="error.main">-${descAmt.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                  </Box>
+                  <>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="error.main">
+                        Descuento {form.descuentoTipo === 'PORCENTAJE' ? `(${form.descuentoValor}%)` : '(monto fijo)'}:
+                      </Typography>
+                      <Typography variant="body2" color="error.main">-${descAmt.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2">Subtotal (neto):</Typography>
+                      <Typography variant="body2">${subNeto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
+                    </Box>
+                  </>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2">IVA ({(ivaRate * 100).toFixed(ivaRate === 0.105 ? 1 : 0)}%):</Typography>

@@ -89,10 +89,6 @@ const getCurrentMonthYear = (): string => {
   return `${months[date.getMonth()]} ${date.getFullYear()}`;
 };
 
-const calcularEntregaInicial = (total: number): number => {
-  return Math.round(total * PORCENTAJE_ENTREGA_PROPIO);
-};
-
 const PAGE_MARGIN_BOTTOM = 25;
 
 const TOTAL_ROW_STYLE = {
@@ -125,23 +121,38 @@ const buildTotalsRows = (documento: DocumentoComercial, totalLabel: string): any
     ]];
   }
 
-  const totalNeto = Math.max(0, subtotalBruto - descuentoMonto);
+  // Orden contable: bruto → descuento → neto gravado → IVA → total.
+  // El descuento (bonificación) reduce la base imponible ANTES del IVA; el IVA
+  // se liquida sobre el neto ya descontado. Total = neto + IVA.
+  const subtotalNeto = Math.max(0, subtotalBruto - descuentoMonto);
+  const iva = Number(documento.iva ?? 0);
+  const total = subtotalNeto + iva;
   const descuentoLabel = descuentoTipo === 'PORCENTAJE'
     ? `Descuento (${descuentoValor}%)`
     : 'Descuento';
+  const normalLabel = { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const };
+  const normalRow = { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const };
 
   return [
     [
-      { content: 'Subtotal', styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
-      { content: formatCurrency(subtotalBruto), styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+      { content: 'Subtotal (bruto)', styles: normalLabel },
+      { content: formatCurrency(subtotalBruto), styles: normalRow },
     ],
     [
-      { content: descuentoLabel, styles: { ...TOTAL_LABEL_STYLE, fontStyle: 'normal' as const } },
-      { content: `- ${formatCurrency(descuentoMonto)}`, styles: { ...TOTAL_ROW_STYLE, fontStyle: 'normal' as const } },
+      { content: descuentoLabel, styles: normalLabel },
+      { content: `- ${formatCurrency(descuentoMonto)}`, styles: normalRow },
+    ],
+    [
+      { content: 'Subtotal (neto)', styles: normalLabel },
+      { content: formatCurrency(subtotalNeto), styles: normalRow },
+    ],
+    [
+      { content: 'IVA', styles: normalLabel },
+      { content: formatCurrency(iva), styles: normalRow },
     ],
     [
       { content: totalLabel, styles: TOTAL_LABEL_STYLE },
-      { content: formatCurrency(totalNeto), styles: TOTAL_ROW_STYLE },
+      { content: formatCurrency(total), styles: TOTAL_ROW_STYLE },
     ],
   ];
 };
@@ -948,8 +959,11 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     yPosition = (doc as any).lastAutoTable.finalY + 1;
 
     const propio = isFinanciamientoPropio(documento.metodoPago);
-    const baseFinanciamiento = Math.max(0, Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0));
-    const entregaEstimada = propio ? calcularEntregaInicial(baseFinanciamiento) : null;
+    // La entrega inicial es 40% de los equipos (netos, sin envío) MÁS el envío completo.
+    // No se aplica el 40% sobre el envío. equipoBase ya viene neto (total - envío) de arriba.
+    const entregaEstimada = propio
+      ? Math.round(equipoBase * PORCENTAJE_ENTREGA_PROPIO) + costoEnvio
+      : null;
 
     autoTable(doc, {
       startY: yPosition,

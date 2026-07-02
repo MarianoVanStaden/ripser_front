@@ -282,16 +282,24 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
               <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                 <Box display="flex" flexDirection="column" gap={2}>
                   <Box display="flex" justifyContent="space-between">
-                    <Typography variant="subtitle2" color="text.secondary">Subtotal:</Typography>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {notaDescuentoAmount > 0 ? 'Subtotal (bruto):' : 'Subtotal:'}
+                    </Typography>
                     <Typography variant="h6">${notaSubtotal.toFixed(2)}</Typography>
                   </Box>
                   {notaDescuentoAmount > 0 && (
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="subtitle2" color="error.main">
-                        Descuento {notaDescuentoTipo === 'PORCENTAJE' ? `(${notaDescuentoValor}%)` : '(monto fijo)'}:
-                      </Typography>
-                      <Typography variant="h6" color="error.main">-${notaDescuentoAmount.toFixed(2)}</Typography>
-                    </Box>
+                    <>
+                      <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="subtitle2" color="error.main">
+                          Descuento {notaDescuentoTipo === 'PORCENTAJE' ? `(${notaDescuentoValor}%)` : '(monto fijo)'}:
+                        </Typography>
+                        <Typography variant="h6" color="error.main">-${notaDescuentoAmount.toFixed(2)}</Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="subtitle2" color="text.secondary">Subtotal (neto):</Typography>
+                        <Typography variant="h6">${(notaSubtotal - notaDescuentoAmount).toFixed(2)}</Typography>
+                      </Box>
+                    </>
                   )}
                   <Box display="flex" justifyContent="space-between">
                     <Typography variant="subtitle2" color="text.secondary">IVA:</Typography>

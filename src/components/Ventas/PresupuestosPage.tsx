@@ -1948,7 +1948,8 @@ const PresupuestosPage: React.FC = () => {
                 )}
                 <Divider sx={{ width: '200px', my: 1 }} />
                 <Typography variant="body1">
-                  Subtotal: ${subtotal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  {/* Neto gravado = equipos - descuento + envío; el IVA se liquida sobre esta base. */}
+                  Subtotal (neto): ${subtotalNeto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </Typography>
                 <Typography variant="body1">
                   IVA ({formData.tipoIva === 'IVA_21' ? '21%' : formData.tipoIva === 'IVA_10_5' ? '10.5%' : '0%'}):

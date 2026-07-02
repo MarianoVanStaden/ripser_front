@@ -40,6 +40,7 @@ interface LineaState {
   label: string;
   precioUnitario: string;
   cantidad: string;
+  tipoItem: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,6 +72,7 @@ const CorregirPreciosDialog: React.FC<Props> = ({ open, onClose, onSaved, nota }
           label: labelDeLinea(d),
           precioUnitario: String(d.precioUnitario ?? 0),
           cantidad: String(d.cantidad ?? 1),
+          tipoItem: d.tipoItem ?? 'PRODUCTO',
         }))
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -96,14 +98,31 @@ const CorregirPreciosDialog: React.FC<Props> = ({ open, onClose, onSaved, nota }
     [lineas]
   );
 
+  // El descuento aplica sólo sobre equipos/revestimiento, nunca sobre el envío.
+  // Base elegible = subtotal bruto - envío (consistente con el backend). Se calcula
+  // sobre las líneas editadas para reflejar cambios de precio/cantidad del envío.
+  const subtotalEnvio = useMemo(
+    () =>
+      lineas
+        .filter((l) => l.tipoItem === 'ENVIO')
+        .reduce((acc, l) => {
+          const p = parseFloat(l.precioUnitario);
+          const c = parseInt(l.cantidad, 10);
+          return acc + (isNaN(p) || isNaN(c) ? 0 : p * c);
+        }, 0),
+    [lineas]
+  );
+
+  const baseElegible = Math.max(0, subtotalBruto - subtotalEnvio);
+
   const descuentoMonto = useMemo(() => {
     const v = parseFloat(descuentoValor) || 0;
-    if (descuentoTipo === 'PORCENTAJE') return subtotalBruto * (Math.min(100, Math.max(0, v)) / 100);
-    if (descuentoTipo === 'MONTO_FIJO') return Math.min(subtotalBruto, Math.max(0, v));
+    if (descuentoTipo === 'PORCENTAJE') return baseElegible * (Math.min(100, Math.max(0, v)) / 100);
+    if (descuentoTipo === 'MONTO_FIJO') return Math.min(baseElegible, Math.max(0, v));
     return 0;
-  }, [descuentoTipo, descuentoValor, subtotalBruto]);
+  }, [descuentoTipo, descuentoValor, baseElegible]);
 
-  const subtotalNeto = Math.max(0, subtotalBruto - descuentoMonto);
+  const subtotalNeto = Math.max(0, baseElegible - descuentoMonto) + subtotalEnvio;
 
   const handleSave = async () => {
     if (!nota) return;
@@ -222,7 +241,7 @@ const CorregirPreciosDialog: React.FC<Props> = ({ open, onClose, onSaved, nota }
           <Divider />
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography variant="body2">Subtotal:</Typography>
+              <Typography variant="body2">{descuentoMonto > 0 ? 'Subtotal (bruto):' : 'Subtotal:'}</Typography>
               <Typography variant="body2">{fmt(subtotalBruto)}</Typography>
             </Box>
             {descuentoMonto > 0 && (

@@ -342,8 +342,11 @@ const FacturarManualTab: React.FC<Props> = ({
                           </Grid>
                         )}
                         <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
-                          <Typography variant="subtitle2" color="text.secondary">Subtotal:</Typography>
-                          <Typography variant="h6">${totals.subtotal.toFixed(2)}</Typography>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            {showDescuentoCol ? 'Subtotal (neto):' : 'Subtotal:'}
+                          </Typography>
+                          {/* Neto gravado = bruto - descuento (equipos - descuento + envío); IVA sobre esta base. */}
+                          <Typography variant="h6">${(totals.subtotal - totals.descuento).toFixed(2)}</Typography>
                         </Grid>
                         <Grid item xs={12} sm={showDescuentoCol ? 4 : 6}>
                           <Typography variant="subtitle2" color="text.secondary">

@@ -7,16 +7,17 @@ interface Props {
 }
 
 const ChequeEstadoChip: React.FC<Props> = ({ estado }) => {
-  const config = {
-    RECIBIDO: { label: 'Recibido', color: 'secondary' as const },
-    EN_CARTERA: { label: 'En Cartera', color: 'primary' as const },
-    DEPOSITADO: { label: 'Depositado', color: 'info' as const },
-    COBRADO: { label: 'Cobrado', color: 'success' as const },
-    RECHAZADO: { label: 'Rechazado', color: 'error' as const },
-    ANULADO: { label: 'Anulado', color: 'warning' as const },
+  const config: Record<string, { label: string; color: 'default' | 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'error' }> = {
+    RECIBIDO: { label: 'Recibido', color: 'secondary' },
+    EN_CARTERA: { label: 'En Cartera', color: 'primary' },
+    ENDOSADO: { label: 'Endosado', color: 'secondary' },
+    DEPOSITADO: { label: 'Depositado', color: 'info' },
+    COBRADO: { label: 'Cobrado', color: 'success' },
+    RECHAZADO: { label: 'Rechazado', color: 'error' },
+    ANULADO: { label: 'Anulado', color: 'warning' },
   };
 
-  const { label, color } = config[estado] || config.EN_CARTERA;
+  const { label, color } = config[estado] ?? { label: estado, color: 'default' };
 
   return <Chip label={label} color={color} size="small" />;
 };

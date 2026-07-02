@@ -252,9 +252,11 @@ const VerNotaPedidoDialog: React.FC<Props> = ({
                       )}
                       <Divider sx={{ my: 1 }} />
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
+                        <Typography sx={{ mr: 4 }}>Subtotal (neto):</Typography>
                         <Typography>
-                          ${nota.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          {/* Neto gravado = subtotal bruto - descuento (equipos - descuento + envío).
+                              No uso total - IVA porque con financiamiento el total trae interés. */}
+                          ${(nota.subtotal - Number(nota.descuentoMonto ?? 0)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>

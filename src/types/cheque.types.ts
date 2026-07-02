@@ -53,6 +53,7 @@ export type TipoChequeType = 'PROPIO' | 'TERCEROS';
 export type EstadoChequeType =
   | 'RECIBIDO'      // Cheque recibido
   | 'EN_CARTERA'    // Cheque en cartera, pendiente de cobro
+  | 'ENDOSADO'      // Cheque entregado a proveedor (ya no en poder de la empresa)
   | 'DEPOSITADO'    // Cheque depositado en banco
   | 'COBRADO'       // Cheque cobrado exitosamente
   | 'RECHAZADO'     // Cheque rechazado

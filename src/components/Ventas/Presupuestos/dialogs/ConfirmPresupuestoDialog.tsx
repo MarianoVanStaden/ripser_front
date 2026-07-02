@@ -75,16 +75,22 @@ const ConfirmPresupuestoDialog: React.FC<Props> = ({
               Cantidad de items: {detallesCount}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Subtotal: ${subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              {formData.descuentoTipo !== 'NONE' && descuentoAmount > 0 ? 'Subtotal (bruto)' : 'Subtotal'}
+              : ${subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Typography>
             {formData.descuentoTipo !== 'NONE' && descuentoAmount > 0 && (
-              <Typography variant="body2" color="error.main">
-                Descuento{' '}
-                {formData.descuentoTipo === 'PORCENTAJE'
-                  ? `(${formData.descuentoValor}%)`
-                  : '(monto fijo)'}
-                : -${descuentoAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-              </Typography>
+              <>
+                <Typography variant="body2" color="error.main">
+                  Descuento{' '}
+                  {formData.descuentoTipo === 'PORCENTAJE'
+                    ? `(${formData.descuentoValor}%)`
+                    : '(monto fijo)'}
+                  : -${descuentoAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Subtotal (neto): ${(subtotal - descuentoAmount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                </Typography>
+              </>
             )}
             <Typography variant="body2" color="text.secondary">
               IVA (

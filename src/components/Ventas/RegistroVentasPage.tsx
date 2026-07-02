@@ -1136,31 +1136,49 @@ const RegistroVentasPage: React.FC = () => {
                       </Typography>
                     </>
                   )}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography sx={{ mr: 4 }}>Subtotal:</Typography>
-                    <Typography>
-                      ${(viewingSale.subtotal || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
-                  {(viewingSale as any).descuentoTipo &&
-                    (viewingSale as any).descuentoTipo !== 'NONE' &&
-                    Number((viewingSale as any).descuentoValor) > 0 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography sx={{ mr: 4 }}>
-                          Descuento{' '}
-                          {(viewingSale as any).descuentoTipo === 'PORCENTAJE'
-                            ? `(${(viewingSale as any).descuentoValor}%)`
-                            : '(monto fijo)'}
-                          :
-                        </Typography>
-                        <Typography color="error.main">
-                          -$
-                          {Number((viewingSale as any).descuentoMonto ?? 0).toLocaleString('es-AR', {
-                            minimumFractionDigits: 2,
-                          })}
-                        </Typography>
-                      </Box>
-                    )}
+                  {(() => {
+                    const subtotalBruto = viewingSale.subtotal || 0;
+                    const descMonto = Number((viewingSale as any).descuentoMonto ?? 0);
+                    const tieneDescuento =
+                      (viewingSale as any).descuentoTipo &&
+                      (viewingSale as any).descuentoTipo !== 'NONE' &&
+                      Number((viewingSale as any).descuentoValor) > 0 &&
+                      descMonto > 0;
+                    // Orden contable: bruto → descuento → neto gravado → IVA → total.
+                    // El descuento reduce la base imponible antes del IVA.
+                    return (
+                      <>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography sx={{ mr: 4 }}>{tieneDescuento ? 'Subtotal (bruto):' : 'Subtotal:'}</Typography>
+                          <Typography>
+                            ${subtotalBruto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        {tieneDescuento && (
+                          <>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                              <Typography sx={{ mr: 4 }}>
+                                Descuento{' '}
+                                {(viewingSale as any).descuentoTipo === 'PORCENTAJE'
+                                  ? `(${(viewingSale as any).descuentoValor}%)`
+                                  : '(monto fijo)'}
+                                :
+                              </Typography>
+                              <Typography color="error.main">
+                                -${descMonto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                              <Typography sx={{ mr: 4 }}>Subtotal (neto):</Typography>
+                              <Typography>
+                                ${(subtotalBruto - descMonto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography sx={{ mr: 4 }}>IVA:</Typography>
                     <Typography>

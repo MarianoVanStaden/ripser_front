@@ -2957,12 +2957,27 @@ const TripsPage2: React.FC = () => {
                               📝 {delivery.observaciones}
                             </Typography>
                           )}
-                          {detalles?.equipos?.length > 0 && (
+                          {detalles?.equipos?.length > 0 ? (
                             <Box mt={1}>
-                              <Typography variant="caption" color="primary">
-                                {detalles.equipos.length} equipos
+                              <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                Equipos ({detalles.equipos.length}):
                               </Typography>
+                              <Stack direction="row" flexWrap="wrap" gap={0.5} mt={0.5}>
+                                {detalles.equipos.map((eq: any) => (
+                                  <Chip
+                                    key={eq.id}
+                                    label={eq.codigoVenta ?? eq.numeroHeladera}
+                                    size="small"
+                                    variant="outlined"
+                                    title={`${eq.modelo ?? ''} | ${eq.tipo ?? ''}`}
+                                  />
+                                ))}
+                              </Stack>
                             </Box>
+                          ) : detalles && (
+                            <Typography variant="caption" color="text.disabled" display="block" mt={1} sx={{ fontStyle: 'italic' }}>
+                              Sin equipos registrados
+                            </Typography>
                           )}
                         </CardContent>
                       </Card>

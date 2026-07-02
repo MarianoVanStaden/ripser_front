@@ -22,6 +22,7 @@ import {
 import { EstadoDocumento } from '../../../../types';
 import type { DocumentoComercial } from '../../../../types';
 import type { EditNotaForm, TipoDescuento } from '../types';
+import { calculateCostoEnvio } from '../../../../utils/financiamiento';
 
 const ESTADO_OPTIONS: { value: EstadoDocumento; label: string }[] = [
   { value: EstadoDocumento.PENDIENTE, label: 'Pendiente' },
@@ -64,14 +65,18 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
           const subtotal = Number(nota.subtotal) || 0;
           const tipo = form.descuentoTipo;
           const valor = form.descuentoValor;
+          // El descuento aplica sólo sobre equipos/revestimiento, nunca sobre el envío.
+          // Base elegible = subtotal bruto - envío (consistente con el backend).
+          const costoEnvio = calculateCostoEnvio(nota.detalles ?? []);
+          const baseElegible = Math.max(0, subtotal - costoEnvio);
           let descuentoMonto = 0;
           if (tipo === 'PORCENTAJE') {
             const pct = Math.min(100, Math.max(0, valor || 0));
-            descuentoMonto = subtotal * (pct / 100);
+            descuentoMonto = baseElegible * (pct / 100);
           } else if (tipo === 'MONTO_FIJO') {
-            descuentoMonto = Math.min(subtotal, Math.max(0, valor || 0));
+            descuentoMonto = Math.min(baseElegible, Math.max(0, valor || 0));
           }
-          const subtotalNeto = Math.max(0, subtotal - descuentoMonto);
+          const subtotalNeto = Math.max(0, baseElegible - descuentoMonto) + costoEnvio;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const tipoIvaActual = (nota as any).tipoIva || 'IVA_21';
           const ivaPct = tipoIvaActual === 'IVA_21' ? 0.21 : tipoIvaActual === 'IVA_10_5' ? 0.105 : 0;
@@ -156,20 +161,30 @@ const EditarNotaPedidoDialog: React.FC<Props> = ({
               <Divider />
               <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                  <Typography variant="body2">Subtotal:</Typography>
+                  <Typography variant="body2">
+                    {tipo !== 'NONE' && descuentoMonto > 0 ? 'Subtotal (bruto):' : 'Subtotal:'}
+                  </Typography>
                   <Typography variant="body2">
                     ${subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                   </Typography>
                 </Box>
                 {tipo !== 'NONE' && descuentoMonto > 0 && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="body2">
-                      Descuento {tipo === 'PORCENTAJE' ? `(${valor}%)` : '(monto fijo)'}:
-                    </Typography>
-                    <Typography variant="body2" color="error.main">
-                      -${descuentoMonto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                  </Box>
+                  <>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="body2">
+                        Descuento {tipo === 'PORCENTAJE' ? `(${valor}%)` : '(monto fijo)'}:
+                      </Typography>
+                      <Typography variant="body2" color="error.main">
+                        -${descuentoMonto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="body2">Subtotal (neto):</Typography>
+                      <Typography variant="body2">
+                        ${subtotalNeto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </Typography>
+                    </Box>
+                  </>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                   <Typography variant="body2">

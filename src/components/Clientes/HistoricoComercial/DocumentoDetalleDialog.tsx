@@ -337,12 +337,48 @@ const DocumentoDetalleDialog: React.FC<DocumentoDetalleDialogProps> = ({
           }}
         >
           <Box sx={{ minWidth: 280 }}>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">
-                Subtotal
-              </Typography>
-              <Typography variant="body2">{formatARS(docActual.subtotal)}</Typography>
-            </Stack>
+            {(() => {
+              const descMonto = Number(docActual.descuentoMonto ?? 0);
+              const tieneDescuento =
+                docActual.descuentoTipo &&
+                docActual.descuentoTipo !== 'NONE' &&
+                descMonto > 0;
+              // Orden contable: bruto → descuento → neto gravado. El descuento
+              // reduce la base imponible antes del IVA.
+              return (
+                <>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">
+                      {tieneDescuento ? 'Subtotal (bruto)' : 'Subtotal'}
+                    </Typography>
+                    <Typography variant="body2">{formatARS(docActual.subtotal)}</Typography>
+                  </Stack>
+                  {tieneDescuento && (
+                    <>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2" color="error.main">
+                          Descuento{' '}
+                          {docActual.descuentoTipo === 'PORCENTAJE'
+                            ? `(${docActual.descuentoValor}%)`
+                            : '(monto fijo)'}
+                        </Typography>
+                        <Typography variant="body2" color="error.main">
+                          -{formatARS(descMonto)}
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2" color="text.secondary">
+                          Subtotal (neto)
+                        </Typography>
+                        <Typography variant="body2">
+                          {formatARS(Number(docActual.subtotal ?? 0) - descMonto)}
+                        </Typography>
+                      </Stack>
+                    </>
+                  )}
+                </>
+              );
+            })()}
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="body2" color="text.secondary">
                 IVA
