@@ -306,10 +306,14 @@ export const ESTADO_COBRO_LABELS: Record<EstadoCobro, string> = {
 export interface EntregaViaje {
   id: number;
   viajeId?: number;
+  numeroViaje?: string;
   ventaId?: number; // Deprecated - usar documentoComercialId
   venta?: Venta;
   documentoComercialId?: number; // Nuevo campo - ID del documento comercial
   documentoComercial?: any; // Objeto completo del documento (si el backend lo popula)
+  numeroDocumento?: string;
+  clienteNombre?: string;
+  fechaEmision?: string;
   ordenServicioId?: number;
   ordenServicio?: OrdenServicio;
   direccionEntrega: string;
@@ -370,6 +374,7 @@ export interface RendicionEntregaDTO {
   diferenciaCobro?: number | null;
   estadoCobro?: EstadoCobro | null;
   metodoPagoEntrega?: string | null;
+  detallesCobro?: DetalleCobroDTO[];
 }
 
 export interface RendicionViajeDTO {
@@ -380,9 +385,15 @@ export interface RendicionViajeDTO {
   totalDeclarado: number;
   totalRecibido?: number | null;
   diferencia?: number | null;
+  /** Suma de cobros DOLARES declarados por conductor (USD). */
+  totalDolaresDeclarado?: number | null;
+  /** Dólares recibidos por administración (USD). */
+  totalDolaresRecibido?: number | null;
+  diferenciaDolares?: number | null;
   estadoRendicion?: EstadoRendicion | null;
   cajaPesosId?: number | null;
   cajaAhorroId?: number | null;
+  cajaAhorroDolaresId?: number | null;
   metodoPagoRendicion?: string | null;
   comprobanteRendicion?: string | null;
   observaciones?: string | null;
@@ -397,6 +408,10 @@ export interface RendicionRequest {
   metodoPagoRendicion: string;
   comprobanteRendicion?: string;
   observaciones?: string;
+  /** Dólares recibidos físicamente (solo si hubo cobros en DOLARES). */
+  totalRecibidoDolares?: number | null;
+  /** Caja de ahorro USD donde ingresan los dólares rendidos. */
+  cajaAhorroDolaresId?: number | null;
 }
 
 export interface EntregaViajeDetalle {

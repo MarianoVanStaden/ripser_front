@@ -31,6 +31,7 @@ export const METODOS_PAGO = [
   { value: 'TARJETA_DEBITO', label: 'Tarjeta de débito' },
   { value: 'TARJETA_CREDITO', label: 'Tarjeta de crédito' },
   { value: 'PAGARE', label: 'Pagaré' },
+  { value: 'DOLARES', label: 'Dólares (USD)' },
 ];
 
 const fmt = (n?: number | null) =>
@@ -98,11 +99,14 @@ interface Props {
 const CobroSection: React.FC<Props> = ({ cobro, setCobro, montoEsperado }) => {
   const total = useMemo(() => sumaCobro(cobro), [cobro]);
 
+  // El diff solo aplica cuando NO hay líneas en dólares (no mezclar monedas).
+  const tieneDolares = cobro.detalles.some((d) => d.metodoPago === 'DOLARES');
+
   const diff = useMemo(() => {
-    if (montoEsperado == null) return null;
+    if (montoEsperado == null || tieneDolares) return null;
     if (cobro.detalles.every((d) => !d.monto)) return null;
     return total - montoEsperado;
-  }, [total, montoEsperado, cobro.detalles]);
+  }, [total, montoEsperado, cobro.detalles, tieneDolares]);
 
   const diffLabel = diff == null ? null : diff === 0
     ? { label: 'Cobro exacto ✓', color: 'success' as const }
@@ -175,7 +179,10 @@ const CobroSection: React.FC<Props> = ({ cobro, setCobro, montoEsperado }) => {
             </Box>
 
             <TextField
-              label={detalle.metodoPago === 'CHEQUE' ? 'Monto por cheque' : 'Monto'}
+              label={
+                detalle.metodoPago === 'CHEQUE' ? 'Monto por cheque' :
+                detalle.metodoPago === 'DOLARES' ? 'Monto en USD' : 'Monto'
+              }
               value={detalle.monto}
               onChange={(e) => updateDetalle(detalle.id, { monto: e.target.value })}
               fullWidth
@@ -183,7 +190,13 @@ const CobroSection: React.FC<Props> = ({ cobro, setCobro, montoEsperado }) => {
               type="number"
               inputMode="decimal"
               placeholder="0.00"
-              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    {detalle.metodoPago === 'DOLARES' ? 'U$D' : '$'}
+                  </InputAdornment>
+                ),
+              }}
             />
 
             {detalle.metodoPago === 'CHEQUE' ? (

@@ -279,6 +279,8 @@ export const MetodoPago = {
   FINANCIAMIENTO: 'FINANCIAMIENTO',
   FINANCIACION_PROPIA: 'FINANCIACION_PROPIA',
   CUENTA_CORRIENTE: 'CUENTA_CORRIENTE',
+  PAGARE: 'PAGARE',
+  DOLARES: 'DOLARES',
 } as const;
 export type MetodoPago = typeof MetodoPago[keyof typeof MetodoPago];
 
@@ -370,4 +372,6 @@ export const METODO_PAGO_LABELS: Record<MetodoPago, string> = {
   FINANCIAMIENTO: 'Financiamiento',
   FINANCIACION_PROPIA: 'Financiación Propia',
   CUENTA_CORRIENTE: 'Cuenta Corriente',
+  PAGARE: 'Pagaré',
+  DOLARES: 'Dólares (USD)',
 };

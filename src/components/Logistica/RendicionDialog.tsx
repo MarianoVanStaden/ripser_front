@@ -229,6 +229,13 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
   const [comprobante, setComprobante] = useState('');
   const [observaciones, setObservaciones] = useState('');
 
+  // ── Dólares ──
+  const [totalRecibidoDolares, setTotalRecibidoDolares] = useState('');
+  const [cajasUsd, setCajasUsd] = useState<CajaUnificada[]>([]);
+  const [cajaUsdSeleccionada, setCajaUsdSeleccionada] = useState<CajaUnificada | null>(null);
+  const [loadingCajasUsd, setLoadingCajasUsd] = useState(false);
+  const [totalDolaresDeclarado, setTotalDolaresDeclarado] = useState(0);
+
   // ── Submit ──
   const [submitting, setSubmitting] = useState(false);
   const [errorSubmit, setErrorSubmit] = useState<string | null>(null);
@@ -247,10 +254,15 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
     setCajaSeleccionada(null);
     setMetodoPago('EFECTIVO');
 
+    setTotalRecibidoDolares('');
+    setCajaUsdSeleccionada(null);
+    setTotalDolaresDeclarado(0);
+
     setLoadingResumen(true);
     viajeApi.getResumenCobros(viaje.id)
       .then((data) => {
         setResumen(data);
+        setTotalDolaresDeclarado(data.totalDolaresDeclarado ?? 0);
         // Inicializar cobros editables con los valores declarados por el conductor
         setCobros(
           data.entregas.map((e) => ({
@@ -267,7 +279,7 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
       .finally(() => setLoadingResumen(false));
   }, [open, viaje]);
 
-  // ── Cajas según método de rendición ──
+  // ── Cajas ARS según método de rendición ──
   useEffect(() => {
     if (!open || step !== 1) return;
     setCajaSeleccionada(null);
@@ -282,6 +294,22 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
       .catch(() => {})
       .finally(() => setLoadingCajas(false));
   }, [metodoPago, open, step]);
+
+  // ── Cajas USD (solo si el viaje tuvo cobros en dólares) ──
+  useEffect(() => {
+    if (!open || step !== 1 || totalDolaresDeclarado <= 0) return;
+    setCajaUsdSeleccionada(null);
+    setCajasUsd([]);
+    setLoadingCajasUsd(true);
+    cajasApi.getByMetodoPago('DOLARES' as MetodoPago)
+      .then((lista) => {
+        setCajasUsd(lista);
+        const def = lista.find(c => c.moneda === 'USD') ?? lista[0] ?? null;
+        setCajaUsdSeleccionada(def);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingCajasUsd(false));
+  }, [open, step, totalDolaresDeclarado]);
 
   // ── Handlers paso 1 ──
 
@@ -335,11 +363,16 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
   const diferencia = totalRecibidoNum - totalValidado;
   const hayDiferencia = Math.abs(diferencia) > 0.01;
 
+  const totalRecibidoDolaresNum = parseFloat(totalRecibidoDolares.replace(',', '.')) || 0;
+  const hayDolares = totalDolaresDeclarado > 0;
+
   const canSubmit =
     !submitting &&
     totalRecibidoNum >= 0 &&
     totalRecibido !== '' &&
-    (cajaSeleccionada !== null);
+    cajaSeleccionada !== null &&
+    // Si hay dólares declarados, exigir monto y caja USD
+    (!hayDolares || (totalRecibidoDolares !== '' && cajaUsdSeleccionada !== null));
 
   const handleSubmit = async () => {
     if (!viaje || !canSubmit) return;
@@ -353,6 +386,10 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
         metodoPagoRendicion: metodoPago,
         comprobanteRendicion: comprobante || undefined,
         observaciones: observaciones || undefined,
+        ...(hayDolares && {
+          totalRecibidoDolares: totalRecibidoDolaresNum,
+          cajaAhorroDolaresId: cajaUsdSeleccionada?.id ?? null,
+        }),
       });
       setRendicionCreada(result);
       onSuccess();
@@ -574,6 +611,62 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
             La rendición quedará marcada como <strong>CON DIFERENCIA</strong>.
           </Alert>
         )}
+
+        {/* ── Sección USD (solo si hubo cobros en dólares) ── */}
+        {hayDolares && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2" mb={1} sx={{ color: 'success.dark' }}>
+              💵 Cobros en dólares
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
+              El conductor declaró U$D {totalDolaresDeclarado.toLocaleString('es-AR', { minimumFractionDigits: 2 })} en cobros en dólares.
+            </Typography>
+
+            <TextField
+              label="Dólares recibidos (USD)"
+              type="number"
+              value={totalRecibidoDolares}
+              onChange={(e) => setTotalRecibidoDolares(e.target.value)}
+              fullWidth
+              size="small"
+              required
+              InputProps={{
+                startAdornment: <InputAdornment position="start">U$D</InputAdornment>,
+              }}
+              helperText={
+                totalRecibidoDolares
+                  ? Math.abs(totalRecibidoDolaresNum - totalDolaresDeclarado) > 0.01
+                    ? `Diferencia: U$D ${Math.abs(totalRecibidoDolaresNum - totalDolaresDeclarado).toFixed(2)}`
+                    : 'Coincide exactamente ✓'
+                  : 'Ingresá los dólares contados físicamente'
+              }
+              FormHelperTextProps={{
+                sx: {
+                  color: !totalRecibidoDolares ? 'text.secondary'
+                    : Math.abs(totalRecibidoDolaresNum - totalDolaresDeclarado) > 0.01 ? 'warning.main'
+                    : 'success.main',
+                },
+              }}
+            />
+
+            <FormControl size="small" fullWidth disabled={loadingCajasUsd || cajasUsd.length === 0} sx={{ mt: 1.5 }}>
+              <InputLabel>Caja destino USD</InputLabel>
+              <Select
+                value={cajaUsdSeleccionada?.id ?? ''}
+                label="Caja destino USD"
+                onChange={(e) => {
+                  const found = cajasUsd.find(c => c.id === Number(e.target.value)) ?? null;
+                  setCajaUsdSeleccionada(found);
+                }}
+              >
+                {cajasUsd.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        )}
       </Stack>
     </Box>
   );
@@ -589,17 +682,25 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
           ? 'El monto coincide exactamente con lo declarado.'
           : `Diferencia de ${fmt(rendicionCreada?.diferencia)}. Verificar con el conductor.`}
       </Typography>
-      <Stack direction="row" spacing={2} justifyContent="center" mt={2}>
+      <Stack direction="row" spacing={2} justifyContent="center" mt={2} flexWrap="wrap">
         <Box>
-          <Typography variant="caption" color="text.secondary">Validado</Typography>
+          <Typography variant="caption" color="text.secondary">Validado $</Typography>
           <Typography variant="h6" fontWeight={700}>{fmt(rendicionCreada?.totalDeclarado)}</Typography>
         </Box>
         <Box>
-          <Typography variant="caption" color="text.secondary">Recibido</Typography>
+          <Typography variant="caption" color="text.secondary">Recibido $</Typography>
           <Typography variant="h6" fontWeight={700} color="success.main">
             {fmt(rendicionCreada?.totalRecibido)}
           </Typography>
         </Box>
+        {(rendicionCreada?.totalDolaresRecibido ?? 0) > 0 && (
+          <Box>
+            <Typography variant="caption" color="text.secondary">Recibido U$D</Typography>
+            <Typography variant="h6" fontWeight={700} color="success.dark">
+              U$D {rendicionCreada?.totalDolaresRecibido?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            </Typography>
+          </Box>
+        )}
       </Stack>
     </Box>
   );
