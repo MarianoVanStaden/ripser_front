@@ -174,6 +174,7 @@ const ChequesPage: React.FC = () => {
   }
 
   const enCartera = resumen?.porEstado?.['EN_CARTERA'];
+  const endosados = resumen?.porEstado?.['ENDOSADO'];
   const depositados = resumen?.porEstado?.['DEPOSITADO'];
   const cobrados = resumen?.porEstado?.['COBRADO'];
   const rechazados = resumen?.porEstado?.['RECHAZADO'];
@@ -207,7 +208,7 @@ const ChequesPage: React.FC = () => {
 
       {/* Statistics Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={4} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -217,7 +218,7 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={4} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -229,7 +230,19 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom variant="body2">
+                Endosados
+              </Typography>
+              <Typography variant="h4" color="secondary.main">
+                {endosados?.cantidad ?? 0}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -241,7 +254,7 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={4} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -253,7 +266,7 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={6} sm={4} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -265,7 +278,7 @@ const ChequesPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={2}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom variant="body2">
@@ -273,6 +286,18 @@ const ChequesPage: React.FC = () => {
               </Typography>
               <Typography variant="h5">
                 ${(enCartera?.monto ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <Card>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom variant="body2">
+                Monto Endosado
+              </Typography>
+              <Typography variant="h5" color="secondary.main">
+                ${(endosados?.monto ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
               </Typography>
             </CardContent>
           </Card>
@@ -323,6 +348,7 @@ const ChequesPage: React.FC = () => {
                 >
                   <MenuItem value="all">Todos</MenuItem>
                   <MenuItem value="EN_CARTERA">En Cartera</MenuItem>
+                  <MenuItem value="ENDOSADO">Endosado</MenuItem>
                   <MenuItem value="DEPOSITADO">Depositado</MenuItem>
                   <MenuItem value="COBRADO">Cobrado</MenuItem>
                   <MenuItem value="RECHAZADO">Rechazado</MenuItem>
