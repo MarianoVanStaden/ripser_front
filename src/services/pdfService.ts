@@ -72,7 +72,10 @@ const formatCurrency = (value: number | null | undefined): string => {
  * Formatea una fecha en formato DD/MM/YYYY
  */
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
+  // Strings de solo fecha (YYYY-MM-DD) se normalizan a hora local para evitar
+  // el desfase de un día que ocurre cuando new Date() los interpreta como UTC midnight.
+  const normalized = dateString.includes('T') ? dateString : `${dateString}T00:00:00`;
+  const date = new Date(normalized);
   const day = ('0' + date.getDate()).slice(-2);
   const month = ('0' + (date.getMonth() + 1)).slice(-2);
   const year = date.getFullYear();
@@ -1431,9 +1434,8 @@ export const generarFichaTecnicaPDF = ({
 
   const fmtDate = (raw?: string | null): string => {
     if (!raw) return '';
-    const d = new Date(raw);
-    if (isNaN(d.getTime())) return '';
-    return formatDate(d.toISOString());
+    // Delegar a formatDate que ya maneja la normalización de timezone.
+    return formatDate(raw);
   };
 
   const labelStyle = {
