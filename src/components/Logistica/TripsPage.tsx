@@ -2772,9 +2772,26 @@ const TripsPage2: React.FC = () => {
                 <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
                   Orden de Servicio
                 </ToggleButton>
+                <ToggleButton value="PARADA_LIBRE" sx={{ flex: 1 }}>
+                  Otra parada
+                </ToggleButton>
               </ToggleButtonGroup>
 
-              {newDelivery.tipoEntrega === 'FACTURA' ? (
+              {newDelivery.tipoEntrega === 'PARADA_LIBRE' ? (
+                <TextField
+                  select
+                  label="Motivo de la parada"
+                  value={newDelivery.tipoParada}
+                  onChange={(e) => setNewDelivery({ ...newDelivery, tipoParada: e.target.value as typeof newDelivery.tipoParada })}
+                  fullWidth
+                  size="small"
+                  helperText="Parada sin factura ni orden de servicio (garantía, retiro de MP)."
+                >
+                  <MenuItem value="GARANTIA">Garantía</MenuItem>
+                  <MenuItem value="RETIRO_MATERIA_PRIMA">Retiro de materia prima</MenuItem>
+                  <MenuItem value="OTRO">Otra parada</MenuItem>
+                </TextField>
+              ) : newDelivery.tipoEntrega === 'FACTURA' ? (
                 <Autocomplete
                   options={facturasDisponibles}
                   getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}

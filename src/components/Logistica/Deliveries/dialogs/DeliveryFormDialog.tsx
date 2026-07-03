@@ -108,9 +108,29 @@ const DeliveryFormDialog: React.FC<Props> = ({
             <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
               Orden de Servicio
             </ToggleButton>
+            <ToggleButton value="PARADA_LIBRE" sx={{ flex: 1 }}>
+              Otra parada
+            </ToggleButton>
           </ToggleButtonGroup>
 
-          {tipoEntrega === 'FACTURA' ? (
+          {tipoEntrega === 'PARADA_LIBRE' ? (
+            <TextField
+              select
+              label="Motivo de la parada"
+              value={formData.tipoParada || 'GARANTIA'}
+              onChange={(e) =>
+                setFormData({ ...formData, tipoParada: e.target.value as NonNullable<DeliveryFormData['tipoParada']> })
+              }
+              fullWidth
+              size="medium"
+              helperText="Parada sin factura ni orden de servicio (garantía, retiro de materia prima)."
+              InputProps={{ sx: { minHeight: 56 } }}
+            >
+              <MenuItem value="GARANTIA">Garantía</MenuItem>
+              <MenuItem value="RETIRO_MATERIA_PRIMA">Retiro de materia prima</MenuItem>
+              <MenuItem value="OTRO">Otra parada</MenuItem>
+            </TextField>
+          ) : tipoEntrega === 'FACTURA' ? (
             <Autocomplete
               options={facturas}
               getOptionLabel={(f) =>
@@ -240,9 +260,29 @@ const DeliveryFormDialog: React.FC<Props> = ({
             <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
               Orden de Servicio
             </ToggleButton>
+            <ToggleButton value="PARADA_LIBRE" sx={{ flex: 1 }}>
+              Otra parada
+            </ToggleButton>
           </ToggleButtonGroup>
 
-          {tipoEntrega === 'FACTURA' ? (
+          {tipoEntrega === 'PARADA_LIBRE' ? (
+            <TextField
+              select
+              label="Motivo de la parada"
+              value={formData.tipoParada || 'GARANTIA'}
+              onChange={(e) =>
+                setFormData({ ...formData, tipoParada: e.target.value as NonNullable<DeliveryFormData['tipoParada']> })
+              }
+              fullWidth
+              size="medium"
+              helperText="Parada sin factura ni orden de servicio (garantía, retiro de materia prima)."
+              InputProps={{ sx: { minHeight: 56 } }}
+            >
+              <MenuItem value="GARANTIA">Garantía</MenuItem>
+              <MenuItem value="RETIRO_MATERIA_PRIMA">Retiro de materia prima</MenuItem>
+              <MenuItem value="OTRO">Otra parada</MenuItem>
+            </TextField>
+          ) : tipoEntrega === 'FACTURA' ? (
             <Autocomplete
               options={facturas}
               getOptionLabel={(f) =>

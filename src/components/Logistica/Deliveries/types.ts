@@ -29,8 +29,10 @@ export interface CobroData {
 export interface DeliveryFormData {
   viajeId: string;
   ventaId: string;
-  tipoEntrega?: 'FACTURA' | 'ORDEN_SERVICIO';
+  tipoEntrega?: 'FACTURA' | 'ORDEN_SERVICIO' | 'PARADA_LIBRE';
   ordenServicioId?: string;
+  // Parada libre (sin factura ni OS): motivo. Solo aplica si tipoEntrega === 'PARADA_LIBRE'.
+  tipoParada?: 'GARANTIA' | 'RETIRO_MATERIA_PRIMA' | 'OTRO';
   direccionEntrega: string;
   fechaEntrega: string;
   estado: EstadoEntrega;

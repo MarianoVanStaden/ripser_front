@@ -63,7 +63,7 @@ import { viajeApi } from '../../api/services/viajeApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import { useResponsive } from './Deliveries/useResponsive';
-import type { CobroData } from './Deliveries/types';
+import type { CobroData, DeliveryFormData } from './Deliveries/types';
 import { compressImageFile, getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
 import BottomSheet from './Deliveries/components/BottomSheet';
 import CobroSection, { hasMontoValido, initialCobroData, toDetalleCobroDTOs } from './Deliveries/components/CobroSection';
@@ -430,10 +430,12 @@ const DeliveriesPage2: React.FC = () => {
     setEditingDelivery(delivery);
     const ordenId = (delivery as any).ordenServicioId;
     const facturaId = delivery.documentoComercialId || delivery.ventaId;
+    const tipoParada = (delivery as any).tipoParada as DeliveryFormData['tipoParada'] | undefined;
     setFormData({
       viajeId: delivery.viajeId?.toString() || '',
       ventaId: facturaId?.toString() || '',
-      tipoEntrega: ordenId ? 'ORDEN_SERVICIO' : 'FACTURA',
+      tipoEntrega: tipoParada ? 'PARADA_LIBRE' : ordenId ? 'ORDEN_SERVICIO' : 'FACTURA',
+      tipoParada: tipoParada || undefined,
       ordenServicioId: ordenId?.toString() || '',
       direccionEntrega: delivery.direccionEntrega,
       fechaEntrega: delivery.fechaEntrega?.slice(0, 16) ?? '',
@@ -574,9 +576,11 @@ const DeliveriesPage2: React.FC = () => {
         receptorDni: formData.receptorDni || undefined,
       };
 
-      // Handle both FACTURA and ORDEN_SERVICIO
+      // Handle FACTURA, ORDEN_SERVICIO y PARADA_LIBRE (sin documento)
       if (formData.tipoEntrega === 'ORDEN_SERVICIO') {
         entregaData.ordenServicioId = formData.ordenServicioId ? parseInt(formData.ordenServicioId) : undefined;
+      } else if (formData.tipoEntrega === 'PARADA_LIBRE') {
+        entregaData.tipoParada = formData.tipoParada || 'GARANTIA';
       } else {
         entregaData.documentoComercialId = formData.ventaId ? parseInt(formData.ventaId) : undefined;
       }
