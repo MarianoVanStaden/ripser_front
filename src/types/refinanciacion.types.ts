@@ -14,6 +14,17 @@ export const TIPO_INCREMENTO_LABELS: Record<TipoIncremento, string> = {
   MONTO_FIJO: 'Monto fijo ($)',
 };
 
+export const ModoCalculoCuotas = {
+  POR_CANTIDAD: 'POR_CANTIDAD',
+  POR_VALOR_CUOTA: 'POR_VALOR_CUOTA',
+} as const;
+export type ModoCalculoCuotas = typeof ModoCalculoCuotas[keyof typeof ModoCalculoCuotas];
+
+export const MODO_CALCULO_LABELS: Record<ModoCalculoCuotas, string> = {
+  POR_CANTIDAD: 'Por cantidad de cuotas',
+  POR_VALOR_CUOTA: 'Por valor de cuota',
+};
+
 // ==================== REQUEST ====================
 
 export interface RefinanciacionRequest {
@@ -21,7 +32,9 @@ export interface RefinanciacionRequest {
   entregaInicial?: number;
   tipoIncremento: TipoIncremento;
   valorIncremento: number;
-  cantidadCuotas: number;
+  modoCalculo?: ModoCalculoCuotas;
+  cantidadCuotas?: number;
+  valorCuotaObjetivo?: number;
   fechaPrimeraCuota?: string;       // ISO "YYYY-MM-DD"
   tipoFinanciacion?: TipoFinanciacion;
   usuarioId?: number;
@@ -52,6 +65,7 @@ export interface RefinanciacionPreviewResponse {
   montoFinalFinanciado: number;
   cantidadCuotas: number;
   valorCuotaEstimado: number;
+  valorUltimaCuota?: number;
   totalCuotasARefinanciar: number;
   cuotasARefinanciar: CuotaARefinanciarDTO[];
   deudaMigrada?: boolean;

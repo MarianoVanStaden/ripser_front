@@ -6,6 +6,7 @@ import {
   Paper, Divider, Skeleton, Chip, Snackbar, Dialog, DialogTitle,
   DialogContent, DialogActions, InputAdornment, Accordion,
   AccordionSummary, AccordionDetails, FormHelperText,
+  ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import { ArrowBack, ExpandMore, Autorenew } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -20,7 +21,10 @@ import type {
   RefinanciacionRequest, RefinanciacionPreviewResponse,
   CuotaARefinanciarDTO,
 } from '../../types/refinanciacion.types';
-import { TipoIncremento, TIPO_INCREMENTO_LABELS } from '../../types/refinanciacion.types';
+import {
+  TipoIncremento, TIPO_INCREMENTO_LABELS,
+  ModoCalculoCuotas, MODO_CALCULO_LABELS,
+} from '../../types/refinanciacion.types';
 import { useDebounce } from '../../hooks/useDebounce';
 import LoadingOverlay from '../common/LoadingOverlay';
 
@@ -47,7 +51,9 @@ interface FormState {
   entregaInicial: number;
   tipoIncremento: TipoIncremento | '';
   valorIncremento: number;
+  modoCalculo: ModoCalculoCuotas;
   cantidadCuotas: number;
+  valorCuotaObjetivo: number;
   fechaPrimeraCuota: string;
   tipoFinanciacion: TipoFinanciacion | '';
   observaciones: string;
@@ -62,8 +68,13 @@ function validarFormulario(form: FormState, deudaTotal: number): Record<string, 
   if (form.valorIncremento < 0) errs.valorIncremento = 'No puede ser negativo';
   if (form.tipoIncremento === 'PORCENTAJE' && form.valorIncremento > 999)
     errs.valorIncremento = 'Máx 999%';
-  if (!form.cantidadCuotas || form.cantidadCuotas < 1) errs.cantidadCuotas = 'Mínimo 1 cuota';
-  if (form.cantidadCuotas > 120) errs.cantidadCuotas = 'Máximo 120 cuotas';
+  if (form.modoCalculo === ModoCalculoCuotas.POR_VALOR_CUOTA) {
+    if (!form.valorCuotaObjetivo || form.valorCuotaObjetivo <= 0)
+      errs.valorCuotaObjetivo = 'Debe ser mayor a 0';
+  } else {
+    if (!form.cantidadCuotas || form.cantidadCuotas < 1) errs.cantidadCuotas = 'Mínimo 1 cuota';
+    if (form.cantidadCuotas > 120) errs.cantidadCuotas = 'Máximo 120 cuotas';
+  }
   if (form.fechaPrimeraCuota && form.fechaPrimeraCuota < hoy())
     errs.fechaPrimeraCuota = 'No puede ser en el pasado';
   return errs;
@@ -75,8 +86,13 @@ function buildRequest(form: FormState, prestamoId: number): RefinanciacionReques
     entregaInicial: form.entregaInicial || 0,
     tipoIncremento: form.tipoIncremento as TipoIncremento,
     valorIncremento: form.valorIncremento,
-    cantidadCuotas: form.cantidadCuotas,
+    modoCalculo: form.modoCalculo,
   };
+  if (form.modoCalculo === ModoCalculoCuotas.POR_VALOR_CUOTA) {
+    req.valorCuotaObjetivo = form.valorCuotaObjetivo;
+  } else {
+    req.cantidadCuotas = form.cantidadCuotas;
+  }
   if (form.fechaPrimeraCuota) req.fechaPrimeraCuota = form.fechaPrimeraCuota;
   if (form.tipoFinanciacion) req.tipoFinanciacion = form.tipoFinanciacion as TipoFinanciacion;
   if (form.observaciones.trim()) req.observaciones = form.observaciones.trim();
@@ -110,7 +126,9 @@ export const RefinanciacionPage: React.FC = () => {
     entregaInicial: 0,
     tipoIncremento: '',
     valorIncremento: 0,
+    modoCalculo: ModoCalculoCuotas.POR_CANTIDAD,
     cantidadCuotas: 12,
+    valorCuotaObjetivo: 0,
     fechaPrimeraCuota: primerDiaMesSiguiente(),
     tipoFinanciacion: '',
     observaciones: '',
@@ -152,7 +170,12 @@ export const RefinanciacionPage: React.FC = () => {
     if (!prestamo) return;
     // Sin deuda posible — no llamar al backend
     if (prestamo.cuotasPendientes === 0 && prestamo.saldoPendiente <= 0) return;
-    if (!debouncedForm.tipoIncremento || debouncedForm.cantidadCuotas < 1) return;
+    if (!debouncedForm.tipoIncremento) return;
+    if (debouncedForm.modoCalculo === ModoCalculoCuotas.POR_VALOR_CUOTA) {
+      if (debouncedForm.valorCuotaObjetivo <= 0) return;
+    } else if (debouncedForm.cantidadCuotas < 1) {
+      return;
+    }
     const deudaTotal = preview?.deudaTotal ?? prestamo.saldoPendiente;
     const formErrors = validarFormulario(debouncedForm, deudaTotal);
     if (Object.keys(formErrors).length > 0) return;
@@ -324,18 +347,58 @@ export const RefinanciacionPage: React.FC = () => {
                 disabled={!estaRefinanciable || sinDeuda}
               />
 
-              {/* Cantidad de cuotas */}
-              <TextField
-                label="Cantidad de cuotas *"
-                type="number"
-                fullWidth
-                value={form.cantidadCuotas}
-                onChange={(e) => handleFieldChange('cantidadCuotas', parseInt(e.target.value) || 1)}
-                inputProps={{ min: 1, max: 120 }}
-                error={!!errors.cantidadCuotas}
-                helperText={errors.cantidadCuotas}
-                disabled={!estaRefinanciable || sinDeuda}
-              />
+              {/* Modo de cálculo de cuotas */}
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                  Modo de cálculo
+                </Typography>
+                <ToggleButtonGroup
+                  value={form.modoCalculo}
+                  exclusive
+                  fullWidth
+                  size="small"
+                  onChange={(_, val) => { if (val) handleFieldChange('modoCalculo', val as ModoCalculoCuotas); }}
+                  disabled={!estaRefinanciable || sinDeuda}
+                >
+                  {Object.values(ModoCalculoCuotas).map((m) => (
+                    <ToggleButton key={m} value={m}>{MODO_CALCULO_LABELS[m]}</ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              </Box>
+
+              {form.modoCalculo === ModoCalculoCuotas.POR_CANTIDAD ? (
+                /* Cantidad de cuotas */
+                <TextField
+                  label="Cantidad de cuotas *"
+                  type="number"
+                  fullWidth
+                  value={form.cantidadCuotas}
+                  onChange={(e) => handleFieldChange('cantidadCuotas', parseInt(e.target.value) || 1)}
+                  inputProps={{ min: 1, max: 120 }}
+                  error={!!errors.cantidadCuotas}
+                  helperText={errors.cantidadCuotas}
+                  disabled={!estaRefinanciable || sinDeuda}
+                />
+              ) : (
+                /* Valor de cuota objetivo */
+                <TextField
+                  label="Valor de cuota *"
+                  type="number"
+                  fullWidth
+                  value={form.valorCuotaObjetivo}
+                  onChange={(e) => handleFieldChange('valorCuotaObjetivo', parseFloat(e.target.value) || 0)}
+                  inputProps={{ min: 0, step: 100 }}
+                  InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                  error={!!errors.valorCuotaObjetivo}
+                  helperText={
+                    errors.valorCuotaObjetivo ??
+                    (preview
+                      ? `El sistema calcula ${preview.cantidadCuotas} cuota${preview.cantidadCuotas !== 1 ? 's' : ''}`
+                      : 'El sistema calcula la cantidad de cuotas')
+                  }
+                  disabled={!estaRefinanciable || sinDeuda}
+                />
+              )}
 
               {/* Fecha primera cuota */}
               <TextField
@@ -439,6 +502,13 @@ export const RefinanciacionPage: React.FC = () => {
                   <Typography variant="body2" fontWeight={700} color="primary.main" textAlign="right">
                     ${fmt(preview.valorCuotaEstimado)}
                   </Typography>
+
+                  {preview.valorUltimaCuota != null && (
+                    <>
+                      <Typography variant="body2" color="text.secondary">Última cuota</Typography>
+                      <Typography variant="body2" textAlign="right">${fmt(preview.valorUltimaCuota)}</Typography>
+                    </>
+                  )}
 
                   {form.fechaPrimeraCuota && (
                     <>
@@ -554,6 +624,12 @@ export const RefinanciacionPage: React.FC = () => {
                   <Typography variant="body2" fontWeight={700} textAlign="right">${fmt(preview.montoFinalFinanciado)}</Typography>
                   <Typography variant="body2" color="text.secondary">Cuotas nuevas</Typography>
                   <Typography variant="body2" textAlign="right">{preview.cantidadCuotas} x ${fmt(preview.valorCuotaEstimado)}</Typography>
+                  {preview.valorUltimaCuota != null && (
+                    <>
+                      <Typography variant="body2" color="text.secondary">Última cuota</Typography>
+                      <Typography variant="body2" textAlign="right">${fmt(preview.valorUltimaCuota)}</Typography>
+                    </>
+                  )}
                   {form.tipoFinanciacion && (
                     <>
                       <Typography variant="body2" color="text.secondary">Tipo</Typography>
