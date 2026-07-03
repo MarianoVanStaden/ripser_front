@@ -172,11 +172,71 @@ export interface Viaje {
   acompananteId?: number | null;
   acompananteNombre?: string;
   vehiculoId: number | null;
+  vehiculoPatente?: string;
   vehiculo?: Vehiculo;
   estado: EstadoViaje;
   observaciones?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// ── Checklist de pre-viaje ────────────────────────────────────────────────────
+// Revisión obligatoria (mecánica, seguridad, documentación, carga) que el chofer
+// completa y firma antes de iniciar el viaje. Cada ítem: <key>Ok (true=conforme,
+// false=no conforme, null=sin revisar) + <key>Obs (observación).
+
+/** Ítems de revisión del checklist (claves compartidas con el back). */
+export interface ChecklistViajeItems {
+  aguaOk?: boolean | null;                aguaObs?: string;
+  aceiteOk?: boolean | null;              aceiteObs?: string;
+  lucesCamionetaOk?: boolean | null;      lucesCamionetaObs?: string;
+  lucesTrailerOk?: boolean | null;        lucesTrailerObs?: string;
+  auxilioCamionetaOk?: boolean | null;    auxilioCamionetaObs?: string;
+  auxilioTrailerOk?: boolean | null;      auxilioTrailerObs?: string;
+  llaveCruzOk?: boolean | null;           llaveCruzObs?: string;
+  matafuegoOk?: boolean | null;           matafuegoObs?: string;
+  kitEmergenciaOk?: boolean | null;       kitEmergenciaObs?: string;
+  rayonesAbolladurasOk?: boolean | null;  rayonesAbolladurasObs?: string;
+  parabrisasOk?: boolean | null;          parabrisasObs?: string;
+  tapizadosOk?: boolean | null;           tapizadosObs?: string;
+  cubiertasOk?: boolean | null;           cubiertasObs?: string;
+  seguroOk?: boolean | null;              seguroObs?: string;
+  vencCarnetOk?: boolean | null;          vencCarnetObs?: string;
+  dniOk?: boolean | null;                 dniObs?: string;
+  cedulaVerdeOk?: boolean | null;         cedulaVerdeObs?: string;
+  valijaHerramientasOk?: boolean | null;  valijaHerramientasObs?: string;
+  zunchosOk?: boolean | null;             zunchosObs?: string;
+  zunchosCantidad?: number | null;
+}
+
+/** Vista de lectura del checklist (GET /api/viajes/{id}/checklist). */
+export interface ChecklistViaje extends ChecklistViajeItems {
+  id: number;
+  viajeId: number;
+  conductorId?: number | null;
+  conductorNombre?: string;
+  acompananteId?: number | null;
+  acompananteNombre?: string;
+  vehiculoId?: number | null;
+  vehiculoPatente?: string;
+  trailer?: string;
+  kmSalida?: number | null;
+  fechaChecklist?: string;
+  firmaChofer?: string;
+  firmado: boolean;
+  usuarioId?: number | null;
+  usuarioNombre?: string;
+  completado: boolean;
+  fechaCreacion?: string;
+  fechaActualizacion?: string;
+}
+
+/** Payload de escritura (PUT /api/viajes/{id}/checklist). */
+export interface ChecklistViajeUpsert extends ChecklistViajeItems {
+  trailer: string;
+  kmSalida: number;
+  firmaChofer: string;
+  firmado: boolean;
 }
 
 export interface ViajeCreateDTO {

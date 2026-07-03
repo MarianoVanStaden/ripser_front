@@ -1,6 +1,11 @@
 import api from '../config';
 import type { Viaje, ViajeCreateDTO } from '../../types';
-import type { RendicionViajeDTO, RendicionRequest } from '../../types/logistica.types';
+import type {
+  RendicionViajeDTO,
+  RendicionRequest,
+  ChecklistViaje,
+  ChecklistViajeUpsert,
+} from '../../types/logistica.types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const viajeApi = {
@@ -83,5 +88,23 @@ export const viajeApi = {
     } catch {
       return null;
     }
+  },
+
+  // ── Checklist de pre-viaje ──────────────────────────────────────────────────
+
+  /** Checklist del viaje, o null si aún no se cargó (404). */
+  getChecklist: async (id: number): Promise<ChecklistViaje | null> => {
+    try {
+      const response = await api.get<ChecklistViaje>(`/api/viajes/${id}/checklist`);
+      return response.data;
+    } catch {
+      return null;
+    }
+  },
+
+  /** Crea/actualiza (upsert) el checklist del viaje. Devuelve el checklist con `completado`. */
+  saveChecklist: async (id: number, payload: ChecklistViajeUpsert): Promise<ChecklistViaje> => {
+    const response = await api.put<ChecklistViaje>(`/api/viajes/${id}/checklist`, payload);
+    return response.data;
   },
 };

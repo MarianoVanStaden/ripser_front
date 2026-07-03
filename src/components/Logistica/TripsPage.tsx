@@ -70,6 +70,7 @@ import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntreg
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import RendicionDialog from './RendicionDialog';
+import PreViajeChecklistDialog from './PreViajeChecklistDialog';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { viajeApi } from '../../api/services/viajeApi';
@@ -650,6 +651,9 @@ const TripsPage2: React.FC = () => {
 
   // Preflight: para cada viaje PLANIFICADO, marca si tiene equipos en estado != COMPLETADO
   const [tripsConEquiposPendientes, setTripsConEquiposPendientes] = useState<Set<number>>(new Set());
+
+  // Checklist de pre-viaje: obligatorio antes de iniciar. Al completarse, se inicia el viaje.
+  const [checklistTrip, setChecklistTrip] = useState<Viaje | null>(null);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -2057,7 +2061,7 @@ const TripsPage2: React.FC = () => {
                     overlap="circular"
                   >
                     <IconButton
-                      onClick={(e) => { e.stopPropagation(); handleChangeEstado(trip.id, 'EN_CURSO'); }}
+                      onClick={(e) => { e.stopPropagation(); setChecklistTrip(trip); }}
                       size="small"
                       color="success"
                       aria-label="Iniciar viaje"
@@ -2451,7 +2455,7 @@ const TripsPage2: React.FC = () => {
                                     overlap="circular"
                                   >
                                     <IconButton
-                                      onClick={() => handleChangeEstado(trip.id, 'EN_CURSO')}
+                                      onClick={() => setChecklistTrip(trip)}
                                       size="small"
                                       color="success"
                                       aria-label="Iniciar viaje"
@@ -3337,6 +3341,14 @@ const TripsPage2: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Checklist de pre-viaje: obligatorio para iniciar. Al completarse, inicia el viaje. */}
+      <PreViajeChecklistDialog
+        open={checklistTrip !== null}
+        trip={checklistTrip}
+        onClose={() => setChecklistTrip(null)}
+        onCompleted={(viajeId) => handleChangeEstado(viajeId, 'EN_CURSO')}
+      />
 
       {/* Modal: error al cambiar estado del viaje (e.g. equipo no COMPLETADO) */}
       <Dialog
