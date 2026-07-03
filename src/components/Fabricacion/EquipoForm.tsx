@@ -67,6 +67,9 @@ const EquipoForm: React.FC = () => {
   const [productosInsuficientes, setProductosInsuficientes] = useState<ProductoInsuficiente[]>([]);
   const [cantidadEquiposIntentados, setCantidadEquiposIntentados] = useState(1);
   const [recetaIdIntentada, setRecetaIdIntentada] = useState<number | null>(null);
+  // Datos del form pendientes de guardar cuando se muestra el aviso de faltantes,
+  // para poder ejecutar el alta si el usuario elige "Fabricar igual".
+  const [pendingData, setPendingData] = useState<any>(null);
 
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [equiposCreados, setEquiposCreados] = useState<EquipoCreado[]>([]);
@@ -227,6 +230,7 @@ const EquipoForm: React.FC = () => {
             );
             setCantidadEquiposIntentados(data.cantidad);
             setRecetaIdIntentada(selectedReceta.id);
+            setPendingData(data);
             setStockErrorDialogOpen(true);
             setLoading(false);
             return;
@@ -237,6 +241,21 @@ const EquipoForm: React.FC = () => {
           console.warn('No se pudo validar stock previamente:', validationError);
         }
       }
+
+      await ejecutarGuardado(data);
+    } catch (error) {
+      // La validación proactiva no debería lanzar; el guardado maneja sus propios errores.
+      console.error('Error inesperado en onSubmit:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Ejecuta el alta/edición real. Se invoca tras la validación proactiva o cuando el
+  // usuario elige "Fabricar igual" en el modal de faltantes (permitiendo stock negativo).
+  const ejecutarGuardado = async (data: any) => {
+    try {
+      setLoading(true);
 
       if (isEdit && numeroHeladera) {
         const updateData: EquipoFabricadoUpdateDTO = {
@@ -650,6 +669,10 @@ const EquipoForm: React.FC = () => {
         onRequerimientoCreado={(msg) =>
           setSnackbar({ open: true, message: msg, severity: 'success' })
         }
+        onFabricarIgual={() => {
+          setStockErrorDialogOpen(false);
+          if (pendingData) ejecutarGuardado(pendingData);
+        }}
       />
 
       <EquipoSuccessDialog

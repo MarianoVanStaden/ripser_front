@@ -15,10 +15,11 @@ import {
   CircularProgress,
 } from '@mui/material';
 import {
-  ErrorOutline as ErrorIcon,
+  WarningAmber as WarningIcon,
   Inventory as InventoryIcon,
   AddShoppingCart as AddShoppingCartIcon,
   LocalShipping as LocalShippingIcon,
+  PrecisionManufacturing as ManufacturingIcon,
 } from '@mui/icons-material';
 import { requerimientoStockApi } from '../../api/services/requerimientoStockApi';
 
@@ -43,6 +44,8 @@ export interface StockErrorDialogProps {
   recetaId?: number | null;
   /** Callback opcional tras crear el requerimiento (ej. mostrar snackbar en el padre). */
   onRequerimientoCreado?: (mensaje: string) => void;
+  /** Callback para fabricar igual, consumiendo el stock aunque quede en negativo. */
+  onFabricarIgual?: () => void;
 }
 
 const StockErrorDialog: React.FC<StockErrorDialogProps> = ({
@@ -52,6 +55,7 @@ const StockErrorDialog: React.FC<StockErrorDialogProps> = ({
   cantidadEquipos = 1,
   recetaId,
   onRequerimientoCreado,
+  onFabricarIgual,
 }) => {
   const [generando, setGenerando] = useState(false);
   const [resultado, setResultado] = useState<{ tipo: 'success' | 'error'; msg: string } | null>(null);
@@ -117,30 +121,26 @@ const StockErrorDialog: React.FC<StockErrorDialogProps> = ({
     >
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={2}>
-          <ErrorIcon
+          <WarningIcon
             sx={{
               fontSize: 48,
-              color: 'error.main',
-              animation: 'pulse 2s ease-in-out infinite',
-              '@keyframes pulse': {
-                '0%, 100%': { opacity: 1 },
-                '50%': { opacity: 0.6 },
-              },
+              color: 'warning.main',
             }}
           />
           <Box>
-            <Typography variant="h5" fontWeight="600" color="error.main">
-              Stock Insuficiente
+            <Typography variant="h5" fontWeight="600" color="warning.dark">
+              Faltan productos
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              No se puede fabricar {cantidadEquipos > 1 ? `los ${cantidadEquipos} equipos` : 'el equipo'}
+              Podés fabricar {cantidadEquipos > 1 ? `los ${cantidadEquipos} equipos` : 'el equipo'} igual;
+              el stock quedará en negativo
             </Typography>
           </Box>
         </Box>
       </DialogTitle>
 
       <DialogContent>
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
           <Typography variant="body2" fontWeight="500">
             Faltan los siguientes productos de la receta:
           </Typography>
@@ -149,8 +149,8 @@ const StockErrorDialog: React.FC<StockErrorDialogProps> = ({
         <Paper
           variant="outlined"
           sx={{
-            bgcolor: 'error.lighter',
-            borderColor: 'error.main',
+            bgcolor: 'warning.lighter',
+            borderColor: 'warning.main',
             borderWidth: 1,
           }}
         >
@@ -216,8 +216,9 @@ const StockErrorDialog: React.FC<StockErrorDialogProps> = ({
         {!resultado && (
           <Alert severity="info" sx={{ mt: 2 }}>
             <Typography variant="body2">
-              💡 <strong>Sugerencia:</strong> generá un requerimiento de stock para registrar el faltante y
-              gestionar la compra al proveedor, o reabastecé los productos antes de fabricar.
+              💡 <strong>Sugerencia:</strong> podés <strong>fabricar igual</strong> (el stock quedará en
+              negativo) o generar un requerimiento de stock para registrar el faltante y gestionar la
+              compra al proveedor.
             </Typography>
           </Alert>
         )}
@@ -230,7 +231,7 @@ const StockErrorDialog: React.FC<StockErrorDialogProps> = ({
         {puedeGenerar && (
           <Button
             onClick={handleGenerarRequerimiento}
-            variant="contained"
+            variant="outlined"
             color="primary"
             disabled={generando || yaGenerado}
             startIcon={
@@ -241,7 +242,18 @@ const StockErrorDialog: React.FC<StockErrorDialogProps> = ({
               ? 'Generando…'
               : yaGenerado
                 ? 'Requerimiento generado'
-                : 'Generar requerimiento de stock'}
+                : 'Generar requerimiento'}
+          </Button>
+        )}
+        {onFabricarIgual && (
+          <Button
+            onClick={onFabricarIgual}
+            variant="contained"
+            color="warning"
+            disabled={generando}
+            startIcon={<ManufacturingIcon />}
+          >
+            Fabricar igual
           </Button>
         )}
       </DialogActions>

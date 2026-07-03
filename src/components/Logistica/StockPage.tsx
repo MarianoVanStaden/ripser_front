@@ -431,6 +431,8 @@ const StockPage: React.FC = () => {
   const getStockChip = (stock: number, stockMinimo: number, activo: boolean) => {
     if (!activo) {
       return <Chip label="Inactivo" color="default" size="small" />;
+    } else if (stock < 0) {
+      return <Chip label="Negativo" color="error" size="small" variant="filled" />;
     } else if (stock === 0) {
       return <Chip label="Sin Stock" color="error" size="small" />;
     } else if (stock <= stockMinimo) {

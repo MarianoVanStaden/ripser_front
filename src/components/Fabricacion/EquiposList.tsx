@@ -2103,7 +2103,8 @@ const EquiposList: React.FC = () => {
                 )}
               </Box>
               <Alert severity="info" sx={{ mt: 2 }}>
-                Al iniciar la fabricación, se validará y descontará el stock de componentes necesarios.
+                Al iniciar la fabricación, se descontará el stock de los componentes necesarios.
+                Si no hay stock suficiente, se descontará igual y el stock quedará en negativo.
                 El estado cambiará a EN_PROCESO.
               </Alert>
             </>
