@@ -259,10 +259,10 @@ const DeliveriesPage2: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Form data
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<DeliveryFormData>({
     viajeId: '',
     ventaId: '',
-    tipoEntrega: 'FACTURA' as 'FACTURA' | 'ORDEN_SERVICIO',
+    tipoEntrega: 'FACTURA',
     ordenServicioId: '',
     direccionEntrega: '',
     fechaEntrega: '',
