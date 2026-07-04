@@ -139,6 +139,24 @@ export const equipoFabricadoApi = {
     return response.data;
   },
 
+  // Reasignación (swap): equipos que pueden reemplazar al indicado
+  // (COMPLETADO + DISPONIBLE, mismo tipo/modelo/color/medida).
+  getReemplazosDisponibles: async (equipoId: number): Promise<EquipoFabricadoDTO[]> => {
+    const response = await api.get<EquipoFabricadoDTO[]>(
+      `/api/equipos-fabricados/${equipoId}/reemplazos-disponibles`
+    );
+    return response.data;
+  },
+
+  // Swap atómico: mueve el pedido del equipo actual a otro compatible.
+  // Devuelve el equipo NUEVO ya asignado.
+  reasignarEquipo: async (equipoId: number, nuevoEquipoId: number): Promise<EquipoFabricadoDTO> => {
+    const response = await api.patch<EquipoFabricadoDTO>(
+      `/api/equipos-fabricados/${equipoId}/reasignar/${nuevoEquipoId}`
+    );
+    return response.data;
+  },
+
   marcarComoEntregado: async (equipoId: number) => {
     const response = await api.patch<EquipoFabricadoDTO>(
       `/api/equipos-fabricados/${equipoId}/marcar-entregado`

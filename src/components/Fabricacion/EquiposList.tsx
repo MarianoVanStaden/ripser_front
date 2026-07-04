@@ -12,17 +12,18 @@ import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending, Brush,
-  QrCode2, AssignmentTurnedIn,
+  QrCode2, AssignmentTurnedIn, SwapHoriz,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
+import ReasignarEquipoDialog from './ReasignarEquipoDialog';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
   equipoFabricadoApi,
 
 } from '../../api/services/equipoFabricadoApi';
-import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO } from '../../types';
+import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoDTO, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO } from '../../types';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { usePermisos } from '../../hooks/usePermisos';
 import ClienteAutocomplete from '../common/ClienteAutocomplete';
@@ -187,6 +188,11 @@ const EquiposList: React.FC = () => {
     open: boolean;
     errorMessage: string;
   }>({ open: false, errorMessage: '' });
+
+  const [reassignDialog, setReassignDialog] = useState<{
+    open: boolean;
+    equipo: EquipoFabricadoDTO | null;
+  }>({ open: false, equipo: null });
 
   const [terminacionDialog, setTerminacionDialog] = useState<{
     open: boolean;
@@ -612,6 +618,24 @@ const EquiposList: React.FC = () => {
     }
   };
 
+  // Abre el diálogo de reasignación. La grilla usa un list DTO que puede traer id nulo y
+  // no incluye los objetos color/medida completos, así que resolvemos la ficha completa
+  // por numeroHeladera antes de abrir (mismo workaround que handleDesasignar).
+  const handleOpenReasignar = async (row: EquipoFabricadoListDTO) => {
+    try {
+      const full = row.numeroHeladera
+        ? await equipoFabricadoApi.findByNumeroHeladera(row.numeroHeladera)
+        : null;
+      if (!full?.id) {
+        setSnackbar({ open: true, message: 'No se pudo obtener el equipo para reasignar.', severity: 'error' });
+        return;
+      }
+      setReassignDialog({ open: true, equipo: full });
+    } catch {
+      setSnackbar({ open: true, message: 'No se pudo obtener el equipo para reasignar.', severity: 'error' });
+    }
+  };
+
   const handleDelete = async () => {
     const id = deleteDialog.equipoId;
     const numero = deleteDialog.equipo?.numeroHeladera;
@@ -906,6 +930,8 @@ const EquiposList: React.FC = () => {
         const canDelete = !isReservadoOrHigher;
         const canAssign = params.row.estado === 'COMPLETADO' && !params.row.asignado && estadoAsignacion === 'DISPONIBLE';
         const canUnassign = params.row.asignado && !isFacturadoOrHigher;
+        const canReassign = params.row.asignado && !!estadoAsignacion
+          && ['RESERVADO', 'FACTURADO'].includes(estadoAsignacion);
         
         return (
           <Stack direction="row" spacing={0.5}>
@@ -1062,6 +1088,19 @@ const EquiposList: React.FC = () => {
                     })}
                   >
                     <LinkOff fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+            {canReassign && (
+              <Tooltip title="Reasignar a otro equipo (mismo modelo/color/medida)">
+                <span>
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => handleOpenReasignar(params.row)}
+                  >
+                    <SwapHoriz fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -2395,6 +2434,21 @@ const EquiposList: React.FC = () => {
         onClose={() => setTerminacionDialog({ open: false, equipo: null })}
         onSuccess={() => {
           setTerminacionDialog({ open: false, equipo: null });
+          loadEquipos();
+        }}
+      />
+
+      <ReasignarEquipoDialog
+        open={reassignDialog.open}
+        equipo={reassignDialog.equipo}
+        onClose={() => setReassignDialog({ open: false, equipo: null })}
+        onSuccess={(nuevo) => {
+          setReassignDialog({ open: false, equipo: null });
+          setSnackbar({
+            open: true,
+            message: `Pedido reasignado al equipo ${nuevo.numeroHeladera}`,
+            severity: 'success',
+          });
           loadEquipos();
         }}
       />

@@ -9,7 +9,7 @@ import {
   TimelineContent, TimelineDot, TimelineOppositeContent,
 } from '@mui/lab';
 import {
-  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History, PlayArrow, QrCode2,
+  ArrowBack, Edit, CheckCircle, Cancel, Link, LinkOff, History, PlayArrow, QrCode2, SwapHoriz,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -21,6 +21,7 @@ import ClienteAutocomplete from '../common/ClienteAutocomplete';
 import type { EquipoFabricadoDTO, EtapaFabricacionDTO, HistorialEstadoEquipo, HistorialFabricacionDTO } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
+import ReasignarEquipoDialog from './ReasignarEquipoDialog';
 
 
 const EquipoDetail: React.FC = () => {
@@ -46,6 +47,8 @@ const EquipoDetail: React.FC = () => {
     open: boolean;
     errorMessage: string;
   }>({ open: false, errorMessage: '' });
+
+  const [reassignDialog, setReassignDialog] = useState(false);
 
   const [changeStateDialog, setChangeStateDialog] = useState(false);
   const [newState, setNewState] = useState<'DISPONIBLE' | 'RESERVADO' | 'FACTURADO' | 'ENTREGADO' | null>(null);
@@ -421,6 +424,17 @@ const EquipoDetail: React.FC = () => {
               onClick={() => setUnassignDialog(true)}
             >
               Desasignar
+            </Button>
+          )}
+          {equipo.asignado &&
+            (equipo.estadoAsignacion === 'RESERVADO' || equipo.estadoAsignacion === 'FACTURADO') && (
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<SwapHoriz />}
+              onClick={() => setReassignDialog(true)}
+            >
+              Reasignar
             </Button>
           )}
           {equipo.asignado && equipo.estadoAsignacion === 'FACTURADO' && (
@@ -1242,6 +1256,22 @@ const EquipoDetail: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <ReasignarEquipoDialog
+        open={reassignDialog}
+        equipo={equipo}
+        onClose={() => setReassignDialog(false)}
+        onSuccess={(nuevo) => {
+          setReassignDialog(false);
+          setSnackbar({
+            open: true,
+            message: `✅ Pedido reasignado al equipo ${nuevo.numeroHeladera}`,
+            severity: 'success',
+          });
+          // El equipo actual quedó DISPONIBLE; abrimos la ficha del nuevo equipo asignado.
+          navigate(`/fabricacion/equipos/${nuevo.numeroHeladera}`);
+        }}
+      />
     </Box>
   );
 };
