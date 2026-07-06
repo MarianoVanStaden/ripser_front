@@ -35,8 +35,8 @@ import type {
 import type { ConvertFormData, TipoDescuento, TipoIva } from '../types';
 import { IVA_RATES } from '../constants';
 import { getTipoIvaLabel } from '../utils';
-import { getMetodoPagoIcon, getMetodoPagoLabel } from '../paymentMethodIcons';
 import { calculateCostoEnvio } from '../../../../utils/financiamiento';
+import OpcionFinanciamientoLabel from '../../OpcionFinanciamientoLabel';
 
 interface Props {
   open: boolean;
@@ -67,6 +67,28 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
   selectedOpcionId,
   onSelectOpcion,
 }) => {
+  // Totales de la conversión, incluyendo el descuento extra que se aplica en
+  // este diálogo. Se calculan una sola vez para que tanto el desglose de
+  // financiación como el resumen de totales usen la misma base.
+  const baseSubtotal = selectedPresupuesto?.subtotal ?? 0;
+  // El descuento aplica sólo sobre equipos/revestimiento, nunca sobre el envío.
+  const costoEnvio = selectedPresupuesto
+    ? calculateCostoEnvio(selectedPresupuesto.detalles ?? [])
+    : 0;
+  const baseElegible = Math.max(0, baseSubtotal - costoEnvio);
+  const descAmt = form.descuentoTipo === 'PORCENTAJE'
+    ? baseElegible * (Math.min(100, Math.max(0, form.descuentoValor || 0)) / 100)
+    : form.descuentoTipo === 'MONTO_FIJO'
+      ? Math.min(baseElegible, Math.max(0, form.descuentoValor || 0))
+      : 0;
+  const subNeto = Math.max(0, baseElegible - descAmt) + costoEnvio;
+  const ivaRate = IVA_RATES[form.tipoIva];
+  const ivaAmt = subNeto * ivaRate;
+  const totalPreview = subNeto + ivaAmt;
+  // Base para financiación propia = total (con descuento e IVA) menos el envío,
+  // igual que en el flujo de Presupuesto (presupuesto.total - costoEnvio).
+  const equipoBaseFinanciamiento = Math.max(0, totalPreview - costoEnvio);
+
   return (
     <Dialog
       open={open}
@@ -194,25 +216,18 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
                     <FormControlLabel
                       value={opcion.id}
                       control={<Radio />}
+                      sx={{
+                        width: '100%',
+                        alignItems: 'flex-start',
+                        m: 0,
+                        '& .MuiFormControlLabel-label': { width: '100%' },
+                      }}
                       label={
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                            {getMetodoPagoIcon(opcion.metodoPago)}
-                            <Typography variant="subtitle2">{opcion.nombre}</Typography>
-                            {opcion.tasaInteres < 0 && (
-                              <Chip size="small" color="success" label={`${Math.abs(opcion.tasaInteres)}% OFF`} />
-                            )}
-                          </Box>
-                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0.5 }}>
-                            <Typography variant="caption">Método: {getMetodoPagoLabel(opcion.metodoPago)}</Typography>
-                            <Typography variant="caption">Cuotas: {opcion.cantidadCuotas}</Typography>
-                            <Typography variant="caption">Cuota: ${opcion.montoCuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                            <Typography variant="caption">Total: ${opcion.montoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</Typography>
-                          </Box>
-                          {opcion.descripcion && (
-                            <Typography variant="caption" color="text.secondary">{opcion.descripcion}</Typography>
-                          )}
-                        </Box>
+                        <OpcionFinanciamientoLabel
+                          opcion={opcion}
+                          baseImporte={equipoBaseFinanciamiento}
+                          detalles={selectedPresupuesto?.detalles}
+                        />
                       }
                     />
                   </Box>
@@ -311,22 +326,7 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
             />
           </Box>
 
-          {selectedPresupuesto && (() => {
-            const baseSubtotal = selectedPresupuesto.subtotal ?? 0;
-            // El descuento aplica sólo sobre equipos/revestimiento, nunca sobre el envío.
-            // La base elegible = subtotal bruto - envío (consistente con el backend).
-            const costoEnvio = calculateCostoEnvio(selectedPresupuesto.detalles ?? []);
-            const baseElegible = Math.max(0, baseSubtotal - costoEnvio);
-            const descAmt = form.descuentoTipo === 'PORCENTAJE'
-              ? baseElegible * (Math.min(100, Math.max(0, form.descuentoValor || 0)) / 100)
-              : form.descuentoTipo === 'MONTO_FIJO'
-                ? Math.min(baseElegible, Math.max(0, form.descuentoValor || 0))
-                : 0;
-            const subNeto = Math.max(0, baseElegible - descAmt) + costoEnvio;
-            const ivaRate = IVA_RATES[form.tipoIva];
-            const ivaAmt = subNeto * ivaRate;
-            const totalPreview = subNeto + ivaAmt;
-            return (
+          {selectedPresupuesto && (
               <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
                 <Typography variant="subtitle2" gutterBottom>Resumen de totales</Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -359,8 +359,7 @@ const ConvertirPresupuestoDialog: React.FC<Props> = ({
                   </Typography>
                 </Box>
               </Paper>
-            );
-          })()}
+          )}
         </Box>
       </DialogContent>
       <DialogActions>
