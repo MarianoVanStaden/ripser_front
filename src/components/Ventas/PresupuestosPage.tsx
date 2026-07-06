@@ -205,6 +205,11 @@ const PresupuestosPage: React.FC = () => {
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
   const pendingDeudaRef = useRef<(() => void) | null>(null);
   const deudaYaConfirmadaRef = useRef(false);
+  // Guard de re-entrada: el diálogo de confirmación queda abierto durante el
+  // guardado async (pre-check de deuda + createPresupuesto), y su botón no se
+  // deshabilita, así que clicks repetidos disparaban varios createPresupuesto y
+  // creaban presupuestos duplicados. Se setea síncrono al entrar y se libera al salir.
+  const guardandoPresupuestoRef = useRef(false);
 
   const parseDeudaError = (err: any): DeudaClienteError | null => {
     const data = err?.response?.data;
@@ -680,6 +685,11 @@ const PresupuestosPage: React.FC = () => {
   }, [user]);
 
   const handleSavePresupuesto = useCallback(async () => {
+    // Re-entry guard: descarta clicks repetidos en el botón de confirmar mientras
+    // el guardado async está en vuelo (el diálogo sigue abierto hasta que resuelve).
+    if (guardandoPresupuestoRef.current) return;
+    guardandoPresupuestoRef.current = true;
+    try {
     if (!user) {
       setError("Debe iniciar sesión");
       return;
@@ -848,6 +858,11 @@ const PresupuestosPage: React.FC = () => {
       setConfirmDialogAction(null);
     } finally {
       setFormLoading(false);
+    }
+    } finally {
+      // Libera el guard en toda salida (éxito, error, o return temprano por
+      // confirmación/deuda). El segundo click ya fue descartado de forma síncrona.
+      guardandoPresupuestoRef.current = false;
     }
   }, [user, formData, detalles, editingPresupuesto, confirmDialogAction, handleConfirmClose, checkClienteDeuda]);
 
@@ -2043,6 +2058,7 @@ const PresupuestosPage: React.FC = () => {
         }}
         onConfirmClose={handleConfirmClose}
         onConfirmCreate={handleSavePresupuesto}
+        loading={formLoading}
         total={total}
         subtotal={subtotal}
         ivaAmount={ivaAmount}

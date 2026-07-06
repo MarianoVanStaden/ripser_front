@@ -5,6 +5,7 @@ import React from 'react';
 import {
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -30,6 +31,8 @@ interface Props {
   leads: LeadListItemDTO[];
   formData: FormData;
   detallesCount: number;
+  /** Deshabilita los botones mientras el guardado async está en vuelo. */
+  loading?: boolean;
 }
 
 const ConfirmPresupuestoDialog: React.FC<Props> = ({
@@ -46,6 +49,7 @@ const ConfirmPresupuestoDialog: React.FC<Props> = ({
   leads,
   formData,
   detallesCount,
+  loading = false,
 }) => {
   const isClose = action === 'close';
 
@@ -55,7 +59,7 @@ const ConfirmPresupuestoDialog: React.FC<Props> = ({
     : leads.find((l) => l.id != null && l.id.toString() === formData.leadId)?.nombre || '—';
 
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={loading ? undefined : onCancel} maxWidth="sm" fullWidth>
       <DialogTitle>{isClose ? 'Confirmar cierre' : 'Confirmar creación'}</DialogTitle>
       <DialogContent>
         <Typography>
@@ -105,13 +109,15 @@ const ConfirmPresupuestoDialog: React.FC<Props> = ({
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel}>Cancelar</Button>
+        <Button onClick={onCancel} disabled={loading}>Cancelar</Button>
         <Button
           onClick={isClose ? onConfirmClose : onConfirmCreate}
           variant="contained"
           color={isClose ? 'error' : 'primary'}
+          disabled={loading}
+          startIcon={loading && !isClose ? <CircularProgress size={18} color="inherit" /> : undefined}
         >
-          {isClose ? 'Cerrar sin guardar' : 'Confirmar y crear'}
+          {isClose ? 'Cerrar sin guardar' : loading ? 'Creando…' : 'Confirmar y crear'}
         </Button>
       </DialogActions>
     </Dialog>

@@ -269,6 +269,11 @@ const NotasPedidoPage: React.FC = () => {
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
   const pendingDeudaRef = useRef<(() => void) | null>(null);
   const deudaYaConfirmadaRef = useRef(false);
+  // Guard de re-entrada: bloquea el doble-submit de "Convertir". Se setea de forma
+  // síncrona (antes del primer await del chequeo de deuda/lead), así el segundo click
+  // queda descartado incluso mientras el botón todavía figura habilitado. Evita crear
+  // dos notas de pedido idénticas a partir del mismo presupuesto (race TOCTOU).
+  const convirtiendoNotaRef = useRef(false);
 
   // Detects a debt-block response regardless of HTTP status or missing requiereConfirmacion flag.
   // The backend may return 400/409/422 and may omit requiereConfirmacion on some endpoints.
@@ -609,6 +614,11 @@ const NotasPedidoPage: React.FC = () => {
 
 
   const handleConvertToNotaPedido = useCallback(async (confirmarConDeudaPendiente?: boolean) => {
+    // Re-entry guard: descarta un segundo submit disparado mientras corren los
+    // chequeos async previos (deuda/lead), cuando el botón aún no se deshabilitó.
+    if (convirtiendoNotaRef.current) return;
+    convirtiendoNotaRef.current = true;
+    try {
     if (!convertForm.presupuestoId) {
       setError("Debe seleccionar un presupuesto");
       return;
@@ -891,6 +901,12 @@ const NotasPedidoPage: React.FC = () => {
       });
     } finally {
       setFormLoading(false);
+    }
+    } finally {
+      // Libera el guard en todas las salidas (éxito, error, o return temprano por
+      // deuda/lead). Como el segundo click ya fue descartado de forma síncrona,
+      // el momento de liberación no reabre la ventana de doble-submit.
+      convirtiendoNotaRef.current = false;
     }
   }, [convertForm, handleCloseConvertDialog, opcionesConvertDialog, selectedOpcionConvertId]);
 

@@ -232,6 +232,12 @@ const FacturacionPage = () => {
   const pendingDeudaRef = useRef<(() => void) | null>(null);
   // Set to true when user confirms debt at nota step, so factura call can skip the second dialog
   const deudaYaConfirmadaRef = useRef(false);
+  // Guard de re-entrada para la creación de factura: bloquea el doble-submit
+  // mientras la llamada al backend está en vuelo. Cubre los tres puntos donde se
+  // crea una factura (createFacturaDirecta + los dos convertToFactura). Se setea de
+  // forma síncrona antes del primer await para descartar el segundo click aunque el
+  // botón todavía no se haya deshabilitado. Evita facturas duplicadas.
+  const facturandoRef = useRef(false);
 
   const parseDeudaError = (err: any): DeudaClienteError | null => {
     const data = err?.response?.data;
@@ -987,6 +993,9 @@ const FacturacionPage = () => {
     payload: CreateFacturaDirectaPayload,
     asignaciones?: { [lineIndex: number]: number[] }
   ) => {
+    // Re-entry guard: descarta un segundo submit mientras la creación está en vuelo.
+    if (facturandoRef.current) return;
+    facturandoRef.current = true;
     setLoading(true);
     setError(null);
     const deudaPreconfirmada = deudaYaConfirmadaRef.current;
@@ -1063,6 +1072,7 @@ const FacturacionPage = () => {
       setError(errorMessage);
     } finally {
       setLoading(false);
+      facturandoRef.current = false;
     }
   };
 
@@ -1219,6 +1229,11 @@ const FacturacionPage = () => {
     // Flujo desde Nota de Pedido: la NP ya existe, convertimos a Factura.
     if (!notaParaAsignacion) return;
 
+    // Re-entry guard: sólo el flujo de nota (el flujo manual delega en
+    // submitFacturaDirecta, que ya tiene su propio guard — no anidar).
+    if (facturandoRef.current) return;
+    facturandoRef.current = true;
+
     setLoading(true);
     setError(null);
 
@@ -1344,6 +1359,7 @@ const FacturacionPage = () => {
       setError(errorMessage);
     } finally {
       setLoading(false);
+      facturandoRef.current = false;
     }
   };
 
@@ -1481,6 +1497,13 @@ const FacturacionPage = () => {
   const handleConvertNotaToFactura = async () => {
     if (!selectedNotaPedido) return;
 
+    // Re-entry guard: descarta clicks repetidos en "Facturar" mientras corren los
+    // chequeos async (deuda/opciones) y la conversión. No anida con otros guards:
+    // el flujo con equipos abre el dialog y delega en handleConfirmEquiposAsignacion.
+    if (facturandoRef.current) return;
+    facturandoRef.current = true;
+    try {
+
     if (isFinanciamiento(selectedNotaPedido.metodoPago)) {
       if (notaCantidadCuotas != null && notaCantidadCuotas < 1) return setError('Mínimo 1 cuota');
       if (notaEntregaInicial) {
@@ -1587,6 +1610,9 @@ const FacturacionPage = () => {
       const errorMessage = err?.response?.data?.message || err?.message || 'Error desconocido';
       setError(`Error al convertir a factura: ${errorMessage}`);
       setLoading(false);
+    }
+    } finally {
+      facturandoRef.current = false;
     }
   };
 
