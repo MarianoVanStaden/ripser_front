@@ -1209,12 +1209,23 @@ export const generarCreditoPDF = (
     : 'Pendiente de entrega';
   doc.text(`Fecha entrega: ${fechaEntregaTxt}`, c3, y + 17);
 
+  // Días vencido excluyendo cuotas con pago informado (actúan como pagadas en el PDF)
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const diasVencidoPDF = cuotasOrdenadas
+    .filter(c => (c.estado === 'VENCIDA' || c.estado === 'PARCIAL') && c.fechaVencimiento)
+    .reduce((max, c) => {
+      const venc = new Date(c.fechaVencimiento + 'T00:00:00');
+      const dias = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
+      return dias > max ? dias : max;
+    }, 0);
+
   doc.text(`Cobrado: ${formatCurrency(cobradoAjustado)}`, c1, y + 23);
   doc.text(`Saldo: ${formatCurrency(saldoAjustado)}`, c2, y + 23);
-  if (prestamo.diasVencido && prestamo.diasVencido > 0) {
+  if (diasVencidoPDF > 0) {
     doc.setTextColor(...COLORS.darkGray);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Días vencido: ${prestamo.diasVencido}`, c3, y + 23);
+    doc.text(`Días vencido: ${diasVencidoPDF}`, c3, y + 23);
     doc.setTextColor(...COLORS.black);
     doc.setFont('helvetica', 'normal');
   }
@@ -1281,14 +1292,20 @@ export const generarCreditoPDF = (
     const esPagoInformado = c.estado === 'PAGO_INFORMADO';
     const pagado = esPagoInformado ? Number(c.montoCuota) : Number(c.montoPagado);
     const saldo = esPagoInformado ? 0 : Math.max(0, Number(c.montoCuota) - Number(c.montoPagado));
+    const fechaPagoDisplay = esPagoInformado
+      ? (c.fechaPagoInformada ? formatDate(c.fechaPagoInformada) : '-')
+      : (c.fechaPago ? formatDate(c.fechaPago) : '-');
+    const comprobanteDisplay = esPagoInformado
+      ? (c.comprobanteInformado || c.numeroComprobante || '-')
+      : (c.numeroComprobante || '-');
     return [
       c.numeroCuota.toString(),
       c.fechaVencimiento ? formatDate(c.fechaVencimiento) : 'Pendiente',
-      c.fechaPago ? formatDate(c.fechaPago) : '-',
+      fechaPagoDisplay,
       formatCurrency(c.montoCuota),
       formatCurrency(pagado),
       formatCurrency(saldo),
-      c.numeroComprobante || '-',
+      comprobanteDisplay,
       estadoLabelPDF(c.estado),
       c.diasMora && c.diasMora > 0 ? c.diasMora.toString() : '-',
     ];
@@ -1366,11 +1383,16 @@ export const generarCreditoPDF = (
   doc.text(`Pendientes: ${cuotasPendientes}`, c2, yT + 11);
   doc.text(`Vencidas: ${cuotasVencidas}`, c3, yT + 11);
 
+  // Próximo vence = primera cuota sin pago (excluye PAGADA, PAGO_INFORMADO, REFINANCIADA)
+  const proximaVence = cuotasOrdenadas.find(
+    c => c.estado !== 'PAGADA' && c.estado !== 'PAGO_INFORMADO' && c.estado !== 'REFINANCIADA'
+  );
+
   doc.setFont('helvetica', 'bold');
   doc.text(`Total cobrado: ${formatCurrency(cobradoAjustado)}`, c1, yT + 17);
   doc.text(`Saldo pendiente: ${formatCurrency(saldoAjustado)}`, c2, yT + 17);
-  if (prestamo.vencimientoActual) {
-    doc.text(`Próximo vence: ${formatDate(prestamo.vencimientoActual)}`, c3, yT + 17);
+  if (proximaVence?.fechaVencimiento) {
+    doc.text(`Próximo vence: ${formatDate(proximaVence.fechaVencimiento)}`, c3, yT + 17);
   }
 
   addCorporateFooter(doc);

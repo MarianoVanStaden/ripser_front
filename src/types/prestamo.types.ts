@@ -265,6 +265,10 @@ export interface CuotaPrestamoDTO {
   metodoPagoSugerido?: string | null;
   /** Número de comprobante del último pago aplicado a esta cuota. */
   numeroComprobante?: string | null;
+  /** Fecha declarada por cobranzas en el pago informado. Solo cuando estado === PAGO_INFORMADO. */
+  fechaPagoInformada?: string | null;
+  /** Comprobante declarado por cobranzas en el pago informado. Solo cuando estado === PAGO_INFORMADO. */
+  comprobanteInformado?: string | null;
 }
 
 // Préstamo's local MetodoPago is a *narrower* set than the global one in
