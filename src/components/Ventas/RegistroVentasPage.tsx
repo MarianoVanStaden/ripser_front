@@ -63,7 +63,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 const RegistroVentasPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaId, esSuperAdmin, rolActual } = useTenant();
-  const isAdmin = esSuperAdmin || (rolActual as string) === 'ADMIN' || rolActual === 'ADMIN_EMPRESA';
+  const isAdmin = esSuperAdmin || (rolActual as string) === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
   const { value: diasEntrega } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
   // sales viene de useQuery server-side. Mantenemos el nombre para no tocar el JSX.
   const queryClient = useQueryClient();

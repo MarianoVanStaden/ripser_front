@@ -3157,36 +3157,63 @@ const TripsPage2: React.FC = () => {
                         Entregas ({getTripDeliveries(selectedTrip.id).length})
                       </Typography>
                       <List dense>
-                        {getTripDeliveries(selectedTrip.id).map((delivery, index) => (
-                          <ListItem key={delivery.id} disablePadding sx={{ alignItems: 'flex-start', py: 0.5 }}>
-                            <ListItemText
-                              primary={`Entrega #${index + 1}`}
-                              secondary={
-                                <>
-                                  {(() => {
-                                    const info = infoEntregaDeDelivery(delivery);
-                                    if (!info) return delivery.direccionEntrega;
-                                    const restTxt = info.restantes >= 0
-                                      ? `faltan ${info.restantes} d`
-                                      : `atrasada ${Math.abs(info.restantes)} d`;
-                                    return `${delivery.direccionEntrega} · Estimada ${info.fecha} (transcurridos ${info.transcurridos}/${diasEntregaEstimada} d, ${restTxt})`;
-                                  })()}
-                                  {delivery.observaciones && (
-                                    <Box component="span" display="block" sx={{ fontStyle: 'italic', mt: 0.25 }}>
-                                      📝 {delivery.observaciones}
-                                    </Box>
-                                  )}
-                                </>
-                              }
-                            />
-                            <Chip
-                              label={delivery.estado}
-                              size="small"
-                              color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
-                              sx={{ mt: 0.5 }}
-                            />
+                        {getTripDeliveries(selectedTrip.id).map((delivery, index) => {
+                          const detalles = deliveryDetailsMap[delivery.id];
+                          return (
+                          <ListItem key={delivery.id} disablePadding sx={{ flexDirection: 'column', alignItems: 'stretch', py: 0.5 }}>
+                            <Box display="flex" justifyContent="space-between" alignItems="flex-start" width="100%">
+                              <ListItemText
+                                primary={`Entrega #${index + 1}`}
+                                secondary={
+                                  <>
+                                    {(() => {
+                                      const info = infoEntregaDeDelivery(delivery);
+                                      if (!info) return delivery.direccionEntrega;
+                                      const restTxt = info.restantes >= 0
+                                        ? `faltan ${info.restantes} d`
+                                        : `atrasada ${Math.abs(info.restantes)} d`;
+                                      return `${delivery.direccionEntrega} · Estimada ${info.fecha} (transcurridos ${info.transcurridos}/${diasEntregaEstimada} d, ${restTxt})`;
+                                    })()}
+                                    {delivery.observaciones && (
+                                      <Box component="span" display="block" sx={{ fontStyle: 'italic', mt: 0.25 }}>
+                                        📝 {delivery.observaciones}
+                                      </Box>
+                                    )}
+                                  </>
+                                }
+                              />
+                              <Chip
+                                label={delivery.estado}
+                                size="small"
+                                color={delivery.estado === 'ENTREGADA' ? 'success' : 'warning'}
+                                sx={{ mt: 0.5, flexShrink: 0 }}
+                              />
+                            </Box>
+                            {detalles?.equipos?.length > 0 ? (
+                              <Box mt={0.5} mb={0.5}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                                  Equipos ({detalles.equipos.length}):
+                                </Typography>
+                                <Stack direction="row" flexWrap="wrap" gap={0.5} mt={0.5}>
+                                  {detalles.equipos.map((eq: any) => (
+                                    <Chip
+                                      key={eq.id}
+                                      label={`${eq.codigoVenta ?? eq.numeroHeladera}${eq.color?.nombre ? ` · ${eq.color.nombre}` : ''}`}
+                                      size="small"
+                                      variant="outlined"
+                                      title={`${eq.modelo ?? ''} | ${eq.tipo ?? ''}`}
+                                    />
+                                  ))}
+                                </Stack>
+                              </Box>
+                            ) : detalles && (
+                              <Typography variant="caption" color="text.disabled" display="block" mt={0.5} mb={0.5} sx={{ fontStyle: 'italic' }}>
+                                Sin equipos registrados
+                              </Typography>
+                            )}
                           </ListItem>
-                        ))}
+                          );
+                        })}
                       </List>
                     </CardContent>
                   </Card>
