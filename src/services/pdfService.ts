@@ -907,7 +907,12 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     yPosition = (doc as any).lastAutoTable.finalY + 1;
 
     const costoEnvio = calculateCostoEnvio(documento.detalles ?? []);
-    const equipoBase = Math.max(0, Number(documento.total ?? 0) - costoEnvio);
+    // documento.total puede ser el total financiado (se sobreescribe en NP/presupuesto al
+    // seleccionar la opción). Usar subtotal - descuento + iva para obtener el precio real.
+    const equipoBase = Math.max(
+      0,
+      Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0) + Number(documento.iva ?? 0) - costoEnvio
+    );
     yPosition = renderOpcionFinanciamiento({
       doc,
       opcion: opcionSeleccionada,
@@ -967,7 +972,10 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
     // La entrega inicial es 40% de los equipos (netos, sin envío) MÁS el envío completo.
     // No se aplica el 40% sobre el envío.
     const costoEnvioFallback = calculateCostoEnvio(documento.detalles ?? []);
-    const equipoBaseFallback = Math.max(0, Number(documento.total ?? 0) - costoEnvioFallback);
+    const equipoBaseFallback = Math.max(
+      0,
+      Number(documento.subtotal ?? 0) - Number(documento.descuentoMonto ?? 0) + Number(documento.iva ?? 0) - costoEnvioFallback
+    );
     const entregaEstimada = propio
       ? Math.round(equipoBaseFallback * PORCENTAJE_ENTREGA_PROPIO) + costoEnvioFallback
       : null;
