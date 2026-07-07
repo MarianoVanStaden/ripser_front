@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
   CircularProgress,
   Divider,
-  MenuItem,
   Paper,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -208,24 +207,29 @@ const AsistenciaTerminalPage: React.FC = () => {
                   {n.nombreTerminal ? `"${n.nombreTerminal}"` : <em>(sin nombre)</em>}{' '}
                   · {n.cantidadMarcas} marcas
                 </Typography>
-                <Select
+                <Autocomplete
                   size="small"
-                  displayEmpty
-                  value={seleccion[n.enNo] ?? ''}
-                  onChange={(e) =>
-                    setSeleccion((prev) => ({ ...prev, [n.enNo]: e.target.value as number }))
+                  options={empleadosOrdenados}
+                  getOptionLabel={(e) => nombreEmpleado(e)}
+                  isOptionEqualToValue={(opt, val) => opt.id === val.id}
+                  value={empleadosOrdenados.find((e) => e.id === seleccion[n.enNo]) ?? null}
+                  onChange={(_e, empleado) =>
+                    setSeleccion((prev) => ({ ...prev, [n.enNo]: empleado ? empleado.id! : '' }))
                   }
-                  sx={{ minWidth: 240 }}
-                >
-                  <MenuItem value="">
-                    <em>Elegir empleado…</em>
-                  </MenuItem>
-                  {empleadosOrdenados.map((e) => (
-                    <MenuItem key={e.id} value={e.id}>
-                      {nombreEmpleado(e)}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  filterOptions={(opts, state) => {
+                    const q = state.inputValue.trim().toLowerCase();
+                    if (!q) return opts;
+                    return opts.filter(
+                      (e) =>
+                        (e.nombre ?? '').toLowerCase().includes(q) ||
+                        (e.apellido ?? '').toLowerCase().includes(q),
+                    );
+                  }}
+                  sx={{ minWidth: 260 }}
+                  renderInput={(params) => (
+                    <TextField {...params} placeholder="Escribí nombre o apellido…" />
+                  )}
+                />
                 <Button
                   variant="outlined"
                   size="small"

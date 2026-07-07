@@ -1,6 +1,27 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { execSync } from 'node:child_process'
+
+// Info de git inyectada en build-time (el browser no tiene acceso a git).
+// Se evalúa al arrancar Vite; si cambiás de rama, reiniciá `npm run dev` para
+// refrescarla. Con try/catch para no romper en entornos sin .git (CI/VPS).
+function git(cmd: string): string {
+  try {
+    return execSync(`git ${cmd}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    return 'unknown'
+  }
+}
+const GIT_BRANCH = git('rev-parse --abbrev-ref HEAD')
+const GIT_COMMIT = git('rev-parse --short HEAD')
+
+// Exponerlas a la app como import.meta.env.VITE_* (Vite incrusta las VITE_* de
+// process.env que existan al resolver la config). Fiable en dev y en build.
+process.env.VITE_GIT_BRANCH = GIT_BRANCH
+process.env.VITE_GIT_COMMIT = GIT_COMMIT
 
 // Run `ANALYZE=1 npm run build` to open the bundle visualizer after a build.
 // Requires `npm i -D rollup-plugin-visualizer`. Imported dynamically so the
