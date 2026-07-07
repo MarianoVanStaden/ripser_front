@@ -107,4 +107,29 @@ export const viajeApi = {
     const response = await api.put<ChecklistViaje>(`/api/viajes/${id}/checklist`, payload);
     return response.data;
   },
+
+  /** Listado de checklists guardados en un rango de fechas (más recientes primero). */
+  listChecklists: async (desde?: string, hasta?: string): Promise<ChecklistViaje[]> => {
+    const response = await api.get<ChecklistViaje[]>('/api/checklists-viaje', {
+      params: { ...(desde ? { desde } : {}), ...(hasta ? { hasta } : {}) },
+    });
+    return response.data;
+  },
+
+  /** Descarga el CSV de checklists del rango (dispara la descarga en el navegador). */
+  downloadChecklistsCsv: async (desde?: string, hasta?: string): Promise<void> => {
+    const response = await api.get('/api/checklists-viaje/export', {
+      params: { ...(desde ? { desde } : {}), ...(hasta ? { hasta } : {}) },
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'checklists-viaje.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

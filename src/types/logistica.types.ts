@@ -213,6 +213,7 @@ export interface ChecklistViajeItems {
 export interface ChecklistViaje extends ChecklistViajeItems {
   id: number;
   viajeId: number;
+  numeroViaje?: string;
   conductorId?: number | null;
   conductorNombre?: string;
   acompananteId?: number | null;

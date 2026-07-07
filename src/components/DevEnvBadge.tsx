@@ -15,10 +15,6 @@
  */
 import type { CSSProperties } from 'react'
 
-// Reemplazados en tiempo de compilación por vite.config.ts (`define`).
-declare const __GIT_BRANCH__: string
-declare const __GIT_COMMIT__: string
-
 export default function DevEnvBadge() {
   if (!import.meta.env.DEV) return null
 
@@ -30,8 +26,8 @@ export default function DevEnvBadge() {
 
   const hostPort =
     typeof window !== 'undefined' ? window.location.host : 'localhost'
-  const branch = __GIT_BRANCH__
-  const commit = __GIT_COMMIT__
+  const branch = import.meta.env.VITE_GIT_BRANCH ?? 'unknown'
+  const commit = import.meta.env.VITE_GIT_COMMIT ?? 'unknown'
   const mode = import.meta.env.MODE
 
   const rowStyle: CSSProperties = {

@@ -190,6 +190,7 @@ const StockEquiposPage = lazy(() => import('./components/Logistica/StockEquiposP
 const InventoryPage = lazy(() => import('./components/Logistica/InventoryPage'));
 const RecountTasksPage = lazy(() => import('./components/Logistica/RecountTasksPage'));
 const TripsPage = lazy(() => import('./components/Logistica/TripsPage'));
+const ChecklistsViajePage = lazy(() => import('./components/Logistica/ChecklistsViajePage'));
 const DeliveriesPage = lazy(() => import('./components/Logistica/DeliveriesPage'));
 const ImportarFacturasHistoricasPage = lazy(() => import('./components/Logistica/ImportarFacturasHistoricasPage'));
 // const EntregasEquiposPage = lazy(() => import('./components/Logistica/EntregasEquiposPage'));
@@ -444,6 +445,7 @@ function App() {
                   {/* <Route path="logistica/inventario/reconciliacion" element={priv(<ReconciliacionStockPage />)} /> */}
                   <Route path="logistica/inventario/stock-productos" element={priv(<StockPage />)} />
                   <Route path="logistica/distribucion/viajes" element={priv(<TripsPage />)} />
+                  <Route path="logistica/distribucion/checklists-viaje" element={priv(<ChecklistsViajePage />)} />
                   <Route path="logistica/distribucion/entregas-productos" element={priv(<DeliveriesPage />)} />
                   <Route path="logistica/distribucion/importar-facturas" element={priv(<ImportarFacturasHistoricasPage />)} />
                   {/* <Route path="logistica/distribucion/entregas-equipos" element={priv(<EntregasEquiposPage />)} /> */}

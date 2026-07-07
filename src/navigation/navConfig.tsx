@@ -23,6 +23,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import PhoneCallbackIcon from '@mui/icons-material/PhoneCallback';
 import BackupIcon from '@mui/icons-material/Backup';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
 import type { NavModule } from './navConfig.types';
 
 /**
@@ -117,6 +118,7 @@ export const navigation: NavModule[] = [
     items: [
       // DISTRIBUCIÓN - Logística de salida
       { text: 'Armado de Viajes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes' },
+      { text: 'Checklists de Viaje', icon: <FactCheckIcon />, path: '/logistica/distribucion/checklists-viaje' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
       { text: 'Importar Facturas Históricas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/importar-facturas' },
       // { text: 'Entregas Equipos', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-equipos' },
