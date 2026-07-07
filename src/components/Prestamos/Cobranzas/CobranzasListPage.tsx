@@ -697,6 +697,7 @@ export const CobranzasListPage: React.FC = () => {
                   { label: 'Estado', field: 'estado' },
                   { label: 'Prioridad', field: 'prioridad' },
                   { label: 'Próxima Gestión', field: 'fechaProximaGestion' },
+                  { label: 'Próx. Vencimiento', field: 'proximaCuotaVencimiento' },
                   { label: 'Acc.', field: null, align: 'center' as const },
                   { label: 'Recor.', field: null, align: 'center' as const },
                   { label: 'Acciones', field: null, align: 'center' as const },
@@ -722,7 +723,7 @@ export const CobranzasListPage: React.FC = () => {
             <TableBody>
               {gestiones.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} align="center">
+                  <TableCell colSpan={12} align="center">
                     <Stack spacing={1} alignItems="center" py={4}>
                       <Typography color="text.secondary">
                         {selectedFechaFiltro === 'HOY_Y_VENCIDAS' && !hasCustomRange
@@ -850,6 +851,15 @@ export const CobranzasListPage: React.FC = () => {
                             color={proximaInfo.color}
                             variant={proximaInfo.color === 'default' ? 'outlined' : 'filled'}
                           />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {g.proximaCuotaVencimiento ? (
+                          <Typography variant="body2">
+                            {dayjs(g.proximaCuotaVencimiento).format('DD/MM/YYYY')}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.disabled">-</Typography>
                         )}
                       </TableCell>
                       <TableCell align="center">

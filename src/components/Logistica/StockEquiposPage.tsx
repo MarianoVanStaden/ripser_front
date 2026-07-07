@@ -114,6 +114,7 @@ const StockEquiposPage: React.FC = () => {
   const [tipoEquipoFilter, setTipoEquipoFilter] = useState<string>('all');
   const [estadoEquipoFilter, setEstadoEquipoFilter] = useState<string>('all');
   const [asignadoFilter, setAsignadoFilter] = useState<string>('all');
+  const [medidaFilter, setMedidaFilter] = useState<string>('all');
   const [pageEquipos, setPageEquipos] = useState(0);
   const [rowsPerPageEquipos, setRowsPerPageEquipos] = useState(10);
 
@@ -206,6 +207,11 @@ const StockEquiposPage: React.FC = () => {
   // ============= FILTER AND PAGINATION LOGIC =============
 
   // Tab 0: Filter and paginate Equipos
+  const medidasDisponibles = useMemo(() => {
+    const nombres = new Set(equipos.map(e => e.medida?.nombre).filter(Boolean) as string[]);
+    return Array.from(nombres).sort();
+  }, [equipos]);
+
   const filteredEquipos = useMemo(() => {
     return equipos
       .filter((equipo) => {
@@ -219,11 +225,12 @@ const StockEquiposPage: React.FC = () => {
         const matchesAsignado = asignadoFilter === 'all' ||
           (asignadoFilter === 'asignado' && equipo.asignado) ||
           (asignadoFilter === 'no-asignado' && !equipo.asignado);
+        const matchesMedida = medidaFilter === 'all' || equipo.medida?.nombre === medidaFilter;
 
-        return matchesSearch && matchesTipo && matchesEstado && matchesAsignado;
+        return matchesSearch && matchesTipo && matchesEstado && matchesAsignado && matchesMedida;
       })
       .sort((a, b) => (b.fechaCreacion > a.fechaCreacion ? 1 : -1));
-  }, [equipos, searchEquipos, tipoEquipoFilter, estadoEquipoFilter, asignadoFilter]);
+  }, [equipos, searchEquipos, tipoEquipoFilter, estadoEquipoFilter, asignadoFilter, medidaFilter]);
 
   const paginatedEquipos = useMemo(() => {
     return filteredEquipos.slice(
@@ -255,6 +262,7 @@ const StockEquiposPage: React.FC = () => {
           tipoFilter: tipoEquipoFilter,
           estadoFilter: estadoEquipoFilter,
           asignadoFilter,
+          medidaFilter,
         },
         {
           totalEquipos: equipos.length,
@@ -613,7 +621,7 @@ const StockEquiposPage: React.FC = () => {
             <Box display="flex" alignItems="center" gap={1} mb={2}>
               <Typography variant="h6">Filtros</Typography>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' }, gap: 2 }}>
               <TextField
                 fullWidth
                 label="Buscar"
@@ -662,6 +670,19 @@ const StockEquiposPage: React.FC = () => {
                   <MenuItem value="no-asignado">No Asignados</MenuItem>
                 </Select>
               </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Medida</InputLabel>
+                <Select
+                  value={medidaFilter}
+                  label="Medida"
+                  onChange={(e) => setMedidaFilter(e.target.value)}
+                >
+                  <MenuItem value="all">Todas</MenuItem>
+                  {medidasDisponibles.map((nombre) => (
+                    <MenuItem key={nombre} value={nombre}>{nombre}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
           </CardContent>
         </Card>
@@ -675,6 +696,7 @@ const StockEquiposPage: React.FC = () => {
                     <TableCell sx={{ minWidth: 140 }}>Número Heladera</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Tipo</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Modelo</TableCell>
+                    <TableCell sx={{ minWidth: 110 }}>Medida</TableCell>
                     <TableCell sx={{ minWidth: 100 }}>Color</TableCell>
                     <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
                     <TableCell sx={{ minWidth: 100 }} align="center">Asignado</TableCell>
@@ -693,6 +715,7 @@ const StockEquiposPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{getTipoChip(equipo.tipo)}</TableCell>
                       <TableCell>{equipo.modelo}</TableCell>
+                      <TableCell>{equipo.medida?.nombre || '-'}</TableCell>
                       <TableCell>{equipo.color?.nombre || '-'}</TableCell>
                       <TableCell>{getEstadoChip(equipo.estado)}</TableCell>
                       <TableCell align="center">
@@ -729,7 +752,7 @@ const StockEquiposPage: React.FC = () => {
                   ))}
                   {filteredEquipos.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9} align="center">
+                      <TableCell colSpan={10} align="center">
                         <Box textAlign="center" py={4}>
                           <Typography variant="body1" color="text.secondary">
                             No se encontraron equipos con los filtros aplicados

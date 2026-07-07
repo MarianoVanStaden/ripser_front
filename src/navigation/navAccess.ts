@@ -169,6 +169,8 @@ export const coordinadoraLogisticaAllowedPaths = [
   '/rrhh/adelantos',
   '/rrhh/config-sueldos',
   '/rrhh/organigrama',
+  // Fichadas del terminal de huella (solo ADMIN + COORDINADORA_LOGISTICA)
+  '/rrhh/asistencia-terminal',
   // ADMINISTRACION (subconjunto ADMIN_EMPRESA_LIMITADO)
   '/admin/flujo-caja',
   '/admin/balance',
@@ -261,6 +263,7 @@ export const adminEmpresaLimitadoDeniedPaths = [
   '/rrhh/puestos',
   '/rrhh/licencias',
   '/rrhh/disciplina',
+  '/rrhh/asistencia-terminal',
   '/admin/catalogos-rrhh',
   // ADMIN: pantallas reservadas al dueño.
   '/admin/actividad',

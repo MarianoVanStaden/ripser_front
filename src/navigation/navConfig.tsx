@@ -22,6 +22,7 @@ import SavingsIcon from '@mui/icons-material/Savings';
 import HistoryIcon from '@mui/icons-material/History';
 import PhoneCallbackIcon from '@mui/icons-material/PhoneCallback';
 import BackupIcon from '@mui/icons-material/Backup';
+import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import type { NavModule } from './navConfig.types';
 
 /**
@@ -169,6 +170,7 @@ export const navigation: NavModule[] = [
       { text: 'Adelantos', icon: <PaymentsIcon />, path: '/rrhh/adelantos' },
       { text: 'Config. Sueldos', icon: <TuneIcon />, path: '/rrhh/config-sueldos' },
       { text: 'Asistencia', icon: <AssignmentIcon />, path: '/rrhh/asistencia' },
+      { text: 'Fichadas / Terminal', icon: <FingerprintIcon />, path: '/rrhh/asistencia-terminal' },
       { text: 'Capacitaciones', icon: <AssignmentIcon />, path: '/rrhh/capacitaciones' },
       { text: 'Puestos', icon: <AssignmentIcon />, path: '/rrhh/puestos' },
       { text: 'Organigrama', icon: <AssignmentIcon />, path: '/rrhh/organigrama' },

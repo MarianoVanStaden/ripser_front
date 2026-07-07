@@ -107,6 +107,7 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/rrhh/adelantos',
       '/rrhh/config-sueldos',
       '/rrhh/organigrama',
+      '/rrhh/asistencia-terminal',
       // ADMINISTRACION (subconjunto ADMIN_EMPRESA_LIMITADO)
       '/admin/flujo-caja',
       '/admin/balance',

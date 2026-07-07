@@ -1160,6 +1160,7 @@ export const generateEquiposInventoryPDF = async (
     tipoFilter: string;
     estadoFilter: string;
     asignadoFilter: string;
+    medidaFilter: string;
   },
   stats: {
     totalEquipos: number;
@@ -1176,7 +1177,7 @@ export const generateEquiposInventoryPDF = async (
   let yPosition = addCorporateHeader(pdf, 'Inventario de Equipos');
 
   // Filtros aplicados
-  if (filters.searchTerm || filters.tipoFilter !== 'all' || filters.estadoFilter !== 'all' || filters.asignadoFilter !== 'all') {
+  if (filters.searchTerm || filters.tipoFilter !== 'all' || filters.estadoFilter !== 'all' || filters.asignadoFilter !== 'all' || filters.medidaFilter !== 'all') {
     pdf.setFillColor(...COLORS.white);
     pdf.rect(15, yPosition, pageWidth - 30, 3, 'F');
     
@@ -1204,6 +1205,10 @@ export const generateEquiposInventoryPDF = async (
     }
     if (filters.asignadoFilter !== 'all') {
       pdf.text(`• Asignación: ${filters.asignadoFilter === 'asignado' ? 'Asignados' : 'No Asignados'}`, 20, yPosition);
+      yPosition += 4;
+    }
+    if (filters.medidaFilter !== 'all') {
+      pdf.text(`• Medida: ${filters.medidaFilter}`, 20, yPosition);
       yPosition += 4;
     }
     yPosition += 3;
@@ -1250,19 +1255,21 @@ export const generateEquiposInventoryPDF = async (
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(...COLORS.white);
-  const col1 = 17;
-  const col2 = 62;
-  const col3 = 107;
-  const col4 = 157;
-  const col5 = 202;
-  const col6 = 257;
+  const col1 = 17;   // Número Heladera (~40mm)
+  const col2 = 57;   // Tipo (~22mm)
+  const col3 = 79;   // Modelo (~35mm)
+  const col4 = 114;  // Medida (~28mm)
+  const col5 = 142;  // Estado (~28mm)
+  const col6 = 170;  // Cliente (~55mm)
+  const col7 = 247;  // Fecha Fab.
 
   pdf.text('Número Heladera', col1, yPosition + 2.5);
   pdf.text('Tipo', col2, yPosition + 2.5);
   pdf.text('Modelo', col3, yPosition + 2.5);
-  pdf.text('Estado', col4, yPosition + 2.5);
-  pdf.text('Cliente', col5, yPosition + 2.5);
-  pdf.text('Fecha Fab.', col6, yPosition + 2.5);
+  pdf.text('Medida', col4, yPosition + 2.5);
+  pdf.text('Estado', col5, yPosition + 2.5);
+  pdf.text('Cliente', col6, yPosition + 2.5);
+  pdf.text('Fecha Fab.', col7, yPosition + 2.5);
   yPosition += 5;
 
   // Datos de la tabla
@@ -1285,9 +1292,10 @@ export const generateEquiposInventoryPDF = async (
       pdf.text('Número Heladera', col1, yPosition + 2.5);
       pdf.text('Tipo', col2, yPosition + 2.5);
       pdf.text('Modelo', col3, yPosition + 2.5);
-      pdf.text('Estado', col4, yPosition + 2.5);
-      pdf.text('Cliente', col5, yPosition + 2.5);
-      pdf.text('Fecha Fab.', col6, yPosition + 2.5);
+      pdf.text('Medida', col4, yPosition + 2.5);
+      pdf.text('Estado', col5, yPosition + 2.5);
+      pdf.text('Cliente', col6, yPosition + 2.5);
+      pdf.text('Fecha Fab.', col7, yPosition + 2.5);
       yPosition += 5;
       pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
@@ -1305,19 +1313,22 @@ export const generateEquiposInventoryPDF = async (
     const numeroHeladera = equipo.numeroHeladera || 'N/A';
     const tipo = equipo.tipo || 'N/A';
     const modelo = equipo.modelo || 'N/A';
-    const estado = equipo.estadoFabricacion || 'N/A';
+    const medida = equipo.medida?.nombre || '-';
+    const estado = equipo.estado || equipo.estadoFabricacion || 'N/A';
     const cliente = equipo.clienteNombre || (equipo.asignadoAClienteId ? 'Asignado' : 'Sin asignar');
-    const fecha = equipo.fechaFabricacion ? new Date(equipo.fechaFabricacion).toLocaleDateString() : '-';
+    const fecha = equipo.fechaCreacion ? new Date(equipo.fechaCreacion).toLocaleDateString() : '-';
 
-    const clienteTrunc = cliente.length > 25 ? cliente.substring(0, 22) + '...' : cliente;
+    const modeloTrunc = modelo.length > 18 ? modelo.substring(0, 15) + '...' : modelo;
+    const clienteTrunc = cliente.length > 30 ? cliente.substring(0, 27) + '...' : cliente;
 
     pdf.setTextColor(...COLORS.black);
     pdf.text(numeroHeladera, col1, yPosition + 2);
     pdf.text(tipo, col2, yPosition + 2);
-    pdf.text(modelo, col3, yPosition + 2);
-    pdf.text(estado, col4, yPosition + 2);
-    pdf.text(clienteTrunc, col5, yPosition + 2);
-    pdf.text(fecha, col6, yPosition + 2);
+    pdf.text(modeloTrunc, col3, yPosition + 2);
+    pdf.text(medida, col4, yPosition + 2);
+    pdf.text(estado, col5, yPosition + 2);
+    pdf.text(clienteTrunc, col6, yPosition + 2);
+    pdf.text(fecha, col7, yPosition + 2);
     yPosition += 4;
   });
 

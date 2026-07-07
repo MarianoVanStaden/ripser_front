@@ -214,6 +214,7 @@ const EmpleadosPage = lazy(() => import('./components/RRHH/EmpleadosPage'));
 const PuestosPage = lazy(() => import('./components/RRHH/PuestosPage'));
 const PuestoDetailPage = lazy(() => import('./components/RRHH/PuestoDetailPage'));
 const AsistenciasPage = lazy(() => import('./components/RRHH/AsistenciasPage'));
+const AsistenciaTerminalPage = lazy(() => import('./components/RRHH/AsistenciaTerminalPage'));
 const LicenciasPage = lazy(() => import('./components/RRHH/LicenciasPage'));
 const CapacitacionesPage = lazy(() => import('./components/RRHH/CapacitacionesPage'));
 const SueldosPage = lazy(() => import('./components/RRHH/SueldosPage'));
@@ -421,6 +422,7 @@ function App() {
                   <Route path="rrhh/puestos" element={priv(<PuestosPage />)} />
                   <Route path="rrhh/puestos/:id" element={priv(<PuestoDetailPage />)} />
                   <Route path="rrhh/asistencia" element={priv(<AsistenciasPage />)} />
+                  <Route path="rrhh/asistencia-terminal" element={priv(<AsistenciaTerminalPage />)} />
                   <Route path="rrhh/licencias" element={priv(<LicenciasPage />)} />
                   <Route path="rrhh/capacitaciones" element={priv(<CapacitacionesPage />)} />
                   <Route path="rrhh/sueldos" element={priv(<SueldosPage />)} />
