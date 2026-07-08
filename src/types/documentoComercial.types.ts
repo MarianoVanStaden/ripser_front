@@ -41,6 +41,8 @@ export interface DocumentoComercial {
   fechaEmision: string; // ISO string
   fecha?: string; // Alias for backward compatibility
   fechaVencimiento: string; // ISO string
+  /** Fecha objetivo de entrega (solo facturas). ISO yyyy-mm-dd; null = sin fecha cargada. */
+  fechaEstimadaEntrega?: string | null;
   subtotal: number;
   iva: number;
   total: number;

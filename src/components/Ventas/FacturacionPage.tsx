@@ -102,6 +102,8 @@ const FacturacionPage = () => {
   const [cantidadCuotas, setCantidadCuotas] = useState<number | null>(null);
   const [tipoFinanciacion, setTipoFinanciacion] = useState<string>('MENSUAL');
   const [dueDate, setDueDate] = useState(dayjs().add(30, 'days').format('YYYY-MM-DD'));
+  // Fecha objetivo de entrega (Tablero de Pendientes). '' = sin fecha.
+  const [fechaEstimadaEntrega, setFechaEstimadaEntrega] = useState('');
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('EXENTO');
@@ -554,6 +556,7 @@ const FacturacionPage = () => {
     setPorcentajeEntrega(null);
     setMontoFijoEntrega(null);
     setDueDate(dayjs().add(30, 'days').format('YYYY-MM-DD'));
+    setFechaEstimadaEntrega('');
     setNotes('');
     setCart([]);
     setSelectedIva('EXENTO');
@@ -949,6 +952,7 @@ const FacturacionPage = () => {
       descuentoTipo,
       descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
       observaciones: notes || undefined,
+      fechaEstimadaEntrega: fechaEstimadaEntrega || undefined,
       detalles,
       ...(isFinanciamiento(paymentMethod) && {
         cantidadCuotas: fin.cantidadCuotas,
@@ -1835,6 +1839,8 @@ const FacturacionPage = () => {
           onChangeIva={setSelectedIva}
           dueDate={dueDate}
           onChangeDueDate={setDueDate}
+          fechaEstimadaEntrega={fechaEstimadaEntrega}
+          onChangeFechaEstimadaEntrega={setFechaEstimadaEntrega}
           descuentoTipo={descuentoTipo}
           onChangeDescuentoTipo={setDescuentoTipo}
           descuentoValor={descuentoValor}

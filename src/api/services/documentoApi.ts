@@ -108,6 +108,8 @@ export type CreateFacturaDirectaPayload = {
   descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
   descuentoValor?: number;
   observaciones?: string;
+  /** Fecha objetivo de entrega (Tablero de Pendientes). ISO yyyy-mm-dd. */
+  fechaEstimadaEntrega?: string;
   equiposAsignaciones?: { [lineaIndex: number]: number[] };
   cantidadCuotas?: number | null;
   tipoFinanciacion?: string;
@@ -229,6 +231,18 @@ export const documentoApi = {
     const response = await api.patch<DocumentoComercial>(
       `/api/documentos/${id}/observaciones`,
       { observaciones }
+    );
+    return response.data;
+  },
+  // Fecha objetivo de entrega de una factura (Tablero de Armado de Viajes).
+  // null borra la fecha ("Sin fecha"). Solo aplica a FACTURA (400 en otros tipos).
+  updateFechaEstimadaEntrega: async (
+    id: number,
+    fechaEstimadaEntrega: string | null // ISO yyyy-mm-dd
+  ): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${id}/fecha-estimada-entrega`,
+      { fechaEstimadaEntrega }
     );
     return response.data;
   },

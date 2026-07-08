@@ -58,6 +58,11 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/taller/tareas',
       '/taller/trabajos',
     ],
+    // El Tablero de Pendientes es sólo para TRANSPORTE/COORDINADORA_LOGISTICA/
+    // admins (SecurityConfig TABLERO_VIAJES_ROLES devuelve 403 igualmente).
+    deniedPrefixes: [
+      '/logistica/distribucion/tablero-pendientes',
+    ],
   },
   {
     rol: 'COORDINADORA_COMPRAS',
@@ -149,6 +154,11 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/logistica/inventario/stock-equipos',
       '/logistica/inventario/ubicaciones',
     ],
+    // El Tablero de Pendientes es sólo para TRANSPORTE/COORDINADORA_LOGISTICA/
+    // admins (SecurityConfig TABLERO_VIAJES_ROLES devuelve 403 igualmente).
+    deniedPrefixes: [
+      '/logistica/distribucion/tablero-pendientes',
+    ],
   },
   {
     // POST_VENTA: personal de post-venta que ve Registro de Ventas, Clientes
@@ -186,9 +196,12 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/logistica/vehiculos',
     ],
     // 'Km por Empleado' queda fuera del scope del conductor aunque cuelgue de
-    // /logistica/vehiculos. Mantener en sync con conductorAllowedPaths en Sidebar.
+    // /logistica/vehiculos. El Tablero de Pendientes es de planificación
+    // (TRANSPORTE/COORDINADORA_LOGISTICA/admins), no de reparto. Mantener en
+    // sync con conductorAllowedPaths en Sidebar.
     deniedPrefixes: [
       '/logistica/vehiculos/km-empleados',
+      '/logistica/distribucion/tablero-pendientes',
     ],
   },
 ];
