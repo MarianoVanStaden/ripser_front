@@ -76,7 +76,7 @@ const AtrasoChip: React.FC<{ diasAtraso: number | null }> = ({ diasAtraso }) => 
 // ── Página ───────────────────────────────────────────────────────────────────
 
 const FILTER_SCHEMA = {
-  provincia: 'string',
+  provincias: 'string[]',
   clienteId: 'number',
   tipoDocumento: 'string',
   fechaDesde: 'string',
@@ -93,7 +93,10 @@ const TableroArmadoViajesPage: React.FC = () => {
   const clienteSearch = useClienteSearch();
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Selección persistente entre páginas y cambios de filtro (ej. elegir facturas,
+  // pasar a "Órdenes de servicio" y sumar OS al mismo viaje). Se guarda la fila
+  // completa porque las seleccionadas pueden no estar en la página visible.
+  const [selectedMap, setSelectedMap] = useState<Map<string, TableroPendienteRow>>(new Map());
   const [wizardOpen, setWizardOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{ severity: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
@@ -102,7 +105,7 @@ const TableroArmadoViajesPage: React.FC = () => {
   const [savingFecha, setSavingFecha] = useState(false);
 
   const apiFilters: TableroFilterParams = useMemo(() => ({
-    provincia: urlFilters.provincia,
+    provincias: urlFilters.provincias.length ? urlFilters.provincias : undefined,
     clienteId: urlFilters.clienteId,
     tipoDocumento: urlFilters.tipoDocumento as TipoOrigenTablero | undefined,
     fechaEstimadaDesde: urlFilters.fechaDesde,
@@ -115,17 +118,18 @@ const TableroArmadoViajesPage: React.FC = () => {
 
   const pagination = usePagination<TableroPendienteRow, TableroFilterParams>({
     fetchFn: (page, size, sort, filters) => tableroViajesApi.getPendientes(page, size, sort, filters),
-    initialSize: 25,
+    initialSize: 50,
     defaultSort: 'fechaEstimada,asc',
     initialFilters: apiFilters,
   });
   const { setFilters } = pagination;
 
-  // La URL es la fuente de verdad de los filtros; cada cambio re-consulta al backend.
+  // La URL es la fuente de verdad de los filtros; cada cambio re-consulta al
+  // backend. La selección NO se limpia: sobrevive a filtros y paginado para
+  // poder armar un viaje mezclando resultados de distintas búsquedas.
   const apiFiltersKey = JSON.stringify(apiFilters);
   useEffect(() => {
     setFilters(apiFilters);
-    setSelected(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiFiltersKey, setFilters]);
 
@@ -133,7 +137,7 @@ const TableroArmadoViajesPage: React.FC = () => {
   const wizard = useTripWizard({
     onSaved: (_viaje, entregaErrors) => {
       setWizardOpen(false);
-      setSelected(new Set());
+      setSelectedMap(new Map());
       pagination.refresh();
       if (entregaErrors.length > 0) {
         setSnackbar({
@@ -148,24 +152,31 @@ const TableroArmadoViajesPage: React.FC = () => {
   });
 
   const selectableRows = pagination.data.filter((r) => !r.asignadoAViaje);
-  const selectedRows = pagination.data.filter((r) => selected.has(rowKey(r)));
+  const selectedRows = Array.from(selectedMap.values());
 
   const toggleRow = (row: TableroPendienteRow) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
+    setSelectedMap((prev) => {
+      const next = new Map(prev);
       const key = rowKey(row);
       if (next.has(key)) next.delete(key);
-      else next.add(key);
+      else next.set(key, row);
       return next;
     });
   };
 
+  // Selecciona/deselecciona sólo las filas de la página visible; lo elegido en
+  // otras páginas o con otros filtros se mantiene.
   const toggleAll = () => {
-    setSelected((prev) => {
-      if (selectableRows.length > 0 && selectableRows.every((r) => prev.has(rowKey(r)))) {
-        return new Set();
+    setSelectedMap((prev) => {
+      const next = new Map(prev);
+      const allPageSelected =
+        selectableRows.length > 0 && selectableRows.every((r) => next.has(rowKey(r)));
+      if (allPageSelected) {
+        selectableRows.forEach((r) => next.delete(rowKey(r)));
+      } else {
+        selectableRows.forEach((r) => next.set(rowKey(r), r));
       }
-      return new Set(selectableRows.map(rowKey));
+      return next;
     });
   };
 
@@ -214,12 +225,17 @@ const TableroArmadoViajesPage: React.FC = () => {
         <Typography variant="h5" fontWeight={600}>
           Tablero de Pendientes de Entrega
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Tooltip title="Actualizar">
             <IconButton onClick={() => pagination.refresh()}>
               <RefreshIcon />
             </IconButton>
           </Tooltip>
+          {selectedRows.length > 0 && (
+            <Button size="small" onClick={() => setSelectedMap(new Map())}>
+              Limpiar selección
+            </Button>
+          )}
           <Button
             variant="contained"
             startIcon={<LocalShippingIcon />}
@@ -236,15 +252,26 @@ const TableroArmadoViajesPage: React.FC = () => {
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6} md={2.5}>
             <FormControl fullWidth size="small">
-              <InputLabel>Provincia</InputLabel>
+              <InputLabel>Provincias</InputLabel>
               <Select
-                label="Provincia"
-                value={urlFilters.provincia ?? ''}
-                onChange={(e) => setFilter('provincia', e.target.value || undefined)}
+                multiple
+                label="Provincias"
+                value={urlFilters.provincias}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFilter('provincias', typeof value === 'string' ? value.split(',') : value);
+                }}
+                renderValue={(selectedValues) =>
+                  (selectedValues as string[])
+                    .map((v) => PROVINCIA_LABELS[v as ProvinciaEnum] ?? v)
+                    .join(', ')
+                }
               >
-                <MenuItem value="">Todas</MenuItem>
                 {Object.entries(PROVINCIA_LABELS).map(([value, label]) => (
-                  <MenuItem key={value} value={value}>{label}</MenuItem>
+                  <MenuItem key={value} value={value}>
+                    <Checkbox size="small" checked={urlFilters.provincias.includes(value)} />
+                    {label}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -369,8 +396,11 @@ const TableroArmadoViajesPage: React.FC = () => {
               <TableRow>
                 <TableCell padding="checkbox">
                   <Checkbox
-                    indeterminate={selected.size > 0 && selected.size < selectableRows.length}
-                    checked={selectableRows.length > 0 && selectableRows.every((r) => selected.has(rowKey(r)))}
+                    indeterminate={
+                      selectableRows.some((r) => selectedMap.has(rowKey(r))) &&
+                      !selectableRows.every((r) => selectedMap.has(rowKey(r)))
+                    }
+                    checked={selectableRows.length > 0 && selectableRows.every((r) => selectedMap.has(rowKey(r)))}
                     disabled={selectableRows.length === 0}
                     onChange={toggleAll}
                   />
@@ -423,12 +453,12 @@ const TableroArmadoViajesPage: React.FC = () => {
                     <TableRow
                       key={key}
                       hover={!row.asignadoAViaje}
-                      selected={selected.has(key)}
+                      selected={selectedMap.has(key)}
                       sx={row.asignadoAViaje ? { opacity: 0.6 } : undefined}
                     >
                       <TableCell padding="checkbox">
                         <Checkbox
-                          checked={selected.has(key)}
+                          checked={selectedMap.has(key)}
                           disabled={row.asignadoAViaje}
                           onChange={() => toggleRow(row)}
                         />

@@ -5,7 +5,8 @@ import type { EstadoTablero, TableroPendienteRow, TipoOrigenTablero } from '../.
 // Filtros server-side de GET /api/viajes/tablero/pendientes. Todos opcionales
 // y combinables; una sola fuente de verdad para la página del tablero.
 export interface TableroFilterParams {
-  provincia?: string;
+  /** Multiselección; se serializa como CSV (?provincias=BUENOS_AIRES,SANTA_FE). */
+  provincias?: string[];
   clienteId?: number;
   tipoDocumento?: TipoOrigenTablero;
   fechaEstimadaDesde?: string; // ISO yyyy-mm-dd
@@ -25,6 +26,10 @@ export const tableroViajesApi = {
   ): Promise<PageResponse<TableroPendienteRow>> {
     const [sortBy, sortDir] = (sort || 'fechaEstimada,asc').split(',');
     const params: Record<string, unknown> = { ...filters, page, size, sortBy, sortDir };
+    // Arrays → CSV (Spring bindea List<Provincia> desde valores separados por coma).
+    if (Array.isArray(params.provincias)) {
+      params.provincias = params.provincias.length ? params.provincias.join(',') : undefined;
+    }
     // Los params undefined/'' no deben viajar (el backend interpreta ausencia como "sin filtro").
     for (const key of Object.keys(params)) {
       if (params[key] === undefined || params[key] === '' || params[key] === null) delete params[key];
