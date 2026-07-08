@@ -47,6 +47,11 @@ interface Props {
 }
 
 const BillingDialog: React.FC<Props> = ({ open, onClose, onSubmit, nota, form, setForm }) => {
+  // Para notas al contado el diálogo sólo pide la fecha estimada de entrega
+  // (opcional); los campos de financiación no aplican.
+  const esFinanciamiento =
+    nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA';
+
   // Calcular el total real considerando descuentos aplicables
   // descuentoMonto ya excluye items ENVIO en el backend, por eso lo sumamos de nuevo después
   const descuentoMonto = Number(nota?.descuentoMonto) || 0;
@@ -71,9 +76,19 @@ const BillingDialog: React.FC<Props> = ({ open, onClose, onSubmit, nota, form, s
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Datos de Financiación Propia</DialogTitle>
+      <DialogTitle>{esFinanciamiento ? 'Datos de Financiación Propia' : 'Confirmar Facturación'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField
+            label="Fecha Estimada de Entrega"
+            type="date"
+            fullWidth
+            value={form.fechaEstimadaEntrega}
+            onChange={(e) => setForm((prev) => ({ ...prev, fechaEstimadaEntrega: e.target.value }))}
+            InputLabelProps={{ shrink: true }}
+            helperText="Opcional — vacío = lo antes posible"
+          />
+          {esFinanciamiento && (<>
           <TextField
             label="Cantidad de Cuotas"
             type="number"
@@ -208,6 +223,7 @@ const BillingDialog: React.FC<Props> = ({ open, onClose, onSubmit, nota, form, s
               </Typography>
             </Box>
           </Box>
+          </>)}
         </Box>
       </DialogContent>
       <DialogActions>

@@ -204,6 +204,8 @@ export interface CreatePresupuestoRequest {
 
 export interface ConvertToFacturaDTO {
   notaPedidoId: number;
+  /** Fecha objetivo de entrega (Tablero de Pendientes). ISO yyyy-mm-dd. Opcional. */
+  fechaEstimadaEntrega?: string;
   descuento?: number;
   descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
   descuentoValor?: number;

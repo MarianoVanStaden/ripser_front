@@ -124,6 +124,8 @@ const FacturacionPage = () => {
   const [descuentoValor, setDescuentoValor] = useState<number>(0);
   const [notaDescuentoTipo, setNotaDescuentoTipo] = useState<'NONE' | 'PORCENTAJE' | 'MONTO_FIJO'>('NONE');
   const [notaDescuentoValor, setNotaDescuentoValor] = useState<number>(0);
+  // Fecha objetivo de entrega al convertir nota → factura. '' = lo antes posible.
+  const [notaFechaEstimadaEntrega, setNotaFechaEstimadaEntrega] = useState('');
   
   // From Nota de Pedido
   const [selectedNotaPedido, setSelectedNotaPedido] = useState<DocumentoComercial | null>(null);
@@ -1257,6 +1259,7 @@ const FacturacionPage = () => {
         equiposAsignaciones: asignaciones,
         descuentoTipo: notaDescuentoTipo,
         descuentoValor: notaDescuentoTipo === 'NONE' ? 0 : notaDescuentoValor,
+        ...(notaFechaEstimadaEntrega && { fechaEstimadaEntrega: notaFechaEstimadaEntrega }),
         ...(deudaPreconfirmada && { confirmarConDeudaPendiente: true }),
         ...(cuotasParaEnviar != null && { cantidadCuotas: cuotasParaEnviar }),
         tipoFinanciacion: notaTipoFinanciacion,
@@ -1304,6 +1307,7 @@ const FacturacionPage = () => {
               notaPedidoId: notaId,
               equiposAsignaciones: asignaciones,
               confirmarConDeudaPendiente: true,
+              ...(notaFechaEstimadaEntrega && { fechaEstimadaEntrega: notaFechaEstimadaEntrega }),
               ...(capturedCuotas != null && { cantidadCuotas: capturedCuotas }),
               tipoFinanciacion: capturedTipoFin,
               tasaInteres: capturedTasaInteres,
@@ -1483,6 +1487,7 @@ const FacturacionPage = () => {
     setConvertDialogOpen(false);
     setSelectedNotaPedido(null);
     setNotaCart([]);
+    setNotaFechaEstimadaEntrega('');
     setEditingNotaItems(false);
     setSelectedOpcionId(null);
     setOpcionesFinanciamiento([]);
@@ -1587,6 +1592,7 @@ const FacturacionPage = () => {
           notaPedidoId: notaId,
           descuentoTipo: notaDescuentoTipo,
           descuentoValor: notaDescuentoTipo === 'NONE' ? 0 : notaDescuentoValor,
+          ...(notaFechaEstimadaEntrega && { fechaEstimadaEntrega: notaFechaEstimadaEntrega }),
           ...(deudaYaConfirmadaRef.current && { confirmarConDeudaPendiente: true }),
           ...(notaCantidadCuotas != null && { cantidadCuotas: notaCantidadCuotas }),
           tipoFinanciacion: notaTipoFinanciacion,
@@ -1912,6 +1918,8 @@ const FacturacionPage = () => {
         }}
         notaDescuentoValor={notaDescuentoValor}
         onChangeNotaDescuentoValor={setNotaDescuentoValor}
+        notaFechaEstimadaEntrega={notaFechaEstimadaEntrega}
+        onChangeNotaFechaEstimadaEntrega={setNotaFechaEstimadaEntrega}
         notaSubtotal={notaSubtotal}
         notaDescuentoAmount={notaDescuentoAmount}
         notaIvaAmount={notaIvaAmount}

@@ -33,10 +33,10 @@ export interface EditNotaForm {
 }
 
 /**
- * Form state for the "Datos de Financiación Propia" dialog (BillingDialog),
- * shown before facturar when the nota's metodoPago is FINANCIAMIENTO o
- * FINANCIACION_PROPIA.  These values shape the cuotas + entrega inicial
- * payload that the backend uses to materializar la factura.
+ * Form state for the pre-facturación dialog (BillingDialog). Para notas con
+ * FINANCIAMIENTO / FINANCIACION_PROPIA muestra cuotas + entrega inicial; para
+ * contado sólo la fecha estimada de entrega. These values shape the payload
+ * que el backend usa para materializar la factura.
  */
 export interface BillingForm {
   cantidadCuotas: number;
@@ -46,4 +46,6 @@ export interface BillingForm {
   porcentajeEntregaInicial: number;
   montoEntregaInicial: number;
   tasaInteres: number;
+  /** Fecha objetivo de entrega (Tablero de Pendientes). '' = lo antes posible. */
+  fechaEstimadaEntrega: string;
 }

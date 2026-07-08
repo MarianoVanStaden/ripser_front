@@ -61,6 +61,9 @@ interface Props {
   onChangeNotaDescuentoTipo: (next: DescuentoTipo) => void;
   notaDescuentoValor: number;
   onChangeNotaDescuentoValor: (next: number) => void;
+  // Fecha objetivo de entrega (Tablero de Pendientes). '' = lo antes posible / sin fecha.
+  notaFechaEstimadaEntrega: string;
+  onChangeNotaFechaEstimadaEntrega: (next: string) => void;
   notaSubtotal: number;
   notaDescuentoAmount: number;
   notaIvaAmount: number;
@@ -88,6 +91,8 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
   onChangeNotaDescuentoTipo,
   notaDescuentoValor,
   onChangeNotaDescuentoValor,
+  notaFechaEstimadaEntrega,
+  onChangeNotaFechaEstimadaEntrega,
   notaSubtotal,
   notaDescuentoAmount,
   notaIvaAmount,
@@ -273,6 +278,18 @@ const ConvertToFacturaDialog: React.FC<Props> = ({
                       step: notaDescuentoTipo === 'PORCENTAJE' ? 0.5 : 0.01,
                     }}
                     disabled={notaDescuentoTipo === 'NONE'}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    label="Fecha Estimada de Entrega"
+                    InputLabelProps={{ shrink: true }}
+                    value={notaFechaEstimadaEntrega}
+                    onChange={(e) => onChangeNotaFechaEstimadaEntrega(e.target.value)}
+                    helperText="Opcional — vacío = lo antes posible"
                   />
                 </Grid>
               </Grid>
