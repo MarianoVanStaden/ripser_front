@@ -12,11 +12,31 @@ export interface VentaVendedora {
   heladerasVendidas: number;
 }
 
+/**
+ * Asistencia agregada de un empleado en el mes (fichadas del terminal) para
+ * pre-cargar HE / HA / presentismo en la liquidación masiva. Todos los valores
+ * son sugerencias editables.
+ */
+export interface AsistenciaLiquidacionEmpleado {
+  empleadoId: number;
+  nombreCompleto: string;
+  diasHabiles: number;
+  diasTrabajados: number;
+  diasAusentes: number;
+  diasIncompletos: number;
+  horasExtra: number;
+  horasAusentes: number;
+  presentismoPct: number;
+  sinHorario: boolean;
+  avisos: string[];
+}
+
 /** Conteo automático de unidades del mes para la calculadora de bonos. */
 export interface UnidadesMes {
   producidas: number;
   vendidas: number;
   ventasPorVendedora: VentaVendedora[];
+  asistenciaPorEmpleado: AsistenciaLiquidacionEmpleado[];
 }
 
 export const sueldoApi = {
@@ -103,6 +123,20 @@ export const sueldoApi = {
           empleadoId: v.empleadoId ?? null,
           nombre: v.nombre ?? '',
           heladerasVendidas: Number(v.heladerasVendidas) || 0,
+        })),
+      asistenciaPorEmpleado: (Array.isArray(data.asistenciaPorEmpleado) ? data.asistenciaPorEmpleado : [])
+        .map(a => ({
+          empleadoId: a.empleadoId,
+          nombreCompleto: a.nombreCompleto ?? '',
+          diasHabiles: Number(a.diasHabiles) || 0,
+          diasTrabajados: Number(a.diasTrabajados) || 0,
+          diasAusentes: Number(a.diasAusentes) || 0,
+          diasIncompletos: Number(a.diasIncompletos) || 0,
+          horasExtra: Number(a.horasExtra) || 0,
+          horasAusentes: Number(a.horasAusentes) || 0,
+          presentismoPct: Number(a.presentismoPct ?? 100),
+          sinHorario: Boolean(a.sinHorario),
+          avisos: Array.isArray(a.avisos) ? a.avisos : [],
         })),
     };
   },

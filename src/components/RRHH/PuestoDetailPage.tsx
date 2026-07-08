@@ -81,7 +81,7 @@ const PuestoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { tieneRol } = usePermisos();
-  const canWrite = tieneRol('ADMIN', 'ADMIN_EMPRESA');
+  const canWrite = tieneRol('ADMIN', 'ADMIN_EMPRESA', 'RECURSOS_HUMANOS');
 
   const [puesto, setPuesto] = useState<PuestoResponseDTO | null>(null);
   const [versiones, setVersiones] = useState<PuestoVersionDTO[]>([]);

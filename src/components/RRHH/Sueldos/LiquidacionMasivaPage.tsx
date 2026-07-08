@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { sueldoApi, type VentaVendedora } from '../../../api/services/sueldoApi';
+import { sueldoApi, type VentaVendedora, type AsistenciaLiquidacionEmpleado } from '../../../api/services/sueldoApi';
 import { employeeApi } from '../../../api/services/employeeApi';
 import { categoriaSalarialApi } from '../../../api/services/categoriaSalarialApi';
 import { bonoProduccionApi } from '../../../api/services/bonoProduccionApi';
@@ -89,6 +89,9 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   // Desglose de heladeras vendidas por vendedora (quien convirtió la nota de
   // pedido). Cada asesora cobra su bono de ventas según SU propio conteo.
   const [ventasPorVendedora, setVentasPorVendedora] = useState<VentaVendedora[]>([]);
+  // Asistencia agregada por empleado (fichadas del terminal) para pre-cargar
+  // HE / HA / presentismo en cada fila. Editable por el operador.
+  const [asistenciaMes, setAsistenciaMes] = useState<AsistenciaLiquidacionEmpleado[]>([]);
 
   // Filtros de filtrado de filas
   const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaSalarial | null>(null);
@@ -172,6 +175,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
         setUnidadesProducidas(r.producidas);
         setUnidadesVendidas(r.vendidas);
         setVentasPorVendedora(r.ventasPorVendedora);
+        setAsistenciaMes(r.asistenciaPorEmpleado);
       })
       .catch(() => {/* mantener 0 si falla */})
       .finally(() => { if (!cancelado) setLoadingUnidades(false); });
@@ -182,6 +186,14 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     if (unidadesAutoProducidas != null) setUnidadesProducidas(unidadesAutoProducidas);
     if (unidadesAutoVendidas != null) setUnidadesVendidas(unidadesAutoVendidas);
   };
+
+  // empleadoId → asistencia del mes (fichadas del terminal). Se usa para
+  // pre-cargar HE/HA/presentismo en las filas nuevas y para el chip informativo.
+  const asistenciaMap = useMemo(() => {
+    const m = new Map<number, AsistenciaLiquidacionEmpleado>();
+    asistenciaMes.forEach(a => { if (a.empleadoId != null) m.set(a.empleadoId, a); });
+    return m;
+  }, [asistenciaMes]);
 
   // Cuando tengo empleados + sueldosExistentes + adelantos → armar filas.
   // Sólo regenero la grilla cuando cambia el período o se recargan datos —
@@ -230,16 +242,19 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
       }
       // Empleado nuevo en el período: por default lo incluimos, salvo que no
       // tenga categoría salarial asignada (ahí no se puede liquidar igual).
+      // Pre-cargamos presentismo / HE / HA desde las fichadas del terminal si
+      // hay datos; si no, caen a los defaults (100 / 0 / 0). Editable después.
       const tieneCategoria = emp.categoriaSalarialId != null;
+      const asis = asistenciaMap.get(emp.id);
       return {
         empleadoId: emp.id,
         empleadoNombre: emp.nombre,
         empleadoApellido: emp.apellido,
         categoriaSalarialId: emp.categoriaSalarialId ?? null,
         concepto,
-        presentismoPct: 100,
-        horasExtraCant: 0,
-        horasAusenteCant: 0,
+        presentismoPct: asis?.presentismoPct ?? 100,
+        horasExtraCant: asis?.horasExtra ?? 0,
+        horasAusenteCant: asis?.horasAusentes ?? 0,
         kmCant: 0,
         bonoEspecial: 0,
         bonificaciones: 0,
@@ -254,7 +269,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
     });
     setRows(newRows);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [empleados, sueldosExistentes, adelantosPeriodo, periodo]);
+  }, [empleados, sueldosExistentes, adelantosPeriodo, asistenciaMap, periodo]);
 
   // ─── Helpers ───────────────────────────────────────────────────────────
   const updateRow = (idx: number, patch: Partial<RowState>) => {
@@ -425,6 +440,39 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
   };
 
   // ─── Render ────────────────────────────────────────────────────────────
+  // Chip informativo de asistencia del mes (fichadas del terminal): días
+  // trabajados/hábiles + tooltip con los avisos (fichadas incompletas,
+  // ausencias, empleado sin horario configurado). No edita nada; los valores
+  // ya se pre-cargaron en HE/HA/Presentismo, que quedan editables.
+  const renderAsistenciaCell = (empleadoId: number) => {
+    const asis = asistenciaMap.get(empleadoId);
+    if (!asis) {
+      return <Typography variant="caption" color="textSecondary">—</Typography>;
+    }
+    if (asis.sinHorario) {
+      return (
+        <Tooltip title={asis.avisos.join(' · ') || 'Sin horario configurado'}>
+          <Chip label="Sin horario" size="small" variant="outlined" sx={{ color: 'text.secondary' }} />
+        </Tooltip>
+      );
+    }
+    const hayAlertas = asis.diasAusentes > 0 || asis.diasIncompletos > 0;
+    const color: 'success' | 'warning' = hayAlertas ? 'warning' : 'success';
+    const tooltip = asis.avisos.length > 0
+      ? asis.avisos.join(' · ')
+      : `Presentismo ${asis.presentismoPct}% · ${asis.horasExtra}h extra · sin novedades`;
+    return (
+      <Tooltip title={tooltip}>
+        <Chip
+          label={`${asis.diasTrabajados}/${asis.diasHabiles} días`}
+          size="small"
+          color={color}
+          variant={hayAlertas ? 'filled' : 'outlined'}
+        />
+      </Tooltip>
+    );
+  };
+
   const renderNumCell = (
     idx: number,
     key: keyof RowState,
@@ -711,6 +759,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Pres %</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">HE cant</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">HA cant</TableCell>
+                  <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">Asistencia</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="center">KM</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">B.Prod (auto)</TableCell>
                   <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">B.Ventas (auto)</TableCell>
@@ -726,7 +775,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
               <TableBody>
                 {filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={16} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={17} align="center" sx={{ py: 3 }}>
                       <Typography variant="body2" color="textSecondary">
                         {rows.length === 0 ? 'Sin empleados activos.' : 'Ningún empleado coincide con el filtro.'}
                       </Typography>
@@ -770,6 +819,7 @@ const LiquidacionMasivaPage: React.FC<LiquidacionMasivaPageProps> = ({ embedded 
                       <TableCell align="center">{renderNumCell(idx, 'presentismoPct', 80, '%')}</TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'horasExtraCant', 70)}</TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'horasAusenteCant', 70)}</TableCell>
+                      <TableCell align="center">{renderAsistenciaCell(row.empleadoId)}</TableCell>
                       <TableCell align="center">{renderNumCell(idx, 'kmCant', 70)}</TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" color={calc && calc.bonoProduccion > 0 ? 'success.main' : 'textSecondary'} fontWeight={calc && calc.bonoProduccion > 0 ? 600 : 400}>

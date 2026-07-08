@@ -49,7 +49,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 const PuestosPage: React.FC = () => {
   const navigate = useNavigate();
   const { tieneRol } = usePermisos();
-  const canWrite = tieneRol('ADMIN', 'ADMIN_EMPRESA');
+  const canWrite = tieneRol('ADMIN', 'ADMIN_EMPRESA', 'RECURSOS_HUMANOS');
 
   const [puestos, setPuestos] = useState<PuestoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
