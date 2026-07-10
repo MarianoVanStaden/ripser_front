@@ -249,6 +249,14 @@ const FichaEquipoPage: React.FC = () => {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, H);
 
+    // Línea de contorno punteada para guiar el corte del sticker.
+    const borderPx = 3;
+    ctx.setLineDash([mmToPx(3), mmToPx(1.5)]);
+    ctx.strokeStyle = '#555555';
+    ctx.lineWidth = borderPx;
+    ctx.strokeRect(borderPx / 2, borderPx / 2, W - borderPx, H - borderPx);
+    ctx.setLineDash([]);
+
     const qrSize = mmToPx(56);
     const qrX = (W - qrSize) / 2;
     ctx.drawImage(qrCanvas, qrX, mmToPx(2), qrSize, qrSize);
