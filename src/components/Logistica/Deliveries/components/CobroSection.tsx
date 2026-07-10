@@ -51,6 +51,21 @@ const newDetalle = (overrides?: Partial<DetalleCobro>): DetalleCobro => ({
 /** Crea el CobroData inicial con una sola línea vacía. */
 export const initialCobroData = (): CobroData => ({ detalles: [newDetalle()] });
 
+/** Reconstruye el CobroData desde líneas ya guardadas (para precargar y corregir). */
+export const fromDetalleCobroDTOs = (detalles?: DetalleCobroDTO[] | null): CobroData => {
+  if (!detalles || detalles.length === 0) return initialCobroData();
+  return {
+    detalles: detalles.map((d) =>
+      newDetalle({
+        metodoPago: d.metodoPago,
+        monto: d.monto != null ? String(d.monto) : '',
+        comprobante: d.comprobanteCobro ?? '',
+        cantidadCheques: d.cantidadCheques != null ? String(d.cantidadCheques) : undefined,
+      })
+    ),
+  };
+};
+
 /** Subtotal de una línea: para CHEQUE es monto (por cheque) × cantidad. */
 export const subtotalLinea = (d: DetalleCobro): number => {
   const monto = parseFloat(d.monto);
