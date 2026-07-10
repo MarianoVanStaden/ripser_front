@@ -464,11 +464,42 @@ export interface RendicionViajeDTO {
   entregas: RendicionEntregaDTO[];
 }
 
-export interface RendicionRequest {
-  totalRecibido: number;
+/** Datos de un cheque a registrar en cartera al rendir con una línea CHEQUE. */
+export interface ChequeRendicion {
+  numeroCheque: string;
+  bancoId: number | null;
+  titular: string;
+  cuitTitular?: string;
+  fechaEmision: string; // yyyy-MM-dd
+  fechaCobro: string;   // yyyy-MM-dd
+  numeroCuenta?: string;
+  cbu?: string;
+  esEcheq?: boolean;
+  observaciones?: string;
+}
+
+/** Una línea de ingreso de la rendición: una forma de pago → una caja. */
+export interface DetalleRendicion {
+  metodoPago: string;
+  monto: number;
   cajaPesosId?: number | null;
   cajaAhorroId?: number | null;
-  metodoPagoRendicion: string;
+  comprobanteCobro?: string | null;
+  cheque?: ChequeRendicion | null;
+  clienteId?: number | null;
+}
+
+export interface RendicionRequest {
+  /**
+   * Líneas multi-forma (efectivo, dólares, cheque, transferencia…), cada una a su
+   * propia caja. Cuando viene, es el camino principal y se ignoran los campos legacy.
+   */
+  detalles?: DetalleRendicion[];
+  /** Legacy (una sola forma). Opcional cuando se envían `detalles`. */
+  totalRecibido?: number;
+  cajaPesosId?: number | null;
+  cajaAhorroId?: number | null;
+  metodoPagoRendicion?: string;
   comprobanteRendicion?: string;
   observaciones?: string;
   /** Dólares recibidos físicamente (solo si hubo cobros en DOLARES). */

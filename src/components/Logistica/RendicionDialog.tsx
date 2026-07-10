@@ -39,15 +39,13 @@ import {
 import type { Viaje } from '../../types';
 import type { RendicionViajeDTO, RendicionEntregaDTO, EstadoCobro } from '../../types/logistica.types';
 import type { MetodoPago } from '../../types/venta.types';
-import { cajaEsDefaultPara, type CajaUnificada } from '../../types/caja.types';
 import { METODO_PAGO_LABELS } from '../../types/venta.types';
-import { cajasApi } from '../../api/services/cajasApi';
 import { viajeApi } from '../../api/services/viajeApi';
 import { entregaViajeApi } from '../../api/services/entregaViajeApi';
+import RendicionLineas, { type RendicionLineasPayload } from './RendicionLineas';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const METODOS_RENDICION: MetodoPago[] = ['EFECTIVO', 'TRANSFERENCIA_BANCARIA', 'CHEQUE'];
 const METODOS_COBRO: MetodoPago[] = ['EFECTIVO', 'TRANSFERENCIA_BANCARIA', 'CHEQUE', 'TARJETA_DEBITO', 'TARJETA_CREDITO'];
 
 const COBRO_COLOR: Record<EstadoCobro, 'success' | 'warning' | 'error' | 'default'> = {
@@ -220,20 +218,11 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
   const [loadingResumen, setLoadingResumen] = useState(false);
   const [cobros, setCobros] = useState<CobroEditable[]>([]);
 
-  // ── Paso 2: rendición ──
-  const [totalRecibido, setTotalRecibido] = useState('');
-  const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO');
-  const [cajas, setCajas] = useState<CajaUnificada[]>([]);
-  const [loadingCajas, setLoadingCajas] = useState(false);
-  const [cajaSeleccionada, setCajaSeleccionada] = useState<CajaUnificada | null>(null);
-  const [comprobante, setComprobante] = useState('');
+  // ── Paso 2: rendición multi-forma ──
+  const [lineasPayload, setLineasPayload] = useState<RendicionLineasPayload>({
+    detalles: [], totalArs: 0, totalUsd: 0, valid: false,
+  });
   const [observaciones, setObservaciones] = useState('');
-
-  // ── Dólares ──
-  const [totalRecibidoDolares, setTotalRecibidoDolares] = useState('');
-  const [cajasUsd, setCajasUsd] = useState<CajaUnificada[]>([]);
-  const [cajaUsdSeleccionada, setCajaUsdSeleccionada] = useState<CajaUnificada | null>(null);
-  const [loadingCajasUsd, setLoadingCajasUsd] = useState(false);
   const [totalDolaresDeclarado, setTotalDolaresDeclarado] = useState(0);
 
   // ── Submit ──
@@ -248,14 +237,8 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
     setResumen(null);
     setRendicionCreada(null);
     setErrorSubmit(null);
-    setTotalRecibido('');
-    setComprobante('');
     setObservaciones('');
-    setCajaSeleccionada(null);
-    setMetodoPago('EFECTIVO');
-
-    setTotalRecibidoDolares('');
-    setCajaUsdSeleccionada(null);
+    setLineasPayload({ detalles: [], totalArs: 0, totalUsd: 0, valid: false });
     setTotalDolaresDeclarado(0);
 
     setLoadingResumen(true);
@@ -278,38 +261,6 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
       .catch(() => setErrorSubmit('No se pudo cargar el resumen de cobros'))
       .finally(() => setLoadingResumen(false));
   }, [open, viaje]);
-
-  // ── Cajas ARS según método de rendición ──
-  useEffect(() => {
-    if (!open || step !== 1) return;
-    setCajaSeleccionada(null);
-    setCajas([]);
-    setLoadingCajas(true);
-    cajasApi.getByMetodoPago(metodoPago)
-      .then((lista) => {
-        setCajas(lista);
-        const def = lista.find(c => cajaEsDefaultPara(c, metodoPago)) ?? lista[0] ?? null;
-        setCajaSeleccionada(def);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingCajas(false));
-  }, [metodoPago, open, step]);
-
-  // ── Cajas USD (solo si el viaje tuvo cobros en dólares) ──
-  useEffect(() => {
-    if (!open || step !== 1 || totalDolaresDeclarado <= 0) return;
-    setCajaUsdSeleccionada(null);
-    setCajasUsd([]);
-    setLoadingCajasUsd(true);
-    cajasApi.getByMetodoPago('DOLARES' as MetodoPago)
-      .then((lista) => {
-        setCajasUsd(lista);
-        const def = lista.find(c => c.moneda === 'USD') ?? lista[0] ?? null;
-        setCajaUsdSeleccionada(def);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingCajasUsd(false));
-  }, [open, step, totalDolaresDeclarado]);
 
   // ── Handlers paso 1 ──
 
@@ -359,20 +310,18 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
 
   // ── Handlers paso 2 ──
 
-  const totalRecibidoNum = parseFloat(totalRecibido.replace(',', '.')) || 0;
+  const totalRecibidoNum = lineasPayload.totalArs;
   const diferencia = totalRecibidoNum - totalValidado;
   const hayDiferencia = Math.abs(diferencia) > 0.01;
 
-  const totalRecibidoDolaresNum = parseFloat(totalRecibidoDolares.replace(',', '.')) || 0;
-  const hayDolares = totalDolaresDeclarado > 0;
+  const totalRecibidoDolaresNum = lineasPayload.totalUsd;
+  const hayDolares = totalDolaresDeclarado > 0 || totalRecibidoDolaresNum > 0;
+  const difDolares = totalRecibidoDolaresNum - totalDolaresDeclarado;
 
   const canSubmit =
     !submitting &&
-    totalRecibidoNum >= 0 &&
-    totalRecibido !== '' &&
-    cajaSeleccionada !== null &&
-    // Si hay dólares declarados, exigir monto y caja USD
-    (!hayDolares || (totalRecibidoDolares !== '' && cajaUsdSeleccionada !== null));
+    lineasPayload.valid &&
+    lineasPayload.detalles.length > 0;
 
   const handleSubmit = async () => {
     if (!viaje || !canSubmit) return;
@@ -380,16 +329,8 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
     setErrorSubmit(null);
     try {
       const result = await viajeApi.rendir(viaje.id, {
-        totalRecibido: totalRecibidoNum,
-        cajaPesosId: cajaSeleccionada?.tipo === 'PESOS' ? cajaSeleccionada.id : null,
-        cajaAhorroId: cajaSeleccionada?.tipo === 'AHORRO' ? cajaSeleccionada.id : null,
-        metodoPagoRendicion: metodoPago,
-        comprobanteRendicion: comprobante || undefined,
+        detalles: lineasPayload.detalles,
         observaciones: observaciones || undefined,
-        ...(hayDolares && {
-          totalRecibidoDolares: totalRecibidoDolaresNum,
-          cajaAhorroDolaresId: cajaUsdSeleccionada?.id ?? null,
-        }),
       });
       setRendicionCreada(result);
       onSuccess();
@@ -520,79 +461,46 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
       </Typography>
 
       <Stack spacing={2}>
-        <TextField
-          label="Monto recibido del conductor"
-          type="number"
-          value={totalRecibido}
-          onChange={(e) => setTotalRecibido(e.target.value)}
-          fullWidth
-          size="small"
-          InputProps={{
-            startAdornment: <InputAdornment position="start">$</InputAdornment>,
-          }}
-          helperText={
-            totalRecibido && hayDiferencia
-              ? diferencia > 0
-                ? `Excedente: ${fmt(diferencia)}`
-                : `Faltante: ${fmt(Math.abs(diferencia))}`
-              : totalRecibido
-              ? 'Monto coincide exactamente ✓'
-              : 'Ingresá el total contado físicamente'
-          }
-          FormHelperTextProps={{
-            sx: {
-              color: !totalRecibido
-                ? 'text.secondary'
-                : hayDiferencia
-                ? 'warning.main'
-                : 'success.main',
-            },
-          }}
-        />
+        {/* Líneas multi-forma: cada una a su caja (efectivo, dólares, cheque, transferencia…) */}
+        <RendicionLineas onChange={setLineasPayload} />
 
-        <FormControl size="small" fullWidth>
-          <InputLabel>Método de pago</InputLabel>
-          <Select
-            value={metodoPago}
-            label="Método de pago"
-            onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
-          >
-            {METODOS_RENDICION.map((m) => (
-              <MenuItem key={m} value={m}>{METODO_PAGO_LABELS[m]}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {/* Totales calculados a partir de las líneas */}
+        <Card variant="outlined" sx={{ bgcolor: 'grey.50' }}>
+          <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="subtitle2">Total recibido (ARS)</Typography>
+              <Typography variant="h6" fontWeight={700}>{fmt(totalRecibidoNum)}</Typography>
+            </Box>
+            <Typography
+              variant="caption"
+              sx={{ color: hayDiferencia ? 'warning.main' : 'success.main' }}
+            >
+              {hayDiferencia
+                ? diferencia > 0
+                  ? `Excedente vs. declarado: ${fmt(diferencia)}`
+                  : `Faltante vs. declarado: ${fmt(Math.abs(diferencia))}`
+                : 'Coincide con el total declarado ✓'}
+            </Typography>
 
-        <FormControl size="small" fullWidth disabled={loadingCajas || cajas.length === 0}>
-          <InputLabel>Caja destino</InputLabel>
-          <Select
-            value={cajaSeleccionada?.id ?? ''}
-            label="Caja destino"
-            onChange={(e) => {
-              const found = cajas.find(c => c.id === Number(e.target.value)) ?? null;
-              setCajaSeleccionada(found);
-            }}
-          >
-            {cajas.map((c) => (
-              <MenuItem key={c.id} value={c.id}>
-                {c.nombre}
-                {cajaEsDefaultPara(c, metodoPago) && (
-                  <Typography component="span" variant="caption" color="text.secondary" ml={0.5}>
-                    (default)
+            {hayDolares && (
+              <Box display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: 'success.dark' }}>
+                    Total recibido (USD)
                   </Typography>
-                )}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          label="N° comprobante / recibo (opcional)"
-          value={comprobante}
-          onChange={(e) => setComprobante(e.target.value)}
-          fullWidth
-          size="small"
-        />
+                  <Typography variant="caption" color="text.secondary">
+                    Declarado: U$D {totalDolaresDeclarado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    {Math.abs(difDolares) > 0.01 &&
+                      ` · Diferencia: U$D ${Math.abs(difDolares).toFixed(2)}`}
+                  </Typography>
+                </Box>
+                <Typography variant="h6" fontWeight={700} color="success.dark">
+                  U$D {totalRecibidoDolaresNum.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
 
         <TextField
           label="Observaciones (opcional)"
@@ -604,68 +512,12 @@ const RendicionDialog: React.FC<Props> = ({ open, viaje, onClose, onSuccess }) =
           rows={2}
         />
 
-        {totalRecibido && hayDiferencia && (
+        {hayDiferencia && (
           <Alert severity="warning" icon={<WarningIcon fontSize="small" />}>
             Hay una diferencia de <strong>{fmt(Math.abs(diferencia))}</strong>{' '}
             {diferencia > 0 ? '(conductor trajo de más)' : '(conductor trajo de menos)'}.
             La rendición quedará marcada como <strong>CON DIFERENCIA</strong>.
           </Alert>
-        )}
-
-        {/* ── Sección USD (solo si hubo cobros en dólares) ── */}
-        {hayDolares && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" mb={1} sx={{ color: 'success.dark' }}>
-              💵 Cobros en dólares
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
-              El conductor declaró U$D {totalDolaresDeclarado.toLocaleString('es-AR', { minimumFractionDigits: 2 })} en cobros en dólares.
-            </Typography>
-
-            <TextField
-              label="Dólares recibidos (USD)"
-              type="number"
-              value={totalRecibidoDolares}
-              onChange={(e) => setTotalRecibidoDolares(e.target.value)}
-              fullWidth
-              size="small"
-              required
-              InputProps={{
-                startAdornment: <InputAdornment position="start">U$D</InputAdornment>,
-              }}
-              helperText={
-                totalRecibidoDolares
-                  ? Math.abs(totalRecibidoDolaresNum - totalDolaresDeclarado) > 0.01
-                    ? `Diferencia: U$D ${Math.abs(totalRecibidoDolaresNum - totalDolaresDeclarado).toFixed(2)}`
-                    : 'Coincide exactamente ✓'
-                  : 'Ingresá los dólares contados físicamente'
-              }
-              FormHelperTextProps={{
-                sx: {
-                  color: !totalRecibidoDolares ? 'text.secondary'
-                    : Math.abs(totalRecibidoDolaresNum - totalDolaresDeclarado) > 0.01 ? 'warning.main'
-                    : 'success.main',
-                },
-              }}
-            />
-
-            <FormControl size="small" fullWidth disabled={loadingCajasUsd || cajasUsd.length === 0} sx={{ mt: 1.5 }}>
-              <InputLabel>Caja destino USD</InputLabel>
-              <Select
-                value={cajaUsdSeleccionada?.id ?? ''}
-                label="Caja destino USD"
-                onChange={(e) => {
-                  const found = cajasUsd.find(c => c.id === Number(e.target.value)) ?? null;
-                  setCajaUsdSeleccionada(found);
-                }}
-              >
-                {cajasUsd.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </>
         )}
       </Stack>
     </Box>

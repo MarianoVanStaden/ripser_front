@@ -19,6 +19,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material';
 import {
   Download as DownloadIcon,
   FactCheck as FactCheckIcon,
@@ -77,12 +78,38 @@ const ChecklistsViajePage: React.FC = () => {
 
   const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleString() : '—');
 
+  const total = rows.length;
+  const completos = rows.filter((r) => r.completado).length;
+  const incompletos = total - completos;
+
+  const incompletosSx: SxProps<Theme> =
+    incompletos === 0
+      ? { bgcolor: 'success.light', color: 'success.dark' }
+      : incompletos <= 3
+        ? { bgcolor: 'warning.light', color: 'warning.dark' }
+        : { bgcolor: 'error.light', color: 'error.dark' };
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
       <Box display="flex" alignItems="center" gap={1.5} sx={{ mb: 2 }}>
         <FactCheckIcon color="primary" />
         <Typography variant="h5" fontWeight={600}>Checklists de viaje</Typography>
       </Box>
+
+      {!loading && total > 0 && (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
+          {[
+            { label: 'Total', value: total, sx: { bgcolor: 'grey.100', color: 'text.primary' } as SxProps<Theme> },
+            { label: 'Completos', value: completos, sx: { bgcolor: 'success.light', color: 'success.dark' } as SxProps<Theme> },
+            { label: 'Incompletos', value: incompletos, sx: incompletosSx },
+          ].map(({ label, value, sx }) => (
+            <Paper key={label} elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, textAlign: 'center', ...sx }}>
+              <Typography variant="h3" fontWeight={700} lineHeight={1}>{value}</Typography>
+              <Typography variant="body2" fontWeight={500} sx={{ mt: 0.5, opacity: 0.85 }}>{label}</Typography>
+            </Paper>
+          ))}
+        </Stack>
+      )}
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>

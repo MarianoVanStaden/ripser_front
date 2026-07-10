@@ -607,7 +607,7 @@ const FichaEquipoPage: React.FC = () => {
                 fontFamily: 'Arial, sans-serif',
                 color: '#000',
                 backgroundColor: '#fff',
-                border: `0.3mm solid ${COLORS.gray}`,
+                border: `0.3mm solid ${COLORS.black}`,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
