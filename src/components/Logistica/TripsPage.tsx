@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -7,10 +7,8 @@ import {
   Typography,
   Alert,
   IconButton,
-  TextField,
   Paper,
   Chip,
-  Autocomplete,
   FormControl,
   InputLabel,
   Select,
@@ -19,15 +17,10 @@ import {
   ListItem,
   ListItemText,
   TablePagination,
-  useTheme,
-  useMediaQuery,
   Stack,
   Divider,
   Fab,
   SwipeableDrawer,
-  Stepper,
-  Step,
-  StepLabel,
   Collapse,
   Badge,
   Tabs,
@@ -37,8 +30,6 @@ import {
   DialogContent,
   DialogActions,
   Tooltip,
-  ToggleButton,
-  ToggleButtonGroup,
   CircularProgress,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
@@ -58,15 +49,11 @@ import {
   Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  KeyboardArrowLeft as BackIcon,
-  KeyboardArrowRight as NextIcon,
   ErrorOutline as ErrorOutlineIcon,
-  InfoOutlined as InfoOutlinedIcon,
-  WarningAmber as WarningAmberIcon,
   AttachMoney as AttachMoneyIcon,
   AccountBalanceWallet as WalletIcon,
 } from '@mui/icons-material';
-import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, EstadoEntrega, DocumentoComercial, Cliente, OrdenServicio, ResumenFinancieroViaje } from '../../types';
+import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, DocumentoComercial, Cliente, OrdenServicio, ResumenFinancieroViaje } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import RendicionDialog from './RendicionDialog';
@@ -82,119 +69,15 @@ import { clienteApi } from '../../api/services/clienteApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 import type { EquipoFabricadoDTO } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-
-// Etiquetas legibles para el motivo de una parada libre (sin factura ni OS)
-const TIPO_PARADA_LABELS: Record<string, string> = {
-  GARANTIA: 'Garantía',
-  RETIRO_MATERIA_PRIMA: 'Retiro de materia prima',
-  OTRO: 'Otra parada',
-};
-const tipoParadaLabel = (tipo?: string | null): string =>
-  (tipo && TIPO_PARADA_LABELS[tipo]) || 'Parada';
-
-// Custom hook for responsive breakpoints
-const useResponsive = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md')); // 600-899px
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md')); // >= 900px
-  return { isMobile, isTablet, isDesktop };
-};
-
-// Bottom Sheet component for mobile dialogs
-interface BottomSheetProps {
-  open: boolean;
-  onClose: () => void;
-  onOpen?: () => void;
-  title: string;
-  children: React.ReactNode;
-  actions?: React.ReactNode;
-}
-
-const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, onOpen, title, children, actions }) => {
-  const { isMobile } = useResponsive();
-
-  if (!isMobile) {
-    return null; // Use regular dialog for non-mobile
-  }
-
-  return (
-    <SwipeableDrawer
-      anchor="bottom"
-      open={open}
-      onClose={onClose}
-      onOpen={onOpen || (() => {})}
-      disableSwipeToOpen
-      PaperProps={{
-        sx: {
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          maxHeight: '95vh',
-          minHeight: '50vh',
-        },
-      }}
-    >
-      {/* Handle indicator */}
-      <Box
-        sx={{
-          width: 40,
-          height: 4,
-          bgcolor: 'grey.300',
-          borderRadius: 2,
-          mx: 'auto',
-          mt: 1.5,
-          mb: 1,
-        }}
-      />
-
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 2,
-          py: 1,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          position: 'sticky',
-          top: 0,
-          bgcolor: 'background.paper',
-          zIndex: 1,
-        }}
-      >
-        <Typography variant="h6">{title}</Typography>
-        <IconButton onClick={onClose} edge="end">
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
-      {/* Content */}
-      <Box sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
-        {children}
-      </Box>
-
-      {/* Actions - sticky at bottom */}
-      {actions && (
-        <Box
-          sx={{
-            p: 2,
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-            position: 'sticky',
-            bottom: 0,
-          }}
-        >
-          {actions}
-        </Box>
-      )}
-    </SwipeableDrawer>
-  );
-};
-
-// Wizard steps for mobile trip creation
-const wizardSteps = ['Información', 'Entregas', 'Confirmar'];
+import {
+  useResponsive,
+  tipoParadaLabel,
+  entregaEstimadaInfo as entregaEstimadaInfoBase,
+  renderEntregaEstimada as renderEntregaEstimadaBase,
+} from './tripWizard/tripWizardShared';
+import { BottomSheet } from './tripWizard/TripBottomSheet';
+import { useTripWizard } from './tripWizard/useTripWizard';
+import TripWizardDialog from './tripWizard/TripWizardDialog';
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 const fmt = (n?: number | null) =>
@@ -604,7 +487,6 @@ const TripsPage2: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [editingTrip, setEditingTrip] = useState<Viaje | null>(null);
   const [tripToDelete, setTripToDelete] = useState<Viaje | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Viaje | null>(null);
@@ -615,9 +497,6 @@ const TripsPage2: React.FC = () => {
   // Rendición de viaje
   const [rendicionDialogViaje, setRendicionDialogViaje] = useState<Viaje | null>(null);
   const [cerrandoViajeId, setCerrandoViajeId] = useState<number | null>(null);
-
-  // Wizard state for mobile
-  const [activeStep, setActiveStep] = useState(0);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoViaje>('all');
@@ -632,16 +511,6 @@ const TripsPage2: React.FC = () => {
   // Details tab state
   const [detailsTab, setDetailsTab] = useState(0);
 
-  // Modal de aviso al seleccionar vehículo no DISPONIBLE
-  const [vehiculoEstadoDialog, setVehiculoEstadoDialog] = useState<{
-    open: boolean;
-    vehiculo: Vehiculo | null;
-    severity: 'info' | 'error';
-  }>({ open: false, vehiculo: null, severity: 'info' });
-
-  // Modal "vehículo ya en uso por otro viaje"
-  const [vehicleInUseDialogOpen, setVehicleInUseDialogOpen] = useState(false);
-
   // Modal de error al cambiar estado del viaje (e.g. equipo no COMPLETADO)
   const [changeEstadoErrorDialog, setChangeEstadoErrorDialog] = useState<{
     open: boolean;
@@ -655,53 +524,20 @@ const TripsPage2: React.FC = () => {
   // Checklist de pre-viaje: obligatorio antes de iniciar. Al completarse, se inicia el viaje.
   const [checklistTrip, setChecklistTrip] = useState<Viaje | null>(null);
 
-  // Form data
-  const [formData, setFormData] = useState({
-    fechaViaje: '',
-    destino: '',
-    conductorId: '',
-    acompananteId: '',
-    vehiculoId: '',
-    facturaId: '',
-    estado: 'PLANIFICADO' as EstadoViaje,
-    observaciones: '',
+  // Wizard de creación/edición de viajes: todo el estado, catálogos y lógica
+  // del formulario viven en useTripWizard; TripsPage sólo controla la apertura
+  // del diálogo y le pasa sus catálogos ya cargados para evitar refetch.
+  const wizard = useTripWizard({
+    onSaved: async (_viaje, entregaErrors) => {
+      await loadData();
+      setDialogOpen(false);
+      if (entregaErrors.length > 0) {
+        setError(`Viaje guardado, pero hubo errores en algunas entregas:\n${entregaErrors.join('\n')}`);
+      }
+    },
+    onError: (msg) => setError(msg),
+    catalogos: { vehiculos: vehicles, drivers, facturas, ordenes, clientes, deliveries, trips },
   });
-
-  // Listas filtradas por rol de transporte. `drivers` mantiene TODOS los
-  // empleados (para resolver nombres en la grilla); los selectores de viaje
-  // muestran sólo los habilitados como conductor / acompañante.
-  const conductores = useMemo(() => drivers.filter(d => d.esConductor), [drivers]);
-  const acompanantes = useMemo(() => drivers.filter(d => d.esAcompanante), [drivers]);
-
-  // Un empleado no puede ser conductor y acompañante del mismo viaje: cada
-  // selector excluye al ya elegido en el otro.
-  const conductoresDisponibles = useMemo(
-    () => conductores.filter(d => d.id.toString() !== formData.acompananteId),
-    [conductores, formData.acompananteId],
-  );
-  const acompanantesDisponibles = useMemo(
-    () => acompanantes.filter(d => d.id.toString() !== formData.conductorId),
-    [acompanantes, formData.conductorId],
-  );
-
-  // Deliveries for current trip
-  type DeliveryFormState = Partial<EntregaViaje> & {
-    fechaProgramada?: string;
-    facturaId?: number;
-    factura?: DocumentoComercial;
-  };
-  const [tripDeliveries, setTripDeliveries] = useState<DeliveryFormState[]>([]);
-  const [newDelivery, setNewDelivery] = useState({
-    tipoEntrega: 'FACTURA' as 'FACTURA' | 'ORDEN_SERVICIO' | 'PARADA_LIBRE',
-    direccionEntrega: '',
-    fechaProgramada: '',
-    observaciones: '',
-    facturaId: '',
-    ordenServicioId: '',
-    tipoParada: 'GARANTIA' as 'GARANTIA' | 'RETIRO_MATERIA_PRIMA' | 'OTRO',
-  });
-  const [selectedDeliveryFactura, setSelectedDeliveryFactura] = useState<DocumentoComercial | null>(null);
-  const [selectedDeliveryOrden, setSelectedDeliveryOrden] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -840,21 +676,6 @@ const TripsPage2: React.FC = () => {
     .filter(trip => statusFilter === 'all' || trip.estado === statusFilter)
     .sort((a, b) => b.id - a.id);
 
-  // Facturas ya asignadas a alguna entrega (excluir las del viaje en edición)
-  const facturasAsignadasIds = new Set(
-    deliveries
-      .filter(d => !editingTrip || d.viajeId !== editingTrip.id)
-      .map(d => (d as any).documentoComercialId ?? (d as any).documentoComercial?.id ?? (d as any).ventaId)
-      .filter((id): id is number => id != null)
-  );
-  // También excluir las ya agregadas en el form actual
-  const facturasEnFormIds = new Set(
-    tripDeliveries.map(d => d.facturaId).filter((id): id is number => id != null)
-  );
-  const facturasDisponibles = facturas.filter(
-    f => !facturasAsignadasIds.has(f.id) && !facturasEnFormIds.has(f.id)
-  );
-
   const paginatedTrips = filteredTrips.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -869,161 +690,13 @@ const TripsPage2: React.FC = () => {
     setPage(0);
   };
 
-  // El tipo Viaje declara vehiculoId/conductorId como `number`, pero en
-  // producción aparecen viajes con esos campos en null (data migrada o legacy).
-  // Guardamos defensivamente con `?.toString()` para no crashear en helpers
-  // que iteran todos los viajes.
-  const isVehicleInUse = (vehicleId: string): boolean => {
-    return trips.some(trip =>
-      trip.vehiculoId?.toString() === vehicleId &&
-      trip.estado === 'EN_CURSO'
-    );
-  };
-
-  const getTripUsingVehicle = (vehicleId: string): Viaje | undefined => {
-    return trips.find(trip =>
-      trip.vehiculoId?.toString() === vehicleId &&
-      trip.estado === 'EN_CURSO'
-    );
-  };
-
-  const VEHICULO_ESTADO_LABEL: Record<string, string> = {
-    DISPONIBLE: 'Disponible',
-    EN_USO: 'En uso',
-    MANTENIMIENTO: 'En mantenimiento',
-    FUERA_SERVICIO: 'Fuera de servicio',
-  };
-
-  const VEHICULO_ESTADO_COLOR: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
-    DISPONIBLE: 'success',
-    EN_USO: 'warning',
-    MANTENIMIENTO: 'warning',
-    FUERA_SERVICIO: 'error',
-  };
-
-  const getSelectedVehicle = (vehicleId: string): Vehiculo | undefined =>
-    vehicles.find(v => v.id.toString() === vehicleId);
-
-  const renderVehiculoEstadoChip = (estado?: string) => {
-    if (!estado) return null;
-    return (
-      <Chip
-        size="small"
-        label={VEHICULO_ESTADO_LABEL[estado] || estado}
-        color={VEHICULO_ESTADO_COLOR[estado] || 'default'}
-        variant="outlined"
-      />
-    );
-  };
-
-  // Arma "calle, ciudad" desde un Cliente (formato compatible con Google Maps).
-  const buildDireccionFromCliente = (cliente: Cliente | null | undefined): string => {
-    if (!cliente) return '';
-    const partes: string[] = [];
-    if (cliente.direccion) partes.push(cliente.direccion);
-    if (cliente.ciudad) partes.push(cliente.ciudad);
-    return partes.join(', ');
-  };
-
-  // Selecciona una factura para una entrega nueva: autocompleta dirección
-  // (direccion + ciudad del cliente). Si el cliente no está en el cache local,
-  // lo trae por API. El campo queda editable por el usuario.
-  const handleSelectFacturaForDelivery = async (factura: DocumentoComercial | null) => {
-    setSelectedDeliveryFactura(factura);
-
-    if (!factura) {
-      setNewDelivery(prev => ({ ...prev, facturaId: '', direccionEntrega: '', tipoEntrega: 'FACTURA', ordenServicioId: '' }));
-      return;
-    }
-
-    const facturaIdStr = factura.id.toString();
-    let cliente = factura.clienteId
-      ? clientes.find(c => c.id === factura.clienteId)
-      : undefined;
-
-    // Pre-fill con lo que tengamos en cache (puede ser "")
-    setNewDelivery(prev => ({
-      ...prev,
-      facturaId: facturaIdStr,
-      direccionEntrega: buildDireccionFromCliente(cliente),
-    }));
-
-    // Si no hay cliente en cache, traerlo por API y completar la dirección.
-    if (!cliente && factura.clienteId) {
-      try {
-        const fetched = await clienteApi.getById(factura.clienteId);
-        cliente = fetched;
-        // Cachearlo para próximas selecciones
-        setClientes(prev => (prev.some(c => c.id === fetched.id) ? prev : [...prev, fetched]));
-        // Solo sobrescribir si el usuario no editó manualmente todavía.
-        setNewDelivery(prev =>
-          prev.facturaId === facturaIdStr && !prev.direccionEntrega
-            ? { ...prev, direccionEntrega: buildDireccionFromCliente(fetched) }
-            : prev
-        );
-      } catch {
-        // si falla, dejamos el campo vacío para que el usuario lo escriba.
-      }
-    }
-  };
-
-  // Selecciona un vehículo. Para PLANIFICADO se muestra un Alert info inline
-  // bajo el selector; para EN_CURSO con vehículo no DISPONIBLE se mantiene el
-  // dialog de error bloqueante.
-  const handleSelectVehicle = (vehiculo: Vehiculo | null) => {
-    setFormData(prev => ({ ...prev, vehiculoId: vehiculo?.id.toString() || '' }));
-    if (vehiculo && vehiculo.estado !== 'DISPONIBLE' && formData.estado === 'EN_CURSO') {
-      setVehiculoEstadoDialog({
-        open: true,
-        vehiculo,
-        severity: 'error',
-      });
-    }
-  };
-
   const handleAdd = () => {
-    setEditingTrip(null);
-    setSelectedDeliveryFactura(null);
-    setFormData({
-      fechaViaje: '',
-      destino: '',
-      conductorId: '',
-      acompananteId: '',
-      vehiculoId: '',
-      facturaId: '',
-      estado: 'PLANIFICADO',
-      observaciones: '',
-    });
-    setTripDeliveries([]);
-    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '', tipoParada: 'GARANTIA' });
-    setActiveStep(0);
+    wizard.startCreate();
     setDialogOpen(true);
   };
 
   const handleEdit = async (trip: Viaje) => {
-    setEditingTrip(trip);
-    setFormData({
-      fechaViaje: trip.fechaViaje.slice(0, 16),
-      destino: trip.destino,
-      // conductorId/vehiculoId vienen como null en viajes legacy (a pesar del
-      // tipo). Sin el guard, el botón Editar crashea con
-      // "Cannot read properties of null (reading 'toString')". Ver Sentry 3e4bac…
-      conductorId: trip.conductorId?.toString() ?? '',
-      acompananteId: trip.acompananteId?.toString() ?? '',
-      vehiculoId: trip.vehiculoId?.toString() ?? '',
-      facturaId: '',
-      estado: trip.estado,
-      observaciones: trip.observaciones || '',
-    });
-
-    try {
-      const existingDeliveries = await entregaViajeApi.getByViaje(trip.id);
-      setTripDeliveries(existingDeliveries);
-    } catch (err) {
-      setTripDeliveries([]);
-    }
-    setNewDelivery({ tipoEntrega: 'FACTURA', direccionEntrega: '', fechaProgramada: '', observaciones: '', facturaId: '', ordenServicioId: '', tipoParada: 'GARANTIA' });
-    setActiveStep(0);
+    await wizard.startEdit(trip);
     setDialogOpen(true);
   };
 
@@ -1056,155 +729,6 @@ const TripsPage2: React.FC = () => {
         setResumenFinancieroMap(prev => ({ ...prev, [trip.id]: null }));
       }
     }
-  };
-
-  const handleSave = async () => {
-    // Un viaje no puede guardarse vacío: debe tener al menos una entrega con
-    // factura u orden de servicio (sea recién agregada o ya persistida al editar).
-    const tieneEntrega = tripDeliveries.some(d =>
-      d.facturaId != null ||
-      d.ordenServicioId != null ||
-      (d as any).documentoComercialId != null ||
-      (d as any).documentoComercial?.id != null ||
-      (d as any).ordenServicio?.id != null ||
-      (d as any).tipoParada != null
-    );
-    if (!tieneEntrega) {
-      setError('El viaje debe tener al menos una entrega o parada asociada. Agregá una entrega o parada antes de guardar.');
-      return;
-    }
-
-    try {
-      const viajeData = {
-        fechaViaje: new Date(formData.fechaViaje).toISOString(),
-        destino: formData.destino,
-        // Conductor/vehículo/acompañante son opcionales: en PLANIFICADO pueden
-        // quedar sin asignar (null) y completarse cerca de la salida.
-        conductorId: formData.conductorId ? parseInt(formData.conductorId) : null,
-        acompananteId: formData.acompananteId ? parseInt(formData.acompananteId) : null,
-        vehiculoId: formData.vehiculoId ? parseInt(formData.vehiculoId) : null,
-        estado: formData.estado,
-        observaciones: formData.observaciones,
-      };
-
-      let savedTrip;
-      if (editingTrip) {
-        savedTrip = await viajeApi.update(editingTrip.id, viajeData);
-      } else {
-        savedTrip = await viajeApi.create(viajeData);
-      }
-
-      const entregaErrors: string[] = [];
-      for (const delivery of tripDeliveries) {
-        if (delivery.id) continue; // Skip already persisted deliveries
-
-        try {
-          const deliveryPayload: any = {
-            viajeId: savedTrip.id,
-            direccionEntrega: delivery.direccionEntrega || '',
-            fechaEntrega: delivery.fechaProgramada ? new Date(delivery.fechaProgramada).toISOString() : new Date().toISOString(),
-            observaciones: delivery.observaciones || '',
-            estado: 'PENDIENTE' as EstadoEntrega,
-          };
-
-          // Handle FACTURA, ORDEN_SERVICIO y PARADA_LIBRE (sin documento)
-          if (delivery.facturaId) {
-            deliveryPayload.documentoComercialId = delivery.facturaId;
-          } else if (delivery.ordenServicioId) {
-            deliveryPayload.ordenServicioId = delivery.ordenServicioId;
-          } else if (delivery.tipoParada) {
-            deliveryPayload.tipoParada = delivery.tipoParada;
-          } else {
-            continue; // Skip if neither factura, orden ni parada libre
-          }
-
-          await entregaViajeApi.create(deliveryPayload);
-        } catch (deliveryError: unknown) {
-          const msg = (deliveryError as any)?.response?.data?.message || (deliveryError as any)?.message || 'Error desconocido';
-          const label = delivery.factura?.numeroDocumento || (delivery.tipoParada ? tipoParadaLabel(delivery.tipoParada) : `OS-${delivery.ordenServicioId || 'sin-ref'}`);
-          entregaErrors.push(`${label}: ${msg}`);
-        }
-      }
-
-      await loadData();
-      setDialogOpen(false);
-      setTripDeliveries([]);
-
-      if (entregaErrors.length > 0) {
-        setError(`Viaje guardado, pero hubo errores en algunas entregas:\n${entregaErrors.join('\n')}`);
-      }
-    } catch (err) {
-      const error = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
-      let errorMessage = error.response?.data?.message || error.message || 'Error al guardar el viaje';
-
-      if (error.response?.status === 409 || errorMessage.toLowerCase().includes('ya está asignada') || errorMessage.toLowerCase().includes('already')) {
-        errorMessage = `Una o más facturas ya están asignadas a otro viaje. ${errorMessage}`;
-      } else if (errorMessage.includes('no está disponible')) {
-        errorMessage = 'El vehículo seleccionado no está disponible. Por favor, selecciona otro vehículo.';
-      } else if (error.response?.status === 403) {
-        errorMessage = 'No tienes permisos para crear viajes. Contacta al administrador.';
-      }
-
-      setError(errorMessage);
-    }
-  };
-
-  const handleAddDelivery = () => {
-    if (!newDelivery.direccionEntrega) {
-      setError('Debe ingresar una dirección de entrega');
-      return;
-    }
-
-    if (newDelivery.tipoEntrega === 'FACTURA' && !newDelivery.facturaId) {
-      setError('Debe seleccionar una factura');
-      return;
-    }
-
-    if (newDelivery.tipoEntrega === 'ORDEN_SERVICIO' && !newDelivery.ordenServicioId) {
-      setError('Debe seleccionar una orden de servicio');
-      return;
-    }
-
-    if (newDelivery.tipoEntrega === 'PARADA_LIBRE' && !newDelivery.tipoParada) {
-      setError('Debe seleccionar el motivo de la parada');
-      return;
-    }
-
-    const delivery: any = {
-      direccionEntrega: newDelivery.direccionEntrega,
-      fechaProgramada: newDelivery.fechaProgramada || formData.fechaViaje,
-      observaciones: newDelivery.observaciones,
-      estado: 'PENDIENTE',
-    };
-
-    if (newDelivery.tipoEntrega === 'FACTURA') {
-      delivery.facturaId = newDelivery.facturaId ? parseInt(newDelivery.facturaId) : undefined;
-      delivery.factura = selectedDeliveryFactura || undefined;
-    } else if (newDelivery.tipoEntrega === 'ORDEN_SERVICIO') {
-      delivery.ordenServicioId = newDelivery.ordenServicioId ? parseInt(newDelivery.ordenServicioId) : undefined;
-      delivery.ordenServicio = selectedDeliveryOrden || undefined;
-    } else {
-      // Parada libre: sin factura ni OS, sólo motivo
-      delivery.tipoParada = newDelivery.tipoParada;
-    }
-
-    setTripDeliveries([...tripDeliveries, delivery]);
-
-    setNewDelivery({
-      tipoEntrega: 'FACTURA',
-      direccionEntrega: '',
-      fechaProgramada: '',
-      observaciones: '',
-      facturaId: '',
-      ordenServicioId: '',
-      tipoParada: 'GARANTIA',
-    });
-    setSelectedDeliveryFactura(null);
-    setSelectedDeliveryOrden(null);
-  };
-
-  const handleRemoveDelivery = (index: number) => {
-    setTripDeliveries(tripDeliveries.filter((_, i) => i !== index));
   };
 
   const handleDelete = (id: number) => {
@@ -1304,24 +828,10 @@ const TripsPage2: React.FC = () => {
     return vehicle ? `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})` : 'N/A';
   };
 
-  // Info de entrega estimada a partir de la fecha de emisión de la factura:
-  // fecha estimada (emisión + días del parámetro), días transcurridos desde la
-  // emisión y días restantes hasta la estimada (negativo = atrasada).
-  const entregaEstimadaInfo = (fechaEmision?: string | null):
-    { fecha: string; transcurridos: number; restantes: number } | null => {
-    if (!fechaEmision) return null;
-    const base = new Date(fechaEmision);
-    if (isNaN(base.getTime())) return null;
-    const DIA_MS = 86400000;
-    const hoy = new Date();
-    // Contamos días calendario (normalizados a medianoche UTC).
-    const dBase = Date.UTC(base.getFullYear(), base.getMonth(), base.getDate());
-    const dHoy = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    const dEst = dBase + diasEntregaEstimada * DIA_MS;
-    const transcurridos = Math.max(0, Math.round((dHoy - dBase) / DIA_MS));
-    const restantes = Math.round((dEst - dHoy) / DIA_MS);
-    return { fecha: new Date(dEst).toLocaleDateString('es-AR'), transcurridos, restantes };
-  };
+  // Info de entrega estimada a partir de la fecha de emisión de la factura
+  // (cálculo compartido con el wizard, ligado al parámetro DIAS_ENTREGA_ESTIMADA).
+  const entregaEstimadaInfo = (fechaEmision?: string | null) =>
+    entregaEstimadaInfoBase(fechaEmision, diasEntregaEstimada);
 
   // Info estimada para una entrega: resuelve su factura (documentoComercialId).
   // Las entregas de orden de servicio no tienen factura → null.
@@ -1344,17 +854,7 @@ const TripsPage2: React.FC = () => {
 
   // Línea "Transcurridos X de N d · faltan/atrasada" reutilizable.
   const renderEntregaEstimada = (info: { fecha: string; transcurridos: number; restantes: number } | null) =>
-    info ? (
-      <>
-        <Typography variant="caption" color="info.main" display="block">
-          Entrega estimada: {info.fecha}
-        </Typography>
-        <Typography variant="caption" color={info.restantes < 0 ? 'error.main' : 'text.secondary'} display="block">
-          Transcurridos {info.transcurridos} de {diasEntregaEstimada} d ·{' '}
-          {info.restantes >= 0 ? `faltan ${info.restantes} d` : `atrasada ${Math.abs(info.restantes)} d`}
-        </Typography>
-      </>
-    ) : null;
+    renderEntregaEstimadaBase(info, diasEntregaEstimada);
 
   const getTripDeliveries = (tripId: number) => {
     return deliveries.filter(d => d.viajeId === tripId);
@@ -1410,482 +910,6 @@ const TripsPage2: React.FC = () => {
     ];
 
     return [...new Set(clienteNombres)];
-  };
-
-  // Wizard navigation
-  const handleNext = () => {
-    setActiveStep((prevStep) => Math.min(prevStep + 1, wizardSteps.length - 1));
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevStep) => Math.max(prevStep - 1, 0));
-  };
-
-  const canProceedStep1 = () => {
-    // PLANIFICADO puede crearse sin conductor/vehículo; sólo EN_CURSO los exige.
-    const baseOk = formData.destino && formData.fechaViaje;
-    if (formData.estado === 'EN_CURSO') {
-      return baseOk && formData.conductorId && formData.vehiculoId;
-    }
-    return baseOk;
-  };
-
-  // Render wizard step content
-  const renderWizardStep = () => {
-    switch (activeStep) {
-      case 0:
-        return (
-          <Stack spacing={2.5}>
-            <TextField
-              label="Destino"
-              value={formData.destino}
-              onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
-              fullWidth
-              required
-              size="medium"
-              placeholder="Ej: Buenos Aires"
-              InputProps={{ sx: { minHeight: 56 } }}
-            />
-
-            <Autocomplete
-              options={conductoresDisponibles}
-              getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              value={conductoresDisponibles.find(d => d.id.toString() === formData.conductorId) || null}
-              onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
-              renderOption={({ key: _key, ...props }, option) => (
-                <li key={option.id} {...props}>
-                  {`${option.nombre} ${option.apellido}`}
-                </li>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Conductor"
-                  size="medium"
-                  helperText={conductores.length === 0 ? 'No hay empleados marcados como conductor' : `${conductores.length} conductores`}
-                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
-                />
-              )}
-              noOptionsText="No hay conductores habilitados"
-            />
-
-            <Autocomplete
-              options={acompanantesDisponibles}
-              getOptionLabel={(emp) => `${emp.nombre} ${emp.apellido}`}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              value={acompanantesDisponibles.find(d => d.id.toString() === formData.acompananteId) || null}
-              onChange={(_, value) => setFormData({ ...formData, acompananteId: value?.id.toString() || '' })}
-              renderOption={({ key: _key, ...props }, option) => (
-                <li key={option.id} {...props}>
-                  {`${option.nombre} ${option.apellido}`}
-                </li>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Acompañante (opcional)"
-                  size="medium"
-                  helperText={acompanantes.length === 0 ? 'No hay empleados marcados como acompañante' : `${acompanantes.length} acompañantes`}
-                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
-                />
-              )}
-              noOptionsText="No hay acompañantes habilitados"
-            />
-
-            <Autocomplete
-              options={vehicles}
-              getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
-              value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
-              onChange={(_, value) => handleSelectVehicle(value)}
-              renderOption={({ key: _key, ...props }, option) => (
-                <li key={option.id} {...props}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
-                    <span>{`${option.marca} ${option.modelo} (${option.patente})`}</span>
-                    {renderVehiculoEstadoChip(option.estado)}
-                  </Box>
-                </li>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Vehículo"
-                  size="medium"
-                  helperText={vehicles.length === 0 ? 'No hay vehículos cargados' : `${vehicles.length} totales`}
-                  InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
-                />
-              )}
-              noOptionsText="No hay vehículos"
-            />
-
-            {formData.vehiculoId && isVehicleInUse(formData.vehiculoId) && (
-              <Box>
-                <Button
-                  size="small"
-                  variant="text"
-                  color="warning"
-                  onClick={() => setVehicleInUseDialogOpen(true)}
-                >
-                  Este vehículo está en uso por el Viaje #{getTripUsingVehicle(formData.vehiculoId)?.id}. Ver detalle
-                </Button>
-              </Box>
-            )}
-
-            {formData.vehiculoId &&
-              formData.estado === 'PLANIFICADO' &&
-              getSelectedVehicle(formData.vehiculoId) &&
-              getSelectedVehicle(formData.vehiculoId)!.estado !== 'DISPONIBLE' && (
-                <Alert severity="info">
-                  Este vehículo está actualmente en uso. Podrás iniciarlo cuando esté disponible.
-                </Alert>
-              )}
-
-            <TextField
-              label="Fecha y Hora"
-              type="datetime-local"
-              value={formData.fechaViaje}
-              onChange={(e) => setFormData({ ...formData, fechaViaje: e.target.value })}
-              fullWidth
-              required
-              size="medium"
-              InputLabelProps={{ shrink: true }}
-              InputProps={{ sx: { minHeight: 56 } }}
-            />
-
-            <TextField
-              label="Observaciones"
-              value={formData.observaciones}
-              onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-              fullWidth
-              multiline
-              rows={3}
-              size="medium"
-              placeholder="Notas adicionales..."
-            />
-          </Stack>
-        );
-
-      case 1:
-        return (
-          <Stack spacing={2}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Entregas agregadas: {tripDeliveries.length}
-            </Typography>
-
-            {tripDeliveries.length > 0 && (
-              <Stack spacing={1}>
-                {tripDeliveries.map((delivery, index) => (
-                  <Card key={index} variant="outlined">
-                    <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box flex={1}>
-                          <Typography variant="body2" fontWeight="medium">
-                            {delivery.direccionEntrega}
-                          </Typography>
-                          {delivery.factura && (
-                            <Chip
-                              label={delivery.factura.numeroDocumento}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              sx={{ mt: 0.5 }}
-                            />
-                          )}
-                          {(delivery as any).tipoParada && (
-                            <Chip
-                              label={tipoParadaLabel((delivery as any).tipoParada)}
-                              size="small"
-                              color="secondary"
-                              variant="outlined"
-                              sx={{ mt: 0.5 }}
-                            />
-                          )}
-                          {delivery.observaciones && (
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                              📝 {delivery.observaciones}
-                            </Typography>
-                          )}
-                        </Box>
-                        {!delivery.id && (
-                          <IconButton
-                            size="small"
-                            onClick={() => handleRemoveDelivery(index)}
-                            sx={{ ml: 1 }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Stack>
-            )}
-
-            <Divider />
-
-            <Typography variant="subtitle2">Agregar nueva entrega</Typography>
-
-            <ToggleButtonGroup
-              value={newDelivery.tipoEntrega}
-              exclusive
-              onChange={(_, value) => {
-                if (value) {
-                  setNewDelivery({
-                    ...newDelivery,
-                    tipoEntrega: value,
-                    facturaId: '',
-                    ordenServicioId: '',
-                  });
-                  setSelectedDeliveryFactura(null);
-                  setSelectedDeliveryOrden(null);
-                }
-              }}
-              fullWidth
-            >
-              <ToggleButton value="FACTURA" sx={{ flex: 1 }}>
-                Factura
-              </ToggleButton>
-              <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
-                Orden de Servicio
-              </ToggleButton>
-              <ToggleButton value="PARADA_LIBRE" sx={{ flex: 1 }}>
-                Otra parada
-              </ToggleButton>
-            </ToggleButtonGroup>
-
-            {newDelivery.tipoEntrega === 'PARADA_LIBRE' ? (
-              <TextField
-                select
-                label="Motivo de la parada"
-                value={newDelivery.tipoParada}
-                onChange={(e) => setNewDelivery({ ...newDelivery, tipoParada: e.target.value as typeof newDelivery.tipoParada })}
-                fullWidth
-                size="medium"
-                helperText="Parada sin factura ni orden de servicio (ej. garantía, retiro de materia prima)."
-                InputProps={{ sx: { minHeight: 56 } }}
-              >
-                <MenuItem value="GARANTIA">Garantía</MenuItem>
-                <MenuItem value="RETIRO_MATERIA_PRIMA">Retiro de materia prima</MenuItem>
-                <MenuItem value="OTRO">Otra parada</MenuItem>
-              </TextField>
-            ) : newDelivery.tipoEntrega === 'FACTURA' ? (
-              <>
-                <Autocomplete
-                  options={facturasDisponibles}
-                  getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
-                  value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
-                  onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
-                  renderOption={({ key, ...props }, factura) => {
-                    const info = entregaEstimadaInfo(factura.fechaEmision ?? (factura as any).fecha);
-                    return (
-                      <li key={key} {...props}>
-                        <Box sx={{ py: 0.5 }}>
-                          <Typography variant="body2" fontWeight="600">
-                            {factura.numeroDocumento} — {factura.clienteNombre}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {(factura as any).clienteCiudad ? `📍 ${(factura as any).clienteCiudad}  ·  ` : ''}
-                            ${factura.total.toLocaleString()}
-                            {info && (
-                              <Box component="span" sx={{ ml: 1, color: info.restantes < 0 ? 'error.main' : info.restantes <= 5 ? 'warning.main' : 'info.main', fontWeight: 600 }}>
-                                {info.restantes >= 0 ? `⏱ ${info.restantes}d` : `⚠ ${Math.abs(info.restantes)}d atraso`}
-                              </Box>
-                            )}
-                          </Typography>
-                        </Box>
-                      </li>
-                    );
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Factura"
-                      size="medium"
-                      placeholder="Buscar factura..."
-                      InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
-                    />
-                  )}
-                  noOptionsText="No hay facturas"
-                />
-
-                {selectedDeliveryFactura && (
-                  <Alert severity="info" sx={{ py: 1 }}>
-                    <Typography variant="caption" fontWeight="bold">
-                      {selectedDeliveryFactura.clienteNombre}
-                      {(selectedDeliveryFactura as any).clienteCiudad && (
-                        <Box component="span" sx={{ ml: 1, fontWeight: 400, color: 'text.secondary' }}>
-                          📍 {(selectedDeliveryFactura as any).clienteCiudad}
-                        </Box>
-                      )}
-                    </Typography>
-                    <Typography variant="caption" display="block">
-                      Total: ${selectedDeliveryFactura.total.toLocaleString()} | {selectedDeliveryFactura.detalles.length} items
-                    </Typography>
-                    {renderEntregaEstimada(entregaEstimadaInfo(selectedDeliveryFactura.fechaEmision ?? (selectedDeliveryFactura as any).fecha))}
-                  </Alert>
-                )}
-              </>
-            ) : (
-              <>
-                <Autocomplete
-                  options={ordenes.filter(o => !deliveries.some(d => (d as any).ordenServicioId === o.id))}
-                  getOptionLabel={(orden) => `${orden.numeroOrden} - ${orden.clienteNombre || 'Sin cliente'}`}
-                  value={ordenes.find(o => o.id.toString() === newDelivery.ordenServicioId) || null}
-                  onChange={(_, value) => {
-                    if (value) {
-                      setNewDelivery({
-                        ...newDelivery,
-                        ordenServicioId: value.id.toString(),
-                      });
-                      setSelectedDeliveryOrden(value);
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Orden de Servicio"
-                      size="medium"
-                      placeholder="Buscar orden..."
-                      InputProps={{ ...params.InputProps, sx: { minHeight: 56 } }}
-                    />
-                  )}
-                  noOptionsText="No hay órdenes FINALIZADA disponibles"
-                />
-
-                {selectedDeliveryOrden && (
-                  <Alert severity="info" sx={{ py: 1 }}>
-                    <Typography variant="caption" fontWeight="bold">
-                      {selectedDeliveryOrden.clienteNombre}
-                    </Typography>
-                    <Typography variant="caption" display="block">
-                      {selectedDeliveryOrden.numeroOrden}
-                    </Typography>
-                  </Alert>
-                )}
-              </>
-            )}
-
-            <TextField
-              label="Dirección de Entrega"
-              value={newDelivery.direccionEntrega}
-              onChange={(e) => setNewDelivery({ ...newDelivery, direccionEntrega: e.target.value })}
-              fullWidth
-              size="medium"
-              placeholder="Calle 123, Ciudad"
-              helperText="Se autocompleta con la dirección del cliente al elegir la factura. Editable."
-              InputProps={{ sx: { minHeight: 56 } }}
-            />
-
-            <TextField
-              label="Observaciones de entrega (opcional)"
-              value={newDelivery.observaciones}
-              onChange={(e) => setNewDelivery({ ...newDelivery, observaciones: e.target.value })}
-              fullWidth
-              size="medium"
-              multiline
-              rows={2}
-              placeholder="Notas para esta entrega..."
-            />
-
-            <TextField
-              label="Fecha Programada"
-              type="datetime-local"
-              value={newDelivery.fechaProgramada}
-              onChange={(e) => setNewDelivery({ ...newDelivery, fechaProgramada: e.target.value })}
-              fullWidth
-              size="medium"
-              InputLabelProps={{ shrink: true }}
-              InputProps={{ sx: { minHeight: 56 } }}
-            />
-
-            <Button
-              variant="outlined"
-              startIcon={<AddIcon />}
-              onClick={handleAddDelivery}
-              fullWidth
-              sx={{ minHeight: 48 }}
-            >
-              Agregar Entrega
-            </Button>
-          </Stack>
-        );
-
-      case 2:
-        return (
-          <Stack spacing={2}>
-            <Typography variant="h6">Resumen del Viaje</Typography>
-
-            <Card variant="outlined">
-              <CardContent>
-                <Stack spacing={1.5}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <LocationIcon color="action" fontSize="small" />
-                    <Typography variant="body2">
-                      <strong>Destino:</strong> {formData.destino}
-                    </Typography>
-                  </Box>
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <DriverIcon color="action" fontSize="small" />
-                    <Typography variant="body2">
-                      <strong>Conductor:</strong> {getDriverName(formData.conductorId ? parseInt(formData.conductorId) : null)}
-                    </Typography>
-                  </Box>
-
-                  {formData.acompananteId && (
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <DriverIcon color="action" fontSize="small" />
-                      <Typography variant="body2">
-                        <strong>Acompañante:</strong> {getAcompananteName(parseInt(formData.acompananteId))}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <TruckIcon color="action" fontSize="small" />
-                    <Typography variant="body2">
-                      <strong>Vehículo:</strong> {getVehicleInfo(formData.vehiculoId ? parseInt(formData.vehiculoId) : null)}
-                    </Typography>
-                  </Box>
-
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <ScheduleIcon color="action" fontSize="small" />
-                    <Typography variant="body2">
-                      <strong>Fecha:</strong> {formData.fechaViaje ? new Date(formData.fechaViaje).toLocaleString() : 'No definida'}
-                    </Typography>
-                  </Box>
-
-                  <Divider />
-
-                  <Typography variant="body2">
-                    <strong>Entregas:</strong> {tripDeliveries.length}
-                  </Typography>
-
-                  {tripDeliveries.map((delivery, idx) => (
-                    <Typography key={idx} variant="caption" color="text.secondary" sx={{ pl: 2 }}>
-                      • {delivery.direccionEntrega}
-                      {delivery.factura && ` (${delivery.factura.numeroDocumento})`}
-                    </Typography>
-                  ))}
-
-                  {formData.observaciones && (
-                    <>
-                      <Divider />
-                      <Typography variant="body2">
-                        <strong>Notas:</strong> {formData.observaciones}
-                      </Typography>
-                    </>
-                  )}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Stack>
-        );
-
-      default:
-        return null;
-    }
   };
 
   // Mobile Trip Card Component
@@ -2525,383 +1549,12 @@ const TripsPage2: React.FC = () => {
         </Fab>
       )}
 
-      {/* Mobile Bottom Sheet for Create/Edit */}
-      {isMobile && (
-        <BottomSheet
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          title={editingTrip ? 'Editar Viaje' : 'Nuevo Viaje'}
-          actions={
-            <Stack spacing={1.5}>
-              {/* Stepper */}
-              <Stepper activeStep={activeStep} alternativeLabel>
-                {wizardSteps.map((label) => (
-                  <Step key={label}>
-                    <StepLabel>{label}</StepLabel>
-                  </Step>
-                ))}
-              </Stepper>
-
-              {/* Navigation buttons */}
-              <Box display="flex" gap={1}>
-                <Button
-                  onClick={handleBack}
-                  disabled={activeStep === 0}
-                  startIcon={<BackIcon />}
-                  sx={{ flex: 1, minHeight: 48 }}
-                >
-                  Atrás
-                </Button>
-
-                {activeStep < wizardSteps.length - 1 ? (
-                  <Button
-                    variant="contained"
-                    onClick={handleNext}
-                    endIcon={<NextIcon />}
-                    disabled={activeStep === 0 && !canProceedStep1()}
-                    sx={{ flex: 1, minHeight: 48 }}
-                  >
-                    Siguiente
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="success"
-                    onClick={handleSave}
-                    sx={{ flex: 1, minHeight: 48 }}
-                  >
-                    {editingTrip ? 'Actualizar' : 'Crear Viaje'}
-                  </Button>
-                )}
-              </Box>
-            </Stack>
-          }
-        >
-          {renderWizardStep()}
-        </BottomSheet>
-      )}
-
-      {/* Desktop Dialog for Create/Edit */}
-      {!isMobile && (
-        <SwipeableDrawer
-          anchor="right"
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          onOpen={() => {}}
-          PaperProps={{
-            sx: { width: isTablet ? '80%' : 500 }
-          }}
-        >
-          <Box sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h6">
-                {editingTrip ? 'Editar Viaje' : 'Nuevo Viaje'}
-              </Typography>
-              <IconButton onClick={() => setDialogOpen(false)}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-
-            <Stack spacing={2.5}>
-              <TextField
-                label="Destino"
-                value={formData.destino}
-                onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
-                fullWidth
-                required
-              />
-
-              <Autocomplete
-                options={conductoresDisponibles}
-                getOptionLabel={(driver) => `${driver.nombre} ${driver.apellido}`}
-                isOptionEqualToValue={(a, b) => a.id === b.id}
-                value={conductoresDisponibles.find(d => d.id.toString() === formData.conductorId) || null}
-                onChange={(_, value) => setFormData({ ...formData, conductorId: value?.id.toString() || '' })}
-                renderOption={({ key: _key, ...props }, option) => (
-                  <li key={option.id} {...props}>
-                    {`${option.nombre} ${option.apellido}`}
-                  </li>
-                )}
-                renderInput={(params) => (
-                  <TextField {...params} label="Conductor"
-                    helperText={conductores.length === 0 ? 'No hay empleados marcados como conductor' : undefined} />
-                )}
-                noOptionsText="No hay conductores habilitados"
-              />
-
-              <Autocomplete
-                options={acompanantesDisponibles}
-                getOptionLabel={(emp) => `${emp.nombre} ${emp.apellido}`}
-                isOptionEqualToValue={(a, b) => a.id === b.id}
-                value={acompanantesDisponibles.find(d => d.id.toString() === formData.acompananteId) || null}
-                onChange={(_, value) => setFormData({ ...formData, acompananteId: value?.id.toString() || '' })}
-                renderOption={({ key: _key, ...props }, option) => (
-                  <li key={option.id} {...props}>
-                    {`${option.nombre} ${option.apellido}`}
-                  </li>
-                )}
-                renderInput={(params) => (
-                  <TextField {...params} label="Acompañante (opcional)"
-                    helperText={acompanantes.length === 0 ? 'No hay empleados marcados como acompañante' : undefined} />
-                )}
-                noOptionsText="No hay acompañantes habilitados"
-              />
-
-              <Autocomplete
-                options={vehicles}
-                getOptionLabel={(vehicle) => `${vehicle.marca} ${vehicle.modelo} (${vehicle.patente})`}
-                value={vehicles.find(v => v.id.toString() === formData.vehiculoId) || null}
-                onChange={(_, value) => handleSelectVehicle(value)}
-                renderOption={({ key: _key, ...props }, option) => (
-                  <li key={option.id} {...props}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" width="100%">
-                      <span>{`${option.marca} ${option.modelo} (${option.patente})`}</span>
-                      {renderVehiculoEstadoChip(option.estado)}
-                    </Box>
-                  </li>
-                )}
-                renderInput={(params) => (
-                  <TextField {...params} label="Vehículo" />
-                )}
-              />
-
-              {formData.vehiculoId &&
-                formData.estado === 'PLANIFICADO' &&
-                getSelectedVehicle(formData.vehiculoId) &&
-                getSelectedVehicle(formData.vehiculoId)!.estado !== 'DISPONIBLE' && (
-                  <Alert severity="info">
-                    Este vehículo está actualmente en uso. Podrás iniciarlo cuando esté disponible.
-                  </Alert>
-                )}
-
-              <TextField
-                label="Fecha y Hora"
-                type="datetime-local"
-                value={formData.fechaViaje}
-                onChange={(e) => setFormData({ ...formData, fechaViaje: e.target.value })}
-                fullWidth
-                required
-                InputLabelProps={{ shrink: true }}
-              />
-
-              <FormControl fullWidth>
-                <InputLabel>Estado</InputLabel>
-                <Select
-                  value={formData.estado}
-                  label="Estado"
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoViaje })}
-                >
-                  <MenuItem value="PLANIFICADO">Planificado</MenuItem>
-                  <MenuItem value="EN_CURSO">En Ruta</MenuItem>
-                  <MenuItem value="COMPLETADO">Completado</MenuItem>
-                  <MenuItem value="CANCELADO">Cancelado</MenuItem>
-                </Select>
-              </FormControl>
-
-              <TextField
-                label="Observaciones"
-                value={formData.observaciones}
-                onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                fullWidth
-                multiline
-                rows={3}
-              />
-
-              <Divider />
-
-              {/* Deliveries section */}
-              <Typography variant="subtitle1" fontWeight="bold">
-                Entregas ({tripDeliveries.length})
-              </Typography>
-
-              {tripDeliveries.map((delivery, index) => (
-                <Card key={index} variant="outlined">
-                  <CardContent sx={{ py: 1, px: 2 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                      <Box flex={1}>
-                        <Typography variant="body2">{delivery.direccionEntrega}</Typography>
-                        {delivery.factura && (
-                          <Chip
-                            label={delivery.factura.numeroDocumento}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                            sx={{ mt: 0.5 }}
-                          />
-                        )}
-                        {(delivery as any).ordenServicio && (
-                          <Chip
-                            label={(delivery as any).ordenServicio.numeroOrden}
-                            size="small"
-                            color="secondary"
-                            variant="outlined"
-                            sx={{ mt: 0.5 }}
-                          />
-                        )}
-                        {delivery.observaciones && (
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                            📝 {delivery.observaciones}
-                          </Typography>
-                        )}
-                      </Box>
-                      {!delivery.id && (
-                        <IconButton size="small" onClick={() => handleRemoveDelivery(index)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-
-              <ToggleButtonGroup
-                value={newDelivery.tipoEntrega}
-                exclusive
-                onChange={(_, value) => {
-                  if (value) {
-                    setNewDelivery({
-                      ...newDelivery,
-                      tipoEntrega: value,
-                      facturaId: '',
-                      ordenServicioId: '',
-                    });
-                  }
-                }}
-                fullWidth
-                size="small"
-              >
-                <ToggleButton value="FACTURA" sx={{ flex: 1 }}>
-                  Factura
-                </ToggleButton>
-                <ToggleButton value="ORDEN_SERVICIO" sx={{ flex: 1 }}>
-                  Orden de Servicio
-                </ToggleButton>
-                <ToggleButton value="PARADA_LIBRE" sx={{ flex: 1 }}>
-                  Otra parada
-                </ToggleButton>
-              </ToggleButtonGroup>
-
-              {newDelivery.tipoEntrega === 'PARADA_LIBRE' ? (
-                <TextField
-                  select
-                  label="Motivo de la parada"
-                  value={newDelivery.tipoParada}
-                  onChange={(e) => setNewDelivery({ ...newDelivery, tipoParada: e.target.value as typeof newDelivery.tipoParada })}
-                  fullWidth
-                  size="small"
-                  helperText="Parada sin factura ni orden de servicio (garantía, retiro de MP)."
-                >
-                  <MenuItem value="GARANTIA">Garantía</MenuItem>
-                  <MenuItem value="RETIRO_MATERIA_PRIMA">Retiro de materia prima</MenuItem>
-                  <MenuItem value="OTRO">Otra parada</MenuItem>
-                </TextField>
-              ) : newDelivery.tipoEntrega === 'FACTURA' ? (
-                <Autocomplete
-                  options={facturasDisponibles}
-                  getOptionLabel={(factura) => `${factura.numeroDocumento} - ${factura.clienteNombre}`}
-                  value={facturas.find(f => f.id.toString() === newDelivery.facturaId) || null}
-                  onChange={(_, value) => { void handleSelectFacturaForDelivery(value); }}
-                  renderOption={({ key, ...props }, factura) => {
-                    const info = entregaEstimadaInfo(factura.fechaEmision ?? (factura as any).fecha);
-                    return (
-                      <li key={key} {...props}>
-                        <Box sx={{ py: 0.25 }}>
-                          <Typography variant="body2" fontWeight="600">
-                            {factura.numeroDocumento} — {factura.clienteNombre}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {(factura as any).clienteCiudad ? `📍 ${(factura as any).clienteCiudad}  ·  ` : ''}
-                            ${factura.total.toLocaleString()}
-                            {info && (
-                              <Box component="span" sx={{ ml: 1, color: info.restantes < 0 ? 'error.main' : info.restantes <= 5 ? 'warning.main' : 'info.main', fontWeight: 600 }}>
-                                {info.restantes >= 0 ? `⏱ ${info.restantes}d` : `⚠ ${Math.abs(info.restantes)}d atraso`}
-                              </Box>
-                            )}
-                          </Typography>
-                        </Box>
-                      </li>
-                    );
-                  }}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Factura" size="small" />
-                  )}
-                />
-              ) : (
-                <Autocomplete
-                  options={ordenes.filter(o => !deliveries.some(d => (d as any).ordenServicioId === o.id) && !tripDeliveries.some(d => (d as any).ordenServicioId === o.id))}
-                  getOptionLabel={(orden) => `${orden.numeroOrden} - ${orden.clienteNombre || 'Sin cliente'}`}
-                  value={ordenes.find(o => o.id.toString() === newDelivery.ordenServicioId) || null}
-                  onChange={(_, value) => {
-                    if (value) {
-                      setNewDelivery({
-                        ...newDelivery,
-                        ordenServicioId: value.id.toString(),
-                      });
-                      setSelectedDeliveryOrden(value);
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Orden de Servicio"
-                      size="small"
-                      placeholder="Buscar orden..."
-                    />
-                  )}
-                  noOptionsText="No hay órdenes FINALIZADA disponibles"
-                />
-              )}
-
-              <TextField
-                label="Dirección de Entrega"
-                value={newDelivery.direccionEntrega}
-                onChange={(e) => setNewDelivery({ ...newDelivery, direccionEntrega: e.target.value })}
-                fullWidth
-                size="small"
-                placeholder="Calle 123, Ciudad"
-                helperText="Se autocompleta con la dirección del cliente al elegir la factura. Editable."
-              />
-
-              <TextField
-                label="Observaciones de entrega (opcional)"
-                value={newDelivery.observaciones}
-                onChange={(e) => setNewDelivery({ ...newDelivery, observaciones: e.target.value })}
-                fullWidth
-                size="small"
-                multiline
-                rows={2}
-                placeholder="Notas para esta entrega..."
-              />
-
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={handleAddDelivery}
-              >
-                Agregar Entrega
-              </Button>
-
-              <Divider />
-
-              <Box display="flex" gap={2}>
-                <Button
-                  onClick={() => setDialogOpen(false)}
-                  sx={{ flex: 1 }}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={handleSave}
-                  sx={{ flex: 1 }}
-                >
-                  {editingTrip ? 'Actualizar' : 'Crear'}
-                </Button>
-              </Box>
-            </Stack>
-          </Box>
-        </SwipeableDrawer>
-      )}
+      {/* Wizard de creación/edición de viajes (bottom sheet móvil + drawer desktop) */}
+      <TripWizardDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        wizard={wizard}
+      />
 
       {/* Details Bottom Sheet / Dialog */}
       {isMobile ? (
@@ -3278,96 +1931,6 @@ const TripsPage2: React.FC = () => {
           )}
         </SwipeableDrawer>
       )}
-
-      {/* Modal: vehículo seleccionado no está DISPONIBLE */}
-      <Dialog
-        open={vehiculoEstadoDialog.open}
-        onClose={() => setVehiculoEstadoDialog(prev => ({ ...prev, open: false }))}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 2 } }}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={2}>
-            {vehiculoEstadoDialog.severity === 'error'
-              ? <ErrorOutlineIcon sx={{ fontSize: 40, color: 'error.main' }} />
-              : <InfoOutlinedIcon sx={{ fontSize: 40, color: 'info.main' }} />}
-            <Box>
-              <Typography variant="h6" fontWeight={600}>
-                {vehiculoEstadoDialog.severity === 'error'
-                  ? 'Vehículo no disponible'
-                  : 'Vehículo en uso'}
-              </Typography>
-              {vehiculoEstadoDialog.vehiculo && (
-                <Typography variant="caption" color="text.secondary">
-                  {vehiculoEstadoDialog.vehiculo.marca} {vehiculoEstadoDialog.vehiculo.modelo} ({vehiculoEstadoDialog.vehiculo.patente})
-                </Typography>
-              )}
-            </Box>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            {vehiculoEstadoDialog.severity === 'error'
-              ? `El vehículo está ${VEHICULO_ESTADO_LABEL[vehiculoEstadoDialog.vehiculo?.estado || ''] || vehiculoEstadoDialog.vehiculo?.estado}. No se puede iniciar un viaje con un vehículo que no esté DISPONIBLE.`
-              : 'Este vehículo está en uso actualmente. Podés planificar el viaje, y podrá salir cuando esté libre.'}
-          </Typography>
-          {vehiculoEstadoDialog.vehiculo?.estado && (
-            <Box mt={2}>
-              <Typography variant="caption" color="text.secondary">Estado actual: </Typography>
-              {renderVehiculoEstadoChip(vehiculoEstadoDialog.vehiculo.estado)}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            variant="contained"
-            color={vehiculoEstadoDialog.severity === 'error' ? 'error' : 'primary'}
-            fullWidth
-            onClick={() => setVehiculoEstadoDialog(prev => ({ ...prev, open: false }))}
-          >
-            Entendido
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Modal: vehículo en uso por otro viaje */}
-      <Dialog
-        open={vehicleInUseDialogOpen}
-        onClose={() => setVehicleInUseDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 2 } }}
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={2}>
-            <WarningAmberIcon sx={{ fontSize: 40, color: 'warning.main' }} />
-            <Typography variant="h6" fontWeight={600}>Vehículo ya asignado</Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {(() => {
-            const tripUsing = getTripUsingVehicle(formData.vehiculoId);
-            return (
-              <Typography variant="body2">
-                Este vehículo está actualmente asignado al
-                {' '}<strong>Viaje #{tripUsing?.id}</strong>
-                {tripUsing?.destino ? ` (destino: ${tripUsing.destino})` : ''}.
-                {' '}Podés planificar este viaje y saldrá cuando el vehículo quede libre.
-              </Typography>
-            );
-          })()}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={() => setVehicleInUseDialogOpen(false)}
-          >
-            Entendido
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Checklist de pre-viaje: obligatorio para iniciar. Al completarse, inicia el viaje. */}
       <PreViajeChecklistDialog

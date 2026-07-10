@@ -54,6 +54,9 @@ interface Props {
   onChangeIva: (next: TipoIva) => void;
   dueDate: string;
   onChangeDueDate: (next: string) => void;
+  // fecha objetivo de entrega (Tablero de Pendientes); '' = sin fecha
+  fechaEstimadaEntrega: string;
+  onChangeFechaEstimadaEntrega: (next: string) => void;
   // discount
   descuentoTipo: DescuentoTipo;
   onChangeDescuentoTipo: (next: DescuentoTipo) => void;
@@ -89,6 +92,7 @@ const FacturarManualTab: React.FC<Props> = ({
   selectedUsuarioId, onChangeUsuario, usuarios,
   paymentMethod, onChangePaymentMethod, cajaContadoRef, onChangeCajaContado,
   selectedIva, onChangeIva, dueDate, onChangeDueDate,
+  fechaEstimadaEntrega, onChangeFechaEstimadaEntrega,
   descuentoTipo, onChangeDescuentoTipo, descuentoValor, onChangeDescuentoValor,
   notes, onChangeNotes,
   cart, onAddItem, onAddEnvio, onAddRevestimiento, onUpdateCartItem, onRemoveCartItem, products, recetas,
@@ -169,6 +173,16 @@ const FacturarManualTab: React.FC<Props> = ({
                 value={dueDate}
                 onChange={(e) => onChangeDueDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth label="Fecha Estimada de Entrega" type="date"
+                value={fechaEstimadaEntrega}
+                onChange={(e) => onChangeFechaEstimadaEntrega(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                helperText="Opcional — visible en el Tablero de Pendientes"
               />
             </Grid>
 

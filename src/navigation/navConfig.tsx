@@ -118,6 +118,10 @@ export const navigation: NavModule[] = [
     items: [
       // DISTRIBUCIÓN - Logística de salida
       { text: 'Armado de Viajes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/viajes' },
+      // Tablero de pendientes de entrega: acceso restringido server-side a
+      // SUPER_ADMIN/ADMIN/ADMIN_EMPRESA_LIMITADO/COORDINADORA_LOGISTICA/TRANSPORTE
+      // (SecurityConfig TABLERO_VIAJES_ROLES) — mantener en sync con navAccess.
+      { text: 'Tablero de Pendientes', icon: <LocalShippingIcon />, path: '/logistica/distribucion/tablero-pendientes' },
       { text: 'Checklists de Viaje', icon: <FactCheckIcon />, path: '/logistica/distribucion/checklists-viaje' },
       { text: 'Control Entregas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/entregas-productos' },
       { text: 'Importar Facturas Históricas', icon: <LocalShippingIcon />, path: '/logistica/distribucion/importar-facturas' },

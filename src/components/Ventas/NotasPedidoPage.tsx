@@ -1014,6 +1014,7 @@ const NotasPedidoPage: React.FC = () => {
     porcentajeEntregaInicial: 0,
     montoEntregaInicial: 0,
     tasaInteres: 0,
+    fechaEstimadaEntrega: '',
   });
 
   const handleOpenBillingDialog = useCallback((nota: DocumentoComercial) => {
@@ -1033,11 +1034,25 @@ const NotasPedidoPage: React.FC = () => {
         porcentajeEntregaInicial: 40,
         montoEntregaInicial: 0,
         tasaInteres: tasa,
+        fechaEstimadaEntrega: '',
       });
       setNotaToBill(nota);
       setBillingDialogOpen(true);
     } else {
-      handleConvertToFactura(nota.id);
+      // Contado: el diálogo se abre igual (en modo reducido) para que el
+      // vendedor pueda setear la fecha estimada de entrega opcional.
+      setBillingForm({
+        cantidadCuotas: 1,
+        tipoFinanciacion: 'MENSUAL',
+        entregarInicial: false,
+        usePorcentaje: true,
+        porcentajeEntregaInicial: 0,
+        montoEntregaInicial: 0,
+        tasaInteres: 0,
+        fechaEstimadaEntrega: '',
+      });
+      setNotaToBill(nota);
+      setBillingDialogOpen(true);
     }
   }, [notasPedido, notasFinanciamiento]);
 
@@ -1084,6 +1099,10 @@ const NotasPedidoPage: React.FC = () => {
 
     // Build payload early so it's available for all code paths (including early returns)
     const baseFacturaPayload: any = { notaPedidoId: notaId };
+    // La fecha estimada de entrega aplica a cualquier método de pago.
+    if (extraData?.fechaEstimadaEntrega) {
+      baseFacturaPayload.fechaEstimadaEntrega = extraData.fechaEstimadaEntrega;
+    }
     if (extraData && (nota?.metodoPago === 'FINANCIAMIENTO' || nota?.metodoPago === 'FINANCIACION_PROPIA')) {
       baseFacturaPayload.cantidadCuotas = extraData.cantidadCuotas;
       baseFacturaPayload.tipoFinanciacion = extraData.tipoFinanciacion;
