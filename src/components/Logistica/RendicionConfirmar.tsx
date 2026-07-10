@@ -4,6 +4,7 @@
 // por cada cheque, con banco/número/fecha).
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Autocomplete,
   Box,
   Card,
   CardContent,
@@ -320,18 +321,19 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
                       value={c.numero}
                       onChange={(e) => updateCheque(c.id, { numero: e.target.value })}
                     />
-                    <FormControl fullWidth size="small" required>
-                      <InputLabel>Banco</InputLabel>
-                      <Select
-                        value={c.bancoId}
-                        label="Banco"
-                        onChange={(e) => updateCheque(c.id, { bancoId: Number(e.target.value) })}
-                      >
-                        {bancos.map((b) => (
-                          <MenuItem key={b.id} value={b.id}>{b.nombreCorto ?? b.nombre}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <Autocomplete
+                      fullWidth
+                      size="small"
+                      options={bancos}
+                      getOptionLabel={(b) => b.nombreCorto ?? b.nombre}
+                      isOptionEqualToValue={(o, v) => o.id === v.id}
+                      value={bancos.find((b) => b.id === c.bancoId) ?? null}
+                      onChange={(_, val) => updateCheque(c.id, { bancoId: val ? val.id : '' })}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Banco" required placeholder="Buscar banco…" />
+                      )}
+                    />
+
                   </Stack>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                     <TextField

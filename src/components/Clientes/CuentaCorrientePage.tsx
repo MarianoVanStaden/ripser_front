@@ -38,6 +38,7 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon,
   Person as PersonIcon,
+  Build as BuildIcon,
 } from '@mui/icons-material';
 import { useLocation } from 'react-router-dom';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -52,6 +53,7 @@ import type { Cliente, TipoMovimiento, MetodoPago } from '../../types';
 import { metodoPagoRequiereCaja, type CajaRef } from '../../types/caja.types';
 import { CajaSelector } from '../common/CajaSelector';
 import { useCuentaCorrienteCliente } from '../../hooks/useCuentaCorrienteCliente';
+import { usePermisos } from '../../hooks/usePermisos';
 import { useSmartRefresh, formatLastUpdated } from '../../hooks/useSmartRefresh';
 import { generateCuentaCorrienteClientePDF } from '../../utils/pdfExportUtils';
 
@@ -61,6 +63,7 @@ const CuentaCorrientePage: React.FC = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { esAdmin } = usePermisos();
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,6 +79,15 @@ const CuentaCorrientePage: React.FC = () => {
     metodoPago: 'EFECTIVO' as MetodoPago,
   });
   const [cajaRef, setCajaRef] = useState<CajaRef | null>(null);
+
+  // Corrección ADMIN (ajuste de saldo sin impacto en caja)
+  const [openAjusteDialog, setOpenAjusteDialog] = useState(false);
+  const [newAjuste, setNewAjuste] = useState({
+    tipo: 'CREDITO' as TipoMovimiento,
+    importe: 0,
+    concepto: '',
+    numeroComprobante: '',
+  });
 
   // Pagination states
   const [page, setPage] = useState(0);
@@ -158,6 +170,40 @@ const CuentaCorrientePage: React.FC = () => {
     } catch (err) {
       setLocalError('Error al guardar el movimiento. Verifique los datos e intente de nuevo.');
       console.error('Error saving movement:', err);
+    }
+  };
+
+  const handleSaveAjuste = async () => {
+    if (!selectedCliente) {
+      setLocalError('Debe seleccionar un cliente para registrar una corrección.');
+      return;
+    }
+    if (!newAjuste.concepto.trim()) {
+      setLocalError('El motivo de la corrección es obligatorio.');
+      return;
+    }
+
+    try {
+      await cuentaCorrienteApi.crearAjuste({
+        clienteId: selectedCliente.id,
+        fecha: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
+        tipo: newAjuste.tipo,
+        importe: newAjuste.importe,
+        concepto: newAjuste.concepto,
+        numeroComprobante: newAjuste.numeroComprobante || undefined,
+      });
+
+      setNewAjuste({ tipo: 'CREDITO', importe: 0, concepto: '', numeroComprobante: '' });
+      setOpenAjusteDialog(false);
+
+      const [, clienteActualizado] = await Promise.all([
+        invalidate(),
+        clienteApi.getById(selectedCliente.id),
+      ]);
+      setSelectedCliente(clienteActualizado);
+    } catch (err) {
+      setLocalError('Error al guardar la corrección. Verifique los datos e intente de nuevo.');
+      console.error('Error saving adjustment:', err);
     }
   };
 
@@ -270,6 +316,18 @@ const CuentaCorrientePage: React.FC = () => {
             >
               Exportar PDF
             </Button>
+            {esAdmin && (
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={<BuildIcon />}
+                onClick={() => setOpenAjusteDialog(true)}
+                disabled={!selectedCliente}
+                fullWidth={isMobile}
+              >
+                Corrección (ADMIN)
+              </Button>
+            )}
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -416,11 +474,16 @@ const CuentaCorrientePage: React.FC = () => {
                     {dayjs(movimiento.fecha).format('DD/MM/YYYY HH:mm')}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={movimiento.tipo}
-                      color={movimiento.tipo === 'DEBITO' ? 'error' : 'success'}
-                      size="small"
-                    />
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Chip
+                        label={movimiento.tipo}
+                        color={movimiento.tipo === 'DEBITO' ? 'error' : 'success'}
+                        size="small"
+                      />
+                      {movimiento.esAjuste && (
+                        <Chip label="Ajuste" color="warning" size="small" variant="outlined" />
+                      )}
+                    </Stack>
                   </TableCell>
                   <TableCell>{movimiento.concepto}</TableCell>
                   <TableCell>{movimiento.numeroComprobante || '-'}</TableCell>
@@ -559,12 +622,85 @@ const CuentaCorrientePage: React.FC = () => {
             <Button onClick={() => setOpenMovimientoDialog(false)}>
               Cancelar
             </Button>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               onClick={handleSaveMovimiento}
               disabled={!newMovimiento.concepto || newMovimiento.importe <= 0 || cajaFaltante}
             >
               Guardar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Correction Dialog (ADMIN only) */}
+        <Dialog open={openAjusteDialog} onClose={() => setOpenAjusteDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
+          <DialogTitle>
+            Corrección de Saldo (ADMIN) - {selectedCliente?.nombre} {selectedCliente?.apellido}
+          </DialogTitle>
+          <DialogContent>
+            <Box pt={2}>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Esta corrección ajusta el saldo de la cuenta corriente sin generar ningún
+                movimiento de caja (no hay ingreso ni egreso real de dinero).
+              </Alert>
+
+              <TextField
+                fullWidth
+                select
+                label="Tipo de Corrección"
+                value={newAjuste.tipo}
+                onChange={(e) => setNewAjuste({ ...newAjuste, tipo: e.target.value as TipoMovimiento })}
+                margin="normal"
+                helperText="Débito: aumenta la deuda del cliente. Crédito: la disminuye / genera saldo a favor"
+              >
+                <MenuItem value="DEBITO">Débito - Aumenta deuda (+)</MenuItem>
+                <MenuItem value="CREDITO">Crédito - Disminuye deuda (-)</MenuItem>
+              </TextField>
+
+              <TextField
+                fullWidth
+                label="Importe"
+                type="number"
+                value={newAjuste.importe}
+                onChange={(e) => setNewAjuste({ ...newAjuste, importe: Number(e.target.value) })}
+                margin="normal"
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                }}
+              />
+
+              <TextField
+                fullWidth
+                required
+                label="Motivo"
+                value={newAjuste.concepto}
+                onChange={(e) => setNewAjuste({ ...newAjuste, concepto: e.target.value })}
+                margin="normal"
+                multiline
+                rows={2}
+                helperText="Motivo de la corrección (obligatorio, queda registrado para auditoría)"
+              />
+
+              <TextField
+                fullWidth
+                label="Número de Comprobante"
+                value={newAjuste.numeroComprobante}
+                onChange={(e) => setNewAjuste({ ...newAjuste, numeroComprobante: e.target.value })}
+                margin="normal"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenAjusteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={handleSaveAjuste}
+              disabled={!newAjuste.concepto.trim() || newAjuste.importe <= 0}
+            >
+              Guardar Corrección
             </Button>
           </DialogActions>
         </Dialog>

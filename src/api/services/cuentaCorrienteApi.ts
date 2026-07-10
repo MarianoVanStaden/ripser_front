@@ -1,5 +1,5 @@
 import api from '../config';
-import type { CuentaCorriente, CreateMovimientoPayload } from '../../types';
+import type { CuentaCorriente, CreateMovimientoPayload, TipoMovimiento } from '../../types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 export const cuentaCorrienteApi = {
@@ -40,4 +40,22 @@ export const cuentaCorrienteApi = {
     const response = await api.post('/api/cuentas-corriente', movimiento);
     return response.data;
   },
+
+  /**
+   * Registers an ADMIN-only balance correction. Adjusts the client's account
+   * balance without affecting cash flow (no real money in/out). ADMIN only.
+   */
+  crearAjuste: async (ajuste: CreateAjustePayload): Promise<CuentaCorriente> => {
+    const response = await api.post('/api/cuentas-corriente/ajuste', ajuste);
+    return response.data;
+  },
 };
+
+export interface CreateAjustePayload {
+  clienteId: number;
+  fecha: string;
+  tipo: TipoMovimiento;
+  importe: number;
+  concepto: string;
+  numeroComprobante?: string;
+}

@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -21,12 +22,15 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
 import SavingsIcon from '@mui/icons-material/Savings';
+import { useArqueoChecks } from '../../../hooks/useArqueoChecks';
 import { cajasAhorroApi } from '../../../api/services/cajasAhorroApi';
 import type { CajaAhorroDolares, MovimientoCajaAhorro, TipoMovimientoCaja } from '../../../types';
 import { usePagination } from '../../../hooks/usePagination';
@@ -134,6 +138,7 @@ const CajaMovimientosPage: React.FC = () => {
   };
 
   const activa = caja?.estado === 'ACTIVA';
+  const { checkedIds, toggle, clear, isChecked } = useArqueoChecks(cajaId);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -195,29 +200,43 @@ const CajaMovimientosPage: React.FC = () => {
             </Typography>
           </Box>
 
-          {activa && (
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button variant="outlined" color="success" onClick={() => setDepositarOpen(true)}>
-                Depositar
-              </Button>
-              <Button variant="outlined" color="warning" onClick={() => setExtraerOpen(true)}>
-                Extraer
-              </Button>
-              <IconButton onClick={() => setFormOpen(true)} title="Editar">
-                <EditIcon />
-              </IconButton>
-              <IconButton
-                color="error"
-                onClick={() => {
-                  setDeactivateError(null);
-                  setDeactivateOpen(true);
-                }}
-                title="Desactivar"
-              >
-                <DeleteIcon />
-              </IconButton>
-            </Stack>
-          )}
+          <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+            {checkedIds.size > 0 && (
+              <Tooltip title="Limpiar arqueo">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ClearAllIcon />}
+                  onClick={clear}
+                >
+                  Limpiar arqueo ({checkedIds.size})
+                </Button>
+              </Tooltip>
+            )}
+            {activa && (
+              <>
+                <Button variant="outlined" color="success" onClick={() => setDepositarOpen(true)}>
+                  Depositar
+                </Button>
+                <Button variant="outlined" color="warning" onClick={() => setExtraerOpen(true)}>
+                  Extraer
+                </Button>
+                <IconButton onClick={() => setFormOpen(true)} title="Editar">
+                  <EditIcon />
+                </IconButton>
+                <IconButton
+                  color="error"
+                  onClick={() => {
+                    setDeactivateError(null);
+                    setDeactivateOpen(true);
+                  }}
+                  title="Desactivar"
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </>
+            )}
+          </Stack>
         </Box>
       )}
 
@@ -232,6 +251,7 @@ const CajaMovimientosPage: React.FC = () => {
         <Table size="small">
           <TableHead>
             <TableRow>
+              <TableCell sx={{ width: 40, p: 0.5 }} />
               <TableCell>Fecha</TableCell>
               <TableCell>Tipo</TableCell>
               <TableCell align="right">Monto USD</TableCell>
@@ -243,14 +263,14 @@ const CajaMovimientosPage: React.FC = () => {
           <TableBody>
             {movLoading && (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                   <CircularProgress size={28} />
                 </TableCell>
               </TableRow>
             )}
             {!movLoading && movimientos.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                   Sin movimientos registrados
                 </TableCell>
               </TableRow>
@@ -262,9 +282,22 @@ const CajaMovimientosPage: React.FC = () => {
                 const montoColor = esEgreso ? 'error.main' : 'success.main';
                 const prefix = esEgreso ? '−' : '+';
                 const desc = mov.descripcion ?? '';
+                const checked = isChecked(mov.id);
 
                 return (
-                  <TableRow key={mov.id} hover>
+                  <TableRow
+                    key={mov.id}
+                    hover
+                    sx={checked ? { opacity: 0.4, textDecoration: 'line-through' } : undefined}
+                  >
+                    <TableCell sx={{ p: 0.5 }}>
+                      <Checkbox
+                        size="small"
+                        checked={checked}
+                        onChange={() => toggle(mov.id)}
+                        sx={{ p: 0.5 }}
+                      />
+                    </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
                       {formatFecha(mov.fecha)}
                     </TableCell>

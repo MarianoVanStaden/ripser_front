@@ -102,6 +102,7 @@ export interface CuentaCorriente {
   metodoPago?: MetodoPago;
   chequeId?: number;
   usuarioNombre?: string | null;
+  esAjuste?: boolean;
 }
 
 // Client related enums

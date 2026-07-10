@@ -25,10 +25,22 @@ import {
   FactCheck as FactCheckIcon,
   Visibility as VisibilityIcon,
   Refresh as RefreshIcon,
+  WarningAmber as WarningAmberIcon,
 } from '@mui/icons-material';
 import { viajeApi } from '../../api/services/viajeApi';
-import type { ChecklistViaje, Viaje } from '../../types/logistica.types';
+import type { ChecklistViaje, ChecklistViajeItems, Viaje } from '../../types/logistica.types';
 import PreViajeChecklistDialog from './PreViajeChecklistDialog';
+
+const OK_FIELDS: (keyof ChecklistViajeItems)[] = [
+  'aguaOk', 'aceiteOk', 'lucesCamionetaOk', 'lucesTrailerOk',
+  'auxilioCamionetaOk', 'auxilioTrailerOk', 'llaveCruzOk', 'matafuegoOk',
+  'kitEmergenciaOk', 'rayonesAbolladurasOk', 'parabrisasOk', 'tapizadosOk',
+  'cubiertasOk', 'seguroOk', 'vencCarnetOk', 'dniOk', 'cedulaVerdeOk',
+  'valijaHerramientasOk', 'zunchosOk',
+];
+
+const countFallas = (cl: ChecklistViaje) =>
+  OK_FIELDS.filter((k) => cl[k] === false).length;
 
 const ChecklistsViajePage: React.FC = () => {
   const [desde, setDesde] = useState('');
@@ -79,15 +91,15 @@ const ChecklistsViajePage: React.FC = () => {
   const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleString() : '—');
 
   const total = rows.length;
-  const completos = rows.filter((r) => r.completado).length;
-  const incompletos = total - completos;
+  const conFallas = rows.filter((r) => countFallas(r) > 0).length;
+  const sinFallas = total - conFallas;
 
-  const incompletosSx: SxProps<Theme> =
-    incompletos === 0
-      ? { bgcolor: 'success.light', color: 'success.dark' }
-      : incompletos <= 3
-        ? { bgcolor: 'warning.light', color: 'warning.dark' }
-        : { bgcolor: 'error.light', color: 'error.dark' };
+  const fallasSx: SxProps<Theme> =
+    conFallas === 0
+      ? { bgcolor: '#F0FBF0', color: '#2E7D32' }
+      : conFallas <= 2
+        ? { bgcolor: '#FFFBF0', color: '#E65100' }
+        : { bgcolor: '#FFF5F5', color: '#C62828' };
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -99,9 +111,9 @@ const ChecklistsViajePage: React.FC = () => {
       {!loading && total > 0 && (
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
           {[
-            { label: 'Total', value: total, sx: { bgcolor: 'grey.100', color: 'text.primary' } as SxProps<Theme> },
-            { label: 'Completos', value: completos, sx: { bgcolor: 'success.light', color: 'success.dark' } as SxProps<Theme> },
-            { label: 'Incompletos', value: incompletos, sx: incompletosSx },
+            { label: 'Total', value: total, sx: { bgcolor: '#F5F5F5', color: '#616161' } as SxProps<Theme> },
+            { label: 'Con novedades', value: conFallas, sx: fallasSx },
+            { label: 'Sin novedades', value: sinFallas, sx: { bgcolor: '#F0FBF0', color: '#2E7D32' } as SxProps<Theme> },
           ].map(({ label, value, sx }) => (
             <Paper key={label} elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, textAlign: 'center', ...sx }}>
               <Typography variant="h3" fontWeight={700} lineHeight={1}>{value}</Typography>
@@ -165,30 +177,52 @@ const ChecklistsViajePage: React.FC = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((cl) => (
-                <TableRow
-                  key={cl.id} hover sx={{ cursor: 'pointer' }}
-                  onClick={() => setSelected(cl)}
-                >
-                  <TableCell>{cl.numeroViaje ?? `#${cl.viajeId}`}</TableCell>
-                  <TableCell>{fmt(cl.fechaChecklist)}</TableCell>
-                  <TableCell>{cl.conductorNombre ?? '—'}</TableCell>
-                  <TableCell>{cl.acompananteNombre ?? '—'}</TableCell>
-                  <TableCell>{cl.vehiculoPatente ?? '—'}</TableCell>
-                  <TableCell align="right">{cl.kmSalida != null ? cl.kmSalida.toLocaleString() : '—'}</TableCell>
-                  <TableCell>{cl.trailer ?? '—'}</TableCell>
-                  <TableCell>
-                    {cl.completado
-                      ? <Chip size="small" color="success" label="Completo" />
-                      : <Chip size="small" color="warning" label="Incompleto" />}
-                  </TableCell>
-                  <TableCell align="center">
-                    <Tooltip title="Ver checklist">
-                      <VisibilityIcon fontSize="small" color="action" />
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
+              rows.map((cl) => {
+                const fallas = countFallas(cl);
+                return (
+                  <TableRow
+                    key={cl.id} hover sx={{
+                      cursor: 'pointer',
+                      ...(fallas > 0 && {
+                        borderLeft: '4px solid',
+                        borderColor: 'error.main',
+                        bgcolor: 'error.50',
+                      }),
+                    }}
+                    onClick={() => setSelected(cl)}
+                  >
+                    <TableCell>{cl.numeroViaje ?? `#${cl.viajeId}`}</TableCell>
+                    <TableCell>{fmt(cl.fechaChecklist)}</TableCell>
+                    <TableCell>{cl.conductorNombre ?? '—'}</TableCell>
+                    <TableCell>{cl.acompananteNombre ?? '—'}</TableCell>
+                    <TableCell>{cl.vehiculoPatente ?? '—'}</TableCell>
+                    <TableCell align="right">{cl.kmSalida != null ? cl.kmSalida.toLocaleString() : '—'}</TableCell>
+                    <TableCell>{cl.trailer ?? '—'}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                        {cl.completado
+                          ? <Chip size="small" color="success" label="Completo" />
+                          : <Chip size="small" color="warning" label="Incompleto" />}
+                        {fallas > 0 && (
+                          <Tooltip title={`${fallas} ítem${fallas > 1 ? 's' : ''} con falla — hacé clic para ver el detalle`}>
+                            <Chip
+                              size="small"
+                              color="error"
+                              icon={<WarningAmberIcon />}
+                              label={`${fallas} falla${fallas > 1 ? 's' : ''}`}
+                            />
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Ver checklist">
+                        <VisibilityIcon fontSize="small" color="action" />
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
