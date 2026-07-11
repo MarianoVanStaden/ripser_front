@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -253,6 +253,7 @@ const DeliveriesPage2: React.FC = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoEntrega>('all');
   const [dateFilter, setDateFilter] = useState('');
+  const [viajeFilter, setViajeFilter] = useState<number | 'sin_viaje' | ''>('');
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -382,12 +383,23 @@ const DeliveriesPage2: React.FC = () => {
     });
   };
 
+  const viajesUnicos = useMemo(() => {
+    const map = new Map<number, string>();
+    deliveries.forEach(d => {
+      if (d.viajeId) map.set(d.viajeId, d.numeroViaje ?? `Viaje #${d.viajeId}`);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
+  }, [deliveries]);
+
   const filteredDeliveries = deliveries
     .filter(delivery => {
       const matchesStatus = statusFilter === 'all' || delivery.estado === statusFilter;
       const matchesDate = !dateFilter ||
         new Date(delivery.fechaEntrega).toDateString() === new Date(dateFilter).toDateString();
-      return matchesStatus && matchesDate;
+      const matchesViaje =
+        viajeFilter === '' ||
+        (viajeFilter === 'sin_viaje' ? !delivery.viajeId : delivery.viajeId === viajeFilter);
+      return matchesStatus && matchesDate && matchesViaje;
     })
     .sort((a, b) => b.id - a.id);
 
@@ -1255,6 +1267,20 @@ const DeliveriesPage2: React.FC = () => {
                   size="small"
                   sx={{ width: 180 }}
                 />
+                <FormControl sx={{ minWidth: 180 }} size="small">
+                  <InputLabel>Viaje</InputLabel>
+                  <Select
+                    value={viajeFilter}
+                    label="Viaje"
+                    onChange={(e) => setViajeFilter(e.target.value as number | 'sin_viaje' | '')}
+                  >
+                    <MenuItem value="">Todos los viajes</MenuItem>
+                    <MenuItem value="sin_viaje">Sin viaje asignado</MenuItem>
+                    {viajesUnicos.map(([id, label]) => (
+                      <MenuItem key={id} value={id}>{label}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
             )}
           </Box>
