@@ -179,7 +179,7 @@ const StockPage: React.FC = () => {
 
       setProducts(productsList);
       setStockMovements(movementsData.content ?? []);
-      setCategorias(categoriasData);
+      setCategorias([...categoriasData].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
       setDesgloseMap(Object.fromEntries(desglose.map((d) => [d.productoId, d])));
       setError(null);
     } catch (err) {

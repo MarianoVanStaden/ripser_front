@@ -10,6 +10,7 @@ import type {
   UpdateFechaVencimientoCuotaDTO,
   UpdateMontoCuotaDTO,
 } from '../../types/prestamo.types';
+import type { DetalleDocumentoDTO } from '../../types/documentoComercial.types';
 import type { PageResponse, PaginationParams } from '../../types/pagination.types';
 
 const BASE_PATH = '/api/prestamos-personales';
@@ -152,6 +153,11 @@ export const prestamoPersonalApi = {
       `${BASE_PATH}/${prestamoId}/cuotas/${cuotaId}/monto`,
       dto,
     );
+    return response.data;
+  },
+
+  getEquipos: async (id: number): Promise<DetalleDocumentoDTO[]> => {
+    const response = await api.get<DetalleDocumentoDTO[]>(`${BASE_PATH}/${id}/equipos`);
     return response.data;
   },
 };

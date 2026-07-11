@@ -34,6 +34,7 @@ import type {
   SeguimientoPrestamoDTO, RecordatorioCuotaDTO,
   PagoInformadoDTO,
 } from '../../types/prestamo.types';
+import type { DetalleDocumentoDTO } from '../../types/documentoComercial.types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
@@ -79,6 +80,7 @@ export const PrestamoDetailPage: React.FC = () => {
   const [seguimientos, setSeguimientos] = useState<SeguimientoPrestamoDTO[]>([]);
   const [recordatorios, setRecordatorios] = useState<RecordatorioCuotaDTO[]>([]);
   const [pagosInformados, setPagosInformados] = useState<PagoInformadoDTO[]>([]);
+  const [equipos, setEquipos] = useState<DetalleDocumentoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -127,16 +129,18 @@ export const PrestamoDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [prestamoData, cuotasData, seguimientosData, pagosInformadosData] = await Promise.all([
+      const [prestamoData, cuotasData, seguimientosData, pagosInformadosData, equiposData] = await Promise.all([
         prestamoPersonalApi.getById(prestamoId),
         cuotaPrestamoApi.getByPrestamo(prestamoId),
         seguimientoPrestamoApi.getByPrestamo(prestamoId),
         pagoInformadoApi.historialPorPrestamo(prestamoId).catch(() => [] as PagoInformadoDTO[]),
+        prestamoPersonalApi.getEquipos(prestamoId).catch(() => [] as DetalleDocumentoDTO[]),
       ]);
       setPrestamo(prestamoData);
       setCuotas(cuotasData);
       setSeguimientos(seguimientosData);
       setPagosInformados(pagosInformadosData);
+      setEquipos(equiposData);
 
       // Load recordatorios for all cuotas
       const allRecordatorios: RecordatorioCuotaDTO[] = [];
@@ -455,6 +459,39 @@ export const PrestamoDetailPage: React.FC = () => {
           </Grid>
         </CardContent>
       </Card>
+
+      {/* Equipos de la compra */}
+      {equipos.length > 0 && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+              EQUIPOS DE LA COMPRA
+            </Typography>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Modelo</TableCell>
+                    <TableCell align="center">Cantidad</TableCell>
+                    <TableCell>Color</TableCell>
+                    <TableCell>Medida</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {equipos.map((e) => (
+                    <TableRow key={e.id}>
+                      <TableCell>{e.recetaNombre ?? e.recetaModelo ?? '-'}</TableCell>
+                      <TableCell align="center">{e.cantidad ?? '-'}</TableCell>
+                      <TableCell>{e.color?.nombre ?? '-'}</TableCell>
+                      <TableCell>{e.medida?.nombre ?? '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

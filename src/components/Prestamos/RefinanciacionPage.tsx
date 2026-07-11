@@ -75,8 +75,6 @@ function validarFormulario(form: FormState, deudaTotal: number): Record<string, 
     if (!form.cantidadCuotas || form.cantidadCuotas < 1) errs.cantidadCuotas = 'Mínimo 1 cuota';
     if (form.cantidadCuotas > 120) errs.cantidadCuotas = 'Máximo 120 cuotas';
   }
-  if (form.fechaPrimeraCuota && form.fechaPrimeraCuota < hoy())
-    errs.fechaPrimeraCuota = 'No puede ser en el pasado';
   return errs;
 }
 
@@ -408,7 +406,7 @@ export const RefinanciacionPage: React.FC = () => {
                 value={form.fechaPrimeraCuota}
                 onChange={(e) => handleFieldChange('fechaPrimeraCuota', e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ min: hoy() }}
+                inputProps={{}}
                 error={!!errors.fechaPrimeraCuota}
                 helperText={errors.fechaPrimeraCuota}
                 disabled={!estaRefinanciable || sinDeuda}
