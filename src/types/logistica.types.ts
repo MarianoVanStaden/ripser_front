@@ -377,6 +377,9 @@ export interface EntregaViaje {
   fechaEmision?: string;
   ordenServicioId?: number;
   ordenServicio?: OrdenServicio;
+  // Reasignación logística: destino físico alternativo (otro cliente).
+  clienteDestinoId?: number | null;
+  clienteDestinoNombre?: string | null;
   // Parada libre (sin factura ni OS): motivo de la parada. Null = entrega normal.
   tipoParada?: 'GARANTIA' | 'RETIRO_MATERIA_PRIMA' | 'OTRO' | null;
   direccionEntrega: string;

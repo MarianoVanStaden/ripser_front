@@ -957,9 +957,16 @@ const DeliveriesPage2: React.FC = () => {
 
             <Box display="flex" alignItems="flex-start" gap={1} mb={1.5}>
               <LocationIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.3 }} />
-              <Typography variant="body2" color="text.secondary">
-                {delivery.direccionEntrega}
-              </Typography>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  {delivery.direccionEntrega}
+                </Typography>
+                {delivery.clienteDestinoNombre && (
+                  <Typography variant="caption" color="info.main" display="block">
+                    → Reasignado a: {delivery.clienteDestinoNombre}
+                  </Typography>
+                )}
+              </Box>
             </Box>
 
             {(() => {

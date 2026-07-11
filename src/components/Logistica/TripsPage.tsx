@@ -52,12 +52,17 @@ import {
   ErrorOutline as ErrorOutlineIcon,
   AttachMoney as AttachMoneyIcon,
   AccountBalanceWallet as WalletIcon,
+  RemoveCircleOutline as RemoveCircleOutlineIcon,
+  Block as BlockIcon,
+  SwapHoriz as SwapHorizIcon,
 } from '@mui/icons-material';
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, DocumentoComercial, Cliente, OrdenServicio, ResumenFinancieroViaje } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
 import ConfirmDialog from '../common/ConfirmDialog';
 import RendicionDialog from './RendicionDialog';
 import PreViajeChecklistDialog from './PreViajeChecklistDialog';
+import ReasignarEntregaDialog from './Deliveries/dialogs/ReasignarEntregaDialog';
+import { TextField as MuiTextField } from '@mui/material';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { viajeApi } from '../../api/services/viajeApi';
@@ -455,6 +460,8 @@ const TripsPage2: React.FC = () => {
   const { user } = useAuth();
   const esConductor = tieneRol('CONDUCTOR');
   const esLogistico = tieneRol('LOGISTICO');
+  // Edición logística de entregas (quitar / rechazar / reasignar): ADMIN o coordinación.
+  const puedeEditarEntregas = tieneRol('ADMIN') || tieneRol('COORDINADORA_LOGISTICA');
 
   // Devuelve true si el usuario actual está asignado al viaje como conductor o acompañante.
   // Usado para decidir si LOGISTICO puede ver la recaudación de un viaje específico.
@@ -486,6 +493,12 @@ const TripsPage2: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Edición logística de entregas
+  const [confirmQuitar, setConfirmQuitar] = useState<EntregaViaje | null>(null);
+  const [confirmRechazar, setConfirmRechazar] = useState<EntregaViaje | null>(null);
+  const [rechazoMotivo, setRechazoMotivo] = useState('');
+  const [reasignarEntrega, setReasignarEntrega] = useState<EntregaViaje | null>(null);
+  const [entregaActionLoading, setEntregaActionLoading] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<Viaje | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -793,6 +806,51 @@ const TripsPage2: React.FC = () => {
       });
     } finally {
       setCerrandoViajeId(null);
+    }
+  };
+
+  // Una entrega admite edición logística si su viaje está PLANIFICADO/EN_CURSO y ella está PENDIENTE.
+  const entregaEsEditable = (trip: Viaje, entrega: EntregaViaje): boolean =>
+    puedeEditarEntregas
+    && (trip.estado === 'PLANIFICADO' || trip.estado === 'EN_CURSO')
+    && entrega.estado === 'PENDIENTE';
+
+  const handleQuitarEntrega = async () => {
+    if (!confirmQuitar) return;
+    setEntregaActionLoading(true);
+    try {
+      await entregaViajeApi.quitarDelViaje(confirmQuitar.id);
+      await loadData();
+      setConfirmQuitar(null);
+    } catch (err: any) {
+      const msg = err?.response?.data ?? err?.message ?? 'Error al quitar la entrega del viaje';
+      setChangeEstadoErrorDialog({
+        open: true,
+        title: 'No se pudo quitar la entrega',
+        message: typeof msg === 'string' ? msg : JSON.stringify(msg),
+      });
+    } finally {
+      setEntregaActionLoading(false);
+    }
+  };
+
+  const handleRechazarEntrega = async () => {
+    if (!confirmRechazar) return;
+    setEntregaActionLoading(true);
+    try {
+      await entregaViajeApi.marcarComoNoEntregada(confirmRechazar.id, rechazoMotivo.trim() || 'Rechazada');
+      await loadData();
+      setConfirmRechazar(null);
+      setRechazoMotivo('');
+    } catch (err: any) {
+      const msg = err?.response?.data ?? err?.message ?? 'Error al rechazar la entrega';
+      setChangeEstadoErrorDialog({
+        open: true,
+        title: 'No se pudo rechazar la entrega',
+        message: typeof msg === 'string' ? msg : JSON.stringify(msg),
+      });
+    } finally {
+      setEntregaActionLoading(false);
     }
   };
 
@@ -1671,6 +1729,16 @@ const TripsPage2: React.FC = () => {
                           <Typography variant="body2" color="text.secondary">
                             {delivery.direccionEntrega}
                           </Typography>
+                          {delivery.clienteDestinoNombre && (
+                            <Chip
+                              icon={<SwapHorizIcon />}
+                              label={`Reasignado a: ${delivery.clienteDestinoNombre}`}
+                              size="small"
+                              color="info"
+                              variant="outlined"
+                              sx={{ mt: 0.5 }}
+                            />
+                          )}
                           {(delivery as any).tipoParada && (
                             <Chip
                               label={tipoParadaLabel((delivery as any).tipoParada)}
@@ -1710,6 +1778,37 @@ const TripsPage2: React.FC = () => {
                             <Typography variant="caption" color="text.disabled" display="block" mt={1} sx={{ fontStyle: 'italic' }}>
                               Sin equipos registrados
                             </Typography>
+                          )}
+                          {entregaEsEditable(selectedTrip, delivery) && (
+                            <>
+                              <Divider sx={{ my: 1 }} />
+                              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                                <Button
+                                  size="small"
+                                  color="inherit"
+                                  startIcon={<RemoveCircleOutlineIcon />}
+                                  onClick={() => setConfirmQuitar(delivery)}
+                                >
+                                  Quitar del viaje
+                                </Button>
+                                <Button
+                                  size="small"
+                                  color="warning"
+                                  startIcon={<BlockIcon />}
+                                  onClick={() => { setRechazoMotivo(''); setConfirmRechazar(delivery); }}
+                                >
+                                  Rechazar
+                                </Button>
+                                <Button
+                                  size="small"
+                                  color="info"
+                                  startIcon={<SwapHorizIcon />}
+                                  onClick={() => setReasignarEntrega(delivery)}
+                                >
+                                  Reasignar
+                                </Button>
+                              </Stack>
+                            </>
                           )}
                         </CardContent>
                       </Card>
@@ -2008,6 +2107,64 @@ const TripsPage2: React.FC = () => {
           await loadData();
           setRendicionDialogViaje(null);
         }}
+      />
+
+      {/* Quitar entrega del viaje */}
+      <ConfirmDialog
+        open={!!confirmQuitar}
+        onClose={() => setConfirmQuitar(null)}
+        onConfirm={handleQuitarEntrega}
+        title="¿Quitar la entrega del viaje?"
+        severity="warning"
+        description="La factura/orden vuelve al pool para reasignarse a otro viaje y los equipos se liberan. No afecta la facturación."
+        itemDetails={confirmQuitar && (
+          <>
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {confirmQuitar.clienteNombre || confirmQuitar.numeroDocumento || `Entrega #${confirmQuitar.id}`}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">{confirmQuitar.direccionEntrega}</Typography>
+          </>
+        )}
+        confirmLabel="Quitar"
+        loadingLabel="Quitando…"
+        loading={entregaActionLoading}
+      />
+
+      {/* Rechazar entrega */}
+      <ConfirmDialog
+        open={!!confirmRechazar}
+        onClose={() => setConfirmRechazar(null)}
+        onConfirm={handleRechazarEntrega}
+        title="¿Rechazar la entrega?"
+        severity="warning"
+        description="Se marca como NO ENTREGADA (visible en Control de Entregas) y los equipos se liberan para reasignar."
+        itemDetails={confirmRechazar && (
+          <Stack spacing={1.5}>
+            <Typography variant="body2" color="text.secondary">
+              {confirmRechazar.clienteNombre || confirmRechazar.numeroDocumento} · {confirmRechazar.direccionEntrega}
+            </Typography>
+            <MuiTextField
+              label="Motivo"
+              value={rechazoMotivo}
+              onChange={(e) => setRechazoMotivo(e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+              autoFocus
+            />
+          </Stack>
+        )}
+        confirmLabel="Rechazar"
+        loadingLabel="Rechazando…"
+        loading={entregaActionLoading}
+      />
+
+      {/* Reasignar entrega a otro cliente/dirección */}
+      <ReasignarEntregaDialog
+        open={!!reasignarEntrega}
+        entrega={reasignarEntrega}
+        onClose={() => setReasignarEntrega(null)}
+        onSaved={loadData}
       />
     </Box>
   );

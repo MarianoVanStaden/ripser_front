@@ -6,6 +6,14 @@ export interface RegistrarCobroPayload {
   detallesCobro: DetalleCobroDTO[];
 }
 
+export interface RedirigirEntregaPayload {
+  clienteDestinoId?: number;
+  direccionEntrega?: string;
+  receptorNombre?: string;
+  receptorDni?: string;
+  observaciones?: string;
+}
+
 export const entregaViajeApi = {
   // Get all entregas
   getAll: async (): Promise<EntregaViaje[]> => {
@@ -94,6 +102,18 @@ export const entregaViajeApi = {
     const response = await api.patch(`/api/entregas-viaje/${id}/reprogramar`, null, {
       params: { nuevaFecha }
     });
+    return response.data;
+  },
+
+  // Quitar la entrega del viaje (revierte equipos, factura vuelve al pool del Tablero de Armado)
+  quitarDelViaje: async (id: number): Promise<EntregaViaje | void> => {
+    const response = await api.patch(`/api/entregas-viaje/${id}/quitar-del-viaje`);
+    return response.data;
+  },
+
+  // Reasignar/redirigir logísticamente la entrega a otro cliente y/o dirección
+  redirigir: async (id: number, payload: RedirigirEntregaPayload): Promise<EntregaViaje> => {
+    const response = await api.patch(`/api/entregas-viaje/${id}/redirigir`, payload);
     return response.data;
   },
 
