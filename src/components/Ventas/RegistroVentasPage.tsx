@@ -77,6 +77,8 @@ const RegistroVentasPage: React.FC = () => {
   const [ventaToEditarFecha, setVentaToEditarFecha] = useState<Venta | null>(null);
   const [confirmStateChangeDialogOpen, setConfirmStateChangeDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Venta | null>(null);
+  // Documento completo (con opcionesFinanciamiento) para desglosar la forma de pago financiada.
+  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
   const [ventaToDelete, setVentaToDelete] = useState<Venta | null>(null);
   const [editingSale, setEditingSale] = useState<Venta | null>(null);
   const [editForm, setEditForm] = useState({
@@ -255,11 +257,13 @@ const RegistroVentasPage: React.FC = () => {
 
   const handleViewSale = async (sale: Venta): Promise<void> => {
     setViewingSale(sale);
+    setViewingDoc(null);
     setViewDialogOpen(true);
     // Fetch full document to get equiposNumerosHeladera (not included in list endpoint)
     setViewLoading(true);
     try {
       const full = await documentoApi.getById((sale as any).id);
+      setViewingDoc(full);
       if (full?.detalles?.length) {
         const numerosById = new Map(
           full.detalles.map((d: any) => [d.id, d.equiposNumerosHeladera as string[] | undefined])
@@ -1034,6 +1038,70 @@ const RegistroVentasPage: React.FC = () => {
                   </Box>
                 </Grid>
               </Grid>
+
+              {/* Forma de pago — desglose de financiación propia (entrega inicial + cuotas). */}
+              {(() => {
+                const opciones = viewingDoc?.opcionesFinanciamiento as any[] | undefined;
+                const opcion = opciones?.find(o => o.id === viewingDoc?.opcionFinanciamientoSeleccionadaId)
+                  ?? opciones?.find(o => o.esSeleccionada);
+                const total = viewingSale.total || 0;
+                const esFinanciado =
+                  viewingSale.metodoPago === 'FINANCIACION_PROPIA' &&
+                  opcion?.montoEntregaInicial != null;
+                if (!esFinanciado) return null;
+
+                const entregaInicial = Number(opcion.montoEntregaInicial) || 0;
+                const costoEnvio = Number(opcion.costoEnvio ?? 0);
+                const montoFinanciado = total - entregaInicial;           // capital sin interés
+                const montoCredito = Number(opcion.montoTotal) || montoFinanciado; // capital + interés
+                const interesTotal = montoCredito - montoFinanciado;
+                const fmt = (n: number) => `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+                return (
+                  <>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Forma de pago
+                    </Typography>
+                    <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, mb: 1 }}>
+                      <Grid container spacing={1}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">Método</Typography>
+                          <Typography fontWeight={600}>
+                            {getPaymentMethodLabel(viewingSale.metodoPago as PaymentMethod)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Entrega inicial{costoEnvio > 0 ? ` (incluye envío ${fmt(costoEnvio)})` : ''}
+                          </Typography>
+                          <Typography fontWeight={700} color="success.dark">{fmt(entregaInicial)}</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">Monto financiado</Typography>
+                          <Typography fontWeight={600}>{fmt(montoFinanciado)}</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">Cuotas</Typography>
+                          <Typography fontWeight={600}>
+                            {opcion.cantidadCuotas} × {fmt(Number(opcion.montoCuota) || 0)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Interés{opcion.tasaInteres != null ? ` (${Number(opcion.tasaInteres)}%)` : ''}
+                          </Typography>
+                          <Typography fontWeight={600}>{fmt(interesTotal)}</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">Total del crédito</Typography>
+                          <Typography fontWeight={600}>{fmt(montoCredito)}</Typography>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </>
+                );
+              })()}
 
               <Divider sx={{ my: 2 }} />
 

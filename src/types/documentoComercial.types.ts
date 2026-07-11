@@ -124,6 +124,8 @@ export interface OpcionFinanciamiento {
   montoEntregaInicial?: number | null;
   /** Porcentaje del total financiable que se cobra en la entrega inicial. */
   porcentajeEntregaInicial?: number | null;
+  /** Porción del costo de envío incluida en la entrega inicial (no se financia). */
+  costoEnvio?: number | null;
 }
 
 export interface PresupuestoSimple {
@@ -267,4 +269,6 @@ export interface OpcionFinanciamientoDTO {
   montoEntregaInicial?: number | null;
   /** Porcentaje del total financiable que se cobra en la entrega inicial. */
   porcentajeEntregaInicial?: number | null;
+  /** Porción del costo de envío incluida en la entrega inicial (no se financia). */
+  costoEnvio?: number | null;
 }
