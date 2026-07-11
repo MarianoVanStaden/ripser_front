@@ -34,10 +34,6 @@ function primerDiaMesSiguiente(): string {
   return dayjs().add(1, 'month').startOf('month').format('YYYY-MM-DD');
 }
 
-function hoy(): string {
-  return dayjs().format('YYYY-MM-DD');
-}
-
 function fmt(n: number): string {
   return n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
