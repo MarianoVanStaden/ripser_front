@@ -405,6 +405,7 @@ const StockPage: React.FC = () => {
           lowStock: lowStockCount,
           outOfStock: outOfStockCount,
           totalValue: products.reduce((sum, p) => sum + (p.precio * p.stockActual), 0),
+          totalValueCosto: products.reduce((sum, p) => sum + ((p.costo ?? 0) * p.stockActual), 0),
         }
       );
     } catch (error) {
@@ -523,7 +524,24 @@ const StockPage: React.FC = () => {
                     ${products.reduce((sum, p) => sum + (p.precio * p.stockActual), 0).toLocaleString()}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Valor Total
+                    Valor Total (precio de venta)
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+        {puedeVerCostos && (
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={2}>
+                <InventoryIcon color="disabled" />
+                <Box>
+                  <Typography variant="h4">
+                    ${products.reduce((sum, p) => sum + ((p.costo ?? 0) * p.stockActual), 0).toLocaleString()}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Valor Total (costo)
                   </Typography>
                 </Box>
               </Box>

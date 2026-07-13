@@ -970,6 +970,7 @@ export const generateStockInventoryPDF = async (
     lowStock: number;
     outOfStock: number;
     totalValue: number;
+    totalValueCosto: number;
   }
 ) => {
   const pdf = new jsPDF('l', 'mm', 'a4');
@@ -1032,7 +1033,13 @@ export const generateStockInventoryPDF = async (
   pdf.text(`Sin Stock: ${stats.outOfStock}`, col1Stats, yPosition);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(...COLORS.darkBlue);
-  pdf.text(`Valor Total: $${stats.totalValue.toLocaleString()}`, col2Stats, yPosition);
+  pdf.text(`Valor Total (precio venta): $${stats.totalValue.toLocaleString()}`, col2Stats, yPosition);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...COLORS.black);
+  yPosition += 5;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...COLORS.darkBlue);
+  pdf.text(`Valor Total (costo): $${stats.totalValueCosto.toLocaleString()}`, col2Stats, yPosition);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(...COLORS.black);
   yPosition += 8;
