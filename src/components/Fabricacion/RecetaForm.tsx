@@ -24,6 +24,7 @@ import MedidaPicker from '../common/MedidaPicker';
 import api from '../../api/config';
 import SuccessDialog from '../common/SuccessDialog';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { unidadFisicaLabel, formatEquivalencia } from '../../utils/unidadConversion';
 
 const schema = yup.object().shape({
   nombre: yup.string().required('El nombre es obligatorio'),
@@ -43,6 +44,9 @@ interface Producto {
   codigo: string;
   precio: number;
   costo: number | null;
+  unidadMedida?: string | null;
+  unidadInventario?: string | null;
+  factorConversion?: number | null;
 }
 
 const RecetaForm: React.FC = () => {
@@ -377,6 +381,15 @@ const RecetaForm: React.FC = () => {
               </Button>
             </Box>
             {detalles.map((detalle, index) => {
+              const productoSel = productos.find((p) => p.id === detalle.productoId);
+              const equivalencia = productoSel
+                ? formatEquivalencia(
+                    detalle.cantidad,
+                    productoSel.unidadMedida,
+                    productoSel.unidadInventario,
+                    productoSel.factorConversion,
+                  )
+                : null;
               return (
                 <Card key={index} sx={{ mb: 2, border: !detalle.productoId || detalle.productoId === 0 ? '2px solid #f44336' : 'none' }}>
                   <CardContent>
@@ -399,12 +412,20 @@ const RecetaForm: React.FC = () => {
                         ))}
                       </TextField>
                       <TextField
-                        label="Cantidad *"
+                        label={`Cantidad${productoSel?.unidadMedida ? ` (${unidadFisicaLabel(productoSel.unidadMedida)})` : ''} *`}
                         type="number"
                         value={detalle.cantidad}
                         onChange={(e) => updateDetalle(index, 'cantidad', Number(e.target.value))}
-                        InputProps={{ inputProps: { min: 1 } }}
-                        sx={{ width: 120 }}
+                        InputProps={{
+                          inputProps: { min: 0, step: 0.0001 },
+                          endAdornment: productoSel?.unidadMedida ? (
+                            <Typography variant="body2" color="text.secondary">
+                              {unidadFisicaLabel(productoSel.unidadMedida)}
+                            </Typography>
+                          ) : undefined,
+                        }}
+                        helperText={equivalencia ?? undefined}
+                        sx={{ width: 160 }}
                         required
                       />
                       <TextField

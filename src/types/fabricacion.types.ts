@@ -22,6 +22,12 @@ export interface DetalleRecetaDTO {
   costoUnitario: number;
   subtotal: number;
   observaciones?: string;
+  /** Unidad física en la que se carga 'cantidad' (m, kg, l). */
+  unidadMedida?: string | null;
+  /** Unidad de inventario/compra en la que vive el stock (Rollo, Bolsa). */
+  unidadInventario?: string | null;
+  /** Contenido físico por unidad de inventario (ej. 45 => 1 Rollo = 45 m). */
+  factorConversion?: number | null;
 }
 
 export interface DetalleRecetaCreateDTO {

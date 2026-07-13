@@ -44,6 +44,7 @@ import api from '../../api/config';
 import RecetaCosteoSection from './RecetaCosteoSection';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { usePermisos } from '../../hooks/usePermisos';
+import { unidadFisicaLabel, formatEquivalencia } from '../../utils/unidadConversion';
 
 interface Producto {
   id: number;
@@ -51,6 +52,9 @@ interface Producto {
   codigo: string;
   precio: number;
   costo: number | null;
+  unidadMedida?: string | null;
+  unidadInventario?: string | null;
+  factorConversion?: number | null;
 }
 
 const RecetaDetail: React.FC = () => {
@@ -457,7 +461,26 @@ const RecetaDetail: React.FC = () => {
                   <TableRow key={detalle.id}>
                     <TableCell>{detalle.productoNombre}</TableCell>
                     <TableCell>{detalle.productoCodigo}</TableCell>
-                    <TableCell align="right">{detalle.cantidad}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2">
+                        {detalle.cantidad} {unidadFisicaLabel(detalle.unidadMedida)}
+                      </Typography>
+                      {formatEquivalencia(
+                        detalle.cantidad,
+                        detalle.unidadMedida,
+                        detalle.unidadInventario,
+                        detalle.factorConversion,
+                      ) && (
+                        <Typography variant="caption" color="text.secondary">
+                          {formatEquivalencia(
+                            detalle.cantidad,
+                            detalle.unidadMedida,
+                            detalle.unidadInventario,
+                            detalle.factorConversion,
+                          )}
+                        </Typography>
+                      )}
+                    </TableCell>
                     {puedeVerCostos && (
                       <TableCell align="right">
                         ${detalle.costoUnitario.toFixed(2)}
@@ -543,7 +566,7 @@ const RecetaDetail: React.FC = () => {
               )}
             />
             <TextField
-              label="Cantidad *"
+              label={`Cantidad${selectedProducto?.unidadMedida ? ` (${unidadFisicaLabel(selectedProducto.unidadMedida)})` : ''} *`}
               type="number"
               value={newDetalle.cantidad}
               onChange={(e) =>
@@ -552,7 +575,24 @@ const RecetaDetail: React.FC = () => {
                   cantidad: Number(e.target.value),
                 }))
               }
-              InputProps={{ inputProps: { min: 1 } }}
+              InputProps={{
+                inputProps: { min: 0, step: 0.0001 },
+                endAdornment: selectedProducto?.unidadMedida ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {unidadFisicaLabel(selectedProducto.unidadMedida)}
+                  </Typography>
+                ) : undefined,
+              }}
+              helperText={
+                selectedProducto
+                  ? formatEquivalencia(
+                      newDetalle.cantidad,
+                      selectedProducto.unidadMedida,
+                      selectedProducto.unidadInventario,
+                      selectedProducto.factorConversion,
+                    ) ?? 'Cargá la cantidad en la unidad física del material'
+                  : undefined
+              }
               required
             />
             {/* El costo unitario se toma del producto (costo vigente); no se edita acá. */}
@@ -603,13 +643,30 @@ const RecetaDetail: React.FC = () => {
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <TextField
-              label="Cantidad *"
+              label={`Cantidad${editingDetalle?.unidadMedida ? ` (${unidadFisicaLabel(editingDetalle.unidadMedida)})` : ''} *`}
               type="number"
               value={editForm.cantidad}
               onChange={(e) =>
                 setEditForm((prev) => ({ ...prev, cantidad: Number(e.target.value) }))
               }
-              InputProps={{ inputProps: { min: 0, step: 0.0001 } }}
+              InputProps={{
+                inputProps: { min: 0, step: 0.0001 },
+                endAdornment: editingDetalle?.unidadMedida ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {unidadFisicaLabel(editingDetalle.unidadMedida)}
+                  </Typography>
+                ) : undefined,
+              }}
+              helperText={
+                editingDetalle
+                  ? formatEquivalencia(
+                      editForm.cantidad,
+                      editingDetalle.unidadMedida,
+                      editingDetalle.unidadInventario,
+                      editingDetalle.factorConversion,
+                    ) ?? undefined
+                  : undefined
+              }
               required
               autoFocus
             />

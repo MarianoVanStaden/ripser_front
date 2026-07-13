@@ -115,6 +115,7 @@ const StockPage: React.FC = () => {
     categoriaProductoId: 1,
     activo: true,
     unidadMedida: 'UNIDAD' as string,
+    unidadInventario: '' as string,
     factorConversion: null as number | null,
     // Campos auxiliares para cálculo MT2 (no se envían al backend)
     _ancho: null as number | null,
@@ -209,6 +210,7 @@ const StockPage: React.FC = () => {
       categoriaProductoId: product.categoriaProducto?.id || product.categoriaProductoId || 1,
       activo: product.activo,
       unidadMedida: unidad,
+      unidadInventario: product.unidadInventario ?? '',
       factorConversion: factor,
       _ancho: null,
       _largo: null,
@@ -234,6 +236,7 @@ const StockPage: React.FC = () => {
           categoriaProductoId: editForm.categoriaProductoId,
           activo: editForm.activo,
           unidadMedida: editForm.unidadMedida === 'UNIDAD' ? undefined : editForm.unidadMedida,
+          unidadInventario: editForm.unidadMedida === 'UNIDAD' ? undefined : (editForm.unidadInventario || undefined),
           factorConversion: editForm.unidadMedida === 'UNIDAD' ? null : editForm.factorConversion,
         },
         selectedProduct.tipoEntidad,
@@ -420,13 +423,16 @@ const StockPage: React.FC = () => {
     stockActual: number,
     unidadMedida?: string,
     factorConversion?: number | null,
+    unidadInventario?: string | null,
   ) => {
     if (!unidadMedida || unidadMedida === 'UNIDAD' || !factorConversion) {
       return { principal: `${stockActual}`, secundario: null };
     }
+    // stock_actual está en unidades de inventario/compra; el secundario muestra el equivalente físico.
     const baseUnits = (stockActual * factorConversion).toFixed(2);
     const label = UNIDAD_LABEL[unidadMedida] ?? unidadMedida;
-    return { principal: `${stockActual} uds.`, secundario: `= ${baseUnits} ${label}` };
+    const invLabel = unidadInventario || 'uds.';
+    return { principal: `${stockActual} ${invLabel}`, secundario: `= ${baseUnits} ${label}` };
   };
 
   const getStockChip = (stock: number, stockMinimo: number, activo: boolean) => {
@@ -679,6 +685,7 @@ const StockPage: React.FC = () => {
                             product.stockActual,
                             product.unidadMedida,
                             product.factorConversion,
+                            product.unidadInventario,
                           );
                           const d = desgloseMap[product.id];
                           const hasDesglose = d && d.embebido > 0;
@@ -1051,6 +1058,17 @@ const StockPage: React.FC = () => {
                     </Select>
                   </FormControl>
 
+                  {editForm.unidadMedida !== 'UNIDAD' && (
+                    <TextField
+                      label="Nombre de la unidad de inventario"
+                      size="small"
+                      value={editForm.unidadInventario}
+                      onChange={(e) => setEditForm({ ...editForm, unidadInventario: e.target.value })}
+                      helperText="Cómo se cuenta el stock: Rollo, Barra, Bolsa, Garrafa…"
+                      fullWidth
+                    />
+                  )}
+
                   {editForm.unidadMedida === 'MT2' && (
                     <>
                       <Box sx={{ display: 'flex', gap: 1 }}>
@@ -1122,8 +1140,11 @@ const StockPage: React.FC = () => {
 
                   {editForm.unidadMedida !== 'UNIDAD' && editForm.factorConversion && (
                     <Typography variant="caption" color="success.main">
-                      Al recibir 1 unidad de compra → se suman {editForm.factorConversion}{' '}
-                      {editForm.unidadMedida === 'MT2' ? 'm²' : editForm.unidadMedida === 'METROS' ? 'm' : 'kg'} al stock
+                      1 {editForm.unidadInventario || 'unidad de compra'} = {editForm.factorConversion}{' '}
+                      {editForm.unidadMedida === 'MT2' ? 'm²' : editForm.unidadMedida === 'METROS' ? 'm' : 'kg'}.
+                      El stock se cuenta en {editForm.unidadInventario || 'unidades de compra'}; las recetas se cargan
+                      en {editForm.unidadMedida === 'MT2' ? 'm²' : editForm.unidadMedida === 'METROS' ? 'm' : 'kg'} y se
+                      descuentan ÷ {editForm.factorConversion}.
                     </Typography>
                   )}
                 </Box>

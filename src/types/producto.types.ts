@@ -70,7 +70,9 @@ export interface Producto {
   tipoEntidad?: TipoEntidadProducto;
   /** Unidad física del stock: MT2 | METROS | KILOS | UNIDAD */
   unidadMedida?: string;
-  /** Unidades base por unidad de compra (ej: 9 m² por plancha). null/undefined = 1. */
+  /** Unidad de inventario/compra en la que se cuenta el stock (Rollo, Bolsa, Garrafa). */
+  unidadInventario?: string | null;
+  /** Contenido físico por unidad de compra (ej: 45 m por rollo). null/undefined = 1. */
   factorConversion?: number | null;
 }
 
@@ -98,6 +100,7 @@ export interface ProductoCreateDTO {
   codigo?: string;
   categoriaProductoId: number;
   unidadMedida?: string;
+  unidadInventario?: string | null;
   factorConversion?: number | null;
 }
 
@@ -111,6 +114,7 @@ export interface ProductoUpdateDTO {
   categoriaProductoId?: number;
   activo?: boolean;
   unidadMedida?: string;
+  unidadInventario?: string | null;
   factorConversion?: number | null;
 }
 
@@ -129,6 +133,7 @@ export interface ProductoDTO {
   activo: boolean;
   fechaCreacion: string;
   unidadMedida?: string;
+  unidadInventario?: string | null;
   factorConversion?: number | null;
 }
 
