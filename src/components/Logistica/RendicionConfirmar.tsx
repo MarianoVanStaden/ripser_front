@@ -267,6 +267,7 @@ const RendicionConfirmar: React.FC<Props> = ({ viajeId, onChange, onTotalDeclara
           cuitTitular: c.cuit.trim() || undefined,
           fechaEmision: c.fechaEmision,
           fechaCobro: c.fechaCobro,
+          esEcheq: false,
         },
       });
     }
