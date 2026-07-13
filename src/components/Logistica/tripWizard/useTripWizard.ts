@@ -85,6 +85,11 @@ export interface UseTripWizardOptions {
   onSaved: (viaje: Viaje, entregaErrors: string[]) => void;
   /** Reporta errores de validación/guardado (equivalente al setError de TripsPage). */
   onError?: (message: string) => void;
+  /**
+   * Permite quitar entregas YA persistidas desde el wizard en modo edición
+   * (ADMIN / COORDINADORA_LOGISTICA). Las nuevas siempre se pueden quitar.
+   */
+  canEditPersisted?: boolean;
   catalogos?: TripWizardCatalogos;
 }
 
@@ -118,6 +123,12 @@ export function useTripWizard(opts: UseTripWizardOptions) {
   const [editingTrip, setEditingTrip] = useState<Viaje | null>(opts.editingTrip ?? null);
   const [formData, setFormData] = useState<TripWizardFormData>({ ...EMPTY_FORM_DATA });
   const [tripDeliveries, setTripDeliveries] = useState<DeliveryFormState[]>([]);
+  // Entregas persistidas quitadas en el form: se borran del server recién al guardar
+  // (Cancelar no llama al backend).
+  const [removedPersistedIds, setRemovedPersistedIds] = useState<number[]>([]);
+  // true cuando el usuario reordenó las paradas (drag / flechas): al guardar se
+  // persiste el nuevo orden vía viajeApi.reordenarEntregas.
+  const [orderDirty, setOrderDirty] = useState(false);
   const [newDelivery, setNewDelivery] = useState<NewDeliveryState>({ ...EMPTY_NEW_DELIVERY });
   const [selectedDeliveryFactura, setSelectedDeliveryFactura] = useState<DocumentoComercial | null>(null);
   const [selectedDeliveryOrden, setSelectedDeliveryOrden] = useState<any>(null);
@@ -387,8 +398,57 @@ export function useTripWizard(opts: UseTripWizardOptions) {
     setSelectedDeliveryOrden(null);
   };
 
+  /**
+   * ¿Se puede quitar esta entrega desde el form? Las no persistidas siempre;
+   * las persistidas sólo con permiso, entrega PENDIENTE y viaje PLANIFICADO o
+   * EN_CURSO (espejo de assertEntregaEditable del backend).
+   */
+  const canRemoveDelivery = (delivery: DeliveryFormState): boolean => {
+    if (!delivery.id) return true;
+    if (!opts.canEditPersisted) return false;
+    const viajeEditable = !editingTrip
+      || editingTrip.estado === 'PLANIFICADO'
+      || editingTrip.estado === 'EN_CURSO';
+    return viajeEditable && delivery.estado === 'PENDIENTE';
+  };
+
   const handleRemoveDelivery = (index: number) => {
+    const delivery = tripDeliveries[index];
+    if (!delivery) return;
+    if (!canRemoveDelivery(delivery)) {
+      onError('Solo se pueden quitar entregas pendientes de un viaje planificado o en curso.');
+      return;
+    }
+    if (delivery.id) {
+      setRemovedPersistedIds(prev => [...prev, delivery.id as number]);
+    }
     setTripDeliveries(tripDeliveries.filter((_, i) => i !== index));
+  };
+
+  // ── Reorden de paradas ─────────────────────────────────────────────────────
+  /** Intercambia la parada con su vecina (flechas ↑/↓). */
+  const moveDelivery = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    setTripDeliveries(prev => {
+      if (index < 0 || index >= prev.length || target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setOrderDirty(true);
+  };
+
+  /** Mueve la parada de `fromIndex` a `toIndex` (drag and drop). */
+  const reorderDeliveries = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    setTripDeliveries(prev => {
+      if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    setOrderDirty(true);
   };
 
   // ── Navegación del wizard ──────────────────────────────────────────────────
@@ -447,7 +507,22 @@ export function useTripWizard(opts: UseTripWizardOptions) {
       }
 
       const entregaErrors: string[] = [];
-      for (const delivery of tripDeliveries) {
+
+      // 1. Quitar del server las entregas persistidas removidas en el form
+      //    (borrado diferido: revierte equipos y devuelve la factura al pool).
+      for (const removedId of removedPersistedIds) {
+        try {
+          await entregaViajeApi.quitarDelViaje(removedId);
+        } catch (removeError: unknown) {
+          const msg = (removeError as any)?.response?.data?.message || (removeError as any)?.response?.data || (removeError as any)?.message || 'Error desconocido';
+          entregaErrors.push(`Quitar entrega: ${msg}`);
+        }
+      }
+
+      // 2. Crear las nuevas entregas, recordando el id asignado (para el reorden).
+      const createdIds = new Map<number, number>(); // índice en tripDeliveries → id creado
+      for (let i = 0; i < tripDeliveries.length; i++) {
+        const delivery = tripDeliveries[i];
         if (delivery.id) continue; // Skip already persisted deliveries
 
         try {
@@ -470,7 +545,8 @@ export function useTripWizard(opts: UseTripWizardOptions) {
             continue; // Skip if neither factura, orden ni parada libre
           }
 
-          await entregaViajeApi.create(deliveryPayload);
+          const creada = await entregaViajeApi.create(deliveryPayload);
+          if (creada?.id != null) createdIds.set(i, creada.id);
         } catch (deliveryError: unknown) {
           const msg = (deliveryError as any)?.response?.data?.message || (deliveryError as any)?.message || 'Error desconocido';
           const label = delivery.factura?.numeroDocumento || ((delivery as any).tipoParada ? tipoParadaLabel((delivery as any).tipoParada) : `OS-${(delivery as any).ordenServicioId || 'sin-ref'}`);
@@ -478,7 +554,25 @@ export function useTripWizard(opts: UseTripWizardOptions) {
         }
       }
 
+      // 3. Persistir el orden de paradas según la posición en la UI. Solo en
+      //    edición: en un viaje nuevo el backend ya asigna el orden por posición.
+      //    Las nuevas entregas (max+1) también requieren reorden si no quedaron últimas.
+      if (editingTrip && (orderDirty || createdIds.size > 0)) {
+        const finalIds = tripDeliveries
+          .map((d, i) => d.id ?? createdIds.get(i))
+          .filter((id): id is number => id != null);
+        if (finalIds.length > 0) {
+          try {
+            await viajeApi.reordenarEntregas(editingTrip.id, finalIds);
+          } catch {
+            entregaErrors.push('Viaje guardado, pero no se pudo actualizar el orden de paradas. Recargá y reintentá el reorden.');
+          }
+        }
+      }
+
       setTripDeliveries([]);
+      setRemovedPersistedIds([]);
+      setOrderDirty(false);
       onSaved(savedTrip, entregaErrors);
     } catch (err) {
       const error = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
@@ -522,6 +616,8 @@ export function useTripWizard(opts: UseTripWizardOptions) {
     setSelectedDeliveryOrden(null);
     setFormData({ ...EMPTY_FORM_DATA });
     setTripDeliveries(prefill.length ? mapPrefill(prefill) : []);
+    setRemovedPersistedIds([]);
+    setOrderDirty(false);
     setNewDelivery({ ...EMPTY_NEW_DELIVERY });
     setActiveStep(0);
   };
@@ -545,11 +641,14 @@ export function useTripWizard(opts: UseTripWizardOptions) {
     });
 
     try {
+      // El backend ya devuelve las entregas ordenadas por parada (orden ASC).
       const existingDeliveries = await entregaViajeApi.getByViaje(trip.id);
       setTripDeliveries(existingDeliveries);
     } catch {
       setTripDeliveries([]);
     }
+    setRemovedPersistedIds([]);
+    setOrderDirty(false);
     setNewDelivery({ ...EMPTY_NEW_DELIVERY });
     setActiveStep(0);
   };
@@ -598,6 +697,9 @@ export function useTripWizard(opts: UseTripWizardOptions) {
     canProceedStep1,
     handleAddDelivery,
     handleRemoveDelivery,
+    canRemoveDelivery,
+    moveDelivery,
+    reorderDeliveries,
     handleSelectFacturaForDelivery,
     handleSelectVehicle,
     handleSave,

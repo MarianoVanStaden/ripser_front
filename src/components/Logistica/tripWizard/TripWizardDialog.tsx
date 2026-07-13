@@ -8,7 +8,6 @@ import {
   Alert,
   IconButton,
   TextField,
-  Chip,
   Autocomplete,
   FormControl,
   InputLabel,
@@ -29,7 +28,6 @@ import {
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Delete as DeleteIcon,
   Close as CloseIcon,
   LocalShipping as TruckIcon,
   Person as DriverIcon,
@@ -45,13 +43,13 @@ import type { EstadoViaje } from '../../../types';
 import { useParametroSistema, parseIntOr } from '../../../hooks/useParametroSistema';
 import {
   useResponsive,
-  tipoParadaLabel,
   renderVehiculoEstadoChip,
   VEHICULO_ESTADO_LABEL,
   entregaEstimadaInfo as entregaEstimadaInfoBase,
   renderEntregaEstimada as renderEntregaEstimadaBase,
 } from './tripWizardShared';
 import { BottomSheet } from './TripBottomSheet';
+import SortableDeliveryList from './SortableDeliveryList';
 import type { TripWizardController } from './useTripWizard';
 
 // Wizard steps for mobile trip creation
@@ -103,6 +101,9 @@ const TripWizardDialog: React.FC<TripWizardDialogProps> = ({ open, onClose, wiza
     canProceedStep1,
     handleAddDelivery,
     handleRemoveDelivery,
+    canRemoveDelivery,
+    moveDelivery,
+    reorderDeliveries,
     handleSelectFacturaForDelivery,
     handleSelectVehicle,
     handleSave,
@@ -255,53 +256,14 @@ const TripWizardDialog: React.FC<TripWizardDialogProps> = ({ open, onClose, wiza
             </Typography>
 
             {tripDeliveries.length > 0 && (
-              <Stack spacing={1}>
-                {tripDeliveries.map((delivery, index) => (
-                  <Card key={index} variant="outlined">
-                    <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                        <Box flex={1}>
-                          <Typography variant="body2" fontWeight="medium">
-                            {delivery.direccionEntrega}
-                          </Typography>
-                          {delivery.factura && (
-                            <Chip
-                              label={delivery.factura.numeroDocumento}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              sx={{ mt: 0.5 }}
-                            />
-                          )}
-                          {(delivery as any).tipoParada && (
-                            <Chip
-                              label={tipoParadaLabel((delivery as any).tipoParada)}
-                              size="small"
-                              color="secondary"
-                              variant="outlined"
-                              sx={{ mt: 0.5 }}
-                            />
-                          )}
-                          {delivery.observaciones && (
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                              📝 {delivery.observaciones}
-                            </Typography>
-                          )}
-                        </Box>
-                        {!delivery.id && (
-                          <IconButton
-                            size="small"
-                            onClick={() => handleRemoveDelivery(index)}
-                            sx={{ ml: 1 }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Stack>
+              <SortableDeliveryList
+                deliveries={tripDeliveries}
+                onRemove={handleRemoveDelivery}
+                canRemove={canRemoveDelivery}
+                onMove={moveDelivery}
+                onReorder={reorderDeliveries}
+                useArrows
+              />
             )}
 
             <Divider />
@@ -546,7 +508,7 @@ const TripWizardDialog: React.FC<TripWizardDialogProps> = ({ open, onClose, wiza
 
                   {tripDeliveries.map((delivery, idx) => (
                     <Typography key={idx} variant="caption" color="text.secondary" sx={{ pl: 2 }}>
-                      • {delivery.direccionEntrega}
+                      {idx + 1}. {delivery.direccionEntrega}
                       {delivery.factura && ` (${delivery.factura.numeroDocumento})`}
                     </Typography>
                   ))}
@@ -761,45 +723,20 @@ const TripWizardDialog: React.FC<TripWizardDialogProps> = ({ open, onClose, wiza
                 Entregas ({tripDeliveries.length})
               </Typography>
 
-              {tripDeliveries.map((delivery, index) => (
-                <Card key={index} variant="outlined">
-                  <CardContent sx={{ py: 1, px: 2 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                      <Box flex={1}>
-                        <Typography variant="body2">{delivery.direccionEntrega}</Typography>
-                        {delivery.factura && (
-                          <Chip
-                            label={delivery.factura.numeroDocumento}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                            sx={{ mt: 0.5 }}
-                          />
-                        )}
-                        {(delivery as any).ordenServicio && (
-                          <Chip
-                            label={(delivery as any).ordenServicio.numeroOrden}
-                            size="small"
-                            color="secondary"
-                            variant="outlined"
-                            sx={{ mt: 0.5 }}
-                          />
-                        )}
-                        {delivery.observaciones && (
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                            📝 {delivery.observaciones}
-                          </Typography>
-                        )}
-                      </Box>
-                      {!delivery.id && (
-                        <IconButton size="small" onClick={() => handleRemoveDelivery(index)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
+              <SortableDeliveryList
+                deliveries={tripDeliveries}
+                onRemove={handleRemoveDelivery}
+                canRemove={canRemoveDelivery}
+                onMove={moveDelivery}
+                onReorder={reorderDeliveries}
+                useArrows={false}
+                dense
+              />
+              {tripDeliveries.length > 1 && (
+                <Typography variant="caption" color="text.secondary">
+                  Arrastrá las entregas para definir el orden de las paradas.
+                </Typography>
+              )}
 
               <ToggleButtonGroup
                 value={newDelivery.tipoEntrega}

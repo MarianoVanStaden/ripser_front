@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -55,6 +56,7 @@ import {
   RemoveCircleOutline as RemoveCircleOutlineIcon,
   Block as BlockIcon,
   SwapHoriz as SwapHorizIcon,
+  OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import type { Viaje, Vehiculo, Empleado, EntregaViaje, EstadoViaje, DocumentoComercial, Cliente, OrdenServicio, ResumenFinancieroViaje } from '../../types';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -458,6 +460,7 @@ const TripsPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
   const { tieneRol } = usePermisos();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const esConductor = tieneRol('CONDUCTOR');
   const esLogistico = tieneRol('LOGISTICO');
   // Edición logística de entregas (quitar / rechazar / reasignar): ADMIN o coordinación.
@@ -549,6 +552,7 @@ const TripsPage2: React.FC = () => {
       }
     },
     onError: (msg) => setError(msg),
+    canEditPersisted: puedeEditarEntregas,
     catalogos: { vehiculos: vehicles, drivers, facturas, ordenes, clientes, deliveries, trips },
   });
 
@@ -915,7 +919,10 @@ const TripsPage2: React.FC = () => {
     renderEntregaEstimadaBase(info, diasEntregaEstimada);
 
   const getTripDeliveries = (tripId: number) => {
-    return deliveries.filter(d => d.viajeId === tripId);
+    // Ordenadas por parada (orden ASC, nulls al final); empate por id.
+    return deliveries
+      .filter(d => d.viajeId === tripId)
+      .sort((a, b) => (a.orden ?? Infinity) - (b.orden ?? Infinity) || a.id - b.id);
   };
 
   const getFacturasByTrip = (tripId: number): DocumentoComercial[] => {
@@ -1621,14 +1628,25 @@ const TripsPage2: React.FC = () => {
           onClose={() => setDetailsDialogOpen(false)}
           title={`Viaje #${selectedTrip?.id}`}
           actions={
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={() => setDetailsDialogOpen(false)}
-              sx={{ minHeight: 48 }}
-            >
-              Cerrar
-            </Button>
+            <Stack spacing={1}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<OpenInNewIcon />}
+                onClick={() => selectedTrip && navigate(`/logistica/distribucion/entregas-productos?viaje=${selectedTrip.id}`)}
+                sx={{ minHeight: 48 }}
+              >
+                Ver en Control de Entregas
+              </Button>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => setDetailsDialogOpen(false)}
+                sx={{ minHeight: 48 }}
+              >
+                Cerrar
+              </Button>
+            </Stack>
           }
         >
           {selectedTrip && (
@@ -1719,7 +1737,7 @@ const TripsPage2: React.FC = () => {
                       <Card key={delivery.id} variant="outlined">
                         <CardContent sx={{ py: 1.5 }}>
                           <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                            <Typography variant="subtitle2">Entrega #{index + 1}</Typography>
+                            <Typography variant="subtitle2">Parada N°{index + 1}</Typography>
                             <Chip
                               label={delivery.estado}
                               size="small"
@@ -1879,9 +1897,19 @@ const TripsPage2: React.FC = () => {
                   <Typography variant="h6">Viaje #{selectedTrip.id}</Typography>
                   {getStatusChip(selectedTrip.estado)}
                 </Box>
-                <IconButton onClick={() => setDetailsDialogOpen(false)}>
-                  <CloseIcon />
-                </IconButton>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<OpenInNewIcon />}
+                    onClick={() => navigate(`/logistica/distribucion/entregas-productos?viaje=${selectedTrip.id}`)}
+                  >
+                    Ver en Control de Entregas
+                  </Button>
+                  <IconButton onClick={() => setDetailsDialogOpen(false)}>
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
               </Box>
 
               <Grid container spacing={2}>
@@ -1915,7 +1943,7 @@ const TripsPage2: React.FC = () => {
                           <ListItem key={delivery.id} disablePadding sx={{ flexDirection: 'column', alignItems: 'stretch', py: 0.5 }}>
                             <Box display="flex" justifyContent="space-between" alignItems="flex-start" width="100%">
                               <ListItemText
-                                primary={`Entrega #${index + 1}`}
+                                primary={`Parada N°${index + 1}`}
                                 secondary={
                                   <>
                                     {(() => {

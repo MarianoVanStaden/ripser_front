@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -63,6 +65,7 @@ import { viajeApi } from '../../api/services/viajeApi';
 import { ordenServicioApi } from '../../api/services/ordenServicioApi';
 // FRONT-003: extracted to keep this file orchestrator-shaped.
 import { useResponsive } from './Deliveries/useResponsive';
+import { usePermisos } from '../../hooks/usePermisos';
 import type { CobroData, DeliveryFormData } from './Deliveries/types';
 import { compressImageFile, getEstadoAsignacionColor, getEstadoAsignacionLabel } from './Deliveries/utils';
 import BottomSheet from './Deliveries/components/BottomSheet';
@@ -189,6 +192,11 @@ const tipoParadaLabel = (tipo?: string | null): string =>
 
 const DeliveriesPage2: React.FC = () => {
   const { isMobile, isTablet } = useResponsive();
+  const { tieneRol } = usePermisos();
+  // El conductor solo confirma/rechaza/cobra sus entregas: sin crear ni editar
+  // (el backend igualmente rechaza esas mutaciones con 403).
+  const esConductor = tieneRol('CONDUCTOR');
+  const [searchParams] = useSearchParams();
 
   const [deliveries, setDeliveries] = useState<EntregaViaje[]>([]);
   const [clients, setClients] = useState<Cliente[]>([]);
@@ -253,7 +261,11 @@ const DeliveriesPage2: React.FC = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState<'all' | EstadoEntrega>('all');
   const [dateFilter, setDateFilter] = useState('');
-  const [viajeFilter, setViajeFilter] = useState<number | 'sin_viaje' | ''>('');
+  // Deep-link desde Armado de Viajes: ?viaje=<id> inicializa el filtro.
+  const viajeParam = Number(searchParams.get('viaje'));
+  const [viajeFilter, setViajeFilter] = useState<number | 'sin_viaje' | ''>(
+    Number.isInteger(viajeParam) && viajeParam > 0 ? viajeParam : ''
+  );
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -383,13 +395,24 @@ const DeliveriesPage2: React.FC = () => {
     });
   };
 
+  // Opciones del filtro de viaje, buscables por número, conductor y fecha.
   const viajesUnicos = useMemo(() => {
     const map = new Map<number, string>();
     deliveries.forEach(d => {
       if (d.viajeId) map.set(d.viajeId, d.numeroViaje ?? `Viaje #${d.viajeId}`);
     });
-    return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
-  }, [deliveries]);
+    return Array.from(map.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([id, numero]) => {
+        const trip = trips.find(t => t.id === id);
+        const conductor = (trip as any)?.conductorNombre
+          ?? (trip as any)?.conductor?.nombre
+          ?? '';
+        const fecha = trip?.fechaViaje ? new Date(trip.fechaViaje).toLocaleDateString('es-AR') : '';
+        const extra = [conductor, fecha].filter(Boolean).join(' · ');
+        return { id, label: extra ? `${numero} — ${extra}` : numero };
+      });
+  }, [deliveries, trips]);
 
   const filteredDeliveries = deliveries
     .filter(delivery => {
@@ -401,7 +424,32 @@ const DeliveriesPage2: React.FC = () => {
         (viajeFilter === 'sin_viaje' ? !delivery.viajeId : delivery.viajeId === viajeFilter);
       return matchesStatus && matchesDate && matchesViaje;
     })
-    .sort((a, b) => b.id - a.id);
+    .sort((a, b) => {
+      // Filtrado por un viaje concreto: ordenar por parada (orden ASC, nulls al final).
+      if (typeof viajeFilter === 'number') {
+        return (a.orden ?? Infinity) - (b.orden ?? Infinity) || a.id - b.id;
+      }
+      return b.id - a.id;
+    });
+
+  // Número de parada (1..n) por entrega, calculado por viaje sobre la lista
+  // ordenada por `orden` (tolera huecos tras quitar entregas: siempre 1..n).
+  const paradaByEntregaId = useMemo(() => {
+    const byViaje = new Map<number, EntregaViaje[]>();
+    deliveries.forEach(d => {
+      if (!d.viajeId) return;
+      const list = byViaje.get(d.viajeId) ?? [];
+      list.push(d);
+      byViaje.set(d.viajeId, list);
+    });
+    const map = new Map<number, number>();
+    byViaje.forEach(list => {
+      [...list]
+        .sort((a, b) => (a.orden ?? Infinity) - (b.orden ?? Infinity) || a.id - b.id)
+        .forEach((d, i) => map.set(d.id, i + 1));
+    });
+    return map;
+  }, [deliveries]);
 
   const paginatedDeliveries = filteredDeliveries.slice(
     page * rowsPerPage,
@@ -948,6 +996,9 @@ const DeliveriesPage2: React.FC = () => {
               <Typography variant="caption" color="text.secondary">
                 {getTripNumber(delivery.viajeId)}
               </Typography>
+              {paradaByEntregaId.has(delivery.id) && (
+                <Chip label={`Parada ${paradaByEntregaId.get(delivery.id)}`} size="small" variant="outlined" />
+              )}
             </Stack>
           </Box>
 
@@ -1033,12 +1084,14 @@ const DeliveriesPage2: React.FC = () => {
                   >
                     <CancelIcon />
                   </IconButton>
-                  <IconButton
-                    onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
-                    sx={{ minWidth: 44, minHeight: 44 }}
-                  >
-                    <EditIcon />
-                  </IconButton>
+                  {!esConductor && (
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
+                      sx={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  )}
                 </Box>
               )}
 
@@ -1062,15 +1115,17 @@ const DeliveriesPage2: React.FC = () => {
                       <CheckIcon fontSize="small" />
                     </IconButton>
                   )}
-                  <IconButton
-                    onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
-                    sx={{ minWidth: 44, minHeight: 44 }}
-                  >
-                    <EditIcon />
-                  </IconButton>
+                  {!esConductor && (
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
+                      sx={{ minWidth: 44, minHeight: 44 }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  )}
                 </Box>
               )}
-              {delivery.estado === 'NO_ENTREGADA' && (
+              {delivery.estado === 'NO_ENTREGADA' && !esConductor && (
                 <IconButton
                   onClick={(e) => { e.stopPropagation(); handleEdit(delivery); }}
                   sx={{ minWidth: 44, minHeight: 44 }}
@@ -1126,14 +1181,16 @@ const DeliveriesPage2: React.FC = () => {
           <DeliveryIcon />
           Control de Entregas
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAdd}
-          fullWidth={isMobile}
-        >
-          Nueva Entrega
-        </Button>
+        {!esConductor && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAdd}
+            fullWidth={isMobile}
+          >
+            Nueva Entrega
+          </Button>
+        )}
       </Box>
 
       {/* Error Alert */}
@@ -1274,20 +1331,30 @@ const DeliveriesPage2: React.FC = () => {
                   size="small"
                   sx={{ width: 180 }}
                 />
-                <FormControl sx={{ minWidth: 180 }} size="small">
-                  <InputLabel>Viaje</InputLabel>
-                  <Select
-                    value={viajeFilter}
-                    label="Viaje"
-                    onChange={(e) => setViajeFilter(e.target.value as number | 'sin_viaje' | '')}
-                  >
-                    <MenuItem value="">Todos los viajes</MenuItem>
-                    <MenuItem value="sin_viaje">Sin viaje asignado</MenuItem>
-                    {viajesUnicos.map(([id, label]) => (
-                      <MenuItem key={id} value={id}>{label}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  size="small"
+                  sx={{ minWidth: 280 }}
+                  options={[
+                    { id: '' as const, label: 'Todos los viajes' },
+                    { id: 'sin_viaje' as const, label: 'Sin viaje asignado' },
+                    ...viajesUnicos,
+                  ]}
+                  getOptionLabel={(o) => o.label}
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  value={
+                    viajeFilter === ''
+                      ? { id: '' as const, label: 'Todos los viajes' }
+                      : viajeFilter === 'sin_viaje'
+                        ? { id: 'sin_viaje' as const, label: 'Sin viaje asignado' }
+                        : viajesUnicos.find(v => v.id === viajeFilter)
+                          ?? { id: viajeFilter, label: `Viaje #${viajeFilter}` }
+                  }
+                  onChange={(_, value) => setViajeFilter(value?.id ?? '')}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Viaje" placeholder="Buscar por número, conductor o fecha..." />
+                  )}
+                  noOptionsText="Sin viajes"
+                />
               </Box>
             )}
           </Box>
@@ -1311,6 +1378,7 @@ const DeliveriesPage2: React.FC = () => {
                         {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Direccion</Box>}
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Fecha</Box>
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Viaje</Box>
+                        <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Parada</Box>
                         {!isTablet && <Box component="th" sx={{ p: 1.5, textAlign: 'right', fontWeight: 'bold' }}>A cobrar</Box>}
                         <Box component="th" sx={{ p: 1.5, textAlign: 'left', fontWeight: 'bold' }}>Estado</Box>
                         <Box component="th" sx={{ p: 1.5, textAlign: 'center', fontWeight: 'bold' }}>Acciones</Box>
@@ -1353,6 +1421,13 @@ const DeliveriesPage2: React.FC = () => {
                           <Box component="td" sx={{ p: 1.5 }}>
                             <Typography variant="body2">{getTripNumber(delivery.viajeId)}</Typography>
                           </Box>
+                          <Box component="td" sx={{ p: 1.5, textAlign: 'center' }}>
+                            {paradaByEntregaId.has(delivery.id) ? (
+                              <Chip label={`N° ${paradaByEntregaId.get(delivery.id)}`} size="small" variant="outlined" />
+                            ) : (
+                              <Typography variant="caption" color="text.disabled">—</Typography>
+                            )}
+                          </Box>
                           {!isTablet && (
                             <Box component="td" sx={{ p: 1.5, textAlign: 'right' }}>
                               {(() => {
@@ -1394,9 +1469,11 @@ const DeliveriesPage2: React.FC = () => {
                                   <IconButton onClick={() => openRejectDialog(delivery.id)} size="small" color="error">
                                     <CancelIcon fontSize="small" />
                                   </IconButton>
-                                  <IconButton onClick={() => handleEdit(delivery)} size="small">
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
+                                  {!esConductor && (
+                                    <IconButton onClick={() => handleEdit(delivery)} size="small">
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  )}
                                 </>
                               )}
                             </Box>

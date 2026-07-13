@@ -60,6 +60,16 @@ export const viajeApi = {
     return response.data;
   },
 
+  /**
+   * Reordena las paradas del viaje. `entregaIds` debe ser la lista COMPLETA de
+   * ids de entregas del viaje en el nuevo orden (posición = parada 1..n).
+   * 409 si las entregas del viaje cambiaron desde que se cargó la lista.
+   */
+  reordenarEntregas: async (viajeId: number, entregaIds: number[]): Promise<Viaje> => {
+    const response = await api.patch(`/api/viajes/${viajeId}/entregas/orden`, { entregaIds });
+    return response.data;
+  },
+
   // ── Rendición de viaje ──────────────────────────────────────────────────────
 
   /** Conductor cierra el viaje → PENDIENTE_RENDICION */
