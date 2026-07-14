@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Card, CardContent, Grid,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Chip, Stack, TextField,
+  Chip, Stack, TextField, Button,
 } from '@mui/material';
 import {
   Build as BuildIcon,
   CheckCircle,
   Cancel,
   Inventory,
+  AutoFixHigh,
 } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { equipoFabricadoApi } from '../../api/services/equipoFabricadoApi';
 import LoadingOverlay from '../common/LoadingOverlay';
+import { useAuth } from '../../context/AuthContext';
+import ReasignarAutocreadosDialog from './ReasignarAutocreadosDialog';
 
 interface KPI {
   label: string;
@@ -22,6 +25,11 @@ interface KPI {
 }
 
 const DashboardFabricacion: React.FC = () => {
+  const { user } = useAuth();
+  const esAdmin = (user?.roles ?? []).some(
+    (r) => r === 'ADMIN' || (r as string) === 'SUPER_ADMIN'
+  );
+  const [reasignarOpen, setReasignarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [equipos, setEquipos] = useState<any[]>([]);
   const [fechaInicio, setFechaInicio] = useState(
@@ -135,9 +143,28 @@ const DashboardFabricacion: React.FC = () => {
   return (
     <Box p={3}>
       <LoadingOverlay open={loading} message="Cargando dashboard de fabricación..." />
-      <Typography variant="h5" fontWeight="600" mb={3}>
-        Dashboard de Fabricación
-      </Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={1}>
+        <Typography variant="h5" fontWeight="600">
+          Dashboard de Fabricación
+        </Typography>
+        {esAdmin && (
+          <Button
+            variant="outlined"
+            startIcon={<AutoFixHigh />}
+            onClick={() => setReasignarOpen(true)}
+          >
+            Reasignar PENDIENTE a stock
+          </Button>
+        )}
+      </Stack>
+
+      {esAdmin && (
+        <ReasignarAutocreadosDialog
+          open={reasignarOpen}
+          onClose={() => setReasignarOpen(false)}
+          onApplied={() => loadData()}
+        />
+      )}
 
       {/* KPIs */}
       <Grid container spacing={3} mb={3}>

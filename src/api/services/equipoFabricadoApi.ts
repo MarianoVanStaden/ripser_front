@@ -26,6 +26,27 @@ export interface RechazarEtapasDTO {
   etapas: Array<{ tipoEtapa: TipoEtapaFabricacion; motivo?: string }>;
 }
 
+export interface ReasignacionStockItem {
+  pendienteId: number;
+  pendienteNumero: string;
+  estadoAsignacionPendiente: string | null;
+  detalleId: number | null;
+  stockId: number | null;
+  stockNumero: string | null;
+  /** REASIGNADO_TERMINADO | REASIGNADO_BASE | SIN_STOCK | SIN_VINCULO */
+  resultado: string;
+  mensaje: string;
+}
+
+export interface ReasignacionStockResult {
+  dryRun: boolean;
+  totalPendientes: number;
+  reasignados: number;
+  sinStock: number;
+  sinVinculo: number;
+  items: ReasignacionStockItem[];
+}
+
 
 export const equipoFabricadoApi = {
   // CRUD básico (paginated)
@@ -490,6 +511,20 @@ export const equipoFabricadoApi = {
    */
   getDesgloseModeloVendidos: async (): Promise<DesgloseModeloVendidosDTO[]> => {
     const response = await api.get<DesgloseModeloVendidosDTO[]>('/api/equipos-fabricados/desglose-modelo/vendidos');
+    return response.data;
+  },
+
+  /**
+   * Reasigna los equipos PENDIENTE auto-creados por notas de pedido hacia stock existente
+   * (terminado disponible o base sin terminación). Solo asignaciones — no toca contable.
+   * Correr primero con dryRun=true para previsualizar. Solo ADMIN/SUPER_ADMIN.
+   */
+  reasignarAutocreados: async (dryRun: boolean): Promise<ReasignacionStockResult> => {
+    const response = await api.post<ReasignacionStockResult>(
+      '/api/equipos-fabricados/reasignar-autocreados',
+      null,
+      { params: { dryRun } }
+    );
     return response.data;
   },
 };
