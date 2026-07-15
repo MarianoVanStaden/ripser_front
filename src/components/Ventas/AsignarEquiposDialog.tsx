@@ -192,17 +192,21 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
     for (let i = 0; i < newAsignaciones.length; i++) {
       const asignacion = newAsignaciones[i];
       try {
-        // Fetch tres fuentes:
-        //  1) COMPLETADO+DISPONIBLE (o seleccionables si hay notaPedidoId)
-        //  2) FABRICADO_SIN_TERMINACION (base sin terminación)
-        //  3) Todos los equipos de la receta — usado para incorporar los estados
-        //     PENDIENTE y EN_PROCESO, ahora permitidos por backend al facturar.
+        // Cuando hay notaPedidoId, el endpoint seleccionables-para-factura es la única
+        // fuente de verdad: ya devuelve nota-scopeado el stock libre (cualquier estado
+        // productivo salvo CANCELADO) + los reservados/pendientes de ESTA nota. No se
+        // fetchean las fuentes 2/3 para no mostrar base reservado a OTRA nota.
+        // Sin notaPedidoId (factura directa) se mantienen las tres fuentes.
         const [equiposCompletos, equiposSinTerminacionRaw, equiposTodosReceta] = await Promise.all([
           notaPedidoId
             ? equipoFabricadoApi.findSeleccionablesParaFactura(asignacion.recetaId, notaPedidoId)
             : equipoFabricadoApi.findDisponiblesParaVentaByReceta(asignacion.recetaId),
-          equipoFabricadoApi.findSinTerminacionByReceta(asignacion.recetaId).catch(() => [] as any[]),
-          equipoFabricadoApi.findByReceta(asignacion.recetaId).catch(() => [] as any[]),
+          notaPedidoId
+            ? Promise.resolve([] as any[])
+            : equipoFabricadoApi.findSinTerminacionByReceta(asignacion.recetaId).catch(() => [] as any[]),
+          notaPedidoId
+            ? Promise.resolve([] as any[])
+            : equipoFabricadoApi.findByReceta(asignacion.recetaId).catch(() => [] as any[]),
         ]);
 
         // De la lista completa, quedarnos solo con PENDIENTE / EN_PROCESO (los demás
@@ -277,7 +281,10 @@ const AsignarEquiposDialog: React.FC<AsignarEquiposDialogProps> = ({
           // CANCELADO siempre excluido (backend lo rechaza).
           if (equipo.estado === 'CANCELADO') return false;
 
-          const matchColor = !asignacion.colorId || equipo.color?.id === asignacion.colorId;
+          // Un equipo base sin color aplicado (color null, aún sin terminación) matchea
+          // cualquier color requerido: se pintará del color de la nota en la terminación.
+          // Un equipo con color ya aplicado sí debe coincidir (no vender un color por otro).
+          const matchColor = !asignacion.colorId || !equipo.color?.id || equipo.color.id === asignacion.colorId;
           const matchMedida = !asignacion.medidaId || equipo.medida?.id === asignacion.medidaId;
 
           // Infer estadoAsignacion if not provided
