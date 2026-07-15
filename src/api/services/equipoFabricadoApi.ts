@@ -20,6 +20,8 @@ import type {
   ActualizarEtapaFabricacionDTO,
   PageResponse,
   PaginationParams,
+  EquipoFabricadoFilterParams,
+  EquipoResumenEstadosDTO,
 } from '../../types';
 
 export interface RechazarEtapasDTO {
@@ -49,11 +51,22 @@ export interface ReasignacionStockResult {
 
 
 export const equipoFabricadoApi = {
-  // CRUD básico (paginated)
-  findAll: async (pagination: PaginationParams = {}): Promise<PageResponse<EquipoFabricadoListDTO>> => {
+  // CRUD básico + filtros server-side combinables (paginated).
+  // Los arrays (estados, estadosAsignacion) se serializan como parámetros repetidos
+  // (estados=A&estados=B) para que Spring bindee el List del @ModelAttribute.
+  findAll: async (
+    params: PaginationParams & EquipoFabricadoFilterParams = {},
+  ): Promise<PageResponse<EquipoFabricadoListDTO>> => {
     const response = await api.get<PageResponse<EquipoFabricadoListDTO>>('/api/equipos-fabricados', {
-      params: { ...pagination },
+      params,
+      paramsSerializer: { indexes: null },
     });
+    return response.data;
+  },
+
+  // Conteos agregados globales de la empresa (para tarjetas de métricas y KPIs).
+  getResumenEstados: async (): Promise<EquipoResumenEstadosDTO> => {
+    const response = await api.get<EquipoResumenEstadosDTO>('/api/equipos-fabricados/resumen-estados');
     return response.data;
   },
 

@@ -4,15 +4,17 @@ import {
   Box, Paper, Typography, Button, TextField, MenuItem, Chip, IconButton,
   Tooltip, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
   DialogContentText, DialogActions, Stack, Card, CardContent,
-  Grid, Tabs, Tab, Divider, Accordion, AccordionSummary, AccordionDetails,
+  Grid, Tabs, Tab, Divider,
   LinearProgress, CircularProgress, Checkbox,
+  FormControl, InputLabel, Select, OutlinedInput, ListItemText, InputAdornment,
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel, GridPaginationModel } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
-  Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, ExpandMore, PlayArrow, Pending, Brush,
-  QrCode2, AssignmentTurnedIn, SwapHoriz,
+  Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, PlayArrow, Pending, Brush,
+  QrCode2, AssignmentTurnedIn, SwapHoriz, Search, Clear,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
@@ -23,7 +25,11 @@ import {
   equipoFabricadoApi,
 
 } from '../../api/services/equipoFabricadoApi';
-import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoDTO, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO } from '../../types';
+import { colorApi } from '../../api/services/colorApi';
+import type { Color } from '../../api/services/colorApi';
+import { medidaApi } from '../../api/services/medidaApi';
+import type { Medida } from '../../api/services/medidaApi';
+import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoDTO, EquipoFabricadoListDTO, EstadoAsignacionEquipo, EtapaFabricacionDTO, EquipoResumenEstadosDTO } from '../../types';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { usePermisos } from '../../hooks/usePermisos';
 import ClienteAutocomplete from '../common/ClienteAutocomplete';
@@ -134,14 +140,27 @@ const EquiposList: React.FC = () => {
 
   const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page] = useState(0);
-  const [pageSize] = useState(10000); // Load all equipos for client-side filtering
-  const [totalElements, setTotalElements] = useState(0);
+  const [rowCount, setRowCount] = useState(0); // total de la página filtrada (grid server-side)
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 25 });
 
-  // Filtros
+  // Resumen global (empresa) para tarjetas de métricas y KPIs — independiente del filtro/página.
+  const [resumen, setResumen] = useState<EquipoResumenEstadosDTO | null>(null);
+
+  // Catálogos para los selects de filtro
+  const [colores, setColores] = useState<Color[]>([]);
+  const [medidas, setMedidas] = useState<Medida[]>([]);
+
+  // Filtros (server-side)
   const [tipoFilter, setTipoFilter] = useState<TipoEquipo | ''>('');
-  const [estadoFilter, setEstadoFilter] = useState<EstadoFabricacion | ''>('');
-  const [estadoAsignacionFilter, setEstadoAsignacionFilter] = useState<EstadoAsignacionEquipo | ''>('');
+  const [estadosFilter, setEstadosFilter] = useState<EstadoFabricacion[]>([]);
+  const [estadosAsignacionFilter, setEstadosAsignacionFilter] = useState<EstadoAsignacionEquipo[]>([]);
+  const [colorFilter, setColorFilter] = useState<number | ''>('');
+  const [medidaFilter, setMedidaFilter] = useState<number | ''>('');
+  // Campos de texto: input inmediato + valor debounced que dispara la carga.
+  const [modeloInput, setModeloInput] = useState('');
+  const [modeloFilter, setModeloFilter] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -324,109 +343,77 @@ const EquiposList: React.FC = () => {
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [currentTab, setCurrentTab] = useState(0);
 
-  // Calculate metrics from all equipos (not just current page)
-  const metrics = useMemo(() => {
-    return {
-      total: equipos.length,
-      asignados: equipos.filter(e => e.asignado).length,
-      noAsignados: equipos.filter(e => !e.asignado).length,
-      enProceso: equipos.filter(e => e.estado === 'EN_PROCESO').length,
-      completados: equipos.filter(e => e.estado === 'COMPLETADO').length,
-      cancelados: equipos.filter(e => e.estado === 'CANCELADO').length,
-      sinTerminacion: equipos.filter(e => e.estado === 'FABRICADO_SIN_TERMINACION').length,
-      // Entregados = completados y asignados
-      entregados: equipos.filter(e => e.estado === 'COMPLETADO' && e.asignado).length,
-      // En tránsito = completados pero aún no asignados (listos para entrega)
-      enTransito: equipos.filter(e => e.estado === 'COMPLETADO' && !e.asignado).length,
-      // Stock disponible = completados y no asignados
-      disponibles: equipos.filter(e => e.estado === 'COMPLETADO' && !e.asignado).length,
-    };
-  }, [equipos]);
+  // Métricas globales de la empresa (del resumen server-side), no de la página filtrada.
+  const metrics = useMemo(() => ({
+    total: resumen?.total ?? 0,
+    asignados: resumen?.asignados ?? 0,
+    noAsignados: resumen?.noAsignados ?? 0,
+    enProceso: resumen?.enProceso ?? 0,
+    completados: resumen?.completados ?? 0,
+    cancelados: resumen?.cancelados ?? 0,
+    sinTerminacion: resumen?.sinTerminacion ?? 0,
+    pendientes: resumen?.pendientes ?? 0,
+    entregados: resumen?.entregados ?? 0,
+    // Stock disponible = COMPLETADO y no asignado
+    disponibles: resumen?.disponibles ?? 0,
+  }), [resumen]);
 
-  // Group equipos by tipo and sort by fechaCreacion DESC (newest first)
-  const equiposPorTipo = useMemo(() => {
-    const grupos: Record<TipoEquipo, EquipoFabricadoListDTO[]> = {
-      HELADERA: [],
-      COOLBOX: [],
-      EXHIBIDOR: [],
-      OTRO: [],
-    };
+  // Debounce de los campos de texto (modelo y búsqueda) → dispara la carga server-side.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setModeloFilter(modeloInput.trim());
+      setSearchFilter(searchInput.trim());
+    }, 400);
+    return () => clearTimeout(t);
+  }, [modeloInput, searchInput]);
 
-    equipos.forEach(equipo => {
-      if (equipo.tipo && grupos[equipo.tipo]) {
-        grupos[equipo.tipo].push(equipo);
-      }
-    });
+  // Al cambiar cualquier filtro, volver a la página 0.
+  useEffect(() => {
+    setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
+  }, [tipoFilter, estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, modeloFilter, searchFilter]);
 
-    // Sort each group by fechaCreacion DESC (newest first)
-    Object.keys(grupos).forEach((tipo) => {
-      grupos[tipo as TipoEquipo].sort((a, b) => {
-        const dateA = new Date(a.fechaCreacion).getTime();
-        const dateB = new Date(b.fechaCreacion).getTime();
-        return dateB - dateA; // Descending order (newest first)
-      });
-    });
+  // Cargar catálogos de color/medida una vez.
+  useEffect(() => {
+    colorApi.list(true).then(setColores).catch(() => setColores([]));
+    medidaApi.list(true).then(setMedidas).catch(() => setMedidas([]));
+  }, []);
 
-    return grupos;
-  }, [equipos]);
-
-  // Reload equipos when navigating back to this page
+  // Recargar listado cuando cambian filtros/paginación o al volver a la página.
   useEffect(() => {
     loadEquipos();
-  }, [page, pageSize, tipoFilter, estadoFilter, estadoAsignacionFilter, location.key]);
+  }, [
+    paginationModel.page, paginationModel.pageSize,
+    tipoFilter, estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter,
+    modeloFilter, searchFilter, location.key,
+  ]);
+
+  const loadResumen = async () => {
+    try {
+      setResumen(await equipoFabricadoApi.getResumenEstados());
+    } catch (error) {
+      console.error('Error loading resumen de equipos:', error);
+    }
+  };
 
   const loadEquipos = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Loading equipos - Page:', page, 'PageSize:', pageSize);
-      const response = await equipoFabricadoApi.findAll({ page, size: pageSize });
-      console.log('📥 API Response:', response);
-      console.log('📊 Total elements in DB:', response.totalElements);
-      console.log('📄 Total pages:', response.totalPages);
-      console.log('🔢 Current page content:', response.content?.length, 'items');
-      
-      let filtered = response.content || [];
-
-      if (tipoFilter) {
-        console.log('🔍 Filtering by tipo:', tipoFilter);
-        filtered = filtered.filter((e: EquipoFabricadoListDTO) => e.tipo === tipoFilter);
-      }
-      if (estadoFilter) {
-        console.log('🔍 Filtering by estado:', estadoFilter);
-        filtered = filtered.filter((e: EquipoFabricadoListDTO) => e.estado === estadoFilter);
-      }
-      if (estadoAsignacionFilter) {
-        console.log('🔍 Filtering by estadoAsignacion:', estadoAsignacionFilter);
-        filtered = filtered.filter((e: EquipoFabricadoListDTO) => {
-          // Use actual estadoAsignacion if provided by backend
-          const actual = (e as any).estadoAsignacion as EstadoAsignacionEquipo | undefined;
-          if (actual) return actual === estadoAsignacionFilter;
-
-          // Otherwise infer from estado and asignado
-          let inferred: EstadoAsignacionEquipo | null = null;
-          if (e.estado === 'COMPLETADO') {
-            inferred = e.asignado ? 'ENTREGADO' : 'DISPONIBLE';
-          } else if (e.estado === 'FABRICADO_SIN_TERMINACION') {
-            inferred = e.asignado ? 'RESERVADO' : 'PENDIENTE_TERMINACION';
-          } else if (e.asignado) {
-            inferred = 'RESERVADO';
-          }
-          return inferred === estadoAsignacionFilter;
-        });
-      }
-
-      console.log('📋 Filtered equipos:', filtered.length, 'items');
-      console.log('📋 First 3 equipos:', filtered.slice(0, 3));
-
-      // Check if equipos have IDs
-      const equiposSinId = filtered.filter((e: EquipoFabricadoListDTO) => !e.id);
-      if (equiposSinId.length > 0) {
-        console.warn(`⚠️ ${equiposSinId.length} equipos sin campo 'id':`, equiposSinId.slice(0, 3));
-        console.warn('⚠️ Campos disponibles en equipos:', Object.keys(filtered[0] || {}));
-      }
-
-      setEquipos(filtered);
-      setTotalElements(response.totalElements || filtered.length);
+      const response = await equipoFabricadoApi.findAll({
+        page: paginationModel.page,
+        size: paginationModel.pageSize,
+        sort: 'fechaCreacion,desc',
+        tipo: tipoFilter || undefined,
+        modelo: modeloFilter || undefined,
+        estados: estadosFilter.length ? estadosFilter : undefined,
+        estadosAsignacion: estadosAsignacionFilter.length ? estadosAsignacionFilter : undefined,
+        colorId: colorFilter === '' ? undefined : colorFilter,
+        medidaId: medidaFilter === '' ? undefined : medidaFilter,
+        search: searchFilter || undefined,
+      });
+      setEquipos(response.content || []);
+      setRowCount(response.totalElements ?? 0);
+      // Mantener los conteos globales (tarjetas/KPIs) al día. Es un count agregado barato.
+      loadResumen();
     } catch (error) {
       console.error('Error loading equipos:', error);
       setSnackbar({
@@ -437,6 +424,22 @@ const EquiposList: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const hayFiltrosActivos =
+    !!tipoFilter || estadosFilter.length > 0 || estadosAsignacionFilter.length > 0 ||
+    colorFilter !== '' || medidaFilter !== '' || !!modeloInput || !!searchInput;
+
+  const limpiarFiltros = () => {
+    setTipoFilter('');
+    setEstadosFilter([]);
+    setEstadosAsignacionFilter([]);
+    setColorFilter('');
+    setMedidaFilter('');
+    setModeloInput('');
+    setSearchInput('');
+    setModeloFilter('');
+    setSearchFilter('');
   };
 
   const handleCompletar = async () => {
@@ -1175,7 +1178,7 @@ const EquiposList: React.FC = () => {
                   </Box>
                   <Box>
                     <Typography variant="h4" fontWeight="bold" color="primary.main">
-                      {totalElements}
+                      {metrics.total}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Total Equipos
@@ -1215,7 +1218,7 @@ const EquiposList: React.FC = () => {
                   </Box>
                   <Box>
                     <Typography variant="h4" fontWeight="bold" color="warning.main">
-                      {equipos.filter(e => e.estado === 'PENDIENTE').length}
+                      {metrics.pendientes}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Pendientes
@@ -1381,14 +1384,29 @@ const EquiposList: React.FC = () => {
         {currentTab === 0 && (
           <Box>
 
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
+        {/* Barra de filtros server-side */}
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2} flexWrap="wrap" useFlexGap>
+          <TextField
+            label="Buscar (N°, modelo, color)"
+            size="small"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            sx={{ minWidth: 240, flex: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
           <TextField
             label="Tipo de Equipo"
             select
             size="small"
             value={tipoFilter}
             onChange={(e) => setTipoFilter(e.target.value as TipoEquipo | '')}
-            sx={{ minWidth: 200 }}
+            sx={{ minWidth: 160 }}
           >
             <MenuItem value="">Todos</MenuItem>
             <MenuItem value="HELADERA">Heladera</MenuItem>
@@ -1397,127 +1415,141 @@ const EquiposList: React.FC = () => {
             <MenuItem value="OTRO">Otro</MenuItem>
           </TextField>
           <TextField
-            label="Estado Fabricación"
+            label="Modelo"
+            size="small"
+            value={modeloInput}
+            onChange={(e) => setModeloInput(e.target.value)}
+            sx={{ minWidth: 160 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 220 }}>
+            <InputLabel id="estados-fab-label">Estado Fabricación</InputLabel>
+            <Select
+              labelId="estados-fab-label"
+              multiple
+              value={estadosFilter}
+              onChange={(e: SelectChangeEvent<EstadoFabricacion[]>) =>
+                setEstadosFilter(e.target.value as EstadoFabricacion[])}
+              input={<OutlinedInput label="Estado Fabricación" />}
+              renderValue={(selected) => `${(selected as EstadoFabricacion[]).length} seleccionados`}
+            >
+              {([
+                ['PENDIENTE', 'Pendiente'],
+                ['EN_PROCESO', 'En Proceso'],
+                ['PENDIENTE_CONTROL_CALIDAD', 'Control de Calidad'],
+                ['FABRICADO_SIN_TERMINACION', 'Sin Terminación'],
+                ['COMPLETADO', 'Completado'],
+                ['CANCELADO', 'Cancelado'],
+              ] as [EstadoFabricacion, string][]).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  <Checkbox checked={estadosFilter.indexOf(value) > -1} size="small" />
+                  <ListItemText primary={label} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 220 }}>
+            <InputLabel id="estados-asig-label">Estado Asignación</InputLabel>
+            <Select
+              labelId="estados-asig-label"
+              multiple
+              value={estadosAsignacionFilter}
+              onChange={(e: SelectChangeEvent<EstadoAsignacionEquipo[]>) =>
+                setEstadosAsignacionFilter(e.target.value as EstadoAsignacionEquipo[])}
+              input={<OutlinedInput label="Estado Asignación" />}
+              renderValue={(selected) => `${(selected as EstadoAsignacionEquipo[]).length} seleccionados`}
+            >
+              {([
+                ['DISPONIBLE', 'Disponible'],
+                ['RESERVADO', 'Reservado'],
+                ['PENDIENTE_TERMINACION', 'Pendiente Terminación'],
+                ['FACTURADO', 'Facturado'],
+                ['EN_TRANSITO', 'En Tránsito'],
+                ['ENTREGADO', 'Entregado'],
+                ['EN_SERVICE', 'En Service'],
+              ] as [EstadoAsignacionEquipo, string][]).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  <Checkbox checked={estadosAsignacionFilter.indexOf(value) > -1} size="small" />
+                  <ListItemText primary={label} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            label="Color"
             select
             size="small"
-            value={estadoFilter}
-            onChange={(e) => setEstadoFilter(e.target.value as EstadoFabricacion | '')}
-            sx={{ minWidth: 200 }}
+            value={colorFilter}
+            onChange={(e) => setColorFilter(e.target.value === '' ? '' : Number(e.target.value))}
+            sx={{ minWidth: 150 }}
           >
             <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="PENDIENTE">Pendiente</MenuItem>
-            <MenuItem value="EN_PROCESO">En Proceso</MenuItem>
-            <MenuItem value="COMPLETADO">Completado</MenuItem>
-            <MenuItem value="CANCELADO">Cancelado</MenuItem>
-            <MenuItem value="FABRICADO_SIN_TERMINACION">Sin Terminación</MenuItem>
+            {colores.map((c) => (
+              <MenuItem key={c.id} value={c.id}>{c.nombre.replace(/_/g, ' ')}</MenuItem>
+            ))}
           </TextField>
           <TextField
-            label="Estado Asignación"
+            label="Medida"
             select
             size="small"
-            value={estadoAsignacionFilter}
-            onChange={(e) => setEstadoAsignacionFilter(e.target.value as EstadoAsignacionEquipo | '')}
-            sx={{ minWidth: 200 }}
+            value={medidaFilter}
+            onChange={(e) => setMedidaFilter(e.target.value === '' ? '' : Number(e.target.value))}
+            sx={{ minWidth: 130 }}
           >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="DISPONIBLE">Disponible</MenuItem>
-            <MenuItem value="RESERVADO">Reservado</MenuItem>
-            <MenuItem value="FACTURADO">Facturado</MenuItem>
-            <MenuItem value="EN_TRANSITO">En Tránsito</MenuItem>
-            <MenuItem value="ENTREGADO">Entregado</MenuItem>
-            <MenuItem value="PENDIENTE_TERMINACION">Pendiente Terminación</MenuItem>
+            <MenuItem value="">Todas</MenuItem>
+            {medidas.map((m) => (
+              <MenuItem key={m.id} value={m.id}>{m.nombre}</MenuItem>
+            ))}
           </TextField>
+          {hayFiltrosActivos && (
+            <Button
+              variant="text"
+              color="inherit"
+              startIcon={<Clear />}
+              onClick={limpiarFiltros}
+              sx={{ alignSelf: 'center' }}
+            >
+              Limpiar
+            </Button>
+          )}
         </Stack>
 
             <Box>
-              {/* Grouped by Tipo */}
-              {(['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'] as TipoEquipo[]).map((tipo) => {
-                const equiposDelTipo = equiposPorTipo[tipo];
-
-                const tipoLabels: Record<TipoEquipo, string> = {
-                  HELADERA: 'Heladeras',
-                  COOLBOX: 'Coolbox',
-                  EXHIBIDOR: 'Exhibidores',
-                  OTRO: 'Otros',
-                };
-
-                const tipoColors: Record<TipoEquipo, 'primary' | 'secondary' | 'success' | 'warning'> = {
-                  HELADERA: 'primary',
-                  COOLBOX: 'secondary',
-                  EXHIBIDOR: 'success',
-                  OTRO: 'warning',
-                };
-
-                return (
-                  <Accordion key={tipo} defaultExpanded={equiposDelTipo.length > 0} sx={{ mb: 2 }}>
-                    <AccordionSummary
-                      expandIcon={<ExpandMore />}
-                      sx={{
-                        bgcolor: `${tipoColors[tipo]}.lighter`,
-                        '&:hover': {
-                          bgcolor: `${tipoColors[tipo]}.light`,
-                        },
-                      }}
-                    >
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Chip
-                          label={tipoLabels[tipo]}
-                          color={tipoColors[tipo]}
-                          size="medium"
-                        />
-                        <Typography variant="body2" color="text.secondary">
-                          {equiposDelTipo.length} equipo{equiposDelTipo.length !== 1 ? 's' : ''}
-                        </Typography>
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ p: 0 }}>
-                      <DataGridDragScroll sx={{ width: '100%', overflowX: 'auto' }}>
-                        <DataGrid
-                          rows={equiposDelTipo}
-                          columns={columns}
-                          loading={loading}
-                          autoHeight
-                          disableRowSelectionOnClick
-                          pageSizeOptions={[25, 50, 100]}
-                          getRowId={(row) => row.id || `temp-${row.numeroHeladera || Math.random()}`}
-                          columnVisibilityModel={columnVisibilityModel}
-                          initialState={{
-                            pagination: {
-                              paginationModel: { pageSize: 25 },
-                            },
-                          }}
-                          localeText={{
-                            noRowsLabel: 'No hay equipos disponibles',
-                          }}
-                          sx={{
-                            border: 'none',
-                            minWidth: isMobile ? 480 : undefined,
-                            '& .MuiDataGrid-columnHeaders': {
-                              bgcolor: 'grey.50',
-                            },
-                            '& .MuiDataGrid-footerContainer': {
-                              borderTop: '1px solid',
-                              borderColor: 'divider',
-                              '& .MuiIconButton-root': {
-                                color: 'primary.main',
-                              },
-                              '& .MuiTablePagination-actions button': {
-                                color: 'text.primary',
-                              },
-                            },
-                          }}
-                        />
-                      </DataGridDragScroll>
-                    </AccordionDetails>
-                  </Accordion>
-                );
-              })}
-
-              {equipos.length === 0 && !loading && (
-                <Alert severity="info">
-                  No hay equipos disponibles
-                </Alert>
-              )}
+              <DataGridDragScroll sx={{ width: '100%', overflowX: 'auto' }}>
+                <DataGrid
+                  rows={equipos}
+                  columns={columns}
+                  loading={loading}
+                  autoHeight
+                  disableRowSelectionOnClick
+                  paginationMode="server"
+                  rowCount={rowCount}
+                  paginationModel={paginationModel}
+                  onPaginationModelChange={setPaginationModel}
+                  pageSizeOptions={[25, 50, 100]}
+                  getRowId={(row) => row.id ?? `temp-${row.numeroHeladera}`}
+                  columnVisibilityModel={columnVisibilityModel}
+                  localeText={{
+                    noRowsLabel: 'No hay equipos que coincidan con los filtros',
+                  }}
+                  sx={{
+                    border: 'none',
+                    minWidth: isMobile ? 480 : undefined,
+                    '& .MuiDataGrid-columnHeaders': {
+                      bgcolor: 'grey.50',
+                    },
+                    '& .MuiDataGrid-footerContainer': {
+                      borderTop: '1px solid',
+                      borderColor: 'divider',
+                      '& .MuiIconButton-root': {
+                        color: 'primary.main',
+                      },
+                      '& .MuiTablePagination-actions button': {
+                        color: 'text.primary',
+                      },
+                    },
+                  }}
+                />
+              </DataGridDragScroll>
             </Box>
           </Box>
         )}
@@ -1599,10 +1631,10 @@ const EquiposList: React.FC = () => {
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart
                       data={[
-                        { tipo: 'Heladera', cantidad: equipos.filter(e => e.tipo === 'HELADERA').length },
-                        { tipo: 'Coolbox', cantidad: equipos.filter(e => e.tipo === 'COOLBOX').length },
-                        { tipo: 'Exhibidor', cantidad: equipos.filter(e => e.tipo === 'EXHIBIDOR').length },
-                        { tipo: 'Otro', cantidad: equipos.filter(e => e.tipo === 'OTRO').length },
+                        { tipo: 'Heladera', cantidad: resumen?.porTipo?.HELADERA ?? 0 },
+                        { tipo: 'Coolbox', cantidad: resumen?.porTipo?.COOLBOX ?? 0 },
+                        { tipo: 'Exhibidor', cantidad: resumen?.porTipo?.EXHIBIDOR ?? 0 },
+                        { tipo: 'Otro', cantidad: resumen?.porTipo?.OTRO ?? 0 },
                       ]}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
@@ -1656,7 +1688,7 @@ const EquiposList: React.FC = () => {
                     <Grid item xs={12} sm={6} md={3}>
                       <Box textAlign="center">
                         <Typography variant="h3" color="success.main" fontWeight="bold">
-                          {totalElements > 0 ? ((metrics.completados / totalElements) * 100).toFixed(1) : 0}%
+                          {metrics.total > 0 ? ((metrics.completados / metrics.total) * 100).toFixed(1) : 0}%
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Tasa de Completación
@@ -1676,7 +1708,7 @@ const EquiposList: React.FC = () => {
                     <Grid item xs={12} sm={6} md={3}>
                       <Box textAlign="center">
                         <Typography variant="h3" color="info.main" fontWeight="bold">
-                          {totalElements > 0 ? ((metrics.enProceso / totalElements) * 100).toFixed(1) : 0}%
+                          {metrics.total > 0 ? ((metrics.enProceso / metrics.total) * 100).toFixed(1) : 0}%
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           En Fabricación
@@ -1686,7 +1718,7 @@ const EquiposList: React.FC = () => {
                     <Grid item xs={12} sm={6} md={3}>
                       <Box textAlign="center">
                         <Typography variant="h3" color="error.main" fontWeight="bold">
-                          {totalElements > 0 ? ((metrics.cancelados / totalElements) * 100).toFixed(1) : 0}%
+                          {metrics.total > 0 ? ((metrics.cancelados / metrics.total) * 100).toFixed(1) : 0}%
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Tasa de Cancelación

@@ -193,6 +193,43 @@ export interface EquipoFabricadoListDTO {
   progresoFabricacion?: number;
 }
 
+/**
+ * Filtros combinables (opcionales) del listado server-side de equipos fabricados.
+ * `estados` y `estadosAsignacion` se envían como parámetros repetidos.
+ */
+export interface EquipoFabricadoFilterParams {
+  page?: number;
+  size?: number;
+  sort?: string;
+  tipo?: TipoEquipo;
+  modelo?: string;
+  estados?: EstadoFabricacion[];
+  estadosAsignacion?: EstadoAsignacionEquipo[];
+  colorId?: number;
+  medidaId?: number;
+  asignado?: boolean;
+  search?: string;
+}
+
+/**
+ * Conteos agregados globales (de la empresa) usados por las tarjetas y KPIs.
+ * Espejo de `EquipoResumenEstadosDTO` del backend.
+ */
+export interface EquipoResumenEstadosDTO {
+  total: number;
+  pendientes: number;
+  enProceso: number;
+  pendienteControlCalidad: number;
+  completados: number;
+  cancelados: number;
+  sinTerminacion: number;
+  asignados: number;
+  noAsignados: number;
+  disponibles: number;
+  entregados: number;
+  porTipo: Record<string, number>;
+}
+
 export interface EquipoFabricadoCreateDTO {
   recetaId?: number;
   tipo: TipoEquipo;
