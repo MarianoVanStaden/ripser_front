@@ -6,19 +6,17 @@ import {
   DialogContentText, DialogActions, Stack, Card, CardContent,
   Grid, Tabs, Tab, Divider,
   LinearProgress, CircularProgress, Checkbox,
-  FormControl, InputLabel, Select, OutlinedInput, ListItemText, InputAdornment,
 } from '@mui/material';
-import type { SelectChangeEvent } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel, GridPaginationModel } from '@mui/x-data-grid';
+import type { GridColDef, GridRenderCellParams, GridColumnVisibilityModel } from '@mui/x-data-grid';
 import {
   Add, Visibility, Edit, Delete, CheckCircle, Cancel, Link, LinkOff,
   Inventory, Assignment, LocalShipping, Build, Done, TrendingUp, PlayArrow, Pending, Brush,
-  QrCode2, AssignmentTurnedIn, SwapHoriz, Search, Clear,
+  QrCode2, AssignmentTurnedIn, SwapHoriz,
 } from '@mui/icons-material';
 import AplicarTerminacionDialog from './AplicarTerminacionDialog';
 import ChecklistProduccionPanel from './ChecklistProduccionPanel';
 import ReasignarEquipoDialog from './ReasignarEquipoDialog';
+import EquiposTipoSection from './EquiposTipoSection';
 import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -33,8 +31,15 @@ import type { TipoEquipo, EstadoFabricacion, EquipoFabricadoDTO, EquipoFabricado
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { usePermisos } from '../../hooks/usePermisos';
 import ClienteAutocomplete from '../common/ClienteAutocomplete';
-import { DataGridDragScroll } from '../common/DataGridDragScroll';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+
+/**
+ * Medidas permitidas en el filtro (whitelist ordenada). El catálogo real puede tener
+ * más medidas, pero el filtro sólo ofrece estas. Se intersecta con /api/medidas para
+ * resolver el id que consume el backend.
+ */
+const MEDIDAS_FILTRO = ['0.5m', '0.9m', '1.0m', '1.2m', '1.4m', '1.5m', '1.8m', '2.0m', '60x40cm', '70x45cm'];
+const TIPOS_EQUIPO: TipoEquipo[] = ['HELADERA', 'COOLBOX', 'EXHIBIDOR', 'OTRO'];
 
 // Helper function to get color for estadoAsignacion
 const getEstadoAsignacionColor = (estado: EstadoAsignacionEquipo | null | undefined): 'default' | 'warning' | 'info' | 'secondary' | 'success' => {
@@ -138,29 +143,23 @@ const EquiposList: React.FC = () => {
 
   const esControlCalidad = tieneRol('LOGISTICO', 'ADMIN', 'ADMIN_EMPRESA_LIMITADO');
 
-  const [equipos, setEquipos] = useState<EquipoFabricadoListDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [rowCount, setRowCount] = useState(0); // total de la página filtrada (grid server-side)
-  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 25 });
-
   // Resumen global (empresa) para tarjetas de métricas y KPIs — independiente del filtro/página.
   const [resumen, setResumen] = useState<EquipoResumenEstadosDTO | null>(null);
 
-  // Catálogos para los selects de filtro
+  // Catálogos para los selects de filtro (se pasan a cada sección)
   const [colores, setColores] = useState<Color[]>([]);
   const [medidas, setMedidas] = useState<Medida[]>([]);
 
-  // Filtros (server-side)
-  const [tipoFilter, setTipoFilter] = useState<TipoEquipo | ''>('');
-  const [estadosFilter, setEstadosFilter] = useState<EstadoFabricacion[]>([]);
-  const [estadosAsignacionFilter, setEstadosAsignacionFilter] = useState<EstadoAsignacionEquipo[]>([]);
-  const [colorFilter, setColorFilter] = useState<number | ''>('');
-  const [medidaFilter, setMedidaFilter] = useState<number | ''>('');
-  // Campos de texto: input inmediato + valor debounced que dispara la carga.
-  const [modeloInput, setModeloInput] = useState('');
-  const [modeloFilter, setModeloFilter] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [searchFilter, setSearchFilter] = useState('');
+  // Se incrementa tras cada mutación → fuerza a las secciones a re-consultar.
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Opciones de medida del filtro: intersección del catálogo con la whitelist, en orden.
+  const medidasOptions = useMemo(
+    () => MEDIDAS_FILTRO
+      .map((n) => medidas.find((m) => m.nombre === n))
+      .filter((m): m is Medida => !!m),
+    [medidas],
+  );
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -358,34 +357,11 @@ const EquiposList: React.FC = () => {
     disponibles: resumen?.disponibles ?? 0,
   }), [resumen]);
 
-  // Debounce de los campos de texto (modelo y búsqueda) → dispara la carga server-side.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setModeloFilter(modeloInput.trim());
-      setSearchFilter(searchInput.trim());
-    }, 400);
-    return () => clearTimeout(t);
-  }, [modeloInput, searchInput]);
-
-  // Al cambiar cualquier filtro, volver a la página 0.
-  useEffect(() => {
-    setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
-  }, [tipoFilter, estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter, modeloFilter, searchFilter]);
-
-  // Cargar catálogos de color/medida una vez.
+  // Cargar catálogos de color/medida una vez (se pasan a las secciones).
   useEffect(() => {
     colorApi.list(true).then(setColores).catch(() => setColores([]));
     medidaApi.list(true).then(setMedidas).catch(() => setMedidas([]));
   }, []);
-
-  // Recargar listado cuando cambian filtros/paginación o al volver a la página.
-  useEffect(() => {
-    loadEquipos();
-  }, [
-    paginationModel.page, paginationModel.pageSize,
-    tipoFilter, estadosFilter, estadosAsignacionFilter, colorFilter, medidaFilter,
-    modeloFilter, searchFilter, location.key,
-  ]);
 
   const loadResumen = async () => {
     try {
@@ -395,52 +371,17 @@ const EquiposList: React.FC = () => {
     }
   };
 
-  const loadEquipos = async () => {
-    try {
-      setLoading(true);
-      const response = await equipoFabricadoApi.findAll({
-        page: paginationModel.page,
-        size: paginationModel.pageSize,
-        sort: 'fechaCreacion,desc',
-        tipo: tipoFilter || undefined,
-        modelo: modeloFilter || undefined,
-        estados: estadosFilter.length ? estadosFilter : undefined,
-        estadosAsignacion: estadosAsignacionFilter.length ? estadosAsignacionFilter : undefined,
-        colorId: colorFilter === '' ? undefined : colorFilter,
-        medidaId: medidaFilter === '' ? undefined : medidaFilter,
-        search: searchFilter || undefined,
-      });
-      setEquipos(response.content || []);
-      setRowCount(response.totalElements ?? 0);
-      // Mantener los conteos globales (tarjetas/KPIs) al día. Es un count agregado barato.
-      loadResumen();
-    } catch (error) {
-      console.error('Error loading equipos:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error al cargar los equipos',
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
+  // Refresca las secciones (bump de refreshKey) + los conteos globales de tarjetas/KPIs.
+  const refrescar = () => {
+    setRefreshKey((k) => k + 1);
+    loadResumen();
   };
 
-  const hayFiltrosActivos =
-    !!tipoFilter || estadosFilter.length > 0 || estadosAsignacionFilter.length > 0 ||
-    colorFilter !== '' || medidaFilter !== '' || !!modeloInput || !!searchInput;
-
-  const limpiarFiltros = () => {
-    setTipoFilter('');
-    setEstadosFilter([]);
-    setEstadosAsignacionFilter([]);
-    setColorFilter('');
-    setMedidaFilter('');
-    setModeloInput('');
-    setSearchInput('');
-    setModeloFilter('');
-    setSearchFilter('');
-  };
+  // Cargar el resumen al montar y al volver a la página; refrescar secciones al navegar.
+  useEffect(() => {
+    refrescar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   const handleCompletar = async () => {
     // WORKAROUND: Backend returns id: null, use numeroHeladera as identifier
@@ -470,7 +411,7 @@ const EquiposList: React.FC = () => {
         severity: 'success',
       });
       setCompletarDialog({ open: false, equipoId: null, equipo: null });
-      loadEquipos();
+      refrescar();
     } catch (error: any) {
       console.error('❌ Error al completar el equipo:', error);
       console.error('❌ Error response:', error.response?.data);
@@ -518,7 +459,7 @@ const EquiposList: React.FC = () => {
       });
 
       setIniciarDialog({ open: false, equipoId: null, equipo: null });
-      loadEquipos(); // Refresh the list
+      refrescar(); // Refresh the list
     } catch (error: any) {
       console.error('❌ Error al iniciar fabricación:', error);
       console.error('❌ Error response:', error.response?.data);
@@ -548,7 +489,7 @@ const EquiposList: React.FC = () => {
         severity: 'success',
       });
       setCancelDialog({ open: false, equipoId: null, equipo: null });
-      loadEquipos();
+      refrescar();
     } catch (error) {
       setSnackbar({
         open: true,
@@ -570,7 +511,7 @@ const EquiposList: React.FC = () => {
       });
       setAssignDialog({ open: false, equipoId: null });
       setSelectedCliente(null);
-      loadEquipos();
+      refrescar();
     } catch (error) {
       setSnackbar({
         open: true,
@@ -604,7 +545,7 @@ const EquiposList: React.FC = () => {
         severity: 'success',
       });
       setUnassignDialog({ open: false, equipoId: null, equipo: null });
-      loadEquipos();
+      refrescar();
     } catch (error: any) {
       // Close confirmation dialog
       setUnassignDialog({ open: false, equipoId: null, equipo: null });
@@ -656,7 +597,7 @@ const EquiposList: React.FC = () => {
         severity: 'success',
       });
       setDeleteDialog({ open: false, equipoId: null, equipo: null });
-      loadEquipos();
+      refrescar();
     } catch (error) {
       setSnackbar({
         open: true,
@@ -1152,7 +1093,7 @@ const EquiposList: React.FC = () => {
               variant="outlined"
               onClick={() => {
                 console.log('🔄 Manual refresh triggered');
-                loadEquipos();
+                refrescar();
               }}
             >
               Actualizar
@@ -1384,172 +1325,20 @@ const EquiposList: React.FC = () => {
         {currentTab === 0 && (
           <Box>
 
-        {/* Barra de filtros server-side */}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2} flexWrap="wrap" useFlexGap>
-          <TextField
-            label="Buscar (N°, modelo, color)"
-            size="small"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            sx={{ minWidth: 240, flex: 1 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <TextField
-            label="Tipo de Equipo"
-            select
-            size="small"
-            value={tipoFilter}
-            onChange={(e) => setTipoFilter(e.target.value as TipoEquipo | '')}
-            sx={{ minWidth: 160 }}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="HELADERA">Heladera</MenuItem>
-            <MenuItem value="COOLBOX">Coolbox</MenuItem>
-            <MenuItem value="EXHIBIDOR">Exhibidor</MenuItem>
-            <MenuItem value="OTRO">Otro</MenuItem>
-          </TextField>
-          <TextField
-            label="Modelo"
-            size="small"
-            value={modeloInput}
-            onChange={(e) => setModeloInput(e.target.value)}
-            sx={{ minWidth: 160 }}
-          />
-          <FormControl size="small" sx={{ minWidth: 220 }}>
-            <InputLabel id="estados-fab-label">Estado Fabricación</InputLabel>
-            <Select
-              labelId="estados-fab-label"
-              multiple
-              value={estadosFilter}
-              onChange={(e: SelectChangeEvent<EstadoFabricacion[]>) =>
-                setEstadosFilter(e.target.value as EstadoFabricacion[])}
-              input={<OutlinedInput label="Estado Fabricación" />}
-              renderValue={(selected) => `${(selected as EstadoFabricacion[]).length} seleccionados`}
-            >
-              {([
-                ['PENDIENTE', 'Pendiente'],
-                ['EN_PROCESO', 'En Proceso'],
-                ['PENDIENTE_CONTROL_CALIDAD', 'Control de Calidad'],
-                ['FABRICADO_SIN_TERMINACION', 'Sin Terminación'],
-                ['COMPLETADO', 'Completado'],
-                ['CANCELADO', 'Cancelado'],
-              ] as [EstadoFabricacion, string][]).map(([value, label]) => (
-                <MenuItem key={value} value={value}>
-                  <Checkbox checked={estadosFilter.indexOf(value) > -1} size="small" />
-                  <ListItemText primary={label} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 220 }}>
-            <InputLabel id="estados-asig-label">Estado Asignación</InputLabel>
-            <Select
-              labelId="estados-asig-label"
-              multiple
-              value={estadosAsignacionFilter}
-              onChange={(e: SelectChangeEvent<EstadoAsignacionEquipo[]>) =>
-                setEstadosAsignacionFilter(e.target.value as EstadoAsignacionEquipo[])}
-              input={<OutlinedInput label="Estado Asignación" />}
-              renderValue={(selected) => `${(selected as EstadoAsignacionEquipo[]).length} seleccionados`}
-            >
-              {([
-                ['DISPONIBLE', 'Disponible'],
-                ['RESERVADO', 'Reservado'],
-                ['PENDIENTE_TERMINACION', 'Pendiente Terminación'],
-                ['FACTURADO', 'Facturado'],
-                ['EN_TRANSITO', 'En Tránsito'],
-                ['ENTREGADO', 'Entregado'],
-                ['EN_SERVICE', 'En Service'],
-              ] as [EstadoAsignacionEquipo, string][]).map(([value, label]) => (
-                <MenuItem key={value} value={value}>
-                  <Checkbox checked={estadosAsignacionFilter.indexOf(value) > -1} size="small" />
-                  <ListItemText primary={label} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField
-            label="Color"
-            select
-            size="small"
-            value={colorFilter}
-            onChange={(e) => setColorFilter(e.target.value === '' ? '' : Number(e.target.value))}
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {colores.map((c) => (
-              <MenuItem key={c.id} value={c.id}>{c.nombre.replace(/_/g, ' ')}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Medida"
-            select
-            size="small"
-            value={medidaFilter}
-            onChange={(e) => setMedidaFilter(e.target.value === '' ? '' : Number(e.target.value))}
-            sx={{ minWidth: 130 }}
-          >
-            <MenuItem value="">Todas</MenuItem>
-            {medidas.map((m) => (
-              <MenuItem key={m.id} value={m.id}>{m.nombre}</MenuItem>
-            ))}
-          </TextField>
-          {hayFiltrosActivos && (
-            <Button
-              variant="text"
-              color="inherit"
-              startIcon={<Clear />}
-              onClick={limpiarFiltros}
-              sx={{ alignSelf: 'center' }}
-            >
-              Limpiar
-            </Button>
-          )}
-        </Stack>
-
             <Box>
-              <DataGridDragScroll sx={{ width: '100%', overflowX: 'auto' }}>
-                <DataGrid
-                  rows={equipos}
+              {TIPOS_EQUIPO.map((tipo) => (
+                <EquiposTipoSection
+                  key={tipo}
+                  tipo={tipo}
                   columns={columns}
-                  loading={loading}
-                  autoHeight
-                  disableRowSelectionOnClick
-                  paginationMode="server"
-                  rowCount={rowCount}
-                  paginationModel={paginationModel}
-                  onPaginationModelChange={setPaginationModel}
-                  pageSizeOptions={[25, 50, 100]}
-                  getRowId={(row) => row.id ?? `temp-${row.numeroHeladera}`}
                   columnVisibilityModel={columnVisibilityModel}
-                  localeText={{
-                    noRowsLabel: 'No hay equipos que coincidan con los filtros',
-                  }}
-                  sx={{
-                    border: 'none',
-                    minWidth: isMobile ? 480 : undefined,
-                    '& .MuiDataGrid-columnHeaders': {
-                      bgcolor: 'grey.50',
-                    },
-                    '& .MuiDataGrid-footerContainer': {
-                      borderTop: '1px solid',
-                      borderColor: 'divider',
-                      '& .MuiIconButton-root': {
-                        color: 'primary.main',
-                      },
-                      '& .MuiTablePagination-actions button': {
-                        color: 'text.primary',
-                      },
-                    },
-                  }}
+                  isMobile={isMobile}
+                  colores={colores}
+                  medidasOptions={medidasOptions}
+                  refreshKey={refreshKey}
+                  defaultExpanded
                 />
-              </DataGridDragScroll>
+              ))}
             </Box>
           </Box>
         )}
@@ -1994,7 +1783,7 @@ const EquiposList: React.FC = () => {
                   severity: 'success'
                 });
                 setAprobarQCDialog({ open: false, equipo: null });
-                loadEquipos();
+                refrescar();
               } catch (error) {
                 const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
                   (error as Error).message ||
@@ -2119,7 +1908,7 @@ const EquiposList: React.FC = () => {
                   severity: 'success',
                 });
                 closeRechazarQCDialog();
-                loadEquipos();
+                refrescar();
               } catch (error) {
                 const msg =
                   (error as { response?: { data?: { message?: string } }; message?: string })
@@ -2466,7 +2255,7 @@ const EquiposList: React.FC = () => {
         onClose={() => setTerminacionDialog({ open: false, equipo: null })}
         onSuccess={() => {
           setTerminacionDialog({ open: false, equipo: null });
-          loadEquipos();
+          refrescar();
         }}
       />
 
@@ -2481,7 +2270,7 @@ const EquiposList: React.FC = () => {
             message: `Pedido reasignado al equipo ${nuevo.numeroHeladera}`,
             severity: 'success',
           });
-          loadEquipos();
+          refrescar();
         }}
       />
 
@@ -2529,7 +2318,7 @@ const EquiposList: React.FC = () => {
                           severity: 'success'
                         });
                         closeChecklistDialog();
-                        loadEquipos();
+                        refrescar();
                       } catch (error) {
                         const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
                           (error as Error).message ||
@@ -2559,7 +2348,7 @@ const EquiposList: React.FC = () => {
                           severity: 'success'
                         });
                         closeChecklistDialog();
-                        loadEquipos();
+                        refrescar();
                       } catch (error) {
                         const msg = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
                           (error as Error).message ||
@@ -2597,7 +2386,7 @@ const EquiposList: React.FC = () => {
           <Button
             onClick={() => {
               closeChecklistDialog();
-              loadEquipos();
+              refrescar();
             }}
           >
             Cerrar
