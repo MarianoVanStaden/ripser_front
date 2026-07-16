@@ -545,14 +545,25 @@ const EquipoDetail: React.FC = () => {
                   </Typography>
                   <Typography variant="body1">{equipo.medida?.nombre || '-'}</Typography>
                 </Box>
-                {equipo.color && (
+                {equipo.color ? (
                   <Box>
                     <Typography variant="caption" color="textSecondary">
                       Color
                     </Typography>
                     <Typography variant="body1">{equipo.color?.nombre}</Typography>
                   </Box>
-                )}
+                ) : equipo.colorPrevisto ? (
+                  <Box>
+                    <Typography variant="caption" color="textSecondary">
+                      Color
+                    </Typography>
+                    <Tooltip title="Color previsto — se aplica al terminar la base">
+                      <Typography variant="body1" fontStyle="italic" color="text.secondary">
+                        {equipo.colorPrevisto.replace(/_/g, ' ')} (previsto)
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+                ) : null}
                 <Box>
                   <Typography variant="caption" color="textSecondary">
                     Cantidad

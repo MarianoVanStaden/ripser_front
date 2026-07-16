@@ -657,11 +657,24 @@ const EquiposList: React.FC = () => {
       headerName: 'Color',
       width: 130,
       valueGetter: (value: any) => (value && typeof value === 'object' ? value.nombre : value) ?? '',
-      renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">
-          {params.value ? String(params.value).replace(/_/g, ' ') : '-'}
-        </Typography>
-      ),
+      renderCell: (params: GridRenderCellParams) => {
+        const colorReal = params.value ? String(params.value).replace(/_/g, ' ') : '';
+        if (colorReal) {
+          return <Typography variant="body2">{colorReal}</Typography>;
+        }
+        // Base reservada sin pintar: mostrar el color previsto (se aplica al terminar).
+        const previsto = params.row.colorPrevisto as string | null | undefined;
+        if (previsto) {
+          return (
+            <Tooltip title="Color previsto — se aplica al terminar la base">
+              <Typography variant="body2" fontStyle="italic" color="text.secondary">
+                {previsto.replace(/_/g, ' ')} (previsto)
+              </Typography>
+            </Tooltip>
+          );
+        }
+        return <Typography variant="body2">-</Typography>;
+      },
     },
     {
       field: 'estado',

@@ -122,6 +122,8 @@ export interface EquipoFabricadoDTO {
   equipo?: string;
   medida?: MedidaEquipo;
   color?: ColorEquipo;
+  /** Color previsto de una base reservada sin pintar (color = null). Derivado server-side de observaciones. Solo display. */
+  colorPrevisto?: string | null;
   observaciones?: string;
   fechaCreacion: string;
   numeroHeladera: string;
@@ -179,6 +181,8 @@ export interface EquipoFabricadoListDTO {
   codigoVenta?: string | null;   // código de venta/despacho (se asigna al vender)
   color?: ColorEquipo;
   observaciones?: string;    // e.g. "Color previsto: PLATA (detalle #354)" for PENDIENTE_TERMINACION bases
+  /** Color previsto de una base reservada sin pintar (color = null). Derivado server-side de observaciones. Solo display. */
+  colorPrevisto?: string | null;
   cantidad: number;
   asignado: boolean;
   estadoAsignacion?: EstadoAsignacionEquipo;
