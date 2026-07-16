@@ -96,6 +96,9 @@ export interface CreateNotaCreditoDTO {
   equiposADevolver?: number[];
   /** Modo ERROR_FACTURACION / OTRO: ítems exactos a acreditar. */
   itemsAcreditar?: DetalleNotaCreditoItemDTO[];
+  /** true = se devolvió efectivo al cliente → aparece como EGRESO en flujo de caja.
+   *  false (default) = reversión documental/CC sin salida de dinero → no impacta caja. */
+  reintegraEfectivo?: boolean;
 }
 // En types/index.ts agregar:
 export interface CreateOpcionFinanciamientoDTO {

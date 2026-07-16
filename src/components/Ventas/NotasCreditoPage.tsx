@@ -5,7 +5,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogContent, DialogActions, Chip, Alert,
   Autocomplete, Card, CardContent, Divider, CircularProgress,
-  Paper, Checkbox, Tooltip, alpha, useTheme, IconButton,
+  Paper, Checkbox, Tooltip, alpha, useTheme, IconButton, FormControlLabel,
 } from '@mui/material';
 import {
   CheckCircle, Receipt, Inventory, Warning,
@@ -50,6 +50,8 @@ interface NotaCreditoForm {
   clienteId: number | null;
   clienteNombre: string;
   observaciones: string;
+  /** true = se devolvió efectivo al cliente → aparece como egreso en flujo de caja. */
+  reintegraEfectivo: boolean;
   // DEVOLUCION mode
   equiposSeleccionados: EquipoFabricadoDTO[];
 }
@@ -96,6 +98,7 @@ const NotasCreditoPage: React.FC = () => {
     clienteId: null,
     clienteNombre: '',
     observaciones: '',
+    reintegraEfectivo: false,
     equiposSeleccionados: [],
   });
 
@@ -148,7 +151,7 @@ const NotasCreditoPage: React.FC = () => {
   // ── Handlers ──
 
   const resetForm = () => {
-    setForm({ facturaId: null, facturaNumero: '', clienteId: null, clienteNombre: '', observaciones: '', equiposSeleccionados: [] });
+    setForm({ facturaId: null, facturaNumero: '', clienteId: null, clienteNombre: '', observaciones: '', reintegraEfectivo: false, equiposSeleccionados: [] });
     setFacturaSeleccionada(null);
     setFacturaDetalles([]);
     setEquiposFactura([]);
@@ -166,6 +169,7 @@ const NotasCreditoPage: React.FC = () => {
       clienteId: factura.clienteId || null,
       clienteNombre: factura.clienteNombre || '',
       observaciones: '',
+      reintegraEfectivo: false,
       equiposSeleccionados: [],
     });
     setModoCredito(null);
@@ -406,6 +410,7 @@ const NotasCreditoPage: React.FC = () => {
           usuarioId,
           observaciones: observacionesTexto,
           motivo,
+          reintegraEfectivo: form.reintegraEfectivo,
           equiposADevolver: form.equiposSeleccionados.map(e => e.id),
         };
       } else {
@@ -414,6 +419,7 @@ const NotasCreditoPage: React.FC = () => {
           usuarioId,
           observaciones: observacionesTexto,
           motivo,
+          reintegraEfectivo: form.reintegraEfectivo,
           itemsAcreditar: itemsErrorSeleccionados.map(i => ({
             detalleDocumentoId: i.detalleDocumentoId,
             cantidadAcreditar: i.cantidadAcreditar,
@@ -932,6 +938,23 @@ const NotasCreditoPage: React.FC = () => {
                   value={form.observaciones}
                   onChange={e => setForm(f => ({ ...f, observaciones: e.target.value }))}
                   placeholder="Describa el motivo con más detalle si es necesario..."
+                />
+                <FormControlLabel
+                  sx={{ mt: 1.5, alignItems: 'flex-start' }}
+                  control={
+                    <Checkbox
+                      checked={form.reintegraEfectivo}
+                      onChange={e => setForm(f => ({ ...f, reintegraEfectivo: e.target.checked }))}
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>Reintegro de efectivo al cliente</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Marcá solo si devolviste dinero (efectivo/transferencia). Si es una anulación de venta financiada, dejalo sin marcar: no impacta el flujo de caja.
+                      </Typography>
+                    </Box>
+                  }
                 />
               </CardContent>
             </Card>

@@ -374,7 +374,8 @@ const AccionesRequerimiento: React.FC<{
   onAsignar: (req: RequerimientoStockDTO) => void;
   onRecibir: (req: RequerimientoStockDTO) => void;
 }> = ({ req, esAdminCompras, onEliminar, onAsignar, onRecibir }) => {
-  const puedeGestionar = req.estado === 'PENDIENTE' || req.estado === 'PARCIAL';
+  const puedeGestionar =
+    req.estado === 'PENDIENTE' || req.estado === 'PARCIAL' || req.estado === 'EN_COMPRA';
   const puedeRecibir =
     req.estado !== 'CANCELADO' &&
     req.detalles.some((d) => (d.cantidadComprada ?? 0) > (d.cantidadRecibida ?? 0));
