@@ -122,6 +122,8 @@ export interface EquipoFabricadoDTO {
   equipo?: string;
   medida?: MedidaEquipo;
   color?: ColorEquipo;
+  /** Color previsto de una base reservada sin pintar (color = null). Derivado server-side de observaciones. Solo display. */
+  colorPrevisto?: string | null;
   observaciones?: string;
   fechaCreacion: string;
   numeroHeladera: string;

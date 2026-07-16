@@ -28,11 +28,15 @@ const TIPOS_TERMINACION: { value: TipoTerminacion; label: string }[] = [
   { value: 'OTRO', label: 'Otro' },
 ];
 
-/** Extracts the expected color from observaciones like "Color previsto: PLATA (detalle #354)" */
+/**
+ * Extrae el color previsto de observaciones (fallback si el backend no envió colorPrevisto).
+ * Soporta nombres con espacios ("Chromix Plata") — el formato es
+ * "... | Color previsto: <nombre> (detalle #N)".
+ */
 const parsearColorPrevisto = (obs?: string): string | null => {
   if (!obs) return null;
-  const match = obs.match(/Color previsto:\s*([A-Z][A-Z0-9_]*)/i);
-  return match ? match[1].toUpperCase() : null;
+  const match = obs.match(/Color previsto:\s*(.+?)\s*(?:\(detalle|$)/i);
+  return match ? match[1].trim() : null;
 };
 
 const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
@@ -64,10 +68,13 @@ const AplicarTerminacionDialog: React.FC<AplicarTerminacionDialogProps> = ({
       .catch(() => setFullEquipo(null));
   }, [open, equipo?.numeroHeladera]);
 
-  // Resolve color from fetched observaciones, with fallback to list DTO observaciones
-  const colorPrevisto = parsearColorPrevisto(fullEquipo?.observaciones ?? equipo?.observaciones);
+  // Color previsto: preferimos el campo limpio del backend; fallback a parsear observaciones.
+  const colorPrevisto =
+    fullEquipo?.colorPrevisto ??
+    equipo?.colorPrevisto ??
+    parsearColorPrevisto(fullEquipo?.observaciones ?? equipo?.observaciones);
 
-  // Pre-fill color when dialog opens if there's an expected color in observaciones
+  // Pre-fill color when dialog opens if there's an expected color that matches a known color
   useEffect(() => {
     if (open && colorPrevisto && colores.some((c) => c.nombre.toUpperCase() === colorPrevisto.toUpperCase()) && !autoFilledRef.current) {
       autoFilledRef.current = true;
