@@ -315,13 +315,15 @@ const NotasPedidoPage: React.FC = () => {
     setNotaParaFinanciamiento(nota);
     setFinanciamientoDialogOpen(true);
 
+    // Mostramos lo cacheado (batch prefetch) de inmediato para UX, pero SIEMPRE sincronizamos
+    // abajo: el cache puede no incluir formas de pago agregadas después de crear la nota.
+    // El sync es aditivo e idempotente, así que correrlo en cada apertura es seguro.
     const cached = notasFinanciamiento[nota.id] ?? [];
     if (cached.length > 0) {
       setOpcionesFinanciamiento(cached);
       const preSelected = cached.find(o => o.id === nota.opcionFinanciamientoSeleccionadaId)
         ?? cached.find(o => o.esSeleccionada);
       setSelectedOpcionId(preSelected?.id ?? null);
-      return;
     }
 
     setLoadingOpciones(true);
@@ -337,9 +339,12 @@ const NotasPedidoPage: React.FC = () => {
       setSelectedOpcionId(preSelected?.id ?? null);
     } catch (error) {
       console.error('Error fetching financing options:', error);
-      setOpcionesFinanciamiento([]);
-      setSelectedOpcionId(null);
-      setSnackbar({ open: true, message: 'No se pudieron cargar las opciones de financiamiento', severity: 'error' });
+      // Si no había cache que mostrar, avisamos; si había, lo dejamos visible.
+      if (cached.length === 0) {
+        setOpcionesFinanciamiento([]);
+        setSelectedOpcionId(null);
+        setSnackbar({ open: true, message: 'No se pudieron cargar las opciones de financiamiento', severity: 'error' });
+      }
     } finally {
       setLoadingOpciones(false);
     }
