@@ -74,6 +74,10 @@ export const tallerAllowedPaths = [
   '/garantias/registro',
   '/garantias/reclamos',
   '/garantias/reporte',
+  // RRHH (parcial): solo Licencias, Asistencia y Disciplina.
+  '/rrhh/licencias',
+  '/rrhh/asistencia',
+  '/rrhh/disciplina',
 ];
 
 // Rutas permitidas para el rol RECURSOS_HUMANOS (allowlist estricta):
@@ -346,6 +350,9 @@ export const transporteAllowedPaths = [
   '/logistica/distribucion/checklists-viaje',
   '/logistica/vehiculos/incidencias',
   '/logistica/vehiculos/km-empleados',
+  // LOGISTICA (parcial): Stock de Equipos y Ubicación de Equipos (solo lectura operativa).
+  '/logistica/inventario/stock-equipos',
+  '/logistica/inventario/ubicaciones',
   '/fabricacion/equipos',
   '/fabricacion/ficha-equipo',
   '/fabricacion/requerimientos-stock',

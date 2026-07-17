@@ -875,7 +875,9 @@ const PresupuestosPage: React.FC = () => {
 
     if (opciones.length === 0) {
       try {
-        opciones = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(presupuesto.id);
+        // Sincroniza contra los templates activos: aditivo, incorpora formas de pago nuevas
+        // en presupuestos pendientes viejos. El backend no toca presupuestos ya convertidos.
+        opciones = await opcionFinanciamientoApi.sincronizarTemplates(presupuesto.id);
         if (opciones.length > 0) {
           setPresupuestosFinanciamiento(prev => ({ ...prev, [presupuesto.id]: opciones }));
         }

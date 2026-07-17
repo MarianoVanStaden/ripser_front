@@ -245,7 +245,14 @@ const ClienteFormPage: React.FC = () => {
       // Display backend validation errors if available
       if (err?.response?.data) {
         const errorData = err.response.data;
-        if (typeof errorData === 'object') {
+        if (errorData?.tipo === 'TELEFONO_DUPLICADO') {
+          // 409 del backend: ya existe un cliente con ese teléfono en la empresa
+          setError(
+            `El teléfono ${errorData.telefono ?? ''} ya está registrado en el cliente #${errorData.existingId}` +
+            `${errorData.existingNombre ? ` (${errorData.existingNombre})` : ''}. ` +
+            'Usá esa ficha existente o cargá un teléfono distinto.'
+          );
+        } else if (typeof errorData === 'object') {
           const errorMessages = Object.values(errorData).join(', ');
           setError(errorMessages || 'Error al guardar el cliente');
         } else {

@@ -298,35 +298,15 @@ const NotasPedidoPage: React.FC = () => {
   }, []);
 
   /**
-   * Asegura que la nota tenga su propio set de opciones de financiamiento.
-   * El backend, al convertir presupuesto → nota, suele copiar 0 ó 1 opción.
-   * Si detectamos que faltan, las materializamos clonando las del presupuesto origen
-   * con IDs propios de la nota. Operación idempotente: solo se ejecuta cuando la nota
-   * tiene menos opciones que su origen.
+   * Asegura que la nota tenga su propio set completo de opciones de financiamiento.
+   * El backend, al convertir presupuesto → nota, copia sólo la opción seleccionada.
+   * Sincronizamos contra los templates activos (fuente de verdad): el endpoint es aditivo,
+   * agrega las formas de pago que falten (incl. las agregadas después de crear la nota)
+   * calculando los montos sobre el total de la nota, sin tocar la selección existente.
    */
   const ensureOpcionesNotaPedido = useCallback(
     async (nota: DocumentoComercial): Promise<OpcionFinanciamientoDTO[]> => {
-      const propias = await opcionFinanciamientoApi.obtenerOpcionesPorDocumento(nota.id);
-
-      if (!nota.documentoOrigenId) {
-        return propias;
-      }
-
-      const origen = await opcionFinanciamientoApi
-        .obtenerOpcionesPorDocumento(nota.documentoOrigenId)
-        .catch(() => [] as OpcionFinanciamientoDTO[]);
-
-      if (origen.length <= propias.length) {
-        return propias;
-      }
-
-      // Materializar las opciones faltantes en la nota (sin id, para que el backend asigne uno).
-      const clones: OpcionFinanciamientoDTO[] = origen.map(({ id: _ignored, esSeleccionada: _sel, ...rest }) => ({
-        ...rest,
-        esSeleccionada: false,
-      }));
-      const creadas = await opcionFinanciamientoApi.crearMultiples(nota.id, clones);
-      return creadas;
+      return opcionFinanciamientoApi.sincronizarTemplates(nota.id);
     },
     []
   );

@@ -64,6 +64,15 @@ class OpcionFinanciamientoApi {
     await this.eliminarPorDocumento(documentoId);
     return this.crearMultiples(documentoId, opciones);
   }
+
+  // Sincronizar las opciones de un documento PENDIENTE con los templates activos.
+  // Aditivo: agrega las formas de pago nuevas que falten sin tocar las existentes ni la selección.
+  async sincronizarTemplates(documentoId: number): Promise<OpcionFinanciamientoDTO[]> {
+    const { data } = await api.post<OpcionFinanciamientoDTO[]>(
+      `/api/opciones-financiamiento/documento/${documentoId}/sincronizar-templates`
+    );
+    return data;
+  }
 }
 
 export default new OpcionFinanciamientoApi();

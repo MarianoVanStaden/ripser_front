@@ -22,8 +22,10 @@ const PERMISOS_POR_ROL: PermisosMap = {
 
   // El rol TALLER ve: Proveedores (sólo gestión y compras — filtrado fino en Sidebar),
   // Logística completa, Taller completo, Producción completa, Garantías completa.
+  // RRHH parcial: sólo Licencias, Asistencia y Disciplina (allowlist en tallerAllowedPaths;
+  // el resto del módulo queda vedado en backend por SecurityConfig).
   // El detalle por path se controla en tallerAllowedPaths en Sidebar.tsx.
-  TALLER: ['DASHBOARD', 'TALLER', 'GARANTIAS', 'LOGISTICA', 'PRODUCCION'],
+  TALLER: ['DASHBOARD', 'TALLER', 'GARANTIAS', 'LOGISTICA', 'PRODUCCION', 'RRHH'],
 
   USER: ['DASHBOARD'],
 
