@@ -48,7 +48,10 @@ const PERMISOS_POR_ROL: PermisosMap = {
   // Armado de viajes / entregas. Igual que COBRANZAS: declaramos los módulos
   // (secciones) que se ven y el detalle se filtra por allowlist en Sidebar
   // (transporteAllowedPaths) para esconder items dentro de cada sección.
-  TRANSPORTE: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER'],
+  // LOGISTICA: habilita la sección Logística para ver Stock de Equipos y
+  // Ubicación de Equipos (allowlist limita a esos 2 items; debe coincidir con
+  // Modulo.LOGISTICA de TRANSPORTE en PermisosConfig del backend).
+  TRANSPORTE: ['DASHBOARD', 'VENTAS', 'CLIENTES', 'LOGISTICA', 'TRANSPORTE', 'PRODUCCION', 'GARANTIAS', 'TALLER'],
 
   // Acceso EXCLUSIVO al módulo RRHH. No incluye DASHBOARD genérico — la home
   // (/) redirige a /rrhh/dashboard via DashboardEntry. Todo el resto queda
