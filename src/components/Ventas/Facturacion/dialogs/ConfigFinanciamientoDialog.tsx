@@ -7,7 +7,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   FormControlLabel,
   Grid,
@@ -23,7 +22,7 @@ import {
 import { Add as AddIcon } from '@mui/icons-material';
 import type { MetodoPago, OpcionFinanciamientoDTO } from '../../../../types';
 import { PAYMENT_METHODS } from '../constants';
-import { getMetodoPagoIcon, getMetodoPagoLabel } from '../paymentMethodIcons';
+import OpcionFinanciamientoLabel from '../../OpcionFinanciamientoLabel';
 
 interface NewOpcionForm {
   nombre: string;
@@ -45,6 +44,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   totalVenta: number;
+  /** Importe base sin envío (subtotal de productos/equipos) para el desglose de financiación propia. */
+  baseImporte: number;
+  /** Costo de envío (se cobra con la entrega, no se financia). */
+  costoEnvio: number;
   opciones: OpcionFinanciamientoDTO[];
   selectedOpcionId: number | null;
   onSelectOpcion: (id: number) => void;
@@ -56,6 +59,8 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
   open,
   onClose,
   totalVenta,
+  baseImporte,
+  costoEnvio,
   opciones,
   selectedOpcionId,
   onSelectOpcion,
@@ -191,7 +196,7 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
               const optionValue = opcion.id !== undefined ? opcion.id : index;
               const isSelected = selectedOpcionId === optionValue;
               return (
-                <Grid item xs={12} sm={6} key={index}>
+                <Grid item xs={12} key={index}>
                   <Card
                     variant="outlined"
                     sx={{
@@ -202,35 +207,15 @@ const ConfigFinanciamientoDialog: React.FC<Props> = ({
                     onClick={() => onSelectOpcion(optionValue)}
                   >
                     <FormControlLabel
+                      sx={{ width: '100%', m: 0, alignItems: 'flex-start' }}
                       value={optionValue}
                       control={<Radio />}
                       label={
-                        <Box>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            {getMetodoPagoIcon(opcion.metodoPago)}
-                            <Typography variant="subtitle1" fontWeight="bold">{opcion.nombre}</Typography>
-                          </Box>
-                          <Typography variant="body2" color="text.secondary">
-                            {getMetodoPagoLabel(opcion.metodoPago)}
-                          </Typography>
-                          <Typography variant="body2">
-                            {opcion.cantidadCuotas} cuota(s) - {opcion.tasaInteres}% interés
-                          </Typography>
-                          <Divider sx={{ my: 1 }} />
-                          <Typography variant="h6" color="primary">
-                            Total: ${opcion.montoTotal.toFixed(2)}
-                          </Typography>
-                          {opcion.cantidadCuotas > 1 && (
-                            <Typography variant="body2" color="text.secondary">
-                              ${opcion.montoCuota.toFixed(2)} por cuota
-                            </Typography>
-                          )}
-                          {opcion.descripcion && (
-                            <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                              {opcion.descripcion}
-                            </Typography>
-                          )}
-                        </Box>
+                        <OpcionFinanciamientoLabel
+                          opcion={opcion}
+                          baseImporte={baseImporte}
+                          costoEnvio={costoEnvio}
+                        />
                       }
                     />
                   </Card>

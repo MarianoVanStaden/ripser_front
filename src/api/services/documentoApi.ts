@@ -273,6 +273,19 @@ export const documentoApi = {
     );
     return response.data;
   },
+  // Definir/corregir el color de una línea EQUIPO informado post-creación.
+  // El backend rechaza con 400 si el equipo asignado ya tiene color aplicado.
+  actualizarColorDetalle: async (
+    documentoId: number,
+    detalleId: number,
+    payload: { colorId: number; motivo?: string },
+  ): Promise<DocumentoComercial> => {
+    const response = await api.patch<DocumentoComercial>(
+      `/api/documentos/${documentoId}/detalles/${detalleId}/color`,
+      payload,
+    );
+    return response.data;
+  },
   updateFechaEmision: async (id: number, fechaEmision: string, motivo: string): Promise<DocumentoComercial> => {
     const response = await api.patch<DocumentoComercial>(
       `/api/documentos/${id}/fecha-emision`,

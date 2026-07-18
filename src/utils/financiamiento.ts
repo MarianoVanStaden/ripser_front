@@ -64,10 +64,10 @@ export const calcularFinanciamientoPropio = (
 
 /**
  * Verdadero cuando una opción de financiamiento debe mostrar el desglose
- * de entrega + saldo + cuota (financiamiento propio con más de una cuota).
+ * de entrega + saldo + cuota (financiamiento propio, incluso con 1 sola cuota).
  */
 export const debeDesglosarFinanciamientoPropio = (opcion: OpcionFinanciamientoDTO): boolean =>
-  isFinanciamientoPropio(opcion.metodoPago) && opcion.cantidadCuotas > 1;
+  isFinanciamientoPropio(opcion.metodoPago);
 
 export const calculateCostoEnvio = (detalles: DetalleDocumento[]): number => {
   return detalles

@@ -46,6 +46,7 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AttachMoney as AttachMoneyIcon,
   EditCalendar as EditCalendarIcon,
+  Palette as PaletteIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { documentoApi, clienteApi, usuarioApi, opcionFinanciamientoApi } from '../../api/services';
@@ -53,6 +54,7 @@ import { useTenant } from '../../context/TenantContext';
 import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
 import { calcEntregaInfo, EntregaDeadlineChip } from '../../utils/entregaDeadline';
 import { EditarFechaVentaDialog } from './EditarFechaVentaDialog';
+import EditarColorDetalleDialog from './NotasPedido/dialogs/EditarColorDetalleDialog';
 import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { generarVentaPDF } from '../../services/pdfService';
@@ -75,6 +77,9 @@ const RegistroVentasPage: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editarFechaDialogOpen, setEditarFechaDialogOpen] = useState(false);
   const [ventaToEditarFecha, setVentaToEditarFecha] = useState<Venta | null>(null);
+  // Editar color de líneas EQUIPO (informado post-creación).
+  const [colorDialogOpen, setColorDialogOpen] = useState(false);
+  const [docParaColor, setDocParaColor] = useState<DocumentoComercial | null>(null);
   const [confirmStateChangeDialogOpen, setConfirmStateChangeDialogOpen] = useState(false);
   const [viewingSale, setViewingSale] = useState<Venta | null>(null);
   // Documento completo (con opcionesFinanciamiento) para desglosar la forma de pago financiada.
@@ -283,6 +288,17 @@ const RegistroVentasPage: React.FC = () => {
       // Non-fatal — list data already shown, just missing equipo numbers
     } finally {
       setViewLoading(false);
+    }
+  };
+
+  const handleOpenColorDialog = async (sale: Venta): Promise<void> => {
+    try {
+      // El listado no trae las líneas; traemos el documento completo.
+      const full = await documentoApi.getById((sale as any).id);
+      setDocParaColor(full);
+      setColorDialogOpen(true);
+    } catch {
+      setError('No se pudo cargar el documento para editar el color');
     }
   };
 
@@ -933,6 +949,14 @@ const RegistroVentasPage: React.FC = () => {
                       )}
                       <IconButton
                         size="small"
+                        onClick={() => handleOpenColorDialog(sale)}
+                        title="Editar color de equipos"
+                        color="secondary"
+                      >
+                        <PaletteIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
                         onClick={() => handleExportarPDF(sale)}
                         title="Exportar PDF"
                         color="info"
@@ -1513,6 +1537,15 @@ const RegistroVentasPage: React.FC = () => {
           }}
         />
       )}
+
+      <EditarColorDetalleDialog
+        open={colorDialogOpen}
+        onClose={() => { setColorDialogOpen(false); setDocParaColor(null); }}
+        onSaved={() => {
+          invalidateSales();
+        }}
+        documento={docParaColor}
+      />
     </Box>
   );
 };

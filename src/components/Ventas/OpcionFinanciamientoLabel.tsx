@@ -62,19 +62,26 @@ interface OpcionFinanciamientoLabelProps {
   baseImporte: number;
   /** Detalles del documento para calcular costo de envío. */
   detalles?: DetalleDocumento[];
+  /** Costo de envío ya calculado; si se pasa, tiene precedencia sobre `detalles`. */
+  costoEnvio?: number;
 }
 
 /**
  * Renderiza el contenido visual de una opción de financiamiento.
- * Para financiamiento propio con más de una cuota muestra el desglose:
+ * Para financiamiento propio muestra el desglose:
  * entrega 40% + saldo financiado + interés sobre saldo + cuota estimada.
  *
  * Pensado para usarse dentro de un FormControlLabel (con Radio externo) o
  * en cualquier lista. No incluye el control de selección — eso queda fuera.
  */
-const OpcionFinanciamientoLabel: React.FC<OpcionFinanciamientoLabelProps> = ({ opcion, baseImporte, detalles = [] }) => {
+const OpcionFinanciamientoLabel: React.FC<OpcionFinanciamientoLabelProps> = ({
+  opcion,
+  baseImporte,
+  detalles = [],
+  costoEnvio: costoEnvioProp,
+}) => {
   const theme = useTheme();
-  const costoEnvio = calculateCostoEnvio(detalles);
+  const costoEnvio = costoEnvioProp ?? calculateCostoEnvio(detalles);
   const propio = debeDesglosarFinanciamientoPropio(opcion);
   const calc = propio
     ? calcularFinanciamientoPropio(baseImporte, opcion.tasaInteres, opcion.cantidadCuotas, 0.4, costoEnvio)
@@ -121,7 +128,7 @@ const OpcionFinanciamientoLabel: React.FC<OpcionFinanciamientoLabelProps> = ({ o
         <DataPoint label="Método" value={getMetodoPagoLabel(opcion.metodoPago)} />
         <DataPoint
           label="Cuotas"
-          value={opcion.cantidadCuotas <= 1 ? 'Pago único' : String(opcion.cantidadCuotas)}
+          value={!propio && opcion.cantidadCuotas <= 1 ? 'Pago único' : String(opcion.cantidadCuotas)}
         />
         <DataPoint
           label={propio ? 'Cuota estimada' : opcion.cantidadCuotas > 1 ? 'Cuota' : 'Importe'}
@@ -169,7 +176,7 @@ const OpcionFinanciamientoLabel: React.FC<OpcionFinanciamientoLabelProps> = ({ o
               value={formatCurrencyARS(calc.saldoConInteres, 2)}
             />
             <DataPoint
-              label={`${calc.cuotas} cuotas de`}
+              label={calc.cuotas === 1 ? '1 cuota de' : `${calc.cuotas} cuotas de`}
               value={formatCurrencyARS(calc.cuotaEstimada, 2)}
               highlight
             />

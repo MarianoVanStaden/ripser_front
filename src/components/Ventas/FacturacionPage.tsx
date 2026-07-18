@@ -1943,6 +1943,8 @@ const FacturacionPage = () => {
         open={financiamientoDialogOpen}
         onClose={() => setFinanciamientoDialogOpen(false)}
         totalVenta={totalVenta}
+        baseImporte={billingBaseTotal - billingCostoEnvio}
+        costoEnvio={billingCostoEnvio}
         opciones={opcionesFinanciamiento}
         selectedOpcionId={selectedOpcionId}
         onSelectOpcion={handleSelectOpcionFinanciamiento}

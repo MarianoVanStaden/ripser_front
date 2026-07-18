@@ -48,6 +48,7 @@ import {
   Delete as DeleteIcon,
   AttachMoney as MoneyIcon,
   Search as SearchIcon,
+  Palette as PaletteIcon,
 } from "@mui/icons-material";
 import { clienteApi, leadApi, usuarioApi, productApi } from "../../api/services";
 import { documentoApi } from "../../api/services/documentoApi";
@@ -80,6 +81,7 @@ import ConfirmPresupuestoDialog from './Presupuestos/dialogs/ConfirmPresupuestoD
 import OpcionesFinanciamientoDialog from './Presupuestos/dialogs/OpcionesFinanciamientoDialog';
 import CalculadoraPDFDialog from './Presupuestos/dialogs/CalculadoraPDFDialog';
 import VerPresupuestoDialog from './Presupuestos/dialogs/VerPresupuestoDialog';
+import EditarColorDetalleDialog from './NotasPedido/dialogs/EditarColorDetalleDialog';
 
 const PresupuestosPage: React.FC = () => {
   const { user } = useAuth();
@@ -146,6 +148,21 @@ const PresupuestosPage: React.FC = () => {
     () => { queryClient.invalidateQueries({ queryKey: ['presupuestos'] }); },
     [queryClient]
   );
+
+  // Editar color de líneas EQUIPO (informado post-creación).
+  const [colorDialogOpen, setColorDialogOpen] = useState(false);
+  const [docParaColor, setDocParaColor] = useState<DocumentoComercial | null>(null);
+
+  const handleOpenColorDialog = useCallback(async (presupuesto: DocumentoComercial) => {
+    try {
+      // El listado puede no traer las líneas; traemos el documento completo.
+      const full = await documentoApi.getById(presupuesto.id);
+      setDocParaColor(full);
+      setColorDialogOpen(true);
+    } catch {
+      setSnackbar({ open: true, message: 'No se pudo cargar el presupuesto para editar el color', severity: 'error' });
+    }
+  }, []);
 
   // Cliente seleccionado en el formulario (typeahead). Se carga on-demand.
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -1193,6 +1210,11 @@ const PresupuestosPage: React.FC = () => {
                         <Tooltip title="Editar">
                           <IconButton size="small" color="primary" onClick={() => handleOpenDialog(presupuesto, false)} aria-label={`Editar presupuesto ${presupuesto.numeroDocumento}`}>
                             <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Editar color de equipos">
+                          <IconButton size="small" color="secondary" onClick={() => handleOpenColorDialog(presupuesto)} aria-label={`Editar color de equipos del presupuesto ${presupuesto.numeroDocumento}`}>
+                            <PaletteIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Opciones de financiamiento">
@@ -2264,6 +2286,16 @@ const PresupuestosPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <EditarColorDetalleDialog
+        open={colorDialogOpen}
+        onClose={() => { setColorDialogOpen(false); setDocParaColor(null); }}
+        onSaved={() => {
+          invalidatePresupuestos();
+          setSnackbar({ open: true, message: 'Color actualizado correctamente', severity: 'success' });
+        }}
+        documento={docParaColor}
+      />
     </Box>
   );
 };

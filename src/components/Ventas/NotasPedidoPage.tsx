@@ -38,6 +38,7 @@ import {
   Payment as PaymentIcon,
   Edit as EditIcon,
   PriceChange as PriceChangeIcon,
+  Palette as PaletteIcon,
 } from "@mui/icons-material";
 import { documentoApi, clienteApi, opcionFinanciamientoApi, leadApi } from "../../api/services";
 import { equipoFabricadoApi } from "../../api/services/equipoFabricadoApi";
@@ -68,6 +69,7 @@ import ConvertirPresupuestoDialog from './NotasPedido/dialogs/ConvertirPresupues
 import VerNotaPedidoDialog from './NotasPedido/dialogs/VerNotaPedidoDialog';
 import EditarNotaPedidoDialog from './NotasPedido/dialogs/EditarNotaPedidoDialog';
 import CorregirPreciosDialog from './NotasPedido/dialogs/CorregirPreciosDialog';
+import EditarColorDetalleDialog from './NotasPedido/dialogs/EditarColorDetalleDialog';
 import ConvertirLeadDialog from './NotasPedido/dialogs/ConvertirLeadDialog';
 import BillingDialog from './NotasPedido/dialogs/BillingDialog';
 import OpcionesFinanciamientoDialog from './NotasPedido/dialogs/OpcionesFinanciamientoDialog';
@@ -264,6 +266,10 @@ const NotasPedidoPage: React.FC = () => {
   // Corregir precios dialog (líneas + descuento — solo PENDIENTE).
   const [corregirDialogOpen, setCorregirDialogOpen] = useState(false);
   const [notaToCorregir, setNotaToCorregir] = useState<DocumentoComercial | null>(null);
+
+  // Editar color de líneas EQUIPO (informado post-creación).
+  const [colorDialogOpen, setColorDialogOpen] = useState(false);
+  const [notaParaColor, setNotaParaColor] = useState<DocumentoComercial | null>(null);
 
   // Deuda cliente confirmation
   const [deudaError, setDeudaError] = useState<DeudaClienteError | null>(null);
@@ -941,6 +947,17 @@ const NotasPedidoPage: React.FC = () => {
     }
   }, []);
 
+  const handleOpenColorDialog = useCallback(async (nota: DocumentoComercial) => {
+    try {
+      // El listado puede no traer las líneas; traemos la nota completa.
+      const full = await documentoApi.getById(nota.id);
+      setNotaParaColor(full);
+      setColorDialogOpen(true);
+    } catch {
+      setSnackbar({ open: true, message: 'No se pudo cargar la nota para editar el color', severity: 'error' });
+    }
+  }, []);
+
   const handleCloseEditDialog = useCallback(() => {
     setEditDialogOpen(false);
     setNotaToEdit(null);
@@ -1580,6 +1597,18 @@ const NotasPedidoPage: React.FC = () => {
                           </IconButton>
                         </span>
                       </Tooltip>
+                      <Tooltip title="Editar color de equipos">
+                        <span>
+                          <IconButton
+                            size="small"
+                            color="secondary"
+                            onClick={() => handleOpenColorDialog(nota)}
+                            aria-label={`Editar color de equipos de la nota de pedido ${nota.numeroDocumento}`}
+                          >
+                            <PaletteIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                       <Tooltip
                         title={
                           esSoloVendedor
@@ -1709,6 +1738,16 @@ const NotasPedidoPage: React.FC = () => {
           setSnackbar({ open: true, message: 'Precios corregidos correctamente', severity: 'success' });
         }}
         nota={notaToCorregir}
+      />
+
+      <EditarColorDetalleDialog
+        open={colorDialogOpen}
+        onClose={() => { setColorDialogOpen(false); setNotaParaColor(null); }}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ['notasPedido'] });
+          setSnackbar({ open: true, message: 'Color actualizado correctamente', severity: 'success' });
+        }}
+        documento={notaParaColor}
       />
 
       {/* AsignarEquiposDialog for Factura conversion */}
