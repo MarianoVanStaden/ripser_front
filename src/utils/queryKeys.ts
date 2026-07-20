@@ -15,4 +15,9 @@ export const QUERY_KEYS = {
 
   RECORDATORIOS_CONTEOS: (sucursalId?: number, usuarioId?: number) =>
     ['recordatoriosConteos', sucursalId ?? null, usuarioId ?? null] as const,
+
+  PRECIOS_RECETAS: () => ['preciosRecetas'] as const,
+
+  HISTORIAL_PRECIOS: (filters?: Record<string, unknown>) =>
+    ['historialPreciosRecetas', filters ?? {}] as const,
 } as const;

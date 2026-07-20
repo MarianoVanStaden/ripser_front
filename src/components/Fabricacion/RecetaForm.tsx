@@ -147,7 +147,7 @@ const RecetaForm: React.FC = () => {
           medidaId: data.medidaId ?? null,
           colorId: data.colorId ?? null,
           observaciones: data.observaciones,
-          precioVenta: data.precioVenta,
+          // precioVenta se cambia solo desde Precios de Equipos (flujo auditado)
           disponibleParaVenta: data.disponibleParaVenta,
         };
         const updated = await recetaFabricacionApi.update(Number(id), updateData);
@@ -347,8 +347,14 @@ const RecetaForm: React.FC = () => {
                   onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
                   label="Precio de Venta"
                   type="number"
+                  disabled={isEdit}
                   error={!!errors.precioVenta}
-                  helperText={errors.precioVenta?.message || 'Precio de venta del equipo fabricado'}
+                  helperText={
+                    errors.precioVenta?.message ||
+                    (isEdit
+                      ? 'El precio se cambia desde Admin → Precios y Ofertas → Precios de Equipos'
+                      : 'Precio de venta del equipo fabricado')
+                  }
                   InputProps={{ inputProps: { min: 0, step: 0.01 } }}
                   fullWidth
                 />

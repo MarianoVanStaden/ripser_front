@@ -53,6 +53,7 @@ export interface RecetaFabricacionDTO {
   activo: boolean;
   fechaCreacion: string;
   detalles: DetalleRecetaDTO[];
+  version?: number;
 }
 
 export type RecetaFabricacionListDTO = {
@@ -64,6 +65,8 @@ export type RecetaFabricacionListDTO = {
   medida?: MedidaEquipo;
   color?: ColorEquipo;
   costoFabricacion: number;
+  precioVenta?: number | null;
+  version?: number;
   activo: boolean;
   fechaCreacion: string;
   cantidadDetalles: number;
@@ -91,7 +94,7 @@ export interface RecetaFabricacionUpdateDTO {
   medidaId?: number | null;
   colorId?: number | null;
   observaciones?: string;
-  precioVenta?: number;
+  // precioVenta se quitó: el precio solo se cambia por precioRecetaApi (flujo auditado)
   disponibleParaVenta?: boolean;
   activo?: boolean;
 }

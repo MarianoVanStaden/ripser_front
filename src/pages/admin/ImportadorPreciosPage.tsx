@@ -14,6 +14,7 @@ import {
 } from '@mui/icons-material';
 import { productApi } from '../../api/services/productApi';
 import { recetaFabricacionApi } from '../../api/services/recetaFabricacionApi';
+import { precioRecetaApi } from '../../api/services/precioRecetaApi';
 import { findCandidates } from '../../utils/fuzzyMatch';
 import type { Producto, RecetaFabricacionListDTO } from '../../types';
 
@@ -312,7 +313,14 @@ const ImportadorPreciosPage: React.FC = () => {
         if (row.target === 'PRODUCTO') {
           await productApi.update(row.selectedId, { precio: row.precioNuevo });
         } else if (row.target === 'RECETA') {
-          await recetaFabricacionApi.update(row.selectedId, { precioVenta: row.precioNuevo } as any);
+          // El precio de recetas solo se cambia por el flujo auditado (con historial).
+          // Se busca la receta para obtener la version vigente (optimistic locking).
+          const receta = await recetaFabricacionApi.findById(row.selectedId);
+          await precioRecetaApi.cambiarPrecio(row.selectedId, {
+            precioNuevo: row.precioNuevo,
+            motivo: 'Importador de precios',
+            version: receta.version ?? 0,
+          });
         }
         updated.push({ ...row, applied: 'OK' });
         ok++;
