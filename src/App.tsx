@@ -15,6 +15,7 @@ import { MedidasProvider } from './context/MedidasContext';
 import { SidebarProvider } from './context/SidebarContext';
 import SentryScope from './components/SentryScope';
 import SentryErrorBoundary from './components/SentryErrorBoundary';
+import ImpersonationBanner from './components/common/ImpersonationBanner';
 
 // ---------------------------------------------------------------------------
 // Lazy route helpers
@@ -321,6 +322,8 @@ function App() {
           <CssBaseline />
           <SidebarProvider>
           <Router>
+            {/* Banner rojo global de impersonación (se autooculta si no aplica) */}
+            <ImpersonationBanner />
             <Suspense fallback={<CenteredFallback />}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />

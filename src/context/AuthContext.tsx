@@ -274,6 +274,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Only logout on 401 if it's NOT a token_expired error (those are handled in config.ts)
         // This prevents double-logout when refresh fails
         if (error.response?.status === 401 && error.response?.data?.error !== 'token_expired') {
+          // Si el 401 llega durante una impersonación (token corto expirado),
+          // restaurar la sesión del owner en vez de desloguear del todo.
+          if (sessionStorage.getItem('impersonation_backup')) {
+            import('../utils/impersonation').then((m) => m.exitImpersonation());
+            return Promise.reject(error);
+          }
           console.warn('⚠️ AuthContext: 401 error (non token_expired), clearing auth...');
           // 🔥 FIX: Don't call logout() here, which would clear empresaId/sucursalId
           // Instead, manually clear only auth tokens to preserve SuperAdmin context
