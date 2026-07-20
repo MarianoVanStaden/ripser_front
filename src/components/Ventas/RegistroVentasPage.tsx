@@ -55,7 +55,8 @@ import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema
 import { calcEntregaInfo, EntregaDeadlineChip } from '../../utils/entregaDeadline';
 import { EditarFechaVentaDialog } from './EditarFechaVentaDialog';
 import EditarColorDetalleDialog from './NotasPedido/dialogs/EditarColorDetalleDialog';
-import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, OpcionFinanciamientoDTO } from '../../types';
+import AsignarEquiposDialog from './AsignarEquiposDialog';
+import type { Venta, Cliente, Usuario, PaymentMethod, DetalleVenta, DocumentoComercial, DetalleDocumento, OpcionFinanciamientoDTO } from '../../types';
 import { PROVINCIA_LABELS } from '../../types/shared.enums';
 import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
@@ -84,6 +85,8 @@ const RegistroVentasPage: React.FC = () => {
   const [viewingSale, setViewingSale] = useState<Venta | null>(null);
   // Documento completo (con opcionesFinanciamiento) para desglosar la forma de pago financiada.
   const [viewingDoc, setViewingDoc] = useState<any | null>(null);
+  // Asignar/completar equipos en una factura ya emitida (líneas EQUIPO sin equipo).
+  const [asignarEquiposOpen, setAsignarEquiposOpen] = useState(false);
   const [ventaToDelete, setVentaToDelete] = useState<Venta | null>(null);
   const [editingSale, setEditingSale] = useState<Venta | null>(null);
   const [editForm, setEditForm] = useState({
@@ -288,6 +291,45 @@ const RegistroVentasPage: React.FC = () => {
       // Non-fatal — list data already shown, just missing equipo numbers
     } finally {
       setViewLoading(false);
+    }
+  };
+
+  // Líneas EQUIPO de la factura en vista que quedaron sin equipo asignado.
+  const detallesEquipoSinAsignar: DetalleDocumento[] = (viewingDoc?.detalles ?? []).filter(
+    (d: DetalleDocumento) =>
+      d.tipoItem === 'EQUIPO' &&
+      (!d.equiposNumerosHeladera || d.equiposNumerosHeladera.length < (d.cantidad || 1)),
+  );
+
+  const handleConfirmAsignarEquipos = async (
+    asignaciones: { [detalleId: number]: number[] },
+  ): Promise<void> => {
+    if (!viewingDoc?.id) return;
+    try {
+      await documentoApi.asignarEquiposAFactura(viewingDoc.id, asignaciones);
+      setAsignarEquiposOpen(false);
+      invalidateSales();
+      // Refrescar el documento en vista para reflejar los N° de equipo recién vinculados.
+      const full = await documentoApi.getById(viewingDoc.id);
+      setViewingDoc(full);
+      if (full?.detalles?.length) {
+        const numerosById = new Map(
+          full.detalles.map((d: any) => [d.id, d.equiposNumerosHeladera as string[] | undefined]),
+        );
+        setViewingSale((prev) =>
+          prev
+            ? {
+                ...prev,
+                detalleVentas: (prev.detalleVentas || []).map((dv) => ({
+                  ...dv,
+                  equiposNumerosHeladera: numerosById.get(dv.id) ?? dv.equiposNumerosHeladera,
+                })),
+              }
+            : prev,
+        );
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'No se pudieron asignar los equipos a la factura');
     }
   };
 
@@ -1293,6 +1335,15 @@ const RegistroVentasPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setViewDialogOpen(false)}>Cerrar</Button>
+          {viewingDoc?.tipoDocumento === 'FACTURA' && detallesEquipoSinAsignar.length > 0 && (
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={() => setAsignarEquiposOpen(true)}
+            >
+              Asignar equipos faltantes
+            </Button>
+          )}
           {viewingSale?.prestamoId && (
             <Button
               variant="outlined"
@@ -1545,6 +1596,15 @@ const RegistroVentasPage: React.FC = () => {
           invalidateSales();
         }}
         documento={docParaColor}
+      />
+
+      <AsignarEquiposDialog
+        open={asignarEquiposOpen}
+        onClose={() => setAsignarEquiposOpen(false)}
+        onConfirm={handleConfirmAsignarEquipos}
+        detallesEquipo={detallesEquipoSinAsignar}
+        clienteId={viewingDoc?.clienteId ?? viewingDoc?.cliente?.id}
+        notaPedidoId={viewingDoc?.documentoOrigenId}
       />
     </Box>
   );

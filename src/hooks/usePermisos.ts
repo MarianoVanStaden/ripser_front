@@ -148,6 +148,13 @@ export const usePermisos = () => {
   const esAdmin = useMemo(() => roles.includes('ADMIN'), [roles]);
 
   /**
+   * SuperAdmin de plataforma: habilita herramientas de corrección reservadas
+   * (ej. corrección manual de saldo de caja). Debe coincidir con el guard
+   * hasRole('SUPER_ADMIN') del backend.
+   */
+  const esSuperAdmin = useMemo(() => Boolean(user?.esSuperAdmin), [user]);
+
+  /**
    * Admin de compras: únicos que pueden elegir proveedor (crear órdenes de compra
    * directas) y asignar proveedores a los pedidos del taller. Debe coincidir con
    * COMPRAS_ADMINS del backend (SecurityConfig).
@@ -179,6 +186,7 @@ export const usePermisos = () => {
     modulosPermitidos,
     tieneRol,
     esAdmin,
+    esSuperAdmin,
     esAdminCompras,
     puedeVerCostos,
     roles,

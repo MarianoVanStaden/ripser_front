@@ -293,6 +293,19 @@ export const documentoApi = {
     );
     return response.data;
   },
+  // Asigna/completa equipos en una factura YA EMITIDA: crea el vínculo faltante para
+  // las líneas EQUIPO provistas (map detalleId → [equipoFabricadoId]). Recupera líneas
+  // que quedaron sin equipo para que aparezcan en el Tablero de Armado de Viajes y el viaje.
+  asignarEquiposAFactura: async (
+    facturaId: number,
+    asignaciones: { [detalleId: number]: number[] },
+  ): Promise<DocumentoComercial> => {
+    const response = await api.post<DocumentoComercial>(
+      `/api/documentos/${facturaId}/asignar-equipos`,
+      asignaciones,
+    );
+    return response.data;
+  },
   // Change metodoPago of documento
   changeMetodoPago: async (id: number, metodoPago: MetodoPago): Promise<DocumentoComercial> => {
     const response = await api.put<DocumentoComercial>(

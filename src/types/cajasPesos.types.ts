@@ -71,6 +71,11 @@ export interface DepositoExtraccionCajaPesosDTO {
   descripcion?: string;
 }
 
+export interface CorreccionCajaPesosDTO {
+  saldoObjetivo: number;
+  motivo: string;
+}
+
 export interface TransferenciaCajaPesosRequestDTO {
   cajaOrigenId: number;
   cajaDestinoId: number;

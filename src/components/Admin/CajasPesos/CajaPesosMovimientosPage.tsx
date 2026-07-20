@@ -30,7 +30,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import BuildIcon from '@mui/icons-material/Build';
 import { useArqueoChecks } from '../../../hooks/useArqueoChecks';
+import { usePermisos } from '../../../hooks/usePermisos';
 import { cajasPesosApi } from '../../../api/services/cajasPesosApi';
 import type {
   CajaPesos,
@@ -42,6 +44,7 @@ import { extractError, formatFecha, formatPesos } from '../CajasAhorro/utils';
 import CajaPesosFormDialog from './dialogs/CajaPesosFormDialog';
 import DepositarPesosDialog from './dialogs/DepositarPesosDialog';
 import ExtraerPesosDialog from './dialogs/ExtraerPesosDialog';
+import CorreccionPesosDialog from './dialogs/CorreccionPesosDialog';
 
 const TIPO_LABEL: Record<TipoMovimientoCajaPesos, string> = {
   DEPOSITO: 'Depósito',
@@ -78,6 +81,7 @@ const CajaPesosMovimientosPage: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [depositarOpen, setDepositarOpen] = useState(false);
   const [extraerOpen, setExtraerOpen] = useState(false);
+  const [correccionOpen, setCorreccionOpen] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
@@ -141,6 +145,7 @@ const CajaPesosMovimientosPage: React.FC = () => {
   };
 
   const activa = caja?.estado === 'ACTIVA';
+  const { esSuperAdmin } = usePermisos();
   const { checkedIds, toggle, clear, isChecked } = useArqueoChecks(cajaId);
 
   return (
@@ -236,6 +241,18 @@ const CajaPesosMovimientosPage: React.FC = () => {
                   <DeleteIcon />
                 </IconButton>
               </>
+            )}
+            {esSuperAdmin && (
+              <Tooltip title="Corregir saldo sin generar ingreso/egreso real (SuperAdmin)">
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<BuildIcon />}
+                  onClick={() => setCorreccionOpen(true)}
+                >
+                  Corrección
+                </Button>
+              </Tooltip>
             )}
           </Stack>
         </Box>
@@ -394,6 +411,16 @@ const CajaPesosMovimientosPage: React.FC = () => {
             onClose={() => setExtraerOpen(false)}
             onSuccess={() => {
               setExtraerOpen(false);
+              handleOperationSuccess();
+            }}
+          />
+
+          <CorreccionPesosDialog
+            open={correccionOpen}
+            caja={caja}
+            onClose={() => setCorreccionOpen(false)}
+            onSuccess={() => {
+              setCorreccionOpen(false);
               handleOperationSuccess();
             }}
           />
