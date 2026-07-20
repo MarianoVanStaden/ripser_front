@@ -5,6 +5,7 @@ import { navigation } from './navConfig';
 import type { NavModule } from './navConfig.types';
 import {
   superAdminOnlyPaths,
+  platformOwnerOnlyPaths,
   vendedorDeniedPaths,
   cobranzasAllowedPaths,
   supervisorAllowedPaths,
@@ -32,7 +33,7 @@ import {
  */
 export const useNavigation = (): NavModule[] => {
   const { tienePermiso, tieneRol, roles } = usePermisos();
-  const { esSuperAdmin } = useAuth();
+  const { esSuperAdmin, esPlatformOwner } = useAuth();
 
   return useMemo(
     () =>
@@ -45,6 +46,11 @@ export const useNavigation = (): NavModule[] => {
           // Si es la sección de ADMIN, filtrar items según el rol
           if (section.modulo === 'ADMIN' && !esSuperAdmin) {
             filteredItems = filteredItems.filter((item) => !superAdminOnlyPaths.includes(item.path));
+          }
+
+          // Herramientas de plataforma: solo el platform owner las ve en el menú.
+          if (!esPlatformOwner) {
+            filteredItems = filteredItems.filter((item) => !platformOwnerOnlyPaths.includes(item.path));
           }
 
           // Si el rol es puramente VENDEDOR (y no Admin), ocultar rutas específicas
@@ -133,6 +139,6 @@ export const useNavigation = (): NavModule[] => {
     // `tienePermiso` y `tieneRol` son puros sobre `roles`; basta con depender
     // de `roles` + `esSuperAdmin` para recomputar sólo cuando cambian.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roles, esSuperAdmin],
+    [roles, esSuperAdmin, esPlatformOwner],
   );
 };
