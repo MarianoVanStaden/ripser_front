@@ -25,6 +25,7 @@ export interface AuthUser {
   roles?: TipoRol[];
   rol?: string; // Alias for backward compatibility
   esSuperAdmin?: boolean;  // Multi-tenant: indicates if user has full system access
+  esPlatformOwner?: boolean; // Platform owner (operador del SaaS, por encima de SuperAdmin)
   empresaId?: number;      // Active company ID
   sucursalId?: number;     // Active branch ID
   nombre?: string;         // User's full name
@@ -35,6 +36,7 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   esSuperAdmin: boolean;  // Exposed for easy access
+  esPlatformOwner: boolean; // Solo true para el operador del SaaS
   login: (usernameOrEmail: string, password: string) => Promise<void>;
   logout: () => void;
   refreshSession: () => Promise<string>;
@@ -50,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [esSuperAdmin, setEsSuperAdmin] = useState<boolean>(false);
+  const [esPlatformOwner, setEsPlatformOwner] = useState<boolean>(false);
 
   useEffect(() => {
     const isTokenExpired = (token: string): boolean => {
@@ -109,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(t);
         setUser(userParsed);
         setEsSuperAdmin(isSuperAdmin);
+        setEsPlatformOwner(sessionStorage.getItem("esPlatformOwner") === 'true');
         axios.defaults.headers.common.Authorization = `Bearer ${t}`;
         setAuthToken(t);
       }
@@ -133,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       const isSuperAdmin = res.esSuperAdmin || false;
+      const isPlatformOwner = (res as any).esPlatformOwner === true;
       console.log('✅ isSuperAdmin determinado:', isSuperAdmin);
 
       const usr: AuthUser = {
@@ -141,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: res.email || "",
         roles: normalizeRoles(res.roles),
         esSuperAdmin: isSuperAdmin,
+        esPlatformOwner: isPlatformOwner,
         empleadoId: res.empleadoId,
       };
       const access = res.accessToken || (res as any).token; // support alternate field name
@@ -169,10 +175,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('ℹ️ Login response has no esSuperAdmin, keeping existing value:', sessionStorage.getItem("esSuperAdmin"));
       }
 
+      sessionStorage.setItem("esPlatformOwner", String(isPlatformOwner));
+
       // Now set token and user
       setToken(access);
       setUser(usr);
       setEsSuperAdmin(isSuperAdmin);
+      setEsPlatformOwner(isPlatformOwner);
       localStorage.setItem("auth_token", access);
       if (res.refreshToken) {
         localStorage.setItem("auth_refresh_token", res.refreshToken);
@@ -243,6 +252,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
     setEsSuperAdmin(false);
+    setEsPlatformOwner(false);
+    sessionStorage.removeItem("esPlatformOwner");
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("auth_refresh_token");
@@ -304,6 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         esSuperAdmin,
+        esPlatformOwner,
         login,
         logout,
         refreshSession,

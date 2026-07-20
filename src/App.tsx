@@ -294,6 +294,18 @@ const SuperAdminRoute: React.FC<{ children: React.ReactElement }> = ({ children 
   return <>{children}</>;
 };
 
+// Solo el platform owner (operador del SaaS). El chunk de la página es lazy y
+// se importa dentro del guard, así no llega al bundle de los demás usuarios.
+const PlatformOwnerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { user, esPlatformOwner, loading } = useAuth();
+  if (loading) return <CenteredFallback />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!esPlatformOwner) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
+const PlatformOpsPage = lazyWithReload(() => import('./pages/platform/PlatformOpsPage'));
+
 // Small helper so each route doesn't repeat `<PrivateRoute>...</PrivateRoute>`.
 const priv = (el: React.ReactElement) => <PrivateRoute>{el}</PrivateRoute>;
 
@@ -337,6 +349,7 @@ function App() {
                   <Route path="admin/empresas" element={priv(<EmpresasPage />)} />
                   <Route path="admin/sucursales" element={priv(<SucursalesPage />)} />
                   <Route path="admin/tenant-selector" element={<SuperAdminRoute><TenantSelector /></SuperAdminRoute>} />
+                  <Route path="platform/ops" element={<PlatformOwnerRoute><PlatformOpsPage /></PlatformOwnerRoute>} />
                   <Route path="admin/balance" element={priv(<BalanceAnualPage />)} />
                   <Route path="admin/balance/:anio/:mes" element={priv(<BalanceMesPage />)} />
                   <Route path="admin/amortizaciones" element={priv(<AmortizacionesPage />)} />

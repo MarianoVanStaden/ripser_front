@@ -222,6 +222,9 @@ export const navigation: NavModule[] = [
       { text: 'Configuración', icon: <SettingsIcon />, path: '/admin/settings' },
       { text: 'Actividad del sistema', icon: <HistoryIcon />, path: '/admin/actividad' },
       { text: 'Backups', icon: <BackupIcon />, path: '/admin/backups' },
+      // Solo visible para el platform owner (filtrado en useNavigation por
+      // platformOwnerOnlyPaths + guard PlatformOwnerRoute en App.tsx).
+      { text: 'Mantenimiento SaaS', icon: <SettingsIcon />, path: '/platform/ops' },
     ],
   },
 ];

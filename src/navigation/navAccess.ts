@@ -14,6 +14,10 @@
 // Rutas que solo pueden ver los SUPER_ADMIN.
 export const superAdminOnlyPaths = ['/admin/tenant-selector'];
 
+// Rutas exclusivas del PLATFORM_OWNER (operador del SaaS): nunca visibles
+// para admins de tenant, ni siquiera SUPER_ADMIN sin el flag.
+export const platformOwnerOnlyPaths = ['/platform/ops'];
+
 // Rutas denegadas para el rol VENDEDOR.
 export const vendedorDeniedPaths = [
   '/ventas/facturacion',
