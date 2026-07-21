@@ -35,7 +35,7 @@ export default function SesionesTab({ onError, onOk }: Props) {
   useEffect(() => {
     usuarioAdminApi.getAll(0, 500)
       .then((page) => setUsuarios(page.content.filter((u) => u.enabled)))
-      .catch(() => { /* los pickers quedan vacíos; se informa al intentar usar */ });
+      .catch((e) => onError(e?.response?.data?.message || e?.response?.data?.error || 'No se pudo cargar la lista de usuarios'));
   }, []);
 
   const run = async (fn: () => Promise<void>, done?: () => void) => {

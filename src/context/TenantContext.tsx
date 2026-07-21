@@ -146,7 +146,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       console.log('⚠️ canSelectSucursal: rolActual es undefined/null');
       return false;
     }
-    const result = rolActual === 'ADMIN_EMPRESA' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR' || rolActual === 'POST_VENTA';
+    const result = rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO' || rolActual === 'GERENTE_SUCURSAL' || rolActual === 'SUPERVISOR' || rolActual === 'POST_VENTA';
     console.log('🔍 canSelectSucursal evaluation:', { rolActual, result, esSuperAdmin, systemRole });
     return result;
   }, [esSuperAdmin, rolActual, user]);

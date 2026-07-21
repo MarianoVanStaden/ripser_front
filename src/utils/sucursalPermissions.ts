@@ -6,7 +6,7 @@ import type { RolEmpresa, Sucursal } from '../types/tenant.types';
 export const canChangeSucursal = (rol: RolEmpresa | null, esSuperAdmin: boolean): boolean => {
   if (esSuperAdmin) return true;
   if (!rol) return false;
-  return rol === 'ADMIN_EMPRESA' || rol === 'GERENTE_SUCURSAL' || rol === 'SUPERVISOR';
+  return rol === 'ADMIN_EMPRESA' || rol === 'ADMIN_EMPRESA_LIMITADO' || rol === 'GERENTE_SUCURSAL' || rol === 'SUPERVISOR';
 };
 
 /**

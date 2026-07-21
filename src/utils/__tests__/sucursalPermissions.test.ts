@@ -28,6 +28,10 @@ describe('sucursalPermissions', () => {
       expect(canChangeSucursal('ADMIN_EMPRESA', false)).toBe(true);
     });
 
+    it('returns true for ADMIN_EMPRESA_LIMITADO', () => {
+      expect(canChangeSucursal('ADMIN_EMPRESA_LIMITADO', false)).toBe(true);
+    });
+
     it('returns true for GERENTE_SUCURSAL', () => {
       expect(canChangeSucursal('GERENTE_SUCURSAL', false)).toBe(true);
     });
