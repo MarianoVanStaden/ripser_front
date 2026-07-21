@@ -72,6 +72,8 @@ import CorregirPreciosDialog from './NotasPedido/dialogs/CorregirPreciosDialog';
 import EditarColorDetalleDialog from './NotasPedido/dialogs/EditarColorDetalleDialog';
 import ConvertirLeadDialog from './NotasPedido/dialogs/ConvertirLeadDialog';
 import BillingDialog from './NotasPedido/dialogs/BillingDialog';
+import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
+import { defaultFechaEntregaISO } from '../../utils/entregaDeadline';
 import OpcionesFinanciamientoDialog from './NotasPedido/dialogs/OpcionesFinanciamientoDialog';
 import ConfirmDialog from '../common/ConfirmDialog';
 
@@ -79,6 +81,8 @@ const NotasPedidoPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaId } = useTenant();
   const { user } = useAuth();
+  // Días de entrega estimados (parámetro de sistema) para pre-cargar la fecha objetivo al facturar.
+  const { value: diasEntrega } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
   // Solo vendedor: el rol VENDEDOR puede crear notas pero no facturarlas.
   const esSoloVendedor = !!user?.roles
     && user.roles.includes('VENDEDOR')
@@ -1036,7 +1040,7 @@ const NotasPedidoPage: React.FC = () => {
         porcentajeEntregaInicial: 40,
         montoEntregaInicial: 0,
         tasaInteres: tasa,
-        fechaEstimadaEntrega: '',
+        fechaEstimadaEntrega: nota.fechaEstimadaEntrega || defaultFechaEntregaISO(diasEntrega),
       });
       setNotaToBill(nota);
       setBillingDialogOpen(true);
@@ -1051,12 +1055,12 @@ const NotasPedidoPage: React.FC = () => {
         porcentajeEntregaInicial: 0,
         montoEntregaInicial: 0,
         tasaInteres: 0,
-        fechaEstimadaEntrega: '',
+        fechaEstimadaEntrega: nota.fechaEstimadaEntrega || defaultFechaEntregaISO(diasEntrega),
       });
       setNotaToBill(nota);
       setBillingDialogOpen(true);
     }
-  }, [notasPedido, notasFinanciamiento]);
+  }, [notasPedido, notasFinanciamiento, diasEntrega]);
 
   const handleCloseBillingDialog = () => {
     setBillingDialogOpen(false);

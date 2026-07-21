@@ -63,6 +63,7 @@ import { useTenant } from '../../context/TenantContext';
 import { usePermisos } from '../../hooks/usePermisos';
 import { SuperAdminContextModal, useSuperAdminContextCheck } from '../../components/shared';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useSessionState } from '../../hooks/useSessionState';
 import { openWhatsAppWeb } from '../../utils/whatsapp';
 
 const PAGE_SIZE = 100;
@@ -206,21 +207,23 @@ export const LeadsTablePage = () => {
   // también lo enforce con @PreAuthorize — esto es para la UX (ocultar acciones).
   const canManageDeleted = esSuperAdmin || tieneRol('ADMIN', 'GERENTE_SUCURSAL');
 
-  const [order, setOrder] = useState<Order>('desc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('fechaCreacion');
+  // Orden + filtros + búsqueda persistidos en sessionStorage: al abrir un lead y
+  // "Volver", la tabla se re-monta y recupera el estado que tenía.
+  const [order, setOrder] = useSessionState<Order>('leads:order', 'desc');
+  const [orderBy, setOrderBy] = useSessionState<OrderBy>('leads:orderBy', 'fechaCreacion');
   const [undoSnack, setUndoSnack] = useState<{ id: number; nombre: string } | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; nombre: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [errorSnack, setErrorSnack] = useState<string | null>(null);
-  const [selectedEstados, setSelectedEstados] = useState<EstadoLeadEnum[]>([]);
-  const [selectedPrioridades, setSelectedPrioridades] = useState<PrioridadLeadEnum[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [soloMisLeads, setSoloMisLeads] = useState(false);
-  const [datePreset, setDatePreset] = useState<DatePreset>('todos');
+  const [selectedEstados, setSelectedEstados] = useSessionState<EstadoLeadEnum[]>('leads:estados', []);
+  const [selectedPrioridades, setSelectedPrioridades] = useSessionState<PrioridadLeadEnum[]>('leads:prioridades', []);
+  const [searchTerm, setSearchTerm] = useSessionState('leads:search', '');
+  const [soloMisLeads, setSoloMisLeads] = useSessionState('leads:soloMisLeads', false);
+  const [datePreset, setDatePreset] = useSessionState<DatePreset>('leads:datePreset', 'todos');
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [customFechaDesde, setCustomFechaDesde] = useState('');
-  const [customFechaHasta, setCustomFechaHasta] = useState('');
+  const [customFechaDesde, setCustomFechaDesde] = useSessionState('leads:fechaDesde', '');
+  const [customFechaHasta, setCustomFechaHasta] = useSessionState('leads:fechaHasta', '');
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   const filters: LeadFilterParams = useMemo(() => {

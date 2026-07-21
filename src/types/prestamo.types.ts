@@ -269,6 +269,12 @@ export interface CuotaPrestamoDTO {
   fechaPagoInformada?: string | null;
   /** Comprobante declarado por cobranzas en el pago informado. Solo cuando estado === PAGO_INFORMADO. */
   comprobanteInformado?: string | null;
+  /**
+   * Monto declarado por cobranzas en el pago informado. Solo cuando estado === PAGO_INFORMADO.
+   * Como informar() no toca montoPagado, el acumulado real es montoPagado + montoInformado;
+   * permite distinguir un informe total de uno parcial en el PDF de estado de cuenta.
+   */
+  montoInformado?: number | null;
 }
 
 // Préstamo's local MetodoPago is a *narrower* set than the global one in

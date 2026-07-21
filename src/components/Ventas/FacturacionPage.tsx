@@ -74,6 +74,8 @@ import DesdeNotaPedidoTab from './Facturacion/tabs/DesdeNotaPedidoTab';
 import FacturarManualTab from './Facturacion/tabs/FacturarManualTab';
 import { costoEnvioApi } from '../../api/services/costoEnvioApi';
 import type { CostoEnvioDTO } from '../../types/costoEnvio.types';
+import { useParametroSistema, parseIntOr } from '../../hooks/useParametroSistema';
+import { defaultFechaEntregaISO } from '../../utils/entregaDeadline';
 
 const FacturacionPage = () => {
   const navigate = useNavigate();
@@ -104,6 +106,16 @@ const FacturacionPage = () => {
   const [dueDate, setDueDate] = useState(dayjs().add(30, 'days').format('YYYY-MM-DD'));
   // Fecha objetivo de entrega (Tablero de Pendientes). '' = sin fecha.
   const [fechaEstimadaEntrega, setFechaEstimadaEntrega] = useState('');
+  // Días de entrega estimados (parámetro de sistema) para pre-cargar la fecha objetivo al facturar.
+  const { value: diasEntrega } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
+  // Pre-cargar el default en el form manual una vez que el parámetro esté disponible.
+  const diasEntregaInitRef = useRef(false);
+  useEffect(() => {
+    if (!diasEntregaInitRef.current) {
+      diasEntregaInitRef.current = true;
+      setFechaEstimadaEntrega(defaultFechaEntregaISO(diasEntrega));
+    }
+  }, [diasEntrega]);
   const [notes, setNotes] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('EXENTO');
@@ -558,7 +570,7 @@ const FacturacionPage = () => {
     setPorcentajeEntrega(null);
     setMontoFijoEntrega(null);
     setDueDate(dayjs().add(30, 'days').format('YYYY-MM-DD'));
-    setFechaEstimadaEntrega('');
+    setFechaEstimadaEntrega(defaultFechaEntregaISO(diasEntrega));
     setNotes('');
     setCart([]);
     setSelectedIva('EXENTO');
@@ -1453,6 +1465,8 @@ const FacturacionPage = () => {
     setEditingNotaItems(false);
     setNotaDescuentoTipo((nota.descuentoTipo as 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO') || 'NONE');
     setNotaDescuentoValor(Number(nota.descuentoValor) || 0);
+    // Pre-cargar fecha objetivo: respetar la de la nota si ya venía seteada; si no, hoy + días de entrega.
+    setNotaFechaEstimadaEntrega(nota.fechaEstimadaEntrega || defaultFechaEntregaISO(diasEntrega));
     setConvertDialogOpen(true);
     deudaYaConfirmadaRef.current = false;
 

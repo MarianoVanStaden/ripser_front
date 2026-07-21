@@ -40,6 +40,7 @@ import { clienteApi, type ClienteFilterParams } from '../../api/services/cliente
 import { useTenant } from '../../context/TenantContext';
 import { usePagination } from '../../hooks/usePagination';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useSessionState } from '../../hooks/useSessionState';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { RUBRO_LABELS } from '../../types/rubro.types';
 
@@ -48,9 +49,11 @@ const ClientesPage: React.FC = () => {
   const { sucursalFiltro } = useTenant();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [searchTerm, setSearchTerm] = useState('');
-  const [tipoFilter, setTipoFilter] = useState<TipoCliente | ''>('');
-  const [estadoFilter, setEstadoFilter] = useState<EstadoCliente | ''>('');
+  // Búsqueda + filtros persistidos en sessionStorage: al abrir un cliente y
+  // "Volver", la lista se re-monta y recupera la búsqueda que tenía.
+  const [searchTerm, setSearchTerm] = useSessionState('clientes:search', '');
+  const [tipoFilter, setTipoFilter] = useSessionState<TipoCliente | ''>('clientes:tipo', '');
+  const [estadoFilter, setEstadoFilter] = useSessionState<EstadoCliente | ''>('clientes:estado', '');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 

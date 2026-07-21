@@ -9,7 +9,7 @@ import {
 import {
   Visibility, Edit, Delete, Add, Search, FilterList,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import type { PrestamoListParams } from '../../api/services/prestamoPersonalApi';
 import {
@@ -35,6 +35,11 @@ const FILTER_SCHEMA = {
 
 export const PrestamosListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Al abrir un detalle guardamos el query string actual (term + filtros, que
+  // useUrlFilters mantiene en la URL) para que "Volver" restaure la búsqueda.
+  const openDetalle = (id: number) =>
+    navigate(`/prestamos/${id}`, { state: { fromSearch: location.search } });
 
   const { filters: urlFilters, setFilters: setUrlFilters, resetFilters } = useUrlFilters(FILTER_SCHEMA);
 
@@ -278,7 +283,7 @@ export const PrestamosListPage: React.FC = () => {
                 </TableRow>
               ) : (
                 prestamos.map(p => (
-                  <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/prestamos/${p.id}`)}>
+                  <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => openDetalle(p.id)}>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">
                         {p.clienteNombre}{p.clienteApellido ? ` ${p.clienteApellido}` : ''}
@@ -331,7 +336,7 @@ export const PrestamosListPage: React.FC = () => {
                     <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                       <Stack direction="row" spacing={0}>
                         <Tooltip title="Ver detalle">
-                          <IconButton size="small" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                          <IconButton size="small" onClick={() => openDetalle(p.id)}>
                             <Visibility fontSize="small" />
                           </IconButton>
                         </Tooltip>

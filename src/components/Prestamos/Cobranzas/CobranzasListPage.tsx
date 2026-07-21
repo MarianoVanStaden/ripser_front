@@ -21,7 +21,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
@@ -98,6 +98,11 @@ const FILTER_SCHEMA = {
 
 export const CobranzasListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Al abrir un detalle guardamos el query string actual (term + filtros, que
+  // useUrlFilters mantiene en la URL) para que "Volver" restaure la búsqueda.
+  const openDetalle = (id: number) =>
+    navigate(`/cobranzas/${id}`, { state: { fromSearch: location.search } });
 
   const { filters: urlFilters, setFilters: setUrlFilters, resetFilters: resetUrlFilters } = useUrlFilters(
     FILTER_SCHEMA,
@@ -752,7 +757,7 @@ export const CobranzasListPage: React.FC = () => {
                       hover
                       selected={isSelected}
                       sx={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/cobranzas/${g.id}`)}
+                      onClick={() => openDetalle(g.id)}
                     >
                       <TableCell padding="checkbox" sx={sxStickyCheckboxBody} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -927,7 +932,7 @@ export const CobranzasListPage: React.FC = () => {
                             </span>
                           </Tooltip>
                           <Tooltip title="Ver detalle">
-                            <IconButton size="small" onClick={() => navigate(`/cobranzas/${g.id}`)}>
+                            <IconButton size="small" onClick={() => openDetalle(g.id)}>
                               <Visibility fontSize="small" />
                             </IconButton>
                           </Tooltip>

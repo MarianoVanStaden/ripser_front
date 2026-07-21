@@ -18,6 +18,19 @@ export interface EntregaInfo {
 const DIA_MS = 86400000;
 
 /**
+ * Fecha de entrega por defecto para pre-cargar al facturar: hoy + `diasEntrega`
+ * (parámetro de sistema DIAS_ENTREGA_ESTIMADA). Devuelve ISO `yyyy-mm-dd`, el
+ * formato que esperan el input `type="date"` y el payload de la factura.
+ */
+export function defaultFechaEntregaISO(diasEntrega: number): string {
+  const hoy = new Date();
+  const dEst = new Date(
+    Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) + diasEntrega * DIA_MS,
+  );
+  return dEst.toISOString().slice(0, 10);
+}
+
+/**
  * Calcula los días restantes hasta la entrega estimada.
  * @param fechaEmision  ISO string de la fechaEmision de la factura
  * @param diasLimite    Parámetro configurable DIAS_ENTREGA_ESTIMADA (default 25)

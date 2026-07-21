@@ -12,7 +12,7 @@ import {
   OpenInNew,
 } from '@mui/icons-material';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
 import {
@@ -83,6 +83,11 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const GestionCobranzaDetailPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // "Volver" restaura la búsqueda/filtros que traía la lista (guardados en
+  // location.state al abrir el detalle). Fallback: lista limpia (deep-link/refresh).
+  const fromSearch = (location.state as { fromSearch?: string } | null)?.fromSearch ?? '';
+  const backToLista = `/cobranzas/lista${fromSearch}`;
   const { id } = useParams<{ id: string }>();
   const gestionId = parseInt(id || '0');
 
@@ -206,7 +211,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
   if (error || !gestion) {
     return (
       <Box>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/cobranzas/lista')} sx={{ mb: 2 }}>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(backToLista)} sx={{ mb: 2 }}>
           Volver
         </Button>
         <Alert severity="error">{error ?? 'Gestión no encontrada.'}</Alert>
@@ -223,7 +228,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button startIcon={<ArrowBack />} onClick={() => navigate('/cobranzas/lista')}>
+          <Button startIcon={<ArrowBack />} onClick={() => navigate(backToLista)}>
             Volver
           </Button>
           <Box>

@@ -57,7 +57,12 @@ export default function InspectorTab({ tablas, onError }: Props) {
   };
 
   const puedeBuscar = tabla && (modo === 'porId' ? !!registroId : !!empresa);
-  const columnasLista = filas && filas.length > 0 ? Object.keys(filas[0]) : [];
+  const columnasLista = filas && filas.length > 0
+    ? Object.keys(filas[0]).filter((c) => c !== 'usuario_id_username')
+    : [];
+
+  const fmtCelda = (f: Record<string, unknown>, c: string): string =>
+    c === 'usuario_id' && f.usuario_id_username != null ? String(f.usuario_id_username) : fmt(f[c]);
 
   return (
     <Box>
@@ -107,10 +112,12 @@ export default function InspectorTab({ tablas, onError }: Props) {
           </Typography>
           <Table size="small">
             <TableBody>
-              {Object.entries(fila).map(([k, v]) => (
+              {Object.entries(fila).filter(([k]) => k !== 'usuario_id_username').map(([k, v]) => (
                 <TableRow key={k} hover>
                   <TableCell sx={{ fontWeight: 600, width: 260 }}>{k}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>{fmt(v)}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>
+                    {k === 'usuario_id' && fila.usuario_id_username != null ? String(fila.usuario_id_username) : fmt(v)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -138,7 +145,7 @@ export default function InspectorTab({ tablas, onError }: Props) {
                     <TableRow key={i} hover>
                       {columnasLista.map((c) => (
                         <TableCell key={c} sx={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {fmt(f[c])}
+                          {fmtCelda(f, c)}
                         </TableCell>
                       ))}
                     </TableRow>

@@ -11,7 +11,7 @@ import {
   Delete, Notifications, Receipt, Undo, Autorenew,
   EditCalendar, PictureAsPdf, PriceChange,
 } from '@mui/icons-material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { prestamoPersonalApi } from '../../api/services/prestamoPersonalApi';
 import { cuotaPrestamoApi } from '../../api/services/cuotaPrestamoApi';
@@ -72,6 +72,11 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 
 export const PrestamoDetailPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // "Volver" restaura la búsqueda/filtros que traía la lista (guardados en
+  // location.state al abrir el detalle). Fallback: lista limpia (deep-link/refresh).
+  const fromSearch = (location.state as { fromSearch?: string } | null)?.fromSearch ?? '';
+  const backToLista = `/prestamos/lista${fromSearch}`;
   const { id } = useParams<{ id: string }>();
   const prestamoId = parseInt(id || '0');
 
@@ -293,7 +298,7 @@ export const PrestamoDetailPage: React.FC = () => {
   if (error || !prestamo) {
     return (
       <Box>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')} sx={{ mb: 2 }}>Volver</Button>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(backToLista)} sx={{ mb: 2 }}>Volver</Button>
         <Alert severity="error">{error || 'Crédito personal no encontrado'}</Alert>
       </Box>
     );
@@ -314,7 +319,7 @@ export const PrestamoDetailPage: React.FC = () => {
       <LoadingOverlay open={loading} message="Cargando crédito personal..." />
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
-        <Button startIcon={<ArrowBack />} onClick={() => navigate('/prestamos/lista')}>Volver</Button>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(backToLista)}>Volver</Button>
         <Typography variant="h4" sx={{ flexGrow: 1 }}>
           Crédito Personal - {prestamo.clienteNombre}
         </Typography>

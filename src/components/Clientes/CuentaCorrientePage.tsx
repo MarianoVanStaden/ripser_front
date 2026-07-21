@@ -68,8 +68,11 @@ const CuentaCorrientePage: React.FC = () => {
   const [localError, setLocalError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [tipoFilter, setTipoFilter] = useState<TipoMovimiento | ''>('');
-  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(dayjs().subtract(30, 'day'));
-  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(dayjs());
+  // Sin filtro de fecha por defecto: un libro de CC se lee entero (el saldo corrido
+  // no tiene sentido si se ocultan los movimientos previos). Los pickers quedan
+  // disponibles para acotar opcionalmente.
+  const [fechaDesde, setFechaDesde] = useState<Dayjs | null>(null);
+  const [fechaHasta, setFechaHasta] = useState<Dayjs | null>(null);
   const [openMovimientoDialog, setOpenMovimientoDialog] = useState(false);
   const [newMovimiento, setNewMovimiento] = useState({
     tipo: 'CREDITO' as TipoMovimiento,

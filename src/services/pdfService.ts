@@ -1180,12 +1180,26 @@ export const generarCreditoPDF = (
 
   y += CLIENTE_BOX_H + 2;
 
-  // ---- Cálculos ajustados: PAGO_INFORMADO se trata como pagada en el PDF ----
+  // ---- Cálculos ajustados: PAGO_INFORMADO se trata como pagado en el PDF ----
+  // informar() en el backend NO toca montoPagado: el monto declarado vive en
+  // montoInformado. El acumulado real de una cuota con pago informado es entonces
+  // montoPagado (confirmado previo) + montoInformado (recién informado). Si ese
+  // acumulado cubre la cuota, es un informe TOTAL (se muestra "Pagada"); si no,
+  // es PARCIAL (se muestra "Pago parcial" con el acumulado y su saldo).
+  const EPS = 0.01;
+  const acumuladoInformado = (c: CuotaPrestamoDTO): number =>
+    Number(c.montoPagado ?? 0) + Number(c.montoInformado ?? 0);
+  const esInformadoTotal = (c: CuotaPrestamoDTO): boolean =>
+    c.estado === 'PAGO_INFORMADO' && acumuladoInformado(c) >= Number(c.montoCuota) - EPS;
+
   const cuotasOrdenadas = [...cuotas].sort((a, b) => a.numeroCuota - b.numeroCuota);
+  // El crédito al cliente por pagos informados es lo declarado (montoInformado),
+  // no el valor nominal de la cuota — así un parcial suma solo lo informado.
   const montoPagoInformado = cuotasOrdenadas
     .filter(c => c.estado === 'PAGO_INFORMADO')
-    .reduce((sum, c) => sum + Number(c.montoCuota), 0);
-  const cuotasPagoInformadoCount = cuotasOrdenadas.filter(c => c.estado === 'PAGO_INFORMADO').length;
+    .reduce((sum, c) => sum + Number(c.montoInformado ?? 0), 0);
+  // Solo los informes TOTALES cuentan como cuota saldada en "Cuotas x/y".
+  const cuotasPagoInformadoCount = cuotasOrdenadas.filter(esInformadoTotal).length;
   const cobradoAjustado = Number(prestamo.montoPagado) + montoPagoInformado;
   const saldoAjustado = Math.max(0, Number(prestamo.saldoPendiente) - montoPagoInformado);
 
@@ -1290,16 +1304,22 @@ export const generarCreditoPDF = (
 
   // ---- Tabla de cuotas ----
   // En el PDF que envía Cobranzas, una cuota cuyo pago fue informado pero aún no
-  // confirmado por Administración se muestra como "Pagada" (no "Pago informado"):
-  // el cliente necesita ver el estado al día aunque la confirmación interna demore.
-  // El estado real en el sistema sigue siendo PAGO_INFORMADO.
-  const estadoLabelPDF = (estado: CuotaPrestamoDTO['estado']): string =>
-    estado === 'PAGO_INFORMADO' ? 'Pagada' : (ESTADO_CUOTA_LABELS[estado] || estado);
+  // confirmado por Administración se muestra como "Pagada" (informe TOTAL) o
+  // "Pago parcial" (informe parcial): el cliente ve el estado al día aunque la
+  // confirmación interna demore. El estado real en el sistema sigue siendo
+  // PAGO_INFORMADO en ambos casos.
+  const estadoLabelPDF = (c: CuotaPrestamoDTO): string =>
+    c.estado === 'PAGO_INFORMADO'
+      ? (esInformadoTotal(c) ? 'Pagada' : 'Pago parcial')
+      : (ESTADO_CUOTA_LABELS[c.estado] || c.estado);
 
   const rows = cuotasOrdenadas.map(c => {
     const esPagoInformado = c.estado === 'PAGO_INFORMADO';
-    const pagado = esPagoInformado ? Number(c.montoCuota) : Number(c.montoPagado);
-    const saldo = esPagoInformado ? 0 : Math.max(0, Number(c.montoCuota) - Number(c.montoPagado));
+    // Informe total → cuota saldada; informe parcial → acumulado real y su saldo.
+    const pagado = esPagoInformado
+      ? (esInformadoTotal(c) ? Number(c.montoCuota) : acumuladoInformado(c))
+      : Number(c.montoPagado);
+    const saldo = Math.max(0, Number(c.montoCuota) - pagado);
     const fechaPagoDisplay = esPagoInformado
       ? (c.fechaPagoInformada ? formatDate(c.fechaPagoInformada) : '-')
       : (c.fechaPago ? formatDate(c.fechaPago) : '-');
@@ -1314,7 +1334,7 @@ export const generarCreditoPDF = (
       formatCurrency(pagado),
       formatCurrency(saldo),
       comprobanteDisplay,
-      estadoLabelPDF(c.estado),
+      estadoLabelPDF(c),
       c.diasMora && c.diasMora > 0 ? c.diasMora.toString() : '-',
     ];
   });
@@ -1345,15 +1365,16 @@ export const generarCreditoPDF = (
     },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 7) {
-        const estado = cuotasOrdenadas[data.row.index]?.estado;
-        // PAGO_INFORMADO se pinta igual que PAGADA: en el PDF figura como "Pagada".
-        if (estado === 'PAGADA' || estado === 'PAGO_INFORMADO') {
+        const cuota = cuotasOrdenadas[data.row.index];
+        const estado = cuota?.estado;
+        // Informe TOTAL se pinta como PAGADA (verde); informe PARCIAL como PARCIAL (naranja).
+        if (estado === 'PAGADA' || (estado === 'PAGO_INFORMADO' && cuota && esInformadoTotal(cuota))) {
           data.cell.styles.textColor = [0, 128, 0];
           data.cell.styles.fontStyle = 'bold';
         } else if (estado === 'VENCIDA') {
           data.cell.styles.textColor = [200, 0, 0];
           data.cell.styles.fontStyle = 'bold';
-        } else if (estado === 'PARCIAL') {
+        } else if (estado === 'PARCIAL' || estado === 'PAGO_INFORMADO') {
           data.cell.styles.textColor = [200, 130, 0];
         } else if (estado === 'REFINANCIADA') {
           data.cell.styles.textColor = [120, 60, 160];
@@ -1372,7 +1393,7 @@ export const generarCreditoPDF = (
     yT = margin + 5;
   }
 
-  const cuotasPagadas = cuotasOrdenadas.filter(c => c.estado === 'PAGADA' || c.estado === 'PAGO_INFORMADO').length;
+  const cuotasPagadas = cuotasOrdenadas.filter(c => c.estado === 'PAGADA' || esInformadoTotal(c)).length;
   const cuotasVencidas = cuotasOrdenadas.filter(c => c.estado === 'VENCIDA').length;
   const cuotasPendientes = cuotasOrdenadas.filter(c => c.estado === 'PENDIENTE').length;
 
