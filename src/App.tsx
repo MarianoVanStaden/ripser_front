@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Box, Typography, CircularProgress } from '@mui/material';
 import theme from './theme';
+import { safeSession } from './utils/safeStorage';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
 import LoginPage from './components/Auth/LoginPage';
@@ -46,9 +47,9 @@ const lazyWithReload = <T extends ComponentType<any>>(
   reactLazy(() =>
     loader().catch((err) => {
       if (isChunkLoadError(err) && typeof window !== 'undefined') {
-        const alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_FLAG);
+        const alreadyReloaded = safeSession.getItem(CHUNK_RELOAD_FLAG);
         if (!alreadyReloaded) {
-          sessionStorage.setItem(CHUNK_RELOAD_FLAG, '1');
+          safeSession.setItem(CHUNK_RELOAD_FLAG, '1');
           window.location.reload();
           // Devolvemos una promesa nunca resuelta — el reload toma el control.
           return new Promise<{ default: T }>(() => {});

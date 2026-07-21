@@ -1,4 +1,5 @@
 import type { PlatformImpersonateResponse } from '../api/services/platformApi';
+import { safeLocal, safeSession } from './safeStorage';
 
 /**
  * Impersonación del platform owner: intercambia la sesión actual (owner) por la
@@ -37,7 +38,7 @@ const decodeJwtPayload = (token: string): Record<string, unknown> => {
 };
 
 export const getImpersonationInfo = (): ImpersonationInfo | null => {
-  const raw = sessionStorage.getItem(INFO_KEY);
+  const raw = safeSession.getItem(INFO_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as ImpersonationInfo;
@@ -46,23 +47,23 @@ export const getImpersonationInfo = (): ImpersonationInfo | null => {
   }
 };
 
-export const isImpersonating = (): boolean => sessionStorage.getItem(BACKUP_KEY) != null;
+export const isImpersonating = (): boolean => safeSession.getItem(BACKUP_KEY) != null;
 
 /** Backup del owner + swap de sesión al usuario objetivo. Recarga la app entera. */
 export const startImpersonation = (res: PlatformImpersonateResponse): void => {
-  const ownerToken = localStorage.getItem('auth_token');
+  const ownerToken = safeLocal.getItem('auth_token');
   if (!ownerToken) throw new Error('No hay sesión de owner activa');
 
   const backup: ImpersonationBackup = {
     ownerToken,
-    ownerRefreshToken: localStorage.getItem('auth_refresh_token'),
-    ownerUser: localStorage.getItem('auth_user'),
-    ownerEmpresaId: sessionStorage.getItem('empresaId'),
-    ownerSucursalId: sessionStorage.getItem('sucursalId'),
-    ownerEsSuperAdmin: sessionStorage.getItem('esSuperAdmin'),
-    ownerEsPlatformOwner: sessionStorage.getItem('esPlatformOwner'),
+    ownerRefreshToken: safeLocal.getItem('auth_refresh_token'),
+    ownerUser: safeLocal.getItem('auth_user'),
+    ownerEmpresaId: safeSession.getItem('empresaId'),
+    ownerSucursalId: safeSession.getItem('sucursalId'),
+    ownerEsSuperAdmin: safeSession.getItem('esSuperAdmin'),
+    ownerEsPlatformOwner: safeSession.getItem('esPlatformOwner'),
   };
-  sessionStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
+  safeSession.setItem(BACKUP_KEY, JSON.stringify(backup));
 
   const info: ImpersonationInfo = {
     nombre: res.usuario.nombre || res.usuario.username,
@@ -70,7 +71,7 @@ export const startImpersonation = (res: PlatformImpersonateResponse): void => {
     empresa: res.empresa?.nombre ?? null,
     expiresAt: res.expiresAt,
   };
-  sessionStorage.setItem(INFO_KEY, JSON.stringify(info));
+  safeSession.setItem(INFO_KEY, JSON.stringify(info));
 
   // Sesión del impersonado: sin refresh token (el token corto no se renueva).
   const claims = decodeJwtPayload(res.token);
@@ -86,22 +87,22 @@ export const startImpersonation = (res: PlatformImpersonateResponse): void => {
     esPlatformOwner: false,
     empresaId: res.empresa?.id ?? undefined,
   };
-  localStorage.setItem('auth_token', res.token);
-  localStorage.removeItem('auth_refresh_token');
-  localStorage.setItem('auth_user', JSON.stringify(impersonatedUser));
+  safeLocal.setItem('auth_token', res.token);
+  safeLocal.removeItem('auth_refresh_token');
+  safeLocal.setItem('auth_user', JSON.stringify(impersonatedUser));
   if (res.empresa?.id != null) {
-    sessionStorage.setItem('empresaId', String(res.empresa.id));
+    safeSession.setItem('empresaId', String(res.empresa.id));
   } else {
-    sessionStorage.removeItem('empresaId');
+    safeSession.removeItem('empresaId');
   }
   if (claims.sucursalId != null) {
-    sessionStorage.setItem('sucursalId', String(claims.sucursalId));
+    safeSession.setItem('sucursalId', String(claims.sucursalId));
   } else {
-    sessionStorage.removeItem('sucursalId');
+    safeSession.removeItem('sucursalId');
   }
-  sessionStorage.setItem('esSuperAdmin', String(claims.esSuperAdmin === true));
-  sessionStorage.setItem('esPlatformOwner', 'false');
-  sessionStorage.removeItem('sucursalFiltro');
+  safeSession.setItem('esSuperAdmin', String(claims.esSuperAdmin === true));
+  safeSession.setItem('esPlatformOwner', 'false');
+  safeSession.removeItem('sucursalFiltro');
 
   // Reload completo: AuthContext y TenantContext se rehidratan desde el storage,
   // sin estados a medias.
@@ -110,22 +111,22 @@ export const startImpersonation = (res: PlatformImpersonateResponse): void => {
 
 /** Restaura la sesión del owner desde el backup y recarga en el panel de plataforma. */
 export const exitImpersonation = (): void => {
-  const raw = sessionStorage.getItem(BACKUP_KEY);
-  sessionStorage.removeItem(BACKUP_KEY);
-  sessionStorage.removeItem(INFO_KEY);
+  const raw = safeSession.getItem(BACKUP_KEY);
+  safeSession.removeItem(BACKUP_KEY);
+  safeSession.removeItem(INFO_KEY);
   if (!raw) {
     window.location.href = '/login';
     return;
   }
   const backup = JSON.parse(raw) as ImpersonationBackup;
 
-  localStorage.setItem('auth_token', backup.ownerToken);
-  if (backup.ownerRefreshToken) localStorage.setItem('auth_refresh_token', backup.ownerRefreshToken);
-  else localStorage.removeItem('auth_refresh_token');
-  if (backup.ownerUser) localStorage.setItem('auth_user', backup.ownerUser);
+  safeLocal.setItem('auth_token', backup.ownerToken);
+  if (backup.ownerRefreshToken) safeLocal.setItem('auth_refresh_token', backup.ownerRefreshToken);
+  else safeLocal.removeItem('auth_refresh_token');
+  if (backup.ownerUser) safeLocal.setItem('auth_user', backup.ownerUser);
   const restore = (key: string, value: string | null) => {
-    if (value != null) sessionStorage.setItem(key, value);
-    else sessionStorage.removeItem(key);
+    if (value != null) safeSession.setItem(key, value);
+    else safeSession.removeItem(key);
   };
   restore('empresaId', backup.ownerEmpresaId);
   restore('sucursalId', backup.ownerSucursalId);

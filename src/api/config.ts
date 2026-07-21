@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { authApi } from './authApi';
 import { logger } from '../utils/logger';
+import { safeLocal, safeSession } from '../utils/safeStorage';
 
 // In-memory token reference (faster than hitting localStorage every time)
 let authToken: string | null = null;
@@ -43,8 +44,8 @@ const api = axios.create({
 // Request interceptor: attach Authorization header and X-Empresa-Id if token exists
 api.interceptors.request.use(
   (config) => {
-    const token = authToken || localStorage.getItem('auth_token');
-    const empresaId = sessionStorage.getItem('empresaId');
+    const token = authToken || safeLocal.getItem('auth_token');
+    const empresaId = safeSession.getItem('empresaId');
 
     if (token) {
       config.headers = config.headers || {};
@@ -121,7 +122,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const storedRefresh = localStorage.getItem('auth_refresh_token');
+        const storedRefresh = safeLocal.getItem('auth_refresh_token');
         if (!storedRefresh) {
           logger.error('❌ No refresh token available');
           throw new Error('No refresh token');
@@ -139,11 +140,11 @@ api.interceptors.response.use(
         logger.log('✅ Token refreshed successfully');
 
         // Persist & set new tokens
-        localStorage.setItem('auth_token', newAccess);
+        safeLocal.setItem('auth_token', newAccess);
         setAuthToken(newAccess);
 
         if (refreshRes.refreshToken) {
-          localStorage.setItem('auth_refresh_token', refreshRes.refreshToken);
+          safeLocal.setItem('auth_refresh_token', refreshRes.refreshToken);
           logger.log('🔄 Refresh token also updated');
         }
 
@@ -167,9 +168,9 @@ api.interceptors.response.use(
         logger.error('❌ Token refresh failed:', refreshErr);
         
         // Clear tokens & redirect to login page
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_refresh_token');
-        localStorage.removeItem('auth_user');
+        safeLocal.removeItem('auth_token');
+        safeLocal.removeItem('auth_refresh_token');
+        safeLocal.removeItem('auth_user');
         setAuthToken(null);
         printedJwtInfo = false;
         // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin on refresh failure!
@@ -194,9 +195,9 @@ api.interceptors.response.use(
       !originalRequest?.url?.includes('/auth/login')
     ) {
       logger.warn('⚠️ Unauthorized request, clearing session...');
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_refresh_token');
-      localStorage.removeItem('auth_user');
+      safeLocal.removeItem('auth_token');
+      safeLocal.removeItem('auth_refresh_token');
+      safeLocal.removeItem('auth_user');
       setAuthToken(null);
       // ❌ DON'T clear empresaId/sucursalId/esSuperAdmin here!
       // Let the user re-login and preserve their context selection

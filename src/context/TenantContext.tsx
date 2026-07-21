@@ -8,6 +8,7 @@ import { sucursalService } from '../services/sucursalService';
 import { usuarioEmpresaService } from '../services/usuarioEmpresaService';
 import { useAuth } from './AuthContext';
 import { migrateTenantContext, needsMigration } from '../utils/storageMigration';
+import { safeLocal, safeSession } from '../utils/safeStorage';
 
 interface TenantContextType {
   empresaId: number | null;
@@ -47,18 +48,18 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Inicializar estados directamente desde sessionStorage para aislamiento por tab
   const [empresaId, setEmpresaId] = useState<number | null>(() => {
-    const stored = sessionStorage.getItem('empresaId');
+    const stored = safeSession.getItem('empresaId');
     console.log('🚀 TenantProvider inicializado - empresaId:', stored);
     return stored ? parseInt(stored) : null;
   });
 
   const [sucursalId, setSucursalId] = useState<number | null>(() => {
-    const stored = sessionStorage.getItem('sucursalId');
+    const stored = safeSession.getItem('sucursalId');
     return stored ? parseInt(stored) : null;
   });
 
   const [esSuperAdmin, setEsSuperAdmin] = useState(() => {
-    const stored = sessionStorage.getItem('esSuperAdmin');
+    const stored = safeSession.getItem('esSuperAdmin');
     return stored === 'true';
   });
 
@@ -77,15 +78,15 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       // Si el evento tiene empresaId, guardarlo en sessionStorage y actualizar estado
       if (detail?.empresaId) {
         console.log('💾 Guardando empresaId desde evento:', detail.empresaId);
-        sessionStorage.setItem('empresaId', detail.empresaId.toString());
+        safeSession.setItem('empresaId', detail.empresaId.toString());
         setEmpresaId(detail.empresaId);
       }
       if (detail?.sucursalId) {
-        sessionStorage.setItem('sucursalId', detail.sucursalId.toString());
+        safeSession.setItem('sucursalId', detail.sucursalId.toString());
         setSucursalId(detail.sucursalId);
       }
       if (detail?.esSuperAdmin !== undefined) {
-        sessionStorage.setItem('esSuperAdmin', detail.esSuperAdmin.toString());
+        safeSession.setItem('esSuperAdmin', detail.esSuperAdmin.toString());
         setEsSuperAdmin(detail.esSuperAdmin);
       }
     };
@@ -100,8 +101,8 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // 🆕 Detectar nuevo tab sin contexto de empresa
   // Cuando un usuario abre un nuevo tab, sessionStorage está vacío pero localStorage tiene auth_token
   useEffect(() => {
-    const hasAuthToken = !!localStorage.getItem('auth_token');
-    const hasEmpresaId = !!sessionStorage.getItem('empresaId');
+    const hasAuthToken = !!safeLocal.getItem('auth_token');
+    const hasEmpresaId = !!safeSession.getItem('empresaId');
 
     if (hasAuthToken && !hasEmpresaId && user) {
       console.log('🆕 Nuevo tab detectado - usuario autenticado pero sin contexto de empresa');
@@ -113,7 +114,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Estados para filtrado temporal
   const [sucursalFiltro, setSucursalFiltroState] = useState<number | null>(() => {
-    const stored = sessionStorage.getItem('sucursalFiltro');
+    const stored = safeSession.getItem('sucursalFiltro');
     return stored ? parseInt(stored) : sucursalId;
   });
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
@@ -126,9 +127,9 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const setSucursalFiltro = (id: number | null) => {
     setSucursalFiltroState(id);
     if (id !== null) {
-      sessionStorage.setItem('sucursalFiltro', id.toString());
+      safeSession.setItem('sucursalFiltro', id.toString());
     } else {
-      sessionStorage.removeItem('sucursalFiltro');
+      safeSession.removeItem('sucursalFiltro');
     }
   };
 
@@ -177,7 +178,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             if (relacionActual.rol === 'SUPER_ADMIN') {
               console.log('🔑 Usuario tiene rol SUPER_ADMIN, actualizando esSuperAdmin a true');
               setEsSuperAdmin(true);
-              sessionStorage.setItem('esSuperAdmin', 'true');
+              safeSession.setItem('esSuperAdmin', 'true');
               // Disparar evento para sincronizar con AuthContext
               window.dispatchEvent(new CustomEvent('tenant-context-updated', {
                 detail: { empresaId, sucursalId, esSuperAdmin: true }
@@ -191,12 +192,12 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             if (veTodasSucursales) {
               // Limpiar cualquier filtro de sucursal previo para que vea todo
               setSucursalFiltroState(null);
-              sessionStorage.removeItem('sucursalFiltro');
+              safeSession.removeItem('sucursalFiltro');
               console.log('🌐 Rol', relacionActual.rol, '- sin filtro de sucursal (ve todas)');
             }
 
             // Lógica mejorada para inicializar sucursal con validación
-            const savedSucursal = sessionStorage.getItem('sucursalFiltro');
+            const savedSucursal = safeSession.getItem('sucursalFiltro');
             let sucursalSeleccionada: number | null = null;
 
             // Cargar sucursales disponibles primero para validar
@@ -216,7 +217,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     sucursalSeleccionada = savedSucursalId;
                   } else {
                     console.log('⚠️ Sucursal guardada inválida (ID:', savedSucursalId, ') - no está en sucursales disponibles');
-                    sessionStorage.removeItem('sucursalFiltro');
+                    safeSession.removeItem('sucursalFiltro');
                   }
                 }
 
@@ -252,7 +253,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 if (sucursalSeleccionada !== null) {
                   console.log('✅ Sucursal final seleccionada:', sucursalSeleccionada);
                   setSucursalFiltroState(sucursalSeleccionada);
-                  sessionStorage.setItem('sucursalFiltro', sucursalSeleccionada.toString());
+                  safeSession.setItem('sucursalFiltro', sucursalSeleccionada.toString());
                 }
               }
             } catch (err: any) {
@@ -339,26 +340,26 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       // Update tokens
       const newToken = data.accessToken || (data as any).token;
       if (newToken) {
-        localStorage.setItem('auth_token', newToken);
+        safeLocal.setItem('auth_token', newToken);
         setAuthToken(newToken);
       }
       if (data.refreshToken) {
-        localStorage.setItem('auth_refresh_token', data.refreshToken);
+        safeLocal.setItem('auth_refresh_token', data.refreshToken);
       }
 
       // Update tenant info (en sessionStorage para aislamiento por tab)
-      sessionStorage.setItem('empresaId', newEmpresaId.toString());
+      safeSession.setItem('empresaId', newEmpresaId.toString());
       if (newSucursalId) {
-        sessionStorage.setItem('sucursalId', newSucursalId.toString());
-        sessionStorage.setItem('sucursalFiltro', newSucursalId.toString());
+        safeSession.setItem('sucursalId', newSucursalId.toString());
+        safeSession.setItem('sucursalFiltro', newSucursalId.toString());
       } else {
-        sessionStorage.removeItem('sucursalId');
-        sessionStorage.removeItem('sucursalFiltro');
+        safeSession.removeItem('sucursalId');
+        safeSession.removeItem('sucursalFiltro');
       }
 
       // IMPORTANTE: También actualizar esSuperAdmin del nuevo token
       if (data.esSuperAdmin !== undefined) {
-        sessionStorage.setItem('esSuperAdmin', data.esSuperAdmin.toString());
+        safeSession.setItem('esSuperAdmin', data.esSuperAdmin.toString());
         setEsSuperAdmin(data.esSuperAdmin);
       }
 
@@ -406,20 +407,20 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       // Update tokens
       const newToken = data.accessToken || (data as any).token;
       if (newToken) {
-        localStorage.setItem('auth_token', newToken);
+        safeLocal.setItem('auth_token', newToken);
         setAuthToken(newToken);
       }
       if (data.refreshToken) {
-        localStorage.setItem('auth_refresh_token', data.refreshToken);
+        safeLocal.setItem('auth_refresh_token', data.refreshToken);
       }
 
       // Update sucursal info (en sessionStorage para aislamiento por tab)
       if (newSucursalId) {
-        sessionStorage.setItem('sucursalId', newSucursalId.toString());
-        sessionStorage.setItem('sucursalFiltro', newSucursalId.toString());
+        safeSession.setItem('sucursalId', newSucursalId.toString());
+        safeSession.setItem('sucursalFiltro', newSucursalId.toString());
       } else {
-        sessionStorage.removeItem('sucursalId');
-        sessionStorage.removeItem('sucursalFiltro');
+        safeSession.removeItem('sucursalId');
+        safeSession.removeItem('sucursalFiltro');
       }
 
       setSucursalId(newSucursalId);

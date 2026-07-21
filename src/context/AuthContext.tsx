@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../api/authApi";
 import axios from "axios";
 import { setAuthToken } from "../api/config";
+import { safeLocal, safeSession } from "../utils/safeStorage";
 import type { TipoRol } from "../types";
 
 export type { TipoRol } from "../types";
@@ -67,9 +68,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const validateToken = async () => {
-      const t = localStorage.getItem("auth_token");
-      const u = localStorage.getItem("auth_user");
-      const superAdmin = sessionStorage.getItem("esSuperAdmin");
+      const t = safeLocal.getItem("auth_token");
+      const u = safeLocal.getItem("auth_user");
+      const superAdmin = safeSession.getItem("esSuperAdmin");
 
       console.log('🔍 Validando token almacenado:', {
         hasToken: !!t,
@@ -112,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(t);
         setUser(userParsed);
         setEsSuperAdmin(isSuperAdmin);
-        setEsPlatformOwner(sessionStorage.getItem("esPlatformOwner") === 'true');
+        setEsPlatformOwner(safeSession.getItem("esPlatformOwner") === 'true');
         axios.defaults.headers.common.Authorization = `Bearer ${t}`;
         setAuthToken(t);
       }
@@ -157,45 +158,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 🔥 FIX: Only overwrite empresaId/sucursalId if provided in response
       // This preserves SuperAdmin context selection across re-login
       if (res.empresaId) {
-        sessionStorage.setItem("empresaId", res.empresaId.toString());
+        safeSession.setItem("empresaId", res.empresaId.toString());
       } else {
         // Keep existing empresaId if present (e.g., SuperAdmin re-login)
-        console.log('ℹ️ Login response has no empresaId, keeping existing value:', sessionStorage.getItem("empresaId"));
+        console.log('ℹ️ Login response has no empresaId, keeping existing value:', safeSession.getItem("empresaId"));
       }
       if (res.sucursalId) {
-        sessionStorage.setItem("sucursalId", res.sucursalId.toString());
+        safeSession.setItem("sucursalId", res.sucursalId.toString());
       } else {
         // Keep existing sucursalId if present
-        console.log('ℹ️ Login response has no sucursalId, keeping existing value:', sessionStorage.getItem("sucursalId"));
+        console.log('ℹ️ Login response has no sucursalId, keeping existing value:', safeSession.getItem("sucursalId"));
       }
       if (res.esSuperAdmin !== undefined) {
-        sessionStorage.setItem("esSuperAdmin", res.esSuperAdmin.toString());
+        safeSession.setItem("esSuperAdmin", res.esSuperAdmin.toString());
       } else {
         // Keep existing esSuperAdmin if present
-        console.log('ℹ️ Login response has no esSuperAdmin, keeping existing value:', sessionStorage.getItem("esSuperAdmin"));
+        console.log('ℹ️ Login response has no esSuperAdmin, keeping existing value:', safeSession.getItem("esSuperAdmin"));
       }
 
-      sessionStorage.setItem("esPlatformOwner", String(isPlatformOwner));
+      safeSession.setItem("esPlatformOwner", String(isPlatformOwner));
 
       // Now set token and user
       setToken(access);
       setUser(usr);
       setEsSuperAdmin(isSuperAdmin);
       setEsPlatformOwner(isPlatformOwner);
-      localStorage.setItem("auth_token", access);
+      safeLocal.setItem("auth_token", access);
       if (res.refreshToken) {
-        localStorage.setItem("auth_refresh_token", res.refreshToken);
+        safeLocal.setItem("auth_refresh_token", res.refreshToken);
       }
-      localStorage.setItem("auth_user", JSON.stringify(usr));
+      safeLocal.setItem("auth_user", JSON.stringify(usr));
 
       axios.defaults.headers.common.Authorization = `Bearer ${access}`;
       setAuthToken(access);
 
       // Dispatch custom event to force TenantContext reload
       // 🔥 FIX: Use actual values from sessionStorage to preserve SuperAdmin context
-      const finalEmpresaId = res.empresaId || sessionStorage.getItem('empresaId');
-      const finalSucursalId = res.sucursalId || sessionStorage.getItem('sucursalId');
-      const finalEsSuperAdmin = res.esSuperAdmin !== undefined ? res.esSuperAdmin : (sessionStorage.getItem('esSuperAdmin') === 'true');
+      const finalEmpresaId = res.empresaId || safeSession.getItem('empresaId');
+      const finalSucursalId = res.sucursalId || safeSession.getItem('sucursalId');
+      const finalEsSuperAdmin = res.esSuperAdmin !== undefined ? res.esSuperAdmin : (safeSession.getItem('esSuperAdmin') === 'true');
 
       console.log('🔔 Disparando evento tenant-context-updated', {
         empresaId: finalEmpresaId,
@@ -222,14 +223,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // to recover from a 401 outside the axios pipeline (SSE, manual flows) should
   // await this and retry on success.
   const refreshSession = async (): Promise<string> => {
-    const stored = localStorage.getItem('auth_refresh_token');
+    const stored = safeLocal.getItem('auth_refresh_token');
     if (!stored) throw new Error('No refresh token available');
     const res = await authApi.refresh(stored);
     const newAccess = res.accessToken;
     if (!newAccess) throw new Error('No access token in refresh response');
 
-    localStorage.setItem('auth_token', newAccess);
-    if (res.refreshToken) localStorage.setItem('auth_refresh_token', res.refreshToken);
+    safeLocal.setItem('auth_token', newAccess);
+    if (res.refreshToken) safeLocal.setItem('auth_refresh_token', res.refreshToken);
     setAuthToken(newAccess);
     axios.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
     setToken(newAccess);
@@ -253,16 +254,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setEsSuperAdmin(false);
     setEsPlatformOwner(false);
-    sessionStorage.removeItem("esPlatformOwner");
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
-    localStorage.removeItem("auth_refresh_token");
+    safeSession.removeItem("esPlatformOwner");
+    safeLocal.removeItem("auth_token");
+    safeLocal.removeItem("auth_user");
+    safeLocal.removeItem("auth_refresh_token");
     // Clear multi-tenant data (now in sessionStorage for tab isolation)
-    sessionStorage.removeItem("empresaId");
-    sessionStorage.removeItem("sucursalId");
-    sessionStorage.removeItem("esSuperAdmin");
+    safeSession.removeItem("empresaId");
+    safeSession.removeItem("sucursalId");
+    safeSession.removeItem("esSuperAdmin");
     // Clear sucursal filter to prevent cross-user contamination
-    sessionStorage.removeItem("sucursalFiltro");
+    safeSession.removeItem("sucursalFiltro");
     delete axios.defaults.headers.common.Authorization;
     setAuthToken(null);
   };
@@ -276,7 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error.response?.status === 401 && error.response?.data?.error !== 'token_expired') {
           // Si el 401 llega durante una impersonación (token corto expirado),
           // restaurar la sesión del owner en vez de desloguear del todo.
-          if (sessionStorage.getItem('impersonation_backup')) {
+          if (safeSession.getItem('impersonation_backup')) {
             import('../utils/impersonation').then((m) => m.exitImpersonation());
             return Promise.reject(error);
           }
@@ -285,9 +286,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Instead, manually clear only auth tokens to preserve SuperAdmin context
           setToken(null);
           setUser(null);
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_refresh_token');
-          localStorage.removeItem('auth_user');
+          safeLocal.removeItem('auth_token');
+          safeLocal.removeItem('auth_refresh_token');
+          safeLocal.removeItem('auth_user');
           delete axios.defaults.headers.common.Authorization;
           setAuthToken(null);
           // ❌ DON'T clear sessionStorage tenant data here!
