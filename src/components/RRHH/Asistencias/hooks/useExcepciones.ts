@@ -82,7 +82,7 @@ export function useExcepciones({
         parseInt(form.empleadoId),
         form.fecha
       );
-      if (!debeTrabajar && form.tipo !== 'INASISTENCIA') {
+      if (!debeTrabajar && form.tipo !== 'INASISTENCIA' && form.tipo !== 'HORAS_EXTRAS') {
         setError('El empleado no tiene configurado trabajar este día');
         return false;
       }

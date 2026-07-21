@@ -397,7 +397,7 @@ const AsistenciasPage: React.FC = () => {
         excepcionFormData.fecha
       );
       
-      if (!debeTrabajar && excepcionFormData.tipo !== 'INASISTENCIA') {
+      if (!debeTrabajar && excepcionFormData.tipo !== 'INASISTENCIA' && excepcionFormData.tipo !== 'HORAS_EXTRAS') {
         setError('El empleado no tiene configurado trabajar este día');
         return;
       }
