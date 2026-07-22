@@ -4,7 +4,13 @@ type StorageKind = 'local' | 'session';
 
 function getStorage(kind: StorageKind): Storage | null {
   if (typeof window === 'undefined') return null;
-  return kind === 'local' ? window.localStorage : window.sessionStorage;
+  try {
+    // Algunos navegadores (webview in-app, modo privado, iframe sandbox) tiran
+    // SecurityError con solo ACCEDER a la property, antes de llamar getItem.
+    return kind === 'local' ? window.localStorage : window.sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 /**
