@@ -785,7 +785,7 @@ const EmpleadosPage: React.FC = () => {
                   <TableCell sx={{ minWidth: 100 }}>DNI</TableCell>
                   <TableCell sx={{ minWidth: 110 }}>Legajo</TableCell>
                   <TableCell sx={{ minWidth: 130 }}>Puesto</TableCell>
-                  <TableCell sx={{ minWidth: 180 }}>Email</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Categoría</TableCell>
                   <TableCell sx={{ minWidth: 100 }}>Teléfono</TableCell>
                   <TableCell sx={{ minWidth: 90 }}>Estado</TableCell>
                   <TableCell align="center" sx={{ minWidth: 60 }}>Acceso</TableCell>
@@ -842,7 +842,7 @@ const EmpleadosPage: React.FC = () => {
                           color="primary"
                         />
                       </TableCell>
-                      <TableCell>{empleado.email || '-'}</TableCell>
+                      <TableCell>{empleado.categoriaSalarialNombre || '-'}</TableCell>
                       <TableCell>{empleado.telefono || '-'}</TableCell>
                       <TableCell>
                         <Chip
