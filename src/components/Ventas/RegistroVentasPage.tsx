@@ -538,17 +538,20 @@ const RegistroVentasPage: React.FC = () => {
     try {
       console.log('Iniciando generación de PDF para venta:', venta);
 
-      // Obtener el cliente — preferir el que ya viene enriquecido en la venta,
-      // sino hacer fetch puntual por ID
-      let cliente = venta.cliente ?? null;
-      if (!cliente && venta.clienteId) {
+      // Obtener el cliente COMPLETO por ID (igual que la exportación de Nota de Pedido):
+      // el objeto embebido en la venta viene liviano y sin datos de contacto (DNI, teléfono,
+      // dirección, email, CP, provincia, localidad), lo que dejaba el PDF de factura en blanco.
+      // Solo caemos al embebido si la venta no tiene clienteId (ej. venta sin cliente formal).
+      let cliente = null;
+      if (venta.clienteId) {
         try {
           cliente = await clienteApi.getById(venta.clienteId);
         } catch {
           console.error('Cliente no encontrado:', venta.clienteId);
-          setError('No se pudo encontrar la información del cliente');
-          return;
         }
+      }
+      if (!cliente) {
+        cliente = venta.cliente ?? null;
       }
       if (!cliente) {
         setError('No se pudo encontrar la información del cliente');
