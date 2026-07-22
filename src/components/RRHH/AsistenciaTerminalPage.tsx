@@ -25,9 +25,11 @@ import {
 import dayjs from 'dayjs';
 import {
   asistenciaTerminalApi,
+  type DiferenciaFichaje,
   type EnNoNoAsignado,
   type ImportResumen,
   type ResumenAsistenciaEmpleado,
+  type TipoDiferenciaFichaje,
 } from '../../api/services/asistenciaTerminalApi';
 import { employeeApi } from '../../api/services/employeeApi';
 import type { Empleado } from '../../types';
@@ -37,6 +39,15 @@ import type { Empleado } from '../../types';
  * resultante para liquidación. Solo ADMIN y COORDINADORA_LOGISTICA.
  */
 type OrigenTerminal = 'Taller' | 'Oficina';
+
+const DIF_CHIP: Record<TipoDiferenciaFichaje, { label: string; color: 'warning' | 'error' | 'info' }> = {
+  TARDE: { label: 'Tarde', color: 'warning' },
+  AUSENTE: { label: 'Ausente', color: 'error' },
+  INCOMPLETA: { label: 'Incompleta', color: 'warning' },
+  SALIDA_ANTICIPADA: { label: 'Salida anticipada', color: 'info' },
+};
+
+const fmtHora = (h: string | null) => (h ? h.slice(0, 5) : '—');
 
 const AsistenciaTerminalPage: React.FC = () => {
   const tallerInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +67,9 @@ const AsistenciaTerminalPage: React.FC = () => {
   const [hasta, setHasta] = useState(dayjs().format('YYYY-MM-DD'));
   const [resumen, setResumen] = useState<ResumenAsistenciaEmpleado[]>([]);
   const [loadingResumen, setLoadingResumen] = useState(false);
+
+  const [diferencias, setDiferencias] = useState<DiferenciaFichaje[]>([]);
+  const [loadingDiferencias, setLoadingDiferencias] = useState(false);
 
   const nombreEmpleado = (e: Empleado) =>
     `${e.apellido ?? ''}, ${e.nombre ?? ''}`.trim();
@@ -84,9 +98,24 @@ const AsistenciaTerminalPage: React.FC = () => {
     cargarNoAsignadas();
   }, [cargarNoAsignadas]);
 
+  const cargarDiferencias = useCallback(async () => {
+    setLoadingDiferencias(true);
+    try {
+      setDiferencias(await asistenciaTerminalApi.getDiferencias(desde, hasta));
+    } catch (e: any) {
+      setError(e?.response?.data ?? 'Error al cargar las diferencias de fichaje');
+    } finally {
+      setLoadingDiferencias(false);
+    }
+  }, [desde, hasta]);
+
   useEffect(() => {
     cargarResumen();
   }, [cargarResumen]);
+
+  useEffect(() => {
+    cargarDiferencias();
+  }, [cargarDiferencias]);
 
   const handleFile = async (origen: OrigenTerminal, e: React.ChangeEvent<HTMLInputElement>) => {
     const inputRef = origen === 'Taller' ? tallerInputRef : oficinaInputRef;
@@ -134,6 +163,16 @@ const AsistenciaTerminalPage: React.FC = () => {
   const empleadosOrdenados = useMemo(
     () => [...empleados].sort((a, b) => nombreEmpleado(a).localeCompare(nombreEmpleado(b))),
     [empleados],
+  );
+
+  const conteoDif = useMemo(
+    () => ({
+      TARDE: diferencias.filter((d) => d.tipo === 'TARDE').length,
+      AUSENTE: diferencias.filter((d) => d.tipo === 'AUSENTE').length,
+      INCOMPLETA: diferencias.filter((d) => d.tipo === 'INCOMPLETA').length,
+      SALIDA_ANTICIPADA: diferencias.filter((d) => d.tipo === 'SALIDA_ANTICIPADA').length,
+    }),
+    [diferencias],
   );
 
   return (
@@ -344,6 +383,81 @@ const AsistenciaTerminalPage: React.FC = () => {
                         0
                       )}
                     </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* ── Diferencias de fichaje ── */}
+      <Paper sx={{ p: 2, mt: 2 }}>
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
+          <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
+            Diferencias de fichaje
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={cargarDiferencias}
+            disabled={loadingDiferencias}
+          >
+            Actualizar
+          </Button>
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Cotejo de las fichadas del sensor de huella contra el horario esperado de cada empleado
+          (usa el mismo rango de fechas de arriba). Solo se listan los días con diferencia.
+        </Typography>
+
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+          <Chip color="warning" label={`${conteoDif.TARDE} tardanzas`} />
+          <Chip color="error" label={`${conteoDif.AUSENTE} ausencias`} />
+          <Chip color="warning" variant="outlined" label={`${conteoDif.INCOMPLETA} incompletas`} />
+          <Chip color="info" label={`${conteoDif.SALIDA_ANTICIPADA} salidas anticipadas`} />
+        </Stack>
+
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableCell>Empleado</TableCell>
+                <TableCell align="center">Fecha</TableCell>
+                <TableCell align="center">Tipo</TableCell>
+                <TableCell align="center">Esperado</TableCell>
+                <TableCell align="center">Real</TableCell>
+                <TableCell>Detalle</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loadingDiferencias ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <CircularProgress size={22} sx={{ my: 2 }} />
+                  </TableCell>
+                </TableRow>
+              ) : diferencias.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    Sin diferencias en el período (o sin horario configurado para cotejar).
+                  </TableCell>
+                </TableRow>
+              ) : (
+                diferencias.map((d, i) => (
+                  <TableRow key={`${d.empleadoId}-${d.fecha}-${d.tipo}-${i}`} hover>
+                    <TableCell>{d.nombreCompleto}</TableCell>
+                    <TableCell align="center">{dayjs(d.fecha).format('DD/MM/YYYY')}</TableCell>
+                    <TableCell align="center">
+                      <Chip size="small" color={DIF_CHIP[d.tipo].color} label={DIF_CHIP[d.tipo].label} />
+                    </TableCell>
+                    <TableCell align="center">
+                      {fmtHora(d.horaEsperadaEntrada)} – {fmtHora(d.horaEsperadaSalida)}
+                    </TableCell>
+                    <TableCell align="center">
+                      {fmtHora(d.horaRealEntrada)} – {fmtHora(d.horaRealSalida)}
+                    </TableCell>
+                    <TableCell>{d.detalle}</TableCell>
                   </TableRow>
                 ))
               )}

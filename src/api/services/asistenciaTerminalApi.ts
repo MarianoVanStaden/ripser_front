@@ -17,6 +17,22 @@ export interface ImportResumen {
   codigosNoAsignados: EnNoNoAsignado[];
 }
 
+export type TipoDiferenciaFichaje = 'TARDE' | 'AUSENTE' | 'INCOMPLETA' | 'SALIDA_ANTICIPADA';
+
+export interface DiferenciaFichaje {
+  empleadoId: number;
+  nombreCompleto: string;
+  fecha: string;
+  tipo: TipoDiferenciaFichaje;
+  horaEsperadaEntrada: string | null;
+  horaRealEntrada: string | null;
+  minutosTarde: number | null;
+  horaEsperadaSalida: string | null;
+  horaRealSalida: string | null;
+  minutosAnticipado: number | null;
+  detalle: string;
+}
+
 export interface ResumenAsistenciaEmpleado {
   empleadoId: number;
   nombreCompleto: string;
@@ -50,6 +66,11 @@ export const asistenciaTerminalApi = {
 
   getResumen: async (desde: string, hasta: string): Promise<ResumenAsistenciaEmpleado[]> => {
     const { data } = await api.get(`${BASE}/resumen`, { params: { desde, hasta } });
+    return data;
+  },
+
+  getDiferencias: async (desde: string, hasta: string): Promise<DiferenciaFichaje[]> => {
+    const { data } = await api.get(`${BASE}/diferencias`, { params: { desde, hasta } });
     return data;
   },
 
