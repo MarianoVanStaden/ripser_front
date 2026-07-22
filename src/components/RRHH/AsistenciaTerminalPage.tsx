@@ -36,12 +36,16 @@ import type { Empleado } from '../../types';
  * Carga del archivo .txt del terminal de huella y revisión de la asistencia
  * resultante para liquidación. Solo ADMIN y COORDINADORA_LOGISTICA.
  */
-const AsistenciaTerminalPage: React.FC = () => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+type OrigenTerminal = 'Taller' | 'Oficina';
 
-  const [uploading, setUploading] = useState(false);
+const AsistenciaTerminalPage: React.FC = () => {
+  const tallerInputRef = useRef<HTMLInputElement>(null);
+  const oficinaInputRef = useRef<HTMLInputElement>(null);
+
+  const [uploading, setUploading] = useState<OrigenTerminal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resumenImport, setResumenImport] = useState<ImportResumen | null>(null);
+  const [origenImport, setOrigenImport] = useState<OrigenTerminal | null>(null);
 
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [noAsignadas, setNoAsignadas] = useState<EnNoNoAsignado[]>([]);
@@ -84,26 +88,30 @@ const AsistenciaTerminalPage: React.FC = () => {
     cargarResumen();
   }, [cargarResumen]);
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (origen: OrigenTerminal, e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputRef = origen === 'Taller' ? tallerInputRef : oficinaInputRef;
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
     setResumenImport(null);
+    setOrigenImport(null);
     if (!file.name.toLowerCase().endsWith('.txt')) {
       setError('El archivo debe ser un .txt exportado del terminal de huella.');
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
-    setUploading(true);
+    setUploading(origen);
     try {
       const res = await asistenciaTerminalApi.importar(file);
       setResumenImport(res);
+      setOrigenImport(origen);
       await cargarNoAsignadas();
       await cargarResumen();
     } catch (err: any) {
       setError(err?.response?.data ?? 'Error al importar el archivo.');
     } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setUploading(null);
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -134,9 +142,9 @@ const AsistenciaTerminalPage: React.FC = () => {
         Fichadas / Asistencia (terminal de huella)
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Subí el archivo <code>.txt</code> que exporta el terminal táctil de ingreso. El sistema
-        registra las fichadas, calcula horas trabajadas y horas extra por día, y arma la
-        asistencia para la liquidación de sueldos.
+        Subí el archivo <code>.txt</code> que exporta cada terminal táctil de ingreso — uno para el
+        Taller y otro para las Oficinas. El sistema registra las fichadas, calcula horas trabajadas
+        y horas extra por día, y arma la asistencia para la liquidación de sueldos.
       </Typography>
 
       {error && (
@@ -148,24 +156,42 @@ const AsistenciaTerminalPage: React.FC = () => {
       {/* ── Carga de archivo ── */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <input
-          ref={fileInputRef}
+          ref={tallerInputRef}
           type="file"
           accept=".txt"
           hidden
-          onChange={handleFile}
+          onChange={(e) => handleFile('Taller', e)}
         />
-        <Button
-          variant="contained"
-          startIcon={uploading ? <CircularProgress size={18} color="inherit" /> : <CloudUploadIcon />}
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {uploading ? 'Importando…' : 'Subir archivo del terminal'}
-        </Button>
+        <input
+          ref={oficinaInputRef}
+          type="file"
+          accept=".txt"
+          hidden
+          onChange={(e) => handleFile('Oficina', e)}
+        />
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Button
+            variant="contained"
+            startIcon={uploading === 'Taller' ? <CircularProgress size={18} color="inherit" /> : <CloudUploadIcon />}
+            disabled={uploading !== null}
+            onClick={() => tallerInputRef.current?.click()}
+          >
+            {uploading === 'Taller' ? 'Importando…' : 'Subir fichadas del Taller'}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={uploading === 'Oficina' ? <CircularProgress size={18} color="inherit" /> : <CloudUploadIcon />}
+            disabled={uploading !== null}
+            onClick={() => oficinaInputRef.current?.click()}
+          >
+            {uploading === 'Oficina' ? 'Importando…' : 'Subir fichadas de Oficina'}
+          </Button>
+        </Stack>
 
         {resumenImport && (
           <Box sx={{ mt: 2 }}>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {origenImport && <Chip color="primary" label={`Terminal: ${origenImport}`} />}
               <Chip color="success" label={`${resumenImport.fichadasNuevas} fichadas nuevas`} />
               <Chip label={`${resumenImport.fichadasDuplicadas} duplicadas (ignoradas)`} />
               {resumenImport.lineasInvalidas > 0 && (
