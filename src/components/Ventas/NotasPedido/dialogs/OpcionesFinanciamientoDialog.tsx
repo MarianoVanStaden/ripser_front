@@ -42,6 +42,9 @@ const OpcionesFinanciamientoDialog: React.FC<Props> = ({
   selectedOpcionId,
   onSelectOpcion,
 }) => {
+  // Solo una nota PENDIENTE puede cambiar su financiamiento. Sobre una ya facturada el diálogo
+  // es informativo: el backend rechaza la re-selección (total/metodoPago fijados al facturar).
+  const soloLectura = !!nota && nota.estado !== 'PENDIENTE';
   return (
     <Dialog
       open={open}
@@ -73,6 +76,11 @@ const OpcionesFinanciamientoDialog: React.FC<Props> = ({
               {nota.subtotal?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Typography>
           </Box>
+        )}
+        {soloLectura && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontStyle: 'italic' }}>
+            Esta nota ya fue facturada — las opciones se muestran solo como consulta.
+          </Typography>
         )}
         <Divider sx={{ mb: 2 }} />
         {loading ? (
@@ -135,10 +143,12 @@ const OpcionesFinanciamientoDialog: React.FC<Props> = ({
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button onClick={onConfirm} variant="contained" disabled={!selectedOpcionId}>
-          Confirmar selección
-        </Button>
+        <Button onClick={onClose}>{soloLectura ? 'Cerrar' : 'Cancelar'}</Button>
+        {!soloLectura && (
+          <Button onClick={onConfirm} variant="contained" disabled={!selectedOpcionId}>
+            Confirmar selección
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
