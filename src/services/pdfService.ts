@@ -20,6 +20,7 @@ import {
   TIPO_FINANCIACION_LABELS,
 } from '../types/prestamo.types';
 import { addCorporateHeader, addCorporateFooter } from '../utils/pdfExportUtils';
+import { RIPSER_LOGO_DATA_URL, RIPSER_LOGO_ASPECT } from './ripserLogo';
 import {
   PORCENTAJE_ENTREGA_PROPIO,
   calculateCostoEnvio,
@@ -56,6 +57,15 @@ const COLORS = {
   black: [0, 0, 0] as [number, number, number],             // #000000
   darkGray: [64, 64, 64] as [number, number, number],       // #404040 - Texto encabezado tabla
   mediumGray: [128, 128, 128] as [number, number, number],  // #808080 - Bordes
+};
+
+// Dibuja el logo corporativo (imagen) en el extremo superior izquierdo de la barra
+// azul del encabezado, reemplazando el texto "Ripser / INSTALACIONES COMERCIALES".
+// barTopY es la coordenada Y del borde superior de la barra (altura 25mm).
+const drawHeaderLogo = (doc: jsPDF, margin: number, barTopY: number): void => {
+  const logoH = 18;
+  const logoW = logoH * RIPSER_LOGO_ASPECT;
+  doc.addImage(RIPSER_LOGO_DATA_URL, 'PNG', margin + 4, barTopY + (25 - logoH) / 2, logoW, logoH);
 };
 
 /**
@@ -179,6 +189,7 @@ interface RenderOpcionParams {
   baseImporte: number;
   costoEnvio?: number;
   showOpcionTag?: string;
+  estiloSimplificado?: boolean;
 }
 
 /**
@@ -194,6 +205,7 @@ const renderOpcionFinanciamiento = ({
   baseImporte,
   costoEnvio = 0,
   showOpcionTag,
+  estiloSimplificado = false,
 }: RenderOpcionParams): number => {
   // Si la opción trae la entrega inicial pre-calculada (viene de la calculadora
   // de exportación), se usa tal cual para cheques y créditos por igual. Si no,
@@ -287,25 +299,37 @@ const renderOpcionFinanciamiento = ({
   });
   yPosition = (doc as any).lastAutoTable.finalY;
 
-  // Bloque de desglose: entrega inicial + saldo a financiar
+  // Bloque de desglose: entrega inicial (+ saldo a financiar salvo estilo simplificado)
   if (mostrarDesglose) {
+    const entregaContent = estiloSimplificado
+      ? `Entrega inicial: ${formatCurrency(entregaMonto)}`
+      : `Entrega inicial estimada (${pctEntrega}%): ${formatCurrency(entregaMonto)}`;
     autoTable(doc, {
       startY: yPosition,
       body: [
-        [
-          {
-            content: `Entrega inicial estimada (${pctEntrega}%): ${formatCurrency(entregaMonto)}`,
-            styles: { halign: 'left', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
-          },
-          {
-            content: `Saldo a financiar: ${formatCurrency(saldoMonto)}`,
-            styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
-          },
-        ],
+        estiloSimplificado
+          ? [
+              {
+                content: entregaContent,
+                styles: { halign: 'left', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+              },
+            ]
+          : [
+              {
+                content: entregaContent,
+                styles: { halign: 'left', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+              },
+              {
+                content: `Saldo a financiar: ${formatCurrency(saldoMonto)}`,
+                styles: { halign: 'right', fontSize: 8, fillColor: COLORS.white, cellPadding: 2 },
+              },
+            ],
       ],
       theme: 'grid',
       styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
-      columnStyles: { 0: { cellWidth: tableWidth / 2 }, 1: { cellWidth: tableWidth / 2 } },
+      columnStyles: estiloSimplificado
+        ? { 0: { cellWidth: tableWidth } }
+        : { 0: { cellWidth: tableWidth / 2 }, 1: { cellWidth: tableWidth / 2 } },
       margin: { left: margin + 1, right: margin + 1 },
     });
     yPosition = (doc as any).lastAutoTable.finalY;
@@ -370,19 +394,11 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
   doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
   doc.rect(margin, yPosition, pageWidth - (margin * 2), 25, 'F');
 
-  // Logo texto "Ripser" en cursiva
-  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
-  doc.setFontSize(24);
-  doc.setFont('times', 'italic');
-  doc.text('Ripser', margin + 5, yPosition + 12);
-
-  // "INSTALACIONES COMERCIALES" debajo del logo
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('INSTALACIONES', margin + 5, yPosition + 16);
-  doc.text('COMERCIALES', margin + 5, yPosition + 19);
+  // Logo corporativo (imagen) en el extremo superior izquierdo
+  drawHeaderLogo(doc, margin, yPosition);
 
   // Información de contacto (derecha)
+  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   const contactX = pageWidth - margin - 5;
@@ -694,19 +710,11 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
   doc.rect(margin, yPosition, pageWidth - (margin * 2), 25, 'F');
 
-  // Logo texto "Ripser" en cursiva
-  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
-  doc.setFontSize(24);
-  doc.setFont('times', 'italic');
-  doc.text('Ripser', margin + 5, yPosition + 12);
-
-  // "INSTALACIONES COMERCIALES" debajo del logo
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('INSTALACIONES', margin + 5, yPosition + 16);
-  doc.text('COMERCIALES', margin + 5, yPosition + 19);
+  // Logo corporativo (imagen) en el extremo superior izquierdo
+  drawHeaderLogo(doc, margin, yPosition);
 
   // Información de contacto (derecha)
+  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   const contactX = pageWidth - margin - 5;
@@ -796,12 +804,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   // ===== TABLA DE PRODUCTOS =====
   const maxRows = 10;
   const productosData: any[] = documento.detalles.map(detalle => {
-    // Construir la descripción con el número de heladera si existe
-    let descripcionCompleta = detalle.descripcion || '';
-    const detalleConEquipos = detalle as any;
-    if (detalleConEquipos.equiposNumerosHeladera && detalleConEquipos.equiposNumerosHeladera.length > 0) {
-      descripcionCompleta += `\nN° Heladera: ${detalleConEquipos.equiposNumerosHeladera.join(', ')}`;
-    }
+    const descripcionCompleta = detalle.descripcion || '';
 
     return [
       { content: detalle.productoId?.toString() || detalle.recetaId?.toString() || '', styles: { halign: 'center' } },
@@ -920,31 +923,8 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
       margin,
       baseImporte: equipoBase,
       costoEnvio,
+      estiloSimplificado: true,
     });
-
-    if (isFinanciamientoPropio(opcionSeleccionada.metodoPago) && opcionSeleccionada.cantidadCuotas > 1) {
-      yPosition = ensureSpace(doc, yPosition, 10, margin);
-      autoTable(doc, {
-        startY: yPosition,
-        body: [[
-          {
-            content:
-              `* Entrega inicial del 40% al recibir el producto. La cuota estimada se calcula sobre el saldo (60%) más el interés indicado. Importes estimativos sujetos a confirmación.`,
-            styles: {
-              halign: 'left',
-              fontSize: 7,
-              fontStyle: 'italic' as const,
-              fillColor: COLORS.white,
-              textColor: COLORS.darkGray,
-              cellPadding: 2,
-            },
-          },
-        ]],
-        theme: 'grid',
-        styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
-        margin: { left: margin + 1, right: margin + 1 },
-      });
-    }
   } else if (documento.metodoPago) {
     // Fallback: el documento tiene método de pago seteado pero no se pudo cargar
     // la opción puntual (caso típico cuando se eligió "Financiamiento" sin opción específica).
@@ -1002,7 +982,7 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
         ...(propio && entregaEstimada !== null
           ? [[
               {
-                content: 'Entrega inicial estimada (40%):',
+                content: 'Entrega inicial:',
                 styles: {
                   halign: 'left' as const,
                   fontStyle: 'bold' as const,
@@ -1024,30 +1004,6 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
       margin: { left: margin + 1, right: margin + 1 },
     });
     yPosition = (doc as any).lastAutoTable.finalY;
-
-    if (propio) {
-      yPosition = ensureSpace(doc, yPosition, 10, margin);
-      autoTable(doc, {
-        startY: yPosition,
-        body: [[
-          {
-            content:
-              `* Plan de cuotas a definir con el cliente. La entrega inicial es estimativa (40% del total) y el saldo se financia con el interés acordado sobre el saldo restante.`,
-            styles: {
-              halign: 'left',
-              fontSize: 7,
-              fontStyle: 'italic' as const,
-              fillColor: COLORS.white,
-              textColor: COLORS.darkGray,
-              cellPadding: 2,
-            },
-          },
-        ]],
-        theme: 'grid',
-        styles: { lineColor: COLORS.mediumGray, lineWidth: 0.1 },
-        margin: { left: margin + 1, right: margin + 1 },
-      });
-    }
   }
 
   // ===== PIE DE PÁGINA AZUL CON NOTA =====
