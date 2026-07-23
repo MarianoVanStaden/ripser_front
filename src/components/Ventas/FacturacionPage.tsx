@@ -117,6 +117,10 @@ const FacturacionPage = () => {
     }
   }, [diasEntrega]);
   const [notes, setNotes] = useState('');
+  // Canal de venta + gestionante (cuando quien habla por WhatsApp no es el titular).
+  const [canalVenta, setCanalVenta] = useState('');
+  const [gestionanteNombre, setGestionanteNombre] = useState('');
+  const [gestionanteTelefono, setGestionanteTelefono] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedIva, setSelectedIva] = useState<TipoIva>('EXENTO');
 
@@ -572,6 +576,9 @@ const FacturacionPage = () => {
     setDueDate(dayjs().add(30, 'days').format('YYYY-MM-DD'));
     setFechaEstimadaEntrega(defaultFechaEntregaISO(diasEntrega));
     setNotes('');
+    setCanalVenta('');
+    setGestionanteNombre('');
+    setGestionanteTelefono('');
     setCart([]);
     setSelectedIva('EXENTO');
     setDescuentoTipo('NONE');
@@ -966,6 +973,9 @@ const FacturacionPage = () => {
       descuentoTipo,
       descuentoValor: descuentoTipo === 'NONE' ? 0 : descuentoValor,
       observaciones: notes || undefined,
+      canalVenta: canalVenta || undefined,
+      gestionanteNombre: gestionanteNombre.trim() || undefined,
+      gestionanteTelefono: gestionanteNombre.trim() ? (gestionanteTelefono.trim() || undefined) : undefined,
       fechaEstimadaEntrega: fechaEstimadaEntrega || undefined,
       detalles,
       ...(isFinanciamiento(paymentMethod) && {
@@ -1867,6 +1877,12 @@ const FacturacionPage = () => {
           onChangeDescuentoValor={setDescuentoValor}
           notes={notes}
           onChangeNotes={setNotes}
+          canalVenta={canalVenta}
+          onChangeCanalVenta={setCanalVenta}
+          gestionanteNombre={gestionanteNombre}
+          onChangeGestionanteNombre={setGestionanteNombre}
+          gestionanteTelefono={gestionanteTelefono}
+          onChangeGestionanteTelefono={setGestionanteTelefono}
           cart={cart}
           onAddItem={addItemToCart}
           onAddEnvio={handleOpenEnvioDialogFact}

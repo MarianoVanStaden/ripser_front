@@ -23,6 +23,7 @@ import {
   TIPO_ACCION_COBRANZA_LABELS,
   RESULTADO_ACCION_COBRANZA_LABELS,
   TIPO_RECORDATORIO_COBRANZA_LABELS,
+  TIPO_ORIGEN_COBRANZA_LABELS,
   PRIORIDAD_COBRANZA_COLORS as PRIO_COLORS,
   ESTADOS_CIERRE,
 } from '../../../types/cobranza.types';
@@ -38,6 +39,7 @@ import { RecordatorioCobranzaDialog } from './RecordatorioCobranzaDialog';
 import { PromesaVigenteCard } from './PromesaVigenteCard';
 import { PromesaPagoDialog } from './PromesaPagoDialog';
 import { TimelineCobranza } from './TimelineCobranza';
+import { InformarCobroLibreDialog } from './InformarCobroLibreDialog';
 import { BadgeMora } from './BadgeMora';
 import type { EventoCobranzaDTO, PromesaPagoDTO } from '../../../types/cobranza.types';
 import {
@@ -104,6 +106,7 @@ export const GestionCobranzaDetailPage: React.FC = () => {
   const [accionOpen, setAccionOpen] = useState(false);
   const [recordatorioOpen, setRecordatorioOpen] = useState(false);
   const [promesaOpen, setPromesaOpen] = useState(false);
+  const [informarCobroOpen, setInformarCobroOpen] = useState(false);
 
   // Cerrar gestión menu
   const [cierreAnchor, setCierreAnchor] = useState<null | HTMLElement>(null);
@@ -236,20 +239,39 @@ export const GestionCobranzaDetailPage: React.FC = () => {
               {gestion.clienteNombre} {gestion.clienteApellido}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Gestión #{gestion.id} · Crédito Personal{' '}
-              <Typography
-                component="span"
-                variant="body2"
-                color="primary"
-                sx={{ cursor: 'pointer', textDecoration: 'underline' }}
-                onClick={() => navigate(`/prestamos/${gestion.prestamoId}`)}
-              >
-                #{gestion.prestamoId} <OpenInNew sx={{ fontSize: 12, verticalAlign: 'middle' }} />
-              </Typography>
+              Gestión #{gestion.id} ·{' '}
+              {gestion.prestamoId != null ? (
+                <>
+                  Crédito Personal{' '}
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    color="primary"
+                    sx={{ cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => navigate(`/prestamos/${gestion.prestamoId}`, { state: { from: location.pathname + location.search } })}
+                  >
+                    #{gestion.prestamoId} <OpenInNew sx={{ fontSize: 12, verticalAlign: 'middle' }} />
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  {TIPO_ORIGEN_COBRANZA_LABELS[gestion.tipoOrigen]}
+                  {gestion.descripcionOrigen ? ` — ${gestion.descripcionOrigen}` : ''}
+                </>
+              )}
             </Typography>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {gestion.activa && gestion.prestamoId == null && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => setInformarCobroOpen(true)}
+            >
+              Informar cobro
+            </Button>
+          )}
           {gestion.activa && (
             <Button
               variant="outlined"
@@ -325,13 +347,24 @@ export const GestionCobranzaDetailPage: React.FC = () => {
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="caption" color="text.secondary">Mora Actual (live)</Typography>
-              <Typography variant="h6" fontWeight={700} color="error.main">
-                {formatPrice(gestion.montoMoraActual)}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {gestion.cuotasEnMoraCount} cuota(s) vencida(s)
-              </Typography>
+              {gestion.prestamoId != null ? (
+                <>
+                  <Typography variant="caption" color="text.secondary">Mora Actual (live)</Typography>
+                  <Typography variant="h6" fontWeight={700} color="error.main">
+                    {formatPrice(gestion.montoMoraActual)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {gestion.cuotasEnMoraCount} cuota(s) vencida(s)
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Typography variant="caption" color="text.secondary">Monto a recuperar</Typography>
+                  <Typography variant="h6" fontWeight={700} color="error.main">
+                    {formatPrice(gestion.montoPendiente)}
+                  </Typography>
+                </>
+              )}
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <Typography variant="caption" color="text.secondary">Días Mora Real</Typography>
@@ -686,14 +719,28 @@ export const GestionCobranzaDetailPage: React.FC = () => {
         }}
       />
 
-      <PromesaPagoDialog
-        open={promesaOpen}
+      {gestion.prestamoId != null && (
+        <PromesaPagoDialog
+          open={promesaOpen}
+          gestionId={gestionId}
+          prestamoId={gestion.prestamoId}
+          clienteNombre={`${gestion.clienteNombre} ${gestion.clienteApellido}`}
+          onClose={() => setPromesaOpen(false)}
+          onSaved={() => {
+            setPromesaOpen(false);
+            loadData();
+          }}
+        />
+      )}
+
+      <InformarCobroLibreDialog
+        open={informarCobroOpen}
         gestionId={gestionId}
-        prestamoId={gestion.prestamoId}
         clienteNombre={`${gestion.clienteNombre} ${gestion.clienteApellido}`}
-        onClose={() => setPromesaOpen(false)}
+        montoSugerido={gestion.montoPendiente}
+        onClose={() => setInformarCobroOpen(false)}
         onSaved={() => {
-          setPromesaOpen(false);
+          setInformarCobroOpen(false);
           loadData();
         }}
       />

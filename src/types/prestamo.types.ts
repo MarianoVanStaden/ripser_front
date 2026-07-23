@@ -275,6 +275,12 @@ export interface CuotaPrestamoDTO {
    * permite distinguir un informe total de uno parcial en el PDF de estado de cuenta.
    */
   montoInformado?: number | null;
+  /**
+   * Historial de aplicaciones de pago de la cuota (orden cronológico).
+   * En cuotas PARCIAL fechaPago queda null hasta completar el total; esta
+   * lista permite ver cuándo pagó cada parte. Vacía/null sin pagos.
+   */
+  pagosAplicados?: { fecha: string | null; monto: number }[] | null;
 }
 
 // Préstamo's local MetodoPago is a *narrower* set than the global one in
@@ -315,9 +321,14 @@ export interface RegistrarPagoCuotaDTO {
 
 export interface PagoInformadoDTO {
   id: number;
-  cuotaId: number;
-  prestamoId: number;
-  numeroCuota: number;
+  /** Null en cobros de gestión libre (sin crédito). */
+  cuotaId: number | null;
+  /** Gestión libre asociada. Null en informes de cuota. */
+  gestionCobranzaId?: number | null;
+  /** Descripción del origen de la gestión libre (para la bandeja admin). */
+  descripcionOrigen?: string | null;
+  prestamoId: number | null;
+  numeroCuota: number | null;
   clienteId: number;
   clienteNombre: string;
   montoInformado: number;
@@ -338,7 +349,9 @@ export interface PagoInformadoDTO {
 }
 
 export interface CrearPagoInformadoDTO {
-  cuotaId: number;
+  /** Opcional: sin cuotaId debe venir gestionCobranzaId (cobro de gestión libre). */
+  cuotaId?: number;
+  gestionCobranzaId?: number;
   montoInformado: number;
   numeroComprobante: string;
   metodoPago: MetodoPago;

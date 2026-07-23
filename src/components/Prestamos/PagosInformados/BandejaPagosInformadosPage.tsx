@@ -100,7 +100,18 @@ export const BandejaPagosInformadosPage: React.FC = () => {
                 {pagos.map(p => (
                   <TableRow key={p.id} hover>
                     <TableCell>{p.clienteNombre}</TableCell>
-                    <TableCell>#{p.prestamoId} — {p.numeroCuota}</TableCell>
+                    <TableCell>
+                      {p.cuotaId != null
+                        ? `#${p.prestamoId} — ${p.numeroCuota}`
+                        : (
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            label={`Gestión libre${p.descripcionOrigen ? `: ${p.descripcionOrigen}` : ''}`}
+                          />
+                        )}
+                    </TableCell>
                     <TableCell>{p.numeroComprobante}</TableCell>
                     <TableCell>{p.metodoPago}</TableCell>
                     <TableCell align="right">
@@ -110,7 +121,7 @@ export const BandejaPagosInformadosPage: React.FC = () => {
                     </TableCell>
                     <TableCell>{formatFecha(p.fechaPagoInformada)}</TableCell>
                     <TableCell>{p.usuarioCobranzasNombre}</TableCell>
-                    <TableCell><Chip size="small" label={p.estadoCuotaPrevio} /></TableCell>
+                    <TableCell>{p.cuotaId != null ? <Chip size="small" label={p.estadoCuotaPrevio} /> : '—'}</TableCell>
                     <TableCell align="center">
                       <Tooltip title="Confirmar ingreso">
                         <IconButton color="success" onClick={() => openConfirm(p)}>

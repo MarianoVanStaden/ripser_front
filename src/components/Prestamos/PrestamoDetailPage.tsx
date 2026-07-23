@@ -35,6 +35,7 @@ import type {
   PagoInformadoDTO,
 } from '../../types/prestamo.types';
 import type { DetalleDocumentoDTO } from '../../types/documentoComercial.types';
+import type { Cliente } from '../../types';
 import { formatPrice } from '../../utils/priceCalculations';
 import { PrestamoFormDialog } from './PrestamoFormDialog';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
@@ -73,10 +74,12 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 export const PrestamoDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  // "Volver" restaura la búsqueda/filtros que traía la lista (guardados en
-  // location.state al abrir el detalle). Fallback: lista limpia (deep-link/refresh).
-  const fromSearch = (location.state as { fromSearch?: string } | null)?.fromSearch ?? '';
-  const backToLista = `/prestamos/lista${fromSearch}`;
+  // "Volver" es contextual: si quien abrió el detalle pasó `from` (ej. la agenda
+  // de Gestiones de Cobranza), vuelve ahí; si no, a la lista de préstamos con la
+  // búsqueda guardada en `fromSearch`. Fallback: lista limpia (deep-link/refresh).
+  const navState = location.state as { fromSearch?: string; from?: string } | null;
+  const fromSearch = navState?.fromSearch ?? '';
+  const backToLista = navState?.from ?? `/prestamos/lista${fromSearch}`;
   const { id } = useParams<{ id: string }>();
   const prestamoId = parseInt(id || '0');
 
@@ -86,6 +89,9 @@ export const PrestamoDetailPage: React.FC = () => {
   const [recordatorios, setRecordatorios] = useState<RecordatorioCuotaDTO[]>([]);
   const [pagosInformados, setPagosInformados] = useState<PagoInformadoDTO[]>([]);
   const [equipos, setEquipos] = useState<DetalleDocumentoDTO[]>([]);
+  // Ficha completa del cliente (teléfonos, localidad) — el PrestamoPersonalDTO
+  // solo trae nombre/apellido. Best-effort: si falla, la cabecera degrada.
+  const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -142,6 +148,7 @@ export const PrestamoDetailPage: React.FC = () => {
         prestamoPersonalApi.getEquipos(prestamoId).catch(() => [] as DetalleDocumentoDTO[]),
       ]);
       setPrestamo(prestamoData);
+      clienteApi.getById(prestamoData.clienteId).then(setCliente).catch(() => setCliente(null));
       setCuotas(cuotasData);
       setSeguimientos(seguimientosData);
       setPagosInformados(pagosInformadosData);
@@ -355,9 +362,24 @@ export const PrestamoDetailPage: React.FC = () => {
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <Typography variant="caption" color="text.secondary">Cliente</Typography>
-              <Typography variant="h6">{prestamo.clienteNombre}</Typography>
+              <Typography variant="h6">
+                {cliente
+                  ? `${cliente.nombre} ${cliente.apellido ?? ''}`.trim()
+                  : `${prestamo.clienteNombre} ${prestamo.clienteApellido ?? ''}`.trim()}
+              </Typography>
               {prestamo.codigoClienteRojas && (
                 <Typography variant="body2" color="text.secondary">Código: {prestamo.codigoClienteRojas}</Typography>
+              )}
+              {cliente && (
+                <>
+                  <Typography variant="body2" color="text.secondary">
+                    Tel: {cliente.telefono || '-'}
+                    {cliente.telefonoAlternativo ? ` · Alt: ${cliente.telefonoAlternativo}` : ''}
+                  </Typography>
+                  {cliente.ciudad && (
+                    <Typography variant="body2" color="text.secondary">Localidad: {cliente.ciudad}</Typography>
+                  )}
+                </>
               )}
             </Grid>
             <Grid item xs={6} md={3}>
@@ -557,7 +579,32 @@ export const PrestamoDetailPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Box display="flex" alignItems="center" gap={0.5}>
-                      {c.fechaPago ? dayjs(c.fechaPago).format('DD/MM/YYYY') : '-'}
+                      {(() => {
+                        const pagos = c.pagosAplicados ?? [];
+                        const ultima = pagos.length ? pagos[pagos.length - 1].fecha : null;
+                        // Fecha principal: la oficial de la cuota, o la del último
+                        // pago parcial (fechaPago queda null hasta completar).
+                        const principal = c.fechaPago ?? ultima;
+                        const texto = principal ? dayjs(principal).format('DD/MM/YYYY') : '-';
+                        if (pagos.length <= 1) return texto;
+                        return (
+                          <Tooltip
+                            title={
+                              <Box>
+                                {pagos.map((p, i) => (
+                                  <Typography key={i} variant="caption" display="block">
+                                    {p.fecha ? dayjs(p.fecha).format('DD/MM/YYYY') : '-'} — {formatPrice(p.monto)}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            }
+                          >
+                            <Box component="span" sx={{ textDecoration: 'underline dotted', cursor: 'help' }}>
+                              {texto} ({pagos.length} pagos)
+                            </Box>
+                          </Tooltip>
+                        );
+                      })()}
                       {(c.estado === 'PAGADA' || c.estado === 'PARCIAL') && c.fechaPago && (
                         <Tooltip title="Editar fecha de pago">
                           <IconButton

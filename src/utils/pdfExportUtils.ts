@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { RIPSER_LOGO_DATA_URL, RIPSER_LOGO_ASPECT } from '../services/ripserLogo';
 
 // Colores corporativos de Ripser
 const COLORS = {
@@ -18,31 +19,40 @@ const COLORS = {
  * Agrega el encabezado corporativo de Ripser a un PDF
  * @param pdf Instancia de jsPDF
  * @param title Título del documento (ej: "Informe de Ventas")
+ * @param mostrarLogo Si es true, usa el logo corporativo (imagen) sobre fondo blanco
+ *   y el contacto en azul; si es false (default), mantiene la barra azul con texto.
  * @returns La posición Y donde debe comenzar el contenido
  */
-export const addCorporateHeader = (pdf: jsPDF, title: string): number => {
+export const addCorporateHeader = (pdf: jsPDF, title: string, mostrarLogo = false): number => {
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 10;
   let yPosition = margin;
 
-  // Barra superior azul con logo
-  pdf.setFillColor(...COLORS.darkBlue);
+  // Barra superior: azul con texto, o blanca con el logo corporativo (imagen).
+  pdf.setFillColor(...(mostrarLogo ? COLORS.white : COLORS.darkBlue));
   pdf.rect(margin, yPosition, pageWidth - (margin * 2), 25, 'F');
 
-  // Logo texto "Ripser" en cursiva
-  pdf.setTextColor(...COLORS.white);
-  pdf.setFontSize(24);
-  pdf.setFont('times', 'italic');
-  pdf.text('Ripser', margin + 5, yPosition + 12);
+  if (mostrarLogo) {
+    const logoH = 18;
+    const logoW = logoH * RIPSER_LOGO_ASPECT;
+    pdf.addImage(RIPSER_LOGO_DATA_URL, 'PNG', margin + 4, yPosition + (25 - logoH) / 2, logoW, logoH);
+  } else {
+    // Logo texto "Ripser" en cursiva
+    pdf.setTextColor(...COLORS.white);
+    pdf.setFontSize(24);
+    pdf.setFont('times', 'italic');
+    pdf.text('Ripser', margin + 5, yPosition + 12);
 
-  // "INSTALACIONES COMERCIALES" debajo del logo
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('INSTALACIONES', margin + 5, yPosition + 16);
-  pdf.text('COMERCIALES', margin + 5, yPosition + 19);
+    // "INSTALACIONES COMERCIALES" debajo del logo
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text('INSTALACIONES', margin + 5, yPosition + 16);
+    pdf.text('COMERCIALES', margin + 5, yPosition + 19);
+  }
 
   // Información de contacto (derecha)
+  pdf.setTextColor(...(mostrarLogo ? COLORS.darkBlue : COLORS.white));
   pdf.setFontSize(7);
   pdf.setFont('helvetica', 'normal');
   const contactX = pageWidth - margin - 5;

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useLeadSearch } from "../../hooks/useLeadSearch";
+import { CANAL_LABELS, type CanalEnum } from "../../types/lead.types";
 import {
   Box,
   Button,
@@ -592,6 +593,11 @@ const PresupuestosPage: React.FC = () => {
     setHasUnsavedChanges(true);
   }, [readOnly]);
 
+  // Canal de venta + gestionante (cuando quien habla por WhatsApp no es el titular).
+  const [canalVenta, setCanalVenta] = useState<string>('');
+  const [gestionanteNombre, setGestionanteNombre] = useState('');
+  const [gestionanteTelefono, setGestionanteTelefono] = useState('');
+
   const handleOpenDialog = useCallback((presupuesto?: DocumentoComercial, readOnlyMode = false) => {
     setReadOnly(readOnlyMode);
     setHasUnsavedChanges(false);
@@ -609,6 +615,9 @@ const PresupuestosPage: React.FC = () => {
         descuentoValor: Number(presupuesto.descuentoValor) || 0,
       });
       setDestinatarioMode(presupuesto.clienteId ? 'CLIENTE' : 'LEAD');
+      setCanalVenta(presupuesto.canalVenta || '');
+      setGestionanteNombre(presupuesto.gestionanteNombre || '');
+      setGestionanteTelefono(presupuesto.gestionanteTelefono || '');
       setSelectedCliente(null);
       if (presupuesto.clienteId) {
         // Resolver el cliente del backend para mostrar el nombre/razón social aunque no esté en cache local.
@@ -638,6 +647,9 @@ const PresupuestosPage: React.FC = () => {
       setEditingPresupuesto(null);
       setFormData({ ...initialFormData, usuarioId: (user?.id ?? 0).toString() });
       setDestinatarioMode('CLIENTE');
+      setCanalVenta('');
+      setGestionanteNombre('');
+      setGestionanteTelefono('');
       setSelectedCliente(null);
       setDetalles([{ ...initialDetalle }]);
     }
@@ -724,6 +736,10 @@ const PresupuestosPage: React.FC = () => {
       ...(formData.leadId ? { leadId: Number(formData.leadId) } : {}),
       usuarioId: Number(formData.usuarioId) || (user?.id ?? 0),
       observaciones: formData.observaciones,
+      ...(canalVenta ? { canalVenta } : {}),
+      ...(gestionanteNombre.trim()
+        ? { gestionanteNombre: gestionanteNombre.trim(), gestionanteTelefono: gestionanteTelefono.trim() || undefined }
+        : {}),
       tipoIva: formData.tipoIva,
       descuentoTipo: formData.descuentoTipo,
       descuentoValor: formData.descuentoTipo === 'NONE' ? 0 : formData.descuentoValor,
@@ -1661,6 +1677,40 @@ const PresupuestosPage: React.FC = () => {
                 required
                 InputLabelProps={{ shrink: true }}
                 disabled
+              />
+            </Box>
+
+            <Box display="flex" gap={2} flexWrap="wrap" mt={2}>
+              <TextField
+                select
+                label="Canal de venta"
+                value={canalVenta}
+                onChange={(e) => { setCanalVenta(e.target.value); setHasUnsavedChanges(true); }}
+                sx={{ minWidth: 200 }}
+                size="small"
+                disabled={readOnly}
+              >
+                <MenuItem value=""><em>Sin especificar</em></MenuItem>
+                {(Object.keys(CANAL_LABELS) as CanalEnum[]).map((c) => (
+                  <MenuItem key={c} value={c}>{CANAL_LABELS[c]}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Gestiona la compra (si no es el titular)"
+                placeholder="Nombre de quien habla por WhatsApp"
+                value={gestionanteNombre}
+                onChange={(e) => { setGestionanteNombre(e.target.value); setHasUnsavedChanges(true); }}
+                sx={{ minWidth: 260, flex: 1 }}
+                size="small"
+                disabled={readOnly}
+              />
+              <TextField
+                label="Teléfono del gestionante"
+                value={gestionanteTelefono}
+                onChange={(e) => { setGestionanteTelefono(e.target.value); setHasUnsavedChanges(true); }}
+                sx={{ minWidth: 180 }}
+                size="small"
+                disabled={readOnly || !gestionanteNombre.trim()}
               />
             </Box>
 

@@ -1,6 +1,7 @@
 // ==================== ENUMS EXISTENTES ====================
 
 export const EstadoGestionCobranza = {
+  PRIMER_CONTACTO: 'PRIMER_CONTACTO',
   NUEVA: 'NUEVA',
   EN_GESTION: 'EN_GESTION',
   PROMETIO_PAGO: 'PROMETIO_PAGO',
@@ -85,6 +86,7 @@ export type TipoEventoCobranza = typeof TipoEventoCobranza[keyof typeof TipoEven
 // ==================== LABELS ====================
 
 export const ESTADO_GESTION_COBRANZA_LABELS: Record<EstadoGestionCobranza, string> = {
+  PRIMER_CONTACTO: 'Primer Contacto',
   NUEVA: 'Nueva',
   EN_GESTION: 'En Gestión',
   PROMETIO_PAGO: 'Prometió Pago',
@@ -160,6 +162,7 @@ export const TIPO_EVENTO_LABELS: Record<TipoEventoCobranza, string> = {
 // ==================== COLORS ====================
 
 export const ESTADO_GESTION_COBRANZA_COLORS: Record<EstadoGestionCobranza, string> = {
+  PRIMER_CONTACTO: '#26A69A',
   NUEVA: '#2196F3',
   EN_GESTION: '#FF9800',
   PROMETIO_PAGO: '#9C27B0',
@@ -228,10 +231,30 @@ export interface EventoCobranzaDTO {
   referenciaId: number | null;
 }
 
+/** Origen de una gestión: CREDITO (histórica, con préstamo) o libre (sin crédito). */
+export const TipoOrigenCobranza = {
+  CREDITO: 'CREDITO',
+  CHEQUE_RECHAZADO: 'CHEQUE_RECHAZADO',
+  DEUDA_LIBRE: 'DEUDA_LIBRE',
+  OTRO: 'OTRO',
+} as const;
+export type TipoOrigenCobranza = typeof TipoOrigenCobranza[keyof typeof TipoOrigenCobranza];
+
+export const TIPO_ORIGEN_COBRANZA_LABELS: Record<TipoOrigenCobranza, string> = {
+  CREDITO: 'Crédito',
+  CHEQUE_RECHAZADO: 'Cheque rechazado',
+  DEUDA_LIBRE: 'Deuda libre',
+  OTRO: 'Otro',
+};
+
 export interface GestionCobranzaDTO {
   id: number;
   empresaId: number;
-  prestamoId: number;
+  /** Null = gestión libre (sin crédito). */
+  prestamoId: number | null;
+  tipoOrigen: TipoOrigenCobranza;
+  descripcionOrigen: string | null;
+  chequeId: number | null;
   clienteId: number;
   clienteNombre: string;
   clienteApellido: string;
@@ -267,7 +290,12 @@ export interface GestionCobranzaDTO {
 }
 
 export interface CreateGestionCobranzaDTO {
-  prestamoId: number;
+  /** Opcional: sin prestamoId la gestión es libre y requiere clienteId + tipoOrigen + montoPendiente. */
+  prestamoId?: number;
+  clienteId?: number;
+  tipoOrigen?: TipoOrigenCobranza;
+  descripcionOrigen?: string;
+  chequeId?: number;
   agenteId?: number;
   prioridad?: PrioridadCobranza;
   montoPendiente?: number;

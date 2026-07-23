@@ -4,6 +4,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, FormControl, InputLabel, Select,
   Stack, Alert, CircularProgress, Autocomplete,
+  ToggleButtonGroup, ToggleButton,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { gestionCobranzaApi } from '../../../api/services/gestionCobranzaApi';
@@ -11,9 +12,13 @@ import { prestamoPersonalApi } from '../../../api/services/prestamoPersonalApi';
 import {
   PrioridadCobranza,
   PRIORIDAD_COBRANZA_LABELS,
+  TipoOrigenCobranza,
+  TIPO_ORIGEN_COBRANZA_LABELS,
 } from '../../../types/cobranza.types';
-import type { PrioridadCobranza as PrioridadType } from '../../../types/cobranza.types';
+import type { PrioridadCobranza as PrioridadType, TipoOrigenCobranza as TipoOrigenType } from '../../../types/cobranza.types';
 import type { PrestamoPersonalDTO } from '../../../types/prestamo.types';
+import type { Cliente } from '../../../types';
+import ClienteAutocomplete from '../../common/ClienteAutocomplete';
 import { formatPrice } from '../../../utils/priceCalculations';
 
 interface NuevaGestionDialogProps {
@@ -29,6 +34,11 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
   const [prestamos, setPrestamos] = useState<PrestamoPersonalDTO[]>([]);
   const [loadingPrestamos, setLoadingPrestamos] = useState(false);
   const [selectedPrestamo, setSelectedPrestamo] = useState<PrestamoPersonalDTO | null>(null);
+  // Modo libre: gestión sin crédito (cheque rechazado, deuda libre, etc.)
+  const [modo, setModo] = useState<'credito' | 'libre'>('credito');
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [tipoOrigen, setTipoOrigen] = useState<TipoOrigenType>('DEUDA_LIBRE');
+  const [descripcionOrigen, setDescripcionOrigen] = useState('');
   const [form, setForm] = useState({
     prioridad: '' as PrioridadType | '',
     montoPendiente: '' as number | '',
@@ -58,6 +68,10 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
 
   const handleClose = () => {
     setSelectedPrestamo(null);
+    setModo('credito');
+    setSelectedCliente(null);
+    setTipoOrigen('DEUDA_LIBRE');
+    setDescripcionOrigen('');
     setForm({
       prioridad: '',
       montoPendiente: '',
@@ -70,17 +84,32 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
   };
 
   const handleSubmit = async () => {
-    if (!selectedPrestamo?.id) {
+    if (modo === 'libre') {
+      if (!selectedCliente?.id) {
+        setFormError('Seleccione un cliente.');
+        return;
+      }
+      if (form.montoPendiente === '' || Number(form.montoPendiente) <= 0) {
+        setFormError('Ingrese el monto a recuperar (mayor a 0).');
+        return;
+      }
+    } else if (!selectedPrestamo?.id) {
       setFormError('Seleccione un crédito personal.');
       return;
     }
-    const prestamoId = selectedPrestamo.id;
+    const prestamoId = selectedPrestamo?.id;
     setSubmitting(true);
     setFormError(null);
     setGestionActivaId(null);
     try {
       await gestionCobranzaApi.create({
-        prestamoId,
+        ...(modo === 'libre'
+          ? {
+              clienteId: selectedCliente!.id,
+              tipoOrigen,
+              descripcionOrigen: descripcionOrigen || undefined,
+            }
+          : { prestamoId }),
         prioridad: (form.prioridad || undefined) as PrioridadType | undefined,
         montoPendiente: form.montoPendiente !== '' ? Number(form.montoPendiente) : undefined,
         fechaProximaGestion: form.fechaProximaGestion || undefined,
@@ -91,7 +120,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
     } catch (err: any) {
       // 409: ya existe una gestión activa para este crédito. Mostramos motivo claro y
       // resolvemos el id de esa gestión para ofrecer un atajo al detalle.
-      if (err?.response?.status === 409) {
+      if (err?.response?.status === 409 && prestamoId != null) {
         setFormError('Ya existe una gestión activa para este crédito.');
         try {
           const activa = await gestionCobranzaApi.getActivaByPrestamo(prestamoId);
@@ -135,6 +164,53 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
             </Alert>
           )}
 
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            fullWidth
+            value={modo}
+            onChange={(_, v) => { if (v) { setModo(v); setFormError(null); } }}
+          >
+            <ToggleButton value="credito">Vinculada a crédito</ToggleButton>
+            <ToggleButton value="libre">Cobro libre</ToggleButton>
+          </ToggleButtonGroup>
+
+          {modo === 'libre' && (
+            <>
+              <ClienteAutocomplete
+                value={selectedCliente}
+                onChange={setSelectedCliente}
+                label="Cliente *"
+                size="small"
+                fullWidth
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Tipo de origen</InputLabel>
+                <Select
+                  value={tipoOrigen}
+                  label="Tipo de origen"
+                  onChange={(e) => setTipoOrigen(e.target.value as TipoOrigenType)}
+                >
+                  {(Object.keys(TipoOrigenCobranza) as (keyof typeof TipoOrigenCobranza)[])
+                    .filter((k) => k !== 'CREDITO')
+                    .map((k) => (
+                      <MenuItem key={k} value={TipoOrigenCobranza[k]}>
+                        {TIPO_ORIGEN_COBRANZA_LABELS[TipoOrigenCobranza[k]]}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Descripción del origen"
+                placeholder='Ej: "Cheque #1234 rechazado el 05/07"'
+                fullWidth size="small"
+                value={descripcionOrigen}
+                onChange={(e) => setDescripcionOrigen(e.target.value)}
+              />
+            </>
+          )}
+
+          {modo === 'credito' && (
           <Autocomplete
             options={prestamos}
             loading={loadingPrestamos}
@@ -160,9 +236,10 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
               />
             )}
           />
+          )}
 
           <TextField
-            label="Monto Pendiente"
+            label={modo === 'libre' ? 'Monto a recuperar *' : 'Monto Pendiente'}
             type="number"
             fullWidth size="small"
             value={form.montoPendiente}
@@ -211,7 +288,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={submitting || !selectedPrestamo}
+          disabled={submitting || (modo === 'credito' ? !selectedPrestamo : !selectedCliente)}
           startIcon={submitting ? <CircularProgress size={16} /> : <AddIcon />}
         >
           Crear Gestión

@@ -35,6 +35,7 @@ import {
   PRIORIDAD_COBRANZA_COLORS,
   ESTADOS_CIERRE,
   EstadoPromesaPago,
+  TIPO_ORIGEN_COBRANZA_LABELS,
 } from '../../../types/cobranza.types';
 import type { GestionCobranzaDTO } from '../../../types/cobranza.types';
 import { formatPrice } from '../../../utils/priceCalculations';
@@ -103,6 +104,10 @@ export const CobranzasListPage: React.FC = () => {
   // useUrlFilters mantiene en la URL) para que "Volver" restaure la búsqueda.
   const openDetalle = (id: number) =>
     navigate(`/cobranzas/${id}`, { state: { fromSearch: location.search } });
+  // Click en la fila → Crédito Personal de la gestión. Pasamos `from` para que
+  // el "Volver" del crédito regrese a esta agenda con los filtros actuales.
+  const openCredito = (prestamoId: number) =>
+    navigate(`/prestamos/${prestamoId}`, { state: { from: `/cobranzas/lista${location.search}` } });
 
   const { filters: urlFilters, setFilters: setUrlFilters, resetFilters: resetUrlFilters } = useUrlFilters(
     FILTER_SCHEMA,
@@ -757,7 +762,7 @@ export const CobranzasListPage: React.FC = () => {
                       hover
                       selected={isSelected}
                       sx={{ cursor: 'pointer' }}
-                      onClick={() => openDetalle(g.id)}
+                      onClick={() => (g.prestamoId != null ? openCredito(g.prestamoId) : openDetalle(g.id))}
                     >
                       <TableCell padding="checkbox" sx={sxStickyCheckboxBody} onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -773,6 +778,15 @@ export const CobranzasListPage: React.FC = () => {
                         <Typography variant="body2" fontWeight={600}>
                           {g.clienteNombre} {g.clienteApellido}
                         </Typography>
+                        {g.tipoOrigen && g.tipoOrigen !== 'CREDITO' && (
+                          <Chip
+                            label={TIPO_ORIGEN_COBRANZA_LABELS[g.tipoOrigen]}
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            sx={{ height: 18, fontSize: '0.65rem' }}
+                          />
+                        )}
                         {g.cuotasInformadasCount > 0 && (
                           <Tooltip title="Tiene pago(s) informado(s) esperando confirmación de administración">
                             <Chip
@@ -883,13 +897,13 @@ export const CobranzasListPage: React.FC = () => {
                       </TableCell>
                       <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                         <Stack direction="row" spacing={0.25} justifyContent="center">
-                          <Tooltip title="Registrar cobro">
+                          <Tooltip title={g.prestamoId != null ? 'Registrar cobro' : 'Cobro libre: informar desde el detalle de la gestión'}>
                             <span>
                               <IconButton
                                 size="small"
                                 color="primary"
-                                onClick={() => setCobroDialog({ prestamoId: g.prestamoId, clienteId: g.clienteId, nombre: [g.clienteNombre, g.clienteApellido].filter(Boolean).join(' ') })}
-                                disabled={!g.activa}
+                                onClick={() => { if (g.prestamoId != null) setCobroDialog({ prestamoId: g.prestamoId, clienteId: g.clienteId, nombre: [g.clienteNombre, g.clienteApellido].filter(Boolean).join(' ') }); }}
+                                disabled={!g.activa || g.prestamoId == null}
                               >
                                 <AttachMoney fontSize="small" />
                               </IconButton>

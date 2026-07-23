@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CANAL_LABELS, type CanalEnum } from '../../../types/lead.types';
 import {
   Alert,
   Box,
@@ -374,6 +375,7 @@ const HistoricoComercialTab: React.FC<HistoricoComercialTabProps> = ({ clienteId
                   <TableCell>Número</TableCell>
                   <TableCell>Fecha</TableCell>
                   <TableCell>Estado</TableCell>
+                  <TableCell>Canal</TableCell>
                   <TableCell>Método de pago</TableCell>
                   <TableCell align="right">Total</TableCell>
                   <TableCell align="center">Acciones</TableCell>
@@ -410,6 +412,14 @@ const HistoricoComercialTab: React.FC<HistoricoComercialTabProps> = ({ clienteId
                           size="small"
                           variant="outlined"
                         />
+                      </TableCell>
+                      <TableCell>
+                        {doc.canalVenta ? (CANAL_LABELS[doc.canalVenta as CanalEnum] ?? doc.canalVenta) : '—'}
+                        {doc.gestionanteNombre && (
+                          <Tooltip title={`Gestiona: ${doc.gestionanteNombre}${doc.gestionanteTelefono ? ` (${doc.gestionanteTelefono})` : ''} — no es el titular`}>
+                            <Chip label="Gestiona 3ro" size="small" variant="outlined" color="warning" sx={{ ml: 0.5, height: 18, fontSize: '0.65rem' }} />
+                          </Tooltip>
+                        )}
                       </TableCell>
                       <TableCell>{formatMetodoPago(doc.metodoPago)}</TableCell>
                       <TableCell align="right">

@@ -81,7 +81,8 @@ const CarpetaClienteSelector: React.FC = () => {
   };
 
   const handleSelectCliente = (clienteId: number) => {
-    navigate(`/clientes/carpeta/${clienteId}`);
+    // `from` permite que el "Volver" de la carpeta regrese a este selector.
+    navigate(`/clientes/carpeta/${clienteId}`, { state: { from: '/clientes/carpeta' } });
   };
 
   return (

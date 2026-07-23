@@ -108,6 +108,11 @@ export type CreateFacturaDirectaPayload = {
   descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
   descuentoValor?: number;
   observaciones?: string;
+  /** Canal por el que entró la venta. */
+  canalVenta?: string;
+  /** Quien gestiona la compra si NO es el titular. */
+  gestionanteNombre?: string;
+  gestionanteTelefono?: string;
   /** Fecha objetivo de entrega (Tablero de Pendientes). ISO yyyy-mm-dd. */
   fechaEstimadaEntrega?: string;
   equiposAsignaciones?: { [lineaIndex: number]: number[] };

@@ -48,7 +48,7 @@ import {
   Build as BuildIcon,
   Inventory2 as Inventory2Icon,
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import LoadingOverlay from '../common/LoadingOverlay';
@@ -103,6 +103,10 @@ function TabPanel(props: TabPanelProps) {
 const CarpetaClientePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  // "Volver" contextual: regresa a la vista de origen (selector de carpetas u
+  // otra). Fallback a Gestión de Clientes en deep-link/refresh (state se pierde).
+  const backTo = (location.state as { from?: string } | null)?.from ?? '/clientes/gestion';
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -379,9 +383,9 @@ const CarpetaClientePage: React.FC = () => {
         </Typography>
         <Button
           variant="outlined"
-          onClick={() => navigate('/clientes/gestion')}
+          onClick={() => navigate(backTo)}
         >
-          Volver a Clientes
+          Volver
         </Button>
       </Box>
 

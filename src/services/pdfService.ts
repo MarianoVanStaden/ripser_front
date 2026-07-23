@@ -390,15 +390,15 @@ export const generarPresupuestoPDF = (data: PresupuestoPDFData): void => {
   const margin = 10;
   let yPosition = margin;
 
-  // ===== BARRA SUPERIOR AZUL CON LOGO =====
-  doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  // ===== BARRA SUPERIOR CON LOGO =====
+  doc.setFillColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
   doc.rect(margin, yPosition, pageWidth - (margin * 2), 25, 'F');
 
   // Logo corporativo (imagen) en el extremo superior izquierdo
   drawHeaderLogo(doc, margin, yPosition);
 
   // Información de contacto (derecha)
-  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.setTextColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   const contactX = pageWidth - margin - 5;
@@ -706,15 +706,15 @@ const generarDocumentoComercialPDF = (data: DocumentoPDFData & { tipoDocumento: 
   const margin = 10;
   let yPosition = margin;
 
-  // ===== BARRA SUPERIOR AZUL CON LOGO =====
-  doc.setFillColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
+  // ===== BARRA SUPERIOR CON LOGO =====
+  doc.setFillColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
   doc.rect(margin, yPosition, pageWidth - (margin * 2), 25, 'F');
 
   // Logo corporativo (imagen) en el extremo superior izquierdo
   drawHeaderLogo(doc, margin, yPosition);
 
   // Información de contacto (derecha)
-  doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+  doc.setTextColor(COLORS.darkBlue[0], COLORS.darkBlue[1], COLORS.darkBlue[2]);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   const contactX = pageWidth - margin - 5;
@@ -1058,7 +1058,21 @@ export const generarCreditoPDF = (
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 10;
 
-  let y = addCorporateHeader(doc, 'Estado del Crédito Personal');
+  let y = addCorporateHeader(doc, 'Estado del Crédito Personal', true);
+
+  // ---- Banner de crédito finalizado ----
+  // Cobranzas envía este PDF al cliente como constancia: cuando el crédito está
+  // saldado, la leyenda debe ser inconfundible.
+  if (prestamo.estado === 'FINALIZADO') {
+    const bannerH = 10;
+    doc.setFillColor(46, 125, 50); // verde #2E7D32
+    doc.rect(margin + 1, y, pageWidth - (margin * 2) - 2, bannerH, 'F');
+    doc.setTextColor(...COLORS.white);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('CRÉDITO PERSONAL FINALIZADO', pageWidth / 2, y + bannerH / 2 + 1.5, { align: 'center' });
+    y += bannerH + 4;
+  }
 
   // ---- Bloque Cliente ----
   // Datos de contacto y ubicación del cliente para que el PDF sea autosuficiente

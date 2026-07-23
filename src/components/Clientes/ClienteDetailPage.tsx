@@ -39,6 +39,7 @@ import { RUBRO_LABELS } from '../../types/rubro.types';
 import { clienteApiWithFallback as clienteApi } from '../../api/services/apiWithFallback';
 import { documentoClienteApi } from '../../api/services/documentoClienteApi';
 import { ContactosTab, CuentaCorrienteTab } from './index';
+import { HistoricoComercialTab } from './HistoricoComercial';
 import DocumentManager from '../shared/DocumentManager';
 import LoadingOverlay from '../common/LoadingOverlay';
 
@@ -332,6 +333,7 @@ const ClienteDetailPage: React.FC = () => {
               label={isMobile ? 'Recompras' : `Leads de Recompra${leadsRecompra.length > 0 ? ` (${leadsRecompra.length})` : ''}`}
               {...a11yProps(4)}
             />
+            <Tab label="Compras" {...a11yProps(5)} />
           </Tabs>
         </Box>
 
@@ -485,6 +487,10 @@ const ClienteDetailPage: React.FC = () => {
               </TableBody>
             </Table>
           )}
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={5}>
+          <HistoricoComercialTab clienteId={cliente.id} />
         </TabPanel>
       </Paper>
     </Box>

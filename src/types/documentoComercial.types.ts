@@ -56,6 +56,11 @@ export interface DocumentoComercial {
   estado: EstadoDocumento;
   metodoPago: MetodoPago;
   observaciones?: string;
+  /** Canal por el que entró la venta (Instagram, WhatsApp, referido...). */
+  canalVenta?: string | null;
+  /** Quien gestiona la compra si NO es el titular. Null = gestiona el cliente. */
+  gestionanteNombre?: string | null;
+  gestionanteTelefono?: string | null;
   detalles: DetalleDocumento[];
   opcionesFinanciamiento?: OpcionFinanciamiento[];
   opcionFinanciamientoSeleccionadaId?: number;
@@ -205,6 +210,11 @@ export interface CreatePresupuestoRequest {
   usuarioId: number;
   detalles: DetalleDocumentoDTO[];
   observaciones?: string;
+  /** Canal por el que entró la venta. */
+  canalVenta?: string;
+  /** Quien gestiona la compra si NO es el titular. */
+  gestionanteNombre?: string;
+  gestionanteTelefono?: string;
 }
 
 export interface ConvertToFacturaDTO {

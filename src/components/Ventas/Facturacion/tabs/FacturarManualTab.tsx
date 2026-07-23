@@ -27,6 +27,7 @@ import { ProductsTable } from '../ProductsTable';
 import { PAYMENT_METHODS, IVA_OPTIONS, type TipoIva } from '../constants';
 import type { CartItem } from '../types';
 import { isFinanciamiento } from '../utils';
+import { CANAL_LABELS, type CanalEnum } from '../../../../types/lead.types';
 
 type DescuentoTipo = 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
 
@@ -65,6 +66,13 @@ interface Props {
   // notes
   notes: string;
   onChangeNotes: (next: string) => void;
+  // canal de venta + gestionante (si quien habla no es el titular)
+  canalVenta: string;
+  onChangeCanalVenta: (next: string) => void;
+  gestionanteNombre: string;
+  onChangeGestionanteNombre: (next: string) => void;
+  gestionanteTelefono: string;
+  onChangeGestionanteTelefono: (next: string) => void;
   // cart
   cart: CartItem[];
   onAddItem: () => void;
@@ -95,6 +103,9 @@ const FacturarManualTab: React.FC<Props> = ({
   fechaEstimadaEntrega, onChangeFechaEstimadaEntrega,
   descuentoTipo, onChangeDescuentoTipo, descuentoValor, onChangeDescuentoValor,
   notes, onChangeNotes,
+  canalVenta, onChangeCanalVenta,
+  gestionanteNombre, onChangeGestionanteNombre,
+  gestionanteTelefono, onChangeGestionanteTelefono,
   cart, onAddItem, onAddEnvio, onAddRevestimiento, onUpdateCartItem, onRemoveCartItem, products, recetas,
   totals, loading, selectedClientId, onClear, onOpenFinanciamiento, onSubmit,
   selectedOpcionFinanciamiento,
@@ -269,6 +280,35 @@ const FacturarManualTab: React.FC<Props> = ({
                 />
               </Grid>
             )}
+
+            <Grid item xs={12} sm={4}>
+              <TextField
+                select fullWidth size="small" label="Canal de venta"
+                value={canalVenta}
+                onChange={(e) => onChangeCanalVenta(e.target.value)}
+              >
+                <MenuItem value=""><em>Sin especificar</em></MenuItem>
+                {(Object.keys(CANAL_LABELS) as CanalEnum[]).map((c) => (
+                  <MenuItem key={c} value={c}>{CANAL_LABELS[c]}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={5}>
+              <TextField
+                fullWidth size="small" label="Gestiona la compra (si no es el titular)"
+                placeholder="Nombre de quien habla por WhatsApp"
+                value={gestionanteNombre}
+                onChange={(e) => onChangeGestionanteNombre(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <TextField
+                fullWidth size="small" label="Tel. gestionante"
+                value={gestionanteTelefono}
+                onChange={(e) => onChangeGestionanteTelefono(e.target.value)}
+                disabled={!gestionanteNombre.trim()}
+              />
+            </Grid>
 
             <Grid item xs={12}>
               <TextField

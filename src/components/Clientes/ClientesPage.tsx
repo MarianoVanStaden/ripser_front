@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { CANAL_LABELS, type CanalEnum } from '../../types/lead.types';
 import {
   Box,
   Paper,
@@ -339,6 +340,16 @@ const ClientesPage: React.FC = () => {
 
                 <Typography variant="body2" color="text.secondary" mb={2}>
                   Crédito: ${cliente.limiteCredito?.toLocaleString() || 'N/A'}
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary" mb={2}>
+                  Compras: {cliente.cantidadCompras ?? 0}
+                  {cliente.fechaUltimaCompra
+                    ? ` · Última: ${new Date(cliente.fechaUltimaCompra + 'T00:00:00').toLocaleDateString('es-AR')}`
+                    : ''}
+                  {cliente.canalAdquisicion
+                    ? ` · Canal: ${CANAL_LABELS[cliente.canalAdquisicion as CanalEnum] ?? cliente.canalAdquisicion}`
+                    : ''}
                 </Typography>
 
                 <Box display="flex" alignItems="center" mt={1} mb={2}>
