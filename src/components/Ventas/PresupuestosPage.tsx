@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useLeadSearch } from "../../hooks/useLeadSearch";
@@ -655,6 +656,33 @@ const PresupuestosPage: React.FC = () => {
     }
     setDialogOpen(true);
   }, [user]);
+
+  // Deep-link desde el detalle de lead: /ventas/presupuestos?leadId=123 abre el
+  // dialog de alta con el lead preseleccionado. Se consume una sola vez y se
+  // limpia el query param para que refresh/back no reabran el dialog.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkLeadHandledRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkLeadHandledRef.current) return;
+    const leadIdParam = searchParams.get('leadId');
+    if (!leadIdParam) return;
+    deepLinkLeadHandledRef.current = true;
+    setSearchParams({}, { replace: true });
+    const leadIdNum = Number(leadIdParam);
+    if (!Number.isFinite(leadIdNum) || leadIdNum <= 0) return;
+    handleOpenDialog();
+    setDestinatarioMode('LEAD');
+    setFormData((prev) => ({ ...prev, leadId: leadIdParam }));
+    // Sembrar el input del typeahead con el nombre para que el Autocomplete
+    // resuelva y muestre el lead preseleccionado.
+    leadApi.getById(leadIdNum)
+      .then((lead) => {
+        leadSearch.setInputValue(
+          [lead.nombre, lead.apellido].filter(Boolean).join(' ')
+        );
+      })
+      .catch(() => { /* si falla, el usuario selecciona el lead a mano */ });
+  }, [searchParams, setSearchParams, handleOpenDialog, leadSearch]);
 
   const handleCloseDialog = useCallback(() => {
     if (hasUnsavedChanges && !readOnly) {

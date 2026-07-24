@@ -93,6 +93,11 @@ export type CreatePresupuestoPayload = {
   descuentoTipo?: 'NONE' | 'PORCENTAJE' | 'MONTO_FIJO';
   descuentoValor?: number;
   observaciones?: string;
+  /** Canal por el que entró la venta. */
+  canalVenta?: string;
+  /** Quien gestiona la compra si NO es el titular. */
+  gestionanteNombre?: string;
+  gestionanteTelefono?: string;
   detalles: DetalleDocumentoCreateDTO[];
 };
 
@@ -384,6 +389,12 @@ export const documentoApi = {
   // Get documentos by cliente
   getByCliente: async (clienteId: number): Promise<DocumentoComercial[]> => {
     const response = await api.get<DocumentoComercial[]>(`/api/documentos/cliente/${clienteId}`);
+    return response.data;
+  },
+  // Get documentos (presupuestos) by lead. Al convertir el lead a cliente los
+  // documentos migran al cliente, por lo que esto devuelve vacío post-conversión.
+  getByLead: async (leadId: number): Promise<DocumentoComercial[]> => {
+    const response = await api.get<DocumentoComercial[]>(`/api/documentos/lead/${leadId}`);
     return response.data;
   },
   // Update estado of presupuesto

@@ -33,6 +33,7 @@ import { LeadStatusBadge } from '../../components/leads/LeadStatusBadge';
 import { CanalBadge } from '../../components/leads/CanalBadge';
 import { ProximoRecordatorio } from '../../components/leads/ProximoRecordatorio';
 import { InteraccionesTimeline } from '../../components/leads/InteraccionesTimeline';
+import { HistorialConsultasLead } from '../../components/leads/HistorialConsultasLead';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
 
 export const LeadDetailPage = () => {
@@ -457,6 +458,13 @@ export const LeadDetailPage = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Historial de Consultas (presupuestos del lead) */}
+          <HistorialConsultasLead
+            leadId={lead.id!}
+            estadoLead={lead.estadoLead}
+            clienteIdConvertido={lead.clienteIdConvertido}
+          />
         </Grid>
 
         {/* Columna Derecha - Timeline y Recordatorios */}
