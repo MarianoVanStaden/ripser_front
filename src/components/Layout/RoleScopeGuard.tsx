@@ -108,6 +108,7 @@ const RESTRICTED_ROLES: RestrictedRole[] = [
       '/taller/tareas',
       '/taller/trabajos',
       // RRHH (subconjunto ADMIN_EMPRESA_LIMITADO)
+      '/rrhh/empleados',
       '/rrhh/sueldos',
       '/rrhh/adelantos',
       '/rrhh/config-sueldos',
