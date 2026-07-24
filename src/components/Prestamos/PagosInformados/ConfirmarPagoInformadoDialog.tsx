@@ -57,6 +57,12 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
     }
   }, [open, pago]);
 
+  // Solo gestiones libres: además de caja, registrar el CREDITO en la CC del
+  // cliente. Para CHEQUE_RECHAZADO el backend lo hace siempre (cancela el DEBITO
+  // de reversión del cheque); este checkbox cubre DEUDA_LIBRE/OTRO.
+  const [impactarCC, setImpactarCC] = useState(false);
+  useEffect(() => { if (open) setImpactarCC(false); }, [open]);
+
   useEffect(() => {
     if (open && pago?.metodoPago === 'CHEQUE' && bancos.length === 0 && !loadingBancos) {
       setLoadingBancos(true);
@@ -99,6 +105,7 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
         montoConfirmado,
         cajaPesosId: cajaRef?.tipo === 'PESOS' ? cajaRef.id : null,
         cajaAhorroId: cajaRef?.tipo === 'AHORRO' ? cajaRef.id : null,
+        ...(pago.cuotaId == null && { impactarCuentaCorriente: impactarCC }),
         ...(pago.metodoPago === 'CHEQUE' && {
           cheque: {
             numeroCheque: chequeData.numeroCheque.trim(),
@@ -140,8 +147,14 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
                 <Typography variant="body2" fontWeight="medium">{pago.clienteNombre}</Typography>
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">Préstamo / Cuota</Typography>
-                <Typography variant="body2" fontWeight="medium">#{pago.prestamoId} — Cuota {pago.numeroCuota}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {pago.cuotaId != null ? 'Préstamo / Cuota' : 'Origen'}
+                </Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {pago.cuotaId != null
+                    ? `#${pago.prestamoId} — Cuota ${pago.numeroCuota}`
+                    : `Gestión libre${pago.descripcionOrigen ? `: ${pago.descripcionOrigen}` : ''}`}
+                </Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="caption" color="text.secondary">Comprobante</Typography>
@@ -179,6 +192,18 @@ export const ConfirmarPagoInformadoDialog: React.FC<Props> = ({
                 inputProps={{ min: 0.01, step: 0.01 }}
               />
             </Grid>
+            {pago.cuotaId == null && (
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={<Checkbox checked={impactarCC} onChange={(e) => setImpactarCC(e.target.checked)} />}
+                  label="Registrar también en la cuenta corriente del cliente"
+                />
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Para cheques rechazados se registra en CC automáticamente (cancela la reversión del cheque).
+                  Marcalo solo si esta deuda libre figura en la CC del cliente.
+                </Typography>
+              </Grid>
+            )}
             {requiereCaja && (
               <Grid item xs={12}>
                 <CajaSelector

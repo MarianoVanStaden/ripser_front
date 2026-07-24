@@ -364,6 +364,8 @@ export interface ConfirmarPagoInformadoDTO {
   cajaAhorroId?: number | null;
   cheque?: ChequeCobroData;
   montoConfirmado?: number;
+  /** Solo gestiones libres: registrar además un CREDITO en la CC del cliente. */
+  impactarCuentaCorriente?: boolean;
 }
 
 export interface RechazarPagoInformadoDTO {
