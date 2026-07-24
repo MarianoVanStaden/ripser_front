@@ -57,8 +57,22 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
   useEffect(() => {
     if (!open) return;
     setLoadingPrestamos(true);
-    prestamoPersonalApi.getAll({ page: 0, size: 500, sort: 'diasVencido,desc' })
-      .then((res) => setPrestamos(res.content.filter((p) => p.estado === 'EN_MORA' || p.estado === 'EN_LEGAL')))
+    // El motor crea las gestiones de crédito automáticamente al entrar en mora,
+    // así que casi todos los EN_MORA/EN_LEGAL ya tienen gestión activa (409 seguro).
+    // Excluimos esos del selector: este modo queda solo para los huecos del motor
+    // (ej. gestión cerrada a mano con el crédito aún moroso).
+    Promise.all([
+      prestamoPersonalApi.getAll({ page: 0, size: 500, sort: 'diasVencido,desc' }),
+      gestionCobranzaApi.getAll({ page: 0, size: 500 }).catch(() => null),
+    ])
+      .then(([res, gestiones]) => {
+        const conGestion = new Set(
+          (gestiones?.content ?? []).map((g) => g.prestamoId).filter((id) => id != null)
+        );
+        setPrestamos(res.content.filter(
+          (p) => (p.estado === 'EN_MORA' || p.estado === 'EN_LEGAL') && !conGestion.has(p.id)
+        ));
+      })
       .catch(() => setPrestamos([]))
       .finally(() => setLoadingPrestamos(false));
   }, [open]);
@@ -222,6 +236,7 @@ export const NuevaGestionDialog: React.FC<NuevaGestionDialogProps> = ({ open, on
             onChange={(_, value) => setSelectedPrestamo(value)}
             getOptionLabel={getPrestamoLabel}
             isOptionEqualToValue={(a, b) => a.id === b.id}
+            noOptionsText="Todos los créditos en mora ya tienen su gestión activa (las crea el motor). Para otros cobros usá el modo Cobro libre."
             renderInput={(params) => (
               <TextField
                 {...params}
