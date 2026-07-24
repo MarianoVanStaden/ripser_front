@@ -173,8 +173,11 @@ export const coordinadoraLogisticaAllowedPaths = [
   '/taller/materiales',
   '/taller/tareas',
   '/taller/trabajos',
-  // RRHH (subconjunto ADMIN_EMPRESA_LIMITADO: Empleados, Sueldos, Adelantos, Config, Organigrama)
+  // RRHH (subconjunto ADMIN_EMPRESA_LIMITADO: Empleados, Sueldos, Adelantos,
+  // Config, Organigrama, Licencias, Disciplina)
   '/rrhh/empleados',
+  '/rrhh/licencias',
+  '/rrhh/disciplina',
   '/rrhh/sueldos',
   '/rrhh/adelantos',
   '/rrhh/config-sueldos',
