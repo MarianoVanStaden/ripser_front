@@ -74,7 +74,7 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
   const handleSave = async () => {
     setError(null);
 
-    if (!fechaPromesa || fechaPromesa.isBefore(dayjs(), 'day')) {
+    if (!fechaPromesa || !fechaPromesa.isValid() || fechaPromesa.isBefore(dayjs(), 'day')) {
       setError('La fecha de promesa debe ser posterior a hoy.');
       return;
     }
@@ -186,7 +186,7 @@ export const PromesaPagoDialog: React.FC<PromesaPagoDialogProps> = ({
           <DatePicker
             label="Fecha de promesa *"
             value={fechaPromesa}
-            onChange={(value) => setFechaPromesa(value as any)}
+            onChange={(value) => { if (value && !(value as Dayjs).isValid()) return; setFechaPromesa(value as any); }}
             minDate={dayjs().add(1, 'day')}
             slotProps={{
               textField: {

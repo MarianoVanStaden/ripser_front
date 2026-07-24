@@ -474,6 +474,7 @@ const FlujoCajaPage: React.FC = () => {
               label="Desde"
               value={fechaDesde}
               onChange={(newValue) => {
+                if (newValue && !(newValue as Dayjs).isValid()) return; // tipeo parcial
                 setFechaDesde(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}
@@ -483,6 +484,7 @@ const FlujoCajaPage: React.FC = () => {
               label="Hasta"
               value={fechaHasta}
               onChange={(newValue) => {
+                if (newValue && !(newValue as Dayjs).isValid()) return; // tipeo parcial
                 setFechaHasta(newValue as Dayjs | null);
                 setActiveFilter('custom');
               }}

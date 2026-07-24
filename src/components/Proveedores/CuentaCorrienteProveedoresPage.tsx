@@ -424,14 +424,14 @@ const CuentaCorrienteProveedoresPage: React.FC = () => {
             <DatePicker
               label="Desde"
               value={fechaDesde}
-              onChange={(newValue) => setFechaDesde(newValue as Dayjs | null)}
+              onChange={(newValue) => { if (newValue && !(newValue as Dayjs).isValid()) return; setFechaDesde(newValue as Dayjs | null); }}
               slotProps={{ textField: { size: 'small' } }}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
-              onChange={(newValue) => setFechaHasta(newValue as Dayjs | null)}
+              onChange={(newValue) => { if (newValue && !(newValue as Dayjs).isValid()) return; setFechaHasta(newValue as Dayjs | null); }}
               slotProps={{ textField: { size: 'small' } }}
             />
 

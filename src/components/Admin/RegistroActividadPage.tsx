@@ -253,13 +253,13 @@ export const RegistroActividadPage = () => {
                   <DatePicker
                     label="Desde"
                     value={customDesde}
-                    onChange={setCustomDesde}
+                    onChange={(v) => { if (v && !v.isValid()) return; setCustomDesde(v); }}
                     slotProps={{ textField: { size: 'small', sx: { width: 180 } } }}
                   />
                   <DatePicker
                     label="Hasta"
                     value={customHasta}
-                    onChange={setCustomHasta}
+                    onChange={(v) => { if (v && !v.isValid()) return; setCustomHasta(v); }}
                     slotProps={{ textField: { size: 'small', sx: { width: 180 } } }}
                   />
                 </Stack>

@@ -1237,12 +1237,13 @@ const TransferenciasPage: React.FC = () => {
               <DateTimePicker
                 label="Fecha de Transferencia"
                 value={newTransferencia.fechaTransferencia}
-                onChange={(newValue) =>
+                onChange={(newValue) => {
+                  if (newValue && !newValue.isValid()) return; // tipeo parcial
                   setNewTransferencia(prev => ({
                     ...prev,
                     fechaTransferencia: newValue ? dayjs(newValue) : dayjs(),
-                  }))
-                }
+                  }));
+                }}
                 slotProps={{ textField: { fullWidth: true } }}
               />
 
@@ -1519,12 +1520,13 @@ const TransferenciasPage: React.FC = () => {
                 <DateTimePicker
                   label="Fecha de Recepción"
                   value={recepcionData.fechaRecepcion}
-                  onChange={(newValue) =>
+                  onChange={(newValue) => {
+                    if (newValue && !newValue.isValid()) return; // tipeo parcial
                     setRecepcionData(prev => ({
                       ...prev,
                       fechaRecepcion: newValue ? dayjs(newValue) : dayjs(),
-                    }))
-                  }
+                    }));
+                  }}
                   slotProps={{ textField: { size: 'small', sx: { width: 250 } } }}
                 />
               </Box>

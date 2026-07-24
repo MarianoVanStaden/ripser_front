@@ -337,7 +337,7 @@ const AgendaVisitasPage: React.FC = () => {
             <DatePicker
               label="Fecha"
               value={selectedDate}
-              onChange={(newValue) => setSelectedDate(newValue as Dayjs | null)}
+              onChange={(newValue) => { if (newValue && !(newValue as Dayjs).isValid()) return; setSelectedDate(newValue as Dayjs | null); }}
               slotProps={{ textField: { size: 'small' } }}
             />
 

@@ -242,7 +242,7 @@ export const LeadMetricasPage = () => {
               <DatePicker
                 label="Fecha Inicio"
                 value={fechaInicio}
-                onChange={(newValue) => setFechaInicio(newValue as Dayjs | null)}
+                onChange={(newValue) => { if (newValue && !(newValue as Dayjs).isValid()) return; setFechaInicio(newValue as Dayjs | null); }}
                 slotProps={{
                   textField: {
                     fullWidth: true,
@@ -255,7 +255,7 @@ export const LeadMetricasPage = () => {
               <DatePicker
                 label="Fecha Fin"
                 value={fechaFin}
-                onChange={(newValue) => setFechaFin(newValue as Dayjs | null)}
+                onChange={(newValue) => { if (newValue && !(newValue as Dayjs).isValid()) return; setFechaFin(newValue as Dayjs | null); }}
                 slotProps={{
                   textField: {
                     fullWidth: true,

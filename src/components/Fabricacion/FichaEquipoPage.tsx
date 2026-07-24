@@ -367,13 +367,13 @@ const FichaEquipoPage: React.FC = () => {
                 <DatePicker
                   label="Fecha de fabricación"
                   value={fechaFabricacion}
-                  onChange={setFechaFabricacion}
+                  onChange={(v) => { if (v && !v.isValid()) return; setFechaFabricacion(v); }}
                   slotProps={{ textField: { size: 'small' } }}
                 />
                 <DatePicker
                   label="Fecha de entrega"
                   value={fechaEntrega}
-                  onChange={setFechaEntrega}
+                  onChange={(v) => { if (v && !v.isValid()) return; setFechaEntrega(v); }}
                   slotProps={{ textField: { size: 'small' } }}
                 />
                 <Box sx={{ flexGrow: 1 }} />

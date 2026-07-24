@@ -907,7 +907,7 @@ const AuditoriaPage: React.FC = () => {
                 <DatePicker
                   label="Fecha Inicio"
                   value={fechaInicio ? dayjs(fechaInicio) : null}
-                  onChange={(newValue) => setFechaInicio(newValue ? newValue.toDate() : null)}
+                  onChange={(newValue) => { if (newValue && !newValue.isValid()) return; setFechaInicio(newValue ? newValue.toDate() : null); }}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>
@@ -915,7 +915,7 @@ const AuditoriaPage: React.FC = () => {
                 <DatePicker
                   label="Fecha Fin"
                   value={fechaFin ? dayjs(fechaFin) : null}
-                  onChange={(newValue) => setFechaFin(newValue ? newValue.toDate() : null)}
+                  onChange={(newValue) => { if (newValue && !newValue.isValid()) return; setFechaFin(newValue ? newValue.toDate() : null); }}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>

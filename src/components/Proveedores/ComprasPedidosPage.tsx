@@ -978,14 +978,14 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
             <DatePicker
               label="Desde"
               value={fechaDesde}
-              onChange={(newValue) => setFechaDesde(newValue as Dayjs | null)}
+              onChange={(newValue) => { if (newValue && !(newValue as Dayjs).isValid()) return; setFechaDesde(newValue as Dayjs | null); }}
               slotProps={{ textField: { size: 'small' } }}
             />
 
             <DatePicker
               label="Hasta"
               value={fechaHasta}
-              onChange={(newValue) => setFechaHasta(newValue as Dayjs | null)}
+              onChange={(newValue) => { if (newValue && !(newValue as Dayjs).isValid()) return; setFechaHasta(newValue as Dayjs | null); }}
               slotProps={{ textField: { size: 'small' } }}
             />
 
@@ -1248,7 +1248,7 @@ const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => 
       <DatePicker
         label="Fecha de Entrega Estimada"
         value={newOrden.fechaEntregaEstimada}
-        onChange={(date) => setNewOrden({ ...newOrden, fechaEntregaEstimada: (date as Dayjs) || dayjs() })}
+        onChange={(date) => { if (date && !(date as Dayjs).isValid()) return; setNewOrden({ ...newOrden, fechaEntregaEstimada: (date as Dayjs) || dayjs() }); }}
         slotProps={{ textField: { fullWidth: true, margin: 'normal' } }}
       />
 
