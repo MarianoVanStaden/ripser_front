@@ -31,6 +31,8 @@ import {
   Divider,
   TablePagination,
   Autocomplete,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -62,12 +64,14 @@ import { generarVentaPDF } from '../../services/pdfService';
 import { generateSalesListPDF } from '../../utils/pdfExportUtils';
 import { useClienteSearch } from '../../hooks/useClienteSearch';
 import LoadingOverlay from '../common/LoadingOverlay';
+import VentasEquiposVendedorTab from './RegistroVentas/VentasEquiposVendedorTab';
 
 const RegistroVentasPage: React.FC = () => {
   const navigate = useNavigate();
   const { empresaId, esSuperAdmin, rolActual } = useTenant();
   const isAdmin = esSuperAdmin || (rolActual as string) === 'ADMIN' || rolActual === 'ADMIN_EMPRESA' || rolActual === 'ADMIN_EMPRESA_LIMITADO';
   const { value: diasEntrega } = useParametroSistema('DIAS_ENTREGA_ESTIMADA', 25, parseIntOr(25));
+  const [activeTab, setActiveTab] = useState(0);
   // sales viene de useQuery server-side. Mantenemos el nombre para no tocar el JSX.
   const queryClient = useQueryClient();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -676,6 +680,17 @@ const RegistroVentasPage: React.FC = () => {
         </Alert>
       )}
 
+      {isAdmin && (
+        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3 }}>
+          <Tab label="Listado" />
+          <Tab label="Unidades por Vendedor" />
+        </Tabs>
+      )}
+
+      {activeTab === 1 && isAdmin && <VentasEquiposVendedorTab />}
+
+      {activeTab === 0 && (
+        <>
       {/* Summary Cards */}
       <Grid container spacing={3} mb={3}>
         <Grid item xs={12} sm={6} md={4}>
@@ -1053,6 +1068,8 @@ const RegistroVentasPage: React.FC = () => {
           />
         </CardContent>
       </Card>
+        </>
+      )}
 
       {/* View Sale Dialog */}
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>

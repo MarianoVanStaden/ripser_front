@@ -60,6 +60,25 @@ export interface ClienteAnulado {
   ultimaAnulacion: string;
 }
 
+// Unidades HELADERA/COOLBOX por vendedor y mes, con anulaciones (NC y rechazos
+// de NP aprobadas). usuarioId null = NC sobre facturas sin NP ("Sin vendedor").
+// Los netos pueden ser negativos si la anulación cae en un mes posterior.
+export interface VentasVendedorMes {
+  usuarioId: number | null;
+  vendedorNombre: string | null;
+  anio: number;
+  mes: number;
+  heladerasVendidas: number;
+  coolboxesVendidas: number;
+  heladerasAnuladasNc: number;
+  coolboxesAnuladasNc: number;
+  heladerasAnuladasRechazo: number;
+  coolboxesAnuladasRechazo: number;
+  heladerasNeto: number;
+  coolboxesNeto: number;
+  totalNeto: number;
+}
+
 export interface ImportarFacturasResult {
   dryRun: boolean;
   totalFilas: number;
@@ -200,6 +219,18 @@ export const documentoApi = {
     const response = await api.get<AnulacionMensual[]>('/api/documentos/anulaciones/resumen', {
       params: { desde, hasta },
     });
+    return response.data;
+  },
+
+  // Unidades HELADERA/COOLBOX por vendedor y mes, con anulaciones. 'YYYY-MM'.
+  getVentasEquiposPorVendedor: async (
+    desde?: string,
+    hasta?: string
+  ): Promise<VentasVendedorMes[]> => {
+    const response = await api.get<VentasVendedorMes[]>(
+      '/api/documentos/ventas-equipos/vendedores',
+      { params: { desde, hasta } }
+    );
     return response.data;
   },
 
