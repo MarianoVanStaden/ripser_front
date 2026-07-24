@@ -124,8 +124,8 @@ export const CobranzasListPage: React.FC = () => {
     [urlFilters.prioridades]
   );
   const selectedFechaFiltro = isFechaFiltro(urlFilters.fechaFiltro) ? urlFilters.fechaFiltro : null;
-  const fechaDesde: Dayjs | null = urlFilters.desde ? dayjs(urlFilters.desde) : null;
-  const fechaHasta: Dayjs | null = urlFilters.hasta ? dayjs(urlFilters.hasta) : null;
+  const fechaDesde: Dayjs | null = urlFilters.desde && dayjs(urlFilters.desde).isValid() ? dayjs(urlFilters.desde) : null;
+  const fechaHasta: Dayjs | null = urlFilters.hasta && dayjs(urlFilters.hasta).isValid() ? dayjs(urlFilters.hasta) : null;
   const soloActivas = urlFilters.soloActivas !== false; // default true
   const promesaEstado = isPromesaEstado(urlFilters.promesaEstado) ? urlFilters.promesaEstado : undefined;
   const promesaIncumplida = urlFilters.promesaIncumplida === true;
@@ -176,8 +176,8 @@ export const CobranzasListPage: React.FC = () => {
     term: urlFilters.term || undefined,
     estados: selectedEstados.length > 0 ? selectedEstados : undefined,
     prioridades: selectedPrioridades.length > 0 ? selectedPrioridades : undefined,
-    fechaDesde: urlFilters.desde || undefined,
-    fechaHasta: urlFilters.hasta || undefined,
+    fechaDesde: urlFilters.desde && dayjs(urlFilters.desde).isValid() ? urlFilters.desde : undefined,
+    fechaHasta: urlFilters.hasta && dayjs(urlFilters.hasta).isValid() ? urlFilters.hasta : undefined,
     fechaFiltro: selectedFechaFiltro || undefined,
     promesaEstado,
     promesaIncumplida: promesaIncumplida || undefined,
@@ -518,10 +518,13 @@ export const CobranzasListPage: React.FC = () => {
               <DatePicker
                 label="Desde"
                 value={fechaDesde}
-                onChange={(v) => setUrlFilters({
-                  desde: v ? (v as Dayjs).format('YYYY-MM-DD') : undefined,
-                  fechaFiltro: undefined,
-                })}
+                onChange={(v) => {
+                  if (v && !(v as Dayjs).isValid()) return; // tipeo parcial → "Invalid Date"
+                  setUrlFilters({
+                    desde: v ? (v as Dayjs).format('YYYY-MM-DD') : undefined,
+                    fechaFiltro: undefined,
+                  });
+                }}
                 slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
                 format="DD/MM/YYYY"
               />
@@ -529,10 +532,13 @@ export const CobranzasListPage: React.FC = () => {
                 label="Hasta"
                 value={fechaHasta}
                 minDate={fechaDesde ?? undefined}
-                onChange={(v) => setUrlFilters({
-                  hasta: v ? (v as Dayjs).format('YYYY-MM-DD') : undefined,
-                  fechaFiltro: undefined,
-                })}
+                onChange={(v) => {
+                  if (v && !(v as Dayjs).isValid()) return; // tipeo parcial → "Invalid Date"
+                  setUrlFilters({
+                    hasta: v ? (v as Dayjs).format('YYYY-MM-DD') : undefined,
+                    fechaFiltro: undefined,
+                  });
+                }}
                 slotProps={{ textField: { size: 'small', sx: { width: 160 } } }}
                 format="DD/MM/YYYY"
               />
